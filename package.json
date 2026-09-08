@@ -15,7 +15,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:if-empty": "tsx prisma/seed.ts --if-empty",
     "render:build": "npm ci --include=dev && npx prisma generate && next build",
-    "render:start": "npx prisma migrate deploy && npm run db:seed:if-empty && next start -p ${PORT:-3000}"
+    "render:start": "node scripts/check-env.mjs && npx prisma migrate deploy && npm run db:seed:if-empty && next start -p ${PORT:-3000}"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
