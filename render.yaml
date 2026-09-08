@@ -1,0 +1,27 @@
+# مخطط النشر على ريندر. موجود في المستودع حتى تكون البيئة قابلة لإعادة
+# الإنشاء بدل أن تكون إعدادات مكتوبة بيد أحدهم في اللوحة مرة واحدة.
+services:
+  - type: web
+    name: athar
+    runtime: node
+    region: frankfurt
+    plan: free
+    branch: main
+    buildCommand: npm run render:build
+    startCommand: npm run render:start
+    healthCheckPath: /login
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: athar-db
+          property: connectionString
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: NODE_VERSION
+        value: "22"
+
+databases:
+  - name: athar-db
+    plan: free
+    region: frankfurt
+    postgresMajorVersion: "16"

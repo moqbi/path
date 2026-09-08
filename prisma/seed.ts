@@ -23,6 +23,16 @@ const PASSWORD = "athar1234";
 const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000);
 
 async function main() {
+  // على الخادم يُستدعى هذا الملف عند كل إقلاع، فـ--if-empty يجعله بلا أثر
+  // بعد أول مرة. بدونه كان كل نشر يمسح بيانات التجربة ويعيد بناءها.
+  if (process.argv.includes("--if-empty")) {
+    const existing = await prisma.user.count();
+    if (existing > 0) {
+      console.log(`القاعدة مأهولة (${existing} مستخدمين) — تخطّي البذر.`);
+      return;
+    }
+  }
+
   // بذرة قابلة لإعادة التشغيل: تُمسح البيانات بترتيب يحترم المفاتيح الأجنبية.
   await prisma.$transaction([
     prisma.view.deleteMany(),
