@@ -6,3 +6,6 @@ out
 src/generated
 *.tsbuildinfo
 .DS_Store
+
+# typescript
+next-env.d.ts
