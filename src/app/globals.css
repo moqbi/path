@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+/*
+ * نظام «أثر» البصري — منقول حرفياً من الشاشات المعتمدة.
+ * ورق دافئ، حبر داكن، لون طيني واحد، وأخضر للحالات الحية فقط.
+ */
+@theme {
+  --color-paper: #f6f2ec;
+  --color-card: #fffdfa;
+  --color-ink: #1b1917;
+  --color-ink-2: #6f675f;
+  --color-muted: #8a8078;
+  --color-faint: #a69c92;
+  --color-line: #e6dfd5;
+  --color-chip: #efe9e1;
+
+  --color-clay: #b0532f;
+  --color-clay-soft: #f2e3db;
+
+  --color-live: #2f6b57;
+  --color-live-soft: #ecf2ef;
+
+  --color-gold: #a98038;
+  --color-gold-soft: #fbf6ec;
+  --color-gold-line: #ebdfc6;
+  --color-gold-bright: #d9b863;
+
+  --color-night: #1f1c19;
+
+  --font-body: "IBM Plex Sans Arabic", "Geeza Pro", "Noto Sans Arabic", system-ui, sans-serif;
+  --font-display: "Amiri", "Geeza Pro", serif;
+}
+
+html {
+  background: var(--color-paper);
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * التطبيق موبايل أولاً: كل الشاشات صُممت على عرض ٣٩٠ بكسل، فيُثبَّت العرض
+ * ويُتوسَّط على الشاشات الأكبر بدل تمديد تخطيط مصمَّم للهاتف.
+ */
+.shell {
+  width: 100%;
+  max-width: 430px;
+  margin-inline: auto;
+  min-height: 100dvh;
+  background: var(--color-paper);
+  position: relative;
+}
+
+@media (min-width: 640px) {
+  body {
+    background: #ebe5dc;
+  }
+  .shell {
+    box-shadow: 0 0 0 1px var(--color-line), 0 24px 60px rgba(27, 25, 23, 0.1);
+  }
+}
+
+/* شريط التمرير مخفي داخل الصفوف الأفقية للأصناف والشرائح. */
+.no-bar {
+  scrollbar-width: none;
+}
+.no-bar::-webkit-scrollbar {
+  display: none;
+}
+
+/* الخط العمودي الذي يربط لحظات اليوم في الخط الزمني. */
+.spine::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 47px;
+  width: 1px;
+  background: var(--color-line);
+}

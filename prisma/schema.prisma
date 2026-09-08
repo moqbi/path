@@ -1,0 +1,235 @@
+// أثر — مخطط قاعدة البيانات
+// PostgreSQL. كل المبالغ تُخزَّن بالهللات كأعداد صحيحة.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────────── التعدادات ─────────────────────────────
+
+enum MomentKind {
+  PHOTO
+  PLACE
+  THOUGHT
+  MUSIC
+  SLEEP
+  /// حضور مؤقت: «أنا هنا الآن، مين جاي؟» — الوحيد الذي له وقت انتهاء.
+  PRESENCE
+}
+
+enum ReactionKind {
+  SMILE
+  LAUGH
+  GASP
+  SAD
+  LOVE
+  /// إيموجي حر من كيبورد المستخدم — للمشتركين فقط.
+  CUSTOM
+}
+
+enum StoreItemKind {
+  FRAME
+  BACKGROUND
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+}
+
+// ───────────────────────────── المستخدم والدائرة ─────────────────────────────
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  city         String?
+  bio          String?
+
+  /// اشتراك «أثر+». الصلاحية تُقرأ من plusUntil، وisPlus مشتقة منها عند الكتابة.
+  isPlus    Boolean   @default(false)
+  plusUntil DateTime?
+
+  /// رصيد المتجر بالهللات (٣٠ ر.س = 3000).
+  storeCredit Int @default(0)
+
+  frameId      String?
+  backgroundId String?
+  frame        StoreItem? @relation("UserFrame", fields: [frameId], references: [id], onDelete: SetNull)
+  background   StoreItem? @relation("UserBackground", fields: [backgroundId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  moments   Moment[]
+  reactions Reaction[]
+  views     View[]
+  comments  Comment[]
+  joinings  Joining[]
+  tags      MomentTag[]
+  purchases Purchase[]
+
+  friendshipsSent     Friendship[] @relation("Requester")
+  friendshipsReceived Friendship[] @relation("Addressee")
+}
+
+/// عضوية الدائرة. صفٌّ واحد لكل علاقة، والاتجاه لا يعني شيئاً بعد القبول.
+/// سقف الـ١٥٠ يُفرض في طبقة التطبيق (lib/circle.ts) لأنه قيد على المجموع
+/// وليس على الصف الواحد — Postgres لا يعبّر عنه بقيد إعلاني.
+model Friendship {
+  id          String           @id @default(cuid())
+  requesterId String
+  addresseeId String
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+
+  requester User @relation("Requester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee User @relation("Addressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status])
+}
+
+// ───────────────────────────── اللحظات ─────────────────────────────
+
+model Moment {
+  id       String     @id @default(cuid())
+  authorId String
+  kind     MomentKind
+
+  text String?
+
+  placeName String?
+  placeCity String?
+
+  musicTitle  String?
+  musicArtist String?
+
+  /// بديل رفع الصور في النموذج الأولي: تدرّج CSS يُخزَّن كنص ويُرسم كما لو كان صورة.
+  imageSpec String?
+
+  /// للحضور المؤقت فقط. بعد هذا الوقت تختفي اللحظة من الخط الزمني
+  /// وتبقى في أرشيف صاحبها.
+  expiresAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  author    User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  tags      MomentTag[]
+  reactions Reaction[]
+  views     View[]
+  comments  Comment[]
+  joinings  Joining[]
+
+  @@index([authorId, createdAt])
+  @@index([createdAt])
+}
+
+/// «مع فلان» — لا تظهر إلا بعد موافقة المُشار إليه.
+model MomentTag {
+  id       String  @id @default(cuid())
+  momentId String
+  userId   String
+  approved Boolean @default(false)
+
+  moment Moment @relation(fields: [momentId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([momentId, userId])
+  @@index([userId, approved])
+}
+
+model Reaction {
+  id       String       @id @default(cuid())
+  momentId String
+  userId   String
+  kind     ReactionKind
+  /// يُملأ فقط حين kind = CUSTOM.
+  emoji     String?
+  createdAt DateTime     @default(now())
+
+  moment Moment @relation(fields: [momentId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([momentId, userId])
+}
+
+/// إيصال القراءة: «شافها ١٢ من ٤٨».
+model View {
+  id       String   @id @default(cuid())
+  momentId String
+  userId   String
+  seenAt   DateTime @default(now())
+
+  moment Moment @relation(fields: [momentId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([momentId, userId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  momentId  String
+  userId    String
+  body      String
+  createdAt DateTime @default(now())
+
+  moment Moment @relation(fields: [momentId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([momentId, createdAt])
+}
+
+/// «جاي» — ردّ على حضور مؤقت.
+model Joining {
+  id        String   @id @default(cuid())
+  momentId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  moment Moment @relation(fields: [momentId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([momentId, userId])
+}
+
+// ───────────────────────────── المتجر ─────────────────────────────
+
+model StoreItem {
+  id    String        @id @default(cuid())
+  kind  StoreItemKind
+  name  String
+  /// السعر بالهللات. صفر يعني أن الصنف يُكتسب ولا يُشترى.
+  priceHalalas Int
+  /// تدرّج CSS يرسم الإطار أو الخلفية.
+  spec String
+  /// أصناف حصرية لمشتركي أثر+.
+  plusOnly Boolean @default(false)
+  /// أصناف تُكتسب بالبقاء لا بالدفع (مثل إطار «سنة كاملة»).
+  earnedAfterDays Int?
+
+  sortOrder Int @default(0)
+
+  purchases      Purchase[]
+  usersWithFrame User[]     @relation("UserFrame")
+  usersWithBg    User[]     @relation("UserBackground")
+}
+
+model Purchase {
+  id        String   @id @default(cuid())
+  userId    String
+  itemId    String
+  /// ما دُفع فعلياً بالهللات (قد يقل عن السعر بسبب خصم المشتركين).
+  paidHalalas Int
+  createdAt   DateTime @default(now())
+
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item StoreItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemId])
+}

@@ -1,0 +1,212 @@
+/**
+ * أيقونات مرسومة كـ SVG بحد (stroke) على شبكة ٢٤ بكسل بأسلوب واحد.
+ * لا إيموجي في واجهة التطبيق — الإيموجي محتوى (تفاعلات)، لا عناصر واجهة.
+ */
+type IconProps = { size?: number; className?: string };
+
+const base = (size: number) => ({
+  width: size,
+  height: size,
+  viewBox: "0 0 24 24",
+  fill: "none" as const,
+  stroke: "currentColor",
+  strokeWidth: 1.7,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+});
+
+export const SearchIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <circle cx="11" cy="11" r="7" />
+    <path d="M16.5 16.5 21 21" />
+  </svg>
+);
+
+export const CircleIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19" />
+    <circle cx="10" cy="7.5" r="3.2" />
+    <path d="M19 19v-1.4a3.4 3.4 0 0 0-2.4-3.2M15.4 4.9a3.2 3.2 0 0 1 0 5.4" />
+  </svg>
+);
+
+export const PinIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M12 21s7-5.8 7-11a7 7 0 1 0-14 0c0 5.2 7 11 7 11Z" />
+    <circle cx="12" cy="10" r="2.4" />
+  </svg>
+);
+
+export const MusicIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M9 18V6.5l10-2V16" />
+    <ellipse cx="6.6" cy="18" rx="2.6" ry="2.3" />
+    <ellipse cx="16.6" cy="16" rx="2.6" ry="2.3" />
+  </svg>
+);
+
+export const MoonIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M20 14.5A8.2 8.2 0 0 1 9.5 4 8.4 8.4 0 1 0 20 14.5Z" />
+  </svg>
+);
+
+export const CameraIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <rect x="3" y="6.5" width="18" height="13.5" rx="3" />
+    <circle cx="12" cy="13.2" r="3.6" />
+    <path d="M8.6 6.5 9.8 4h4.4l1.2 2.5" />
+  </svg>
+);
+
+export const TextIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M4.5 6.5h15M4.5 11.5h15M4.5 16.5h9" />
+  </svg>
+);
+
+export const WithIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M15.5 19v-1.4a3.5 3.5 0 0 0-3.5-3.5H7a3.5 3.5 0 0 0-3.5 3.5V19" />
+    <circle cx="9.5" cy="7.6" r="3.2" />
+    <path d="M18 8.5v5M20.5 11h-5" />
+  </svg>
+);
+
+export const ClockIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <circle cx="12" cy="12" r="8.4" />
+    <path d="M12 7.6V12l3 1.8" />
+  </svg>
+);
+
+export const EyeIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className} strokeWidth={1.6}>
+    <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z" />
+    <circle cx="12" cy="12" r="2.6" />
+  </svg>
+);
+
+export const LockIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <rect x="5" y="10.5" width="14" height="9.5" rx="2.4" />
+    <path d="M8.4 10.5V8a3.6 3.6 0 0 1 7.2 0v2.5" />
+  </svg>
+);
+
+export const CheckIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className} strokeWidth={2}>
+    <path d="M5 12.5 10 17.5 19 7" />
+  </svg>
+);
+
+export const PlusIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className} strokeWidth={2}>
+    <path d="M12 5v14M5 12h14" />
+  </svg>
+);
+
+export const CloseIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className} strokeWidth={1.8}>
+    <path d="M6 6l12 12M18 6 6 18" />
+  </svg>
+);
+
+export const BackIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className} strokeWidth={1.8}>
+    <path d="M15 5 8 12l7 7" />
+  </svg>
+);
+
+export const SparkIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M4 8.5 8 12l4-6 4 6 4-3.5-1.8 9.5H5.8L4 8.5Z" />
+  </svg>
+);
+
+export const BookIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M5 19.5V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v13.5M5 19.5A1.5 1.5 0 0 0 6.5 21H19M5 19.5A1.5 1.5 0 0 1 6.5 18H19" />
+  </svg>
+);
+
+export const InfoIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className} strokeWidth={1.6}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 11v5.5M12 7.8v.2" />
+  </svg>
+);
+
+export const StoreIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M4 9h16l-1 11H5L4 9Z" />
+    <path d="M8.5 9V6.8a3.5 3.5 0 0 1 7 0V9" />
+  </svg>
+);
+
+export const HomeIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M4 10.5 12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19v-8.5Z" />
+  </svg>
+);
+
+export const UserIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M18 19.5v-1.6a4 4 0 0 0-4-4h-4a4 4 0 0 0-4 4v1.6" />
+    <circle cx="12" cy="7.8" r="3.6" />
+  </svg>
+);
+
+/** الوجوه الخمسة الأساسية — متاحة للجميع دائماً. */
+export const ReactionFace = ({
+  kind,
+  size = 26,
+  color = "currentColor",
+}: {
+  kind: "SMILE" | "LAUGH" | "GASP" | "SAD" | "LOVE";
+  size?: number;
+  color?: string;
+}) => {
+  if (kind === "LOVE") {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+        <path d="M12 20.2s-7.2-4.7-7.2-9.6a4.1 4.1 0 0 1 7.2-2.7 4.1 4.1 0 0 1 7.2 2.7c0 4.9-7.2 9.6-7.2 9.6Z" />
+      </svg>
+    );
+  }
+
+  const mouth = {
+    SMILE: <path d="M8.6 14.4c1.8 1.6 5 1.6 6.8 0" />,
+    LAUGH: <path d="M8 13.2c1 2.6 7 2.6 8 0Z" fill={color} stroke="none" />,
+    GASP: <ellipse cx="12" cy="14.6" rx="2.2" ry="2.6" />,
+    SAD: <path d="M8.6 15.4c1.8-1.6 5-1.6 6.8 0" />,
+  }[kind];
+
+  const eyeY = kind === "GASP" ? 9.8 : 10;
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={1.6}
+      strokeLinecap="round"
+    >
+      <circle cx="12" cy="12" r="8.6" />
+      {mouth}
+      {kind === "LAUGH" ? (
+        <>
+          <path d="M8.2 9.6c.7-.8 1.7-.8 2.4 0" />
+          <path d="M13.4 9.6c.7-.8 1.7-.8 2.4 0" />
+        </>
+      ) : (
+        <>
+          <circle cx="9.3" cy={eyeY} r="0.95" fill={color} stroke="none" />
+          <circle cx="14.7" cy={eyeY} r="0.95" fill={color} stroke="none" />
+        </>
+      )}
+    </svg>
+  );
+};
