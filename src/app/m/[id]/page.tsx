@@ -39,9 +39,9 @@ export default async function MomentPage({
             href="/"
             aria-label="رجوع"
             className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full"
-            style={{ background: "rgba(27,25,23,.34)" }}
+            style={{ background: "rgba(11,17,32,.55)" }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fffdfa" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f5efe7" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
               <path d="M15 5 8 12l7 7" />
             </svg>
           </a>
@@ -104,7 +104,7 @@ export default async function MomentPage({
               <div className="grow">
                 <p className="text-[13px] leading-relaxed">
                   <span className="font-semibold">{comment.user.name}</span>{" "}
-                  <span style={{ color: "#4a443e" }}>{comment.body}</span>
+                  <span className="text-ink-2">{comment.body}</span>
                 </p>
                 <p className="mt-1 text-[10.5px] text-faint">{relative(comment.createdAt)}</p>
               </div>
@@ -124,8 +124,8 @@ export default async function MomentPage({
         />
         <button
           type="submit"
-          className="shrink-0 rounded-full px-5 text-[13.5px] font-semibold text-paper"
-          style={{ height: 48, background: "var(--color-ink)" }}
+          className="brand-gradient shrink-0 rounded-full px-5 text-[13.5px] font-bold"
+          style={{ height: 48, color: "var(--color-on-brand)" }}
         >
           إرسال
         </button>

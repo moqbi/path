@@ -66,7 +66,7 @@ export function ReactionBar({
                 style={{
                   background: on
                     ? kind === "LOVE"
-                      ? "var(--color-clay-soft)"
+                      ? "var(--color-live-soft)"
                       : "var(--color-chip)"
                     : "transparent",
                 }}
@@ -74,7 +74,7 @@ export function ReactionBar({
                 <ReactionFace
                   kind={kind}
                   size={kind === "LOVE" ? 24 : 26}
-                  color={kind === "LOVE" ? "#b0532f" : "#8a7b5f"}
+                  color={kind === "LOVE" ? "#ff7a7a" : "#94a3b8"}
                 />
               </button>
             );

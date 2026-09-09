@@ -93,7 +93,7 @@ export function StoreGrid({
                 className="rounded-full"
                 style={{ width: 62, height: 62, background: item.spec, padding: 3 }}
               >
-                <span className="block h-full w-full rounded-full" style={{ background: "#e2dad0" }} />
+                <span className="block h-full w-full rounded-full" style={{ background: "var(--color-card)" }} />
               </span>
 
               <span className="text-[11.5px] font-medium">{item.name}</span>

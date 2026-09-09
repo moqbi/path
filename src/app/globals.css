@@ -1,38 +1,67 @@
 @import "tailwindcss";
 
 /*
- * نظام «أثر» البصري — منقول حرفياً من الشاشات المعتمدة.
- * ورق دافئ، حبر داكن، لون طيني واحد، وأخضر للحالات الحية فقط.
+ * هوية أثر.
+ *
+ * داكنة أولاً: خلفية الفحم، وأسطح الأزرق العميق، ونص كريمي.
+ * التدرّج (كهرماني ← مرجاني) هو توقيع العلامة ولا يُستعمل إلا حيث يستحق:
+ * الشعار، والفعل الأساسي، وحلقة الدائرة. تبديده على كل عنصر يقتله.
  */
 @theme {
-  --color-paper: #f6f2ec;
-  --color-card: #fffdfa;
-  --color-ink: #1b1917;
-  --color-ink-2: #6f675f;
-  --color-muted: #8a8078;
-  --color-faint: #a69c92;
-  --color-line: #e6dfd5;
-  --color-chip: #efe9e1;
+  /* الأسطح */
+  --color-paper: #0f172a; /* عمق — خلفية التطبيق */
+  --color-night: #0b1120; /* أعمق — الشرائح والغطاءات */
+  --color-card: #1e293b; /* ثبات — البطاقات */
+  --color-chip: #27334a; /* حشوة خفيفة */
 
-  --color-clay: #b0532f;
-  --color-clay-soft: #f2e3db;
+  /* النص */
+  --color-ink: #f5efe7; /* هدوء — النص الأساسي */
+  --color-ink-2: #c3ccdb;
+  --color-muted: #94a3b8;
+  --color-faint: #6b7a90;
+  --color-line: #2c3a52;
 
-  --color-live: #2f6b57;
-  --color-live-soft: #ecf2ef;
+  /* العلامة */
+  --color-clay: #ffb75e; /* أمل — الكهرماني، اللون الأساسي */
+  --color-clay-soft: #2e2a24;
+  --color-brand-2: #ff7a7a; /* دفء — المرجاني */
+  --color-on-brand: #0f172a; /* النص فوق الكهرماني */
 
-  --color-gold: #a98038;
-  --color-gold-soft: #fbf6ec;
-  --color-gold-line: #ebdfc6;
-  --color-gold-bright: #d9b863;
+  /* الحالات الحية: المرجاني للحضور الآن */
+  --color-live: #ff7a7a;
+  --color-live-soft: #33232a;
 
-  --color-night: #1f1c19;
+  /* أثر+ : الكهرماني */
+  --color-gold: #ffb75e;
+  --color-gold-bright: #ffcd8a;
+  --color-gold-soft: #2e2a24;
+  --color-gold-line: #4a3f2e;
 
-  --font-body: "IBM Plex Sans Arabic", "Geeza Pro", "Noto Sans Arabic", system-ui, sans-serif;
-  --font-display: "Amiri", "Geeza Pro", serif;
+  --font-body: "Cairo", "IBM Plex Sans Arabic", "Geeza Pro", system-ui, sans-serif;
+  --font-display: "Cairo", "Geeza Pro", system-ui, sans-serif;
+  --font-latin: "Satoshi", "Cairo", system-ui, sans-serif;
+}
+
+/* توقيع العلامة — يُستدعى بالاسم لا يُعاد كتابته. */
+.brand-gradient {
+  background-image: linear-gradient(135deg, #ffb75e 0%, #ff7a7a 100%);
+}
+
+.brand-text {
+  background-image: linear-gradient(135deg, #ffb75e 0%, #ff7a7a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.latin {
+  font-family: var(--font-latin);
+  letter-spacing: 0.22em;
 }
 
 html {
-  background: var(--color-paper);
+  background: var(--color-night);
+  color-scheme: dark;
 }
 
 body {
@@ -43,8 +72,8 @@ body {
 }
 
 /*
- * التطبيق موبايل أولاً: كل الشاشات صُممت على عرض ٣٩٠ بكسل، فيُثبَّت العرض
- * ويُتوسَّط على الشاشات الأكبر بدل تمديد تخطيط مصمَّم للهاتف.
+ * موبايل أولاً: كل الشاشات مصمّمة على عرض ٣٩٠ بكسل، فيُثبَّت العرض ويُتوسَّط
+ * بدل تمديد تخطيط الهاتف على الشاشات الكبيرة.
  */
 .shell {
   width: 100%;
@@ -57,14 +86,13 @@ body {
 
 @media (min-width: 640px) {
   body {
-    background: #ebe5dc;
+    background: var(--color-night);
   }
   .shell {
-    box-shadow: 0 0 0 1px var(--color-line), 0 24px 60px rgba(27, 25, 23, 0.1);
+    box-shadow: 0 0 0 1px var(--color-line), 0 24px 70px rgba(0, 0, 0, 0.55);
   }
 }
 
-/* شريط التمرير مخفي داخل الصفوف الأفقية للأصناف والشرائح. */
 .no-bar {
   scrollbar-width: none;
 }

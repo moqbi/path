@@ -46,7 +46,7 @@ export function CheckinForm({
               value={place}
               onChange={(e) => setPlace(e.target.value)}
               placeholder="اسم المكان"
-              className="w-full bg-transparent text-[15px] font-semibold outline-none placeholder:font-normal placeholder:text-[#c0b7ab]"
+              className="w-full bg-transparent text-[15px] font-semibold outline-none placeholder:font-normal placeholder:text-faint"
             />
             <p className="mt-0.5 text-[11.5px] text-muted">{city}</p>
           </div>

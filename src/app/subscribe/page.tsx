@@ -14,7 +14,7 @@ const PERKS = [
   {
     title: "تفاعل بأي إيموجي",
     body: "الخمسة الأساسية تبقى للجميع · لك كل كيبوردك",
-    icon: <ReactionFace kind="SMILE" size={18} color="#d9b863" />,
+    icon: <ReactionFace kind="SMILE" size={18} color="#ffb75e" />,
   },
   {
     title: "أرشيف بلا نهاية",
@@ -42,15 +42,14 @@ export default async function SubscribePage() {
 
   return (
     <div
-      className="flex min-h-dvh flex-col"
-      style={{ background: "var(--color-night)", color: "var(--color-paper)" }}
+      className="flex min-h-dvh flex-col text-ink"
+      style={{ background: "var(--color-night)" }}
     >
       <div className="flex justify-start px-5 pt-4">
         <Link
           href="/me"
           aria-label="إغلاق"
-          className="flex h-10 w-10 items-center justify-center"
-          style={{ color: "#8e857b" }}
+          className="flex h-10 w-10 items-center justify-center text-faint"
         >
           <CloseIcon size={19} />
         </Link>
@@ -59,53 +58,45 @@ export default async function SubscribePage() {
       <div className="px-6 pt-1.5">
         <span
           className="mb-4 inline-flex items-center gap-2 rounded-full px-3.5 py-2"
-          style={{ background: "rgba(169,128,56,.16)" }}
+          style={{ background: "var(--color-gold-soft)" }}
         >
-          <SparkIcon size={14} className="text-[#d9b863]" />
-          <span className="text-[12px] font-semibold" style={{ color: "#d9b863" }}>
-            أثر+
-          </span>
+          <SparkIcon size={14} className="text-gold" />
+          <span className="latin text-[12px] font-bold text-gold">ATHR+</span>
         </span>
-        <h1
-          className="mb-2.5 text-[30px] leading-snug"
-          style={{ fontFamily: "var(--font-display)" }}
-        >
+
+        <h1 className="mb-2.5 text-[30px] font-bold leading-snug">
           دائرتك تبقى ١٥٠
           <br />
-          وكل شي غيرها يكبر
+          <span className="brand-text">وكل شي غيرها يكبر</span>
         </h1>
-        <p className="mb-6 text-[13px] leading-loose" style={{ color: "#a69c92" }}>
+        <p className="mb-6 text-[13px] leading-loose text-muted">
           لا نبيع أصدقاء إضافيين. نبيع ذاكرة أطول وتعبيراً أوسع.
         </p>
       </div>
 
       <main className="grow px-6">
         {PERKS.map((perk) => (
-          <div key={perk.title} className="mb-4.5 flex gap-3.5" style={{ marginBottom: 18 }}>
+          <div key={perk.title} className="mb-[18px] flex gap-3.5">
             <span
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-              style={{ background: "rgba(217,184,99,.14)", color: "#d9b863" }}
+              style={{ background: "var(--color-gold-soft)", color: "var(--color-gold)" }}
             >
               {perk.icon}
             </span>
             <div className="grow">
               <p className="mb-0.5 text-[14px] font-semibold">{perk.title}</p>
-              <p className="text-[12px] leading-relaxed" style={{ color: "#a69c92" }}>
-                {perk.body}
-              </p>
+              <p className="text-[12px] leading-relaxed text-muted">{perk.body}</p>
             </div>
           </div>
         ))}
 
         {user.isPlus ? (
           <form action={cancelPlus} className="pt-4">
-            <p className="mb-3 text-[13px]" style={{ color: "#a69c92" }}>
-              أنت مشترك في أثر+ حالياً.
-            </p>
+            <p className="mb-3 text-[13px] text-muted">أنت مشترك في أثر+ حالياً.</p>
             <button
               type="submit"
-              className="w-full rounded-xl border text-[14px] font-semibold"
-              style={{ height: 50, borderColor: "#3a342e", color: "#a69c92" }}
+              className="w-full rounded-xl border border-line text-[14px] font-semibold text-muted"
+              style={{ height: 50 }}
             >
               إلغاء الاشتراك
             </button>
@@ -115,18 +106,11 @@ export default async function SubscribePage() {
             <form action={monthly} className="grow">
               <button
                 type="submit"
-                className="w-full rounded-2xl border px-3 py-4 text-center"
-                style={{ borderColor: "#3a342e" }}
+                className="w-full rounded-2xl border border-line px-3 py-4 text-center"
               >
-                <span className="mb-1.5 block text-[11.5px]" style={{ color: "#a69c92" }}>
-                  شهري
-                </span>
-                <span className="block text-[26px]" style={{ fontFamily: "var(--font-display)" }}>
-                  ٢٥
-                </span>
-                <span className="block text-[11px]" style={{ color: "#8e857b" }}>
-                  ريال / شهر
-                </span>
+                <span className="mb-1.5 block text-[11.5px] text-muted">شهري</span>
+                <span className="block text-[26px] font-bold">٢٥</span>
+                <span className="block text-[11px] text-faint">ريال / شهر</span>
               </button>
             </form>
 
@@ -134,33 +118,27 @@ export default async function SubscribePage() {
               <button
                 type="submit"
                 className="relative w-full rounded-2xl px-3 py-4 text-center"
-                style={{ border: "1.5px solid #d9b863", background: "rgba(217,184,99,.08)" }}
+                style={{
+                  border: "1.5px solid var(--color-gold)",
+                  background: "var(--color-gold-soft)",
+                }}
               >
                 <span
                   className="absolute -top-2.5 right-1/2 translate-x-1/2 whitespace-nowrap rounded-full px-2.5 py-1 text-[9.5px] font-bold"
-                  style={{ background: "#d9b863", color: "var(--color-night)" }}
+                  style={{ background: "var(--color-gold)", color: "var(--color-on-brand)" }}
                 >
                   وفّر ٣٣٪
                 </span>
-                <span className="mb-1.5 block text-[11.5px]" style={{ color: "#d9b863" }}>
-                  سنوي
-                </span>
-                <span className="block text-[26px]" style={{ fontFamily: "var(--font-display)" }}>
-                  ١٩٩
-                </span>
-                <span className="block text-[11px]" style={{ color: "#8e857b" }}>
-                  ريال / سنة
-                </span>
+                <span className="mb-1.5 block text-[11.5px] text-gold">سنوي</span>
+                <span className="block text-[26px] font-bold">١٩٩</span>
+                <span className="block text-[11px] text-faint">ريال / سنة</span>
               </button>
             </form>
           </div>
         )}
       </main>
 
-      <p
-        className="px-6 pb-8 pt-5 text-center text-[10.5px] leading-loose"
-        style={{ color: "#7a716a" }}
-      >
+      <p className="px-6 pb-8 pt-5 text-center text-[10.5px] leading-loose text-faint">
         في النسخة الحقيقية يمر الدفع عبر متجر آبل أو جوجل إلزامياً · هنا تفعيل تجريبي فقط
       </p>
     </div>

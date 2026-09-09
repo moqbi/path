@@ -36,9 +36,9 @@ export function ComposeSheet({ friends }: { friends: Friend[] }) {
   const effective = kind === "WITH" ? "THOUGHT" : kind;
 
   return (
-    <div className="flex min-h-dvh flex-col justify-end" style={{ background: "#2a2622" }}>
+    <div className="flex min-h-dvh flex-col justify-end" style={{ background: "var(--color-night)" }}>
       <div className="rounded-t-[26px] bg-paper px-5 pb-8 pt-3">
-        <div className="mx-auto mb-5 h-1 w-9 rounded-full bg-[#dcd4c9]" />
+        <div className="mx-auto mb-5 h-1 w-9 rounded-full bg-line" />
 
         <div className="mb-5 flex items-start justify-between">
           <div>
@@ -160,8 +160,8 @@ export function ComposeSheet({ friends }: { friends: Friend[] }) {
 
             <button
               type="submit"
-              className="mt-1 rounded-xl bg-ink text-[15px] font-semibold text-paper"
-              style={{ height: 52 }}
+              className="brand-gradient mt-1 rounded-xl text-[15px] font-bold"
+              style={{ height: 52, color: "var(--color-on-brand)" }}
             >
               انشر
             </button>
@@ -181,7 +181,7 @@ export function ComposeSheet({ friends }: { friends: Friend[] }) {
           </span>
           <span className="grow">
             <span className="block text-[13.5px] font-semibold text-live">حضور مؤقت</span>
-            <span className="block text-[11.5px]" style={{ color: "#5e7d70" }}>
+            <span className="block text-[11.5px] text-muted">
               أنا هنا الآن · مين جاي؟
             </span>
           </span>

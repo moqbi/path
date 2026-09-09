@@ -52,11 +52,11 @@ const KINDS = ["PHOTO", "PLACE", "THOUGHT", "MUSIC", "SLEEP"] as const;
 
 /** تدرّجات جاهزة تقوم مقام رفع الصور في النموذج الأولي. */
 const IMAGE_SPECS = [
-  "linear-gradient(160deg,#c8a98a,#9e7b5f 55%,#6e5947)",
-  "linear-gradient(160deg,#a9b8ae,#4e6b5c)",
-  "linear-gradient(160deg,#d8c3a5,#8c6c4e)",
-  "linear-gradient(160deg,#b5a8b8,#5f5464)",
-  "linear-gradient(160deg,#e0cdb4,#a88558)",
+  "linear-gradient(160deg,#ffb75e,#ff7a7a 55%,#7a3b52)",
+  "linear-gradient(160deg,#ff9d6e,#8c3f5d 70%,#1e293b)",
+  "linear-gradient(160deg,#f5efe7,#c08a6a 45%,#3b3049)",
+  "linear-gradient(160deg,#6f8bb5,#334467 60%,#0f172a)",
+  "linear-gradient(160deg,#ffcd8a,#b35f6b 55%,#2a2f45)",
 ];
 
 const momentInput = z.object({

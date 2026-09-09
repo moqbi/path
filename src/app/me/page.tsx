@@ -38,21 +38,21 @@ export default async function ProfilePage() {
         style={{
           height: 152,
           background:
-            user.background?.spec ?? "linear-gradient(140deg,#3d5a50,#2a4038 60%,#22312b)",
+            user.background?.spec ?? "linear-gradient(140deg,#4a3a4e,#2b3a55 55%,#1a2338)",
         }}
       >
         {user.background ? (
           <span
             className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full px-3 py-1.5"
-            style={{ background: "rgba(27,25,23,.32)" }}
+            style={{ background: "rgba(11,17,32,.5)" }}
           >
-            <SparkIcon size={13} className="text-[#f0e4c8]" />
-            <span className="text-[11px] font-semibold text-[#f0e4c8]">خلفيتك</span>
+            <SparkIcon size={13} className="text-gold-bright" />
+            <span className="text-[11px] font-semibold text-gold-bright">خلفيتك</span>
           </span>
         ) : null}
       </div>
 
-      <main className="grow px-5" style={{ marginTop: -46 }}>
+      <main className="relative grow px-5" style={{ marginTop: -46 }}>
         <div className="mb-4 flex items-end justify-between">
           <Avatar name={user.name} size={92} frameSpec={user.frame?.spec} />
           <form action={signOut} className="pb-1.5">
@@ -128,7 +128,7 @@ export default async function ProfilePage() {
         >
           <span
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-            style={{ background: "#f0e4c8", color: "var(--color-gold)" }}
+            style={{ background: "var(--color-gold-line)", color: "var(--color-gold-bright)" }}
           >
             <BookIcon size={20} />
           </span>
@@ -143,8 +143,8 @@ export default async function ProfilePage() {
         {!user.isPlus ? (
           <Link
             href="/subscribe"
-            className="mb-8 flex items-center justify-center gap-2 rounded-xl text-[15px] font-semibold text-card"
-            style={{ height: 52, background: "var(--color-gold)" }}
+            className="brand-gradient mb-8 flex items-center justify-center gap-2 rounded-xl text-[15px] font-bold"
+            style={{ height: 52, color: "var(--color-on-brand)" }}
           >
             <SparkIcon size={17} />
             اشترك في أثر+

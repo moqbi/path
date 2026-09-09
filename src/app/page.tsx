@@ -6,6 +6,7 @@ import { MomentCard } from "@/components/moment-card";
 import { Empty, TabBar } from "@/components/ui";
 import { CircleIcon, PlusIcon, SearchIcon } from "@/components/icons";
 import { dayLabel } from "@/lib/format";
+import { AthrHeaderMark } from "@/components/brand";
 import { TagApproval } from "@/components/tag-approval";
 
 export default async function TimelinePage() {
@@ -30,12 +31,7 @@ export default async function TimelinePage() {
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="flex items-center justify-between border-b border-line px-5 py-3">
-        <span
-          className="text-[27px] font-bold tracking-wide"
-          style={{ fontFamily: "var(--font-display)" }}
-        >
-          أثر
-        </span>
+        <AthrHeaderMark />
         <div className="flex gap-1">
           <button
             type="button"
@@ -68,7 +64,7 @@ export default async function TimelinePage() {
               <section key={day.label}>
                 <div className="relative flex items-center gap-3 py-4">
                   <div className="flex w-14 justify-center">
-                    <span className="block h-1.5 w-1.5 rounded-full bg-[#c9c0b4]" />
+                    <span className="block h-1.5 w-1.5 rounded-full bg-line" />
                   </div>
                   <h2
                     className="text-[16px] tracking-wide text-muted"
@@ -96,8 +92,8 @@ export default async function TimelinePage() {
           <Link
             href="/compose"
             aria-label="لحظة جديدة"
-            className="flex h-14 w-14 -translate-y-14 items-center justify-center rounded-full text-paper shadow-lg"
-            style={{ background: "var(--color-clay)", boxShadow: "0 6px 18px rgba(176,83,47,.32)" }}
+            className="brand-gradient flex h-14 w-14 -translate-y-14 items-center justify-center rounded-full shadow-lg"
+            style={{ color: "var(--color-on-brand)", boxShadow: "0 8px 24px rgba(255,122,122,.35)" }}
           >
             <PlusIcon size={24} />
           </Link>

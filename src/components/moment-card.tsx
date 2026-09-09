@@ -147,7 +147,7 @@ export function MomentCard({
                   className="flex h-7 w-7 items-center justify-center rounded-full"
                   style={{
                     background:
-                      r.kind === "LOVE" ? "var(--color-clay-soft)" : "var(--color-chip)",
+                      r.kind === "LOVE" ? "var(--color-live-soft)" : "var(--color-chip)",
                   }}
                 >
                   {r.kind === "CUSTOM" ? (
@@ -156,7 +156,7 @@ export function MomentCard({
                     <ReactionFace
                       kind={r.kind}
                       size={r.kind === "LOVE" ? 15 : 16}
-                      color={r.kind === "LOVE" ? "#b0532f" : "#8a7b5f"}
+                      color={r.kind === "LOVE" ? "#ff7a7a" : "#94a3b8"}
                     />
                   )}
                 </span>

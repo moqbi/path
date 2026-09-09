@@ -52,23 +52,23 @@ async function main() {
     [
       {
         kind: "FRAME" as const,
-        name: "ذهب",
+        name: "كهرمان",
         priceHalalas: 1500,
-        spec: "linear-gradient(135deg,#c79a3e,#ebd9a4 40%,#9c7526)",
+        spec: "linear-gradient(135deg,#ffb75e,#ffcd8a 40%,#d4903f)",
         sortOrder: 1,
       },
       {
         kind: "FRAME" as const,
-        name: "نخيل",
+        name: "مرجان",
         priceHalalas: 1200,
-        spec: "linear-gradient(135deg,#7e9c8c,#c8ded2 40%,#43604f)",
+        spec: "linear-gradient(135deg,#ff7a7a,#ffb0a4 40%,#b8555c)",
         sortOrder: 2,
       },
       {
         kind: "FRAME" as const,
         name: "سنة كاملة",
         priceHalalas: 0,
-        spec: "repeating-conic-gradient(#b0532f 0deg 18deg,#e8c9a8 18deg 36deg)",
+        spec: "repeating-conic-gradient(#ffb75e 0deg 18deg,#ff7a7a 18deg 36deg)",
         earnedAfterDays: 365,
         sortOrder: 3,
       },
@@ -76,14 +76,14 @@ async function main() {
         kind: "BACKGROUND" as const,
         name: "ليل الرياض",
         priceHalalas: 2500,
-        spec: "linear-gradient(140deg,#3d5a50,#22312b)",
+        spec: "linear-gradient(140deg,#1e293b,#0b1120)",
         sortOrder: 4,
       },
       {
         kind: "BACKGROUND" as const,
         name: "غبار الظهيرة",
         priceHalalas: 2500,
-        spec: "linear-gradient(140deg,#d8ae7e,#8a5334)",
+        spec: "linear-gradient(140deg,#ffb75e,#8a3f52)",
         sortOrder: 5,
       },
     ].map((data) => prisma.storeItem.create({ data })),
@@ -184,7 +184,7 @@ async function main() {
       authorId: noura.id,
       kind: "PHOTO",
       text: "آخر ضوء قبل ما نرجع من الغروب",
-      imageSpec: "linear-gradient(160deg,#c8a98a,#9e7b5f 55%,#6e5947)",
+      imageSpec: "linear-gradient(160deg,#ffb75e,#ff7a7a 55%,#7a3b52)",
       createdAt: hoursAgo(3),
     },
   });
@@ -233,7 +233,7 @@ async function main() {
       authorId: mohammed.id,
       kind: "PHOTO",
       text: "أول قهوة في المكتب الجديد",
-      imageSpec: "linear-gradient(160deg,#d8c3a5,#8c6c4e)",
+      imageSpec: "linear-gradient(160deg,#f5efe7,#c08a6a 45%,#3b3049)",
       createdAt: hoursAgo(30),
     },
   });
@@ -257,7 +257,7 @@ async function main() {
 
   console.log("تمت التهيئة:");
   console.log("  mohammed@athar.test / athar1234  (دائرته ٣، عنده إشارة معلّقة)");
-  console.log("  noura@athar.test    / athar1234  (مشتركة في أثر+، تلبس إطار ذهب)");
+  console.log("  noura@athar.test    / athar1234  (مشتركة في أثر+، تلبس إطار كهرمان)");
   console.log("  naif@athar.test     / athar1234  (عنده حضور مؤقت فعّال)");
   console.log("  sultan@athar.test   / athar1234");
 }

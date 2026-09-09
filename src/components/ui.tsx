@@ -6,7 +6,7 @@ import { BackIcon, HomeIcon, CircleIcon, StoreIcon, UserIcon } from "@/component
  * خلفية الحرف تُشتق من الاسم لا تُخزَّن، فتبقى ثابتة لكل شخص بلا عمود إضافي
  * ولا رفع صور في النموذج الأولي.
  */
-const TINTS = ["#e2dad0", "#d6e0da", "#eadfd2", "#d8cfc3", "#e4dcd2", "#dfe2d8"];
+const TINTS = ["#2f3d55", "#3a3350", "#33455a", "#3d3746", "#2b4250", "#413a4c"];
 
 function tintFor(name: string): string {
   let sum = 0;
@@ -32,7 +32,7 @@ export function Avatar({
         width: "100%",
         height: "100%",
         background: tintFor(name),
-        color: "var(--color-ink-2)",
+        color: "var(--color-ink)",
         fontSize: size * 0.36,
         border: frameSpec ? `2px solid ${ring}` : "none",
       }}
