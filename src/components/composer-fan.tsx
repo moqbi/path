@@ -116,7 +116,8 @@ export function ComposerFan() {
                   setOpen(false);
                   item.run();
                 }}
-                className="pointer-events-auto absolute inset-0 flex flex-col items-center justify-center rounded-full disabled:opacity-60"
+                aria-label={item.label}
+                className="pointer-events-auto absolute inset-0 flex items-center justify-center rounded-full disabled:opacity-60"
                 style={{
                   background: "var(--color-card)",
                   border: "1px solid var(--color-line)",
@@ -135,8 +136,7 @@ export function ComposerFan() {
                   boxShadow: "0 8px 22px rgba(0,0,0,.45)",
                 }}
               >
-                <item.Icon size={21} />
-                <span className="mt-0.5 text-[9.5px] font-medium text-muted">{item.label}</span>
+                <item.Icon size={23} />
               </button>
             );
           })}

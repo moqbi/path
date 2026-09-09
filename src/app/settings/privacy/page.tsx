@@ -50,7 +50,7 @@ export default async function PrivacyPage() {
               الافتراضي لكل لحظة جديدة. تقدر تغيّره لكل لحظة عند نشرها.
             </p>
             <select name="viewGroupId" defaultValue={settings?.viewGroupId ?? ""} className={select}>
-              <option value="">كل دائرتي</option>
+              <option value="">كل أصدقائي</option>
               {groups.map((group) => (
                 <option key={group.id} value={group.id}>
                   {group.name} ({ar(group._count.members)})
@@ -69,7 +69,7 @@ export default async function PrivacyPage() {
               defaultValue={settings?.interactGroupId ?? ""}
               className={select}
             >
-              <option value="">كل دائرتي</option>
+              <option value="">كل أصدقائي</option>
               {groups.map((group) => (
                 <option key={group.id} value={group.id}>
                   {group.name} ({ar(group._count.members)})
@@ -118,7 +118,7 @@ export default async function PrivacyPage() {
           </button>
         </form>
 
-        <h2 className="mb-2 text-[14.5px] font-bold">تصنيفات دائرتك</h2>
+        <h2 className="mb-2 text-[14.5px] font-bold">تصنيفات أصدقائك</h2>
         <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
           التصنيف لك وحدك: من صنّفته «عائلة» لا يرى تصنيفك ولا يراه غيرك.
         </p>
@@ -154,7 +154,7 @@ export default async function PrivacyPage() {
               <span className="min-w-0 grow">
                 <span className="block text-[13.5px] font-semibold">{group.name}</span>
                 <span className="block text-[11.5px] text-muted">
-                  {ar(group._count.members)} من دائرتك
+                  {ar(group._count.members)} من أصدقائك
                 </span>
               </span>
               <form action={deleteGroup.bind(null, group.id)}>
@@ -180,7 +180,7 @@ export default async function PrivacyPage() {
 
         <p className="flex items-center justify-center gap-2 pb-4 text-[11.5px] text-muted">
           <ShieldIcon size={15} />
-          ما يُنشر في دائرتك لا يخرج منها.
+          ما يُنشر لأصدقائك لا يخرج عنهم.
         </p>
       </main>
     </div>

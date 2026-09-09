@@ -161,7 +161,7 @@ export default async function FriendProfilePage({
           </h1>
           <p className="mb-4 text-[12.5px] text-muted">
             عضوية رقم {ar(person.memberNo)} · {person.city ? `${person.city} · ` : null}
-            معك من {joined} · {ar(theirCircle.length)} في دائرته
+            معك من {joined} · {ar(theirCircle.length)} من أصدقائه
           </p>
         </div>
 
@@ -319,7 +319,7 @@ function LockedProfile({
                 className="brand-gradient w-full rounded-xl text-[14.5px] font-bold"
                 style={{ height: 50, color: "var(--color-on-brand)" }}
               >
-                أضف إلى دائرتي
+                أضفه إلى أصدقائي
               </button>
             </form>
           )}

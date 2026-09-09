@@ -24,7 +24,7 @@ export function DeleteAccount() {
       <form action={action} className="flex flex-col gap-3 border-t border-line p-4">
         <p className="text-[12.5px] leading-relaxed text-muted">
           يذهب حسابك ومعه كل ما فيه: لحظاتك وصورك ومحادثاتك وتفاعلاتك وتعليقاتك
-          ودائرتك. لا نُبقي نسخة ولا يمكن التراجع. اكتب كلمة مرورك لتأكيد أنك أنت.
+          وأصدقاؤك. لا نُبقي نسخة ولا يمكن التراجع. اكتب كلمة مرورك لتأكيد أنك أنت.
         </p>
 
         <input

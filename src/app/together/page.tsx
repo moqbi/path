@@ -42,7 +42,7 @@ export default async function TogetherPickPage() {
         </p>
 
         {friends.length === 0 ? (
-          <Empty title="ما عندك أصدقاء بعد" hint="أضف من دائرة أصدقائك أولاً." />
+          <Empty title="ما عندك أصدقاء بعد" hint="أضف صديقاً أولاً من تبويب الأصدقاء." />
         ) : (
           <div className="overflow-hidden rounded-2xl border border-line bg-card">
             {friends.map((friend, index) => (

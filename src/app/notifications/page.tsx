@@ -72,7 +72,7 @@ export default async function NotificationsPage({
         {notes.length === 0 ? (
           <Empty
             title="ما فيه إشعارات"
-            hint="حين يتفاعل أحدٌ من دائرتك أو يشير إليك، يظهر هنا."
+            hint="حين يتفاعل أحدٌ من أصدقائك أو يشير إليك، يظهر هنا."
             action={{ href: "/", label: "ارجع للحظات" }}
           />
         ) : (

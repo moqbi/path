@@ -102,26 +102,26 @@ export default async function ProfilePage() {
         fold={
           <>
             {user.bio ? (
-              <p className="mx-auto mt-2.5 max-w-[300px] text-center text-[13px] leading-relaxed text-ink-2">
+              <p className="mx-auto mt-2 max-w-[300px] text-center text-[12.5px] leading-relaxed text-ink-2">
                 {user.bio}
               </p>
             ) : null}
 
-            <p className="mt-2 text-center text-[12px] text-muted">
+            <p className="mt-1.5 text-center text-[11.5px] text-muted">
               عضوية رقم {ar(user.memberNo)}
               {user.city ? ` · ${user.city}` : ""} · انضم {joined}
             </p>
 
             {/* عدد اللحظات وعدد السنوات تحت الاسم مباشرة. */}
-            <div className="mx-auto mb-2 mt-4 flex max-w-[320px] items-stretch">
+            <div className="mx-auto mb-1 mt-3 flex max-w-[300px] items-stretch">
               {stats.map((stat, index) => (
                 <div
                   key={stat.label}
                   className="flex-1 text-center"
                   style={{ borderRight: index === 0 ? "none" : "1px solid var(--color-line)" }}
                 >
-                  <p className="text-[22px] font-bold leading-none">{stat.value}</p>
-                  <p className="mt-1 text-[11px] text-muted">{stat.label}</p>
+                  <p className="text-[16px] font-bold leading-none">{stat.value}</p>
+                  <p className="mt-0.5 text-[10.5px] text-muted">{stat.label}</p>
                 </div>
               ))}
             </div>

@@ -27,14 +27,14 @@ export default async function PrivatePage() {
 
       <main className="scroll-area px-5">
         <p className="py-3 text-[11.5px] leading-relaxed text-muted">
-          ما نُشر لتصنيفٍ من دائرتك أو لأشخاص بأعيانهم. غيرهم لا يرى هذه اللحظات
+          ما نُشر لتصنيفٍ من أصدقائك أو لأشخاص بأعيانهم. غيرهم لا يرى هذه اللحظات
           في خطّه الزمني أصلاً.
         </p>
 
         {moments.length === 0 ? (
           <Empty
             title="ما فيه لحظات خاصة"
-            hint="عند النشر اختر «من يراها» — تصنيفاً من دائرتك أو أشخاصاً بأعيانهم."
+            hint="عند النشر اختر «من يراها» — تصنيفاً من أصدقائك أو أشخاصاً بأعيانهم."
           />
         ) : (
           <div className="spine relative">

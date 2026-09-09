@@ -77,7 +77,7 @@ export default async function TimelinePage() {
         {moments.length === 0 ? (
           <Empty
             title="خطك الزمني فارغ"
-            hint="اضغط الزائد وانشر لحظتك الأولى، أو انتظر أحداً من دائرتك ينشر."
+            hint="اضغط الزائد وانشر لحظتك الأولى، أو انتظر أحداً من أصدقائك ينشر."
           />
         ) : (
           <div className="spine relative">

@@ -299,12 +299,7 @@ export function MomentCard({
             <>
               {moment.mediaId ? (
                 <div className="mt-2.5">
-                  <Photo
-                    mediaId={moment.mediaId}
-                    width={moment.media?.width}
-                    height={moment.media?.height}
-                    rounded
-                  />
+                  <Photo mediaId={moment.mediaId} height={190} rounded />
                 </div>
               ) : null}
               <Bubble moment={moment} circleSize={circleSize} viewerId={viewerId} />
@@ -319,7 +314,7 @@ export function MomentCard({
   const head = (
     <>
       {moment.mediaId ? (
-        <Photo mediaId={moment.mediaId} width={moment.media?.width} height={moment.media?.height} />
+        <Photo mediaId={moment.mediaId} />
       ) : moment.imageSpec ? (
         <div style={{ height: 132, background: moment.imageSpec }} />
       ) : null}

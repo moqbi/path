@@ -52,7 +52,14 @@ export function ProfileCover({
   return (
     <div
       className="relative shrink-0 overflow-hidden"
-      style={{ height, ...coverStyle(mediaId, spec, y), touchAction: adjusting ? "none" : undefined }}
+      style={{
+        height,
+        ...coverStyle(mediaId, spec, y),
+        touchAction: adjusting ? "none" : undefined,
+        // أثناء الضبط يعلو الغلاف فوق كتلة البيانات: هي تغطّي أسفله
+        // بإزاحتها السالبة، فكان زرّ الحفظ يُرى ولا يُضغط.
+        zIndex: adjusting ? 20 : undefined,
+      }}
       onPointerDown={down}
       onPointerMove={move}
       onPointerUp={up}
@@ -67,7 +74,8 @@ export function ProfileCover({
           >
             اسحب الصورة لأعلى أو لأسفل
           </p>
-          <div className="absolute inset-x-0 bottom-3 flex justify-center gap-2">
+          {/* أسفل اليسار: الوسط تحجبه صورة العرض فلا يُضغط. */}
+          <div className="absolute bottom-3 left-3 flex gap-2">
             <button
               type="button"
               disabled={pending}

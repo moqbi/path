@@ -59,7 +59,7 @@ export default async function SubscribePage() {
         </span>
 
         <h1 className="mb-2.5 text-[30px] font-bold leading-snug">
-          دائرتك تبقى ١٥٠
+          أصدقاؤك يبقون ١٥٠
           <br />
           <span className="brand-text">وكل شي غيرها يكبر</span>
         </h1>

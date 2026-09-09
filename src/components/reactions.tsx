@@ -224,14 +224,14 @@ export function Reactors({
           <span
             className="absolute flex items-center justify-center rounded-full"
             style={{
-              top: -size * 0.2,
-              left: -size * 0.2,
+              top: -size * 0.1,
+              left: -size * 0.1,
               background: "var(--color-card)",
-              padding: 1.5,
-              boxShadow: "0 1px 5px rgba(14,26,36,.2)",
+              padding: 1,
+              boxShadow: "0 1px 3px rgba(14,26,36,.16)",
             }}
           >
-            <ReactionGlyph kind={reaction.kind} emoji={reaction.emoji} size={size * 0.58} />
+            <ReactionGlyph kind={reaction.kind} emoji={reaction.emoji} size={size * 0.5} />
           </span>
         </Link>
       ))}

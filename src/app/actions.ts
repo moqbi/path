@@ -746,7 +746,7 @@ export async function setFriendGroup(friendId: string, formData: FormData): Prom
   const user = await requireUser();
 
   const circle = await circleIds(user.id);
-  if (!circle.includes(friendId)) throw new Error("ليس في دائرتك");
+  if (!circle.includes(friendId)) throw new Error("ليس من أصدقائك");
 
   const groupId = String(formData.get("groupId") ?? "");
   const mine = await prisma.friendGroup.findMany({
@@ -935,7 +935,7 @@ async function assertCanInteract(userId: string, momentId: string) {
   });
   if (!moment) throw new Error("اللحظة غير موجودة");
   if (!(await canInteract(userId, moment.authorId))) {
-    throw new Error("صاحب اللحظة حصر التفاعل في تصنيف من دائرته");
+    throw new Error("صاحب اللحظة حصر التفاعل في تصنيف من أصدقائه");
   }
 }
 

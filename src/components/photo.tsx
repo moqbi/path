@@ -4,26 +4,22 @@ import { useEffect, useState } from "react";
 import { CloseIcon } from "@/components/icons";
 
 /**
- * صورة اللحظة.
+ * صورة اللحظة في إطارٍ ثابت.
  *
- * تُعرض بنسبتها الحقيقية (أبعادها محفوظة مع الملف) فلا تُقصّ رأس أحد ولا
- * يضيع نصف المشهد — الصورة الطويلة جداً وحدها تُحدّ بارتفاع فتُقصّ، لأن
- * منشوراً بطول شاشتين ليس منشوراً. والضغط عليها يفتحها كاملة.
+ * جُرّب عرضها بنسبتها الحقيقية فكبرت البطاقة مع كل صورة طويلة وتشوّه
+ * الخط الزمني. الإطار الثابت يبقي الإيقاع واحداً، والضغط يفتح الصورة
+ * كاملة — فلا شيء يضيع بالقصّ.
  */
 export function Photo({
   mediaId,
-  width,
-  height,
+  height = 200,
   rounded = false,
 }: {
   mediaId: string;
-  width?: number | null;
-  height?: number | null;
+  height?: number;
   rounded?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const ratio = width && height ? width / height : 4 / 3;
-  const tall = ratio < 0.62;
 
   useEffect(() => {
     if (!open) return;
@@ -53,13 +49,7 @@ export function Photo({
         <img
           src={`/api/media/${mediaId}`}
           alt=""
-          style={{
-            width: "100%",
-            display: "block",
-            aspectRatio: tall ? undefined : `${ratio}`,
-            maxHeight: tall ? 460 : undefined,
-            objectFit: "cover",
-          }}
+          style={{ width: "100%", height, display: "block", objectFit: "cover" }}
         />
       </button>
 

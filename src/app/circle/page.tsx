@@ -273,7 +273,7 @@ export default async function CirclePage({
 
         {members.length === 0 ? (
           <Empty
-            title="دائرتك فاضية"
+            title="ما عندك أصدقاء بعد"
             hint="الإضافة تكون من أصدقاء أصدقائك — أول صديق يفتح لك الباب."
           />
         ) : (

@@ -222,7 +222,7 @@ export function ComposeForm({
         ) : null}
 
         {/*
-          من يراها: الدائرة كلها، أو تصنيف منها، أو أشخاص بأعيانهم.
+          من يراها: كل أصدقائك، أو تصنيف منهم، أو أشخاص بأعيانهم.
           الاختيار هنا يسبق النشر لأن الخصوصية لا تُصلَّح بعده.
         */}
         <div className="mt-5">
@@ -231,7 +231,7 @@ export function ComposeForm({
           </p>
           <div className="flex flex-wrap gap-2">
             {[
-              { id: "CIRCLE", label: "كل دائرتي" },
+              { id: "CIRCLE", label: "كل أصدقائي" },
               ...groups.map((group) => ({ id: group.id, label: group.name })),
               { id: "PICKED", label: "أشخاص أختارهم" },
             ].map((option) => {
@@ -292,7 +292,7 @@ export function ComposeForm({
         <p className="mb-3 flex items-center justify-center gap-2 text-[11.5px] text-faint">
           <LockIcon size={14} />
           {audience === "CIRCLE"
-            ? "يشوفها دائرتك فقط"
+            ? "يشوفها أصدقاؤك فقط"
             : audience === "PICKED"
               ? `يشوفها ${viewers.length ? `${viewers.length} اخترتهم` : "من تختارهم"}`
               : `يشوفها تصنيف ${groups.find((group) => group.id === audience)?.name ?? ""}`}

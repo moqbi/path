@@ -33,7 +33,7 @@ export async function circleSize(userId: string): Promise<number> {
 
 export class CircleFullError extends Error {
   constructor() {
-    super(`الدائرة ممتلئة — السقف ${CIRCLE_CAP} ولا يمكن تجاوزه`);
+    super(`اكتملت قائمة الأصدقاء — السقف ${CIRCLE_CAP} ولا يمكن تجاوزه`);
     this.name = "CircleFullError";
   }
 }
