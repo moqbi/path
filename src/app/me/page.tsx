@@ -8,6 +8,7 @@ import { MomentCard } from "@/components/moment-card";
 import { plusTag, tagOf } from "@/lib/tags";
 import { ProfileImages } from "./images";
 import { ProfileCover } from "./cover";
+import { ProfileShell } from "./shell";
 import { DeleteAccount } from "./delete";
 import { coverStyle, TagPill } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
@@ -68,86 +69,85 @@ export default async function ProfilePage() {
         وحدها تمرّ تحته. قبلها كانت الصفحة كلها تمرّ فتتداخل اللحظات مع
         الغلاف عند النزول.
       */}
-      <div className="shrink-0">
-        <ProfileCover
-          mediaId={user.coverMediaId}
-          spec={user.background?.spec ?? null}
-          initialY={user.coverY}
-          height={146}
-        />
-
-        <div className="relative px-5" style={{ marginTop: -52 }}>
-        {/* الصورة في الوسط فوق حدّ الغلاف — كما في المخطط. */}
-        <div className="mb-3 flex justify-center">
+      <ProfileShell
+        cover={
+          <ProfileCover
+            mediaId={user.coverMediaId}
+            spec={user.background?.spec ?? null}
+            initialY={user.coverY}
+            height={146}
+          />
+        }
+        avatar={
           <ProfileImages
             name={user.name}
             frameSpec={user.frame?.spec ?? null}
             avatarMediaId={user.avatarMediaId}
           />
-        </div>
+        }
+        identity={
+          <>
+            <h1 className="flex flex-wrap items-center justify-center gap-2 text-center text-[20px] font-semibold">
+              {user.name}
+              {user.isPlus ? <SparkIcon size={17} className="text-gold" /> : null}
+              <TagPill tag={tagOf(user, auto)} size={12} />
+            </h1>
+            {user.handle ? (
+              <p dir="ltr" className="mt-0.5 text-center text-[13px] text-muted">
+                @{user.handle}
+              </p>
+            ) : null}
+          </>
+        }
+        fold={
+          <>
+            {user.bio ? (
+              <p className="mx-auto mt-2.5 max-w-[300px] text-center text-[13px] leading-relaxed text-ink-2">
+                {user.bio}
+              </p>
+            ) : null}
 
-        <h1 className="flex flex-wrap items-center justify-center gap-2 text-center text-[21px] font-semibold">
-          {user.name}
-          {user.isPlus ? <SparkIcon size={17} className="text-gold" /> : null}
-          <TagPill tag={tagOf(user, auto)} size={12} />
-        </h1>
-        {user.handle ? (
-          <p dir="ltr" className="mt-0.5 text-center text-[13px] text-muted">
-            @{user.handle}
-          </p>
-        ) : null}
+            <p className="mt-2 text-center text-[12px] text-muted">
+              عضوية رقم {ar(user.memberNo)}
+              {user.city ? ` · ${user.city}` : ""} · انضم {joined}
+            </p>
 
-        {user.bio ? (
-          <p className="mx-auto mt-2.5 max-w-[300px] text-center text-[13px] leading-relaxed text-ink-2">
-            {user.bio}
-          </p>
-        ) : null}
-
-        <p className="mt-2 text-center text-[12px] text-muted">
-          عضوية رقم {ar(user.memberNo)}
-          {user.city ? ` · ${user.city}` : ""} · انضم {joined}
-        </p>
-
-        {/* عدد اللحظات وعدد السنوات تحت الاسم مباشرة. */}
-        <div className="mx-auto mb-4 mt-4 flex max-w-[320px] items-stretch">
-          {stats.map((stat, index) => (
-            <div
-              key={stat.label}
-              className="flex-1 text-center"
-              style={{ borderRight: index === 0 ? "none" : "1px solid var(--color-line)" }}
-            >
-              <p className="text-[22px] font-bold leading-none">{stat.value}</p>
-              <p className="mt-1 text-[11px] text-muted">{stat.label}</p>
+            {/* عدد اللحظات وعدد السنوات تحت الاسم مباشرة. */}
+            <div className="mx-auto mb-2 mt-4 flex max-w-[320px] items-stretch">
+              {stats.map((stat, index) => (
+                <div
+                  key={stat.label}
+                  className="flex-1 text-center"
+                  style={{ borderRight: index === 0 ? "none" : "1px solid var(--color-line)" }}
+                >
+                  <p className="text-[22px] font-bold leading-none">{stat.value}</p>
+                  <p className="mt-1 text-[11px] text-muted">{stat.label}</p>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-
-        <div className="mb-4 flex gap-2.5">
-          <Link
-            href="/me/edit"
-            className="flex grow items-center justify-center rounded-xl border border-line bg-card text-[13.5px] font-semibold text-ink-2"
-            style={{ height: 46 }}
-          >
-            تعديل الملف الشخصي
-          </Link>
-          <Link
-            href="/settings/privacy"
-            aria-label="الإعدادات"
-            className="flex w-12 shrink-0 items-center justify-center rounded-xl border border-line bg-card text-ink-2"
-            style={{ height: 46 }}
-          >
-            <GearIcon size={18} />
-          </Link>
-        </div>
-
-        </div>
-      </div>
-
-      {/* لحظاتي أسفل زرّ التعديل مباشرة — هذا ما يُفتح التبويب لأجله. */}
-      <main
-        className="scroll-area relative px-5 pt-4"
-        style={{ borderTop: "1px solid var(--color-line)" }}
+          </>
+        }
+        actions={
+          <div className="mb-4 flex gap-2.5">
+            <Link
+              href="/me/edit"
+              className="flex grow items-center justify-center rounded-xl border border-line bg-card text-[13.5px] font-semibold text-ink-2"
+              style={{ height: 46 }}
+            >
+              تعديل الملف الشخصي
+            </Link>
+            <Link
+              href="/settings/privacy"
+              aria-label="الإعدادات"
+              className="flex w-12 shrink-0 items-center justify-center rounded-xl border border-line bg-card text-ink-2"
+              style={{ height: 46 }}
+            >
+              <GearIcon size={18} />
+            </Link>
+          </div>
+        }
       >
+        {/* لحظاتي أسفل زرّ التعديل مباشرة — هذا ما يُفتح التبويب لأجله. */}
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-[15px] font-bold">لحظاتي</h2>
           <span className="text-[12px] text-muted">{ar(mine.length)}</span>
@@ -257,7 +257,7 @@ export default async function ProfilePage() {
         )}
 
         <DeleteAccount />
-      </main>
+      </ProfileShell>
 
       <TabBar active="/me" />
     </div>
