@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   BellIcon,
   CircleIcon,
-  CloseIcon,
   HomeIcon,
   LockIcon,
   StoreIcon,
@@ -24,18 +23,40 @@ const TABS = [
 /** الضغطة المطوّلة: نصف ثانية تقريباً، وأي تحريك للإصبع يلغيها. */
 const HOLD_MS = 450;
 
+const HIDDEN = [
+  {
+    href: "/private",
+    label: "اللحظات الخاصة",
+    Icon: LockIcon,
+    bg: "var(--color-night)",
+    ink: "#f7f5ef",
+  },
+  {
+    href: "/together",
+    label: "آثارنا",
+    Icon: WithIcon,
+    bg: "var(--color-clay)",
+    ink: "var(--color-on-brand)",
+  },
+];
+
 /**
- * الشريط السفلي، ومعه بابٌ مخفيّ: ضغطةٌ مطوّلة على «اللحظات» تفتح
- * اللحظات الخاصة وآثارنا.
- *
- * مخفيّ عن قصد: هذان مكانان يُقصدان قصداً ولا يُفتحان بالتمرير، ووضعهما
- * تبويبين دائمين يجعل الشريط خمسة أبواب لا يُقرأ.
+ * الشريط السفلي، ومعه بابٌ مخفيّ: ضغطةٌ مطوّلة على «اللحظات» تُطيّر
+ * اللحظات الخاصة وآثارنا من فوق التبويب نفسه — بحركة قوس النشر ذاتها،
+ * فالبابان المخفيّان يتصرّفان كما تتصرّف بقية أزرار التطبيق.
  */
 export function TabBarNav({ active, news = 0 }: { active: string; news?: number }) {
   const [open, setOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => event.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
   function hold() {
     if (timer.current) clearTimeout(timer.current);
@@ -48,84 +69,63 @@ export function TabBarNav({ active, news = 0 }: { active: string; news?: number 
 
   return (
     <>
-      {open ? (
-        <div
-          className="athr-veil z-30 flex flex-col items-center justify-end"
-          style={{
-            animation: "athr-veil 180ms ease both",
-            // العتمة تملأ النافذة، والورقة نفسها بعرض الهيكل في وسطها —
-            // فلا تطير إلى حافة الشاشة على المتصفح العريض.
-            position: "fixed",
-            inset: 0,
-            background: "rgba(14,26,36,.55)",
-          }}
-          onClick={() => setOpen(false)}
-        >
-          <div
-            className="athr-sheet w-full rounded-t-3xl p-4 pb-8"
-            style={{
-              background: "var(--color-card)",
-              maxWidth: 430,
-              animation: "athr-sheet 340ms cubic-bezier(.16,1.1,.3,1) both",
-              boxShadow: "0 -18px 50px rgba(14,26,36,.28)",
-            }}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-[14.5px] font-bold">لحظاتك الأخرى</p>
-              <button
-                type="button"
-                aria-label="إغلاق"
-                onClick={() => setOpen(false)}
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-line text-muted"
-              >
-                <CloseIcon size={16} />
-              </button>
-            </div>
+      <div
+        onClick={() => setOpen(false)}
+        aria-hidden={!open}
+        className="fixed inset-0 z-20 transition-opacity duration-300"
+        style={{
+          background: "rgba(14,26,36,.82)",
+          opacity: open ? 1 : 0,
+          pointerEvents: open ? "auto" : "none",
+        }}
+      />
 
+      {/* الأصناف تنطلق من فوق تبويب «اللحظات» في الطرف الأيمن. */}
+      <div className="shell-fixed z-30">
+        <div className="relative mb-[62px] mr-[6px] h-14 w-[74px]">
+          {HIDDEN.map((item, index) => (
             <Link
-              href="/private"
+              key={item.href}
+              href={item.href}
+              tabIndex={open ? 0 : -1}
+              aria-hidden={!open}
               onClick={() => setOpen(false)}
-              className="mb-2 flex items-center gap-3 rounded-2xl border border-line p-3.5"
+              className="pointer-events-auto absolute inset-0 flex flex-col items-center justify-center rounded-2xl"
+              style={{
+                background: "var(--color-card)",
+                border: "1px solid var(--color-line)",
+                color: "var(--color-ink)",
+                width: 92,
+                height: 74,
+                insetInlineStart: "-9px",
+                transform: open
+                  ? `translateY(${-96 - index * 88}px) scale(1)`
+                  : "translateY(0) scale(.4)",
+                opacity: open ? 1 : 0,
+                pointerEvents: open ? "auto" : "none",
+                transitionProperty: "transform, opacity",
+                transitionDuration: open ? "420ms" : "200ms",
+                transitionTimingFunction: open
+                  ? "cubic-bezier(.18,1.3,.42,1)"
+                  : "cubic-bezier(.4,0,1,1)",
+                transitionDelay: `${open ? index * 60 : (HIDDEN.length - 1 - index) * 30}ms`,
+                boxShadow: "0 10px 26px rgba(0,0,0,.4)",
+              }}
             >
               <span
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
-                style={{ background: "var(--color-night)", color: "#f7f5ef" }}
+                className="mb-1 flex h-8 w-8 items-center justify-center rounded-full"
+                style={{ background: item.bg, color: item.ink }}
               >
-                <LockIcon size={18} />
+                <item.Icon size={16} />
               </span>
-              <span className="min-w-0 grow">
-                <span className="block text-[14px] font-semibold">اللحظات الخاصة</span>
-                <span className="block text-[11.5px] text-muted">
-                  ما نُشر لتصنيفٍ من دائرتك أو لأشخاص بأعيانهم
-                </span>
-              </span>
+              <span className="text-[9.5px] font-semibold">{item.label}</span>
             </Link>
-
-            <Link
-              href="/together"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-3 rounded-2xl border border-line p-3.5"
-            >
-              <span
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
-                style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
-              >
-                <WithIcon size={18} />
-              </span>
-              <span className="min-w-0 grow">
-                <span className="block text-[14px] font-semibold">آثارنا</span>
-                <span className="block text-[11.5px] text-muted">
-                  خطّكما المشترك: كم لحظة تجمعكما منذ صرتما أصدقاء
-                </span>
-              </span>
-            </Link>
-          </div>
+          ))}
         </div>
-      ) : null}
+      </div>
 
       <nav className="tabbar sticky bottom-0 z-10">
-        <div className="flex items-stretch justify-around px-2 pb-5 pt-1.5">
+        <div className="flex items-stretch justify-around px-1.5 pb-1.5 pt-1">
           {TABS.map(({ href, label, Icon }) => {
             const on = href === active;
             const moments = href === "/";
@@ -140,22 +140,22 @@ export function TabBarNav({ active, news = 0 }: { active: string; news?: number 
                 onPointerLeave={moments ? release : undefined}
                 onPointerCancel={moments ? release : undefined}
                 onContextMenu={moments ? (event) => event.preventDefault() : undefined}
-                className="flex min-h-11 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-0.5 py-1.5"
+                className="flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 py-1"
                 style={{
                   color: on ? "var(--color-clay-ink)" : "var(--color-muted)",
                   touchAction: "manipulation",
                 }}
               >
                 <span className="relative">
-                  <Icon size={21} />
+                  <Icon size={19} />
                   {dot ? (
                     <span
-                      className="absolute -left-1 -top-0.5 block h-2 w-2 rounded-full"
+                      className="absolute -left-1 -top-0.5 block h-1.5 w-1.5 rounded-full"
                       style={{ background: "var(--color-clay)" }}
                     />
                   ) : null}
                 </span>
-                <span className="text-[10px] font-medium">{label}</span>
+                <span className="text-[9.5px] font-medium">{label}</span>
               </Link>
             );
           })}

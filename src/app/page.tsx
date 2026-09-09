@@ -5,21 +5,18 @@ import { circleCount, timeline } from "@/lib/feed";
 import { unreadCount } from "@/lib/dm";
 import { MomentCard } from "@/components/moment-card";
 import { ComposerFan } from "@/components/composer-fan";
+import { Tour } from "@/components/tour";
 import { Avatar, Empty, TagPill } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import { TimelineHead } from "@/components/timeline-head";
 import { AthrHeaderMark } from "@/components/brand";
 import { MessageIcon } from "@/components/icons";
-import { ThemeToggle } from "@/components/theme";
-import { cookies } from "next/headers";
 import { plusTag, tagOf } from "@/lib/tags";
 import { ar, dayLabel } from "@/lib/format";
 
 export default async function TimelinePage() {
   const user = await currentUser();
   if (!user) redirect("/login");
-
-  const theme = (await cookies()).get("athr:theme")?.value === "dark" ? "dark" : "light";
 
   const [moments, size, unread, auto] = await Promise.all([
     timeline(user.id),
@@ -58,13 +55,13 @@ export default async function TimelinePage() {
               </span>
             ) : null}
           </Link>
-          <ThemeToggle initial={theme} />
         </div>
       </header>
 
       <TimelineHead
         coverMediaId={user.coverMediaId}
         coverSpec={user.background?.spec ?? null}
+        coverY={user.coverY}
         name={user.name}
         tag={<TagPill tag={tagOf(user, auto)} size={10} />}
         avatar={
@@ -107,6 +104,7 @@ export default async function TimelinePage() {
         )}
       </TimelineHead>
 
+      <Tour />
       <ComposerFan />
       <TabBar active="/" />
     </div>

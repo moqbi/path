@@ -12,7 +12,7 @@ export default async function StorePage() {
   if (!user) redirect("/login");
 
   const [items, purchases] = await Promise.all([
-    prisma.storeItem.findMany({ orderBy: { sortOrder: "asc" } }),
+    prisma.storeItem.findMany({ where: { kind: "FRAME" }, orderBy: { sortOrder: "asc" } }),
     prisma.purchase.findMany({ where: { userId: user.id }, select: { itemId: true } }),
   ]);
 

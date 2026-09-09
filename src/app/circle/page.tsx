@@ -7,10 +7,12 @@ import { plusTag, tagOf } from "@/lib/tags";
 import {
   acceptFriend,
   ignoreFriend,
+  removeFriend,
   requestFriend,
   setFriendGroup,
   startConversation,
 } from "@/app/actions";
+import { SwipeRow } from "@/components/swipe-row";
 import { Avatar, Empty, TagPill } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import { CheckIcon, CloseIcon, MessageIcon, SparkIcon } from "@/components/icons";
@@ -282,9 +284,16 @@ export default async function CirclePage({
                 {section.people.map((member, index) => {
                   const group = groupOf.get(member.id) ?? null;
                   return (
-                    <details
+                    <SwipeRow
                       key={member.id}
-                      style={{ borderTop: index === 0 ? "none" : "1px solid var(--color-line)" }}
+                      confirmLabel="إزالة"
+                      onDelete={removeFriend.bind(null, member.id)}
+                    >
+                    <details
+                      style={{
+                        borderTop: index === 0 ? "none" : "1px solid var(--color-line)",
+                        background: "var(--color-card)",
+                      }}
                     >
                       <summary className="flex cursor-pointer list-none items-center gap-3 p-3">
                         <Link
@@ -378,6 +387,7 @@ export default async function CirclePage({
                         </form>
                       </div>
                     </details>
+                    </SwipeRow>
                   );
                 })}
               </div>

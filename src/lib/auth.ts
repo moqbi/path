@@ -95,6 +95,7 @@ export type SessionUser = {
   role: "USER" | "ADMIN";
   avatarMediaId: string | null;
   coverMediaId: string | null;
+  coverY: number;
   frame: { spec: string } | null;
   background: { spec: string } | null;
   tag: { name: string; bg: string; fg: string } | null;
@@ -121,6 +122,7 @@ export async function currentUser(): Promise<SessionUser | null> {
       role: true,
       avatarMediaId: true,
       coverMediaId: true,
+      coverY: true,
       frame: { select: { spec: true } },
       background: { select: { spec: true } },
       tag: { select: { name: true, bg: true, fg: true } },
@@ -145,6 +147,7 @@ export async function currentUser(): Promise<SessionUser | null> {
     role: user.role,
     avatarMediaId: user.avatarMediaId,
     coverMediaId: user.coverMediaId,
+    coverY: user.coverY,
     frame: user.frame,
     background: user.background,
     tag: user.tag,

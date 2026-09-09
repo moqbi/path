@@ -17,6 +17,7 @@ export const momentShape = {
   musicThumb: true,
   imageSpec: true,
   mediaId: true,
+  media: { select: { width: true, height: true } },
   lat: true,
   lng: true,
   createdAt: true,

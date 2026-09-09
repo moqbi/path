@@ -400,6 +400,15 @@ export async function setCover(dataUrl: string, width: number, height: number): 
   revalidatePath("/");
 }
 
+/** ضبط الغلاف: نسبة الموضع العمودي التي وقف عندها السحب. */
+export async function setCoverPosition(y: number): Promise<void> {
+  const user = await requireUser();
+  const value = Math.round(Math.min(100, Math.max(0, Number(y) || 0)));
+  await prisma.user.update({ where: { id: user.id }, data: { coverY: value } });
+  revalidatePath("/me");
+  revalidatePath("/");
+}
+
 export async function clearCover(): Promise<void> {
   const user = await requireUser();
   await prisma.user.update({ where: { id: user.id }, data: { coverMediaId: null } });
@@ -420,6 +429,9 @@ async function requireAdmin() {
   return user;
 }
 
+/** نتيجة نموذج في اللوحة: رسالة تُعرض في الشاشة بدل استثناء يكسرها. */
+export type AdminResult = { ok?: string; error?: string } | null;
+
 const storeItemInput = z.object({
   kind: z.enum(["FRAME", "BACKGROUND"]),
   name: z.string().trim().min(1, "اكتب الاسم").max(40),
@@ -429,18 +441,19 @@ const storeItemInput = z.object({
   earnedAfterDays: z.coerce.number().int().min(0).max(3650).optional(),
 });
 
-export async function createStoreItem(formData: FormData): Promise<void> {
+export async function createStoreItem(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
   await requireAdmin();
 
   const parsed = storeItemInput.safeParse({
     kind: formData.get("kind"),
     name: formData.get("name"),
-    priceRiyals: formData.get("priceRiyals"),
+    // الحقل الفارغ يعني صفراً لا `NaN` — وإلا انكسر الحفظ بلا سبب مفهوم.
+    priceRiyals: formData.get("priceRiyals") || 0,
     spec: formData.get("spec"),
     plusOnly: formData.get("plusOnly") === "on",
     earnedAfterDays: formData.get("earnedAfterDays") || undefined,
   });
-  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "بيانات غير صالحة");
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
 
   const { kind, name, priceRiyals, spec, plusOnly, earnedAfterDays } = parsed.data;
   const last = await prisma.storeItem.findFirst({
@@ -463,20 +476,25 @@ export async function createStoreItem(formData: FormData): Promise<void> {
 
   revalidatePath("/admin");
   revalidatePath("/store");
+  return { ok: `أُضيف «${name}»` };
 }
 
-export async function updateStoreItem(itemId: string, formData: FormData): Promise<void> {
+export async function updateStoreItem(
+  itemId: string,
+  _prev: AdminResult,
+  formData: FormData,
+): Promise<AdminResult> {
   await requireAdmin();
 
   const parsed = storeItemInput.safeParse({
     kind: formData.get("kind"),
     name: formData.get("name"),
-    priceRiyals: formData.get("priceRiyals"),
+    priceRiyals: formData.get("priceRiyals") || 0,
     spec: formData.get("spec"),
     plusOnly: formData.get("plusOnly") === "on",
     earnedAfterDays: formData.get("earnedAfterDays") || undefined,
   });
-  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "بيانات غير صالحة");
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
 
   const { kind, name, priceRiyals, spec, plusOnly, earnedAfterDays } = parsed.data;
   await prisma.storeItem.update({
@@ -493,6 +511,7 @@ export async function updateStoreItem(itemId: string, formData: FormData): Promi
 
   revalidatePath("/admin");
   revalidatePath("/store");
+  return { ok: "حُفظ" };
 }
 
 // ───────────────────────────── الوسوم ─────────────────────────────
@@ -507,14 +526,14 @@ const tagInput = z.object({
 });
 
 function readTag(formData: FormData) {
-  const parsed = tagInput.safeParse({
+  return tagInput.safeParse({
     name: formData.get("name"),
-    bg: formData.get("bg"),
-    fg: formData.get("fg"),
+    // منتقي اللون يعطي حروفاً كبيرة أحياناً، والقاعدة لا تفرّق — لكن
+    // الفحص يفرّق، فتُوحَّد قبله.
+    bg: String(formData.get("bg") ?? "").toLowerCase(),
+    fg: String(formData.get("fg") ?? "").toLowerCase(),
     autoForPlus: formData.get("autoForPlus") === "on",
   });
-  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "بيانات غير صالحة");
-  return parsed.data;
 }
 
 /** وسم واحد فقط يُمنح تلقائياً للمشتركين، وإلا تنازع وسمان على الاسم نفسه. */
@@ -526,21 +545,32 @@ async function keepSingleAuto(tagId: string, autoForPlus: boolean) {
   });
 }
 
-export async function createTag(formData: FormData): Promise<void> {
+export async function createTag(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
   await requireAdmin();
-  const data = readTag(formData);
+  const parsed = readTag(formData);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
+
+  const data = parsed.data;
   const last = await prisma.tag.findFirst({ orderBy: { sortOrder: "desc" }, select: { sortOrder: true } });
   const tag = await prisma.tag.create({ data: { ...data, sortOrder: (last?.sortOrder ?? 0) + 1 } });
   await keepSingleAuto(tag.id, data.autoForPlus);
   revalidateTags();
+  return { ok: `أُضيف وسم «${data.name}»` };
 }
 
-export async function updateTag(tagId: string, formData: FormData): Promise<void> {
+export async function updateTag(
+  tagId: string,
+  _prev: AdminResult,
+  formData: FormData,
+): Promise<AdminResult> {
   await requireAdmin();
-  const data = readTag(formData);
-  await prisma.tag.update({ where: { id: tagId }, data });
-  await keepSingleAuto(tagId, data.autoForPlus);
+  const parsed = readTag(formData);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
+
+  await prisma.tag.update({ where: { id: tagId }, data: parsed.data });
+  await keepSingleAuto(tagId, parsed.data.autoForPlus);
   revalidateTags();
+  return { ok: "حُفظ" };
 }
 
 export async function deleteTag(tagId: string): Promise<void> {
@@ -642,6 +672,24 @@ export async function ignoreFriend(friendshipId: string): Promise<void> {
  * لا بحث بالبريد ولا اكتشاف عام: من لا يعرفه أحد من دائرتك لا يظهر لك
  * ولا يصلك منه طلب.
  */
+/**
+ * إخراج صديق من الدائرة.
+ * حذفٌ للصفّ لا حالة «سابق»: الدائرة سجلّ من فيها الآن، لا أرشيف من مرّ.
+ */
+export async function removeFriend(friendId: string): Promise<void> {
+  const user = await requireUser();
+  await prisma.friendship.deleteMany({
+    where: {
+      OR: [
+        { requesterId: user.id, addresseeId: friendId },
+        { requesterId: friendId, addresseeId: user.id },
+      ],
+    },
+  });
+  revalidatePath("/circle");
+  revalidatePath("/");
+}
+
 export async function requestFriend(targetId: string): Promise<void> {
   const user = await requireUser();
   if (targetId === user.id) throw new Error("لا يمكنك إضافة نفسك");

@@ -10,6 +10,7 @@ import {
   WithIcon,
 } from "@/components/icons";
 import { MomentBar } from "@/components/moment-bar";
+import { Photo } from "@/components/photo";
 import { Reactors } from "@/components/reactions";
 import { ar, relative, timeOfDay } from "@/lib/format";
 import type { FeedMoment } from "@/lib/feed";
@@ -121,14 +122,22 @@ function Comments({ moment }: { moment: FeedMoment }) {
  * الحدث نفسه سطرٌ عارٍ، وما يجتمع حوله من ناس يجلس في قالبٍ أبيض تحته —
  * فيُقرأ الفرق بين ما قاله صاحبه وما ردّ به الناس.
  */
-function Bubble({ moment, circleSize }: { moment: FeedMoment; circleSize: number }) {
+function Bubble({
+  moment,
+  circleSize,
+  viewerId,
+}: {
+  moment: FeedMoment;
+  circleSize: number;
+  viewerId: string;
+}) {
   const hasComments = moment.comments.length > 0;
   const hasReactions = moment.reactions.length > 0;
   if (!hasComments && !hasReactions) return null;
 
   return (
     <div className="mt-2 rounded-2xl border border-line bg-card px-3 py-2.5">
-      {hasReactions ? <Reactors reactions={moment.reactions} /> : null}
+      {hasReactions ? <Reactors reactions={moment.reactions} viewerId={viewerId} /> : null}
       {hasReactions && hasComments ? <div className="my-2.5 h-px bg-line" /> : null}
       <Comments moment={moment} />
       <p className="mt-2 flex items-center justify-end gap-1.5 text-[10.5px] text-faint">
@@ -289,17 +298,16 @@ export function MomentCard({
           extra={
             <>
               {moment.mediaId ? (
-                <div
-                  className="mt-2.5 overflow-hidden rounded-2xl"
-                  style={{
-                    height: 190,
-                    backgroundImage: `url(/api/media/${moment.mediaId})`,
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                  }}
-                />
+                <div className="mt-2.5">
+                  <Photo
+                    mediaId={moment.mediaId}
+                    width={moment.media?.width}
+                    height={moment.media?.height}
+                    rounded
+                  />
+                </div>
               ) : null}
-              <Bubble moment={moment} circleSize={circleSize} />
+              <Bubble moment={moment} circleSize={circleSize} viewerId={viewerId} />
             </>
           }
         />
@@ -311,14 +319,7 @@ export function MomentCard({
   const head = (
     <>
       {moment.mediaId ? (
-        <div
-          style={{
-            height: 200,
-            backgroundImage: `url(/api/media/${moment.mediaId})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        />
+        <Photo mediaId={moment.mediaId} width={moment.media?.width} height={moment.media?.height} />
       ) : moment.imageSpec ? (
         <div style={{ height: 132, background: moment.imageSpec }} />
       ) : null}
@@ -360,7 +361,7 @@ export function MomentCard({
               )}
 
               <div className="px-4 pb-3 pt-2">
-                {moment.reactions.length > 0 ? <Reactors reactions={moment.reactions} /> : null}
+                {moment.reactions.length > 0 ? <Reactors reactions={moment.reactions} viewerId={viewerId} /> : null}
                 {moment.comments.length > 0 ? (
                   <div className="mt-2.5 border-t border-line pt-2.5">
                     <Comments moment={moment} />

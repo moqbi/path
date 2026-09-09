@@ -72,7 +72,7 @@ export default async function MomentPage({
         ) : null}
 
         <div className="mb-3.5">
-          <Reactors reactions={moment.reactions} />
+          <Reactors reactions={moment.reactions} viewerId={user.id} />
         </div>
 
         <div className="mb-3.5">

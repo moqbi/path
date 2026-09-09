@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { react } from "@/app/actions";
 import { LockIcon } from "@/components/icons";
+import Link from "next/link";
 import { Avatar } from "@/components/ui";
 import { ar } from "@/lib/format";
 
@@ -191,6 +192,7 @@ export function Reactions({
  */
 export function Reactors({
   reactions,
+  viewerId,
   size = 32,
 }: {
   reactions: {
@@ -199,6 +201,8 @@ export function Reactors({
     emoji: string | null;
     user: { name: string; avatarMediaId: string | null };
   }[];
+  /** لفتح ملف صاحب التفاعل: ملفي أنا على `/me`، وغيري على `/u/<id>`. */
+  viewerId?: string;
   size?: number;
 }) {
   if (reactions.length === 0) return null;
@@ -207,8 +211,11 @@ export function Reactors({
   return (
     <div data-reactors className="flex items-center gap-2.5 pt-1">
       {shown.map((reaction) => (
-        <span
+        <Link
           key={reaction.userId}
+          href={reaction.userId === viewerId ? "/me" : `/u/${reaction.userId}`}
+          aria-label={`ملف ${reaction.user.name}`}
+          onClick={(event) => event.stopPropagation()}
           className="relative block shrink-0"
           style={{ width: size, height: size }}
           title={`${reaction.user.name}`}
@@ -226,7 +233,7 @@ export function Reactors({
           >
             <ReactionGlyph kind={reaction.kind} emoji={reaction.emoji} size={size * 0.58} />
           </span>
-        </span>
+        </Link>
       ))}
       {reactions.length > shown.length ? (
         <span className="text-[12px] font-semibold text-muted">

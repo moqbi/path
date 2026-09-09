@@ -26,6 +26,7 @@ const SPINE = 48;
 export function TimelineHead({
   coverMediaId,
   coverSpec,
+  coverY = 50,
   avatar,
   name,
   tag,
@@ -33,13 +34,14 @@ export function TimelineHead({
 }: {
   coverMediaId: string | null;
   coverSpec: string | null;
+  coverY?: number;
   avatar: ReactNode;
   name: string;
   tag: ReactNode;
   children: ReactNode;
 }) {
   const router = useRouter();
-  const scroll = useRef<HTMLDivElement>(null);
+  const scroll = useRef<HTMLElement>(null);
   const pulled = useRef(0);
   const [pull, setPull] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -117,18 +119,18 @@ export function TimelineHead({
   // الفأرة: للمتصفح على الحاسب، حيث لا لمس أصلاً.
   const mouse = useRef<number | null>(null);
 
-  function down(event: React.PointerEvent<HTMLDivElement>) {
+  function down(event: React.PointerEvent<HTMLElement>) {
     if (event.pointerType !== "mouse") return;
     if ((scroll.current?.scrollTop ?? 0) > 0) return;
     mouse.current = event.clientY;
     setDragging(true);
   }
-  function move(event: React.PointerEvent<HTMLDivElement>) {
+  function move(event: React.PointerEvent<HTMLElement>) {
     if (event.pointerType !== "mouse" || mouse.current === null) return;
     const delta = event.clientY - mouse.current;
     set(delta <= 0 ? 0 : Math.min(MAX_PULL, delta * 0.55));
   }
-  function up(event: React.PointerEvent<HTMLDivElement>) {
+  function up(event: React.PointerEvent<HTMLElement>) {
     if (event.pointerType !== "mouse" || mouse.current === null) return;
     mouse.current = null;
     release();
@@ -137,87 +139,94 @@ export function TimelineHead({
   const spinning = pending || pull >= TRIGGER;
 
   return (
-    <div
-      ref={scroll}
-      className="scroll-area"
-      style={{
-        overscrollBehaviorY: "contain",
-        // السحب لا يجب أن يظلّل النصوص تحت الإصبع.
-        userSelect: dragging ? "none" : undefined,
-        WebkitUserSelect: dragging ? "none" : undefined,
-      }}
-      onPointerDown={down}
-      onPointerMove={move}
-      onPointerUp={up}
-      onPointerCancel={up}
-    >
-      <div
-        className="relative shrink-0 overflow-hidden"
-        style={{
-          height: COVER + pull,
-          transition: dragging ? "none" : "height 260ms cubic-bezier(.2,.9,.3,1)",
-          ...coverStyle(coverMediaId, coverSpec),
-        }}
-      >
-        {/* درع خفيف: الغلاف قد يكون صورة فاتحة أو خلفية داكنة من المتجر،
-            فالنصّ أبيض دائماً ومعه تدرّج قصير وظلّ نصّ يضمنان قراءته. */}
+    <>
+      {/*
+        الرأس ثابت: الغلاف والصورة والساعة لا تتحرّك، واللحظات وحدها تمرّ
+        تحتها — وهذا ما يجعل السحب يمدّ الغلاف بدل أن يزيحه عن الشاشة.
+      */}
+      <div className="shrink-0">
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-0"
-          style={{ height: 72, background: "linear-gradient(180deg,rgba(14,26,36,0),rgba(14,26,36,.46))" }}
-        />
+          className="relative overflow-hidden"
+          style={{
+            height: COVER + pull,
+            transition: dragging ? "none" : "height 260ms cubic-bezier(.2,.9,.3,1)",
+            ...coverStyle(coverMediaId, coverSpec, coverY),
+          }}
+        >
+          {/* درع خفيف يضمن قراءة الاسم والساعة فوق أي غلاف. */}
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0"
+            style={{ height: 72, background: "linear-gradient(180deg,rgba(14,26,36,0),rgba(14,26,36,.46))" }}
+          />
 
-        <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 px-5 pb-2.5">
-          <div className="flex w-14 shrink-0 justify-center">{avatar}</div>
-          <div className="min-w-0 grow pb-1.5">
-            <p
-              className="flex items-center gap-1.5 truncate text-[14px] font-semibold"
-              style={{ color: "#fff", textShadow: "0 1px 3px rgba(14,26,36,.45)" }}
+          <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 px-5 pb-2.5">
+            <div className="flex w-14 shrink-0 justify-center">{avatar}</div>
+            <div className="min-w-0 grow pb-1.5">
+              <p
+                className="flex items-center gap-1.5 truncate text-[14px] font-semibold"
+                style={{ color: "#fff", textShadow: "0 1px 3px rgba(14,26,36,.45)" }}
+              >
+                {name}
+                {tag}
+              </p>
+              <p
+                className="text-[11.5px]"
+                style={{ color: "rgba(255,255,255,.92)", textShadow: "0 1px 3px rgba(14,26,36,.45)" }}
+                suppressHydrationWarning
+              >
+                {clock}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={refresh}
+              disabled={pending}
+              aria-label="تحديث الخط الزمني"
+              className="mb-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full disabled:opacity-60"
+              style={{ background: "rgba(255,255,255,.22)", color: "#fff" }}
             >
-              {name}
-              {tag}
-            </p>
-            <p
-              className="text-[11.5px]"
-              style={{ color: "rgba(255,255,255,.92)", textShadow: "0 1px 3px rgba(14,26,36,.45)" }}
-              suppressHydrationWarning
-            >
-              {clock}
-            </p>
+              <span
+                style={{
+                  display: "block",
+                  transform: `rotate(${pull * 3.4}deg)`,
+                  transition: dragging ? "none" : "transform 300ms ease",
+                  animation: spinning ? "athr-spin 900ms linear infinite" : undefined,
+                }}
+              >
+                <RefreshIcon size={17} />
+              </span>
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={refresh}
-            disabled={pending}
-            aria-label="تحديث الخط الزمني"
-            className="mb-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full disabled:opacity-60"
-            style={{ background: "rgba(255,255,255,.22)", color: "#fff" }}
-          >
-            <span
-              style={{
-                display: "block",
-                transform: `rotate(${pull * 3.4}deg)`,
-                transition: dragging ? "none" : "transform 300ms ease",
-                animation: spinning ? "athr-spin 900ms linear infinite" : undefined,
-              }}
-            >
-              <RefreshIcon size={17} />
-            </span>
-          </button>
+
+          {/* الخط يبدأ من أسفل الصورة داخل الغلاف نفسه. */}
+          <span
+            className="absolute block w-px"
+            style={{ right: SPINE, bottom: 0, height: 10, background: "rgba(255,255,255,.75)" }}
+          />
         </div>
 
-        {/* الخط يبدأ من أسفل الصورة داخل الغلاف نفسه. */}
-        <span
-          className="absolute block w-px"
-          style={{ right: SPINE, bottom: 0, height: 10, background: "rgba(255,255,255,.75)" }}
-        />
+        {/* ثم يواصل نزوله حتى أول لحظة، فيصير خطاً واحداً متصلاً. */}
+        <div className="relative" style={{ height: 16 }}>
+          <span className="absolute block w-px bg-line" style={{ right: SPINE, top: 0, bottom: 0 }} />
+        </div>
       </div>
 
-      {/* ثم يواصل نزوله حتى أول لحظة، فيصير خطاً واحداً متصلاً. */}
-      <div className="relative shrink-0" style={{ height: 20 }}>
-        <span className="absolute block w-px bg-line" style={{ right: SPINE, top: 0, bottom: 0 }} />
-      </div>
-
-      <main className="relative px-5">{children}</main>
-    </div>
+      <main
+        ref={scroll}
+        className="scroll-area relative px-5"
+        style={{
+          overscrollBehaviorY: "contain",
+          // السحب لا يجب أن يظلّل النصوص تحت الإصبع.
+          userSelect: dragging ? "none" : undefined,
+          WebkitUserSelect: dragging ? "none" : undefined,
+        }}
+        onPointerDown={down}
+        onPointerMove={move}
+        onPointerUp={up}
+        onPointerCancel={up}
+      >
+        {children}
+      </main>
+    </>
   );
 }

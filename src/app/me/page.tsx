@@ -4,10 +4,10 @@ import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { circleIds } from "@/lib/circle";
 import { archive, myMoments } from "@/lib/feed";
-import { signOut } from "@/app/actions";
 import { MomentCard } from "@/components/moment-card";
 import { plusTag, tagOf } from "@/lib/tags";
-import { CoverPicker, ProfileImages } from "./images";
+import { ProfileImages } from "./images";
+import { ProfileCover } from "./cover";
 import { DeleteAccount } from "./delete";
 import { coverStyle, TagPill } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
@@ -63,35 +63,20 @@ export default async function ProfilePage() {
 
   return (
     <div className="screen">
-      <div
-        className="relative shrink-0"
-        style={{ height: 168, ...coverStyle(user.coverMediaId, user.background?.spec) }}
-      >
-        <CoverPicker hasCover={Boolean(user.coverMediaId)} />
+      {/*
+        الرأس ثابت — الغلاف والصورة والبيانات وزرّ التعديل — ولحظاتي
+        وحدها تمرّ تحته. قبلها كانت الصفحة كلها تمرّ فتتداخل اللحظات مع
+        الغلاف عند النزول.
+      */}
+      <div className="shrink-0">
+        <ProfileCover
+          mediaId={user.coverMediaId}
+          spec={user.background?.spec ?? null}
+          initialY={user.coverY}
+          height={146}
+        />
 
-        <div className="absolute left-4 top-4 flex gap-2">
-          <Link
-            href="/settings/privacy"
-            aria-label="الخصوصية"
-            className="flex h-9 w-9 items-center justify-center rounded-full"
-            style={{ background: "rgba(14,26,36,.55)", color: "#f7f5ef" }}
-          >
-            <GearIcon size={17} />
-          </Link>
-          <form action={signOut}>
-            <button
-              type="submit"
-              aria-label="خروج"
-              className="flex h-9 items-center rounded-full px-3 text-[11px] font-semibold"
-              style={{ background: "rgba(14,26,36,.55)", color: "#f7f5ef" }}
-            >
-              خروج
-            </button>
-          </form>
-        </div>
-      </div>
-
-      <main className="scroll-area relative px-5" style={{ marginTop: -52 }}>
+        <div className="relative px-5" style={{ marginTop: -52 }}>
         {/* الصورة في الوسط فوق حدّ الغلاف — كما في المخطط. */}
         <div className="mb-3 flex justify-center">
           <ProfileImages
@@ -124,7 +109,7 @@ export default async function ProfilePage() {
         </p>
 
         {/* عدد اللحظات وعدد السنوات تحت الاسم مباشرة. */}
-        <div className="mx-auto my-5 flex max-w-[320px] items-stretch">
+        <div className="mx-auto mb-4 mt-4 flex max-w-[320px] items-stretch">
           {stats.map((stat, index) => (
             <div
               key={stat.label}
@@ -137,7 +122,7 @@ export default async function ProfilePage() {
           ))}
         </div>
 
-        <div className="mb-6 flex gap-2.5">
+        <div className="mb-4 flex gap-2.5">
           <Link
             href="/me/edit"
             className="flex grow items-center justify-center rounded-xl border border-line bg-card text-[13.5px] font-semibold text-ink-2"
@@ -155,7 +140,14 @@ export default async function ProfilePage() {
           </Link>
         </div>
 
-        {/* لحظاتي أسفل زرّ التعديل مباشرة — هذا ما يُفتح التبويب لأجله. */}
+        </div>
+      </div>
+
+      {/* لحظاتي أسفل زرّ التعديل مباشرة — هذا ما يُفتح التبويب لأجله. */}
+      <main
+        className="scroll-area relative px-5 pt-4"
+        style={{ borderTop: "1px solid var(--color-line)" }}
+      >
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-[15px] font-bold">لحظاتي</h2>
           <span className="text-[12px] text-muted">{ar(mine.length)}</span>

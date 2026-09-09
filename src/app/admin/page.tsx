@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -11,6 +12,7 @@ import {
   updateTag,
 } from "@/app/actions";
 import { ScreenHeader, TagPill } from "@/components/ui";
+import { Saver } from "./saver";
 import { riyals, ar } from "@/lib/format";
 
 const FIELD =
@@ -34,7 +36,19 @@ function Color({ name, label, value }: { name: string; label: string; value: str
   );
 }
 
-export default async function AdminPage() {
+const SECTIONS = [
+  { key: "tags", label: "الوسوم" },
+  { key: "users", label: "الحسابات" },
+  { key: "store", label: "المتجر" },
+] as const;
+
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ s?: string }>;
+}) {
+  const { s: raw } = await searchParams;
+  const section = SECTIONS.some((item) => item.key === raw) ? raw! : "tags";
   const user = await currentUser();
   if (!user) redirect("/login");
   // الدور يُفحص هنا وفي كل إجراء — إخفاء الرابط ليس حماية.
@@ -86,8 +100,29 @@ export default async function AdminPage() {
           ))}
         </div>
 
-        {/* ─────────────── الوسوم ─────────────── */}
+        {/* أقسام بدل جدارٍ واحد: قسمٌ في الشاشة لا ثلاثة فوق بعضها. */}
+        <div className="no-bar mb-5 flex gap-2 overflow-x-auto">
+          {SECTIONS.map((item) => {
+            const on = section === item.key;
+            return (
+              <Link
+                key={item.key}
+                href={`/admin?s=${item.key}`}
+                className="shrink-0 rounded-full px-4 py-2 text-[12.5px] font-semibold"
+                style={{
+                  background: on ? "var(--color-clay)" : "var(--color-card)",
+                  color: on ? "var(--color-on-brand)" : "var(--color-ink-2)",
+                  border: `1px solid ${on ? "var(--color-clay)" : "var(--color-line)"}`,
+                }}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
 
+        {section === "tags" ? (
+        <>
         <h2 className="mb-1 text-[15px] font-bold">الوسوم</h2>
         <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
           الوسم كلمة تظهر بجانب الاسم بلونين تختارهما. وسمٌ واحد يمكن أن يُمنح
@@ -95,7 +130,7 @@ export default async function AdminPage() {
           فينتهي بانتهائه.
         </p>
 
-        <form action={createTag} className="mb-4 flex flex-col gap-2.5">
+        <Saver action={createTag} className="mb-4 flex flex-col gap-2.5">
           <div className="flex gap-2.5">
             <input
               name="name"
@@ -121,7 +156,7 @@ export default async function AdminPage() {
           >
             أضف الوسم
           </button>
-        </form>
+        </Saver>
 
         <div className="mb-7 flex flex-col gap-2">
           {tags.length === 0 ? (
@@ -140,7 +175,7 @@ export default async function AdminPage() {
                 <span className="text-[12px] font-semibold text-clay-ink">تعديل</span>
               </summary>
 
-              <form
+              <Saver
                 action={updateTag.bind(null, tag.id)}
                 className="flex flex-col gap-2.5 border-t border-line p-3"
               >
@@ -173,23 +208,31 @@ export default async function AdminPage() {
                   >
                     احفظ
                   </button>
-                  <button
-                    type="submit"
-                    formAction={deleteTag.bind(null, tag.id)}
-                    className="rounded-xl border border-line px-4 text-[12.5px] font-semibold"
-                    style={{ height: 46, color: "var(--color-live)" }}
-                  >
-                    حذف
-                  </button>
                 </div>
+              </Saver>
+
+              <form action={deleteTag.bind(null, tag.id)} className="px-3 pb-3">
+                <button
+                  type="submit"
+                  className="w-full rounded-xl border border-line text-[12.5px] font-semibold"
+                  style={{ height: 42, color: "var(--color-live)" }}
+                >
+                  احذف الوسم
+                </button>
               </form>
             </details>
           ))}
         </div>
 
-        {/* ─────────────── الحسابات ─────────────── */}
+        </>
+        ) : null}
 
-        <h2 className="mb-3 text-[15px] font-bold">الحسابات</h2>
+        {section === "users" ? (
+        <>
+        <h2 className="mb-1 text-[15px] font-bold">الحسابات</h2>
+        <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
+          امنح وسماً لحساب أو انزعه. الرقم على اليمين رقم العضوية.
+        </p>
         <div className="mb-7 flex flex-col gap-2">
           {people.map((person) => (
             <form
@@ -235,10 +278,13 @@ export default async function AdminPage() {
           ))}
         </div>
 
-        {/* ─────────────── المتجر ─────────────── */}
+        </>
+        ) : null}
 
+        {section === "store" ? (
+        <>
         <h2 className="mb-3 text-[15px] font-bold">أضف صنفاً للمتجر</h2>
-        <form action={createStoreItem} className="mb-7 flex flex-col gap-2.5">
+        <Saver action={createStoreItem} className="mb-7 flex flex-col gap-2.5">
           <div className="flex gap-2.5">
             <select
               name="kind"
@@ -302,7 +348,7 @@ export default async function AdminPage() {
           >
             أضف الصنف
           </button>
-        </form>
+        </Saver>
 
         <h2 className="mb-3 text-[15px] font-bold">الأصناف الحالية</h2>
         <div className="flex flex-col gap-2 pb-4">
@@ -328,7 +374,7 @@ export default async function AdminPage() {
                 <span className="shrink-0 text-[12px] font-semibold text-clay-ink">تعديل</span>
               </summary>
 
-              <form
+              <Saver
                 action={updateStoreItem.bind(null, item.id)}
                 className="flex flex-col gap-2.5 border-t border-line p-3"
               >
@@ -401,19 +447,23 @@ export default async function AdminPage() {
                   >
                     احفظ
                   </button>
-                  <button
-                    type="submit"
-                    formAction={deleteStoreItem.bind(null, item.id)}
-                    className="rounded-xl border border-line px-4 text-[12.5px] font-semibold"
-                    style={{ height: 46, color: "var(--color-live)" }}
-                  >
-                    حذف
-                  </button>
                 </div>
+              </Saver>
+
+              <form action={deleteStoreItem.bind(null, item.id)} className="px-3 pb-3">
+                <button
+                  type="submit"
+                  className="w-full rounded-xl border border-line text-[12.5px] font-semibold"
+                  style={{ height: 42, color: "var(--color-live)" }}
+                >
+                  احذف الصنف
+                </button>
               </form>
             </details>
           ))}
         </div>
+        </>
+        ) : null}
       </main>
     </div>
   );

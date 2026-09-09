@@ -33,8 +33,9 @@ export function StoreGrid({
   const [error, setError] = useState<string | null>(null);
 
   const ownedSet = new Set(owned);
+  // الخلفيات أُلغيت من المتجر: الغلاف صورةٌ يختارها صاحبه، فلا معنى
+  // لبيع تدرّجٍ يقوم مقامها.
   const frames = items.filter((i) => i.kind === "FRAME");
-  const backgrounds = items.filter((i) => i.kind === "BACKGROUND");
 
   const price = (item: Item) =>
     isPlus ? Math.round(item.priceHalalas * 0.8) : item.priceHalalas;
@@ -60,11 +61,6 @@ export function StoreGrid({
           {error}
         </p>
       ) : null}
-
-      <div className="mb-2.5 flex items-baseline justify-between">
-        <h2 className="text-[15px] font-bold">إطارات</h2>
-        <span className="text-[11.5px] text-muted">حول صورتك</span>
-      </div>
 
       <div className="mb-7 grid grid-cols-3 gap-3">
         {frames.map((item) => {
@@ -120,37 +116,6 @@ export function StoreGrid({
         })}
       </div>
 
-      <div className="mb-2.5 flex items-baseline justify-between">
-        <h2 className="text-[15px] font-bold">خلفيات</h2>
-        <span className="text-[11.5px] text-muted">خلف ملفك الشخصي</span>
-      </div>
-
-      <div className="mb-5 grid grid-cols-2 gap-3">
-        {backgrounds.map((item) => {
-          const have = ownedSet.has(item.id);
-          return (
-            <button
-              key={item.id}
-              type="button"
-              disabled={pending}
-              onClick={() => act(item)}
-              className="overflow-hidden rounded-2xl border bg-card text-right disabled:opacity-60"
-              style={{
-                borderColor: have ? "var(--color-clay)" : "var(--color-line)",
-                borderWidth: have ? 1.5 : 1,
-              }}
-            >
-              <span className="block" style={{ height: 96, background: item.spec }} />
-              <span className="flex items-center justify-between px-3 py-2.5">
-                <span className="text-[12px] font-medium">{item.name}</span>
-                <span className="text-[11px] font-semibold text-clay">
-                  {have ? "ألبسها" : riyals(price(item))}
-                </span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
     </>
   );
 }

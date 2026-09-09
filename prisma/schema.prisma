@@ -96,6 +96,8 @@ model User {
   /// صورة العرض والغلاف — ملفات مرفوعة يملكها المستخدم.
   avatarMediaId String? @unique
   coverMediaId  String? @unique
+  /// موضع الغلاف عمودياً (٪): يضبطه صاحبه بسحب الصورة.
+  coverY        Int     @default(50)
   avatarMedia   Media?  @relation("UserAvatar", fields: [avatarMediaId], references: [id], onDelete: SetNull)
   coverMedia    Media?  @relation("UserCover", fields: [coverMediaId], references: [id], onDelete: SetNull)
 

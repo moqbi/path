@@ -80,12 +80,14 @@ export const DEFAULT_COVER = "linear-gradient(140deg,#f2e6d5,#e8cdb4 45%,#c9a68f
 export function coverStyle(
   mediaId: string | null | undefined,
   spec: string | null | undefined,
+  /** موضع الصورة عمودياً (٪) — يضبطه صاحب الحساب بسحب الغلاف. */
+  y: number = 50,
 ): React.CSSProperties {
   if (mediaId) {
     return {
       backgroundImage: `url(/api/media/${mediaId})`,
       backgroundSize: "cover",
-      backgroundPosition: "center",
+      backgroundPosition: `center ${Math.min(100, Math.max(0, y))}%`,
     };
   }
 
