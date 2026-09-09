@@ -5,7 +5,7 @@ import { momentById } from "@/lib/feed";
 import { addComment } from "@/app/actions";
 import { Avatar, ScreenHeader } from "@/components/ui";
 import { SeenTracker } from "@/components/interactive";
-import { Reactions } from "@/components/reactions";
+import { Reactions, Reactors } from "@/components/reactions";
 import { EyeIcon } from "@/components/icons";
 import { ar, relative, timeOfDay } from "@/lib/format";
 
@@ -70,6 +70,10 @@ export default async function MomentPage({
         {withNames.length > 0 ? (
           <p className="mb-4 text-[12.5px] text-muted">مع {withNames.join(" و")}</p>
         ) : null}
+
+        <div className="mb-3.5">
+          <Reactors reactions={moment.reactions} />
+        </div>
 
         <div className="mb-3.5">
           <Reactions

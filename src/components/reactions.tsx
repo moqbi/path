@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { react } from "@/app/actions";
 import { LockIcon } from "@/components/icons";
+import { Avatar } from "@/components/ui";
 import { ar } from "@/lib/format";
 
 /**
@@ -183,44 +184,54 @@ export function Reactions({
 }
 
 /**
- * من تفاعل: صورته ومعها تفاعله — كما كان في Path.
+ * من تفاعل: صورته أسفل المنشور وتفاعله فوقها — كما كان في Path.
  * الرقم وحده لا يقول من، وهذا سؤال الدائرة الصغيرة الأول.
+ * الصورة تُرسم بـ`Avatar` لا بدائرة فارغة: من لا صورة له يظهر بحرف اسمه
+ * بدل قرصٍ بلا معنى لا يُقرأ أنه أحد.
  */
 export function Reactors({
   reactions,
-  size = 26,
+  size = 32,
 }: {
-  reactions: { userId: string; kind: string; emoji: string | null; user: { name: string; avatarMediaId: string | null } }[];
+  reactions: {
+    userId: string;
+    kind: string;
+    emoji: string | null;
+    user: { name: string; avatarMediaId: string | null };
+  }[];
   size?: number;
 }) {
   if (reactions.length === 0) return null;
-  const shown = reactions.slice(0, 5);
+  const shown = reactions.slice(0, 6);
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div data-reactors className="flex items-center gap-2.5 pt-1">
       {shown.map((reaction) => (
-        <span key={reaction.userId} className="relative block" title={reaction.user.name}>
+        <span
+          key={reaction.userId}
+          className="relative block shrink-0"
+          style={{ width: size, height: size }}
+          title={`${reaction.user.name}`}
+        >
+          <Avatar name={reaction.user.name} size={size} mediaId={reaction.user.avatarMediaId} />
           <span
-            className="block rounded-full bg-cover bg-center"
+            className="absolute flex items-center justify-center rounded-full"
             style={{
-              width: size,
-              height: size,
-              backgroundImage: reaction.user.avatarMediaId
-                ? `url(/api/media/${reaction.user.avatarMediaId})`
-                : undefined,
-              backgroundColor: reaction.user.avatarMediaId ? undefined : "var(--color-chip)",
+              top: -size * 0.2,
+              left: -size * 0.2,
+              background: "var(--color-card)",
+              padding: 1.5,
+              boxShadow: "0 1px 5px rgba(14,26,36,.2)",
             }}
-          />
-          <span
-            className="absolute -bottom-1 -left-1 rounded-full"
-            style={{ background: "var(--color-card)", padding: 1 }}
           >
-            <ReactionGlyph kind={reaction.kind} emoji={reaction.emoji} size={size * 0.52} />
+            <ReactionGlyph kind={reaction.kind} emoji={reaction.emoji} size={size * 0.58} />
           </span>
         </span>
       ))}
       {reactions.length > shown.length ? (
-        <span className="mr-1 text-[12px] text-muted">+{ar(reactions.length - shown.length)}</span>
+        <span className="text-[12px] font-semibold text-muted">
+          +{ar(reactions.length - shown.length)}
+        </span>
       ) : null}
     </div>
   );

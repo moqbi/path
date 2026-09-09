@@ -95,9 +95,9 @@ function Footer({ moment, circleSize }: { moment: FeedMoment; circleSize: number
   if (moment.reactions.length === 0) return <div className="flex justify-end">{views}</div>;
 
   return (
-    <div className="flex items-center justify-between gap-2">
+    <div className="flex items-end justify-between gap-2 pt-1">
       <Reactors reactions={moment.reactions} />
-      {views}
+      <span className="pb-0.5">{views}</span>
     </div>
   );
 }
