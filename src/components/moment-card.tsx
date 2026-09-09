@@ -2,10 +2,11 @@ import Link from "next/link";
 import { Avatar } from "@/components/ui";
 import {
   EyeIcon,
+  MoonIcon,
   MusicIcon,
   PinIcon,
+  PlaneIcon,
   PlayIcon,
-  MoonIcon,
   WithIcon,
 } from "@/components/icons";
 import { MomentBar } from "@/components/moment-bar";
@@ -16,12 +17,43 @@ import type { FeedMoment } from "@/lib/feed";
 /** بعد هذا العدد تُفتح اللحظة لقراءة بقية التعليقات، وقبله لا داعي. */
 const INLINE_COMMENTS = 3;
 
-function InlineMoment({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+/**
+ * الأحداث تُكتب سطراً على الورق لا بطاقةً: وصولٌ إلى مدينة، نوم، مكان،
+ * صديق جديد، أغنية. البطاقة تُحفظ لما له متن — صورة أو خاطرة — وهكذا
+ * كان Path: الخطّ الزمني يوميّات، والأحداث أسطرٌ فيها.
+ */
+const EVENTS = new Set(["CITY", "PLACE", "SLEEP", "MUSIC", "FRIEND_ADDED"]);
+
+const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
+  CITY: { bg: "var(--color-night)", ink: "#f7f5ef" },
+  PLACE: { bg: "var(--color-live-soft)", ink: "var(--color-live)" },
+  SLEEP: { bg: "var(--color-night-2)", ink: "#f7f5ef" },
+  MUSIC: { bg: "var(--color-clay)", ink: "var(--color-on-brand)" },
+  FRIEND_ADDED: { bg: "var(--color-gold-soft)", ink: "var(--color-gold-ink)" },
+};
+
+function EventIcon({ kind }: { kind: string }) {
+  const style = EVENT_STYLE[kind] ?? EVENT_STYLE.PLACE;
+  const glyph =
+    kind === "CITY" ? (
+      <PlaneIcon size={16} />
+    ) : kind === "SLEEP" ? (
+      <MoonIcon size={16} />
+    ) : kind === "MUSIC" ? (
+      <MusicIcon size={16} />
+    ) : kind === "FRIEND_ADDED" ? (
+      <WithIcon size={16} />
+    ) : (
+      <PinIcon size={16} />
+    );
+
   return (
-    <div className="flex items-center gap-2.5 pt-1.5">
-      <span className="text-muted">{icon}</span>
-      <p className="text-[13.5px] text-ink-2">{children}</p>
-    </div>
+    <span
+      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+      style={{ background: style.bg, color: style.ink }}
+    >
+      {glyph}
+    </span>
   );
 }
 
@@ -55,14 +87,14 @@ function Spine({
 
 /**
  * التعليقات داخل الخط الزمني.
- * تُعرض ثلاثة، وما زاد يُقرأ بفتح اللحظة — فلا تبتلع بطاقةٌ واحدة الشاشة.
+ * تُعرض ثلاثة، وما زاد يُقرأ بفتح اللحظة — فلا تبتلع لحظةٌ واحدة الشاشة.
  */
 function Comments({ moment }: { moment: FeedMoment }) {
   if (moment.comments.length === 0) return null;
   const hidden = moment._count.comments - moment.comments.length;
 
   return (
-    <div className="mt-2.5 flex flex-col gap-2 border-t border-line pt-2.5">
+    <div className="flex flex-col gap-2">
       {moment.comments.map((comment) => (
         <div key={comment.id} className="flex items-start gap-2">
           <Avatar name={comment.user.name} size={22} mediaId={comment.user.avatarMediaId} />
@@ -84,26 +116,38 @@ function Comments({ moment }: { moment: FeedMoment }) {
   );
 }
 
-function Footer({ moment, circleSize }: { moment: FeedMoment; circleSize: number }) {
-  const views = (
-    <span className="flex shrink-0 items-center gap-1.5 text-[11px] text-faint">
-      <EyeIcon size={14} />
-      {ar(moment._count.views)}/{ar(circleSize)}
-    </span>
-  );
-
-  if (moment.reactions.length === 0) return <div className="flex justify-end">{views}</div>;
+/**
+ * صندوق ما تحت الحدث: من تفاعل وما كُتب.
+ * الحدث نفسه سطرٌ عارٍ، وما يجتمع حوله من ناس يجلس في قالبٍ أبيض تحته —
+ * فيُقرأ الفرق بين ما قاله صاحبه وما ردّ به الناس.
+ */
+function Bubble({ moment, circleSize }: { moment: FeedMoment; circleSize: number }) {
+  const hasComments = moment.comments.length > 0;
+  const hasReactions = moment.reactions.length > 0;
+  if (!hasComments && !hasReactions) return null;
 
   return (
-    <div className="flex items-end justify-between gap-2 pt-1">
-      <Reactors reactions={moment.reactions} />
-      <span className="pb-0.5">{views}</span>
+    <div className="mt-2 rounded-2xl border border-line bg-card px-3 py-2.5">
+      {hasReactions ? <Reactors reactions={moment.reactions} /> : null}
+      {hasReactions && hasComments ? <div className="my-2.5 h-px bg-line" /> : null}
+      <Comments moment={moment} />
+      <p className="mt-2 flex items-center justify-end gap-1.5 text-[10.5px] text-faint">
+        <EyeIcon size={13} />
+        {ar(moment._count.views)}/{ar(circleSize)}
+      </p>
     </div>
   );
 }
 
-/** صف اللحظة: الصورة على الخط الزمني، وإلى جانبها البطاقة. */
-function Row({ moment, viewerId, children }: { moment: FeedMoment; viewerId: string; children: React.ReactNode }) {
+function Row({
+  moment,
+  viewerId,
+  children,
+}: {
+  moment: FeedMoment;
+  viewerId: string;
+  children: React.ReactNode;
+}) {
   return (
     <article className="relative flex items-start gap-2 pb-5">
       <Spine
@@ -119,6 +163,94 @@ function Row({ moment, viewerId, children }: { moment: FeedMoment; viewerId: str
   );
 }
 
+/** عنوان الحدث وسطره الثاني — بلا إطار، على ورق الخط الزمني نفسه. */
+function EventLine({
+  moment,
+  withNames,
+}: {
+  moment: FeedMoment;
+  withNames: string[];
+}) {
+  const { kind } = moment;
+
+  const title =
+    kind === "CITY" ? (
+      <>
+        وصل إلى <span className="font-bold">{moment.text ?? "مدينة"}</span>
+      </>
+    ) : kind === "SLEEP" ? (
+      <span className="font-bold">نام</span>
+    ) : kind === "FRIEND_ADDED" ? (
+      <>
+        أصبح صديق <span className="font-bold">{moment.text ?? "أحدهم"}</span>
+      </>
+    ) : kind === "MUSIC" ? (
+      <>
+        يسمع <span className="font-bold">{moment.musicTitle ?? "أغنية"}</span>
+        {moment.musicArtist ? (
+          <>
+            {" "}
+            لـ<span className="font-bold">{moment.musicArtist}</span>
+          </>
+        ) : null}
+      </>
+    ) : (
+      <>
+        في <span className="font-bold">{moment.placeName ?? "مكان"}</span>
+      </>
+    );
+
+  const subtitle =
+    kind === "MUSIC"
+      ? null
+      : kind === "PLACE"
+        ? [moment.placeCity, moment.text].filter(Boolean).join(" · ") || null
+        : kind === "SLEEP"
+          ? "تصبح على خير"
+          : null;
+
+  return (
+    <div className="flex items-start gap-2.5">
+      <EventIcon kind={kind} />
+      <div className="min-w-0 grow pt-1">
+        <p dir="auto" className="text-[13.5px] leading-snug text-ink">
+          {title}
+        </p>
+        {subtitle ? (
+          <p dir="auto" className="mt-0.5 truncate text-[12px] text-muted">
+            {subtitle}
+          </p>
+        ) : null}
+        {withNames.length > 0 ? (
+          <p className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-muted">
+            <WithIcon size={12} />
+            مع {withNames.join(" و")}
+          </p>
+        ) : null}
+      </div>
+
+      {moment.kind === "MUSIC" && moment.musicThumb ? (
+        <span
+          className="h-11 w-11 shrink-0 rounded-xl bg-cover bg-center"
+          style={{ backgroundImage: `url(${moment.musicThumb})` }}
+        />
+      ) : null}
+      {moment.kind === "MUSIC" && moment.musicUrl ? (
+        <a
+          href={moment.musicUrl}
+          target="_blank"
+          rel="noreferrer noopener"
+          aria-label="استمع"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+          style={{ background: "var(--color-clay-soft)", color: "var(--color-clay-ink)" }}
+        >
+          <PlayIcon size={16} />
+        </a>
+      ) : null}
+    </div>
+  );
+}
+
 export function MomentCard({
   moment,
   viewerId,
@@ -127,140 +259,84 @@ export function MomentCard({
 }: {
   moment: FeedMoment;
   viewerId: string;
-  isPlus: boolean;
   circleSize: number;
+  isPlus: boolean;
 }) {
   const { author, kind } = moment;
   const withNames = moment.tags.map((t) => t.user.name);
+  const mine = moment.reactions.find((r) => r.userId === viewerId) ?? null;
   // الفتح في صفحة مستقلة له معنى واحد: تعليقات لم تسعها البطاقة.
   const opens = moment._count.comments > INLINE_COMMENTS;
-  const mine = moment.reactions.find((r) => r.userId === viewerId) ?? null;
 
-  // «أصبح صديق فلان» سطر خبر: لا تفاعل عليه ولا تعليق.
-  if (kind === "FRIEND_ADDED") {
-    return (
-      <article className="relative flex gap-2 pb-5">
-        <Spine
-          authorId={author.id}
-          viewerId={viewerId}
-          name={author.name}
-          frameSpec={author.frame?.spec}
-          mediaId={author.avatarMediaId}
-          at={moment.createdAt}
-        />
-        <div className="min-w-0 grow">
-          <InlineMoment icon={<WithIcon size={15} />}>
-            أصبح صديق <span className="font-semibold text-ink">{moment.text}</span>
-          </InlineMoment>
-        </div>
-      </article>
-    );
-  }
-
-  // الأغنية: العنوان اللاتيني لا يستقيم داخل سطر عربي، فبطاقتها خاصة.
-  if (kind === "MUSIC") {
-    const body = (
-      <div className="flex items-center gap-3">
-        <div
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-cover bg-center"
-          style={{
-            backgroundImage: moment.musicThumb ? `url(${moment.musicThumb})` : undefined,
-            backgroundColor: moment.musicThumb ? undefined : "var(--color-chip)",
-          }}
-        >
-          {moment.musicThumb ? null : <MusicIcon size={20} className="text-muted" />}
-        </div>
-        <div className="min-w-0 grow">
-          <p className="mb-0.5 text-[11.5px] text-muted">يسمع</p>
-          <p
-            dir="auto"
-            className="truncate text-[13.5px] font-semibold"
-            style={{ color: moment.musicUrl ? "var(--color-clay-ink)" : "var(--color-ink)" }}
-          >
-            {moment.musicTitle ?? "أغنية"}
-          </p>
-          {moment.musicArtist ? (
-            <p dir="auto" className="truncate text-[11.5px] text-muted">
-              {moment.musicArtist}
-            </p>
-          ) : null}
-        </div>
-        {moment.musicUrl ? (
-          <span
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-            style={{ background: "var(--color-clay-soft)", color: "var(--color-clay-ink)" }}
-          >
-            <PlayIcon size={17} />
-          </span>
-        ) : null}
-      </div>
-    );
+  if (EVENTS.has(kind)) {
+    const line = <EventLine moment={moment} withNames={withNames} />;
 
     return (
       <Row moment={moment} viewerId={viewerId}>
-        <div className="rounded-2xl border border-line bg-card p-3">
-          {moment.musicUrl ? (
-            <a href={moment.musicUrl} target="_blank" rel="noreferrer noopener">
-              {body}
-            </a>
-          ) : (
-            body
-          )}
-          <div className="pt-2.5">
-            <Footer moment={moment} circleSize={circleSize} />
-            <Comments moment={moment} />
-            <MomentBar momentId={moment.id} mine={mine} isPlus={isPlus} />
-          </div>
-        </div>
+        <MomentBar
+          momentId={moment.id}
+          mine={mine}
+          isPlus={isPlus}
+          head={
+            opens ? (
+              <Link href={`/m/${moment.id}`} className="block">
+                {line}
+              </Link>
+            ) : (
+              line
+            )
+          }
+          extra={
+            <>
+              {moment.mediaId ? (
+                <div
+                  className="mt-2.5 overflow-hidden rounded-2xl"
+                  style={{
+                    height: 190,
+                    backgroundImage: `url(/api/media/${moment.mediaId})`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                  }}
+                />
+              ) : null}
+              <Bubble moment={moment} circleSize={circleSize} />
+            </>
+          }
+        />
       </Row>
     );
   }
 
-  const head =
-    kind === "SLEEP" ? (
-      <p className="flex items-center gap-2.5 px-4 pt-3 text-[13.5px] text-ink-2">
-        <MoonIcon size={16} className="text-muted" />
-        نام
-      </p>
-    ) : (
-      <>
-        {moment.mediaId ? (
-          <div
-            style={{
-              height: 200,
-              backgroundImage: `url(/api/media/${moment.mediaId})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-            }}
-          />
-        ) : moment.imageSpec ? (
-          <div style={{ height: 132, background: moment.imageSpec }} />
+  // ما له متن — صورة أو خاطرة — يبقى في بطاقته.
+  const head = (
+    <>
+      {moment.mediaId ? (
+        <div
+          style={{
+            height: 200,
+            backgroundImage: `url(/api/media/${moment.mediaId})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        />
+      ) : moment.imageSpec ? (
+        <div style={{ height: 132, background: moment.imageSpec }} />
+      ) : null}
+
+      <div className="px-4 pt-3">
+        {moment.text ? (
+          <p className="mb-2 text-[13.5px] leading-relaxed text-ink">{moment.text}</p>
         ) : null}
 
-        <div className="px-4 pt-3">
-          {kind === "PLACE" ? (
-            <p className="mb-2 flex items-center gap-2 text-[13.5px] text-ink-2">
-              <PinIcon size={15} className="text-live" />
-              <span>
-                في <span className="font-semibold text-ink">{moment.placeName ?? "مكان"}</span>
-                {moment.placeCity ? <span className="text-muted"> · {moment.placeCity}</span> : null}
-              </span>
-            </p>
-          ) : null}
-
-          {moment.text ? (
-            <p className="mb-2 text-[13.5px] leading-relaxed text-ink">{moment.text}</p>
-          ) : null}
-
-          {withNames.length > 0 ? (
-            <p className="flex items-center gap-1.5 text-[12px] text-muted">
-              <WithIcon size={13} />
-              مع {withNames.join(" و")}
-            </p>
-          ) : null}
-        </div>
-      </>
-    );
+        {withNames.length > 0 ? (
+          <p className="flex items-center gap-1.5 text-[12px] text-muted">
+            <WithIcon size={13} />
+            مع {withNames.join(" و")}
+          </p>
+        ) : null}
+      </div>
+    </>
+  );
 
   return (
     <Row moment={moment} viewerId={viewerId}>
@@ -274,8 +350,16 @@ export function MomentCard({
         )}
 
         <div className="px-4 pb-3 pt-2">
-          <Footer moment={moment} circleSize={circleSize} />
-          <Comments moment={moment} />
+          {moment.reactions.length > 0 ? <Reactors reactions={moment.reactions} /> : null}
+          {moment.comments.length > 0 ? (
+            <div className="mt-2.5 border-t border-line pt-2.5">
+              <Comments moment={moment} />
+            </div>
+          ) : null}
+          <p className="mt-2 flex items-center justify-end gap-1.5 text-[10.5px] text-faint">
+            <EyeIcon size={13} />
+            {ar(moment._count.views)}/{ar(circleSize)}
+          </p>
           <MomentBar momentId={moment.id} mine={mine} isPlus={isPlus} />
         </div>
       </div>

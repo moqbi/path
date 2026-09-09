@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { addComment, react } from "@/app/actions";
 import { LockIcon } from "@/components/icons";
 import { CUSTOM, FACES, ReactionGlyph } from "@/components/reactions";
@@ -9,22 +9,43 @@ type Mine = { kind: string; emoji: string | null } | null;
 
 /**
  * شريط اللحظة: زرّ واحد في يسار المنشور. بالضغط عليه تُفتح الوجوه
- * ومساحة التعليق معاً — التفاعل والتعليق فعلان متجاوران، ولا داعي
- * أن يحمل كل منشور حقل كتابة مفتوحاً وهو في الغالب لا يُستعمل.
+ * ومساحة التعليق معاً.
+ *
+ * ويُغلق نفسه بعد اختيار وجه أو إرسال تعليق، وبالضغط خارجه بلا شيء —
+ * فالصندوق المفتوح على كل منشور ضجيج، والعودة إليه ضغطةٌ واحدة.
  */
 export function MomentBar({
   momentId,
   mine,
   isPlus,
+  head,
+  extra,
 }: {
   momentId: string;
   mine: Mine;
   isPlus: boolean;
+  /** سطر الحدث — يجلس الزرّ في طرفه الأيسر بدل أن يطفو تحته. */
+  head?: React.ReactNode;
+  /** ما يلي السطر: الصورة وقالب المتفاعلين. */
+  extra?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [popped, setPopped] = useState(false);
   const [body, setBody] = useState("");
   const [pending, start] = useTransition();
+  const root = useRef<HTMLDivElement>(null);
+
+  // ضغطةٌ خارج الشريط تطويه — ما لم يكن هناك تعليق نصف مكتوب يضيع.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (event: PointerEvent) => {
+      if (root.current?.contains(event.target as Node)) return;
+      if (body.trim().length > 0) return;
+      setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [open, body]);
 
   // البطاقة قد تكون رابطاً، فيجب أن يقف الحدث هنا وإلا فُتحت اللحظة.
   const stop = (event: React.SyntheticEvent) => {
@@ -35,13 +56,17 @@ export function MomentBar({
   function choose(kind: string, emoji?: string) {
     setPopped(true);
     setTimeout(() => setPopped(false), 420);
+    // الوجه فعلٌ كامل بنفسه: يُختار فيُطوى الشريط، ويُفتح ثانيةً لمن أراد
+    // أن يكتب بعده.
+    setOpen(false);
     start(() => void react(momentId, kind, emoji));
   }
 
   return (
-    <div className="mt-2" onClick={stop}>
+    <div ref={root} className={head ? "" : "mt-2"} onClick={stop}>
       {/* في RTL يضع `justify-end` الزرَّ في الطرف الأيسر من المنشور. */}
-      <div className="flex justify-end">
+      <div className={head ? "flex items-start gap-2" : "flex justify-end"}>
+        {head ? <div className="min-w-0 grow">{head}</div> : null}
         <button
           type="button"
           aria-label="تفاعل"
@@ -68,6 +93,8 @@ export function MomentBar({
           </span>
         </button>
       </div>
+
+      {extra}
 
       {open ? (
         <div className="mt-2 flex flex-col gap-2">
@@ -130,6 +157,7 @@ export function MomentBar({
               const data = new FormData();
               data.set("body", text);
               setBody("");
+              setOpen(false);
               start(() => void addComment(momentId, data));
             }}
             className="flex items-center gap-2"

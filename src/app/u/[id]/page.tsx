@@ -2,13 +2,13 @@
 import { notFound, redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { circleIds } from "@/lib/circle";
+import { circleIds, mutualCount } from "@/lib/circle";
 import { momentShape } from "@/lib/feed";
 import { plusTag, tagOf } from "@/lib/tags";
-import { startConversation } from "@/app/actions";
+import { acceptFriend, ignoreFriend, requestFriend, startConversation } from "@/app/actions";
 import { MomentCard } from "@/components/moment-card";
 import { Avatar, coverStyle, Empty, ScreenHeader, TagPill } from "@/components/ui";
-import { MessageIcon, SparkIcon } from "@/components/icons";
+import { CheckIcon, CloseIcon, LockIcon, MessageIcon, SparkIcon } from "@/components/icons";
 import { ar, dayLabel } from "@/lib/format";
 
 const MONTHS = [
@@ -29,7 +29,7 @@ export default async function FriendProfilePage({
   if (id === viewer.id) redirect("/me");
 
   const ids = await circleIds(viewer.id);
-  if (!ids.includes(id)) notFound();
+  const friend = ids.includes(id);
 
   const person = await prisma.user.findUnique({
     where: { id },
@@ -48,6 +48,36 @@ export default async function FriendProfilePage({
     },
   });
   if (!person) notFound();
+
+  // من ليس في الدائرة: تُعرض بطاقته وحدها إن كان يجمعكما صديق مشترك أو
+  // طلبٌ معلّق. لا خطّ زمني ولا محادثة قبل القبول — والغريب تماماً لا
+  // يُعرَض أصلاً، فلا اكتشاف عام في التطبيق.
+  if (!friend) {
+    const [mutual, pending] = await Promise.all([
+      mutualCount(viewer.id, id),
+      prisma.friendship.findFirst({
+        where: {
+          status: "PENDING",
+          OR: [
+            { requesterId: viewer.id, addresseeId: id },
+            { requesterId: id, addresseeId: viewer.id },
+          ],
+        },
+        select: { id: true, requesterId: true },
+      }),
+    ]);
+    if (mutual === 0 && !pending) notFound();
+
+    return (
+      <LockedProfile
+        person={person}
+        mutual={mutual}
+        sentByMe={pending?.requesterId === viewer.id}
+        incoming={pending && pending.requesterId === id ? pending.id : null}
+        auto={await plusTag()}
+      />
+    );
+  }
 
   const [moments, theirCircle, auto] = await Promise.all([
     prisma.moment.findMany({
@@ -143,3 +173,122 @@ export default async function FriendProfilePage({
   );
 }
 
+
+type Person = {
+  id: string;
+  memberNo: number;
+  name: string;
+  city: string | null;
+  isPlus: boolean;
+  avatarMediaId: string | null;
+  coverMediaId: string | null;
+  frame: { spec: string } | null;
+  background: { spec: string } | null;
+  tag: { name: string; bg: string; fg: string } | null;
+};
+
+/**
+ * بطاقة من ليس في دائرتك: اسمه وصورته وعدد الأصدقاء المشتركين، وزر
+ * الإضافة. لا لحظاته ولا محادثته — كلاهما بعد القبول، والخادم يمنعهما
+ * لا الواجهة وحدها.
+ */
+function LockedProfile({
+  person,
+  mutual,
+  sentByMe,
+  incoming,
+  auto,
+}: {
+  person: Person;
+  mutual: number;
+  sentByMe: boolean;
+  incoming: string | null;
+  auto: { name: string; bg: string; fg: string } | null;
+}) {
+  return (
+    <div className="screen">
+      <ScreenHeader title={person.name} back="/circle" />
+
+      <div className="scroll-area">
+        <div
+          className="relative shrink-0"
+          style={{ height: 140, ...coverStyle(person.coverMediaId, person.background?.spec) }}
+        />
+
+        <div className="relative px-5" style={{ marginTop: -34 }}>
+          <Avatar
+            name={person.name}
+            size={78}
+            frameSpec={person.frame?.spec}
+            mediaId={person.avatarMediaId}
+          />
+
+          <h1 className="mb-1 mt-3 flex flex-wrap items-center gap-2 text-[19px] font-bold">
+            {person.name}
+            {person.isPlus ? <SparkIcon size={16} className="text-gold" /> : null}
+            <TagPill tag={tagOf(person, auto)} size={11} />
+          </h1>
+          <p className="mb-5 text-[12.5px] text-muted">
+            عضوية رقم {ar(person.memberNo)}
+            {person.city ? ` · ${person.city}` : ""}
+            {mutual > 0
+              ? ` · ${mutual === 1 ? "صديق مشترك واحد" : `${ar(mutual)} أصدقاء مشتركين`}`
+              : ""}
+          </p>
+
+          {incoming ? (
+            <div className="mb-5 flex gap-2.5">
+              <form action={acceptFriend.bind(null, incoming)} className="grow">
+                <button
+                  type="submit"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl text-[14px] font-bold"
+                  style={{ height: 48, background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+                >
+                  <CheckIcon size={17} />
+                  اقبل الإضافة
+                </button>
+              </form>
+              <form action={ignoreFriend.bind(null, incoming)}>
+                <button
+                  type="submit"
+                  aria-label="تجاهل"
+                  className="flex items-center justify-center rounded-xl border border-line text-muted"
+                  style={{ height: 48, width: 48 }}
+                >
+                  <CloseIcon size={17} />
+                </button>
+              </form>
+            </div>
+          ) : sentByMe ? (
+            <p
+              className="mb-5 flex items-center justify-center rounded-xl border border-line text-[13.5px] font-semibold text-muted"
+              style={{ height: 48 }}
+            >
+              طلبك معلّق عنده
+            </p>
+          ) : (
+            <form action={requestFriend.bind(null, person.id)} className="mb-5">
+              <button
+                type="submit"
+                className="brand-gradient w-full rounded-xl text-[14.5px] font-bold"
+                style={{ height: 50, color: "var(--color-on-brand)" }}
+              >
+                أضف إلى دائرتي
+              </button>
+            </form>
+          )}
+
+          <div className="flex items-start gap-2.5 rounded-2xl border border-line bg-card p-4">
+            <span className="mt-0.5 shrink-0 text-muted">
+              <LockIcon size={16} />
+            </span>
+            <p className="text-[12.5px] leading-relaxed text-muted">
+              لحظاته ومحادثته بعد قبول الإضافة. الدائرة الصغيرة تعني أن ما يُنشر
+              فيها لا يُرى من خارجها.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

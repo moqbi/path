@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { CIRCLE_CAP, circleIds } from "@/lib/circle";
+import { CIRCLE_CAP, circleIds, suggestions } from "@/lib/circle";
 import { plusTag, tagOf } from "@/lib/tags";
 import { acceptFriend, ignoreFriend, requestFriend, startConversation } from "@/app/actions";
 import { Avatar, Empty, TabBar, TagPill } from "@/components/ui";
@@ -20,9 +20,10 @@ export default async function CirclePage() {
   const user = await currentUser();
   if (!user) redirect("/login");
 
-  const [ids, auto, requests] = await Promise.all([
+  const [ids, auto, suggested, requests] = await Promise.all([
     circleIds(user.id),
     plusTag(),
+    suggestions(user.id),
     prisma.friendship.findMany({
       where: { addresseeId: user.id, status: "PENDING" },
       orderBy: { createdAt: "desc" },
@@ -105,25 +106,54 @@ export default async function CirclePage() {
           </p>
         </section>
 
-        {/* دعوة بالبريد — الزر الذي كان في الرأس بلا وظيفة. */}
-        <form action={requestFriend} className="mb-6 flex gap-2">
-          <input
-            name="email"
-            type="email"
-            required
-            dir="ltr"
-            placeholder="بريد صاحبك"
-            aria-label="بريد صاحبك"
-            className="h-11 min-w-0 grow rounded-xl border border-line bg-card px-3.5 text-right text-[13px] text-ink outline-none placeholder:text-faint focus:border-clay"
-          />
-          <button
-            type="submit"
-            className="h-11 shrink-0 rounded-xl px-4 text-[13px] font-bold"
-            style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
-          >
-            أضف
-          </button>
-        </form>
+        {suggested.length > 0 ? (
+          <section className="mb-6">
+            <p className="mb-1 text-[11.5px] font-semibold tracking-wide text-faint">
+              تعرفهم عن طريق أصدقائك
+            </p>
+            <p className="mb-2.5 text-[11px] leading-relaxed text-muted">
+              لا بحث بالاسم ولا بالبريد — من يظهر هنا يجمعك به صديق مشترك.
+            </p>
+            <div className="flex flex-col gap-2">
+              {suggested.map((person) => (
+                <div
+                  key={person.id}
+                  className="flex items-center gap-3 rounded-2xl border border-line bg-card p-3"
+                >
+                  <Link href={`/u/${person.id}`} aria-label={`ملف ${person.name}`} className="shrink-0">
+                    <Avatar
+                      name={person.name}
+                      size={44}
+                      frameSpec={person.frame?.spec}
+                      mediaId={person.avatarMediaId}
+                    />
+                  </Link>
+                  <Link href={`/u/${person.id}`} className="min-w-0 grow">
+                    <p className="flex items-center gap-1.5 truncate text-[14px] font-semibold">
+                      {person.name}
+                      <TagPill tag={tagOf(person, auto)} size={10} />
+                    </p>
+                    <p className="truncate text-[11.5px] text-faint">
+                      {person.mutual === 1
+                        ? "صديق مشترك واحد"
+                        : `${ar(person.mutual)} أصدقاء مشتركين`}
+                      {person.city ? ` · ${person.city}` : ""}
+                    </p>
+                  </Link>
+                  <form action={requestFriend.bind(null, person.id)} className="shrink-0">
+                    <button
+                      type="submit"
+                      className="h-10 rounded-xl px-3.5 text-[12.5px] font-bold"
+                      style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+                    >
+                      أضف
+                    </button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         {requests.length > 0 ? (
           <section className="mb-6">
@@ -178,7 +208,10 @@ export default async function CirclePage() {
         ) : null}
 
         {members.length === 0 ? (
-          <Empty title="دائرتك فاضية" hint="أضف صاحبك ببريده من الحقل فوق." />
+          <Empty
+            title="دائرتك فاضية"
+            hint="الإضافة تكون من أصدقاء أصدقائك — أول صديق يفتح لك الباب."
+          />
         ) : (
           sections.map((section) => (
             <section key={section.letter} className="mb-4">

@@ -10,7 +10,7 @@ import {
   requireUser,
   verifyPassword,
 } from "@/lib/auth";
-import { assertRoomForBoth, circleIds } from "@/lib/circle";
+import { assertRoomForBoth, circleIds, mutualCount } from "@/lib/circle";
 import { reverseGeocode } from "@/lib/places";
 import { openConversation } from "@/lib/dm";
 import { storeDataUrl } from "@/lib/media";
@@ -145,6 +145,7 @@ export async function postPlace(formData: FormData): Promise<void> {
 
   const { lat, lng } = parsed.data;
   const place = await reverseGeocode(lat, lng);
+  const city = place.city ?? user.city;
 
   const moment = await prisma.moment.create({
     data: {
@@ -153,10 +154,19 @@ export async function postPlace(formData: FormData): Promise<void> {
       lat,
       lng,
       placeName: place.name,
-      placeCity: place.city ?? user.city,
+      placeCity: city,
       text: String(formData.get("text") ?? "").trim().slice(0, 200) || null,
     },
   });
+
+  // الانتقال إلى مدينة أخرى حدثٌ في حياة الدائرة، فيُكتب سطراً مستقلاً.
+  // يُشتقّ من التحديد نفسه: لا شاشة له ولا زر، وإلا صار عبئاً على الناشر.
+  if (city && city !== user.city) {
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: user.id }, data: { city } }),
+      prisma.moment.create({ data: { authorId: user.id, kind: "CITY", text: city } }),
+    ]);
+  }
 
   await attachTags(moment.id, user.id, formData.getAll("with").map(String));
   revalidatePath("/");
@@ -522,26 +532,27 @@ export async function ignoreFriend(friendshipId: string): Promise<void> {
   revalidatePath("/circle");
 }
 
-export async function requestFriend(formData: FormData): Promise<void> {
+/**
+ * طلب صداقة يُرسل من المقترحين وحدهم — ومن يجمعك به صديق مشترك.
+ * لا بحث بالبريد ولا اكتشاف عام: من لا يعرفه أحد من دائرتك لا يظهر لك
+ * ولا يصلك منه طلب.
+ */
+export async function requestFriend(targetId: string): Promise<void> {
   const user = await requireUser();
+  if (targetId === user.id) throw new Error("لا يمكنك إضافة نفسك");
 
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  if (!email) throw new Error("اكتب بريد صاحبك");
+  const mutual = await mutualCount(user.id, targetId);
+  if (mutual === 0) throw new Error("ما بينكما صديق مشترك");
 
-  const target = await prisma.user.findUnique({
-    where: { email },
-    select: { id: true },
-  });
-  if (!target || target.id === user.id) throw new Error("لا يوجد حساب بهذا البريد");
-
-  await assertRoomForBoth(user.id, target.id);
+  await assertRoomForBoth(user.id, targetId);
   await prisma.friendship.upsert({
-    where: { requesterId_addresseeId: { requesterId: user.id, addresseeId: target.id } },
-    create: { requesterId: user.id, addresseeId: target.id },
+    where: { requesterId_addresseeId: { requesterId: user.id, addresseeId: targetId } },
+    create: { requesterId: user.id, addresseeId: targetId },
     update: {},
   });
 
   revalidatePath("/circle");
+  revalidatePath(`/u/${targetId}`);
 }
 
 // ───────────────────────────── التفاعل ─────────────────────────────
@@ -620,6 +631,11 @@ async function canSee(userId: string, momentId: string): Promise<boolean> {
 
 export async function startConversation(otherId: string): Promise<void> {
   const user = await requireUser();
+
+  // الخاص للدائرة وحدها: قبل القبول لا محادثة، وإخفاء الزر ليس حماية.
+  const circle = await circleIds(user.id);
+  if (!circle.includes(otherId)) throw new Error("المحادثة بعد قبول الإضافة");
+
   const id = await openConversation(user.id, otherId);
   redirect(`/messages/${id}`);
 }

@@ -175,3 +175,9 @@ export const RefreshIcon = ({ size = 20, className }: IconProps) => (
     <path d="M20 4.4V9h-4.6" />
   </svg>
 );
+
+export const PlaneIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M10.5 19.5 12 21l2-4.6 5.2-1.6a2 2 0 0 0 1.3-2.4l-.3-1-6 1.8-3.2-3.4 4.7-1.4a2 2 0 0 0 1.3-2.5l-.3-1L3.6 8.2a2 2 0 0 0-1.3 2.5l.3 1 3.6-1.1 2.6 4-2.4.7-1.4-1.2-1.3.4 1 3.3 1.3-.4.3-1.8 2.6-.8Z" />
+  </svg>
+);
