@@ -19,8 +19,8 @@ export const REACTION_SRC: Record<string, string> = {
 };
 
 /** الوجوه العامة، ثم النوم — يُعرض لكل اللحظات وهو الأنسب للحظة نوم. */
-const FACES = ["SMILE", "LAUGH", "GASP", "SAD", "LOVE", "SLEEPY"] as const;
-const CUSTOM = ["🫶", "🔥", "🙏", "👏", "🥹", "☕️"];
+export const FACES = ["SMILE", "LAUGH", "GASP", "SAD", "LOVE", "SLEEPY"] as const;
+export const CUSTOM = ["🫶", "🔥", "🙏", "👏", "🥹", "☕️"];
 
 type Mine = { kind: string; emoji: string | null } | null;
 

@@ -72,7 +72,7 @@ export default async function TimelinePage() {
             size={56}
             frameSpec={user.frame?.spec}
             mediaId={user.avatarMediaId}
-            ring="var(--color-paper)"
+            ring="#ffffff"
           />
         }
       >

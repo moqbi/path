@@ -8,8 +8,8 @@ import {
   MoonIcon,
   WithIcon,
 } from "@/components/icons";
-import { InlineComment } from "@/components/interactive";
-import { Reactions, Reactors } from "@/components/reactions";
+import { MomentBar } from "@/components/moment-bar";
+import { Reactors } from "@/components/reactions";
 import { ar, relative, timeOfDay } from "@/lib/format";
 import type { FeedMoment } from "@/lib/feed";
 
@@ -134,9 +134,7 @@ export function MomentCard({
   const withNames = moment.tags.map((t) => t.user.name);
   // الفتح في صفحة مستقلة له معنى واحد: تعليقات لم تسعها البطاقة.
   const opens = moment._count.comments > INLINE_COMMENTS;
-  // زر التفاعل يجلس في أول شريط التعليق — يمين المنشور في اتجاه القراءة.
   const mine = moment.reactions.find((r) => r.userId === viewerId) ?? null;
-  const reaction = <Reactions momentId={moment.id} mine={mine} count={0} isPlus={isPlus} />;
 
   // «أصبح صديق فلان» سطر خبر: لا تفاعل عليه ولا تعليق.
   if (kind === "FRIEND_ADDED") {
@@ -211,7 +209,7 @@ export function MomentCard({
           <div className="pt-2.5">
             <Footer moment={moment} circleSize={circleSize} />
             <Comments moment={moment} />
-            <InlineComment momentId={moment.id} viewerId={viewerId} reaction={reaction} />
+            <MomentBar momentId={moment.id} mine={mine} isPlus={isPlus} />
           </div>
         </div>
       </Row>
@@ -278,7 +276,7 @@ export function MomentCard({
         <div className="px-4 pb-3 pt-2">
           <Footer moment={moment} circleSize={circleSize} />
           <Comments moment={moment} />
-          <InlineComment momentId={moment.id} viewerId={viewerId} reaction={reaction} />
+          <MomentBar momentId={moment.id} mine={mine} isPlus={isPlus} />
         </div>
       </div>
     </Row>
