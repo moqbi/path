@@ -14,7 +14,7 @@ const PERKS = [
   {
     title: "تفاعل بأي إيموجي",
     body: "الخمسة الأساسية تبقى للجميع · لك كل كيبوردك",
-    icon: <ReactionFace kind="SMILE" size={18} color="#ffb75e" />,
+    icon: <ReactionFace kind="SMILE" size={18} color="#f6b93b" />,
   },
   {
     title: "أرشيف بلا نهاية",

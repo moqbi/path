@@ -46,8 +46,8 @@ export default async function CirclePage() {
           <svg width="128" height="128" viewBox="0 0 128 128" style={{ transform: "rotate(-90deg)" }}>
             <defs>
               <linearGradient id="circle-fill" x1="0" y1="128" x2="128" y2="0" gradientUnits="userSpaceOnUse">
-                <stop stopColor="#FFB75E" />
-                <stop offset="1" stopColor="#FF7A7A" />
+                <stop stopColor="#F6B93B" />
+                <stop offset="1" stopColor="#FF7A5A" />
               </linearGradient>
             </defs>
             <circle cx="64" cy="64" r="57" fill="none" stroke="var(--color-line)" strokeWidth="7" />

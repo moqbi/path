@@ -80,7 +80,7 @@ export function ComposeForm({ kind, friends }: { kind: Kind; friends: Friend[] }
             className="mb-4 flex items-center justify-center rounded-2xl border border-line"
             style={{
               height: 150,
-              background: "linear-gradient(160deg,#ffb75e,#ff7a7a 55%,#7a3b52)",
+              background: "linear-gradient(160deg,#f6b93b,#ff7a5a 55%,#8c3f4a)",
             }}
           >
             <span className="rounded-full bg-black/35 px-3.5 py-2 text-[11.5px] text-ink">

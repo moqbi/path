@@ -10,8 +10,8 @@ export function AthrMark({ size = 32 }: { size?: number }) {
     <svg width={size} height={size} viewBox="0 0 48 48" fill="none" aria-hidden="true">
       <defs>
         <linearGradient id="athr-mark" x1="6" y1="42" x2="42" y2="8" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#FFB75E" />
-          <stop offset="1" stopColor="#FF7A7A" />
+          <stop stopColor="#F6B93B" />
+          <stop offset="1" stopColor="#FF7A5A" />
         </linearGradient>
       </defs>
       <path

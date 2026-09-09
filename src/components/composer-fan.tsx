@@ -107,8 +107,8 @@ export function ComposerFan() {
         }}
       />
 
-      <div className="pointer-events-none fixed bottom-[86px] left-5 z-30">
-        <div className="relative h-14 w-14">
+      <div className="shell-fixed z-30">
+        <div className="relative mb-[86px] ml-5 h-14 w-14">
           {items.map((item, index) => {
             const radians = (item.angle * Math.PI) / 180;
             const x = Math.cos(radians) * RADIUS;

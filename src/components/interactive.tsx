@@ -46,7 +46,7 @@ export function ReactionBar({
                 <ReactionFace
                   kind={kind}
                   size={kind === "LOVE" ? 24 : 26}
-                  color={kind === "LOVE" ? "#ff7a7a" : "#94a3b8"}
+                  color={kind === "LOVE" ? "#e2593a" : "#6b7784"}
                 />
               </button>
             );

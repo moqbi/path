@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0f172a",
+  themeColor: "#f7f5ef",
   width: "device-width",
   initialScale: 1,
 };
@@ -21,15 +21,10 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link rel="preconnect" href="https://cdn.fontshare.com" crossOrigin="" />
-        {/* Cairo للعربي من جوجل، وSatoshi للاتيني من Fontshare — كلاهما في دليل الهوية. */}
+        {/* خطوط الهوية: Tajawal للعربي، Montserrat للاتيني. */}
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap"
-        />
-        <link
-          rel="stylesheet"
-          href="https://api.fontshare.com/v2/css?f%5B%5D=satoshi@400,500,700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&family=Montserrat:wght@400;500;600;700&display=swap"
         />
       </head>
       <body>

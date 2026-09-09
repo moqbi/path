@@ -52,11 +52,11 @@ export async function signOut(): Promise<void> {
 
 /** تدرّجات تقوم مقام رفع الصور في النموذج الأولي. */
 const IMAGE_SPECS = [
-  "linear-gradient(160deg,#ffb75e,#ff7a7a 55%,#7a3b52)",
-  "linear-gradient(160deg,#ff9d6e,#8c3f5d 70%,#1e293b)",
-  "linear-gradient(160deg,#f5efe7,#c08a6a 45%,#3b3049)",
-  "linear-gradient(160deg,#6f8bb5,#334467 60%,#0f172a)",
-  "linear-gradient(160deg,#ffcd8a,#b35f6b 55%,#2a2f45)",
+  "linear-gradient(160deg,#f6b93b,#ff7a5a 55%,#8c3f4a)",
+  "linear-gradient(160deg,#ffb27a,#c05a54 70%,#3b2a33)",
+  "linear-gradient(160deg,#f7f5ef,#d09a72 45%,#5a4152)",
+  "linear-gradient(160deg,#8fa7b8,#3f5a6b 60%,#0e1a24)",
+  "linear-gradient(160deg,#ffd27a,#d1706a 55%,#2f3742)",
 ];
 
 const randomImage = () => IMAGE_SPECS[Math.floor(Math.random() * IMAGE_SPECS.length)];

@@ -6,7 +6,7 @@ import { BackIcon, HomeIcon, CircleIcon, StoreIcon, UserIcon } from "@/component
  * خلفية الحرف تُشتق من الاسم لا تُخزَّن، فتبقى ثابتة لكل شخص بلا عمود إضافي
  * ولا رفع صور في النموذج الأولي.
  */
-const TINTS = ["#2f3d55", "#3a3350", "#33455a", "#3d3746", "#2b4250", "#413a4c"];
+const TINTS = ["#f3e3cd", "#e8ddd0", "#f0e0d6", "#e4e0d4", "#f2e7d9", "#e9dcd2"];
 
 function tintFor(name: string): string {
   let sum = 0;

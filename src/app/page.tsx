@@ -69,14 +69,14 @@ export default async function TimelinePage() {
           style={{
             height: 148,
             background:
-              user.background?.spec ?? "linear-gradient(140deg,#4a3a4e,#2b3a55 55%,#1a2338)",
+              user.background?.spec ?? "linear-gradient(140deg,#f2e6d5,#e8cdb4 45%,#c9a68f)",
           }}
         />
-        <div className="relative flex items-end gap-3 px-5" style={{ marginTop: -32 }}>
+        <div className="relative flex items-center gap-3 px-5" style={{ marginTop: -30 }}>
           <div className="flex w-[68px] shrink-0 justify-center">
-            <Avatar name={user.name} size={64} frameSpec={user.frame?.spec} />
+            <Avatar name={user.name} size={64} frameSpec={user.frame?.spec} ring="var(--color-paper)" />
           </div>
-          <div className="grow pb-2">
+          <div className="grow pt-8">
             <p className="text-[14px] font-semibold">{user.name}</p>
             <p className="text-[11.5px] text-muted">{timeOfDay(new Date())}</p>
           </div>
@@ -104,6 +104,7 @@ export default async function TimelinePage() {
                     key={moment.id}
                     moment={moment}
                     viewerId={user.id}
+                    isPlus={user.isPlus}
                     circleSize={size}
                   />
                 ))}

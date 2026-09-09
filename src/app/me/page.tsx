@@ -38,7 +38,7 @@ export default async function ProfilePage() {
         style={{
           height: 152,
           background:
-            user.background?.spec ?? "linear-gradient(140deg,#4a3a4e,#2b3a55 55%,#1a2338)",
+            user.background?.spec ?? "linear-gradient(140deg,#f2e6d5,#e8cdb4 45%,#c9a68f)",
         }}
       >
         {user.background ? (

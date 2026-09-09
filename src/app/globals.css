@@ -8,47 +8,50 @@
  * الشعار، والفعل الأساسي، وحلقة الدائرة. تبديده على كل عنصر يقتله.
  */
 @theme {
-  /* الأسطح */
-  --color-paper: #0f172a; /* عمق — خلفية التطبيق */
-  --color-night: #0b1120; /* أعمق — الشرائح والغطاءات */
-  --color-card: #1e293b; /* ثبات — البطاقات */
-  --color-chip: #27334a; /* حشوة خفيفة */
+  /* الأسطح — كريمي الهوية، لا الأزرق الذي كان */
+  --color-paper: #f7f5ef; /* هدوء — خلفية التطبيق */
+  --color-card: #fffefb; /* البطاقات */
+  --color-chip: #ece8dd; /* حشوة خفيفة */
+  --color-night: #0e1a24; /* عمق — الإقلاع واللوحات الداكنة */
+  --color-night-2: #16242f;
 
   /* النص */
-  --color-ink: #f5efe7; /* هدوء — النص الأساسي */
-  --color-ink-2: #c3ccdb;
-  --color-muted: #94a3b8;
-  --color-faint: #6b7a90;
-  --color-line: #2c3a52;
+  --color-ink: #0e1a24;
+  --color-ink-2: #3d4a55;
+  --color-muted: #6b7784;
+  --color-faint: #9aa4ad;
+  --color-line: #e3dfd3;
 
   /* العلامة */
-  --color-clay: #ffb75e; /* أمل — الكهرماني، اللون الأساسي */
-  --color-clay-soft: #2e2a24;
-  --color-brand-2: #ff7a7a; /* دفء — المرجاني */
-  --color-on-brand: #0f172a; /* النص فوق الكهرماني */
+  --color-clay: #f6b93b; /* الكهرماني */
+  --color-clay-ink: #b8801a; /* الكهرماني للنص على فاتح — الأصلي لا يُقرأ */
+  --color-clay-soft: #fdf3e0;
+  --color-brand-2: #ff7a5a; /* المرجاني */
+  --color-on-brand: #0e1a24;
 
-  /* الحالات الحية: المرجاني للحضور الآن */
-  --color-live: #ff7a7a;
-  --color-live-soft: #33232a;
+  /* الحالات الحية: المرجاني */
+  --color-live: #e2593a;
+  --color-live-soft: #fdece7;
 
   /* أثر+ : الكهرماني */
-  --color-gold: #ffb75e;
-  --color-gold-bright: #ffcd8a;
-  --color-gold-soft: #2e2a24;
-  --color-gold-line: #4a3f2e;
+  --color-gold: #f6b93b;
+  --color-gold-ink: #b8801a;
+  --color-gold-bright: #ffd27a;
+  --color-gold-soft: #fdf3e0;
+  --color-gold-line: #f0dfbb;
 
-  --font-body: "Cairo", "IBM Plex Sans Arabic", "Geeza Pro", system-ui, sans-serif;
-  --font-display: "Cairo", "Geeza Pro", system-ui, sans-serif;
-  --font-latin: "Satoshi", "Cairo", system-ui, sans-serif;
+  --font-body: "Tajawal", "Cairo", "Geeza Pro", system-ui, sans-serif;
+  --font-display: "Tajawal", "Cairo", "Geeza Pro", system-ui, sans-serif;
+  --font-latin: "Montserrat", "Tajawal", system-ui, sans-serif;
 }
 
 /* توقيع العلامة — يُستدعى بالاسم لا يُعاد كتابته. */
 .brand-gradient {
-  background-image: linear-gradient(135deg, #ffb75e 0%, #ff7a7a 100%);
+  background-image: linear-gradient(135deg, #f6b93b 0%, #ff7a5a 100%);
 }
 
 .brand-text {
-  background-image: linear-gradient(135deg, #ffb75e 0%, #ff7a7a 100%);
+  background-image: linear-gradient(135deg, #f6b93b 0%, #ff7a5a 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -60,8 +63,8 @@
 }
 
 html {
-  background: var(--color-night);
-  color-scheme: dark;
+  background: var(--color-paper);
+  color-scheme: light;
 }
 
 body {
@@ -86,11 +89,26 @@ body {
 
 @media (min-width: 640px) {
   body {
-    background: var(--color-night);
+    background: #e6e2d7;
   }
   .shell {
-    box-shadow: 0 0 0 1px var(--color-line), 0 24px 70px rgba(0, 0, 0, 0.55);
+    box-shadow: 0 0 0 1px var(--color-line), 0 24px 70px rgba(14, 26, 36, 0.14);
   }
+}
+
+/*
+ * الأزرار العائمة تُثبَّت داخل هيكل الهاتف لا داخل النافذة: مع `fixed`
+ * وحدها كانت تطير إلى حافة الشاشة اليسرى على المتصفح العريض وتخرج من
+ * الهيكل تماماً، فيبدو زر النشر مفقوداً.
+ */
+.shell-fixed {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 430px;
+  pointer-events: none;
 }
 
 .no-bar {
@@ -109,4 +127,16 @@ body {
   right: 47px;
   width: 1px;
   background: var(--color-line);
+}
+
+/* ظهور الوجوه في شريط التفاعل — نبضة قصيرة من الأسفل. */
+@keyframes athr-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(.55);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }

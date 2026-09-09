@@ -6,9 +6,9 @@ import {
   PinIcon,
   MoonIcon,
   WithIcon,
-  ReactionFace,
 } from "@/components/icons";
 import { InlineComment } from "@/components/interactive";
+import { Reactions } from "@/components/reactions";
 import { ar, relative, timeOfDay } from "@/lib/format";
 import type { FeedMoment } from "@/lib/feed";
 
@@ -60,35 +60,27 @@ function Comments({ moment }: { moment: FeedMoment }) {
   );
 }
 
-function Footer({ moment, circleSize }: { moment: FeedMoment; circleSize: number }) {
+function Footer({
+  moment,
+  viewerId,
+  isPlus,
+  circleSize,
+}: {
+  moment: FeedMoment;
+  viewerId: string;
+  isPlus: boolean;
+  circleSize: number;
+}) {
+  const mine = moment.reactions.find((r) => r.userId === viewerId) ?? null;
+
   return (
     <div className="flex items-center justify-between">
-      <div className="flex items-center gap-1.5">
-        {moment.reactions.slice(0, 3).map((r) => (
-          <span
-            key={r.userId}
-            className="flex h-7 w-7 items-center justify-center rounded-full"
-            style={{
-              background:
-                r.kind === "LOVE" ? "var(--color-live-soft)" : "var(--color-chip)",
-            }}
-          >
-            {r.kind === "CUSTOM" ? (
-              <span className="text-[14px] leading-none">{r.emoji}</span>
-            ) : (
-              <ReactionFace
-                kind={r.kind}
-                size={r.kind === "LOVE" ? 15 : 16}
-                color={r.kind === "LOVE" ? "#ff7a7a" : "#94a3b8"}
-              />
-            )}
-          </span>
-        ))}
-        {moment.reactions.length > 0 ? (
-          <span className="mr-0.5 text-[12px] text-faint">{ar(moment.reactions.length)}</span>
-        ) : null}
-      </div>
-
+      <Reactions
+        momentId={moment.id}
+        mine={mine}
+        count={moment.reactions.length}
+        isPlus={isPlus}
+      />
       <span className="flex items-center gap-1.5 text-[11px] text-faint">
         <EyeIcon size={14} />
         شافها {ar(moment._count.views)} من {ar(circleSize)}
@@ -100,10 +92,12 @@ function Footer({ moment, circleSize }: { moment: FeedMoment; circleSize: number
 export function MomentCard({
   moment,
   viewerId,
+  isPlus,
   circleSize,
 }: {
   moment: FeedMoment;
   viewerId: string;
+  isPlus: boolean;
   circleSize: number;
 }) {
   const { author, kind } = moment;
@@ -163,17 +157,21 @@ export function MomentCard({
             ) : null}
 
             {withNames.length > 0 ? (
-              <p className="mb-2.5 flex items-center gap-1.5 text-[12px] text-muted">
+              <p className="flex items-center gap-1.5 text-[12px] text-muted">
                 <WithIcon size={13} />
                 مع {withNames.join(" و")}
               </p>
             ) : null}
-
-            <Footer moment={moment} circleSize={circleSize} />
           </div>
         </Link>
 
-        <div className="px-4 pb-3">
+        <div className="px-4 pb-3 pt-2">
+          <Footer
+            moment={moment}
+            viewerId={viewerId}
+            isPlus={isPlus}
+            circleSize={circleSize}
+          />
           <Comments moment={moment} />
           <InlineComment momentId={moment.id} viewerId={viewerId} />
         </div>
