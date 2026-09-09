@@ -4,6 +4,7 @@ import {
   EyeIcon,
   MusicIcon,
   PinIcon,
+  PlayIcon,
   MoonIcon,
   WithIcon,
 } from "@/components/icons";
@@ -22,10 +23,20 @@ function InlineMoment({ icon, children }: { icon: React.ReactNode; children: Rea
   );
 }
 
-function Spine({ name, frameSpec, at }: { name: string; frameSpec?: string | null; at: Date }) {
+function Spine({
+  name,
+  frameSpec,
+  mediaId,
+  at,
+}: {
+  name: string;
+  frameSpec?: string | null;
+  mediaId?: string | null;
+  at: Date;
+}) {
   return (
     <div className="flex w-14 shrink-0 flex-col items-center gap-1.5">
-      <Avatar name={name} size={34} frameSpec={frameSpec} />
+      <Avatar name={name} size={34} frameSpec={frameSpec} mediaId={mediaId} />
       <span className="text-[10px] text-faint">{timeOfDay(at)}</span>
     </div>
   );
@@ -41,8 +52,8 @@ function Comments({ moment }: { moment: FeedMoment }) {
     <div className="mt-2.5 flex flex-col gap-2 border-t border-line pt-2.5">
       {moment.comments.map((comment) => (
         <div key={comment.id} className="flex items-start gap-2">
-          <Avatar name={comment.user.name} size={22} />
-          <p className="grow text-[12.5px] leading-relaxed">
+          <Avatar name={comment.user.name} size={22} mediaId={comment.user.avatarMediaId} />
+          <p className="min-w-0 grow break-words text-[12.5px] leading-relaxed">
             <span className="font-semibold">{comment.user.name}</span>{" "}
             <span className="text-ink-2">{comment.body}</span>
           </p>
@@ -103,23 +114,82 @@ export function MomentCard({
   const { author, kind } = moment;
   const withNames = moment.tags.map((t) => t.user.name);
 
-  // اللحظات السطرية: بلا بطاقة، وبلا تعليقات — لا شيء يُعلَّق عليه.
-  if (kind === "SLEEP" || kind === "MUSIC" || kind === "FRIEND_ADDED") {
-    const icon =
-      kind === "SLEEP" ? <MoonIcon size={15} /> : kind === "MUSIC" ? <MusicIcon size={15} /> : <WithIcon size={15} />;
+  // الأغنية بطاقتها الخاصة: الغلاف والعنوان اللاتيني لا يستقيمان داخل سطر عربي.
+  if (kind === "MUSIC") {
+    const body = (
+      <div className="flex items-center gap-3">
+        <div
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-cover bg-center"
+          style={{
+            backgroundImage: moment.musicThumb ? `url(${moment.musicThumb})` : undefined,
+            background: moment.musicThumb ? undefined : "var(--color-chip)",
+          }}
+        >
+          {moment.musicThumb ? null : <MusicIcon size={20} className="text-muted" />}
+        </div>
+        <div className="min-w-0 grow">
+          <p className="mb-0.5 text-[11.5px] text-muted">يسمع</p>
+          <p
+            dir="auto"
+            className="truncate text-[13.5px] font-semibold"
+            style={{ color: moment.musicUrl ? "var(--color-clay-ink)" : "var(--color-ink)" }}
+          >
+            {moment.musicTitle ?? "أغنية"}
+          </p>
+          {moment.musicArtist ? (
+            <p dir="auto" className="truncate text-[11.5px] text-muted">
+              {moment.musicArtist}
+            </p>
+          ) : null}
+        </div>
+        {moment.musicUrl ? (
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+            style={{ background: "var(--color-clay-soft)", color: "var(--color-clay-ink)" }}
+          >
+            <PlayIcon size={17} />
+          </span>
+        ) : null}
+      </div>
+    );
 
     return (
       <article className="relative flex gap-3 pb-5">
-        <Spine name={author.name} frameSpec={author.frame?.spec} at={moment.createdAt} />
-        <div className="grow">
+        <Spine
+          name={author.name}
+          frameSpec={author.frame?.spec}
+          mediaId={author.avatarMediaId}
+          at={moment.createdAt}
+        />
+        <div className="min-w-0 grow rounded-2xl border border-line bg-card p-3">
+          {moment.musicUrl ? (
+            <a href={moment.musicUrl} target="_blank" rel="noreferrer noopener">
+              {body}
+            </a>
+          ) : (
+            body
+          )}
+        </div>
+      </article>
+    );
+  }
+
+  // اللحظات السطرية: بلا بطاقة، وبلا تعليقات — لا شيء يُعلَّق عليه.
+  if (kind === "SLEEP" || kind === "FRIEND_ADDED") {
+    const icon = kind === "SLEEP" ? <MoonIcon size={15} /> : <WithIcon size={15} />;
+
+    return (
+      <article className="relative flex gap-3 pb-5">
+        <Spine
+          name={author.name}
+          frameSpec={author.frame?.spec}
+          mediaId={author.avatarMediaId}
+          at={moment.createdAt}
+        />
+        <div className="min-w-0 grow">
           <InlineMoment icon={icon}>
             {kind === "SLEEP" ? (
               <>نام</>
-            ) : kind === "MUSIC" ? (
-              <>
-                يسمع <span className="font-semibold text-ink">{moment.musicTitle}</span>
-                {moment.musicArtist ? ` — ${moment.musicArtist}` : null}
-              </>
             ) : (
               <>
                 أضاف <span className="font-semibold text-ink">{moment.text}</span> إلى دائرته
@@ -134,10 +204,24 @@ export function MomentCard({
   // مكان، صورة، فكرة: بطاقة قابلة للفتح، وتعليقاتها ظاهرة تحتها.
   return (
     <article className="relative flex gap-3 pb-5">
-      <Spine name={author.name} frameSpec={author.frame?.spec} at={moment.createdAt} />
-      <div className="grow overflow-hidden rounded-2xl border border-line bg-card">
+      <Spine
+          name={author.name}
+          frameSpec={author.frame?.spec}
+          mediaId={author.avatarMediaId}
+          at={moment.createdAt}
+        />
+      <div className="min-w-0 grow overflow-hidden rounded-2xl border border-line bg-card">
         <Link href={`/m/${moment.id}`} className="block">
-          {moment.imageSpec ? (
+          {moment.mediaId ? (
+            <div
+              style={{
+                height: 200,
+                backgroundImage: `url(/api/media/${moment.mediaId})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            />
+          ) : moment.imageSpec ? (
             <div style={{ height: 132, background: moment.imageSpec }} />
           ) : null}
 

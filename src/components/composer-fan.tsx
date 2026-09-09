@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { postNowPlaying, postSleep } from "@/app/actions";
+import { postSleep } from "@/app/actions";
 import {
   CameraIcon,
   MoonIcon,
@@ -27,7 +27,7 @@ type Item = {
   run: () => void;
 };
 
-const RADIUS = 142;
+const RADIUS = 168;
 
 export function ComposerFan() {
   const router = useRouter();
@@ -50,18 +50,18 @@ export function ComposerFan() {
 
   const items: Item[] = [
     {
+      key: "write",
+      label: "اكتب",
+      Icon: TextIcon,
+      angle: 88,
+      run: () => router.push("/compose?kind=THOUGHT"),
+    },
+    {
       key: "photo",
       label: "صورة",
       Icon: CameraIcon,
-      angle: 98,
+      angle: 70,
       run: () => router.push("/compose?kind=PHOTO"),
-    },
-    {
-      key: "thought",
-      label: "فكرة",
-      Icon: TextIcon,
-      angle: 74,
-      run: () => router.push("/compose?kind=THOUGHT"),
     },
     {
       key: "place",
@@ -74,17 +74,14 @@ export function ComposerFan() {
       key: "music",
       label: "أغنية",
       Icon: MusicIcon,
-      angle: 30,
-      run: () => {
-        setBusy("music");
-        start(() => void postNowPlaying());
-      },
+      angle: 34,
+      run: () => router.push("/compose?kind=MUSIC"),
     },
     {
       key: "sleep",
       label: "نوم",
       Icon: MoonIcon,
-      angle: 6,
+      angle: 14,
       run: () => {
         setBusy("sleep");
         start(() => void postSleep());
@@ -100,8 +97,8 @@ export function ComposerFan() {
         aria-hidden={!open}
         className="fixed inset-0 z-20 transition-opacity duration-300"
         style={{
-          background: "rgba(11,17,32,.82)",
-          backdropFilter: "blur(3px)",
+          // بلا backdrop-filter: مكلف على الجوال، ويشوّه الرسم في بعض المحرّكات.
+          background: "rgba(14,26,36,.86)",
           opacity: open ? 1 : 0,
           pointerEvents: open ? "auto" : "none",
         }}
@@ -111,7 +108,7 @@ export function ComposerFan() {
         <div className="relative mb-[86px] ml-5 h-14 w-14">
           {items.map((item, index) => {
             const radians = (item.angle * Math.PI) / 180;
-            const x = Math.cos(radians) * RADIUS;
+            const x = -Math.cos(radians) * RADIUS;
             const y = -Math.sin(radians) * RADIUS;
             const delay = open ? index * 42 : (items.length - 1 - index) * 26;
 

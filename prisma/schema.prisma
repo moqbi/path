@@ -27,6 +27,11 @@ enum MusicProvider {
   ANGHAMI
 }
 
+enum UserRole {
+  USER
+  ADMIN
+}
+
 enum ReactionKind {
   SMILE
   LAUGH
@@ -58,6 +63,7 @@ model User {
   bio          String?
 
   /// اشتراك «أثر+». الصلاحية تُقرأ من plusUntil، وisPlus مشتقة منها عند الكتابة.
+  role      UserRole  @default(USER)
   isPlus    Boolean   @default(false)
   plusUntil DateTime?
 
@@ -70,6 +76,12 @@ model User {
   musicAccessToken   String?
   musicRefreshToken  String?
   musicTokenExpires  DateTime?
+
+  /// صورة العرض والغلاف — ملفات مرفوعة يملكها المستخدم.
+  avatarMediaId String? @unique
+  coverMediaId  String? @unique
+  avatarMedia   Media?  @relation("UserAvatar", fields: [avatarMediaId], references: [id], onDelete: SetNull)
+  coverMedia    Media?  @relation("UserCover", fields: [coverMediaId], references: [id], onDelete: SetNull)
 
   frameId      String?
   backgroundId String?
@@ -85,6 +97,7 @@ model User {
   tags      MomentTag[]
   purchases Purchase[]
 
+  media          Media[]        @relation("MediaOwner")
   conversationsA Conversation[] @relation("ConversationA")
   conversationsB Conversation[] @relation("ConversationB")
   messagesSent   Message[]
@@ -127,9 +140,15 @@ model Moment {
 
   musicTitle  String?
   musicArtist String?
+  /// رابط الأغنية كما أرسله المستخدم، ليُفتح ويُسمع.
+  musicUrl   String?
+  musicThumb String?
 
-  /// بديل رفع الصور في النموذج الأولي: تدرّج CSS يُخزَّن كنص ويُرسم كما لو كان صورة.
+  /// تدرّج CSS يُرسم حين لا توجد صورة مرفوعة.
   imageSpec String?
+
+  mediaId String? @unique
+  media   Media?  @relation("MomentMedia", fields: [mediaId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
 
@@ -265,4 +284,32 @@ model Message {
   sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, createdAt])
+}
+
+// ───────────────────────────── الملفات المرفوعة ─────────────────────────────
+
+/**
+ * الصور تُخزَّن في القاعدة نفسها.
+ *
+ * قرار مرحلة: يجنّبنا خدمة تخزين خارجية ومفاتيحها، ويعمل على أي خادم بلا
+ * إعداد. المتصفح يصغّر الصورة قبل الرفع فيبقى الحجم محدوداً. عند نمو
+ * الاستخدام يُنقل هذا الجدول إلى S3 ويبقى بقية الكود كما هو، لأن كل شيء
+ * يشير إلى معرّف لا إلى مسار.
+ */
+model Media {
+  id        String   @id @default(cuid())
+  ownerId   String
+  mime      String
+  bytes     Bytes
+  width     Int
+  height    Int
+  createdAt DateTime @default(now())
+
+  owner User @relation("MediaOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  avatarOf User?   @relation("UserAvatar")
+  coverOf  User?   @relation("UserCover")
+  moment   Moment? @relation("MomentMedia")
+
+  @@index([ownerId, createdAt])
 }

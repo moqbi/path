@@ -18,26 +18,31 @@ export function Avatar({
   name,
   size = 40,
   frameSpec,
+  mediaId,
   ring = "var(--color-paper)",
 }: {
   name: string;
   size?: number;
   frameSpec?: string | null;
+  mediaId?: string | null;
   ring?: string;
 }) {
   const inner = (
     <div
-      className="flex items-center justify-center rounded-full font-semibold"
+      className="flex items-center justify-center overflow-hidden rounded-full bg-cover bg-center font-semibold"
       style={{
         width: "100%",
         height: "100%",
-        background: tintFor(name),
+        background: mediaId ? undefined : tintFor(name),
+        backgroundImage: mediaId ? `url(/api/media/${mediaId})` : undefined,
+        backgroundSize: mediaId ? "cover" : undefined,
+        backgroundPosition: mediaId ? "center" : undefined,
         color: "var(--color-ink)",
         fontSize: size * 0.36,
         border: frameSpec ? `2px solid ${ring}` : "none",
       }}
     >
-      {initial(name)}
+      {mediaId ? "" : initial(name)}
     </div>
   );
 
@@ -72,13 +77,14 @@ export function ScreenHeader({
   display?: boolean;
 }) {
   return (
-    <header className="flex items-center justify-between border-b border-line px-5 py-3">
+    <header className="chrome flex items-center justify-between px-5 py-3">
       <div className="flex items-center gap-1">
         {back ? (
           <Link
             href={back}
             aria-label="رجوع"
-            className="-mr-2 flex h-11 w-11 items-center justify-center text-muted"
+            className="-mr-2 flex h-11 w-11 items-center justify-center"
+            style={{ color: "var(--color-chrome-muted)" }}
           >
             <BackIcon size={19} />
           </Link>
@@ -104,7 +110,7 @@ const TABS = [
 
 export function TabBar({ active }: { active: string }) {
   return (
-    <nav className="sticky bottom-0 z-10 border-t border-line bg-paper">
+    <nav className="chrome sticky bottom-0 z-10">
       <div className="flex items-stretch justify-around px-2 pb-5 pt-1.5">
         {TABS.map(({ href, label, Icon }) => {
           const on = href === active;
@@ -114,7 +120,7 @@ export function TabBar({ active }: { active: string }) {
               href={href}
               aria-current={on ? "page" : undefined}
               className="flex min-h-11 flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1.5"
-              style={{ color: on ? "var(--color-clay)" : "var(--color-faint)" }}
+              style={{ color: on ? "var(--color-clay)" : "var(--color-chrome-muted)" }}
             >
               <Icon size={21} />
               <span className="text-[10.5px] font-medium">{label}</span>

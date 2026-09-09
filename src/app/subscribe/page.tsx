@@ -2,19 +2,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { cancelPlus, subscribe } from "@/app/actions";
-import {
-  BookIcon,
-  CloseIcon,
-  ReactionFace,
-  SparkIcon,
-  StoreIcon,
-} from "@/components/icons";
+import { BookIcon, CloseIcon, SparkIcon, StoreIcon } from "@/components/icons";
 
 const PERKS = [
   {
     title: "تفاعل بأي إيموجي",
     body: "الخمسة الأساسية تبقى للجميع · لك كل كيبوردك",
-    icon: <ReactionFace kind="SMILE" size={18} color="#f6b93b" />,
+    icon: <span className="text-[17px] leading-none">😊</span>,
   },
   {
     title: "أرشيف بلا نهاية",

@@ -8,41 +8,52 @@
  * الشعار، والفعل الأساسي، وحلقة الدائرة. تبديده على كل عنصر يقتله.
  */
 @theme {
-  /* الأسطح — كريمي الهوية، لا الأزرق الذي كان */
-  --color-paper: #f7f5ef; /* هدوء — خلفية التطبيق */
-  --color-card: #fffefb; /* البطاقات */
-  --color-chip: #ece8dd; /* حشوة خفيفة */
-  --color-night: #0e1a24; /* عمق — الإقلاع واللوحات الداكنة */
+  /*
+   * الأرضية أغمق من البطاقات عمداً: حين تتساوى الاثنتان يذوب المنشور في
+   * الخلفية ولا تُقرأ حدوده. الفرق هنا ~٥٪ إضاءة، يكفي للتمييز ولا يُتعب.
+   */
+  --color-paper: #eae5d9; /* أرضية المخطط الزمني */
+  --color-card: #fdfcf8; /* المنشورات */
+  --color-chip: #ded8c9;
+
+  /* الأشرطة العلوية والسفلية تبقى داكنة — لم تكن جزءاً من تغيير الأرضية. */
+  --color-chrome: #0e1a24;
+  --color-chrome-2: #17242f;
+  --color-chrome-ink: #f7f5ef;
+  --color-chrome-muted: #8c9aa5;
+  --color-chrome-line: #223140;
+
+  --color-night: #0e1a24;
   --color-night-2: #16242f;
 
-  /* النص */
-  --color-ink: #0e1a24;
+  --color-ink: #14212b;
   --color-ink-2: #3d4a55;
-  --color-muted: #6b7784;
-  --color-faint: #9aa4ad;
-  --color-line: #e3dfd3;
+  --color-muted: #667380;
+  --color-faint: #8b96a1;
+  --color-line: #d8d2c2;
 
-  /* العلامة */
-  --color-clay: #f6b93b; /* الكهرماني */
-  --color-clay-ink: #b8801a; /* الكهرماني للنص على فاتح — الأصلي لا يُقرأ */
-  --color-clay-soft: #fdf3e0;
-  --color-brand-2: #ff7a5a; /* المرجاني */
+  --color-clay: #f6b93b;
+  --color-clay-ink: #a8730f;
+  --color-clay-soft: #faedd6;
+  --color-brand-2: #ff7a5a;
   --color-on-brand: #0e1a24;
 
-  /* الحالات الحية: المرجاني */
-  --color-live: #e2593a;
-  --color-live-soft: #fdece7;
+  --color-live: #d4502f;
+  --color-live-soft: #fae2da;
 
-  /* أثر+ : الكهرماني */
   --color-gold: #f6b93b;
-  --color-gold-ink: #b8801a;
+  --color-gold-ink: #a8730f;
   --color-gold-bright: #ffd27a;
-  --color-gold-soft: #fdf3e0;
-  --color-gold-line: #f0dfbb;
+  --color-gold-soft: #faedd6;
+  --color-gold-line: #ecdcb6;
 
-  --font-body: "Tajawal", "Cairo", "Geeza Pro", system-ui, sans-serif;
-  --font-display: "Tajawal", "Cairo", "Geeza Pro", system-ui, sans-serif;
-  --font-latin: "Montserrat", "Tajawal", system-ui, sans-serif;
+  /*
+   * IBM Plex Sans Arabic للمتن: أوضح من Tajawal في الأحجام الصغيرة،
+   * وارتفاع سطره أريح للقراءة الطويلة. Tajawal يبقى للعناوين والعلامة.
+   */
+  --font-body: "IBM Plex Sans Arabic", "Tajawal", "Geeza Pro", system-ui, sans-serif;
+  --font-display: "Tajawal", "IBM Plex Sans Arabic", "Geeza Pro", system-ui, sans-serif;
+  --font-latin: "Montserrat", "IBM Plex Sans Arabic", system-ui, sans-serif;
 }
 
 /* توقيع العلامة — يُستدعى بالاسم لا يُعاد كتابته. */
@@ -71,7 +82,29 @@ body {
   background: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.75;
+  letter-spacing: 0;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* العربية تحتاج ارتفاع سطر أكبر من اللاتينية عند نفس الحجم. */
+p,
+li {
+  line-height: 1.85;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  line-height: 1.5;
+}
+
+.chrome {
+  background: var(--color-chrome);
+  color: var(--color-chrome-ink);
 }
 
 /*
@@ -79,6 +112,11 @@ body {
  * بدل تمديد تخطيط الهاتف على الشاشات الكبيرة.
  */
 .shell {
+  /*
+   * حارس أخير: عنصر واحد يتجاوز العرض كان يوسّع الصفحة أفقياً، وفي RTL
+   * ينزلق العرض إلى الحافة اليمنى فيبدو التطبيق كله منزاحاً.
+   */
+  overflow-x: hidden;
   width: 100%;
   max-width: 430px;
   margin-inline: auto;

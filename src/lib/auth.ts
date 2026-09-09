@@ -90,6 +90,9 @@ export type SessionUser = {
   isPlus: boolean;
   storeCredit: number;
   createdAt: Date;
+  role: "USER" | "ADMIN";
+  avatarMediaId: string | null;
+  coverMediaId: string | null;
   frame: { spec: string } | null;
   background: { spec: string } | null;
 };
@@ -110,6 +113,9 @@ export async function currentUser(): Promise<SessionUser | null> {
       plusUntil: true,
       storeCredit: true,
       createdAt: true,
+      role: true,
+      avatarMediaId: true,
+      coverMediaId: true,
       frame: { select: { spec: true } },
       background: { select: { spec: true } },
     },
@@ -128,6 +134,9 @@ export async function currentUser(): Promise<SessionUser | null> {
     isPlus: active,
     storeCredit: user.storeCredit,
     createdAt: user.createdAt,
+    role: user.role,
+    avatarMediaId: user.avatarMediaId,
+    coverMediaId: user.coverMediaId,
     frame: user.frame,
     background: user.background,
   };

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { circleIds } from "@/lib/circle";
 import { ComposeForm } from "./form";
 
-const KINDS = ["PHOTO", "THOUGHT", "PLACE"] as const;
+const KINDS = ["PHOTO", "THOUGHT", "PLACE", "MUSIC"] as const;
 type Kind = (typeof KINDS)[number];
 
 export default async function ComposePage({
@@ -16,7 +16,7 @@ export default async function ComposePage({
   if (!user) redirect("/login");
 
   const { kind } = await searchParams;
-  // النوم والأغنية يُنشران من قائمة الزائد مباشرة بلا شاشة.
+  // النوم وحده يُنشر من قائمة الزائد مباشرة بلا شاشة.
   if (!KINDS.includes(kind as Kind)) redirect("/");
 
   const ids = await circleIds(user.id);

@@ -150,6 +150,12 @@ export const HomeIcon = ({ size = 20, className }: IconProps) => (
   </svg>
 );
 
+export const PlayIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className} fill="currentColor" stroke="none">
+    <path d="M8 5.4c0-.8.9-1.3 1.6-.9l8.4 5.6c.6.4.6 1.4 0 1.8l-8.4 5.6c-.7.4-1.6-.1-1.6-.9V5.4Z" />
+  </svg>
+);
+
 export const MessageIcon = ({ size = 20, className }: IconProps) => (
   <svg {...base(size)} className={className}>
     <path d="M20 15.5a2.5 2.5 0 0 1-2.5 2.5H8l-4 3V6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5Z" />
@@ -162,57 +168,3 @@ export const UserIcon = ({ size = 20, className }: IconProps) => (
     <circle cx="12" cy="7.8" r="3.6" />
   </svg>
 );
-
-/** الوجوه الخمسة الأساسية — متاحة للجميع دائماً. */
-export const ReactionFace = ({
-  kind,
-  size = 26,
-  color = "currentColor",
-}: {
-  kind: "SMILE" | "LAUGH" | "GASP" | "SAD" | "LOVE";
-  size?: number;
-  color?: string;
-}) => {
-  if (kind === "LOVE") {
-    return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
-        <path d="M12 20.2s-7.2-4.7-7.2-9.6a4.1 4.1 0 0 1 7.2-2.7 4.1 4.1 0 0 1 7.2 2.7c0 4.9-7.2 9.6-7.2 9.6Z" />
-      </svg>
-    );
-  }
-
-  const mouth = {
-    SMILE: <path d="M8.6 14.4c1.8 1.6 5 1.6 6.8 0" />,
-    LAUGH: <path d="M8 13.2c1 2.6 7 2.6 8 0Z" fill={color} stroke="none" />,
-    GASP: <ellipse cx="12" cy="14.6" rx="2.2" ry="2.6" />,
-    SAD: <path d="M8.6 15.4c1.8-1.6 5-1.6 6.8 0" />,
-  }[kind];
-
-  const eyeY = kind === "GASP" ? 9.8 : 10;
-
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke={color}
-      strokeWidth={1.6}
-      strokeLinecap="round"
-    >
-      <circle cx="12" cy="12" r="8.6" />
-      {mouth}
-      {kind === "LAUGH" ? (
-        <>
-          <path d="M8.2 9.6c.7-.8 1.7-.8 2.4 0" />
-          <path d="M13.4 9.6c.7-.8 1.7-.8 2.4 0" />
-        </>
-      ) : (
-        <>
-          <circle cx="9.3" cy={eyeY} r="0.95" fill={color} stroke="none" />
-          <circle cx="14.7" cy={eyeY} r="0.95" fill={color} stroke="none" />
-        </>
-      )}
-    </svg>
-  );
-};

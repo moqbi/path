@@ -4,7 +4,8 @@ import { circleIds } from "@/lib/circle";
 import { momentById } from "@/lib/feed";
 import { addComment } from "@/app/actions";
 import { Avatar, ScreenHeader } from "@/components/ui";
-import { ReactionBar, SeenTracker } from "@/components/interactive";
+import { SeenTracker } from "@/components/interactive";
+import { Reactions } from "@/components/reactions";
 import { EyeIcon } from "@/components/icons";
 import { ar, relative, timeOfDay } from "@/lib/format";
 
@@ -71,7 +72,12 @@ export default async function MomentPage({
         ) : null}
 
         <div className="mb-3.5">
-          <ReactionBar momentId={moment.id} mine={mine} isPlus={user.isPlus} />
+          <Reactions
+            momentId={moment.id}
+            mine={mine}
+            count={moment.reactions.length}
+            isPlus={user.isPlus}
+          />
         </div>
 
         <section className="mb-3.5 rounded-2xl border border-line bg-card px-4 py-3.5">

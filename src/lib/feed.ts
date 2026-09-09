@@ -10,12 +10,20 @@ const momentShape = {
   placeCity: true,
   musicTitle: true,
   musicArtist: true,
+  musicUrl: true,
+  musicThumb: true,
   imageSpec: true,
+  mediaId: true,
   lat: true,
   lng: true,
   createdAt: true,
   author: {
-    select: { id: true, name: true, frame: { select: { spec: true } } },
+    select: {
+      id: true,
+      name: true,
+      avatarMediaId: true,
+      frame: { select: { spec: true } },
+    },
   },
   tags: { select: { user: { select: { id: true, name: true } } } },
   reactions: { select: { userId: true, kind: true, emoji: true } },
@@ -25,7 +33,7 @@ const momentShape = {
       id: true,
       body: true,
       createdAt: true,
-      user: { select: { id: true, name: true } },
+      user: { select: { id: true, name: true, avatarMediaId: true } },
     },
     orderBy: { createdAt: "asc" },
     take: 3,
@@ -68,7 +76,14 @@ export async function momentById(id: string) {
 export async function archive(userId: string) {
   return prisma.moment.findMany({
     where: { authorId: userId },
-    select: { id: true, kind: true, imageSpec: true, createdAt: true, placeName: true },
+    select: {
+      id: true,
+      kind: true,
+      imageSpec: true,
+      mediaId: true,
+      createdAt: true,
+      placeName: true,
+    },
     orderBy: { createdAt: "desc" },
   });
 }

@@ -2,21 +2,31 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { react } from "@/app/actions";
-import { LockIcon, ReactionFace } from "@/components/icons";
+import { LockIcon } from "@/components/icons";
 import { ar } from "@/lib/format";
 
+/**
+ * التفاعلات الخمسة الأساسية — إيموجي حقيقية لا رسوم.
+ * الرسم اليدوي كان يبدو غريباً بجانب إيموجي النظام في التعليقات؛ والإيموجي
+ * الحقيقية تُعرض بخط النظام فتتطابق مع ما يعرفه المستخدم على جهازه.
+ */
+export const FACE_EMOJI: Record<string, string> = {
+  SMILE: "😊",
+  LAUGH: "😂",
+  GASP: "😮",
+  SAD: "😢",
+  LOVE: "❤️",
+};
+
 const FACES = ["SMILE", "LAUGH", "GASP", "SAD", "LOVE"] as const;
-const CUSTOM = ["🫶", "🔥", "😭", "🙏", "☕️", "🌙", "👏", "🥹"];
+const CUSTOM = ["🫶", "🔥", "🙏", "👏", "🥹", "☕️"];
 
 type Mine = { kind: string; emoji: string | null } | null;
 
-/**
- * شريط التفاعل داخل بطاقة الخط الزمني.
- *
- * التفاعل لا يفتح اللحظة: البطاقة رابط، فيجب أن يقف الحدث هنا قبل أن
- * يصعد إليه، وإلا انتقلت الصفحة عند كل ضغطة. والوجوه تظهر متتابعة عند
- * الفتح، والمختار ينبض نبضة واحدة عند الاختيار.
- */
+export function reactionGlyph(kind: string, emoji: string | null): string {
+  return kind === "CUSTOM" ? (emoji ?? "🙂") : (FACE_EMOJI[kind] ?? "🙂");
+}
+
 export function Reactions({
   momentId,
   mine,
@@ -29,11 +39,10 @@ export function Reactions({
   isPlus: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [popped, setPopped] = useState<string | null>(null);
+  const [popped, setPopped] = useState(false);
   const [pending, start] = useTransition();
   const root = useRef<HTMLDivElement>(null);
 
-  // اللمس خارج الشريط يغلقه، فلا يبقى مفتوحاً فوق بقية اللحظات.
   useEffect(() => {
     if (!open) return;
     const onDown = (event: PointerEvent) => {
@@ -44,12 +53,13 @@ export function Reactions({
   }, [open]);
 
   function choose(kind: string, emoji?: string) {
-    setPopped(emoji ?? kind);
-    setTimeout(() => setPopped(null), 420);
+    setPopped(true);
+    setTimeout(() => setPopped(false), 420);
     setOpen(false);
     start(() => void react(momentId, kind, emoji));
   }
 
+  // البطاقة رابط، فيجب أن يقف الحدث هنا وإلا فتحت اللحظة مع كل ضغطة.
   const stop = (event: React.SyntheticEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -66,34 +76,35 @@ export function Reactions({
           stop(e);
           setOpen((v) => !v);
         }}
-        className="flex items-center gap-1.5 rounded-full px-2 py-1 disabled:opacity-60"
-        style={{ background: mine ? "var(--color-chip)" : "transparent" }}
+        className="flex h-9 items-center gap-1.5 rounded-full border px-2.5 disabled:opacity-60"
+        style={{
+          background: mine ? "var(--color-clay-soft)" : "transparent",
+          borderColor: mine ? "var(--color-clay)" : "var(--color-line)",
+        }}
       >
         <span
-          className="flex h-7 w-7 items-center justify-center rounded-full"
+          className="text-[17px] leading-none"
           style={{
-            background: mine ? "var(--color-card)" : "var(--color-chip)",
-            transform: popped ? "scale(1.35)" : "scale(1)",
-            transition: "transform 380ms cubic-bezier(.18,1.5,.4,1)",
+            transform: popped ? "scale(1.4)" : "scale(1)",
+            transition: "transform 400ms cubic-bezier(.18,1.5,.4,1)",
+            filter: mine ? "none" : "grayscale(1) opacity(.55)",
           }}
         >
-          {mine?.kind === "CUSTOM" ? (
-            <span className="text-[15px] leading-none">{mine.emoji}</span>
-          ) : (
-            <ReactionFace
-              kind={(mine?.kind as (typeof FACES)[number]) ?? "SMILE"}
-              size={mine?.kind === "LOVE" ? 15 : 17}
-              color={mine ? (mine.kind === "LOVE" ? "#e2593a" : "#b8801a") : "#6b7784"}
-            />
-          )}
+          {mine ? reactionGlyph(mine.kind, mine.emoji) : "😊"}
         </span>
-        {count > 0 ? <span className="text-[12px] text-muted">{ar(count)}</span> : null}
+        {count > 0 ? (
+          <span className="text-[12.5px] font-semibold text-ink-2">{ar(count)}</span>
+        ) : null}
       </button>
 
       {open ? (
         <div
-          className="absolute bottom-full z-20 mb-2 rounded-full border border-line px-1.5 py-1 shadow-lg"
-          style={{ background: "var(--color-card)", right: 0, boxShadow: "0 8px 26px rgba(14,26,36,.16)" }}
+          className="absolute bottom-full z-20 mb-2 rounded-2xl border border-line p-1.5"
+          style={{
+            background: "var(--color-card)",
+            right: 0,
+            boxShadow: "0 10px 30px rgba(14,26,36,.18)",
+          }}
         >
           <div className="flex items-center gap-0.5">
             {FACES.map((kind, index) => (
@@ -105,17 +116,13 @@ export function Reactions({
                   stop(e);
                   choose(kind);
                 }}
-                className="flex h-11 w-9 items-center justify-center rounded-full"
+                className="flex h-11 w-10 items-center justify-center rounded-xl text-[24px] leading-none hover:bg-chip"
                 style={{
-                  animation: `athr-pop 320ms cubic-bezier(.18,1.4,.4,1) both`,
-                  animationDelay: `${index * 38}ms`,
+                  animation: "athr-pop 320ms cubic-bezier(.18,1.4,.4,1) both",
+                  animationDelay: `${index * 36}ms`,
                 }}
               >
-                <ReactionFace
-                  kind={kind}
-                  size={kind === "LOVE" ? 21 : 23}
-                  color={kind === "LOVE" ? "#e2593a" : "#6b7784"}
-                />
+                {FACE_EMOJI[kind]}
               </button>
             ))}
 
@@ -130,10 +137,10 @@ export function Reactions({
                     stop(e);
                     choose("CUSTOM", emoji);
                   }}
-                  className="flex h-11 w-9 items-center justify-center rounded-full text-[19px] leading-none"
+                  className="flex h-11 w-10 items-center justify-center rounded-xl text-[22px] leading-none hover:bg-chip"
                   style={{
-                    animation: `athr-pop 320ms cubic-bezier(.18,1.4,.4,1) both`,
-                    animationDelay: `${(FACES.length + index) * 38}ms`,
+                    animation: "athr-pop 320ms cubic-bezier(.18,1.4,.4,1) both",
+                    animationDelay: `${(FACES.length + index) * 36}ms`,
                   }}
                 >
                   {emoji}
@@ -144,10 +151,10 @@ export function Reactions({
                 href="/subscribe"
                 aria-label="الإيموجي الحر لمشتركي أثر+"
                 onClick={(e) => e.stopPropagation()}
-                className="flex h-11 w-9 items-center justify-center rounded-full"
+                className="flex h-11 w-10 items-center justify-center rounded-xl"
                 style={{ color: "var(--color-gold-ink)" }}
               >
-                <LockIcon size={15} />
+                <LockIcon size={16} />
               </a>
             )}
           </div>

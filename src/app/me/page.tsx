@@ -5,7 +5,8 @@ import { prisma } from "@/lib/db";
 import { circleIds } from "@/lib/circle";
 import { archive } from "@/lib/feed";
 import { signOut } from "@/app/actions";
-import { Avatar, TabBar } from "@/components/ui";
+import { ProfileImages } from "./images";
+import { TabBar } from "@/components/ui";
 import { BookIcon, SparkIcon } from "@/components/icons";
 import { ar } from "@/lib/format";
 
@@ -37,8 +38,13 @@ export default async function ProfilePage() {
         className="relative shrink-0"
         style={{
           height: 152,
-          background:
-            user.background?.spec ?? "linear-gradient(140deg,#f2e6d5,#e8cdb4 45%,#c9a68f)",
+          backgroundImage: user.coverMediaId ? `url(/api/media/${user.coverMediaId})` : undefined,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          background: user.coverMediaId
+            ? undefined
+            : (user.background?.spec ??
+              "linear-gradient(140deg,#f2e6d5,#e8cdb4 45%,#c9a68f)"),
         }}
       >
         {user.background ? (
@@ -54,7 +60,12 @@ export default async function ProfilePage() {
 
       <main className="relative grow px-5" style={{ marginTop: -46 }}>
         <div className="mb-4 flex items-end justify-between">
-          <Avatar name={user.name} size={92} frameSpec={user.frame?.spec} />
+          <ProfileImages
+            name={user.name}
+            frameSpec={user.frame?.spec ?? null}
+            avatarMediaId={user.avatarMediaId}
+            hasCover={Boolean(user.coverMediaId)}
+          />
           <form action={signOut} className="pb-1.5">
             <button
               type="submit"
@@ -139,6 +150,16 @@ export default async function ProfilePage() {
             </p>
           </div>
         </div>
+
+        {user.role === "ADMIN" ? (
+          <Link
+            href="/admin"
+            className="mb-3 flex items-center justify-center gap-2 rounded-xl border border-line bg-card text-[14px] font-semibold text-ink-2"
+            style={{ height: 48 }}
+          >
+            لوحة التحكم
+          </Link>
+        ) : null}
 
         {!user.isPlus ? (
           <Link

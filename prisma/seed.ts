@@ -98,6 +98,7 @@ async function main() {
       passwordHash,
       name: "محمد",
       city: "الرياض",
+      role: "ADMIN",
       storeCredit: 5000,
       createdAt: new Date(Date.now() - 190 * 86_400_000),
     },
@@ -272,7 +273,7 @@ async function main() {
   });
 
   console.log("تمت التهيئة:");
-  console.log("  mohammed@athar.test / athar1234  (دائرته ٣، وعنده محادثة مع نورة)");
+  console.log("  mohammed@athar.test / athar1234  (مشرف، وعنده محادثة مع نورة)");
   console.log("  noura@athar.test    / athar1234  (مشتركة في أثر+، تلبس إطار كهرمان)");
   console.log("  naif@athar.test     / athar1234  (نشر مكاناً بإحداثيات)");
   console.log("  sultan@athar.test   / athar1234");

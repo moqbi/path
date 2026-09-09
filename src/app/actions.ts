@@ -13,6 +13,8 @@ import {
 import { assertRoomForBoth, circleIds } from "@/lib/circle";
 import { reverseGeocode } from "@/lib/places";
 import { openConversation } from "@/lib/dm";
+import { storeDataUrl } from "@/lib/media";
+import { isSupportedMusicUrl, resolveTrack } from "@/lib/music-link";
 import type { MomentKind, ReactionKind } from "@/generated/prisma/client";
 
 // ───────────────────────────── الدخول والخروج ─────────────────────────────
@@ -87,12 +89,26 @@ export async function postSimple(formData: FormData): Promise<void> {
   const text = String(formData.get("text") ?? "").trim().slice(0, 400);
   if (!text && kind === "THOUGHT") throw new Error("اكتب شيئاً");
 
+  // الصورة المرفوعة تسبق التدرّج؛ التدرّج بديل حين لا توجد صورة.
+  let mediaId: string | null = null;
+  const picture = String(formData.get("image") ?? "");
+  if (kind === "PHOTO" && picture.startsWith("data:")) {
+    const stored = await storeDataUrl(
+      user.id,
+      picture,
+      Number(formData.get("imageWidth") ?? 0),
+      Number(formData.get("imageHeight") ?? 0),
+    );
+    mediaId = stored.id;
+  }
+
   const moment = await prisma.moment.create({
     data: {
       authorId: user.id,
       kind: kind as MomentKind,
       text: text || null,
-      imageSpec: kind === "PHOTO" ? randomImage() : null,
+      mediaId,
+      imageSpec: kind === "PHOTO" && !mediaId ? randomImage() : null,
     },
   });
 
@@ -213,6 +229,29 @@ async function currentTrack(
   }
 }
 
+/** نشر أغنية برابطها: يُقرأ عنوانها تلقائياً، ويبقى الرابط ليُفتح ويُسمع. */
+export async function postMusicLink(formData: FormData): Promise<void> {
+  const user = await requireUser();
+
+  const url = String(formData.get("url") ?? "").trim();
+  if (!isSupportedMusicUrl(url)) throw new Error("الرابط غير صالح");
+
+  const track = await resolveTrack(url);
+  await prisma.moment.create({
+    data: {
+      authorId: user.id,
+      kind: "MUSIC",
+      musicUrl: url,
+      musicTitle: track.title ?? (String(formData.get("title") ?? "").trim() || null),
+      musicArtist: track.artist,
+      musicThumb: track.thumb,
+    },
+  });
+
+  revalidatePath("/");
+  redirect("/");
+}
+
 export async function disconnectMusic(): Promise<void> {
   const user = await requireUser();
   await prisma.user.update({
@@ -226,6 +265,105 @@ export async function disconnectMusic(): Promise<void> {
     },
   });
   revalidatePath("/music");
+}
+
+// ───────────────────────────── الصورة والغلاف ─────────────────────────────
+
+export async function setAvatar(dataUrl: string, width: number, height: number): Promise<void> {
+  const user = await requireUser();
+  const media = await storeDataUrl(user.id, dataUrl, width, height);
+  await prisma.user.update({ where: { id: user.id }, data: { avatarMediaId: media.id } });
+  revalidatePath("/me");
+  revalidatePath("/");
+}
+
+export async function setCover(dataUrl: string, width: number, height: number): Promise<void> {
+  const user = await requireUser();
+  const media = await storeDataUrl(user.id, dataUrl, width, height);
+  await prisma.user.update({ where: { id: user.id }, data: { coverMediaId: media.id } });
+  revalidatePath("/me");
+  revalidatePath("/");
+}
+
+export async function clearCover(): Promise<void> {
+  const user = await requireUser();
+  await prisma.user.update({ where: { id: user.id }, data: { coverMediaId: null } });
+  revalidatePath("/me");
+  revalidatePath("/");
+}
+
+// ───────────────────────────── لوحة المشرف ─────────────────────────────
+
+/** كل إجراء مشرف يتحقق من الدور بنفسه — إخفاء الرابط ليس حماية. */
+async function requireAdmin() {
+  const user = await requireUser();
+  const row = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { role: true },
+  });
+  if (row?.role !== "ADMIN") throw new Error("هذه الصفحة للمشرفين");
+  return user;
+}
+
+const storeItemInput = z.object({
+  kind: z.enum(["FRAME", "BACKGROUND"]),
+  name: z.string().trim().min(1, "اكتب الاسم").max(40),
+  priceRiyals: z.coerce.number().min(0).max(9999),
+  spec: z.string().trim().min(1, "اكتب تدرّج CSS").max(400),
+  plusOnly: z.coerce.boolean(),
+  earnedAfterDays: z.coerce.number().int().min(0).max(3650).optional(),
+});
+
+export async function createStoreItem(formData: FormData): Promise<void> {
+  await requireAdmin();
+
+  const parsed = storeItemInput.safeParse({
+    kind: formData.get("kind"),
+    name: formData.get("name"),
+    priceRiyals: formData.get("priceRiyals"),
+    spec: formData.get("spec"),
+    plusOnly: formData.get("plusOnly") === "on",
+    earnedAfterDays: formData.get("earnedAfterDays") || undefined,
+  });
+  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "بيانات غير صالحة");
+
+  const { kind, name, priceRiyals, spec, plusOnly, earnedAfterDays } = parsed.data;
+  const last = await prisma.storeItem.findFirst({
+    orderBy: { sortOrder: "desc" },
+    select: { sortOrder: true },
+  });
+
+  await prisma.storeItem.create({
+    data: {
+      kind,
+      name,
+      // الأسعار تُدخَل بالريال وتُخزَّن بالهللات، فلا تدخل كسور عشرية القاعدة.
+      priceHalalas: Math.round(priceRiyals * 100),
+      spec,
+      plusOnly,
+      earnedAfterDays: earnedAfterDays && earnedAfterDays > 0 ? earnedAfterDays : null,
+      sortOrder: (last?.sortOrder ?? 0) + 1,
+    },
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/store");
+}
+
+export async function deleteStoreItem(itemId: string): Promise<void> {
+  await requireAdmin();
+  await prisma.storeItem.delete({ where: { id: itemId } });
+  revalidatePath("/admin");
+  revalidatePath("/store");
+}
+
+export async function grantCredit(userId: string, riyals: number): Promise<void> {
+  await requireAdmin();
+  await prisma.user.update({
+    where: { id: userId },
+    data: { storeCredit: { increment: Math.round(riyals * 100) } },
+  });
+  revalidatePath("/admin");
 }
 
 // ───────────────────────────── الدائرة ─────────────────────────────

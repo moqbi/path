@@ -31,13 +31,14 @@ export default async function TimelinePage() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="flex items-center justify-between border-b border-line px-5 py-3">
+      <header className="chrome flex items-center justify-between px-5 py-3">
         <AthrHeaderMark />
         <div className="flex gap-1">
           <Link
             href="/messages"
             aria-label="المحادثات"
-            className="relative flex h-11 w-11 items-center justify-center text-ink-2"
+            className="relative flex h-11 w-11 items-center justify-center"
+            style={{ color: "var(--color-chrome-ink)" }}
           >
             <MessageIcon size={21} />
             {unread > 0 ? (
@@ -52,7 +53,8 @@ export default async function TimelinePage() {
           <Link
             href="/circle"
             aria-label="الدائرة"
-            className="flex h-11 w-11 items-center justify-center text-ink-2"
+            className="flex h-11 w-11 items-center justify-center"
+            style={{ color: "var(--color-chrome-ink)" }}
           >
             <CircleIcon size={21} />
           </Link>
@@ -68,13 +70,24 @@ export default async function TimelinePage() {
         <div
           style={{
             height: 148,
-            background:
-              user.background?.spec ?? "linear-gradient(140deg,#f2e6d5,#e8cdb4 45%,#c9a68f)",
+            backgroundImage: user.coverMediaId ? `url(/api/media/${user.coverMediaId})` : undefined,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            background: user.coverMediaId
+              ? undefined
+              : (user.background?.spec ??
+                "linear-gradient(140deg,#f2e6d5,#e8cdb4 45%,#c9a68f)"),
           }}
         />
         <div className="relative flex items-center gap-3 px-5" style={{ marginTop: -30 }}>
           <div className="flex w-[68px] shrink-0 justify-center">
-            <Avatar name={user.name} size={64} frameSpec={user.frame?.spec} ring="var(--color-paper)" />
+            <Avatar
+              name={user.name}
+              size={64}
+              frameSpec={user.frame?.spec}
+              mediaId={user.avatarMediaId}
+              ring="var(--color-paper)"
+            />
           </div>
           <div className="grow pt-8">
             <p className="text-[14px] font-semibold">{user.name}</p>

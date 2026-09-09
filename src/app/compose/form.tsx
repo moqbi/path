@@ -1,17 +1,19 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { postPlace, postSimple } from "@/app/actions";
+import { postMusicLink, postPlace, postSimple } from "@/app/actions";
+import { ImagePicker } from "@/components/image-picker";
 import { ScreenHeader } from "@/components/ui";
-import { CameraIcon, PinIcon, TextIcon, WithIcon, LockIcon } from "@/components/icons";
+import { CameraIcon, MusicIcon, PinIcon, TextIcon, WithIcon, LockIcon } from "@/components/icons";
 
-type Kind = "PHOTO" | "THOUGHT" | "PLACE";
+type Kind = "PHOTO" | "THOUGHT" | "PLACE" | "MUSIC";
 type Friend = { id: string; name: string };
 
 const META: Record<Kind, { title: string; hint: string; Icon: typeof CameraIcon }> = {
   PHOTO: { title: "صورة", hint: "اكتب شي عن الصورة…", Icon: CameraIcon },
   THOUGHT: { title: "فكرة", hint: "وش في بالك؟", Icon: TextIcon },
   PLACE: { title: "مكان", hint: "اكتب شي عن المكان… (اختياري)", Icon: PinIcon },
+  MUSIC: { title: "أغنية", hint: "", Icon: MusicIcon },
 };
 
 type Fix = { lat: number; lng: number };
@@ -20,6 +22,8 @@ export function ComposeForm({ kind, friends }: { kind: Kind; friends: Friend[] }
   const meta = META[kind];
   const [withIds, setWithIds] = useState<string[]>([]);
   const [fix, setFix] = useState<Fix | null>(null);
+  const [picture, setPicture] = useState<{ dataUrl: string; width: number; height: number } | null>(null);
+  const [musicUrl, setMusicUrl] = useState("");
   const [geoError, setGeoError] = useState<string | null>(null);
   const [locating, setLocating] = useState(kind === "PLACE");
   const [pending, start] = useTransition();
@@ -55,17 +59,26 @@ export function ComposeForm({ kind, friends }: { kind: Kind; friends: Friend[] }
     );
   }, [kind]);
 
-  const ready = kind !== "PLACE" || fix !== null;
+  const ready =
+    kind === "PLACE" ? fix !== null : kind === "MUSIC" ? musicUrl.trim().length > 8 : true;
 
   return (
     <form
       action={(data) => {
-        if (kind === "PLACE") {
+        if (kind === "MUSIC") {
+          data.set("url", musicUrl.trim());
+          start(() => void postMusicLink(data));
+        } else if (kind === "PLACE") {
           if (!fix) return;
           data.set("lat", String(fix.lat));
           data.set("lng", String(fix.lng));
           start(() => void postPlace(data));
         } else {
+          if (picture) {
+            data.set("image", picture.dataUrl);
+            data.set("imageWidth", String(picture.width));
+            data.set("imageHeight", String(picture.height));
+          }
           data.set("kind", kind);
           start(() => void postSimple(data));
         }
@@ -76,16 +89,46 @@ export function ComposeForm({ kind, friends }: { kind: Kind; friends: Friend[] }
 
       <div className="grow px-5 py-4">
         {kind === "PHOTO" ? (
-          <div
-            className="mb-4 flex items-center justify-center rounded-2xl border border-line"
-            style={{
-              height: 150,
-              background: "linear-gradient(160deg,#f6b93b,#ff7a5a 55%,#8c3f4a)",
-            }}
-          >
-            <span className="rounded-full bg-black/35 px-3.5 py-2 text-[11.5px] text-ink">
-              صورة تجريبية — الرفع الحقيقي لاحقاً
-            </span>
+          <div className="mb-4">
+            <div
+              className="mb-2.5 flex items-center justify-center overflow-hidden rounded-2xl border border-line"
+              style={{
+                height: 200,
+                backgroundImage: picture ? `url(${picture.dataUrl})` : undefined,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                background: picture ? undefined : "var(--color-chip)",
+              }}
+            >
+              {picture ? null : (
+                <span className="text-[12.5px] text-muted">ما اخترت صورة بعد</span>
+              )}
+            </div>
+            <ImagePicker
+              label={picture ? "غيّر الصورة" : "اختر صورة"}
+              maxSize={1600}
+              onPicked={(dataUrl, width, height) => setPicture({ dataUrl, width, height })}
+            />
+          </div>
+        ) : null}
+
+        {kind === "MUSIC" ? (
+          <div className="mb-4">
+            <p className="mb-2.5 text-[13px] leading-relaxed text-muted">
+              الصق رابط الأغنية من سبوتيفاي أو يوتيوب أو ساوندكلاود — يُقرأ اسمها تلقائياً،
+              ومن يضغط عليها يسمعها.
+            </p>
+            <input
+              name="url"
+              type="url"
+              dir="ltr"
+              inputMode="url"
+              value={musicUrl}
+              onChange={(e) => setMusicUrl(e.target.value)}
+              placeholder="https://open.spotify.com/track/..."
+              className="w-full rounded-xl border border-line bg-card px-4 text-[13px] text-ink outline-none placeholder:text-faint focus:border-clay"
+              style={{ height: 52 }}
+            />
           </div>
         ) : null}
 
@@ -116,6 +159,7 @@ export function ComposeForm({ kind, friends }: { kind: Kind; friends: Friend[] }
           </div>
         ) : null}
 
+        {kind === "MUSIC" ? null : (
         <textarea
           name="text"
           rows={4}
@@ -124,8 +168,9 @@ export function ComposeForm({ kind, friends }: { kind: Kind; friends: Friend[] }
           placeholder={meta.hint}
           className="w-full resize-none rounded-2xl border border-line bg-card px-4 py-3.5 text-[13.5px] leading-relaxed text-ink outline-none placeholder:text-faint focus:border-clay"
         />
+        )}
 
-        {friends.length > 0 ? (
+        {friends.length > 0 && kind !== "MUSIC" ? (
           <div className="mt-4">
             <p className="mb-2.5 flex items-center gap-2 text-[11.5px] font-semibold tracking-wide text-faint">
               <WithIcon size={14} /> مع مين؟

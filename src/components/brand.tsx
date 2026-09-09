@@ -51,7 +51,7 @@ export function AthrHeaderMark() {
   return (
     <span className="flex items-center gap-2.5">
       <AthrMark size={26} />
-      <span className="latin text-ink" style={{ fontSize: 17, fontWeight: 700 }}>
+      <span className="latin" style={{ fontSize: 17, fontWeight: 700, color: "var(--color-chrome-ink)" }}>
         ATHR
       </span>
     </span>
