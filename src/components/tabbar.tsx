@@ -50,8 +50,9 @@ export function TabBarNav({ active, news = 0 }: { active: string; news?: number 
     <>
       {open ? (
         <div
-          className="z-30 flex flex-col items-center justify-end"
+          className="athr-veil z-30 flex flex-col items-center justify-end"
           style={{
+            animation: "athr-veil 180ms ease both",
             // العتمة تملأ النافذة، والورقة نفسها بعرض الهيكل في وسطها —
             // فلا تطير إلى حافة الشاشة على المتصفح العريض.
             position: "fixed",
@@ -61,8 +62,13 @@ export function TabBarNav({ active, news = 0 }: { active: string; news?: number 
           onClick={() => setOpen(false)}
         >
           <div
-            className="w-full rounded-t-3xl p-4 pb-8"
-            style={{ background: "var(--color-card)", maxWidth: 430 }}
+            className="athr-sheet w-full rounded-t-3xl p-4 pb-8"
+            style={{
+              background: "var(--color-card)",
+              maxWidth: 430,
+              animation: "athr-sheet 340ms cubic-bezier(.16,1.1,.3,1) both",
+              boxShadow: "0 -18px 50px rgba(14,26,36,.28)",
+            }}
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
@@ -118,7 +124,7 @@ export function TabBarNav({ active, news = 0 }: { active: string; news?: number 
         </div>
       ) : null}
 
-      <nav className="chrome sticky bottom-0 z-10">
+      <nav className="tabbar sticky bottom-0 z-10">
         <div className="flex items-stretch justify-around px-2 pb-5 pt-1.5">
           {TABS.map(({ href, label, Icon }) => {
             const on = href === active;
@@ -136,7 +142,7 @@ export function TabBarNav({ active, news = 0 }: { active: string; news?: number 
                 onContextMenu={moments ? (event) => event.preventDefault() : undefined}
                 className="flex min-h-11 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-0.5 py-1.5"
                 style={{
-                  color: on ? "var(--color-clay)" : "var(--color-chrome-muted)",
+                  color: on ? "var(--color-clay-ink)" : "var(--color-muted)",
                   touchAction: "manipulation",
                 }}
               >

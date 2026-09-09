@@ -105,7 +105,7 @@ export default async function CirclePage({
 
   return (
     <div className="screen">
-      <header className="chrome flex items-center justify-between px-5 py-3">
+      <header className="chrome flex items-center justify-between px-5 pb-4 pt-5">
         <h1 className="text-[16px] font-bold" style={{ color: "var(--color-chrome-ink)" }}>
           الأصدقاء
         </h1>

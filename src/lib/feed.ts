@@ -93,6 +93,16 @@ export async function momentById(id: string) {
   });
 }
 
+/** لحظاتي كاملةً كما تُعرض في الخط الزمني — لتبويب «أنا». */
+export async function myMoments(userId: string) {
+  return prisma.moment.findMany({
+    where: { authorId: userId },
+    select: momentShape,
+    orderBy: { createdAt: "desc" },
+    take: 40,
+  });
+}
+
 /** أرشيف المستخدم نفسه — كل شيء، بما فيه الحضور المنتهي. */
 export async function archive(userId: string) {
   return prisma.moment.findMany({

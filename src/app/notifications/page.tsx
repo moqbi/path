@@ -6,7 +6,7 @@ import { ReactionGlyph } from "@/components/reactions";
 import { Avatar, Empty, ScreenHeader } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import { MessageIcon, TagIcon, WithIcon } from "@/components/icons";
-import { relative } from "@/lib/format";
+import { dayLabel, relative } from "@/lib/format";
 
 const FILTERS = [
   { key: "", label: "الكل" },
@@ -35,6 +35,15 @@ export default async function NotificationsPage({
   const kinds = t ? OF[t] : undefined;
   const notes = kinds ? all.filter((note) => kinds.includes(note.kind)) : all;
 
+  // تجميع بالأيام: «اليوم» ثم «أمس» ثم التواريخ — كما يُقرأ الخط الزمني.
+  const days: { label: string; items: typeof notes }[] = [];
+  for (const note of notes) {
+    const label = dayLabel(note.at);
+    const last = days.at(-1);
+    if (last && last.label === label) last.items.push(note);
+    else days.push({ label, items: [note] });
+  }
+
   return (
     <div className="screen">
       <ScreenHeader title="الإشعارات" back="/" />
@@ -61,10 +70,19 @@ export default async function NotificationsPage({
         </div>
 
         {notes.length === 0 ? (
-          <Empty title="ما فيه إشعارات" hint="حين يتفاعل أحدٌ من دائرتك أو يشير إليك، يظهر هنا." />
+          <Empty
+            title="ما فيه إشعارات"
+            hint="حين يتفاعل أحدٌ من دائرتك أو يشير إليك، يظهر هنا."
+            action={{ href: "/", label: "ارجع للحظات" }}
+          />
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-line bg-card">
-            {notes.map((note, index) => (
+          days.map((day) => (
+          <section key={day.label} className="mb-4">
+            <p className="mb-2 px-1 text-[11.5px] font-semibold tracking-wide text-faint">
+              {day.label}
+            </p>
+            <div className="overflow-hidden rounded-2xl border border-line bg-card">
+            {day.items.map((note, index) => (
               <Link
                 key={note.id}
                 href={note.href}
@@ -91,7 +109,9 @@ export default async function NotificationsPage({
                 </span>
               </Link>
             ))}
-          </div>
+            </div>
+          </section>
+          ))
         )}
       </main>
 

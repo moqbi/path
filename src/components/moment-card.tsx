@@ -340,28 +340,40 @@ export function MomentCard({
 
   return (
     <Row moment={moment} viewerId={viewerId}>
+      {/* زرّ التفاعل في أعلى البطاقة: يُلمس قبل القراءة لا بعدها. */}
       <div className="overflow-hidden rounded-2xl border border-line bg-card">
-        {opens ? (
-          <Link href={`/m/${moment.id}`} className="block">
-            {head}
-          </Link>
-        ) : (
-          head
-        )}
+        <MomentBar
+          momentId={moment.id}
+          mine={mine}
+          isPlus={isPlus}
+          inset
+          panelFirst
+          head={<span className="block" style={{ height: 2 }} />}
+          extra={
+            <>
+              {opens ? (
+                <Link href={`/m/${moment.id}`} className="block">
+                  {head}
+                </Link>
+              ) : (
+                head
+              )}
 
-        <div className="px-4 pb-3 pt-2">
-          {moment.reactions.length > 0 ? <Reactors reactions={moment.reactions} /> : null}
-          {moment.comments.length > 0 ? (
-            <div className="mt-2.5 border-t border-line pt-2.5">
-              <Comments moment={moment} />
-            </div>
-          ) : null}
-          <p className="mt-2 flex items-center justify-end gap-1.5 text-[10.5px] text-faint">
-            <EyeIcon size={13} />
-            {ar(moment._count.views)}/{ar(circleSize)}
-          </p>
-          <MomentBar momentId={moment.id} mine={mine} isPlus={isPlus} />
-        </div>
+              <div className="px-4 pb-3 pt-2">
+                {moment.reactions.length > 0 ? <Reactors reactions={moment.reactions} /> : null}
+                {moment.comments.length > 0 ? (
+                  <div className="mt-2.5 border-t border-line pt-2.5">
+                    <Comments moment={moment} />
+                  </div>
+                ) : null}
+                <p className="mt-2 flex items-center justify-end gap-1.5 text-[10.5px] text-faint">
+                  <EyeIcon size={13} />
+                  {ar(moment._count.views)}/{ar(circleSize)}
+                </p>
+              </div>
+            </>
+          }
+        />
       </div>
     </Row>
   );

@@ -37,7 +37,9 @@ export function Avatar({
         backgroundImage: mediaId ? `url(/api/media/${mediaId})` : undefined,
         backgroundSize: mediaId ? "cover" : undefined,
         backgroundPosition: mediaId ? "center" : undefined,
-        color: "var(--color-ink)",
+        // الحرف على تدرّج فاتح دائماً، فحبره ثابت لا يتبع الوضع —
+        // في الليل كان `--color-ink` أبيض على قرصٍ فاتح فاختفى الحرف.
+        color: "#14212b",
         fontSize: size * 0.36,
         border: frameSpec ? `2px solid ${ring}` : "none",
       }}
@@ -106,7 +108,7 @@ export function ScreenHeader({
   display?: boolean;
 }) {
   return (
-    <header className="chrome flex items-center justify-between px-5 py-3">
+    <header className="chrome flex items-center justify-between px-5 pb-4 pt-5">
       <div className="flex items-center gap-1">
         {back ? (
           <Link
@@ -119,7 +121,7 @@ export function ScreenHeader({
           </Link>
         ) : null}
         <h1
-          className={display ? "text-[21px]" : "text-[16px] font-semibold"}
+          className={display ? "text-[23px]" : "text-[18px] font-semibold"}
           style={display ? { fontFamily: "var(--font-display)" } : undefined}
         >
           {title}
@@ -130,11 +132,36 @@ export function ScreenHeader({
   );
 }
 
-export function Empty({ title, hint }: { title: string; hint?: string }) {
+/**
+ * الحالة الفارغة: عنوان وسطر يشرح، ومعهما فعلٌ واحد حين يوجد.
+ * شاشةٌ فارغة بلا مخرج تُقرأ كعطل، لا كبداية.
+ */
+export function Empty({
+  title,
+  hint,
+  action,
+}: {
+  title: string;
+  hint?: string;
+  action?: { href: string; label: string };
+}) {
   return (
-    <div className="px-8 py-16 text-center">
+    <div className="px-8 py-14 text-center">
+      <span
+        className="mx-auto mb-4 block h-12 w-12 rounded-full"
+        style={{ background: "var(--color-chip)" }}
+      />
       <p className="text-[15px] font-semibold text-ink">{title}</p>
       {hint ? <p className="mt-2 text-[12.5px] leading-relaxed text-muted">{hint}</p> : null}
+      {action ? (
+        <Link
+          href={action.href}
+          className="mt-4 inline-flex items-center justify-center rounded-xl px-5 text-[13.5px] font-bold"
+          style={{ height: 44, background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+        >
+          {action.label}
+        </Link>
+      ) : null}
     </div>
   );
 }

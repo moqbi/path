@@ -20,6 +20,8 @@ export function MomentBar({
   isPlus,
   head,
   extra,
+  inset = false,
+  panelFirst = false,
 }: {
   momentId: string;
   mine: Mine;
@@ -28,6 +30,10 @@ export function MomentBar({
   head?: React.ReactNode;
   /** ما يلي السطر: الصورة وقالب المتفاعلين. */
   extra?: React.ReactNode;
+  /** داخل بطاقة: الزرّ واللوحة يأخذان حشوة البطاقة والصورة تبقى سائبة. */
+  inset?: boolean;
+  /** اللوحة تحت الزرّ مباشرة لا تحت المحتوى — حين يكون الزرّ في الأعلى. */
+  panelFirst?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [popped, setPopped] = useState(false);
@@ -53,6 +59,13 @@ export function MomentBar({
     event.stopPropagation();
   };
 
+  /**
+   * على الحاوية: يقف الصعود فقط بلا `preventDefault`.
+   * منعُ الافتراضي هنا كان يبتلع إرسال النموذج نفسه — فزرّ «إرسال» لا
+   * يفعل شيئاً وإن ظهر.
+   */
+  const contain = (event: React.SyntheticEvent) => event.stopPropagation();
+
   function choose(kind: string, emoji?: string) {
     setPopped(true);
     setTimeout(() => setPopped(false), 420);
@@ -63,9 +76,13 @@ export function MomentBar({
   }
 
   return (
-    <div ref={root} className={head ? "" : "mt-2"} onClick={stop}>
+    <div ref={root} className={head ? "" : "mt-2"} onClick={contain}>
       {/* في RTL يضع `justify-end` الزرَّ في الطرف الأيسر من المنشور. */}
-      <div className={head ? "flex items-start gap-2" : "flex justify-end"}>
+      <div
+        className={`${head ? "flex items-start gap-2" : "flex justify-end"} ${
+          inset ? "px-3 pt-3" : ""
+        }`}
+      >
         {head ? <div className="min-w-0 grow">{head}</div> : null}
         <button
           type="button"
@@ -94,10 +111,10 @@ export function MomentBar({
         </button>
       </div>
 
-      {extra}
+      {panelFirst ? null : extra}
 
       {open ? (
-        <div className="mt-2 flex flex-col gap-2">
+        <div className={`mt-2 flex flex-col gap-2 ${inset ? "px-3" : ""}`}>
           <div className="flex items-center gap-0.5">
             {FACES.map((kind, index) => (
               <button
@@ -185,6 +202,8 @@ export function MomentBar({
           </form>
         </div>
       ) : null}
+
+      {panelFirst ? extra : null}
     </div>
   );
 }

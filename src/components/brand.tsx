@@ -49,9 +49,9 @@ export function AthrLockup({ size = 44 }: { size?: number }) {
 /** العلامة في شريط علوي: الرمز مع الاسم اللاتيني بجانبه. */
 export function AthrHeaderMark() {
   return (
-    <span className="flex items-center gap-2.5">
-      <AthrMark size={26} />
-      <span className="latin" style={{ fontSize: 17, fontWeight: 700, color: "var(--color-chrome-ink)" }}>
+    <span className="flex items-center gap-3">
+      <AthrMark size={34} />
+      <span className="latin" style={{ fontSize: 23, fontWeight: 700, letterSpacing: ".06em", color: "var(--color-chrome-ink)" }}>
         ATHR
       </span>
     </span>

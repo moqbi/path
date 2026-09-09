@@ -61,7 +61,12 @@ export function StoreGrid({
         </p>
       ) : null}
 
-      <div className="mb-6 grid grid-cols-3 gap-3">
+      <div className="mb-2.5 flex items-baseline justify-between">
+        <h2 className="text-[15px] font-bold">إطارات</h2>
+        <span className="text-[11.5px] text-muted">حول صورتك</span>
+      </div>
+
+      <div className="mb-7 grid grid-cols-3 gap-3">
         {frames.map((item) => {
           const have = ownedSet.has(item.id);
           const locked =
@@ -115,8 +120,10 @@ export function StoreGrid({
         })}
       </div>
 
-      <h2 className="mb-1 text-[14.5px] font-semibold">خلفيات متحركة</h2>
-      <p className="mb-3.5 text-[11.5px] text-muted">حركة خفيفة، تتوقف عند التمرير</p>
+      <div className="mb-2.5 flex items-baseline justify-between">
+        <h2 className="text-[15px] font-bold">خلفيات</h2>
+        <span className="text-[11.5px] text-muted">خلف ملفك الشخصي</span>
+      </div>
 
       <div className="mb-5 grid grid-cols-2 gap-3">
         {backgrounds.map((item) => {

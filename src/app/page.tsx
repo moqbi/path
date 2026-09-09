@@ -9,13 +9,17 @@ import { Avatar, Empty, TagPill } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import { TimelineHead } from "@/components/timeline-head";
 import { AthrHeaderMark } from "@/components/brand";
-import { CircleIcon, MessageIcon } from "@/components/icons";
+import { MessageIcon } from "@/components/icons";
+import { ThemeToggle } from "@/components/theme";
+import { cookies } from "next/headers";
 import { plusTag, tagOf } from "@/lib/tags";
 import { ar, dayLabel } from "@/lib/format";
 
 export default async function TimelinePage() {
   const user = await currentUser();
   if (!user) redirect("/login");
+
+  const theme = (await cookies()).get("athr:theme")?.value === "dark" ? "dark" : "light";
 
   const [moments, size, unread, auto] = await Promise.all([
     timeline(user.id),
@@ -35,7 +39,7 @@ export default async function TimelinePage() {
 
   return (
     <div className="screen">
-      <header className="chrome flex items-center justify-between px-5 py-3">
+      <header className="chrome flex items-center justify-between px-5 pb-4 pt-5">
         <AthrHeaderMark />
         <div className="flex gap-1">
           <Link
@@ -54,14 +58,7 @@ export default async function TimelinePage() {
               </span>
             ) : null}
           </Link>
-          <Link
-            href="/circle"
-            aria-label="الأصدقاء"
-            className="flex h-11 w-11 items-center justify-center"
-            style={{ color: "var(--color-chrome-ink)" }}
-          >
-            <CircleIcon size={21} />
-          </Link>
+          <ThemeToggle initial={theme} />
         </div>
       </header>
 

@@ -3,15 +3,16 @@ import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { circleIds } from "@/lib/circle";
-import { archive } from "@/lib/feed";
+import { archive, myMoments } from "@/lib/feed";
 import { signOut } from "@/app/actions";
+import { MomentCard } from "@/components/moment-card";
+import { plusTag, tagOf } from "@/lib/tags";
 import { CoverPicker, ProfileImages } from "./images";
 import { DeleteAccount } from "./delete";
 import { coverStyle, TagPill } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import { BookIcon, GearIcon, SparkIcon } from "@/components/icons";
-import { plusTag, tagOf } from "@/lib/tags";
-import { ar } from "@/lib/format";
+import { ar, dayLabel } from "@/lib/format";
 
 const MONTHS = [
   "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
@@ -22,9 +23,10 @@ export default async function ProfilePage() {
   const user = await currentUser();
   if (!user) redirect("/login");
 
-  const [ids, moments, places, auto] = await Promise.all([
+  const [ids, moments, mine, places, auto] = await Promise.all([
     circleIds(user.id),
     archive(user.id),
+    myMoments(user.id),
     prisma.moment.findMany({
       where: { authorId: user.id, placeName: { not: null } },
       select: { placeName: true },
@@ -42,6 +44,14 @@ export default async function ProfilePage() {
     1,
     Math.round((Date.now() - user.createdAt.getTime()) / (30.44 * 24 * 60 * 60 * 1000)),
   );
+
+  const days: { label: string; items: typeof mine }[] = [];
+  for (const moment of mine) {
+    const label = dayLabel(moment.createdAt);
+    const last = days.at(-1);
+    if (last && last.label === label) last.items.push(moment);
+    else days.push({ label, items: [moment] });
+  }
 
   const stats = [
     { value: ar(moments.length), label: "لحظة" },
@@ -144,6 +154,40 @@ export default async function ProfilePage() {
             <GearIcon size={18} />
           </Link>
         </div>
+
+        {/* لحظاتي أسفل زرّ التعديل مباشرة — هذا ما يُفتح التبويب لأجله. */}
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-[15px] font-bold">لحظاتي</h2>
+          <span className="text-[12px] text-muted">{ar(mine.length)}</span>
+        </div>
+
+        {mine.length === 0 ? (
+          <p className="mb-6 rounded-2xl border border-line bg-card px-4 py-8 text-center text-[13px] text-muted">
+            ما نشرت شي بعد. اضغط الزائد في «اللحظات».
+          </p>
+        ) : (
+          <div className="spine relative mb-6">
+            {days.map((day) => (
+              <section key={day.label}>
+                <div className="relative flex items-center gap-3 py-4">
+                  <div className="flex w-14 justify-center">
+                    <span className="block h-1.5 w-1.5 rounded-full bg-line" />
+                  </div>
+                  <h3 className="text-[15px] font-semibold text-muted">{day.label}</h3>
+                </div>
+                {day.items.map((moment) => (
+                  <MomentCard
+                    key={moment.id}
+                    moment={moment}
+                    viewerId={user.id}
+                    isPlus={user.isPlus}
+                    circleSize={ids.length}
+                  />
+                ))}
+              </section>
+            ))}
+          </div>
+        )}
 
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-[14.5px] font-semibold">أرشيفك</h2>
