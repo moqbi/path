@@ -6,6 +6,7 @@ import { circleIds } from "@/lib/circle";
 import { archive } from "@/lib/feed";
 import { signOut } from "@/app/actions";
 import { CoverPicker, ProfileImages } from "./images";
+import { DeleteAccount } from "./delete";
 import { coverStyle, TabBar, TagPill } from "@/components/ui";
 import { BookIcon, SparkIcon } from "@/components/icons";
 import { plusTag, tagOf } from "@/lib/tags";
@@ -172,6 +173,8 @@ export default async function ProfilePage() {
             </p>
           </div>
         )}
+
+        <DeleteAccount />
       </main>
 
       <TabBar active="/me" />

@@ -50,6 +50,37 @@ export async function signOut(): Promise<void> {
   redirect("/login");
 }
 
+/**
+ * حذف الحساب من داخل التطبيق — شرط من شروط متجر آبل لكل تطبيق فيه
+ * تسجيل دخول، ولا يكفي فيه إيقاف الحساب أو مراسلة الدعم.
+ *
+ * حذفٌ حقيقي لا تعطيل: صفّ المستخدم يذهب ومعه كل ما يشير إليه بالتتالي —
+ * لحظاته وصوره وتفاعلاته وتعليقاته ومحادثاته وصداقاته. ولهذا يُطلب
+ * كلمة المرور: جهازٌ مفتوح في يد غير صاحبه لا يجب أن يمحو عمر حساب
+ * بضغطتين.
+ */
+export async function deleteAccount(
+  _prev: string | null,
+  formData: FormData,
+): Promise<string | null> {
+  const user = await requireUser();
+
+  const password = String(formData.get("password") ?? "");
+  const row = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { passwordHash: true },
+  });
+  // كلمة مرور خاطئة تُردّ رسالةً في الشاشة لا استثناءً يكسرها: هذه آخر
+  // خطوة قبل فقد كل شيء، فلا يجوز أن تنتهي بصفحة خطأ غامضة.
+  if (!row || !(await verifyPassword(password, row.passwordHash))) {
+    return "كلمة المرور غير صحيحة";
+  }
+
+  await prisma.user.delete({ where: { id: user.id } });
+  await destroySession();
+  redirect("/login?deleted=1");
+}
+
 // ───────────────────────────── اللحظات ─────────────────────────────
 
 /** تدرّجات تقوم مقام رفع الصور في النموذج الأولي. */

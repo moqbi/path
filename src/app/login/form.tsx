@@ -52,11 +52,14 @@ const PROVIDERS = [
   { key: "x", label: "X", mark: <XMark /> },
 ];
 
-export function LoginForm({ photo }: { photo: boolean }) {
+export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?: boolean }) {
   const phase = usePhases();
   const [showEmail, setShowEmail] = useState(false);
   const [state, action, pending] = useActionState(signIn, null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(
+    // العودة إلى هذه الشاشة بعد الحذف تحتاج جملة تؤكد أن ما طُلب قد تمّ.
+    deleted ? "حُذف حسابك وكل ما فيه. تسعدنا عودتك متى شئت." : null,
+  );
 
   const introVisible = phase === "intro";
   const formVisible = phase === "form";
