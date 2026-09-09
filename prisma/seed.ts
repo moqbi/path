@@ -38,7 +38,8 @@ async function main() {
     prisma.view.deleteMany(),
     prisma.reaction.deleteMany(),
     prisma.comment.deleteMany(),
-    prisma.joining.deleteMany(),
+    prisma.message.deleteMany(),
+    prisma.conversation.deleteMany(),
     prisma.momentTag.deleteMany(),
     prisma.moment.deleteMany(),
     prisma.friendship.deleteMany(),
@@ -158,25 +159,21 @@ async function main() {
     })),
   });
 
-  const presence = await prisma.moment.create({
+  const place = await prisma.moment.create({
     data: {
       authorId: naif.id,
-      kind: "PRESENCE",
+      kind: "PLACE",
       placeName: "شارع التحلية",
       placeCity: "الرياض",
-      text: "قهوة وسوالف، الباب مفتوح",
-      expiresAt: new Date(Date.now() + 3 * 3_600_000),
+      lat: 24.6913,
+      lng: 46.6853,
+      text: "قهوة وسوالف",
       createdAt: hoursAgo(1),
     },
   });
-  await prisma.joining.createMany({
-    data: [
-      { momentId: presence.id, userId: noura.id },
-      { momentId: presence.id, userId: sultan.id },
-    ],
-  });
-  await prisma.momentTag.create({
-    data: { momentId: presence.id, userId: sultan.id, approved: true },
+  await prisma.momentTag.create({ data: { momentId: place.id, userId: sultan.id } });
+  await prisma.comment.create({
+    data: { momentId: place.id, userId: noura.id, body: "المكان هذا ما يمل" },
   });
 
   const photo = await prisma.moment.create({
@@ -251,14 +248,33 @@ async function main() {
       createdAt: hoursAgo(20),
     },
   });
-  await prisma.momentTag.create({
-    data: { momentId: tagged.id, userId: mohammed.id, approved: false },
+  await prisma.momentTag.create({ data: { momentId: tagged.id, userId: mohammed.id } });
+
+  // لحظة «أضاف فلاناً» — تُنشأ تلقائياً عند قبول الصداقة في التطبيق.
+  await prisma.moment.create({
+    data: {
+      authorId: mohammed.id,
+      kind: "FRIEND_ADDED",
+      text: "سلطان",
+      createdAt: hoursAgo(50),
+    },
+  });
+
+  // محادثة خاصة جاهزة بين محمد ونورة.
+  const conversation = await prisma.conversation.create({
+    data: { aId: mohammed.id < noura.id ? mohammed.id : noura.id, bId: mohammed.id < noura.id ? noura.id : mohammed.id },
+  });
+  await prisma.message.createMany({
+    data: [
+      { conversationId: conversation.id, senderId: noura.id, body: "وصلت البيت؟", createdAt: hoursAgo(2) },
+      { conversationId: conversation.id, senderId: mohammed.id, body: "توّي، الله يسلمك", createdAt: hoursAgo(2) },
+    ],
   });
 
   console.log("تمت التهيئة:");
-  console.log("  mohammed@athar.test / athar1234  (دائرته ٣، عنده إشارة معلّقة)");
+  console.log("  mohammed@athar.test / athar1234  (دائرته ٣، وعنده محادثة مع نورة)");
   console.log("  noura@athar.test    / athar1234  (مشتركة في أثر+، تلبس إطار كهرمان)");
-  console.log("  naif@athar.test     / athar1234  (عنده حضور مؤقت فعّال)");
+  console.log("  naif@athar.test     / athar1234  (نشر مكاناً بإحداثيات)");
   console.log("  sultan@athar.test   / athar1234");
 }
 

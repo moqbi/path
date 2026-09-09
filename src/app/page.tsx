@@ -1,22 +1,23 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
-import { circleCount, pendingTags, timeline } from "@/lib/feed";
+import { circleCount, timeline } from "@/lib/feed";
+import { unreadCount } from "@/lib/dm";
 import { MomentCard } from "@/components/moment-card";
-import { Empty, TabBar } from "@/components/ui";
-import { CircleIcon, PlusIcon, SearchIcon } from "@/components/icons";
-import { dayLabel } from "@/lib/format";
+import { ComposerFan } from "@/components/composer-fan";
+import { Avatar, Empty, TabBar } from "@/components/ui";
 import { AthrHeaderMark } from "@/components/brand";
-import { TagApproval } from "@/components/tag-approval";
+import { CircleIcon, MessageIcon } from "@/components/icons";
+import { ar, dayLabel, timeOfDay } from "@/lib/format";
 
 export default async function TimelinePage() {
   const user = await currentUser();
   if (!user) redirect("/login");
 
-  const [moments, size, tags] = await Promise.all([
+  const [moments, size, unread] = await Promise.all([
     timeline(user.id),
     circleCount(user.id),
-    pendingTags(user.id),
+    unreadCount(user.id),
   ]);
 
   // اللحظات تُجمَّع تحت فواصل الأيام، فالخط الزمني يُقرأ كيوميات لا كتدفق.
@@ -33,13 +34,21 @@ export default async function TimelinePage() {
       <header className="flex items-center justify-between border-b border-line px-5 py-3">
         <AthrHeaderMark />
         <div className="flex gap-1">
-          <button
-            type="button"
-            aria-label="بحث"
-            className="flex h-11 w-11 items-center justify-center text-ink-2"
+          <Link
+            href="/messages"
+            aria-label="المحادثات"
+            className="relative flex h-11 w-11 items-center justify-center text-ink-2"
           >
-            <SearchIcon size={21} />
-          </button>
+            <MessageIcon size={21} />
+            {unread > 0 ? (
+              <span
+                className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold"
+                style={{ background: "var(--color-live)", color: "var(--color-on-brand)" }}
+              >
+                {ar(unread)}
+              </span>
+            ) : null}
+          </Link>
           <Link
             href="/circle"
             aria-label="الدائرة"
@@ -50,13 +59,35 @@ export default async function TimelinePage() {
         </div>
       </header>
 
-      <main className="relative grow px-5">
-        {tags.length > 0 ? <TagApproval tags={tags} /> : null}
+      {/*
+        غلاف الملف الشخصي يتصدّر الخط الزمني وصورة العرض تتداخل معه —
+        هكذا كانت شاشة Path الرئيسية، والغلاف يعطي الصفحة وجهاً بدل أن
+        تبدأ بقائمة جافة.
+      */}
+      <div className="relative shrink-0">
+        <div
+          style={{
+            height: 148,
+            background:
+              user.background?.spec ?? "linear-gradient(140deg,#4a3a4e,#2b3a55 55%,#1a2338)",
+          }}
+        />
+        <div className="relative flex items-end gap-3 px-5" style={{ marginTop: -32 }}>
+          <div className="flex w-[68px] shrink-0 justify-center">
+            <Avatar name={user.name} size={64} frameSpec={user.frame?.spec} />
+          </div>
+          <div className="grow pb-2">
+            <p className="text-[14px] font-semibold">{user.name}</p>
+            <p className="text-[11.5px] text-muted">{timeOfDay(new Date())}</p>
+          </div>
+        </div>
+      </div>
 
+      <main className="relative grow px-5 pt-2">
         {moments.length === 0 ? (
           <Empty
             title="خطك الزمني فارغ"
-            hint="انشر لحظتك الأولى، أو انتظر أحداً من دائرتك ينشر."
+            hint="اضغط الزائد وانشر لحظتك الأولى، أو انتظر أحداً من دائرتك ينشر."
           />
         ) : (
           <div className="spine relative">
@@ -66,12 +97,7 @@ export default async function TimelinePage() {
                   <div className="flex w-14 justify-center">
                     <span className="block h-1.5 w-1.5 rounded-full bg-line" />
                   </div>
-                  <h2
-                    className="text-[16px] tracking-wide text-muted"
-                    style={{ fontFamily: "var(--font-display)" }}
-                  >
-                    {day.label}
-                  </h2>
+                  <h2 className="text-[15px] font-semibold text-muted">{day.label}</h2>
                 </div>
                 {day.items.map((moment) => (
                   <MomentCard
@@ -87,21 +113,8 @@ export default async function TimelinePage() {
         )}
       </main>
 
-      <div className="sticky bottom-20 z-10 h-0">
-        <div className="flex justify-start px-5">
-          <Link
-            href="/compose"
-            aria-label="لحظة جديدة"
-            className="brand-gradient flex h-14 w-14 -translate-y-14 items-center justify-center rounded-full shadow-lg"
-            style={{ color: "var(--color-on-brand)", boxShadow: "0 8px 24px rgba(255,122,122,.35)" }}
-          >
-            <PlusIcon size={24} />
-          </Link>
-        </div>
-      </div>
-
+      <ComposerFan />
       <TabBar active="/" />
     </div>
   );
 }
-

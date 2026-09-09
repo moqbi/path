@@ -10,7 +10,9 @@ import {
   requireUser,
   verifyPassword,
 } from "@/lib/auth";
-import { circleIds } from "@/lib/circle";
+import { assertRoomForBoth, circleIds } from "@/lib/circle";
+import { reverseGeocode } from "@/lib/places";
+import { openConversation } from "@/lib/dm";
 import type { MomentKind, ReactionKind } from "@/generated/prisma/client";
 
 // ───────────────────────────── الدخول والخروج ─────────────────────────────
@@ -48,9 +50,7 @@ export async function signOut(): Promise<void> {
 
 // ───────────────────────────── اللحظات ─────────────────────────────
 
-const KINDS = ["PHOTO", "PLACE", "THOUGHT", "MUSIC", "SLEEP"] as const;
-
-/** تدرّجات جاهزة تقوم مقام رفع الصور في النموذج الأولي. */
+/** تدرّجات تقوم مقام رفع الصور في النموذج الأولي. */
 const IMAGE_SPECS = [
   "linear-gradient(160deg,#ffb75e,#ff7a7a 55%,#7a3b52)",
   "linear-gradient(160deg,#ff9d6e,#8c3f5d 70%,#1e293b)",
@@ -59,120 +59,229 @@ const IMAGE_SPECS = [
   "linear-gradient(160deg,#ffcd8a,#b35f6b 55%,#2a2f45)",
 ];
 
-const momentInput = z.object({
-  kind: z.enum(KINDS),
-  text: z.string().trim().max(400).optional(),
-  placeName: z.string().trim().max(80).optional(),
-  musicTitle: z.string().trim().max(80).optional(),
-  musicArtist: z.string().trim().max(80).optional(),
-});
-
-export async function postMoment(formData: FormData): Promise<void> {
-  const user = await requireUser();
-
-  const parsed = momentInput.safeParse({
-    kind: formData.get("kind"),
-    text: formData.get("text") || undefined,
-    placeName: formData.get("placeName") || undefined,
-    musicTitle: formData.get("musicTitle") || undefined,
-    musicArtist: formData.get("musicArtist") || undefined,
-  });
-  if (!parsed.success) throw new Error("لحظة غير صالحة");
-
-  const { kind, text, placeName, musicTitle, musicArtist } = parsed.data;
-
-  const moment = await prisma.moment.create({
-    data: {
-      authorId: user.id,
-      kind: kind as MomentKind,
-      text: text ?? null,
-      placeName: kind === "PLACE" ? (placeName ?? null) : null,
-      placeCity: kind === "PLACE" ? (user.city ?? null) : null,
-      musicTitle: kind === "MUSIC" ? (musicTitle ?? null) : null,
-      musicArtist: kind === "MUSIC" ? (musicArtist ?? null) : null,
-      imageSpec:
-        kind === "PHOTO"
-          ? IMAGE_SPECS[Math.floor(Math.random() * IMAGE_SPECS.length)]
-          : null,
-    },
-  });
-
-  await attachTags(moment.id, user.id, formData.getAll("with").map(String));
-
-  revalidatePath("/");
-  redirect("/");
-}
-
-const presenceInput = z.object({
-  placeName: z.string().trim().min(1, "اختر مكاناً").max(80),
-  hours: z.coerce.number().int().min(1).max(12),
-  note: z.string().trim().max(200).optional(),
-});
-
-export async function postPresence(formData: FormData): Promise<void> {
-  const user = await requireUser();
-
-  const parsed = presenceInput.safeParse({
-    placeName: formData.get("placeName"),
-    hours: formData.get("hours"),
-    note: formData.get("note") || undefined,
-  });
-  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "حضور غير صالح");
-
-  const { placeName, hours, note } = parsed.data;
-
-  const moment = await prisma.moment.create({
-    data: {
-      authorId: user.id,
-      kind: "PRESENCE",
-      placeName,
-      placeCity: user.city ?? null,
-      text: note ?? null,
-      expiresAt: new Date(Date.now() + hours * 60 * 60 * 1000),
-    },
-  });
-
-  await attachTags(moment.id, user.id, formData.getAll("with").map(String));
-
-  revalidatePath("/");
-  redirect("/");
-}
+const randomImage = () => IMAGE_SPECS[Math.floor(Math.random() * IMAGE_SPECS.length)];
 
 /**
- * «مع فلان» تُنشأ غير معتمَدة دائماً.
- *
- * إعلان وجود شخص في مكان قد يورّطه، فالإشارة لا تظهر لأحد قبل موافقته —
- * وهذا قرار خصوصية لا خيار إعدادات. ولا يُشار إلا لمن هو داخل الدائرة.
+ * الإشارة «مع فلان» تظهر فوراً بلا موافقة.
+ * اللحظة تُنشر في صفحة كاتبها وحده ولا تدخل صفحة المُشار إليه، وهذا سلوك
+ * Path نفسه. ولا يُشار إلا لمن هو داخل الدائرة.
  */
 async function attachTags(momentId: string, authorId: string, userIds: string[]): Promise<void> {
   const wanted = [...new Set(userIds)].filter((id) => id && id !== authorId);
   if (wanted.length === 0) return;
 
   const allowed = new Set(await circleIds(authorId));
-  const data = wanted
-    .filter((id) => allowed.has(id))
-    .map((userId) => ({ momentId, userId, approved: false }));
+  const data = wanted.filter((id) => allowed.has(id)).map((userId) => ({ momentId, userId }));
   if (data.length === 0) return;
 
   await prisma.momentTag.createMany({ data, skipDuplicates: true });
 }
 
-export async function approveTag(tagId: string): Promise<void> {
+/** لحظة صورة أو فكرة: نص، وإشارة اختيارية. */
+export async function postSimple(formData: FormData): Promise<void> {
   const user = await requireUser();
-  // الشرط على userId يمنع اعتماد إشارة تخص شخصاً آخر.
-  await prisma.momentTag.updateMany({
-    where: { id: tagId, userId: user.id },
-    data: { approved: true },
+
+  const kind = String(formData.get("kind") ?? "");
+  if (kind !== "PHOTO" && kind !== "THOUGHT") throw new Error("نوع غير صالح");
+
+  const text = String(formData.get("text") ?? "").trim().slice(0, 400);
+  if (!text && kind === "THOUGHT") throw new Error("اكتب شيئاً");
+
+  const moment = await prisma.moment.create({
+    data: {
+      authorId: user.id,
+      kind: kind as MomentKind,
+      text: text || null,
+      imageSpec: kind === "PHOTO" ? randomImage() : null,
+    },
   });
+
+  await attachTags(moment.id, user.id, formData.getAll("with").map(String));
   revalidatePath("/");
-  revalidatePath("/me");
+  redirect("/");
 }
 
-export async function rejectTag(tagId: string): Promise<void> {
+/** «نام» — بلا نص وبلا إشارة: النوم لا يكون «مع» أحد. */
+export async function postSleep(): Promise<void> {
   const user = await requireUser();
-  await prisma.momentTag.deleteMany({ where: { id: tagId, userId: user.id } });
+  await prisma.moment.create({ data: { authorId: user.id, kind: "SLEEP" } });
   revalidatePath("/");
-  revalidatePath("/me");
+  redirect("/");
+}
+
+const placeInput = z.object({
+  lat: z.coerce.number().min(-90).max(90),
+  lng: z.coerce.number().min(-180).max(180),
+});
+
+/**
+ * المكان يأتي من إذن الموقع في الجهاز، لا من إدخال يدوي.
+ * الاسم يُشتق من الإحداثيات على الخادم؛ وإن تعذّر، تبقى الإحداثيات وحدها.
+ */
+export async function postPlace(formData: FormData): Promise<void> {
+  const user = await requireUser();
+
+  const parsed = placeInput.safeParse({
+    lat: formData.get("lat"),
+    lng: formData.get("lng"),
+  });
+  if (!parsed.success) throw new Error("تعذّر تحديد موقعك");
+
+  const { lat, lng } = parsed.data;
+  const place = await reverseGeocode(lat, lng);
+
+  const moment = await prisma.moment.create({
+    data: {
+      authorId: user.id,
+      kind: "PLACE",
+      lat,
+      lng,
+      placeName: place.name,
+      placeCity: place.city ?? user.city,
+      text: String(formData.get("text") ?? "").trim().slice(0, 200) || null,
+    },
+  });
+
+  await attachTags(moment.id, user.id, formData.getAll("with").map(String));
+  revalidatePath("/");
+  redirect("/");
+}
+
+/**
+ * الأغنية تُنشر من الحساب المربوط، لا بكتابة الاسم والفنان.
+ * بلا ربط لا يوجد ما يُنشر، فيُوجَّه المستخدم إلى شاشة الربط.
+ */
+export async function postNowPlaying(): Promise<void> {
+  const user = await requireUser();
+
+  const account = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { musicProvider: true, musicAccessToken: true },
+  });
+  if (!account?.musicProvider) redirect("/music");
+
+  const track = await currentTrack(user.id);
+  if (!track) redirect("/music?empty=1");
+
+  await prisma.moment.create({
+    data: {
+      authorId: user.id,
+      kind: "MUSIC",
+      musicTitle: track.title,
+      musicArtist: track.artist,
+    },
+  });
+
+  revalidatePath("/");
+  redirect("/");
+}
+
+/**
+ * ما يُسمع الآن من المزوّد المربوط.
+ *
+ * سبوتيفاي تتطلب SPOTIFY_CLIENT_ID و SPOTIFY_CLIENT_SECRET؛ بدونهما الربط
+ * معطّل ولا يُدّعى خلافه. وأنغامي لا تفتح واجهتها إلا لشركاء معتمدين، فلا
+ * تُنفَّذ هنا حتى يتوفر اعتماد حقيقي.
+ */
+async function currentTrack(
+  userId: string,
+): Promise<{ title: string; artist: string } | null> {
+  const account = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { musicProvider: true, musicAccessToken: true },
+  });
+  if (account?.musicProvider !== "SPOTIFY" || !account.musicAccessToken) return null;
+
+  try {
+    const response = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {
+      headers: { Authorization: `Bearer ${account.musicAccessToken}` },
+      signal: AbortSignal.timeout(6000),
+      cache: "no-store",
+    });
+    if (response.status === 204 || !response.ok) return null;
+
+    const data = (await response.json()) as {
+      item?: { name?: string; artists?: { name?: string }[] };
+    };
+    const title = data.item?.name;
+    const artist = data.item?.artists?.map((a) => a.name).filter(Boolean).join("، ");
+    if (!title) return null;
+
+    return { title, artist: artist || "" };
+  } catch {
+    return null;
+  }
+}
+
+export async function disconnectMusic(): Promise<void> {
+  const user = await requireUser();
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      musicProvider: null,
+      musicAccountName: null,
+      musicAccessToken: null,
+      musicRefreshToken: null,
+      musicTokenExpires: null,
+    },
+  });
+  revalidatePath("/music");
+}
+
+// ───────────────────────────── الدائرة ─────────────────────────────
+
+/**
+ * قبول الصداقة ينشئ لحظة «أضاف فلاناً» لكلا الطرفين — فالإضافة حدث في
+ * حياة الدائرة يستحق أن يُرى، لا تغييراً صامتاً في جدول.
+ */
+export async function acceptFriend(friendshipId: string): Promise<void> {
+  const user = await requireUser();
+
+  const friendship = await prisma.friendship.findUnique({
+    where: { id: friendshipId },
+    select: { id: true, requesterId: true, addresseeId: true, status: true },
+  });
+  if (!friendship || friendship.addresseeId !== user.id) throw new Error("غير مصرح");
+  if (friendship.status === "ACCEPTED") return;
+
+  await assertRoomForBoth(friendship.requesterId, friendship.addresseeId);
+
+  const other = await prisma.user.findUnique({
+    where: { id: friendship.requesterId },
+    select: { name: true },
+  });
+
+  await prisma.$transaction([
+    prisma.friendship.update({ where: { id: friendshipId }, data: { status: "ACCEPTED" } }),
+    prisma.moment.create({
+      data: { authorId: user.id, kind: "FRIEND_ADDED", text: other?.name ?? null },
+    }),
+    prisma.moment.create({
+      data: { authorId: friendship.requesterId, kind: "FRIEND_ADDED", text: user.name },
+    }),
+  ]);
+
+  revalidatePath("/");
+  revalidatePath("/circle");
+}
+
+export async function requestFriend(email: string): Promise<void> {
+  const user = await requireUser();
+
+  const target = await prisma.user.findUnique({
+    where: { email: email.trim().toLowerCase() },
+    select: { id: true },
+  });
+  if (!target || target.id === user.id) throw new Error("لا يوجد حساب بهذا البريد");
+
+  await assertRoomForBoth(user.id, target.id);
+  await prisma.friendship.upsert({
+    where: { requesterId_addresseeId: { requesterId: user.id, addresseeId: target.id } },
+    create: { requesterId: user.id, addresseeId: target.id },
+    update: {},
+  });
+
+  revalidatePath("/circle");
 }
 
 // ───────────────────────────── التفاعل ─────────────────────────────
@@ -230,23 +339,6 @@ export async function addComment(momentId: string, formData: FormData): Promise<
   if (!body) return;
 
   await prisma.comment.create({ data: { momentId, userId: user.id, body: body.slice(0, 500) } });
-  revalidatePath(`/m/${momentId}`);
-}
-
-export async function toggleJoin(momentId: string): Promise<void> {
-  const user = await requireUser();
-  if (!(await canSee(user.id, momentId))) throw new Error("غير مصرح");
-
-  const existing = await prisma.joining.findUnique({
-    where: { momentId_userId: { momentId, userId: user.id } },
-  });
-
-  if (existing) {
-    await prisma.joining.delete({ where: { id: existing.id } });
-  } else {
-    await prisma.joining.create({ data: { momentId, userId: user.id } });
-  }
-
   revalidatePath("/");
   revalidatePath(`/m/${momentId}`);
 }
@@ -262,6 +354,49 @@ async function canSee(userId: string, momentId: string): Promise<boolean> {
 
   const ids = await circleIds(userId);
   return ids.includes(moment.authorId);
+}
+
+// ───────────────────────────── المحادثات الخاصة ─────────────────────────────
+
+export async function startConversation(otherId: string): Promise<void> {
+  const user = await requireUser();
+  const id = await openConversation(user.id, otherId);
+  redirect(`/messages/${id}`);
+}
+
+export async function sendMessage(conversationId: string, formData: FormData): Promise<void> {
+  const user = await requireUser();
+
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: { aId: true, bId: true },
+  });
+  if (!conversation) throw new Error("المحادثة غير موجودة");
+  if (conversation.aId !== user.id && conversation.bId !== user.id) throw new Error("غير مصرح");
+
+  const body = String(formData.get("body") ?? "").trim();
+  if (!body) return;
+
+  await prisma.$transaction([
+    prisma.message.create({
+      data: { conversationId, senderId: user.id, body: body.slice(0, 2000) },
+    }),
+    prisma.conversation.update({
+      where: { id: conversationId },
+      data: { updatedAt: new Date() },
+    }),
+  ]);
+
+  revalidatePath(`/messages/${conversationId}`);
+  revalidatePath("/messages");
+}
+
+export async function markConversationRead(conversationId: string): Promise<void> {
+  const user = await requireUser();
+  await prisma.message.updateMany({
+    where: { conversationId, senderId: { not: user.id }, readAt: null },
+    data: { readAt: new Date() },
+  });
 }
 
 // ───────────────────────────── المتجر والاشتراك ─────────────────────────────
@@ -315,8 +450,7 @@ export async function equip(itemId: string): Promise<void> {
 
   await prisma.user.update({
     where: { id: user.id },
-    data:
-      purchase.item.kind === "FRAME" ? { frameId: itemId } : { backgroundId: itemId },
+    data: purchase.item.kind === "FRAME" ? { frameId: itemId } : { backgroundId: itemId },
   });
 
   revalidatePath("/me");

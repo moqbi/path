@@ -2,18 +2,17 @@ import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { CIRCLE_CAP, circleIds } from "@/lib/circle";
-import { presentNow } from "@/lib/feed";
 import { Avatar, ScreenHeader, TabBar } from "@/components/ui";
-import { SparkIcon, WithIcon } from "@/components/icons";
-import { ar, relative, until } from "@/lib/format";
+import { MessageIcon, SparkIcon, WithIcon } from "@/components/icons";
+import { startConversation } from "@/app/actions";
+import { ar, relative } from "@/lib/format";
 
 export default async function CirclePage() {
   const user = await currentUser();
   if (!user) redirect("/login");
 
   const ids = await circleIds(user.id);
-  const [members, present] = await Promise.all([
-    prisma.user.findMany({
+  const members = await prisma.user.findMany({
       where: { id: { in: ids } },
       select: {
         id: true,
@@ -23,11 +22,7 @@ export default async function CirclePage() {
         moments: { select: { createdAt: true }, orderBy: { createdAt: "desc" }, take: 1 },
       },
       orderBy: { name: "asc" },
-    }),
-    presentNow(user.id),
-  ]);
-
-  const presentIds = new Set(present.map((p) => p.author.id));
+  });
   const filled = ids.length / CIRCLE_CAP;
   const circumference = 2 * Math.PI * 57;
 
@@ -82,33 +77,6 @@ export default async function CirclePage() {
       </div>
 
       <main className="grow px-5">
-        {present.length > 0 ? (
-          <>
-            <p className="mb-2.5 text-[11.5px] font-semibold tracking-wide text-faint">
-              حاضر الآن · {ar(present.length)}
-            </p>
-            {present.map((p) => (
-              <div key={p.id} className="flex items-center gap-3 py-2.5">
-                <div className="relative shrink-0">
-                  <Avatar name={p.author.name} size={44} frameSpec={p.author.frame?.spec} />
-                  <span
-                    className="absolute bottom-0 left-0 h-3 w-3 rounded-full"
-                    style={{ background: "var(--color-live)", border: "2.5px solid var(--color-paper)" }}
-                  />
-                </div>
-                <div className="grow">
-                  <p className="mb-0.5 text-[14.5px] font-semibold">{p.author.name}</p>
-                  <p className="text-[11.5px] text-live">
-                    في {p.placeName}
-                    {p.expiresAt ? ` · ${until(p.expiresAt)}` : null}
-                  </p>
-                </div>
-              </div>
-            ))}
-            <div className="my-3.5 h-px bg-line" />
-          </>
-        ) : null}
-
         <p className="mb-2.5 text-[11.5px] font-semibold tracking-wide text-faint">الكل</p>
         {members.length === 0 ? (
           <p className="py-8 text-center text-[13px] text-muted">دائرتك فاضية.</p>
@@ -122,13 +90,20 @@ export default async function CirclePage() {
                   {member.isPlus ? <SparkIcon size={13} className="text-gold" /> : null}
                 </p>
                 <p className="text-[11.5px] text-faint">
-                  {presentIds.has(member.id)
-                    ? "حاضر الآن"
-                    : member.moments[0]
-                      ? `آخر لحظة ${relative(member.moments[0].createdAt)}`
-                      : "لا لحظات بعد"}
+                  {member.moments[0]
+                    ? `آخر لحظة ${relative(member.moments[0].createdAt)}`
+                    : "لا لحظات بعد"}
                 </p>
               </div>
+              <form action={startConversation.bind(null, member.id)}>
+                <button
+                  type="submit"
+                  aria-label={`محادثة ${member.name}`}
+                  className="flex h-11 w-11 items-center justify-center rounded-full border border-line text-ink-2"
+                >
+                  <MessageIcon size={18} />
+                </button>
+              </form>
             </div>
           ))
         )}

@@ -18,8 +18,13 @@ enum MomentKind {
   THOUGHT
   MUSIC
   SLEEP
-  /// حضور مؤقت: «أنا هنا الآن، مين جاي؟» — الوحيد الذي له وقت انتهاء.
-  PRESENCE
+  /// «أضاف فلاناً إلى دائرته» — تُنشأ تلقائياً عند قبول الصداقة.
+  FRIEND_ADDED
+}
+
+enum MusicProvider {
+  SPOTIFY
+  ANGHAMI
 }
 
 enum ReactionKind {
@@ -59,6 +64,13 @@ model User {
   /// رصيد المتجر بالهللات (٣٠ ر.س = 3000).
   storeCredit Int @default(0)
 
+  /// ربط حساب الموسيقى — النشر التلقائي لما يُسمع، بدل إدخال الاسم يدوياً.
+  musicProvider      MusicProvider?
+  musicAccountName   String?
+  musicAccessToken   String?
+  musicRefreshToken  String?
+  musicTokenExpires  DateTime?
+
   frameId      String?
   backgroundId String?
   frame        StoreItem? @relation("UserFrame", fields: [frameId], references: [id], onDelete: SetNull)
@@ -70,9 +82,12 @@ model User {
   reactions Reaction[]
   views     View[]
   comments  Comment[]
-  joinings  Joining[]
   tags      MomentTag[]
   purchases Purchase[]
+
+  conversationsA Conversation[] @relation("ConversationA")
+  conversationsB Conversation[] @relation("ConversationB")
+  messagesSent   Message[]
 
   friendshipsSent     Friendship[] @relation("Requester")
   friendshipsReceived Friendship[] @relation("Addressee")
@@ -106,16 +121,15 @@ model Moment {
 
   placeName String?
   placeCity String?
+  /// إحداثيات فعلية من إذن الموقع، لا إدخال يدوي.
+  lat Float?
+  lng Float?
 
   musicTitle  String?
   musicArtist String?
 
   /// بديل رفع الصور في النموذج الأولي: تدرّج CSS يُخزَّن كنص ويُرسم كما لو كان صورة.
   imageSpec String?
-
-  /// للحضور المؤقت فقط. بعد هذا الوقت تختفي اللحظة من الخط الزمني
-  /// وتبقى في أرشيف صاحبها.
-  expiresAt DateTime?
 
   createdAt DateTime @default(now())
 
@@ -124,24 +138,23 @@ model Moment {
   reactions Reaction[]
   views     View[]
   comments  Comment[]
-  joinings  Joining[]
 
   @@index([authorId, createdAt])
   @@index([createdAt])
 }
 
-/// «مع فلان» — لا تظهر إلا بعد موافقة المُشار إليه.
+/// «مع فلان». اللحظة تُنشر في صفحة كاتبها وحده ولا تظهر في صفحة المُشار
+/// إليه، فلا موافقة مطلوبة — وهذا سلوك Path نفسه.
 model MomentTag {
-  id       String  @id @default(cuid())
+  id       String @id @default(cuid())
   momentId String
   userId   String
-  approved Boolean @default(false)
 
   moment Moment @relation(fields: [momentId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([momentId, userId])
-  @@index([userId, approved])
+  @@index([userId])
 }
 
 model Reaction {
@@ -185,19 +198,6 @@ model Comment {
   @@index([momentId, createdAt])
 }
 
-/// «جاي» — ردّ على حضور مؤقت.
-model Joining {
-  id        String   @id @default(cuid())
-  momentId  String
-  userId    String
-  createdAt DateTime @default(now())
-
-  moment Moment @relation(fields: [momentId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([momentId, userId])
-}
-
 // ───────────────────────────── المتجر ─────────────────────────────
 
 model StoreItem {
@@ -232,4 +232,37 @@ model Purchase {
   item StoreItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@unique([userId, itemId])
+}
+
+// ───────────────────────────── المحادثات الخاصة ─────────────────────────────
+
+/// محادثة ثنائية. الطرفان يُخزَّنان مرتّبين أبجدياً (aId < bId) فيكون
+/// للزوج صفٌّ واحد مهما بدأها، والقيد الفريد يمنع التكرار.
+model Conversation {
+  id        String   @id @default(cuid())
+  aId       String
+  bId       String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  a        User      @relation("ConversationA", fields: [aId], references: [id], onDelete: Cascade)
+  b        User      @relation("ConversationB", fields: [bId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@unique([aId, bId])
+  @@index([updatedAt])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String
+  createdAt      DateTime @default(now())
+  readAt         DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
 }

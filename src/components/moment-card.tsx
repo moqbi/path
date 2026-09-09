@@ -1,12 +1,18 @@
 import Link from "next/link";
 import { Avatar } from "@/components/ui";
-import { EyeIcon, MusicIcon, PinIcon, MoonIcon } from "@/components/icons";
-import { ReactionFace } from "@/components/icons";
-import { ar, timeOfDay, until } from "@/lib/format";
-import { JoinButton } from "@/components/interactive";
+import {
+  EyeIcon,
+  MusicIcon,
+  PinIcon,
+  MoonIcon,
+  WithIcon,
+  ReactionFace,
+} from "@/components/icons";
+import { InlineComment } from "@/components/interactive";
+import { ar, relative, timeOfDay } from "@/lib/format";
 import type { FeedMoment } from "@/lib/feed";
 
-/** لحظة سطر واحد: وصل مكاناً، نام، يسمع أغنية — بلا بطاقة ولا إطار. */
+/** لحظة سطر واحد: وصل مكاناً، نام، يسمع أغنية، أضاف صديقاً. */
 function InlineMoment({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2.5 pt-1.5">
@@ -25,6 +31,72 @@ function Spine({ name, frameSpec, at }: { name: string; frameSpec?: string | nul
   );
 }
 
+/** التعليقات تحت اللحظة في الخط الزمني نفسه — لا حاجة لفتحها لقراءتها. */
+function Comments({ moment }: { moment: FeedMoment }) {
+  if (moment.comments.length === 0) return null;
+
+  const hidden = moment._count.comments - moment.comments.length;
+
+  return (
+    <div className="mt-2.5 flex flex-col gap-2 border-t border-line pt-2.5">
+      {moment.comments.map((comment) => (
+        <div key={comment.id} className="flex items-start gap-2">
+          <Avatar name={comment.user.name} size={22} />
+          <p className="grow text-[12.5px] leading-relaxed">
+            <span className="font-semibold">{comment.user.name}</span>{" "}
+            <span className="text-ink-2">{comment.body}</span>
+          </p>
+          <span className="shrink-0 pt-0.5 text-[10px] text-faint">
+            {relative(comment.createdAt)}
+          </span>
+        </div>
+      ))}
+      {hidden > 0 ? (
+        <Link href={`/m/${moment.id}`} className="text-[11.5px] text-clay">
+          و{ar(hidden)} تعليق آخر
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
+function Footer({ moment, circleSize }: { moment: FeedMoment; circleSize: number }) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-1.5">
+        {moment.reactions.slice(0, 3).map((r) => (
+          <span
+            key={r.userId}
+            className="flex h-7 w-7 items-center justify-center rounded-full"
+            style={{
+              background:
+                r.kind === "LOVE" ? "var(--color-live-soft)" : "var(--color-chip)",
+            }}
+          >
+            {r.kind === "CUSTOM" ? (
+              <span className="text-[14px] leading-none">{r.emoji}</span>
+            ) : (
+              <ReactionFace
+                kind={r.kind}
+                size={r.kind === "LOVE" ? 15 : 16}
+                color={r.kind === "LOVE" ? "#ff7a7a" : "#94a3b8"}
+              />
+            )}
+          </span>
+        ))}
+        {moment.reactions.length > 0 ? (
+          <span className="mr-0.5 text-[12px] text-faint">{ar(moment.reactions.length)}</span>
+        ) : null}
+      </div>
+
+      <span className="flex items-center gap-1.5 text-[11px] text-faint">
+        <EyeIcon size={14} />
+        شافها {ar(moment._count.views)} من {ar(circleSize)}
+      </span>
+    </div>
+  );
+}
+
 export function MomentCard({
   moment,
   viewerId,
@@ -36,27 +108,27 @@ export function MomentCard({
 }) {
   const { author, kind } = moment;
   const withNames = moment.tags.map((t) => t.user.name);
-  const joined = moment.joinings.some((j) => j.userId === viewerId);
 
-  if (kind === "PLACE" || kind === "SLEEP" || kind === "MUSIC") {
+  // اللحظات السطرية: بلا بطاقة، وبلا تعليقات — لا شيء يُعلَّق عليه.
+  if (kind === "SLEEP" || kind === "MUSIC" || kind === "FRIEND_ADDED") {
     const icon =
-      kind === "PLACE" ? <PinIcon size={15} /> : kind === "SLEEP" ? <MoonIcon size={15} /> : <MusicIcon size={15} />;
+      kind === "SLEEP" ? <MoonIcon size={15} /> : kind === "MUSIC" ? <MusicIcon size={15} /> : <WithIcon size={15} />;
 
     return (
       <article className="relative flex gap-3 pb-5">
         <Spine name={author.name} frameSpec={author.frame?.spec} at={moment.createdAt} />
         <div className="grow">
           <InlineMoment icon={icon}>
-            {kind === "PLACE" ? (
-              <>
-                وصل <span className="font-semibold text-ink">{moment.placeName}</span>
-              </>
-            ) : kind === "SLEEP" ? (
+            {kind === "SLEEP" ? (
               <>نام</>
-            ) : (
+            ) : kind === "MUSIC" ? (
               <>
                 يسمع <span className="font-semibold text-ink">{moment.musicTitle}</span>
                 {moment.musicArtist ? ` — ${moment.musicArtist}` : null}
+              </>
+            ) : (
+              <>
+                أضاف <span className="font-semibold text-ink">{moment.text}</span> إلى دائرته
               </>
             )}
           </InlineMoment>
@@ -65,117 +137,47 @@ export function MomentCard({
     );
   }
 
-  if (kind === "PRESENCE") {
-    const live = moment.expiresAt !== null && moment.expiresAt > new Date();
-    return (
-      <article className="relative flex gap-3 pb-5">
-        <Spine name={author.name} frameSpec={author.frame?.spec} at={moment.createdAt} />
-        <div className="grow rounded-2xl border border-line bg-card p-4">
-          <div className="mb-2.5 flex items-center gap-2">
-            <span
-              className="block h-1.5 w-1.5 rounded-full"
-              style={{ background: live ? "var(--color-live)" : "var(--color-faint)" }}
-            />
-            <span className="text-[11px] font-semibold tracking-wide text-live">
-              {live && moment.expiresAt ? `الآن · ${until(moment.expiresAt)}` : "انتهى"}
-            </span>
-          </div>
-
-          <p className="mb-1 text-[15px] font-semibold leading-snug">
-            {author.name} في {moment.placeName}
-          </p>
-          <p className="mb-3.5 text-[12.5px] text-muted">
-            {withNames.length > 0 ? `مع ${withNames.join(" و")}` : null}
-            {withNames.length > 0 && moment.text ? " · " : null}
-            {moment.text ? `«${moment.text}»` : null}
-          </p>
-
-          <div className="flex items-center gap-2.5">
-            {author.id === viewerId ? (
-              <div className="flex h-11 grow items-center justify-center rounded-xl bg-chip text-[14px] font-semibold text-muted">
-                حضورك
-              </div>
-            ) : (
-              <JoinButton momentId={moment.id} joined={joined} />
-            )}
-
-            {moment.joinings.length > 0 ? (
-              <div className="flex items-center">
-                {moment.joinings.slice(0, 3).map((j, i) => (
-                  <div key={j.userId} style={{ marginRight: i === 0 ? 0 : -9 }}>
-                    <Avatar name={j.user.name} size={27} ring="var(--color-card)" />
-                  </div>
-                ))}
-                {moment.joinings.length > 3 ? (
-                  <span className="mr-1 text-[11px] font-semibold text-clay">
-                    +{ar(moment.joinings.length - 3)}
-                  </span>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </article>
-    );
-  }
-
-  // PHOTO و THOUGHT: بطاقة كاملة قابلة للفتح.
+  // مكان، صورة، فكرة: بطاقة قابلة للفتح، وتعليقاتها ظاهرة تحتها.
   return (
     <article className="relative flex gap-3 pb-5">
       <Spine name={author.name} frameSpec={author.frame?.spec} at={moment.createdAt} />
-      <Link
-        href={`/m/${moment.id}`}
-        className="grow overflow-hidden rounded-2xl border border-line bg-card"
-      >
-        {moment.imageSpec ? (
-          <div className="h-33 w-full" style={{ height: 132, background: moment.imageSpec }} />
-        ) : null}
-        <div className="px-4 pb-3 pt-3">
-          {moment.text ? (
-            <p className="mb-3 text-[13.5px] leading-relaxed text-ink">{moment.text}</p>
+      <div className="grow overflow-hidden rounded-2xl border border-line bg-card">
+        <Link href={`/m/${moment.id}`} className="block">
+          {moment.imageSpec ? (
+            <div style={{ height: 132, background: moment.imageSpec }} />
           ) : null}
 
-          {withNames.length > 0 ? (
-            <p className="mb-3 text-[12px] text-muted">مع {withNames.join(" و")}</p>
-          ) : null}
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              {moment.reactions.slice(0, 3).map((r) => (
-                <span
-                  key={r.userId}
-                  className="flex h-7 w-7 items-center justify-center rounded-full"
-                  style={{
-                    background:
-                      r.kind === "LOVE" ? "var(--color-live-soft)" : "var(--color-chip)",
-                  }}
-                >
-                  {r.kind === "CUSTOM" ? (
-                    <span className="text-[14px] leading-none">{r.emoji}</span>
-                  ) : (
-                    <ReactionFace
-                      kind={r.kind}
-                      size={r.kind === "LOVE" ? 15 : 16}
-                      color={r.kind === "LOVE" ? "#ff7a7a" : "#94a3b8"}
-                    />
-                  )}
+          <div className="px-4 pb-1 pt-3">
+            {kind === "PLACE" ? (
+              <p className="mb-2 flex items-center gap-2 text-[13.5px] text-ink-2">
+                <PinIcon size={15} className="text-live" />
+                <span>
+                  في <span className="font-semibold text-ink">{moment.placeName ?? "مكان"}</span>
+                  {moment.placeCity ? <span className="text-muted"> · {moment.placeCity}</span> : null}
                 </span>
-              ))}
-              {moment.reactions.length > 0 ? (
-                <span className="mr-0.5 text-[12px] text-faint">
-                  {ar(moment.reactions.length)}
-                </span>
-              ) : null}
-            </div>
+              </p>
+            ) : null}
 
-            <span className="flex items-center gap-1.5 text-[11px] text-faint">
-              <EyeIcon size={14} />
-              شافها {ar(moment._count.views)} من {ar(circleSize)}
-            </span>
+            {moment.text ? (
+              <p className="mb-2.5 text-[13.5px] leading-relaxed text-ink">{moment.text}</p>
+            ) : null}
+
+            {withNames.length > 0 ? (
+              <p className="mb-2.5 flex items-center gap-1.5 text-[12px] text-muted">
+                <WithIcon size={13} />
+                مع {withNames.join(" و")}
+              </p>
+            ) : null}
+
+            <Footer moment={moment} circleSize={circleSize} />
           </div>
+        </Link>
+
+        <div className="px-4 pb-3">
+          <Comments moment={moment} />
+          <InlineComment momentId={moment.id} viewerId={viewerId} />
         </div>
-      </Link>
+      </div>
     </article>
   );
 }
-

@@ -1,36 +1,8 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { markSeen, react, toggleJoin } from "@/app/actions";
-import { CheckIcon, PlusIcon, LockIcon, ReactionFace } from "@/components/icons";
-
-export function JoinButton({ momentId, joined }: { momentId: string; joined: boolean }) {
-  const [pending, start] = useTransition();
-  // حالة متفائلة: الزر يستجيب فوراً ثم يصحّحه الخادم عند إعادة التحقق.
-  const [on, setOn] = useState(joined);
-
-  useEffect(() => setOn(joined), [joined]);
-
-  return (
-    <button
-      type="button"
-      disabled={pending}
-      onClick={() => {
-        setOn((v) => !v);
-        start(() => void toggleJoin(momentId));
-      }}
-      className="flex h-11 grow items-center justify-center gap-2 rounded-xl text-[14px] font-semibold transition-opacity disabled:opacity-70"
-      style={{
-        background: on ? "var(--color-live)" : "var(--color-live-soft)",
-        color: on ? "var(--color-card)" : "var(--color-live)",
-        border: on ? "none" : "1px solid var(--color-live)",
-      }}
-    >
-      <CheckIcon size={16} />
-      {on ? "جاي" : "أجي؟"}
-    </button>
-  );
-}
+import { addComment, markSeen, react } from "@/app/actions";
+import { PlusIcon, LockIcon, ReactionFace } from "@/components/icons";
 
 const FACES = ["SMILE", "LAUGH", "GASP", "SAD", "LOVE"] as const;
 
@@ -147,4 +119,45 @@ export function SeenTracker({ momentId }: { momentId: string }) {
     void markSeen(momentId);
   }, [momentId]);
   return null;
+}
+
+/** حقل تعليق داخل بطاقة الخط الزمني، فلا يُفتح شيء لكتابة سطر. */
+export function InlineComment({ momentId, viewerId }: { momentId: string; viewerId: string }) {
+  const [pending, start] = useTransition();
+  const [body, setBody] = useState("");
+
+  return (
+    <form
+      action={() => {
+        const text = body.trim();
+        if (!text) return;
+        const data = new FormData();
+        data.set("body", text);
+        setBody("");
+        start(() => void addComment(momentId, data));
+      }}
+      className="mt-2 flex items-center gap-2"
+    >
+      <input
+        name="body"
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        placeholder="علّق…"
+        maxLength={500}
+        aria-label="تعليق"
+        className="h-9 grow rounded-full border border-line bg-paper px-3.5 text-[12.5px] text-ink outline-none placeholder:text-faint focus:border-clay"
+      />
+      {body.trim() ? (
+        <button
+          type="submit"
+          disabled={pending}
+          data-viewer={viewerId}
+          className="h-9 shrink-0 rounded-full px-3.5 text-[12px] font-bold disabled:opacity-60"
+          style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+        >
+          إرسال
+        </button>
+      ) : null}
+    </form>
+  );
 }
