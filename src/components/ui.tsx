@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { initial } from "@/lib/format";
-import { BackIcon, HomeIcon, CircleIcon, StoreIcon, UserIcon } from "@/components/icons";
+import { BackIcon } from "@/components/icons";
 
 /**
  * خلفية الحرف تُشتق من الاسم لا تُخزَّن، فتبقى ثابتة لكل شخص بلا عمود إضافي
@@ -130,36 +130,7 @@ export function ScreenHeader({
   );
 }
 
-const TABS = [
-  { href: "/", label: "اللحظات", Icon: HomeIcon },
-  { href: "/circle", label: "أصدقائي", Icon: CircleIcon },
-  { href: "/store", label: "المتجر", Icon: StoreIcon },
-  { href: "/me", label: "أنا", Icon: UserIcon },
-];
-
-export function TabBar({ active }: { active: string }) {
-  return (
-    <nav className="chrome sticky bottom-0 z-10">
-      <div className="flex items-stretch justify-around px-2 pb-5 pt-1.5">
-        {TABS.map(({ href, label, Icon }) => {
-          const on = href === active;
-          return (
-            <Link
-              key={href}
-              href={href}
-              aria-current={on ? "page" : undefined}
-              className="flex min-h-11 flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1.5"
-              style={{ color: on ? "var(--color-clay)" : "var(--color-chrome-muted)" }}
-            >
-              <Icon size={21} />
-              <span className="text-[10.5px] font-medium">{label}</span>
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
-  );
-}
+export { TabBar } from "@/components/tabbar";
 
 export function Empty({ title, hint }: { title: string; hint?: string }) {
   return (

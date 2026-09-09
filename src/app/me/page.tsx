@@ -8,7 +8,7 @@ import { signOut } from "@/app/actions";
 import { CoverPicker, ProfileImages } from "./images";
 import { DeleteAccount } from "./delete";
 import { coverStyle, TabBar, TagPill } from "@/components/ui";
-import { BookIcon, SparkIcon } from "@/components/icons";
+import { BookIcon, GearIcon, SparkIcon } from "@/components/icons";
 import { plusTag, tagOf } from "@/lib/tags";
 import { ar } from "@/lib/format";
 
@@ -35,68 +35,113 @@ export default async function ProfilePage() {
   const joined = `${MONTHS[user.createdAt.getMonth()]} ${ar(user.createdAt.getFullYear())}`;
   const tiles = moments.filter((m) => m.imageSpec).slice(0, 5);
 
+  // «سنتان معنا» أصدق من تاريخ انضمام لا يقول شيئاً.
+  const years = Math.floor((Date.now() - user.createdAt.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+  const months = Math.max(
+    1,
+    Math.round((Date.now() - user.createdAt.getTime()) / (30.44 * 24 * 60 * 60 * 1000)),
+  );
+
+  const stats = [
+    { value: ar(moments.length), label: "لحظة" },
+    { value: ar(ids.length), label: "صديق" },
+    years >= 1
+      ? { value: ar(years), label: years === 1 ? "سنة معنا" : "سنة معنا" }
+      : { value: ar(months), label: "شهر معنا" },
+  ];
+
   return (
     <div className="screen">
       <div
         className="relative shrink-0"
-        style={{ height: 152, ...coverStyle(user.coverMediaId, user.background?.spec) }}
+        style={{ height: 168, ...coverStyle(user.coverMediaId, user.background?.spec) }}
       >
         <CoverPicker hasCover={Boolean(user.coverMediaId)} />
 
-        {user.background ? (
-          <span
-            className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full px-3 py-1.5"
-            style={{ background: "rgba(11,17,32,.5)" }}
+        <div className="absolute left-4 top-4 flex gap-2">
+          <Link
+            href="/settings/privacy"
+            aria-label="الخصوصية"
+            className="flex h-9 w-9 items-center justify-center rounded-full"
+            style={{ background: "rgba(14,26,36,.55)", color: "#f7f5ef" }}
           >
-            <SparkIcon size={13} className="text-gold-bright" />
-            <span className="text-[11px] font-semibold text-gold-bright">خلفيتك</span>
-          </span>
-        ) : null}
-      </div>
-
-      <main className="scroll-area relative px-5" style={{ marginTop: -46 }}>
-        <div className="mb-4 flex items-end justify-between">
-          <ProfileImages
-            name={user.name}
-            frameSpec={user.frame?.spec ?? null}
-            avatarMediaId={user.avatarMediaId}
-          />
-          <form action={signOut} className="pb-1.5">
+            <GearIcon size={17} />
+          </Link>
+          <form action={signOut}>
             <button
               type="submit"
-              className="flex items-center rounded-xl border border-line bg-card px-4 text-[13px] font-medium text-ink-2"
-              style={{ height: 40 }}
+              aria-label="خروج"
+              className="flex h-9 items-center rounded-full px-3 text-[11px] font-semibold"
+              style={{ background: "rgba(14,26,36,.55)", color: "#f7f5ef" }}
             >
               خروج
             </button>
           </form>
         </div>
+      </div>
 
-        <h1 className="mb-1 flex flex-wrap items-center gap-2 text-[21px] font-semibold">
+      <main className="scroll-area relative px-5" style={{ marginTop: -52 }}>
+        {/* الصورة في الوسط فوق حدّ الغلاف — كما في المخطط. */}
+        <div className="mb-3 flex justify-center">
+          <ProfileImages
+            name={user.name}
+            frameSpec={user.frame?.spec ?? null}
+            avatarMediaId={user.avatarMediaId}
+          />
+        </div>
+
+        <h1 className="flex flex-wrap items-center justify-center gap-2 text-center text-[21px] font-semibold">
           {user.name}
           {user.isPlus ? <SparkIcon size={17} className="text-gold" /> : null}
           <TagPill tag={tagOf(user, auto)} size={12} />
         </h1>
-        <p className="mb-5 text-[12.5px] text-muted">
-          عضوية رقم {ar(user.memberNo)} · {user.city ? `${user.city} · ` : null}معك من {joined}
+        {user.handle ? (
+          <p dir="ltr" className="mt-0.5 text-center text-[13px] text-muted">
+            @{user.handle}
+          </p>
+        ) : null}
+
+        {user.bio ? (
+          <p className="mx-auto mt-2.5 max-w-[300px] text-center text-[13px] leading-relaxed text-ink-2">
+            {user.bio}
+          </p>
+        ) : null}
+
+        <p className="mt-2 text-center text-[12px] text-muted">
+          عضوية رقم {ar(user.memberNo)}
+          {user.city ? ` · ${user.city}` : ""} · انضم {joined}
         </p>
 
-        <div className="mb-5 grid grid-cols-3 gap-2.5">
-          {[
-            { value: moments.length, label: "لحظة" },
-            { value: ids.length, label: "في دائرتك" },
-            { value: places.length, label: "مكان" },
-          ].map((stat) => (
+        {/* عدد اللحظات وعدد السنوات تحت الاسم مباشرة. */}
+        <div className="mx-auto my-5 flex max-w-[320px] items-stretch">
+          {stats.map((stat, index) => (
             <div
               key={stat.label}
-              className="rounded-2xl border border-line bg-card px-2.5 py-3.5 text-center"
+              className="flex-1 text-center"
+              style={{ borderRight: index === 0 ? "none" : "1px solid var(--color-line)" }}
             >
-              <p className="mb-0.5 text-[25px]" style={{ fontFamily: "var(--font-display)" }}>
-                {ar(stat.value)}
-              </p>
-              <p className="text-[11px] text-muted">{stat.label}</p>
+              <p className="text-[22px] font-bold leading-none">{stat.value}</p>
+              <p className="mt-1 text-[11px] text-muted">{stat.label}</p>
             </div>
           ))}
+        </div>
+
+        <div className="mb-6 flex gap-2.5">
+          <Link
+            href="/me/edit"
+            className="flex grow items-center justify-center rounded-xl border border-line bg-card text-[13.5px] font-semibold text-ink-2"
+            style={{ height: 46 }}
+          >
+            تعديل الملف الشخصي
+          </Link>
+          <Link
+            href="/settings/privacy"
+            aria-label="الإعدادات"
+            className="flex w-12 shrink-0 items-center justify-center rounded-xl border border-line bg-card text-ink-2"
+            style={{ height: 46 }}
+          >
+            <GearIcon size={18} />
+          </Link>
         </div>
 
         <div className="mb-3 flex items-center justify-between">

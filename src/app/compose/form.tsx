@@ -8,6 +8,7 @@ import { CameraIcon, MusicIcon, PinIcon, TextIcon, WithIcon, LockIcon } from "@/
 
 type Kind = "PHOTO" | "THOUGHT" | "PLACE" | "MUSIC";
 type Friend = { id: string; name: string };
+type Group = { id: string; name: string; count: number };
 
 const META: Record<Kind, { title: string; hint: string; Icon: typeof CameraIcon }> = {
   PHOTO: { title: "صورة", hint: "اكتب شي عن الصورة…", Icon: CameraIcon },
@@ -18,9 +19,23 @@ const META: Record<Kind, { title: string; hint: string; Icon: typeof CameraIcon 
 
 type Fix = { lat: number; lng: number };
 
-export function ComposeForm({ kind, friends }: { kind: Kind; friends: Friend[] }) {
+export function ComposeForm({
+  kind,
+  friends,
+  groups,
+  defaultGroupId,
+}: {
+  kind: Kind;
+  friends: Friend[];
+  groups: Group[];
+  /** تصنيف الخصوصية الافتراضي — «من يمكنه رؤية لحظاتي». */
+  defaultGroupId: string | null;
+}) {
   const meta = META[kind];
   const [withIds, setWithIds] = useState<string[]>([]);
+  // الجمهور: «CIRCLE»، أو معرّف تصنيف، أو «PICKED» ومعها المختارون.
+  const [audience, setAudience] = useState<string>(defaultGroupId ?? "CIRCLE");
+  const [viewers, setViewers] = useState<string[]>([]);
   const [fix, setFix] = useState<Fix | null>(null);
   const [picture, setPicture] = useState<{ dataUrl: string; width: number; height: number } | null>(null);
   const [musicUrl, setMusicUrl] = useState("");
@@ -60,7 +75,8 @@ export function ComposeForm({ kind, friends }: { kind: Kind; friends: Friend[] }
   }, [kind]);
 
   const ready =
-    kind === "PLACE" ? fix !== null : kind === "MUSIC" ? musicUrl.trim().length > 8 : true;
+    (kind === "PLACE" ? fix !== null : kind === "MUSIC" ? musicUrl.trim().length > 8 : true) &&
+    (audience !== "PICKED" || viewers.length > 0);
 
   return (
     <form
@@ -204,12 +220,82 @@ export function ComposeForm({ kind, friends }: { kind: Kind; friends: Friend[] }
             ))}
           </div>
         ) : null}
+
+        {/*
+          من يراها: الدائرة كلها، أو تصنيف منها، أو أشخاص بأعيانهم.
+          الاختيار هنا يسبق النشر لأن الخصوصية لا تُصلَّح بعده.
+        */}
+        <div className="mt-5">
+          <p className="mb-2.5 flex items-center gap-2 text-[11.5px] font-semibold tracking-wide text-faint">
+            <LockIcon size={14} /> مين يشوفها؟
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { id: "CIRCLE", label: "كل دائرتي" },
+              ...groups.map((group) => ({ id: group.id, label: group.name })),
+              { id: "PICKED", label: "أشخاص أختارهم" },
+            ].map((option) => {
+              const on = audience === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setAudience(option.id)}
+                  className="min-h-11 rounded-full border px-4 text-[13px] font-medium"
+                  style={{
+                    background: on ? "var(--color-clay-soft)" : "var(--color-card)",
+                    borderColor: on ? "var(--color-clay)" : "var(--color-line)",
+                    color: on ? "var(--color-clay)" : "var(--color-ink)",
+                  }}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {audience === "PICKED" ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {friends.map((friend) => {
+                const on = viewers.includes(friend.id);
+                return (
+                  <button
+                    key={friend.id}
+                    type="button"
+                    onClick={() =>
+                      setViewers((ids) =>
+                        on ? ids.filter((id) => id !== friend.id) : [...ids, friend.id],
+                      )
+                    }
+                    className="min-h-10 rounded-full border px-3.5 text-[12.5px] font-medium"
+                    style={{
+                      background: on ? "var(--color-night)" : "var(--color-card)",
+                      borderColor: on ? "var(--color-night)" : "var(--color-line)",
+                      color: on ? "#f7f5ef" : "var(--color-ink)",
+                    }}
+                  >
+                    {friend.name}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+
+          <input type="hidden" name="audience" value={audience} />
+          {audience === "PICKED"
+            ? viewers.map((id) => <input key={id} type="hidden" name="viewer" value={id} />)
+            : null}
+        </div>
       </div>
 
       <div className="px-5 pb-8">
         <p className="mb-3 flex items-center justify-center gap-2 text-[11.5px] text-faint">
           <LockIcon size={14} />
-          يشوفها دائرتك فقط
+          {audience === "CIRCLE"
+            ? "يشوفها دائرتك فقط"
+            : audience === "PICKED"
+              ? `يشوفها ${viewers.length ? `${viewers.length} اخترتهم` : "من تختارهم"}`
+              : `يشوفها تصنيف ${groups.find((group) => group.id === audience)?.name ?? ""}`}
         </p>
         <button
           type="submit"

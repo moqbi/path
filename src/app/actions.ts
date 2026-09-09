@@ -11,6 +11,7 @@ import {
   verifyPassword,
 } from "@/lib/auth";
 import { assertRoomForBoth, circleIds, mutualCount } from "@/lib/circle";
+import { canInteract, canSeeMoment } from "@/lib/visibility";
 import { reverseGeocode } from "@/lib/places";
 import { openConversation } from "@/lib/dm";
 import { storeDataUrl } from "@/lib/media";
@@ -110,6 +111,62 @@ async function attachTags(momentId: string, authorId: string, userIds: string[])
   await prisma.momentTag.createMany({ data, skipDuplicates: true });
 }
 
+/**
+ * جمهور اللحظة من النموذج.
+ *
+ * `audience` إما `CIRCLE` أو معرّف تصنيف أو `PICKED` ومعها المختارون.
+ * وحين لا يختار الناشر شيئاً يُطبَّق تصنيفه الافتراضي من الخصوصية —
+ * «من يمكنه رؤية لحظاتي» — فالإعداد يعمل بلا أن يتذكّره أحد.
+ */
+async function readAudience(
+  formData: FormData,
+  user: { id: string },
+): Promise<{
+  audience: "CIRCLE" | "GROUP" | "PICKED";
+  audienceGroupId: string | null;
+  viewers: string[];
+}> {
+  const raw = String(formData.get("audience") ?? "").trim();
+  const circle = new Set(await circleIds(user.id));
+
+  if (raw === "PICKED") {
+    const viewers = formData
+      .getAll("viewer")
+      .map(String)
+      .filter((id) => circle.has(id));
+    if (viewers.length === 0) throw new Error("اختر من يرى هذه اللحظة");
+    return { audience: "PICKED", audienceGroupId: null, viewers };
+  }
+
+  if (raw && raw !== "CIRCLE" && raw !== "DEFAULT") {
+    const group = await prisma.friendGroup.findFirst({
+      where: { id: raw, ownerId: user.id },
+      select: { id: true },
+    });
+    if (!group) throw new Error("التصنيف غير موجود");
+    return { audience: "GROUP", audienceGroupId: group.id, viewers: [] };
+  }
+
+  if (raw === "CIRCLE") return { audience: "CIRCLE", audienceGroupId: null, viewers: [] };
+
+  const row = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { viewGroupId: true },
+  });
+  return row?.viewGroupId
+    ? { audience: "GROUP", audienceGroupId: row.viewGroupId, viewers: [] }
+    : { audience: "CIRCLE", audienceGroupId: null, viewers: [] };
+}
+
+/** يحفظ المختارين بأعيانهم بعد إنشاء اللحظة. */
+async function attachViewers(momentId: string, viewers: string[]): Promise<void> {
+  if (viewers.length === 0) return;
+  await prisma.momentViewer.createMany({
+    data: viewers.map((userId) => ({ momentId, userId })),
+    skipDuplicates: true,
+  });
+}
+
 /** لحظة صورة أو فكرة: نص، وإشارة اختيارية. */
 export async function postSimple(formData: FormData): Promise<void> {
   const user = await requireUser();
@@ -133,6 +190,8 @@ export async function postSimple(formData: FormData): Promise<void> {
     mediaId = stored.id;
   }
 
+  const seen = await readAudience(formData, user);
+
   const moment = await prisma.moment.create({
     data: {
       authorId: user.id,
@@ -140,9 +199,12 @@ export async function postSimple(formData: FormData): Promise<void> {
       text: text || null,
       mediaId,
       imageSpec: kind === "PHOTO" && !mediaId ? randomImage() : null,
+      audience: seen.audience,
+      audienceGroupId: seen.audienceGroupId,
     },
   });
 
+  await attachViewers(moment.id, seen.viewers);
   await attachTags(moment.id, user.id, formData.getAll("with").map(String));
   revalidatePath("/");
   redirect("/");
@@ -178,17 +240,29 @@ export async function postPlace(formData: FormData): Promise<void> {
   const place = await reverseGeocode(lat, lng);
   const city = place.city ?? user.city;
 
+  const settings = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { shareLocation: true },
+  });
+  // «إظهار موقعي» مطفأ: تُنشر المدينة وحدها بلا اسم المكان ولا إحداثياته.
+  const precise = settings?.shareLocation !== false;
+  const seen = await readAudience(formData, user);
+
   const moment = await prisma.moment.create({
     data: {
       authorId: user.id,
       kind: "PLACE",
-      lat,
-      lng,
-      placeName: place.name,
+      lat: precise ? lat : null,
+      lng: precise ? lng : null,
+      placeName: precise ? place.name : (city ?? "مكان"),
       placeCity: city,
       text: String(formData.get("text") ?? "").trim().slice(0, 200) || null,
+      audience: seen.audience,
+      audienceGroupId: seen.audienceGroupId,
     },
   });
+
+  await attachViewers(moment.id, seen.viewers);
 
   // الانتقال إلى مدينة أخرى حدثٌ في حياة الدائرة، فيُكتب سطراً مستقلاً.
   // يُشتقّ من التحديد نفسه: لا شاشة له ولا زر، وإلا صار عبئاً على الناشر.
@@ -586,11 +660,165 @@ export async function requestFriend(targetId: string): Promise<void> {
   revalidatePath(`/u/${targetId}`);
 }
 
+// ───────────────────────────── التصنيفات والخصوصية ─────────────────────────────
+
+/**
+ * التصنيف يملكه صاحبه وحده: تصنيفك لشخصٍ «عائلة» لا يراه هو ولا غيره،
+ * وهو الفرق بين تنظيمٍ لنفسك وتسميةٍ تُلصق بالناس.
+ */
+export async function createGroup(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const name = String(formData.get("name") ?? "").trim().slice(0, 20);
+  if (!name) throw new Error("اكتب اسم التصنيف");
+
+  const last = await prisma.friendGroup.findFirst({
+    where: { ownerId: user.id },
+    orderBy: { sortOrder: "desc" },
+    select: { sortOrder: true },
+  });
+
+  await prisma.friendGroup.upsert({
+    where: { ownerId_name: { ownerId: user.id, name } },
+    create: { ownerId: user.id, name, sortOrder: (last?.sortOrder ?? 0) + 1 },
+    update: {},
+  });
+  revalidatePath("/circle");
+  revalidatePath("/settings/privacy");
+}
+
+export async function deleteGroup(groupId: string): Promise<void> {
+  const user = await requireUser();
+  await prisma.friendGroup.deleteMany({ where: { id: groupId, ownerId: user.id } });
+  revalidatePath("/circle");
+  revalidatePath("/settings/privacy");
+}
+
+/** نقل صديق إلى تصنيف، أو إخراجه منها كلها بقيمة فارغة. */
+export async function setFriendGroup(friendId: string, formData: FormData): Promise<void> {
+  const user = await requireUser();
+
+  const circle = await circleIds(user.id);
+  if (!circle.includes(friendId)) throw new Error("ليس في دائرتك");
+
+  const groupId = String(formData.get("groupId") ?? "");
+  const mine = await prisma.friendGroup.findMany({
+    where: { ownerId: user.id },
+    select: { id: true },
+  });
+  const ids = mine.map((group) => group.id);
+
+  await prisma.groupMember.deleteMany({ where: { userId: friendId, groupId: { in: ids } } });
+  if (groupId && ids.includes(groupId)) {
+    await prisma.groupMember.create({ data: { groupId, userId: friendId } });
+  }
+
+  revalidatePath("/circle");
+}
+
+export async function savePrivacy(formData: FormData): Promise<void> {
+  const user = await requireUser();
+
+  const groups = await prisma.friendGroup.findMany({
+    where: { ownerId: user.id },
+    select: { id: true },
+  });
+  const ids = new Set(groups.map((group) => group.id));
+  const pick = (name: string) => {
+    const value = String(formData.get(name) ?? "");
+    return value && ids.has(value) ? value : null;
+  };
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      viewGroupId: pick("viewGroupId"),
+      interactGroupId: pick("interactGroupId"),
+      shareLocation: formData.get("shareLocation") === "on",
+      notifyOnTag: formData.get("notifyOnTag") === "on",
+    },
+  });
+
+  revalidatePath("/settings/privacy");
+  revalidatePath("/");
+}
+
+/** الحظر: لا يرى أحدهما الآخر ولا يتفاعل معه، والصداقة تُفكّ إن وُجدت. */
+export async function blockUser(targetId: string): Promise<void> {
+  const user = await requireUser();
+  if (targetId === user.id) throw new Error("لا يمكنك حظر نفسك");
+
+  await prisma.$transaction([
+    prisma.block.upsert({
+      where: { blockerId_blockedId: { blockerId: user.id, blockedId: targetId } },
+      create: { blockerId: user.id, blockedId: targetId },
+      update: {},
+    }),
+    prisma.friendship.deleteMany({
+      where: {
+        OR: [
+          { requesterId: user.id, addresseeId: targetId },
+          { requesterId: targetId, addresseeId: user.id },
+        ],
+      },
+    }),
+  ]);
+
+  revalidatePath("/");
+  revalidatePath("/circle");
+  revalidatePath("/settings/blocked");
+}
+
+export async function unblockUser(targetId: string): Promise<void> {
+  const user = await requireUser();
+  await prisma.block.deleteMany({ where: { blockerId: user.id, blockedId: targetId } });
+  revalidatePath("/settings/blocked");
+}
+
+/** الملف الشخصي: الاسم والمعرّف والنبذة والمدينة. */
+export async function saveProfile(
+  _prev: string | null,
+  formData: FormData,
+): Promise<string | null> {
+  const user = await requireUser();
+
+  const name = String(formData.get("name") ?? "").trim().slice(0, 40);
+  if (!name) return "الاسم مطلوب";
+
+  const rawHandle = String(formData.get("handle") ?? "").trim().replace(/^@/, "").toLowerCase();
+  // المعرّف حروف لاتينية وأرقام وشرطة سفلية: يُكتب في الروابط ويُنطق.
+  if (rawHandle && !/^[a-z0-9_]{3,20}$/.test(rawHandle)) {
+    return "المعرّف حروف إنجليزية وأرقام و_ من ٣ إلى ٢٠";
+  }
+
+  if (rawHandle) {
+    const taken = await prisma.user.findFirst({
+      where: { handle: rawHandle, id: { not: user.id } },
+      select: { id: true },
+    });
+    if (taken) return "المعرّف محجوز";
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      name,
+      handle: rawHandle || null,
+      bio: String(formData.get("bio") ?? "").trim().slice(0, 160) || null,
+      city: String(formData.get("city") ?? "").trim().slice(0, 40) || null,
+    },
+  });
+
+  revalidatePath("/me");
+  revalidatePath("/");
+  redirect("/me");
+}
+
 // ───────────────────────────── التفاعل ─────────────────────────────
 
 export async function react(momentId: string, kind: string, emoji?: string): Promise<void> {
   const user = await requireUser();
   if (!(await canSee(user.id, momentId))) throw new Error("غير مصرح");
+  await assertCanInteract(user.id, momentId);
 
   // الإيموجي الحر ميزة اشتراك؛ الوجوه الخمسة مفتوحة للجميع دائماً.
   if (kind === "CUSTOM" && !user.isPlus) throw new Error("الإيموجي الحر لمشتركي أثر+");
@@ -636,6 +864,7 @@ export async function markSeen(momentId: string): Promise<void> {
 export async function addComment(momentId: string, formData: FormData): Promise<void> {
   const user = await requireUser();
   if (!(await canSee(user.id, momentId))) throw new Error("غير مصرح");
+  await assertCanInteract(user.id, momentId);
 
   const body = String(formData.get("body") ?? "").trim();
   if (!body) return;
@@ -645,17 +874,21 @@ export async function addComment(momentId: string, formData: FormData): Promise<
   revalidatePath(`/m/${momentId}`);
 }
 
-/** اللحظة مرئية لصاحبها ولمن في دائرته فقط — لا استكشاف عام في هذا التطبيق. */
+/** اللحظة مرئية لصاحبها ولمن شمله جمهورها من دائرته — `lib/visibility`. */
 async function canSee(userId: string, momentId: string): Promise<boolean> {
+  return canSeeMoment(userId, momentId);
+}
+
+/** التفاعل والتعليق يمرّان بحدّ صاحب اللحظة: «من يمكنه التفاعل معك». */
+async function assertCanInteract(userId: string, momentId: string) {
   const moment = await prisma.moment.findUnique({
     where: { id: momentId },
     select: { authorId: true },
   });
-  if (!moment) return false;
-  if (moment.authorId === userId) return true;
-
-  const ids = await circleIds(userId);
-  return ids.includes(moment.authorId);
+  if (!moment) throw new Error("اللحظة غير موجودة");
+  if (!(await canInteract(userId, moment.authorId))) {
+    throw new Error("صاحب اللحظة حصر التفاعل في تصنيف من دائرته");
+  }
 }
 
 // ───────────────────────────── المحادثات الخاصة ─────────────────────────────

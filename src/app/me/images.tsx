@@ -43,10 +43,13 @@ export function ProfileImages({
   );
 }
 
-/** أزرار الغلاف — تُركَّب داخل الغلاف، فلا تقصّها منطقة التمرير. */
+/**
+ * أزرار الغلاف — تُركَّب داخل الغلاف فلا تقصّها منطقة التمرير، وعلى
+ * يمينه لأن يساره للإعدادات والخروج.
+ */
 export function CoverPicker({ hasCover }: { hasCover: boolean }) {
   return (
-    <div className="absolute left-4 top-4 flex gap-2">
+    <div className="absolute right-4 top-4 flex gap-2">
       <ImagePicker
         label="غيّر الغلاف"
         maxSize={1600}

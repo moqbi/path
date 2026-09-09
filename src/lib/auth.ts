@@ -85,6 +85,7 @@ export type SessionUser = {
   id: string;
   memberNo: number;
   name: string;
+  handle: string | null;
   email: string;
   city: string | null;
   bio: string | null;
@@ -109,6 +110,7 @@ export async function currentUser(): Promise<SessionUser | null> {
       id: true,
       memberNo: true,
       name: true,
+      handle: true,
       email: true,
       city: true,
       bio: true,
@@ -133,6 +135,7 @@ export async function currentUser(): Promise<SessionUser | null> {
     id: user.id,
     memberNo: user.memberNo,
     name: user.name,
+    handle: user.handle,
     email: user.email,
     city: user.city,
     bio: user.bio,

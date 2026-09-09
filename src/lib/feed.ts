@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { circleIds } from "@/lib/circle";
+import { visibleWhere } from "@/lib/visibility";
 
 /** شكل اللحظة في الخط الزمني — تستعمله صفحات الملف الشخصي أيضاً
  * فلا يختلف عرض اللحظة باختلاف الصفحة التي جاءت منها. */
@@ -56,10 +57,19 @@ export type FeedMoment = Awaited<ReturnType<typeof timeline>>[number];
 
 /** الخط الزمني: لحظات الدائرة ولحظاتك، الأحدث أولاً. */
 export async function timeline(userId: string) {
-  const ids = await circleIds(userId);
-
   return prisma.moment.findMany({
-    where: { authorId: { in: [...ids, userId] } },
+    where: await visibleWhere(userId),
+    select: momentShape,
+    orderBy: { createdAt: "desc" },
+    take: 60,
+  });
+}
+
+/** اللحظات الخاصة: ما لم يُنشر للدائرة كلها — لي أو لمن اختارني. */
+export async function privateTimeline(userId: string) {
+  const where = await visibleWhere(userId);
+  return prisma.moment.findMany({
+    where: { ...where, audience: { not: "CIRCLE" } },
     select: momentShape,
     orderBy: { createdAt: "desc" },
     take: 60,

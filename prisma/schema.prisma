@@ -56,6 +56,13 @@ enum FriendshipStatus {
   ACCEPTED
 }
 
+/// من يرى اللحظة: كل الدائرة، أو تصنيف منها، أو أشخاص بأعيانهم.
+enum Audience {
+  CIRCLE
+  GROUP
+  PICKED
+}
+
 // ───────────────────────────── المستخدم والدائرة ─────────────────────────────
 
 model User {
@@ -66,6 +73,8 @@ model User {
   email        String    @unique
   passwordHash String
   name         String
+  /// معرّف قصير يظهر تحت الاسم: @mohammed.
+  handle       String?   @unique
   city         String?
   bio          String?
 
@@ -99,6 +108,16 @@ model User {
   frame        StoreItem? @relation("UserFrame", fields: [frameId], references: [id], onDelete: SetNull)
   background   StoreItem? @relation("UserBackground", fields: [backgroundId], references: [id], onDelete: SetNull)
 
+  /// الخصوصية.
+  /// تصنيفٌ يحدّ من يرى لحظاتي الجديدة افتراضياً، وآخر يحدّ من يتفاعل معي.
+  /// فارغان يعنيان الدائرة كلها.
+  viewGroupId     String?
+  interactGroupId String?
+  /// المكان الدقيق يُنشر أو تُنشر المدينة وحدها.
+  shareLocation Boolean @default(true)
+  /// إشعار حين يُشار إليّ في لحظة.
+  notifyOnTag Boolean @default(true)
+
   createdAt DateTime @default(now())
 
   moments   Moment[]
@@ -115,6 +134,55 @@ model User {
 
   friendshipsSent     Friendship[] @relation("Requester")
   friendshipsReceived Friendship[] @relation("Addressee")
+
+  groups        FriendGroup[]  @relation("GroupOwner")
+  groupsIn      GroupMember[]
+  momentsSeenBy MomentViewer[]
+  blocksMade    Block[]        @relation("Blocker")
+  blocksGot     Block[]        @relation("Blocked")
+}
+
+/// تصنيف داخل الدائرة: الأصدقاء، العائلة، الزملاء…
+/// يملكه صاحبه وحده — تصنيفك لشخصٍ لا يراه هو ولا غيرك.
+model FriendGroup {
+  id        String   @id @default(cuid())
+  ownerId   String
+  name      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  owner   User          @relation("GroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members GroupMember[]
+  moments Moment[]      @relation("MomentGroup")
+
+  @@unique([ownerId, name])
+  @@index([ownerId])
+}
+
+model GroupMember {
+  id      String @id @default(cuid())
+  groupId String
+  userId  String
+
+  group FriendGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+}
+
+/// حظر: لا يرى أحدهما الآخر ولا يتفاعل معه. شرط متجر آبل كذلك.
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
 }
 
 /// عضوية الدائرة. صفٌّ واحد لكل علاقة، والاتجاه لا يعني شيئاً بعد القبول.
@@ -161,16 +229,35 @@ model Moment {
   mediaId String? @unique
   media   Media?  @relation("MomentMedia", fields: [mediaId], references: [id], onDelete: SetNull)
 
+  /// الجمهور: الدائرة كلها، أو تصنيف منها، أو أشخاص بأعيانهم.
+  audience        Audience @default(CIRCLE)
+  audienceGroupId String?
+  audienceGroup   FriendGroup? @relation("MomentGroup", fields: [audienceGroupId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
 
   author    User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
   tags      MomentTag[]
+  viewers   MomentViewer[]
   reactions Reaction[]
   views     View[]
   comments  Comment[]
 
   @@index([authorId, createdAt])
   @@index([createdAt])
+}
+
+/// مَن اختير بعينه ليرى لحظةً خاصة.
+model MomentViewer {
+  id       String @id @default(cuid())
+  momentId String
+  userId   String
+
+  moment Moment @relation(fields: [momentId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([momentId, userId])
+  @@index([userId])
 }
 
 /// «مع فلان». اللحظة تُنشر في صفحة كاتبها وحده ولا تظهر في صفحة المُشار

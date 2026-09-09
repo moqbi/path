@@ -181,3 +181,30 @@ export const PlaneIcon = ({ size = 20, className }: IconProps) => (
     <path d="M10.5 19.5 12 21l2-4.6 5.2-1.6a2 2 0 0 0 1.3-2.4l-.3-1-6 1.8-3.2-3.4 4.7-1.4a2 2 0 0 0 1.3-2.5l-.3-1L3.6 8.2a2 2 0 0 0-1.3 2.5l.3 1 3.6-1.1 2.6 4-2.4.7-1.4-1.2-1.3.4 1 3.3 1.3-.4.3-1.8 2.6-.8Z" />
   </svg>
 );
+
+export const BellIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M18 15.6V10a6 6 0 1 0-12 0v5.6L4.4 18h15.2L18 15.6Z" />
+    <path d="M10 21h4" />
+  </svg>
+);
+
+export const ShieldIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M12 3l7.5 3v5.5c0 4.4-3 8.2-7.5 9.5-4.5-1.3-7.5-5.1-7.5-9.5V6L12 3Z" />
+  </svg>
+);
+
+export const GearIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <circle cx="12" cy="12" r="3.2" />
+    <path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2M6 6l1.5 1.5M16.5 16.5 18 18M18 6l-1.5 1.5M7.5 16.5 6 18" />
+  </svg>
+);
+
+export const TagIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M3.5 11.5 11 4h7.5V11L11 18.5l-7.5-7Z" />
+    <circle cx="15" cy="8" r="1.3" />
+  </svg>
+);

@@ -1,3 +1,4 @@
+import Link from "next/link";
 
 import { notFound, redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
@@ -5,10 +6,23 @@ import { prisma } from "@/lib/db";
 import { circleIds, mutualCount } from "@/lib/circle";
 import { momentShape } from "@/lib/feed";
 import { plusTag, tagOf } from "@/lib/tags";
-import { acceptFriend, ignoreFriend, requestFriend, startConversation } from "@/app/actions";
+import {
+  acceptFriend,
+  blockUser,
+  ignoreFriend,
+  requestFriend,
+  startConversation,
+} from "@/app/actions";
 import { MomentCard } from "@/components/moment-card";
 import { Avatar, coverStyle, Empty, ScreenHeader, TagPill } from "@/components/ui";
-import { CheckIcon, CloseIcon, LockIcon, MessageIcon, SparkIcon } from "@/components/icons";
+import {
+  CheckIcon,
+  CloseIcon,
+  LockIcon,
+  MessageIcon,
+  SparkIcon,
+  WithIcon,
+} from "@/components/icons";
 import { ar, dayLabel } from "@/lib/format";
 
 const MONTHS = [
@@ -118,16 +132,26 @@ export default async function FriendProfilePage({
               frameSpec={person.frame?.spec}
               mediaId={person.avatarMediaId}
             />
-            <form action={startConversation.bind(null, person.id)} className="pb-1.5">
-              <button
-                type="submit"
-                className="flex items-center gap-2 rounded-xl border border-line bg-card px-4 text-[13px] font-semibold text-ink-2"
+            <div className="flex items-center gap-2 pb-1.5">
+              <Link
+                href={`/together/${person.id}`}
+                className="flex items-center gap-1.5 rounded-xl border border-line bg-card px-3.5 text-[13px] font-semibold text-ink-2"
                 style={{ height: 42 }}
               >
-                <MessageIcon size={17} />
-                محادثة
-              </button>
-            </form>
+                <WithIcon size={16} />
+                أثرنا
+              </Link>
+              <form action={startConversation.bind(null, person.id)}>
+                <button
+                  type="submit"
+                  aria-label="محادثة"
+                  className="flex w-11 items-center justify-center rounded-xl border border-line bg-card text-ink-2"
+                  style={{ height: 42 }}
+                >
+                  <MessageIcon size={17} />
+                </button>
+              </form>
+            </div>
           </div>
 
           <h1 className="mb-1 flex flex-wrap items-center gap-2 text-[19px] font-bold">
@@ -140,6 +164,28 @@ export default async function FriendProfilePage({
             معك من {joined} · {ar(theirCircle.length)} في دائرته
           </p>
         </div>
+
+        <details className="mx-5 mb-4 rounded-2xl border border-line bg-card">
+          <summary className="flex cursor-pointer list-none items-center justify-between p-3.5">
+            <span className="text-[12.5px] font-semibold text-muted">خيارات</span>
+            <span className="text-[12px]" style={{ color: "var(--color-live)" }}>
+              حظر
+            </span>
+          </summary>
+          <form action={blockUser.bind(null, person.id)} className="border-t border-line p-3.5">
+            <p className="mb-2.5 text-[11.5px] leading-relaxed text-muted">
+              الحظر في الاتجاهين: لا ترى لحظاته ولا يراها، ولا يتفاعل معك، وتُفكّ
+              الصداقة. تقدر تفكّه من الخصوصية.
+            </p>
+            <button
+              type="submit"
+              className="w-full rounded-xl text-[13px] font-bold"
+              style={{ height: 44, background: "var(--color-live)", color: "#fff" }}
+            >
+              احظر {person.name}
+            </button>
+          </form>
+        </details>
 
         <div className="px-5">
           {moments.length === 0 ? (

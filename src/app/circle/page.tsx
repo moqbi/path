@@ -4,7 +4,13 @@ import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { CIRCLE_CAP, circleIds, suggestions } from "@/lib/circle";
 import { plusTag, tagOf } from "@/lib/tags";
-import { acceptFriend, ignoreFriend, requestFriend, startConversation } from "@/app/actions";
+import {
+  acceptFriend,
+  ignoreFriend,
+  requestFriend,
+  setFriendGroup,
+  startConversation,
+} from "@/app/actions";
 import { Avatar, Empty, TabBar, TagPill } from "@/components/ui";
 import { CheckIcon, CloseIcon, MessageIcon, SparkIcon } from "@/components/icons";
 import { ar, relative } from "@/lib/format";
@@ -16,11 +22,17 @@ function letterOf(name: string): string {
   return first || "…";
 }
 
-export default async function CirclePage() {
+export default async function CirclePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ g?: string }>;
+}) {
   const user = await currentUser();
   if (!user) redirect("/login");
 
-  const [ids, auto, suggested, requests] = await Promise.all([
+  const { g } = await searchParams;
+
+  const [ids, auto, suggested, requests, groups] = await Promise.all([
     circleIds(user.id),
     plusTag(),
     suggestions(user.id),
@@ -43,6 +55,11 @@ export default async function CirclePage() {
         },
       },
     }),
+    prisma.friendGroup.findMany({
+      where: { ownerId: user.id },
+      orderBy: { sortOrder: "asc" },
+      select: { id: true, name: true, members: { select: { userId: true } } },
+    }),
   ]);
 
   const members = await prisma.user.findMany({
@@ -61,9 +78,22 @@ export default async function CirclePage() {
     orderBy: { name: "asc" },
   });
 
+  // تصنيف كل صديق: صفٌّ واحد لكل عضوية، فالبحث في خريطة أسرع من استعلام.
+  const groupOf = new Map<string, { id: string; name: string }>();
+  for (const group of groups) {
+    for (const member of group.members) {
+      groupOf.set(member.userId, { id: group.id, name: group.name });
+    }
+  }
+
+  const active = groups.find((group) => group.id === g) ?? null;
+  const shown = active
+    ? members.filter((member) => groupOf.get(member.id)?.id === active.id)
+    : members;
+
   // أقسام بحرف الاسم — تُقرأ الدائرة كدفتر أسماء لا كقائمة متصلة.
   const sections: { letter: string; people: typeof members }[] = [];
-  for (const member of members) {
+  for (const member of shown) {
     const letter = letterOf(member.name);
     const last = sections.at(-1);
     if (last && last.letter === letter) last.people.push(member);
@@ -76,7 +106,7 @@ export default async function CirclePage() {
     <div className="screen">
       <header className="chrome flex items-center justify-between px-5 py-3">
         <h1 className="text-[16px] font-bold" style={{ color: "var(--color-chrome-ink)" }}>
-          أصدقائي
+          الأصدقاء
         </h1>
         <span className="text-[12px]" style={{ color: "var(--color-chrome-ink)", opacity: 0.72 }}>
           {ar(ids.length)} من {ar(CIRCLE_CAP)}
@@ -207,6 +237,37 @@ export default async function CirclePage() {
           </section>
         ) : null}
 
+        {/* شرائح التصنيف — «الكل» ثم تصنيفاتك، كما في المخطط. */}
+        <div className="no-bar mb-3 flex gap-2 overflow-x-auto pb-1">
+          {[{ id: "", name: "الكل" }, ...groups].map((chip) => {
+            const on = (g ?? "") === chip.id;
+            return (
+              <Link
+                key={chip.id || "all"}
+                href={chip.id ? `/circle?g=${chip.id}` : "/circle"}
+                className="shrink-0 rounded-full px-4 py-2 text-[12.5px] font-semibold"
+                style={{
+                  background: on ? "var(--color-clay)" : "var(--color-card)",
+                  color: on ? "var(--color-on-brand)" : "var(--color-ink-2)",
+                  border: `1px solid ${on ? "var(--color-clay)" : "var(--color-line)"}`,
+                }}
+              >
+                {chip.name}
+              </Link>
+            );
+          })}
+          <Link
+            href="/settings/privacy"
+            className="shrink-0 rounded-full border border-dashed border-line px-4 py-2 text-[12.5px] font-semibold text-muted"
+          >
+            + تصنيف
+          </Link>
+        </div>
+
+        {shown.length === 0 && members.length > 0 ? (
+          <Empty title="ما فيه أحد في هذا التصنيف" hint="افتح «تصنيف» تحت أي صديق وضعه فيه." />
+        ) : null}
+
         {members.length === 0 ? (
           <Empty
             title="دائرتك فاضية"
@@ -217,43 +278,107 @@ export default async function CirclePage() {
             <section key={section.letter} className="mb-4">
               <p className="mb-1.5 px-1 text-[12px] font-bold text-clay-ink">{section.letter}</p>
               <div className="overflow-hidden rounded-2xl border border-line bg-card">
-                {section.people.map((member, index) => (
-                  <div
-                    key={member.id}
-                    className="flex items-center gap-3 p-3"
-                    style={{ borderTop: index === 0 ? "none" : "1px solid var(--color-line)" }}
-                  >
-                    <Link href={`/u/${member.id}`} aria-label={`ملف ${member.name}`} className="shrink-0">
-                      <Avatar
-                        name={member.name}
-                        size={46}
-                        frameSpec={member.frame?.spec}
-                        mediaId={member.avatarMediaId}
-                      />
-                    </Link>
-                    <Link href={`/u/${member.id}`} className="min-w-0 grow">
-                      <p className="mb-0.5 flex items-center gap-1.5 truncate text-[14.5px] font-semibold">
-                        {member.name}
-                        {member.isPlus ? <SparkIcon size={13} className="shrink-0 text-gold" /> : null}
-                        <TagPill tag={tagOf(member, auto)} size={10} />
-                      </p>
-                      <p className="truncate text-[11.5px] text-faint">
-                        عضوية {ar(member.memberNo)}
-                        {member.city ? ` · ${member.city}` : ""}
-                        {member.moments[0] ? ` · آخر لحظة ${relative(member.moments[0].createdAt)}` : ""}
-                      </p>
-                    </Link>
-                    <form action={startConversation.bind(null, member.id)} className="shrink-0">
-                      <button
-                        type="submit"
-                        aria-label={`محادثة ${member.name}`}
-                        className="flex h-10 w-10 items-center justify-center rounded-full border border-line text-ink-2"
-                      >
-                        <MessageIcon size={17} />
-                      </button>
-                    </form>
-                  </div>
-                ))}
+                {section.people.map((member, index) => {
+                  const group = groupOf.get(member.id) ?? null;
+                  return (
+                    <details
+                      key={member.id}
+                      style={{ borderTop: index === 0 ? "none" : "1px solid var(--color-line)" }}
+                    >
+                      <summary className="flex cursor-pointer list-none items-center gap-3 p-3">
+                        <Link
+                          href={`/u/${member.id}`}
+                          aria-label={`ملف ${member.name}`}
+                          className="shrink-0"
+                        >
+                          <Avatar
+                            name={member.name}
+                            size={46}
+                            frameSpec={member.frame?.spec}
+                            mediaId={member.avatarMediaId}
+                          />
+                        </Link>
+                        <span className="min-w-0 grow">
+                          <span className="mb-0.5 flex items-center gap-1.5 truncate text-[14.5px] font-semibold">
+                            {member.name}
+                            {member.isPlus ? <SparkIcon size={13} className="shrink-0 text-gold" /> : null}
+                            <TagPill tag={tagOf(member, auto)} size={10} />
+                            {group ? (
+                              <span
+                                className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                                style={{ background: "var(--color-chip)", color: "var(--color-muted)" }}
+                              >
+                                {group.name}
+                              </span>
+                            ) : null}
+                          </span>
+                          <span className="block truncate text-[11.5px] text-faint">
+                            عضوية {ar(member.memberNo)}
+                            {member.city ? ` · ${member.city}` : ""}
+                            {member.moments[0]
+                              ? ` · آخر لحظة ${relative(member.moments[0].createdAt)}`
+                              : ""}
+                          </span>
+                        </span>
+                      </summary>
+
+                      <div className="flex flex-wrap items-center gap-2 px-3 pb-3">
+                        <form action={startConversation.bind(null, member.id)}>
+                          <button
+                            type="submit"
+                            className="flex h-9 items-center gap-1.5 rounded-full border border-line px-3 text-[12px] font-semibold text-ink-2"
+                          >
+                            <MessageIcon size={15} />
+                            محادثة
+                          </button>
+                        </form>
+
+                        <form
+                          action={setFriendGroup.bind(null, member.id)}
+                          className="flex flex-wrap items-center gap-2"
+                        >
+                          {groups.map((option) => {
+                            const on = group?.id === option.id;
+                            return (
+                              <button
+                                key={option.id}
+                                type="submit"
+                                name="groupId"
+                                value={option.id}
+                                className="h-9 rounded-full px-3 text-[12px] font-semibold"
+                                style={{
+                                  background: on ? "var(--color-clay)" : "transparent",
+                                  color: on ? "var(--color-on-brand)" : "var(--color-ink-2)",
+                                  border: `1px solid ${on ? "var(--color-clay)" : "var(--color-line)"}`,
+                                }}
+                              >
+                                {option.name}
+                              </button>
+                            );
+                          })}
+                          {group ? (
+                            <button
+                              type="submit"
+                              name="groupId"
+                              value=""
+                              className="h-9 rounded-full border border-line px-3 text-[12px] font-semibold text-muted"
+                            >
+                              بلا تصنيف
+                            </button>
+                          ) : null}
+                          {groups.length === 0 ? (
+                            <Link
+                              href="/settings/privacy"
+                              className="h-9 rounded-full border border-dashed border-line px-3 py-2 text-[12px] font-semibold text-muted"
+                            >
+                              أنشئ تصنيفاً أولاً
+                            </Link>
+                          ) : null}
+                        </form>
+                      </div>
+                    </details>
+                  );
+                })}
               </div>
             </section>
           ))
