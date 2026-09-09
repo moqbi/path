@@ -103,7 +103,7 @@ export function ScreenHeader({
 
 const TABS = [
   { href: "/", label: "اللحظات", Icon: HomeIcon },
-  { href: "/circle", label: "الدائرة", Icon: CircleIcon },
+  { href: "/circle", label: "أصدقائي", Icon: CircleIcon },
   { href: "/store", label: "المتجر", Icon: StoreIcon },
   { href: "/me", label: "أنا", Icon: UserIcon },
 ];

@@ -168,3 +168,10 @@ export const UserIcon = ({ size = 20, className }: IconProps) => (
     <circle cx="12" cy="7.8" r="3.6" />
   </svg>
 );
+
+export const RefreshIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M20 12a8 8 0 1 1-2.6-5.9" />
+    <path d="M20 4.4V9h-4.6" />
+  </svg>
+);

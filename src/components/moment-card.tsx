@@ -13,7 +13,9 @@ import { Reactions, Reactors } from "@/components/reactions";
 import { ar, relative, timeOfDay } from "@/lib/format";
 import type { FeedMoment } from "@/lib/feed";
 
-/** لحظة سطر واحد: وصل مكاناً، نام، يسمع أغنية، أضاف صديقاً. */
+/** بعد هذا العدد تُفتح اللحظة لقراءة بقية التعليقات، وقبله لا داعي. */
+const INLINE_COMMENTS = 3;
+
 function InlineMoment({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2.5 pt-1.5">
@@ -51,10 +53,12 @@ function Spine({
   );
 }
 
-/** التعليقات تحت اللحظة في الخط الزمني نفسه — لا حاجة لفتحها لقراءتها. */
+/**
+ * التعليقات داخل الخط الزمني.
+ * تُعرض ثلاثة، وما زاد يُقرأ بفتح اللحظة — فلا تبتلع بطاقةٌ واحدة الشاشة.
+ */
 function Comments({ moment }: { moment: FeedMoment }) {
   if (moment.comments.length === 0) return null;
-
   const hidden = moment._count.comments - moment.comments.length;
 
   return (
@@ -72,43 +76,46 @@ function Comments({ moment }: { moment: FeedMoment }) {
         </div>
       ))}
       {hidden > 0 ? (
-        <Link href={`/m/${moment.id}`} className="text-[11.5px] text-clay">
-          و{ar(hidden)} تعليق آخر
+        <Link href={`/m/${moment.id}`} className="text-[11.5px] font-semibold text-clay-ink">
+          اقرأ {ar(hidden)} تعليقاً آخر
         </Link>
       ) : null}
     </div>
   );
 }
 
-function Footer({
-  moment,
-  viewerId,
-  isPlus,
-  circleSize,
-}: {
-  moment: FeedMoment;
-  viewerId: string;
-  isPlus: boolean;
-  circleSize: number;
-}) {
-  const mine = moment.reactions.find((r) => r.userId === viewerId) ?? null;
+function Footer({ moment, circleSize }: { moment: FeedMoment; circleSize: number }) {
+  const views = (
+    <span className="flex shrink-0 items-center gap-1.5 text-[11px] text-faint">
+      <EyeIcon size={14} />
+      {ar(moment._count.views)}/{ar(circleSize)}
+    </span>
+  );
+
+  if (moment.reactions.length === 0) return <div className="flex justify-end">{views}</div>;
 
   return (
     <div className="flex items-center justify-between gap-2">
-      <div className="flex min-w-0 items-center gap-2.5">
-        <Reactions
-          momentId={moment.id}
-          mine={mine}
-          count={0}
-          isPlus={isPlus}
-        />
-        <Reactors reactions={moment.reactions} />
-      </div>
-      <span className="flex shrink-0 items-center gap-1.5 text-[11px] text-faint">
-        <EyeIcon size={14} />
-        {ar(moment._count.views)}/{ar(circleSize)}
-      </span>
+      <Reactors reactions={moment.reactions} />
+      {views}
     </div>
+  );
+}
+
+/** صف اللحظة: الصورة على الخط الزمني، وإلى جانبها البطاقة. */
+function Row({ moment, viewerId, children }: { moment: FeedMoment; viewerId: string; children: React.ReactNode }) {
+  return (
+    <article className="relative flex items-start gap-2 pb-5">
+      <Spine
+        authorId={moment.author.id}
+        viewerId={viewerId}
+        name={moment.author.name}
+        frameSpec={moment.author.frame?.spec}
+        mediaId={moment.author.avatarMediaId}
+        at={moment.createdAt}
+      />
+      <div className="min-w-0 grow">{children}</div>
+    </article>
   );
 }
 
@@ -125,8 +132,34 @@ export function MomentCard({
 }) {
   const { author, kind } = moment;
   const withNames = moment.tags.map((t) => t.user.name);
+  // الفتح في صفحة مستقلة له معنى واحد: تعليقات لم تسعها البطاقة.
+  const opens = moment._count.comments > INLINE_COMMENTS;
+  // زر التفاعل يجلس في أول شريط التعليق — يمين المنشور في اتجاه القراءة.
+  const mine = moment.reactions.find((r) => r.userId === viewerId) ?? null;
+  const reaction = <Reactions momentId={moment.id} mine={mine} count={0} isPlus={isPlus} />;
 
-  // الأغنية بطاقتها الخاصة: الغلاف والعنوان اللاتيني لا يستقيمان داخل سطر عربي.
+  // «أصبح صديق فلان» سطر خبر: لا تفاعل عليه ولا تعليق.
+  if (kind === "FRIEND_ADDED") {
+    return (
+      <article className="relative flex gap-2 pb-5">
+        <Spine
+          authorId={author.id}
+          viewerId={viewerId}
+          name={author.name}
+          frameSpec={author.frame?.spec}
+          mediaId={author.avatarMediaId}
+          at={moment.createdAt}
+        />
+        <div className="min-w-0 grow">
+          <InlineMoment icon={<WithIcon size={15} />}>
+            أصبح صديق <span className="font-semibold text-ink">{moment.text}</span>
+          </InlineMoment>
+        </div>
+      </article>
+    );
+  }
+
+  // الأغنية: العنوان اللاتيني لا يستقيم داخل سطر عربي، فبطاقتها خاصة.
   if (kind === "MUSIC") {
     const body = (
       <div className="flex items-center gap-3">
@@ -166,16 +199,8 @@ export function MomentCard({
     );
 
     return (
-      <article className="relative flex gap-3 pb-5">
-        <Spine
-          authorId={author.id}
-          viewerId={viewerId}
-          name={author.name}
-          frameSpec={author.frame?.spec}
-          mediaId={author.avatarMediaId}
-          at={moment.createdAt}
-        />
-        <div className="min-w-0 grow rounded-2xl border border-line bg-card p-3">
+      <Row moment={moment} viewerId={viewerId}>
+        <div className="rounded-2xl border border-line bg-card p-3">
           {moment.musicUrl ? (
             <a href={moment.musicUrl} target="_blank" rel="noreferrer noopener">
               {body}
@@ -183,123 +208,79 @@ export function MomentCard({
           ) : (
             body
           )}
+          <div className="pt-2.5">
+            <Footer moment={moment} circleSize={circleSize} />
+            <Comments moment={moment} />
+            <InlineComment momentId={moment.id} viewerId={viewerId} reaction={reaction} />
+          </div>
         </div>
-      </article>
+      </Row>
     );
   }
 
-  // «أضاف فلاناً» سطر خبر لا منشور: لا تفاعل عليه ولا تعليق.
-  if (kind === "FRIEND_ADDED") {
-    return (
-      <article className="relative flex gap-3 pb-5">
-        <Spine
-          authorId={author.id}
-          viewerId={viewerId}
-          name={author.name}
-          frameSpec={author.frame?.spec}
-          mediaId={author.avatarMediaId}
-          at={moment.createdAt}
-        />
-        <div className="min-w-0 grow">
-          <InlineMoment icon={<WithIcon size={15} />}>
-            أضاف <span className="font-semibold text-ink">{moment.text}</span> إلى دائرته
-          </InlineMoment>
-        </div>
-      </article>
-    );
-  }
-
-  // النوم لحظة كاملة: تُعلَّق ويُتفاعل معها كغيرها.
-  if (kind === "SLEEP") {
-    return (
-      <article className="relative flex gap-3 pb-5">
-        <Spine
-          authorId={author.id}
-          viewerId={viewerId}
-          name={author.name}
-          frameSpec={author.frame?.spec}
-          mediaId={author.avatarMediaId}
-          at={moment.createdAt}
-        />
-        <div className="min-w-0 grow rounded-2xl border border-line bg-card px-4 pb-3 pt-3">
-          <p className="mb-2.5 flex items-center gap-2.5 text-[13.5px] text-ink-2">
-            <MoonIcon size={16} className="text-muted" />
-            نام
-          </p>
-          <Footer
-            moment={moment}
-            viewerId={viewerId}
-            isPlus={isPlus}
-            circleSize={circleSize}
+  const head =
+    kind === "SLEEP" ? (
+      <p className="flex items-center gap-2.5 px-4 pt-3 text-[13.5px] text-ink-2">
+        <MoonIcon size={16} className="text-muted" />
+        نام
+      </p>
+    ) : (
+      <>
+        {moment.mediaId ? (
+          <div
+            style={{
+              height: 200,
+              backgroundImage: `url(/api/media/${moment.mediaId})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
           />
-          <Comments moment={moment} />
-          <InlineComment momentId={moment.id} viewerId={viewerId} />
-        </div>
-      </article>
-    );
-  }
+        ) : moment.imageSpec ? (
+          <div style={{ height: 132, background: moment.imageSpec }} />
+        ) : null}
 
-  // مكان، صورة، فكرة: بطاقة قابلة للفتح، وتعليقاتها ظاهرة تحتها.
-  return (
-    <article className="relative flex gap-3 pb-5">
-      <Spine
-        authorId={author.id}
-        viewerId={viewerId}
-        name={author.name}
-        frameSpec={author.frame?.spec}
-        mediaId={author.avatarMediaId}
-        at={moment.createdAt}
-      />
-      <div className="min-w-0 grow overflow-hidden rounded-2xl border border-line bg-card">
-        <Link href={`/m/${moment.id}`} className="block">
-          {moment.mediaId ? (
-            <div
-              style={{
-                height: 200,
-                backgroundImage: `url(/api/media/${moment.mediaId})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }}
-            />
-          ) : moment.imageSpec ? (
-            <div style={{ height: 132, background: moment.imageSpec }} />
+        <div className="px-4 pt-3">
+          {kind === "PLACE" ? (
+            <p className="mb-2 flex items-center gap-2 text-[13.5px] text-ink-2">
+              <PinIcon size={15} className="text-live" />
+              <span>
+                في <span className="font-semibold text-ink">{moment.placeName ?? "مكان"}</span>
+                {moment.placeCity ? <span className="text-muted"> · {moment.placeCity}</span> : null}
+              </span>
+            </p>
           ) : null}
 
-          <div className="px-4 pb-1 pt-3">
-            {kind === "PLACE" ? (
-              <p className="mb-2 flex items-center gap-2 text-[13.5px] text-ink-2">
-                <PinIcon size={15} className="text-live" />
-                <span>
-                  في <span className="font-semibold text-ink">{moment.placeName ?? "مكان"}</span>
-                  {moment.placeCity ? <span className="text-muted"> · {moment.placeCity}</span> : null}
-                </span>
-              </p>
-            ) : null}
+          {moment.text ? (
+            <p className="mb-2 text-[13.5px] leading-relaxed text-ink">{moment.text}</p>
+          ) : null}
 
-            {moment.text ? (
-              <p className="mb-2.5 text-[13.5px] leading-relaxed text-ink">{moment.text}</p>
-            ) : null}
+          {withNames.length > 0 ? (
+            <p className="flex items-center gap-1.5 text-[12px] text-muted">
+              <WithIcon size={13} />
+              مع {withNames.join(" و")}
+            </p>
+          ) : null}
+        </div>
+      </>
+    );
 
-            {withNames.length > 0 ? (
-              <p className="flex items-center gap-1.5 text-[12px] text-muted">
-                <WithIcon size={13} />
-                مع {withNames.join(" و")}
-              </p>
-            ) : null}
-          </div>
-        </Link>
+  return (
+    <Row moment={moment} viewerId={viewerId}>
+      <div className="overflow-hidden rounded-2xl border border-line bg-card">
+        {opens ? (
+          <Link href={`/m/${moment.id}`} className="block">
+            {head}
+          </Link>
+        ) : (
+          head
+        )}
 
         <div className="px-4 pb-3 pt-2">
-          <Footer
-            moment={moment}
-            viewerId={viewerId}
-            isPlus={isPlus}
-            circleSize={circleSize}
-          />
+          <Footer moment={moment} circleSize={circleSize} />
           <Comments moment={moment} />
-          <InlineComment momentId={moment.id} viewerId={viewerId} />
+          <InlineComment momentId={moment.id} viewerId={viewerId} reaction={reaction} />
         </div>
       </div>
-    </article>
+    </Row>
   );
 }

@@ -29,7 +29,7 @@ export default async function CirclePage() {
   return (
     <div className="screen">
       <ScreenHeader
-        title="دائرتك"
+        title="أصدقائي"
         action={
           <button
             type="button"

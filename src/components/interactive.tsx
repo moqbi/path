@@ -12,8 +12,20 @@ export function SeenTracker({ momentId }: { momentId: string }) {
   return null;
 }
 
-/** حقل تعليق داخل بطاقة الخط الزمني، فلا يُفتح شيء لكتابة سطر. */
-export function InlineComment({ momentId, viewerId }: { momentId: string; viewerId: string }) {
+/**
+ * شريط أسفل اللحظة: زر التفاعل ثم حقل التعليق.
+ * التفاعل والتعليق فعلان متجاوران في الذهن، فليكونا متجاورين في الشاشة —
+ * و«إرسال» لا يظهر إلا حين يصير هناك ما يُرسل.
+ */
+export function InlineComment({
+  momentId,
+  viewerId,
+  reaction,
+}: {
+  momentId: string;
+  viewerId: string;
+  reaction?: React.ReactNode;
+}) {
   const [pending, start] = useTransition();
   const [body, setBody] = useState("");
 
@@ -29,6 +41,7 @@ export function InlineComment({ momentId, viewerId }: { momentId: string; viewer
       }}
       className="mt-2 flex items-center gap-2"
     >
+      {reaction ? <div className="shrink-0">{reaction}</div> : null}
       <input
         name="body"
         value={body}

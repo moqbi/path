@@ -196,13 +196,14 @@ h3 {
   display: none;
 }
 
-/* الخط العمودي الذي يربط لحظات اليوم في الخط الزمني. */
+/* الخط العمودي الذي يربط لحظات اليوم في الخط الزمني.
+   الإزاحة = منتصف عمود الصور (w-14) داخل حاوية بحشوة px-5. */
 .spine::before {
   content: "";
   position: absolute;
   top: 0;
   bottom: 0;
-  right: 47px;
+  right: 27px;
   width: 1px;
   background: var(--color-line);
 }
@@ -216,5 +217,12 @@ h3 {
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+/* دوران زر التحديث أثناء الجلب. */
+@keyframes athr-spin {
+  to {
+    transform: rotate(360deg);
   }
 }

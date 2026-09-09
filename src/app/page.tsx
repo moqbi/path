@@ -6,9 +6,10 @@ import { unreadCount } from "@/lib/dm";
 import { MomentCard } from "@/components/moment-card";
 import { ComposerFan } from "@/components/composer-fan";
 import { Avatar, Empty, TabBar } from "@/components/ui";
+import { TimelineHead } from "@/components/timeline-head";
 import { AthrHeaderMark } from "@/components/brand";
 import { CircleIcon, MessageIcon } from "@/components/icons";
-import { ar, dayLabel, timeOfDay } from "@/lib/format";
+import { ar, dayLabel } from "@/lib/format";
 
 export default async function TimelinePage() {
   const user = await currentUser();
@@ -61,42 +62,20 @@ export default async function TimelinePage() {
         </div>
       </header>
 
-      {/*
-        غلاف الملف الشخصي يتصدّر الخط الزمني وصورة العرض تتداخل معه —
-        هكذا كانت شاشة Path الرئيسية، والغلاف يعطي الصفحة وجهاً بدل أن
-        تبدأ بقائمة جافة.
-      */}
-      <div className="relative shrink-0">
-        <div
-          style={{
-            height: 148,
-            backgroundImage: user.coverMediaId ? `url(/api/media/${user.coverMediaId})` : undefined,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            background: user.coverMediaId
-              ? undefined
-              : (user.background?.spec ??
-                "linear-gradient(140deg,#f2e6d5,#e8cdb4 45%,#c9a68f)"),
-          }}
-        />
-        <div className="relative flex items-center gap-3 px-5" style={{ marginTop: -30 }}>
-          <div className="flex w-[68px] shrink-0 justify-center">
-            <Avatar
-              name={user.name}
-              size={64}
-              frameSpec={user.frame?.spec}
-              mediaId={user.avatarMediaId}
-              ring="var(--color-paper)"
-            />
-          </div>
-          <div className="grow pt-8">
-            <p className="text-[14px] font-semibold">{user.name}</p>
-            <p className="text-[11.5px] text-muted">{timeOfDay(new Date())}</p>
-          </div>
-        </div>
-      </div>
-
-      <main className="scroll-area relative px-5 pt-2">
+      <TimelineHead
+        coverMediaId={user.coverMediaId}
+        coverSpec={user.background?.spec ?? null}
+        name={user.name}
+        avatar={
+          <Avatar
+            name={user.name}
+            size={56}
+            frameSpec={user.frame?.spec}
+            mediaId={user.avatarMediaId}
+            ring="var(--color-paper)"
+          />
+        }
+      >
         {moments.length === 0 ? (
           <Empty
             title="خطك الزمني فارغ"
@@ -125,7 +104,7 @@ export default async function TimelinePage() {
             ))}
           </div>
         )}
-      </main>
+      </TimelineHead>
 
       <ComposerFan />
       <TabBar active="/" />

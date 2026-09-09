@@ -15,8 +15,7 @@ export const REACTION_SRC: Record<string, string> = {
   GASP: "/reactions/gasp.png",
   SAD: "/reactions/sad.png",
   LOVE: "/reactions/love.png",
-  // وجه النوم مؤقت حتى يصل ملفه؛ البقية من ملفات العلامة.
-  SLEEPY: "/reactions/sleepy.svg",
+  SLEEPY: "/reactions/sleepy.png",
 };
 
 /** الوجوه العامة، ثم النوم — يُعرض لكل اللحظات وهو الأنسب للحظة نوم. */
