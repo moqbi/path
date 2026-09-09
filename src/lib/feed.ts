@@ -2,7 +2,9 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { circleIds } from "@/lib/circle";
 
-const momentShape = {
+/** شكل اللحظة في الخط الزمني — تستعمله صفحات الملف الشخصي أيضاً
+ * فلا يختلف عرض اللحظة باختلاف الصفحة التي جاءت منها. */
+export const momentShape = {
   id: true,
   kind: true,
   text: true,
@@ -21,8 +23,10 @@ const momentShape = {
     select: {
       id: true,
       name: true,
+      isPlus: true,
       avatarMediaId: true,
       frame: { select: { spec: true } },
+      tag: { select: { name: true, bg: true, fg: true } },
     },
   },
   tags: { select: { user: { select: { id: true, name: true } } } },

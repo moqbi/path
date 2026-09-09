@@ -33,7 +33,7 @@ export function Avatar({
       style={{
         width: "100%",
         height: "100%",
-        background: mediaId ? undefined : tintFor(name),
+        backgroundColor: mediaId ? undefined : tintFor(name),
         backgroundImage: mediaId ? `url(/api/media/${mediaId})` : undefined,
         backgroundSize: mediaId ? "cover" : undefined,
         backgroundPosition: mediaId ? "center" : undefined,
@@ -63,6 +63,35 @@ export function Avatar({
       {inner}
     </div>
   );
+}
+
+/** التدرّج الافتراضي للغلاف حين لا صورة ولا خلفية مشتراة. */
+export const DEFAULT_COVER = "linear-gradient(140deg,#f2e6d5,#e8cdb4 45%,#c9a68f)";
+
+/**
+ * خلفية الغلاف في مكان واحد.
+ *
+ * كلها `background-image` وحدها بلا اختصار `background`: خلط الاختصار مع
+ * `background-size` يجعل React يحذف أحدهما عند إعادة الرسم — وهو الطريق
+ * الذي يختفي به الغلاف بلا خطأ يظهر.
+ */
+export function coverStyle(
+  mediaId: string | null | undefined,
+  spec: string | null | undefined,
+): React.CSSProperties {
+  if (mediaId) {
+    return {
+      backgroundImage: `url(/api/media/${mediaId})`,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+    };
+  }
+
+  const value = (spec ?? DEFAULT_COVER).trim();
+  // لونٌ مصمت لا يصلح صورةً — يوضع لوناً وإلا لم يُرسم شيء.
+  return /^(linear|radial|conic|repeating-linear|repeating-conic|repeating-radial)-gradient\(|^url\(/.test(value)
+    ? { backgroundImage: value, backgroundSize: "cover", backgroundPosition: "center" }
+    : { backgroundColor: value };
 }
 
 export function ScreenHeader({
@@ -138,5 +167,33 @@ export function Empty({ title, hint }: { title: string; hint?: string }) {
       <p className="text-[15px] font-semibold text-ink">{title}</p>
       {hint ? <p className="mt-2 text-[12.5px] leading-relaxed text-muted">{hint}</p> : null}
     </div>
+  );
+}
+
+/**
+ * وسم بجانب الاسم بلونَي المشرف. حجمه صغير عمداً: الاسم هو البطل،
+ * والوسم صفة عليه لا عنوان فوقه.
+ */
+export function TagPill({
+  tag,
+  size = 11,
+}: {
+  tag: { name: string; bg: string; fg: string } | null;
+  size?: number;
+}) {
+  if (!tag) return null;
+  return (
+    <span
+      className="inline-flex shrink-0 items-center rounded-full font-bold"
+      style={{
+        background: tag.bg,
+        color: tag.fg,
+        fontSize: size,
+        lineHeight: 1,
+        padding: `${Math.round(size * 0.35)}px ${Math.round(size * 0.66)}px`,
+      }}
+    >
+      {tag.name}
+    </span>
   );
 }

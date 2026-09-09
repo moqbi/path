@@ -3,9 +3,11 @@ import { notFound, redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { circleIds } from "@/lib/circle";
+import { momentShape } from "@/lib/feed";
+import { plusTag, tagOf } from "@/lib/tags";
 import { startConversation } from "@/app/actions";
 import { MomentCard } from "@/components/moment-card";
-import { Avatar, Empty, ScreenHeader } from "@/components/ui";
+import { Avatar, coverStyle, Empty, ScreenHeader, TagPill } from "@/components/ui";
 import { MessageIcon, SparkIcon } from "@/components/icons";
 import { ar, dayLabel } from "@/lib/format";
 
@@ -33,6 +35,7 @@ export default async function FriendProfilePage({
     where: { id },
     select: {
       id: true,
+      memberNo: true,
       name: true,
       city: true,
       isPlus: true,
@@ -41,61 +44,20 @@ export default async function FriendProfilePage({
       coverMediaId: true,
       frame: { select: { spec: true } },
       background: { select: { spec: true } },
+      tag: { select: { name: true, bg: true, fg: true } },
     },
   });
   if (!person) notFound();
 
-  const [moments, theirCircle] = await Promise.all([
+  const [moments, theirCircle, auto] = await Promise.all([
     prisma.moment.findMany({
       where: { authorId: id },
-      select: {
-        id: true,
-        kind: true,
-        text: true,
-        placeName: true,
-        placeCity: true,
-        musicTitle: true,
-        musicArtist: true,
-        musicUrl: true,
-        musicThumb: true,
-        imageSpec: true,
-        mediaId: true,
-        lat: true,
-        lng: true,
-        createdAt: true,
-        author: {
-          select: {
-            id: true,
-            name: true,
-            avatarMediaId: true,
-            frame: { select: { spec: true } },
-          },
-        },
-        tags: { select: { user: { select: { id: true, name: true } } } },
-        reactions: {
-          select: {
-            userId: true,
-            kind: true,
-            emoji: true,
-            user: { select: { name: true, avatarMediaId: true } },
-          },
-        },
-        comments: {
-          select: {
-            id: true,
-            body: true,
-            createdAt: true,
-            user: { select: { id: true, name: true, avatarMediaId: true } },
-          },
-          orderBy: { createdAt: "asc" },
-          take: 3,
-        },
-        _count: { select: { views: true, comments: true } },
-      },
+      select: momentShape,
       orderBy: { createdAt: "desc" },
       take: 40,
     }),
     circleIds(id),
+    plusTag(),
   ]);
 
   const joined = `${MONTHS[person.createdAt.getMonth()]} ${ar(person.createdAt.getFullYear())}`;
@@ -115,18 +77,7 @@ export default async function FriendProfilePage({
       <div className="scroll-area">
         <div
           className="relative shrink-0"
-          style={{
-            height: 140,
-            backgroundImage: person.coverMediaId
-              ? `url(/api/media/${person.coverMediaId})`
-              : undefined,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            background: person.coverMediaId
-              ? undefined
-              : (person.background?.spec ??
-                "linear-gradient(140deg,#f2e6d5,#e8cdb4 45%,#c9a68f)"),
-          }}
+          style={{ height: 140, ...coverStyle(person.coverMediaId, person.background?.spec) }}
         />
 
         <div className="relative px-5" style={{ marginTop: -34 }}>
@@ -149,12 +100,13 @@ export default async function FriendProfilePage({
             </form>
           </div>
 
-          <h1 className="mb-1 flex items-center gap-2 text-[19px] font-bold">
+          <h1 className="mb-1 flex flex-wrap items-center gap-2 text-[19px] font-bold">
             {person.name}
             {person.isPlus ? <SparkIcon size={16} className="text-gold" /> : null}
+            <TagPill tag={tagOf(person, auto)} size={11} />
           </h1>
           <p className="mb-4 text-[12.5px] text-muted">
-            {person.city ? `${person.city} · ` : null}
+            عضوية رقم {ar(person.memberNo)} · {person.city ? `${person.city} · ` : null}
             معك من {joined} · {ar(theirCircle.length)} في دائرته
           </p>
         </div>

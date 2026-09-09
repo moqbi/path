@@ -5,9 +5,10 @@ import { prisma } from "@/lib/db";
 import { circleIds } from "@/lib/circle";
 import { archive } from "@/lib/feed";
 import { signOut } from "@/app/actions";
-import { ProfileImages } from "./images";
-import { TabBar } from "@/components/ui";
+import { CoverPicker, ProfileImages } from "./images";
+import { coverStyle, TabBar, TagPill } from "@/components/ui";
 import { BookIcon, SparkIcon } from "@/components/icons";
+import { plusTag, tagOf } from "@/lib/tags";
 import { ar } from "@/lib/format";
 
 const MONTHS = [
@@ -19,7 +20,7 @@ export default async function ProfilePage() {
   const user = await currentUser();
   if (!user) redirect("/login");
 
-  const [ids, moments, places] = await Promise.all([
+  const [ids, moments, places, auto] = await Promise.all([
     circleIds(user.id),
     archive(user.id),
     prisma.moment.findMany({
@@ -27,6 +28,7 @@ export default async function ProfilePage() {
       select: { placeName: true },
       distinct: ["placeName"],
     }),
+    plusTag(),
   ]);
 
   const joined = `${MONTHS[user.createdAt.getMonth()]} ${ar(user.createdAt.getFullYear())}`;
@@ -36,17 +38,10 @@ export default async function ProfilePage() {
     <div className="screen">
       <div
         className="relative shrink-0"
-        style={{
-          height: 152,
-          backgroundImage: user.coverMediaId ? `url(/api/media/${user.coverMediaId})` : undefined,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          background: user.coverMediaId
-            ? undefined
-            : (user.background?.spec ??
-              "linear-gradient(140deg,#f2e6d5,#e8cdb4 45%,#c9a68f)"),
-        }}
+        style={{ height: 152, ...coverStyle(user.coverMediaId, user.background?.spec) }}
       >
+        <CoverPicker hasCover={Boolean(user.coverMediaId)} />
+
         {user.background ? (
           <span
             className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full px-3 py-1.5"
@@ -64,7 +59,6 @@ export default async function ProfilePage() {
             name={user.name}
             frameSpec={user.frame?.spec ?? null}
             avatarMediaId={user.avatarMediaId}
-            hasCover={Boolean(user.coverMediaId)}
           />
           <form action={signOut} className="pb-1.5">
             <button
@@ -77,12 +71,13 @@ export default async function ProfilePage() {
           </form>
         </div>
 
-        <h1 className="mb-1 flex items-center gap-2 text-[21px] font-semibold">
+        <h1 className="mb-1 flex flex-wrap items-center gap-2 text-[21px] font-semibold">
           {user.name}
           {user.isPlus ? <SparkIcon size={17} className="text-gold" /> : null}
+          <TagPill tag={tagOf(user, auto)} size={12} />
         </h1>
         <p className="mb-5 text-[12.5px] text-muted">
-          {user.city ? `${user.city} · ` : null}معك من {joined}
+          عضوية رقم {ar(user.memberNo)} · {user.city ? `${user.city} · ` : null}معك من {joined}
         </p>
 
         <div className="mb-5 grid grid-cols-3 gap-2.5">

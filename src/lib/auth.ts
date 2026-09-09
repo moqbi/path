@@ -83,6 +83,7 @@ export async function currentUserId(): Promise<string | null> {
 
 export type SessionUser = {
   id: string;
+  memberNo: number;
   name: string;
   email: string;
   city: string | null;
@@ -95,6 +96,7 @@ export type SessionUser = {
   coverMediaId: string | null;
   frame: { spec: string } | null;
   background: { spec: string } | null;
+  tag: { name: string; bg: string; fg: string } | null;
 };
 
 export async function currentUser(): Promise<SessionUser | null> {
@@ -105,6 +107,7 @@ export async function currentUser(): Promise<SessionUser | null> {
     where: { id },
     select: {
       id: true,
+      memberNo: true,
       name: true,
       email: true,
       city: true,
@@ -118,6 +121,7 @@ export async function currentUser(): Promise<SessionUser | null> {
       coverMediaId: true,
       frame: { select: { spec: true } },
       background: { select: { spec: true } },
+      tag: { select: { name: true, bg: true, fg: true } },
     },
   });
   if (!user) return null;
@@ -127,6 +131,7 @@ export async function currentUser(): Promise<SessionUser | null> {
 
   return {
     id: user.id,
+    memberNo: user.memberNo,
     name: user.name,
     email: user.email,
     city: user.city,
@@ -139,6 +144,7 @@ export async function currentUser(): Promise<SessionUser | null> {
     coverMediaId: user.coverMediaId,
     frame: user.frame,
     background: user.background,
+    tag: user.tag,
   };
 }
 

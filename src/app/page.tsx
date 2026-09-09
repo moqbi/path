@@ -5,20 +5,22 @@ import { circleCount, timeline } from "@/lib/feed";
 import { unreadCount } from "@/lib/dm";
 import { MomentCard } from "@/components/moment-card";
 import { ComposerFan } from "@/components/composer-fan";
-import { Avatar, Empty, TabBar } from "@/components/ui";
+import { Avatar, Empty, TabBar, TagPill } from "@/components/ui";
 import { TimelineHead } from "@/components/timeline-head";
 import { AthrHeaderMark } from "@/components/brand";
 import { CircleIcon, MessageIcon } from "@/components/icons";
+import { plusTag, tagOf } from "@/lib/tags";
 import { ar, dayLabel } from "@/lib/format";
 
 export default async function TimelinePage() {
   const user = await currentUser();
   if (!user) redirect("/login");
 
-  const [moments, size, unread] = await Promise.all([
+  const [moments, size, unread, auto] = await Promise.all([
     timeline(user.id),
     circleCount(user.id),
     unreadCount(user.id),
+    plusTag(),
   ]);
 
   // اللحظات تُجمَّع تحت فواصل الأيام، فالخط الزمني يُقرأ كيوميات لا كتدفق.
@@ -66,6 +68,7 @@ export default async function TimelinePage() {
         coverMediaId={user.coverMediaId}
         coverSpec={user.background?.spec ?? null}
         name={user.name}
+        tag={<TagPill tag={tagOf(user, auto)} size={10} />}
         avatar={
           <Avatar
             name={user.name}

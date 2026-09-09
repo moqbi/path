@@ -24,14 +24,24 @@ export async function openConversation(me: string, other: string): Promise<strin
   return conversation.id;
 }
 
+/** طرف المحادثة: صورته ووسمه — نفس ما يُعرض في بقية الشاشات. */
+const PERSON = {
+  id: true,
+  name: true,
+  isPlus: true,
+  avatarMediaId: true,
+  frame: { select: { spec: true } },
+  tag: { select: { name: true, bg: true, fg: true } },
+} as const;
+
 export async function conversationsFor(userId: string) {
   const rows = await prisma.conversation.findMany({
     where: { OR: [{ aId: userId }, { bId: userId }] },
     select: {
       id: true,
       updatedAt: true,
-      a: { select: { id: true, name: true, frame: { select: { spec: true } } } },
-      b: { select: { id: true, name: true, frame: { select: { spec: true } } } },
+      a: { select: PERSON },
+      b: { select: PERSON },
       messages: {
         select: { body: true, createdAt: true, senderId: true, readAt: true },
         orderBy: { createdAt: "desc" },
@@ -59,8 +69,8 @@ export async function conversationFor(userId: string, conversationId: string) {
     where: { id: conversationId },
     select: {
       id: true,
-      a: { select: { id: true, name: true, frame: { select: { spec: true } } } },
-      b: { select: { id: true, name: true, frame: { select: { spec: true } } } },
+      a: { select: PERSON },
+      b: { select: PERSON },
       messages: {
         select: { id: true, body: true, senderId: true, createdAt: true },
         orderBy: { createdAt: "asc" },

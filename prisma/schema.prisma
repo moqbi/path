@@ -58,6 +58,9 @@ enum FriendshipStatus {
 
 model User {
   id           String    @id @default(cuid())
+  /// رقم العضوية: تسلسل من ١ فصاعداً، لا يُعاد استعماله ولا يتغيّر.
+  /// المتسلسلة في القاعدة لا في التطبيق، وإلا تصادم مسجّلان في اللحظة نفسها.
+  memberNo     Int       @unique @default(autoincrement())
   email        String    @unique
   passwordHash String
   name         String
@@ -84,6 +87,10 @@ model User {
   coverMediaId  String? @unique
   avatarMedia   Media?  @relation("UserAvatar", fields: [avatarMediaId], references: [id], onDelete: SetNull)
   coverMedia    Media?  @relation("UserCover", fields: [coverMediaId], references: [id], onDelete: SetNull)
+
+  /// وسم يظهر بجانب الاسم. يُمنح من لوحة التحكم.
+  tagId String?
+  tag   Tag?    @relation(fields: [tagId], references: [id], onDelete: SetNull)
 
   frameId      String?
   backgroundId String?
@@ -220,6 +227,23 @@ model Comment {
 }
 
 // ───────────────────────────── المتجر ─────────────────────────────
+
+/// وسم بجانب الاسم: كلمة بلونَي خلفية ونصّ يختارهما المشرف.
+/// `autoForPlus` يجعل الوسم يُقرأ لكل مشترك بلا صفٍّ لكل مستخدم —
+/// فالاشتراك ينتهي من نفسه ولا يترك وسماً معلّقاً خلفه.
+model Tag {
+  id   String @id @default(cuid())
+  name String
+  /// ألوان CSS (#rrggbb).
+  bg String
+  fg String
+
+  autoForPlus Boolean @default(false)
+  sortOrder   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  users     User[]
+}
 
 model StoreItem {
   id    String        @id @default(cuid())

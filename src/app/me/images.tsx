@@ -6,20 +6,18 @@ import { Avatar } from "@/components/ui";
 import { CameraIcon, CloseIcon } from "@/components/icons";
 
 /**
- * تغيير صورة العرض والغلاف.
- * زر الصورة يجلس على حافة الصورة نفسها لأن ذلك أوضح مكان يتوقعه المستخدم،
- * وزر الغلاف يطفو على الغلاف فوقها.
+ * تغيير صورة العرض. زرها على حافتها لأن ذلك أوضح مكان يتوقعه المستخدم.
+ * أما زر الغلاف فداخل الغلاف نفسه (`CoverPicker`): كان هنا بإزاحة سالبة
+ * فوق `main`، ومنطقة التمرير تقصّ ما خرج عنها، فاختفى الزر تماماً.
  */
 export function ProfileImages({
   name,
   frameSpec,
   avatarMediaId,
-  hasCover,
 }: {
   name: string;
   frameSpec: string | null;
   avatarMediaId: string | null;
-  hasCover: boolean;
 }) {
   return (
     <div className="relative">
@@ -41,35 +39,41 @@ export function ProfileImages({
         </ImagePicker>
       </div>
 
-      <div className="absolute -top-[104px] left-0 flex gap-2">
-        <ImagePicker
-          label="غيّر الغلاف"
-          maxSize={1600}
-          onPicked={(dataUrl, width, height) => setCover(dataUrl, width, height)}
+    </div>
+  );
+}
+
+/** أزرار الغلاف — تُركَّب داخل الغلاف، فلا تقصّها منطقة التمرير. */
+export function CoverPicker({ hasCover }: { hasCover: boolean }) {
+  return (
+    <div className="absolute left-4 top-4 flex gap-2">
+      <ImagePicker
+        label="غيّر الغلاف"
+        maxSize={1600}
+        onPicked={(dataUrl, width, height) => setCover(dataUrl, width, height)}
+        className="flex items-center rounded-full text-[11px] font-semibold"
+      >
+        <span
           className="flex items-center gap-1.5 rounded-full px-3 py-2 text-[11px] font-semibold"
+          style={{ background: "rgba(14,26,36,.55)", color: "#f7f5ef" }}
         >
-          <span
-            className="flex items-center gap-1.5 rounded-full px-3 py-2 text-[11px] font-semibold"
+          <CameraIcon size={14} />
+          الغلاف
+        </span>
+      </ImagePicker>
+
+      {hasCover ? (
+        <form action={clearCover}>
+          <button
+            type="submit"
+            aria-label="أزل الغلاف"
+            className="flex h-9 w-9 items-center justify-center rounded-full"
             style={{ background: "rgba(14,26,36,.55)", color: "#f7f5ef" }}
           >
-            <CameraIcon size={14} />
-            الغلاف
-          </span>
-        </ImagePicker>
-
-        {hasCover ? (
-          <form action={clearCover}>
-            <button
-              type="submit"
-              aria-label="أزل الغلاف"
-              className="flex h-9 w-9 items-center justify-center rounded-full"
-              style={{ background: "rgba(14,26,36,.55)", color: "#f7f5ef" }}
-            >
-              <CloseIcon size={15} />
-            </button>
-          </form>
-        ) : null}
-      </div>
+            <CloseIcon size={15} />
+          </button>
+        </form>
+      ) : null}
     </div>
   );
 }

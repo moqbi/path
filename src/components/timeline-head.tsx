@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { RefreshIcon } from "@/components/icons";
+import { coverStyle } from "@/components/ui";
 import { timeOfDay } from "@/lib/format";
 
 const COVER = 176;
@@ -27,12 +28,14 @@ export function TimelineHead({
   coverSpec,
   avatar,
   name,
+  tag,
   children,
 }: {
   coverMediaId: string | null;
   coverSpec: string | null;
   avatar: ReactNode;
   name: string;
+  tag: ReactNode;
   children: ReactNode;
 }) {
   const router = useRouter();
@@ -153,12 +156,7 @@ export function TimelineHead({
         style={{
           height: COVER + pull,
           transition: dragging ? "none" : "height 260ms cubic-bezier(.2,.9,.3,1)",
-          backgroundImage: coverMediaId ? `url(/api/media/${coverMediaId})` : undefined,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          background: coverMediaId
-            ? undefined
-            : (coverSpec ?? "linear-gradient(140deg,#f2e6d5,#e8cdb4 45%,#c9a68f)"),
+          ...coverStyle(coverMediaId, coverSpec),
         }}
       >
         {/* درع خفيف: الغلاف قد يكون صورة فاتحة أو خلفية داكنة من المتجر،
@@ -172,10 +170,11 @@ export function TimelineHead({
           <div className="flex w-14 shrink-0 justify-center">{avatar}</div>
           <div className="min-w-0 grow pb-1.5">
             <p
-              className="truncate text-[14px] font-semibold"
+              className="flex items-center gap-1.5 truncate text-[14px] font-semibold"
               style={{ color: "#fff", textShadow: "0 1px 3px rgba(14,26,36,.45)" }}
             >
               {name}
+              {tag}
             </p>
             <p
               className="text-[11.5px]"

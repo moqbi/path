@@ -2,7 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { conversationsFor } from "@/lib/dm";
-import { Avatar, Empty, ScreenHeader, TabBar } from "@/components/ui";
+import { Avatar, Empty, ScreenHeader, TabBar, TagPill } from "@/components/ui";
+import { plusTag, tagOf } from "@/lib/tags";
 import { relative } from "@/lib/format";
 import { SwipeRow } from "@/components/swipe-row";
 import { deleteConversation } from "@/app/actions";
@@ -11,7 +12,7 @@ export default async function MessagesPage() {
   const user = await currentUser();
   if (!user) redirect("/login");
 
-  const conversations = await conversationsFor(user.id);
+  const [conversations, auto] = await Promise.all([conversationsFor(user.id), plusTag()]);
 
   return (
     <div className="screen">
@@ -37,10 +38,16 @@ export default async function MessagesPage() {
                 name={conversation.other.name}
                 size={46}
                 frameSpec={conversation.other.frame?.spec}
+                mediaId={conversation.other.avatarMediaId}
               />
               <div className="grow overflow-hidden">
                 <div className="mb-0.5 flex items-baseline justify-between gap-2">
-                  <span className="text-[14.5px] font-semibold">{conversation.other.name}</span>
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <span className="truncate text-[14.5px] font-semibold">
+                      {conversation.other.name}
+                    </span>
+                    <TagPill tag={tagOf(conversation.other, auto)} size={10} />
+                  </span>
                   {conversation.last ? (
                     <span className="shrink-0 text-[10.5px] text-faint">
                       {relative(conversation.last.createdAt)}

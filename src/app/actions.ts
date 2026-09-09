@@ -350,6 +350,111 @@ export async function createStoreItem(formData: FormData): Promise<void> {
   revalidatePath("/store");
 }
 
+export async function updateStoreItem(itemId: string, formData: FormData): Promise<void> {
+  await requireAdmin();
+
+  const parsed = storeItemInput.safeParse({
+    kind: formData.get("kind"),
+    name: formData.get("name"),
+    priceRiyals: formData.get("priceRiyals"),
+    spec: formData.get("spec"),
+    plusOnly: formData.get("plusOnly") === "on",
+    earnedAfterDays: formData.get("earnedAfterDays") || undefined,
+  });
+  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "بيانات غير صالحة");
+
+  const { kind, name, priceRiyals, spec, plusOnly, earnedAfterDays } = parsed.data;
+  await prisma.storeItem.update({
+    where: { id: itemId },
+    data: {
+      kind,
+      name,
+      priceHalalas: Math.round(priceRiyals * 100),
+      spec,
+      plusOnly,
+      earnedAfterDays: earnedAfterDays && earnedAfterDays > 0 ? earnedAfterDays : null,
+    },
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/store");
+}
+
+// ───────────────────────────── الوسوم ─────────────────────────────
+
+const HEX = /^#[0-9a-fA-F]{6}$/;
+
+const tagInput = z.object({
+  name: z.string().trim().min(1, "اكتب اسم الوسم").max(20),
+  bg: z.string().trim().regex(HEX, "لون الخلفية بصيغة #rrggbb"),
+  fg: z.string().trim().regex(HEX, "لون النص بصيغة #rrggbb"),
+  autoForPlus: z.coerce.boolean(),
+});
+
+function readTag(formData: FormData) {
+  const parsed = tagInput.safeParse({
+    name: formData.get("name"),
+    bg: formData.get("bg"),
+    fg: formData.get("fg"),
+    autoForPlus: formData.get("autoForPlus") === "on",
+  });
+  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "بيانات غير صالحة");
+  return parsed.data;
+}
+
+/** وسم واحد فقط يُمنح تلقائياً للمشتركين، وإلا تنازع وسمان على الاسم نفسه. */
+async function keepSingleAuto(tagId: string, autoForPlus: boolean) {
+  if (!autoForPlus) return;
+  await prisma.tag.updateMany({
+    where: { id: { not: tagId }, autoForPlus: true },
+    data: { autoForPlus: false },
+  });
+}
+
+export async function createTag(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const data = readTag(formData);
+  const last = await prisma.tag.findFirst({ orderBy: { sortOrder: "desc" }, select: { sortOrder: true } });
+  const tag = await prisma.tag.create({ data: { ...data, sortOrder: (last?.sortOrder ?? 0) + 1 } });
+  await keepSingleAuto(tag.id, data.autoForPlus);
+  revalidateTags();
+}
+
+export async function updateTag(tagId: string, formData: FormData): Promise<void> {
+  await requireAdmin();
+  const data = readTag(formData);
+  await prisma.tag.update({ where: { id: tagId }, data });
+  await keepSingleAuto(tagId, data.autoForPlus);
+  revalidateTags();
+}
+
+export async function deleteTag(tagId: string): Promise<void> {
+  await requireAdmin();
+  // الحاملون يفقدون الوسم لا حساباتهم — العلاقة `SetNull`.
+  await prisma.tag.delete({ where: { id: tagId } });
+  revalidateTags();
+}
+
+/** منح الوسم لحساب، أو نزعه بقيمة فارغة. */
+export async function setUserTag(userId: string, formData: FormData): Promise<void> {
+  await requireAdmin();
+  const raw = String(formData.get("tagId") ?? "");
+  const tagId = raw.length > 0 ? raw : null;
+  if (tagId) {
+    const exists = await prisma.tag.findUnique({ where: { id: tagId }, select: { id: true } });
+    if (!exists) throw new Error("الوسم غير موجود");
+  }
+  await prisma.user.update({ where: { id: userId }, data: { tagId } });
+  revalidateTags();
+}
+
+function revalidateTags() {
+  revalidatePath("/admin");
+  revalidatePath("/");
+  revalidatePath("/me");
+  revalidatePath("/circle");
+}
+
 export async function deleteStoreItem(itemId: string): Promise<void> {
   await requireAdmin();
   await prisma.storeItem.delete({ where: { id: itemId } });
@@ -403,11 +508,28 @@ export async function acceptFriend(friendshipId: string): Promise<void> {
   revalidatePath("/circle");
 }
 
-export async function requestFriend(email: string): Promise<void> {
+/** تُرفض الطلبات بالحذف: لا حالة «مرفوض» تُبقي أثراً لمن رفض من. */
+export async function ignoreFriend(friendshipId: string): Promise<void> {
+  const user = await requireUser();
+  const friendship = await prisma.friendship.findUnique({
+    where: { id: friendshipId },
+    select: { addresseeId: true, status: true },
+  });
+  if (!friendship || friendship.addresseeId !== user.id) throw new Error("غير مصرح");
+  if (friendship.status === "ACCEPTED") throw new Error("الصداقة مقبولة");
+
+  await prisma.friendship.delete({ where: { id: friendshipId } });
+  revalidatePath("/circle");
+}
+
+export async function requestFriend(formData: FormData): Promise<void> {
   const user = await requireUser();
 
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!email) throw new Error("اكتب بريد صاحبك");
+
   const target = await prisma.user.findUnique({
-    where: { email: email.trim().toLowerCase() },
+    where: { email },
     select: { id: true },
   });
   if (!target || target.id === user.id) throw new Error("لا يوجد حساب بهذا البريد");

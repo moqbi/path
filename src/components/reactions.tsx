@@ -208,7 +208,7 @@ export function Reactors({
               backgroundImage: reaction.user.avatarMediaId
                 ? `url(/api/media/${reaction.user.avatarMediaId})`
                 : undefined,
-              background: reaction.user.avatarMediaId ? undefined : "var(--color-chip)",
+              backgroundColor: reaction.user.avatarMediaId ? undefined : "var(--color-chip)",
             }}
           />
           <span

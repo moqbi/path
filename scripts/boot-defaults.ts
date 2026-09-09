@@ -3,7 +3,7 @@ import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 /**
- * يضبط المشرفين عند كل إقلاع.
+ * يضبط ما يحتاجه التطبيق عند كل إقلاع: المشرفون، ووسم الداعم الأول.
  *
  * لازم لأن البذرة المحمية لا تعمل على قاعدة مأهولة: نشرٌ أضاف عمود الدور
  * بعد إنشاء الحسابات ترك الجميع مستخدمين عاديين، فبدت لوحة التحكم
@@ -17,7 +17,7 @@ const prisma = new PrismaClient({ adapter });
 
 const DEMO_ADMIN = "mohammed@athar.test";
 
-async function main() {
+async function admins() {
   const emails = (process.env.ADMIN_EMAILS ?? "")
     .split(",")
     .map((value) => value.trim().toLowerCase())
@@ -49,9 +49,32 @@ async function main() {
   );
 }
 
+/**
+ * وسم واحد جاهز لأول إقلاع فقط: «داعم» لمشتركي أثر+.
+ * لا يُنشأ إن وُجد أي وسم — المشرف يملك وسومه بعد ذلك، ولا يعيد سكربت
+ * الإقلاع كتابة ما حذفه أو غيّره.
+ */
+async function tags() {
+  const existing = await prisma.tag.count();
+  if (existing > 0) {
+    console.log(`الوسوم الحالية: ${existing}`);
+    return;
+  }
+
+  await prisma.tag.create({
+    data: { name: "داعم", bg: "#f6b93b", fg: "#3b2a05", autoForPlus: true, sortOrder: 1 },
+  });
+  console.log("أُنشئ وسم «داعم» لمشتركي أثر+");
+}
+
+async function main() {
+  await admins();
+  await tags();
+}
+
 main()
   .catch((error) => {
     // لا يوقف الإقلاع: التطبيق يعمل بلا مشرف، واللوحة وحدها تبقى محجوبة.
-    console.error("تعذّر ضبط المشرفين:", error);
+    console.error("تعذّر ضبط الافتراضيات:", error);
   })
   .finally(() => prisma.$disconnect());

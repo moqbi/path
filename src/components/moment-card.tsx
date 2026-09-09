@@ -165,7 +165,7 @@ export function MomentCard({
           className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-cover bg-center"
           style={{
             backgroundImage: moment.musicThumb ? `url(${moment.musicThumb})` : undefined,
-            background: moment.musicThumb ? undefined : "var(--color-chip)",
+            backgroundColor: moment.musicThumb ? undefined : "var(--color-chip)",
           }}
         >
           {moment.musicThumb ? null : <MusicIcon size={20} className="text-muted" />}
