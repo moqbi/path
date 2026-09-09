@@ -10,11 +10,12 @@ import { ar } from "@/lib/format";
  * التطبيق كله بلا لمس الكود — ولذلك المفتاح هو الاسم لا رسم بداخل مكوّن.
  */
 export const REACTION_SRC: Record<string, string> = {
-  SMILE: "/reactions/smile.svg",
-  LAUGH: "/reactions/laugh.svg",
-  GASP: "/reactions/gasp.svg",
-  SAD: "/reactions/sad.svg",
-  LOVE: "/reactions/love.svg",
+  SMILE: "/reactions/smile.png",
+  LAUGH: "/reactions/laugh.png",
+  GASP: "/reactions/gasp.png",
+  SAD: "/reactions/sad.png",
+  LOVE: "/reactions/love.png",
+  // وجه النوم مؤقت حتى يصل ملفه؛ البقية من ملفات العلامة.
   SLEEPY: "/reactions/sleepy.svg",
 };
 
