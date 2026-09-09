@@ -4,7 +4,8 @@ import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { circleIds } from "@/lib/circle";
 import { plusTag, tagOf } from "@/lib/tags";
-import { Avatar, Empty, ScreenHeader, TabBar, TagPill } from "@/components/ui";
+import { Avatar, Empty, ScreenHeader, TagPill } from "@/components/ui";
+import { TabBar } from "@/components/tab-bar";
 import { ar } from "@/lib/format";
 
 /** آثارنا: اختر صاحباً لترى خطّكما المشترك. */

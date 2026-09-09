@@ -11,7 +11,8 @@ import {
   setFriendGroup,
   startConversation,
 } from "@/app/actions";
-import { Avatar, Empty, TabBar, TagPill } from "@/components/ui";
+import { Avatar, Empty, TagPill } from "@/components/ui";
+import { TabBar } from "@/components/tab-bar";
 import { CheckIcon, CloseIcon, MessageIcon, SparkIcon } from "@/components/icons";
 import { ar, relative } from "@/lib/format";
 

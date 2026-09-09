@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { notifications, type NoteKind } from "@/lib/notifications";
 import { ReactionGlyph } from "@/components/reactions";
-import { Avatar, Empty, ScreenHeader, TabBar } from "@/components/ui";
+import { Avatar, Empty, ScreenHeader } from "@/components/ui";
+import { TabBar } from "@/components/tab-bar";
 import { MessageIcon, TagIcon, WithIcon } from "@/components/icons";
 import { relative } from "@/lib/format";
 
@@ -94,7 +95,7 @@ export default async function NotificationsPage({
         )}
       </main>
 
-      <TabBar active="/" />
+      <TabBar active="/notifications" />
     </div>
   );
 }

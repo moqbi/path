@@ -3,13 +3,13 @@ import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { circleCount, timeline } from "@/lib/feed";
 import { unreadCount } from "@/lib/dm";
-import { unseenCount } from "@/lib/notifications";
 import { MomentCard } from "@/components/moment-card";
 import { ComposerFan } from "@/components/composer-fan";
-import { Avatar, Empty, TabBar, TagPill } from "@/components/ui";
+import { Avatar, Empty, TagPill } from "@/components/ui";
+import { TabBar } from "@/components/tab-bar";
 import { TimelineHead } from "@/components/timeline-head";
 import { AthrHeaderMark } from "@/components/brand";
-import { BellIcon, MessageIcon } from "@/components/icons";
+import { CircleIcon, MessageIcon } from "@/components/icons";
 import { plusTag, tagOf } from "@/lib/tags";
 import { ar, dayLabel } from "@/lib/format";
 
@@ -17,12 +17,11 @@ export default async function TimelinePage() {
   const user = await currentUser();
   if (!user) redirect("/login");
 
-  const [moments, size, unread, auto, news] = await Promise.all([
+  const [moments, size, unread, auto] = await Promise.all([
     timeline(user.id),
     circleCount(user.id),
     unreadCount(user.id),
     plusTag(),
-    unseenCount(user.id),
   ]);
 
   // اللحظات تُجمَّع تحت فواصل الأيام، فالخط الزمني يُقرأ كيوميات لا كتدفق.
@@ -56,18 +55,12 @@ export default async function TimelinePage() {
             ) : null}
           </Link>
           <Link
-            href="/notifications"
-            aria-label="الإشعارات"
-            className="relative flex h-11 w-11 items-center justify-center"
+            href="/circle"
+            aria-label="الأصدقاء"
+            className="flex h-11 w-11 items-center justify-center"
             style={{ color: "var(--color-chrome-ink)" }}
           >
-            <BellIcon size={21} />
-            {news > 0 ? (
-              <span
-                className="absolute right-2 top-2 block h-2 w-2 rounded-full"
-                style={{ background: "var(--color-clay)" }}
-              />
-            ) : null}
+            <CircleIcon size={21} />
           </Link>
         </div>
       </header>

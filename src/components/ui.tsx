@@ -130,8 +130,6 @@ export function ScreenHeader({
   );
 }
 
-export { TabBar } from "@/components/tabbar";
-
 export function Empty({ title, hint }: { title: string; hint?: string }) {
   return (
     <div className="px-8 py-16 text-center">

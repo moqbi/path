@@ -2,11 +2,21 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { CircleIcon, CloseIcon, HomeIcon, LockIcon, StoreIcon, UserIcon, WithIcon } from "@/components/icons";
+import {
+  BellIcon,
+  CircleIcon,
+  CloseIcon,
+  HomeIcon,
+  LockIcon,
+  StoreIcon,
+  UserIcon,
+  WithIcon,
+} from "@/components/icons";
 
 const TABS = [
   { href: "/", label: "اللحظات", Icon: HomeIcon },
   { href: "/circle", label: "الأصدقاء", Icon: CircleIcon },
+  { href: "/notifications", label: "الإشعارات", Icon: BellIcon },
   { href: "/store", label: "المتجر", Icon: StoreIcon },
   { href: "/me", label: "أنا", Icon: UserIcon },
 ];
@@ -21,7 +31,7 @@ const HOLD_MS = 450;
  * مخفيّ عن قصد: هذان مكانان يُقصدان قصداً ولا يُفتحان بالتمرير، ووضعهما
  * تبويبين دائمين يجعل الشريط خمسة أبواب لا يُقرأ.
  */
-export function TabBar({ active }: { active: string }) {
+export function TabBarNav({ active, news = 0 }: { active: string; news?: number }) {
   const [open, setOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -113,6 +123,7 @@ export function TabBar({ active }: { active: string }) {
           {TABS.map(({ href, label, Icon }) => {
             const on = href === active;
             const moments = href === "/";
+            const dot = href === "/notifications" && news > 0 && !on;
             return (
               <Link
                 key={href}
@@ -123,14 +134,22 @@ export function TabBar({ active }: { active: string }) {
                 onPointerLeave={moments ? release : undefined}
                 onPointerCancel={moments ? release : undefined}
                 onContextMenu={moments ? (event) => event.preventDefault() : undefined}
-                className="flex min-h-11 flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1.5"
+                className="flex min-h-11 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-0.5 py-1.5"
                 style={{
                   color: on ? "var(--color-clay)" : "var(--color-chrome-muted)",
                   touchAction: "manipulation",
                 }}
               >
-                <Icon size={21} />
-                <span className="text-[10.5px] font-medium">{label}</span>
+                <span className="relative">
+                  <Icon size={21} />
+                  {dot ? (
+                    <span
+                      className="absolute -left-1 -top-0.5 block h-2 w-2 rounded-full"
+                      style={{ background: "var(--color-clay)" }}
+                    />
+                  ) : null}
+                </span>
+                <span className="text-[10px] font-medium">{label}</span>
               </Link>
             );
           })}

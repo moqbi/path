@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { ScreenHeader, TabBar } from "@/components/ui";
+import { ScreenHeader } from "@/components/ui";
+import { TabBar } from "@/components/tab-bar";
 import { InfoIcon, SparkIcon } from "@/components/icons";
 import { StoreGrid } from "./grid";
 import { riyals } from "@/lib/format";

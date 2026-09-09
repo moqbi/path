@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { circleCount, privateTimeline } from "@/lib/feed";
 import { MomentCard } from "@/components/moment-card";
-import { Empty, ScreenHeader, TabBar } from "@/components/ui";
+import { Empty, ScreenHeader } from "@/components/ui";
+import { TabBar } from "@/components/tab-bar";
 import { dayLabel } from "@/lib/format";
 
 /** اللحظات الخاصة: ما لم يُنشر للدائرة كلها — لي، أو لمن اختارني. */
