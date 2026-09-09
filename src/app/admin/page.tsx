@@ -20,10 +20,10 @@ export default async function AdminPage() {
   ]);
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="screen">
       <ScreenHeader title="لوحة التحكم" back="/me" />
 
-      <main className="grow px-5 py-5">
+      <main className="scroll-area px-5 py-5">
         <div className="mb-6 grid grid-cols-3 gap-2.5">
           {[
             { value: users, label: "مستخدم" },

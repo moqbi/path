@@ -83,11 +83,11 @@ export function ComposeForm({ kind, friends }: { kind: Kind; friends: Friend[] }
           start(() => void postSimple(data));
         }
       }}
-      className="flex min-h-dvh flex-col"
+      className="screen"
     >
       <ScreenHeader title={meta.title} back="/" />
 
-      <div className="grow px-5 py-4">
+      <div className="scroll-area px-5 py-4">
         {kind === "PHOTO" ? (
           <div className="mb-4">
             <div

@@ -529,6 +529,21 @@ export async function sendMessage(conversationId: string, formData: FormData): P
   revalidatePath("/messages");
 }
 
+/** حذف محادثة: يحذفها للطرفين — لا نصف حذف يبقي نسخة عند الآخر بلا علمه. */
+export async function deleteConversation(conversationId: string): Promise<void> {
+  const user = await requireUser();
+
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: { aId: true, bId: true },
+  });
+  if (!conversation) return;
+  if (conversation.aId !== user.id && conversation.bId !== user.id) throw new Error("غير مصرح");
+
+  await prisma.conversation.delete({ where: { id: conversationId } });
+  revalidatePath("/messages");
+}
+
 export async function markConversationRead(conversationId: string): Promise<void> {
   const user = await requireUser();
   await prisma.message.updateMany({

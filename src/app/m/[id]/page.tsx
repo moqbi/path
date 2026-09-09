@@ -31,7 +31,7 @@ export default async function MomentPage({
   const commentOn = addComment.bind(null, moment.id);
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="screen">
       <SeenTracker momentId={moment.id} />
 
       {moment.imageSpec ? (
@@ -51,7 +51,7 @@ export default async function MomentPage({
         <ScreenHeader title="لحظة" back="/" />
       )}
 
-      <main className="grow px-5 pt-4">
+      <main className="scroll-area px-5 pt-4">
         <div className="mb-3 flex items-center gap-2.5">
           <Avatar name={moment.author.name} size={36} frameSpec={moment.author.frame?.spec} />
           <div className="grow">

@@ -30,7 +30,7 @@ export default async function TimelinePage() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="screen">
       <header className="chrome flex items-center justify-between px-5 py-3">
         <AthrHeaderMark />
         <div className="flex gap-1">
@@ -96,7 +96,7 @@ export default async function TimelinePage() {
         </div>
       </div>
 
-      <main className="relative grow px-5 pt-2">
+      <main className="scroll-area relative px-5 pt-2">
         {moments.length === 0 ? (
           <Empty
             title="خطك الزمني فارغ"

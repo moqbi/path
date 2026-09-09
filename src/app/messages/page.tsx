@@ -4,6 +4,8 @@ import { currentUser } from "@/lib/auth";
 import { conversationsFor } from "@/lib/dm";
 import { Avatar, Empty, ScreenHeader, TabBar } from "@/components/ui";
 import { relative } from "@/lib/format";
+import { SwipeRow } from "@/components/swipe-row";
+import { deleteConversation } from "@/app/actions";
 
 export default async function MessagesPage() {
   const user = await currentUser();
@@ -12,10 +14,10 @@ export default async function MessagesPage() {
   const conversations = await conversationsFor(user.id);
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="screen">
       <ScreenHeader title="المحادثات" back="/" />
 
-      <main className="grow px-5 pt-2">
+      <main className="scroll-area px-5 pt-2">
         {conversations.length === 0 ? (
           <Empty
             title="ما عندك محادثات"
@@ -23,8 +25,11 @@ export default async function MessagesPage() {
           />
         ) : (
           conversations.map((conversation) => (
-            <Link
+            <SwipeRow
               key={conversation.id}
+              onDelete={deleteConversation.bind(null, conversation.id)}
+            >
+            <Link
               href={`/messages/${conversation.id}`}
               className="flex items-center gap-3 border-b border-line py-3.5"
             >
@@ -59,6 +64,7 @@ export default async function MessagesPage() {
                 />
               ) : null}
             </Link>
+            </SwipeRow>
           ))
         )}
       </main>

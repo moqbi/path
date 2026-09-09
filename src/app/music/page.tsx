@@ -23,10 +23,10 @@ export default async function MusicPage({
   const spotifyReady = Boolean(process.env.SPOTIFY_CLIENT_ID);
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="screen">
       <ScreenHeader title="الموسيقى" back="/" />
 
-      <main className="grow px-5 py-5">
+      <main className="scroll-area px-5 py-5">
         <p className="mb-6 text-[13.5px] leading-loose text-muted">
           لحظة الأغنية تُنشر من الحساب المربوط تلقائياً — ما تكتب الاسم والفنان بيدك.
         </p>

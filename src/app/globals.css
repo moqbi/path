@@ -111,6 +111,26 @@ h3 {
  * موبايل أولاً: كل الشاشات مصمّمة على عرض ٣٩٠ بكسل، فيُثبَّت العرض ويُتوسَّط
  * بدل تمديد تخطيط الهاتف على الشاشات الكبيرة.
  */
+/*
+ * الهيكل بارتفاع الشاشة تماماً، والتمرير داخل منطقة المحتوى وحدها.
+ * مع `sticky` كان الشريط السفلي يختفي حتى ينزل المستخدم — لأن اللاصق لا
+ * يلتصق إلا داخل صندوق أطول منه.
+ */
+.screen {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.scroll-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 .shell {
   /*
    * حارس أخير: عنصر واحد يتجاوز العرض كان يوسّع الصفحة أفقياً، وفي RTL
@@ -120,7 +140,7 @@ h3 {
   width: 100%;
   max-width: 430px;
   margin-inline: auto;
-  min-height: 100dvh;
+  height: 100dvh;
   background: var(--color-paper);
   position: relative;
 }
@@ -129,7 +149,27 @@ h3 {
   body {
     background: #e6e2d7;
   }
-  .shell {
+  /*
+ * الهيكل بارتفاع الشاشة تماماً، والتمرير داخل منطقة المحتوى وحدها.
+ * مع `sticky` كان الشريط السفلي يختفي حتى ينزل المستخدم — لأن اللاصق لا
+ * يلتصق إلا داخل صندوق أطول منه.
+ */
+.screen {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.scroll-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.shell {
     box-shadow: 0 0 0 1px var(--color-line), 0 24px 70px rgba(14, 26, 36, 0.14);
   }
 }

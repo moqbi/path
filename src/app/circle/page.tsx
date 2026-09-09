@@ -27,7 +27,7 @@ export default async function CirclePage() {
   const circumference = 2 * Math.PI * 57;
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="screen">
       <ScreenHeader
         title="دائرتك"
         action={
@@ -76,7 +76,7 @@ export default async function CirclePage() {
         </p>
       </div>
 
-      <main className="grow px-5">
+      <main className="scroll-area px-5">
         <p className="mb-2.5 text-[11.5px] font-semibold tracking-wide text-faint">الكل</p>
         {members.length === 0 ? (
           <p className="py-8 text-center text-[13px] text-muted">دائرتك فاضية.</p>

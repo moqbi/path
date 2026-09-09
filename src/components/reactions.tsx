@@ -6,25 +6,43 @@ import { LockIcon } from "@/components/icons";
 import { ar } from "@/lib/format";
 
 /**
- * التفاعلات الخمسة الأساسية — إيموجي حقيقية لا رسوم.
- * الرسم اليدوي كان يبدو غريباً بجانب إيموجي النظام في التعليقات؛ والإيموجي
- * الحقيقية تُعرض بخط النظام فتتطابق مع ما يعرفه المستخدم على جهازه.
+ * ملفات التفاعلات في `public/reactions`. استبدال أيٍّ منها يغيّر شكله في
+ * التطبيق كله بلا لمس الكود — ولذلك المفتاح هو الاسم لا رسم بداخل مكوّن.
  */
-export const FACE_EMOJI: Record<string, string> = {
-  SMILE: "😊",
-  LAUGH: "😂",
-  GASP: "😮",
-  SAD: "😢",
-  LOVE: "❤️",
+export const REACTION_SRC: Record<string, string> = {
+  SMILE: "/reactions/smile.svg",
+  LAUGH: "/reactions/laugh.svg",
+  GASP: "/reactions/gasp.svg",
+  SAD: "/reactions/sad.svg",
+  LOVE: "/reactions/love.svg",
+  SLEEPY: "/reactions/sleepy.svg",
 };
 
-const FACES = ["SMILE", "LAUGH", "GASP", "SAD", "LOVE"] as const;
+/** الوجوه العامة، ثم النوم — يُعرض لكل اللحظات وهو الأنسب للحظة نوم. */
+const FACES = ["SMILE", "LAUGH", "GASP", "SAD", "LOVE", "SLEEPY"] as const;
 const CUSTOM = ["🫶", "🔥", "🙏", "👏", "🥹", "☕️"];
 
 type Mine = { kind: string; emoji: string | null } | null;
 
-export function reactionGlyph(kind: string, emoji: string | null): string {
-  return kind === "CUSTOM" ? (emoji ?? "🙂") : (FACE_EMOJI[kind] ?? "🙂");
+export function ReactionGlyph({
+  kind,
+  emoji,
+  size = 20,
+}: {
+  kind: string;
+  emoji?: string | null;
+  size?: number;
+}) {
+  if (kind === "CUSTOM") {
+    return (
+      <span style={{ fontSize: size * 0.92, lineHeight: 1 }} aria-hidden>
+        {emoji ?? "🙂"}
+      </span>
+    );
+  }
+  const src = REACTION_SRC[kind] ?? REACTION_SRC.SMILE;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt="" width={size} height={size} style={{ display: "block" }} />;
 }
 
 export function Reactions({
@@ -83,14 +101,14 @@ export function Reactions({
         }}
       >
         <span
-          className="text-[17px] leading-none"
           style={{
             transform: popped ? "scale(1.4)" : "scale(1)",
             transition: "transform 400ms cubic-bezier(.18,1.5,.4,1)",
-            filter: mine ? "none" : "grayscale(1) opacity(.55)",
+            opacity: mine ? 1 : 0.5,
+            filter: mine ? "none" : "grayscale(.85)",
           }}
         >
-          {mine ? reactionGlyph(mine.kind, mine.emoji) : "😊"}
+          <ReactionGlyph kind={mine?.kind ?? "SMILE"} emoji={mine?.emoji} size={19} />
         </span>
         {count > 0 ? (
           <span className="text-[12.5px] font-semibold text-ink-2">{ar(count)}</span>
@@ -99,7 +117,7 @@ export function Reactions({
 
       {open ? (
         <div
-          className="absolute bottom-full z-20 mb-2 rounded-2xl border border-line p-1.5"
+          className="absolute bottom-full z-20 mb-2 rounded-2xl border border-line p-1"
           style={{
             background: "var(--color-card)",
             right: 0,
@@ -116,20 +134,20 @@ export function Reactions({
                   stop(e);
                   choose(kind);
                 }}
-                className="flex h-11 w-10 items-center justify-center rounded-xl text-[24px] leading-none hover:bg-chip"
+                className="flex h-11 w-9 items-center justify-center rounded-xl hover:bg-chip"
                 style={{
                   animation: "athr-pop 320ms cubic-bezier(.18,1.4,.4,1) both",
-                  animationDelay: `${index * 36}ms`,
+                  animationDelay: `${index * 34}ms`,
                 }}
               >
-                {FACE_EMOJI[kind]}
+                <ReactionGlyph kind={kind} size={26} />
               </button>
             ))}
 
-            <span className="mx-1 h-6 w-px bg-line" />
+            <span className="mx-0.5 h-6 w-px bg-line" />
 
             {isPlus ? (
-              CUSTOM.slice(0, 3).map((emoji, index) => (
+              CUSTOM.slice(0, 2).map((emoji, index) => (
                 <button
                   key={emoji}
                   type="button"
@@ -137,10 +155,10 @@ export function Reactions({
                     stop(e);
                     choose("CUSTOM", emoji);
                   }}
-                  className="flex h-11 w-10 items-center justify-center rounded-xl text-[22px] leading-none hover:bg-chip"
+                  className="flex h-11 w-9 items-center justify-center rounded-xl text-[22px] leading-none hover:bg-chip"
                   style={{
                     animation: "athr-pop 320ms cubic-bezier(.18,1.4,.4,1) both",
-                    animationDelay: `${(FACES.length + index) * 36}ms`,
+                    animationDelay: `${(FACES.length + index) * 34}ms`,
                   }}
                 >
                   {emoji}
@@ -151,7 +169,7 @@ export function Reactions({
                 href="/subscribe"
                 aria-label="الإيموجي الحر لمشتركي أثر+"
                 onClick={(e) => e.stopPropagation()}
-                className="flex h-11 w-10 items-center justify-center rounded-xl"
+                className="flex h-11 w-9 items-center justify-center rounded-xl"
                 style={{ color: "var(--color-gold-ink)" }}
               >
                 <LockIcon size={16} />
@@ -159,6 +177,50 @@ export function Reactions({
             )}
           </div>
         </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * من تفاعل: صورته ومعها تفاعله — كما كان في Path.
+ * الرقم وحده لا يقول من، وهذا سؤال الدائرة الصغيرة الأول.
+ */
+export function Reactors({
+  reactions,
+  size = 26,
+}: {
+  reactions: { userId: string; kind: string; emoji: string | null; user: { name: string; avatarMediaId: string | null } }[];
+  size?: number;
+}) {
+  if (reactions.length === 0) return null;
+  const shown = reactions.slice(0, 5);
+
+  return (
+    <div className="flex items-center gap-1.5">
+      {shown.map((reaction) => (
+        <span key={reaction.userId} className="relative block" title={reaction.user.name}>
+          <span
+            className="block rounded-full bg-cover bg-center"
+            style={{
+              width: size,
+              height: size,
+              backgroundImage: reaction.user.avatarMediaId
+                ? `url(/api/media/${reaction.user.avatarMediaId})`
+                : undefined,
+              background: reaction.user.avatarMediaId ? undefined : "var(--color-chip)",
+            }}
+          />
+          <span
+            className="absolute -bottom-1 -left-1 rounded-full"
+            style={{ background: "var(--color-card)", padding: 1 }}
+          >
+            <ReactionGlyph kind={reaction.kind} emoji={reaction.emoji} size={size * 0.52} />
+          </span>
+        </span>
+      ))}
+      {reactions.length > shown.length ? (
+        <span className="mr-1 text-[12px] text-muted">+{ar(reactions.length - shown.length)}</span>
       ) : null}
     </div>
   );

@@ -36,7 +36,7 @@ export default async function SubscribePage() {
 
   return (
     <div
-      className="flex min-h-dvh flex-col text-ink"
+      className="screen text-ink"
       style={{ background: "var(--color-night)" }}
     >
       <div className="flex justify-start px-5 pt-4">
@@ -68,7 +68,7 @@ export default async function SubscribePage() {
         </p>
       </div>
 
-      <main className="grow px-6">
+      <main className="scroll-area px-6">
         {PERKS.map((perk) => (
           <div key={perk.title} className="mb-[18px] flex gap-3.5">
             <span

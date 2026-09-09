@@ -3,14 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { postSleep } from "@/app/actions";
-import {
-  CameraIcon,
-  MoonIcon,
-  MusicIcon,
-  PinIcon,
-  PlusIcon,
-  TextIcon,
-} from "@/components/icons";
+import { CameraIcon, MoonIcon, MusicIcon, PinIcon, TextIcon } from "@/components/icons";
 
 /**
  * زر النشر وقائمته المتطايرة — على نمط Path.
@@ -153,15 +146,29 @@ export function ComposerFan() {
             aria-label={open ? "إغلاق" : "لحظة جديدة"}
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
-            className="brand-gradient pointer-events-auto absolute inset-0 flex items-center justify-center rounded-full"
+            className="pointer-events-auto absolute inset-0 flex items-center justify-center rounded-full"
             style={{
-              color: "var(--color-on-brand)",
-              boxShadow: "0 8px 24px rgba(255,122,122,.4)",
+              // الزر بلون العمق، وعلامة الزائد وحدها بتدرّج الشعار.
+              background: "var(--color-night)",
+              boxShadow: "0 8px 24px rgba(14,26,36,.35)",
               transform: open ? "rotate(135deg)" : "rotate(0deg)",
               transition: "transform 380ms cubic-bezier(.18,1.3,.42,1)",
             }}
           >
-            <PlusIcon size={24} />
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <defs>
+                <linearGradient id="fab-plus" x1="4" y1="20" x2="20" y2="4" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#F6B93B" />
+                  <stop offset="1" stopColor="#FF7A5A" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M12 5v14M5 12h14"
+                stroke="url(#fab-plus)"
+                strokeWidth="2.6"
+                strokeLinecap="round"
+              />
+            </svg>
           </button>
         </div>
       </div>

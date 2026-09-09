@@ -9,7 +9,7 @@ import {
   WithIcon,
 } from "@/components/icons";
 import { InlineComment } from "@/components/interactive";
-import { Reactions } from "@/components/reactions";
+import { Reactions, Reactors } from "@/components/reactions";
 import { ar, relative, timeOfDay } from "@/lib/format";
 import type { FeedMoment } from "@/lib/feed";
 
@@ -24,11 +24,15 @@ function InlineMoment({ icon, children }: { icon: React.ReactNode; children: Rea
 }
 
 function Spine({
+  authorId,
+  viewerId,
   name,
   frameSpec,
   mediaId,
   at,
 }: {
+  authorId: string;
+  viewerId: string;
   name: string;
   frameSpec?: string | null;
   mediaId?: string | null;
@@ -36,7 +40,12 @@ function Spine({
 }) {
   return (
     <div className="flex w-14 shrink-0 flex-col items-center gap-1.5">
-      <Avatar name={name} size={34} frameSpec={frameSpec} mediaId={mediaId} />
+      <Link
+        href={authorId === viewerId ? "/me" : `/u/${authorId}`}
+        aria-label={`ملف ${name}`}
+      >
+        <Avatar name={name} size={34} frameSpec={frameSpec} mediaId={mediaId} />
+      </Link>
       <span className="text-[10px] text-faint">{timeOfDay(at)}</span>
     </div>
   );
@@ -85,16 +94,19 @@ function Footer({
   const mine = moment.reactions.find((r) => r.userId === viewerId) ?? null;
 
   return (
-    <div className="flex items-center justify-between">
-      <Reactions
-        momentId={moment.id}
-        mine={mine}
-        count={moment.reactions.length}
-        isPlus={isPlus}
-      />
-      <span className="flex items-center gap-1.5 text-[11px] text-faint">
+    <div className="flex items-center justify-between gap-2">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <Reactions
+          momentId={moment.id}
+          mine={mine}
+          count={0}
+          isPlus={isPlus}
+        />
+        <Reactors reactions={moment.reactions} />
+      </div>
+      <span className="flex shrink-0 items-center gap-1.5 text-[11px] text-faint">
         <EyeIcon size={14} />
-        شافها {ar(moment._count.views)} من {ar(circleSize)}
+        {ar(moment._count.views)}/{ar(circleSize)}
       </span>
     </div>
   );
@@ -156,6 +168,8 @@ export function MomentCard({
     return (
       <article className="relative flex gap-3 pb-5">
         <Spine
+          authorId={author.id}
+          viewerId={viewerId}
           name={author.name}
           frameSpec={author.frame?.spec}
           mediaId={author.avatarMediaId}
@@ -174,28 +188,52 @@ export function MomentCard({
     );
   }
 
-  // اللحظات السطرية: بلا بطاقة، وبلا تعليقات — لا شيء يُعلَّق عليه.
-  if (kind === "SLEEP" || kind === "FRIEND_ADDED") {
-    const icon = kind === "SLEEP" ? <MoonIcon size={15} /> : <WithIcon size={15} />;
-
+  // «أضاف فلاناً» سطر خبر لا منشور: لا تفاعل عليه ولا تعليق.
+  if (kind === "FRIEND_ADDED") {
     return (
       <article className="relative flex gap-3 pb-5">
         <Spine
+          authorId={author.id}
+          viewerId={viewerId}
           name={author.name}
           frameSpec={author.frame?.spec}
           mediaId={author.avatarMediaId}
           at={moment.createdAt}
         />
         <div className="min-w-0 grow">
-          <InlineMoment icon={icon}>
-            {kind === "SLEEP" ? (
-              <>نام</>
-            ) : (
-              <>
-                أضاف <span className="font-semibold text-ink">{moment.text}</span> إلى دائرته
-              </>
-            )}
+          <InlineMoment icon={<WithIcon size={15} />}>
+            أضاف <span className="font-semibold text-ink">{moment.text}</span> إلى دائرته
           </InlineMoment>
+        </div>
+      </article>
+    );
+  }
+
+  // النوم لحظة كاملة: تُعلَّق ويُتفاعل معها كغيرها.
+  if (kind === "SLEEP") {
+    return (
+      <article className="relative flex gap-3 pb-5">
+        <Spine
+          authorId={author.id}
+          viewerId={viewerId}
+          name={author.name}
+          frameSpec={author.frame?.spec}
+          mediaId={author.avatarMediaId}
+          at={moment.createdAt}
+        />
+        <div className="min-w-0 grow rounded-2xl border border-line bg-card px-4 pb-3 pt-3">
+          <p className="mb-2.5 flex items-center gap-2.5 text-[13.5px] text-ink-2">
+            <MoonIcon size={16} className="text-muted" />
+            نام
+          </p>
+          <Footer
+            moment={moment}
+            viewerId={viewerId}
+            isPlus={isPlus}
+            circleSize={circleSize}
+          />
+          <Comments moment={moment} />
+          <InlineComment momentId={moment.id} viewerId={viewerId} />
         </div>
       </article>
     );
@@ -205,11 +243,13 @@ export function MomentCard({
   return (
     <article className="relative flex gap-3 pb-5">
       <Spine
-          name={author.name}
-          frameSpec={author.frame?.spec}
-          mediaId={author.avatarMediaId}
-          at={moment.createdAt}
-        />
+        authorId={author.id}
+        viewerId={viewerId}
+        name={author.name}
+        frameSpec={author.frame?.spec}
+        mediaId={author.avatarMediaId}
+        at={moment.createdAt}
+      />
       <div className="min-w-0 grow overflow-hidden rounded-2xl border border-line bg-card">
         <Link href={`/m/${moment.id}`} className="block">
           {moment.mediaId ? (

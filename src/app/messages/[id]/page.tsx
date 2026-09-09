@@ -22,7 +22,7 @@ export default async function ThreadPage({
   const send = sendMessage.bind(null, id);
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="screen">
       <ScreenHeader
         title={conversation.other.name}
         back="/messages"
@@ -35,7 +35,7 @@ export default async function ThreadPage({
         }
       />
 
-      <main className="flex grow flex-col justify-end gap-2 px-5 py-4">
+      <main className="scroll-area flex flex-col justify-end gap-2 px-5 py-4">
         {conversation.messages.length === 0 ? (
           <p className="pb-6 text-center text-[13px] text-muted">
             لا رسائل بعد. اكتب أول سطر.

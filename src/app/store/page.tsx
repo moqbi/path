@@ -19,7 +19,7 @@ export default async function StorePage() {
   const daysHere = Math.floor((Date.now() - user.createdAt.getTime()) / 86_400_000);
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="screen">
       <ScreenHeader
         title="المتجر"
         display
@@ -36,7 +36,7 @@ export default async function StorePage() {
         }
       />
 
-      <main className="grow px-5 pt-4">
+      <main className="scroll-area px-5 pt-4">
         <StoreGrid
           items={items.map((item) => ({
             id: item.id,

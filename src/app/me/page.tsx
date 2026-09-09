@@ -33,7 +33,7 @@ export default async function ProfilePage() {
   const tiles = moments.filter((m) => m.imageSpec).slice(0, 5);
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="screen">
       <div
         className="relative shrink-0"
         style={{
@@ -58,7 +58,7 @@ export default async function ProfilePage() {
         ) : null}
       </div>
 
-      <main className="relative grow px-5" style={{ marginTop: -46 }}>
+      <main className="scroll-area relative px-5" style={{ marginTop: -46 }}>
         <div className="mb-4 flex items-end justify-between">
           <ProfileImages
             name={user.name}

@@ -26,7 +26,14 @@ const momentShape = {
     },
   },
   tags: { select: { user: { select: { id: true, name: true } } } },
-  reactions: { select: { userId: true, kind: true, emoji: true } },
+  reactions: {
+    select: {
+      userId: true,
+      kind: true,
+      emoji: true,
+      user: { select: { name: true, avatarMediaId: true } },
+    },
+  },
   // التعليقات تُعرض داخل الخط الزمني مباشرة، فلا حاجة لفتح اللحظة لقراءتها.
   comments: {
     select: {

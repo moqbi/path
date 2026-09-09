@@ -38,6 +38,8 @@ enum ReactionKind {
   GASP
   SAD
   LOVE
+  /// خاص بلحظات النوم.
+  SLEEPY
   /// إيموجي حر من كيبورد المستخدم — للمشتركين فقط.
   CUSTOM
 }
