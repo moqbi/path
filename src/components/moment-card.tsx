@@ -284,6 +284,7 @@ export function MomentCard({
       <Row moment={moment} viewerId={viewerId}>
         <MomentBar
           momentId={moment.id}
+          momentKind={kind}
           mine={mine}
           isPlus={isPlus}
           head={
@@ -340,6 +341,7 @@ export function MomentCard({
       <div className="overflow-hidden rounded-2xl border border-line bg-card">
         <MomentBar
           momentId={moment.id}
+          momentKind={kind}
           mine={mine}
           isPlus={isPlus}
           inset

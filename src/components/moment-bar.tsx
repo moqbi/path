@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { addComment, react } from "@/app/actions";
 import { LockIcon } from "@/components/icons";
-import { CUSTOM, FACES, ReactionGlyph } from "@/components/reactions";
+import { CUSTOM, facesFor, ReactionGlyph } from "@/components/reactions";
 
 type Mine = { kind: string; emoji: string | null } | null;
 
@@ -16,6 +16,7 @@ type Mine = { kind: string; emoji: string | null } | null;
  */
 export function MomentBar({
   momentId,
+  momentKind,
   mine,
   isPlus,
   head,
@@ -24,6 +25,8 @@ export function MomentBar({
   panelFirst = false,
 }: {
   momentId: string;
+  /** نوع اللحظة: منه يُعرف هل يُعرض وجه النوم. */
+  momentKind?: string;
   mine: Mine;
   isPlus: boolean;
   /** سطر الحدث — يجلس الزرّ في طرفه الأيسر بدل أن يطفو تحته. */
@@ -40,6 +43,7 @@ export function MomentBar({
   const [body, setBody] = useState("");
   const [pending, start] = useTransition();
   const root = useRef<HTMLDivElement>(null);
+  const faces = facesFor(momentKind);
 
   // ضغطةٌ خارج الشريط تطويه — ما لم يكن هناك تعليق نصف مكتوب يضيع.
   useEffect(() => {
@@ -120,7 +124,7 @@ export function MomentBar({
       {open ? (
         <div className={`mt-2 flex flex-col gap-2 ${inset ? "px-3" : ""}`}>
           <div className="flex items-center gap-0.5">
-            {FACES.map((kind, index) => (
+            {faces.map((kind, index) => (
               <button
                 key={kind}
                 type="button"
@@ -153,7 +157,7 @@ export function MomentBar({
                   className="flex h-10 w-9 items-center justify-center rounded-xl text-[21px] leading-none hover:bg-chip"
                   style={{
                     animation: "athr-pop 320ms cubic-bezier(.18,1.4,.4,1) both",
-                    animationDelay: `${(FACES.length + index) * 34}ms`,
+                    animationDelay: `${(faces.length + index) * 34}ms`,
                   }}
                 >
                   {emoji}

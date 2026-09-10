@@ -21,7 +21,19 @@ export const REACTION_SRC: Record<string, string> = {
 };
 
 /** الوجوه العامة، ثم النوم — يُعرض لكل اللحظات وهو الأنسب للحظة نوم. */
-export const FACES = ["SMILE", "LAUGH", "GASP", "SAD", "LOVE", "SLEEPY"] as const;
+const OPEN_FACES = ["SMILE", "LAUGH", "GASP", "SAD", "LOVE"] as const;
+
+/**
+ * الوجوه المعروضة للحظة.
+ *
+ * وجه النوم للحظات النوم وحدها: «تصبح على خير» على صورة قهوة لا معنى
+ * لها، ووجودُ خيارٍ لا يُستعمل يُضعف بقية الخيارات.
+ */
+export function facesFor(momentKind?: string): readonly string[] {
+  return momentKind === "SLEEP" ? [...OPEN_FACES, "SLEEPY"] : OPEN_FACES;
+}
+
+export const FACES = OPEN_FACES;
 export const CUSTOM = ["🫶", "🔥", "🙏", "👏", "🥹", "☕️"];
 
 type Mine = { kind: string; emoji: string | null } | null;
@@ -49,15 +61,18 @@ export function ReactionGlyph({
 
 export function Reactions({
   momentId,
+  momentKind,
   mine,
   count,
   isPlus,
 }: {
   momentId: string;
+  momentKind?: string;
   mine: Mine;
   count: number;
   isPlus: boolean;
 }) {
+  const faces = facesFor(momentKind);
   const [open, setOpen] = useState(false);
   const [popped, setPopped] = useState(false);
   const [pending, start] = useTransition();
@@ -127,7 +142,7 @@ export function Reactions({
           }}
         >
           <div className="flex items-center gap-0.5">
-            {FACES.map((kind, index) => (
+            {faces.map((kind, index) => (
               <button
                 key={kind}
                 type="button"
@@ -160,7 +175,7 @@ export function Reactions({
                   className="flex h-11 w-9 items-center justify-center rounded-xl text-[22px] leading-none hover:bg-chip"
                   style={{
                     animation: "athr-pop 320ms cubic-bezier(.18,1.4,.4,1) both",
-                    animationDelay: `${(FACES.length + index) * 34}ms`,
+                    animationDelay: `${(faces.length + index) * 34}ms`,
                   }}
                 >
                   {emoji}

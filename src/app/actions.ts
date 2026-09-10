@@ -904,6 +904,15 @@ export async function react(momentId: string, kind: string, emoji?: string): Pro
   // الإيموجي الحر ميزة اشتراك؛ الوجوه الخمسة مفتوحة للجميع دائماً.
   if (kind === "CUSTOM" && !user.isPlus) throw new Error("الإيموجي الحر لمشتركي أثر+");
 
+  // وجه النوم للحظات النوم وحدها — والفحص هنا لا في إخفاء الزر.
+  if (kind === "SLEEPY") {
+    const moment = await prisma.moment.findUnique({
+      where: { id: momentId },
+      select: { kind: true },
+    });
+    if (moment?.kind !== "SLEEP") throw new Error("وجه النوم للحظات النوم");
+  }
+
   const existing = await prisma.reaction.findUnique({
     where: { momentId_userId: { momentId, userId: user.id } },
   });

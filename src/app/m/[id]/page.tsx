@@ -78,6 +78,7 @@ export default async function MomentPage({
         <div className="mb-3.5">
           <Reactions
             momentId={moment.id}
+            momentKind={moment.kind}
             mine={mine}
             count={moment.reactions.length}
             isPlus={user.isPlus}
