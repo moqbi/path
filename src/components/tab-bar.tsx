@@ -6,8 +6,8 @@ import { TabBarNav } from "@/components/tabbar";
  * الشريط السفلي: يجلب عدد الجديد ثم يسلّمه للشريط نفسه.
  * الجلب هنا لا في كل صفحة، فلا يتكرّر السطر في ثماني شاشات.
  */
-export async function TabBar({ active }: { active: string }) {
+export async function TabBar({ active, view = "" }: { active: string; view?: string }) {
   const id = await currentUserId();
   const news = id ? await unseenCount(id) : 0;
-  return <TabBarNav active={active} news={news} />;
+  return <TabBarNav active={active} news={news} view={view} />;
 }

@@ -22,12 +22,6 @@ const MONTHS = [
   "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر",
 ];
 
-const VIEWS = [
-  { key: "", label: "اللحظات" },
-  { key: "private", label: "الخاصة" },
-  { key: "together", label: "آثارنا" },
-] as const;
-
 /**
  * الخط الزمني، وفي مكانه تحلّ اللحظات الخاصة أو أثرٌ مشترك.
  *
@@ -139,29 +133,6 @@ export default async function TimelinePage({
           />
         }
       >
-        {/* شرائح العدسة تظهر حين نكون في عدسةٍ غير الافتراضية. */}
-        {view ? (
-          <div className="no-bar mb-1 flex gap-2 overflow-x-auto pb-2 pt-1">
-            {VIEWS.map((item) => {
-              const on = view === item.key;
-              return (
-                <Link
-                  key={item.key || "all"}
-                  href={item.key ? `/?view=${item.key}` : "/"}
-                  className="shrink-0 rounded-full px-4 py-2 text-[12.5px] font-semibold"
-                  style={{
-                    background: on ? "var(--color-clay)" : "var(--color-card)",
-                    color: on ? "var(--color-on-brand)" : "var(--color-ink-2)",
-                    border: `1px solid ${on ? "var(--color-clay)" : "var(--color-line)"}`,
-                  }}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </div>
-        ) : null}
-
         {view === "private" ? (
           <p className="mb-1 text-[11.5px] leading-relaxed text-muted">
             ما نُشر لتصنيفٍ من أصدقائك أو لأشخاص بأعيانهم — غيرهم لا يراها أصلاً.
@@ -273,7 +244,7 @@ export default async function TimelinePage({
 
       <Tour />
       <ComposerFan />
-      <TabBar active="/" />
+      <TabBar active="/" view={view} />
     </div>
   );
 }

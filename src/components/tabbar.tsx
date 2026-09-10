@@ -23,8 +23,17 @@ const TABS = [
 /** الضغطة المطوّلة: نصف ثانية تقريباً، وأي تحريك للإصبع يلغيها. */
 const HOLD_MS = 450;
 
-const HIDDEN = [
+/**
+ * عدسات الخط الزمني الثلاث.
+ *
+ * الضغطة المطوّلة تعرض ما عدا العدسة التي أنت فيها — عرضُ ما أنت فيه
+ * خيارٌ لا يفعل شيئاً. واسم التبويب يقول أين أنت، فلا حاجة لشرائح تحت
+ * الغلاف.
+ */
+const LENSES = [
+  { key: "", href: "/", label: "اللحظات", Icon: HomeIcon, bg: "var(--color-night)", ink: "#f7f5ef" },
   {
+    key: "private",
     href: "/?view=private",
     label: "اللحظات الخاصة",
     Icon: LockIcon,
@@ -32,6 +41,7 @@ const HIDDEN = [
     ink: "#f7f5ef",
   },
   {
+    key: "together",
     href: "/?view=together",
     label: "آثارنا",
     Icon: WithIcon,
@@ -45,7 +55,18 @@ const HIDDEN = [
  * اللحظات الخاصة وآثارنا من فوق التبويب نفسه — بحركة قوس النشر ذاتها،
  * فالبابان المخفيّان يتصرّفان كما تتصرّف بقية أزرار التطبيق.
  */
-export function TabBarNav({ active, news = 0 }: { active: string; news?: number }) {
+export function TabBarNav({
+  active,
+  news = 0,
+  view = "",
+}: {
+  active: string;
+  news?: number;
+  /** العدسة المفتوحة في الخط الزمني: "" أو "private" أو "together". */
+  view?: string;
+}) {
+  const lens = LENSES.find((item) => item.key === view) ?? LENSES[0];
+  const hidden = LENSES.filter((item) => item.key !== lens.key);
   const [open, setOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -83,7 +104,7 @@ export function TabBarNav({ active, news = 0 }: { active: string; news?: number 
       {/* الأصناف تنطلق من فوق تبويب «اللحظات» في الطرف الأيمن. */}
       <div className="shell-fixed z-30">
         <div className="relative mb-[62px] mr-[6px] h-14 w-[74px]">
-          {HIDDEN.map((item, index) => (
+          {hidden.map((item, index) => (
             <Link
               key={item.href}
               href={item.href}
@@ -108,7 +129,7 @@ export function TabBarNav({ active, news = 0 }: { active: string; news?: number 
                 transitionTimingFunction: open
                   ? "cubic-bezier(.18,1.3,.42,1)"
                   : "cubic-bezier(.4,0,1,1)",
-                transitionDelay: `${open ? index * 60 : (HIDDEN.length - 1 - index) * 30}ms`,
+                transitionDelay: `${open ? index * 60 : (hidden.length - 1 - index) * 30}ms`,
                 boxShadow: "0 10px 26px rgba(0,0,0,.4)",
               }}
             >
@@ -126,9 +147,11 @@ export function TabBarNav({ active, news = 0 }: { active: string; news?: number 
 
       <nav className="tabbar sticky bottom-0 z-10">
         <div className="flex items-stretch justify-around px-1.5 pb-1.5 pt-1">
-          {TABS.map(({ href, label, Icon }) => {
+          {TABS.map(({ href, label: base, Icon }) => {
             const on = href === active;
             const moments = href === "/";
+            // تبويب اللحظات يحمل اسم العدسة المفتوحة.
+            const label = moments ? lens.label : base;
             const dot = href === "/notifications" && news > 0 && !on;
             return (
               <Link
