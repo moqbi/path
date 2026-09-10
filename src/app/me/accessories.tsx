@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { equip, unequip } from "@/app/actions";
 import { CheckIcon, CloseIcon } from "@/components/icons";
+import { itemPaint } from "@/components/ui";
 
 /**
  * الإكسسوارات: ما تملكه يُلبَس من ملفك، لا من المتجر.
@@ -17,6 +18,7 @@ export type Owned = {
   name: string;
   spec: string;
   kind: "FRAME" | "BACKGROUND" | "THEME" | "CHARM";
+  mediaId: string | null;
   giftedBy: string | null;
 };
 
@@ -24,10 +26,12 @@ export function Accessories({
   owned,
   equippedFrame,
   equippedTheme,
+  equippedCharm,
 }: {
   owned: Owned[];
   equippedFrame: string | null;
   equippedTheme: string | null;
+  equippedCharm: string | null;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -106,13 +110,13 @@ export function Accessories({
               empty="ما عندك ثيمات بعد."
             />
 
-            {charms.length > 0 ? (
-              <Group title="التمائم" items={charms} worn={null} empty="" soon />
-            ) : null}
+            <Group
+              title="التمائم"
+              items={charms}
+              worn={equippedCharm}
+              empty="ما عندك تمائم بعد."
+            />
 
-            <p className="mt-4 rounded-xl bg-paper px-3.5 py-3 text-[11.5px] text-muted">
-              التمائم تُملَك اليوم وتُلبَس قريباً.
-            </p>
           </div>
         </div>
       ) : null}
@@ -126,13 +130,11 @@ function Group({
   items,
   worn,
   empty,
-  soon = false,
 }: {
   title: string;
   items: Owned[];
   worn: string | null;
   empty: string;
-  soon?: boolean;
 }) {
   const [, start] = useTransition();
 
@@ -152,17 +154,13 @@ function Group({
           {items.map((item) => {
             const on = worn === item.id;
             const frame = item.kind === "FRAME";
+            const slot = frame ? "FRAME" : item.kind === "CHARM" ? "CHARM" : "BACKGROUND";
 
             return (
               <button
                 key={item.id}
                 type="button"
-                disabled={soon}
-                onClick={() =>
-                  start(() =>
-                    void (on ? unequip(frame ? "FRAME" : "BACKGROUND") : equip(item.id)),
-                  )
-                }
+                onClick={() => start(() => void (on ? unequip(slot) : equip(item.id)))}
                 className="flex flex-col items-center gap-2 rounded-2xl border bg-paper px-2 pb-3 pt-3.5 disabled:opacity-70"
                 style={{
                   borderColor: on ? "var(--color-clay)" : "var(--color-line)",
@@ -172,18 +170,20 @@ function Group({
                 {frame ? (
                   <span
                     className="rounded-full"
-                    style={{ width: 58, height: 58, background: item.spec, padding: 3 }}
+                    style={{ width: 58, height: 58, ...itemPaint(item), padding: 3 }}
                   >
                     <span
                       className="block h-full w-full rounded-full"
                       style={{ background: "var(--color-card)" }}
                     />
                   </span>
-                ) : (
+                ) : item.kind === "CHARM" ? (
                   <span
-                    className="w-full rounded-xl"
-                    style={{ height: 58, background: item.spec }}
+                    className="rounded-full"
+                    style={{ width: 44, height: 44, ...itemPaint(item), marginBlock: 7 }}
                   />
+                ) : (
+                  <span className="w-full rounded-xl" style={{ height: 58, ...itemPaint(item) }} />
                 )}
 
                 <span className="text-[11.5px] font-medium">{item.name}</span>
@@ -194,9 +194,7 @@ function Group({
                   className="flex items-center gap-1 text-[10.5px] font-semibold"
                   style={{ color: on ? "var(--color-clay)" : "var(--color-muted)" }}
                 >
-                  {soon ? (
-                    "قريباً"
-                  ) : on ? (
+                  {on ? (
                     <>
                       <CheckIcon size={12} /> ملبوس — انزعه
                     </>

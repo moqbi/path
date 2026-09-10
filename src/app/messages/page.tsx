@@ -56,6 +56,7 @@ export default async function MessagesPage({
       lastSeenAt: true,
       avatarMediaId: true,
       frame: { select: { spec: true } },
+      charm: { select: { spec: true, mediaId: true } },
       tag: { select: { name: true, bg: true, fg: true } },
     },
     orderBy: { name: "asc" },
@@ -171,6 +172,7 @@ export default async function MessagesPage({
                       name={conversation.other.name}
                       size={48}
                       frameSpec={conversation.other.frame?.spec}
+                      charm={conversation.other.charm}
                       mediaId={conversation.other.avatarMediaId}
                     />
                     {online(conversation.other.lastSeenAt) ? (
@@ -244,6 +246,7 @@ export default async function MessagesPage({
                         name={person.name}
                         size={42}
                         frameSpec={person.frame?.spec}
+                        charm={person.charm}
                         mediaId={person.avatarMediaId}
                       />
                       {online(person.lastSeenAt) ? (

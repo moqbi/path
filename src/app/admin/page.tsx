@@ -14,8 +14,9 @@ import {
   updateStoreItem,
   updateTag,
 } from "@/app/actions";
-import { ScreenHeader, TagPill } from "@/components/ui";
+import { itemPaint, ScreenHeader, TagPill } from "@/components/ui";
 import { Saver } from "./saver";
+import { ItemImage } from "./item-image";
 import { riyals, ar } from "@/lib/format";
 
 const FIELD =
@@ -502,7 +503,7 @@ export default async function AdminPage({
           {items.map((item) => (
             <details key={item.id} className="rounded-2xl border border-line bg-card">
               <summary className="flex cursor-pointer list-none items-center gap-3 p-3">
-                <span className="h-11 w-11 shrink-0 rounded-full" style={{ background: item.spec }} />
+                <span className="h-11 w-11 shrink-0 rounded-full" style={itemPaint(item)} />
                 <div className="min-w-0 grow">
                   <p className="truncate text-[13.5px] font-semibold">
                     {item.name}
@@ -526,6 +527,14 @@ export default async function AdminPage({
                 </div>
                 <span className="shrink-0 text-[12px] font-semibold text-clay-ink">تعديل</span>
               </summary>
+
+              <div className="border-t border-line p-3">
+                <ItemImage itemId={item.id} mediaId={item.mediaId} kind={item.kind} />
+                <p className="mt-1.5 text-[11px] text-muted">
+                  الثيم يُلبَس خلفيةً للتطبيق، والتميمة شعاراً تحت صورة العرض.
+                  بلا صورة يُرسم التدرّج.
+                </p>
+              </div>
 
               <Saver
                 action={updateStoreItem.bind(null, item.id)}

@@ -18,6 +18,7 @@ export type CommentShape = {
     name: string;
     avatarMediaId?: string | null;
     frame?: { spec: string } | null;
+    charm?: { spec: string; mediaId: string | null } | null;
   };
 };
 
@@ -45,6 +46,7 @@ export function CommentList({
                 size={size}
                 mediaId={comment.user.avatarMediaId ?? null}
                 frameSpec={comment.user.frame?.spec}
+                charm={comment.user.charm}
               />
             </Link>
 

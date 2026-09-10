@@ -40,7 +40,7 @@ export default async function ProfilePage() {
     prisma.purchase.findMany({
       where: { userId: user.id },
       select: {
-        item: { select: { id: true, name: true, spec: true, kind: true } },
+        item: { select: { id: true, name: true, spec: true, kind: true, mediaId: true } },
         giftedBy: { select: { name: true } },
       },
       orderBy: { createdAt: "desc" },
@@ -93,6 +93,7 @@ export default async function ProfilePage() {
           <ProfileImages
             name={user.name}
             frameSpec={user.frame?.spec ?? null}
+            charm={user.charm}
             avatarMediaId={user.avatarMediaId}
           />
         }
@@ -153,10 +154,12 @@ export default async function ProfilePage() {
                 name: row.item.name,
                 spec: row.item.spec,
                 kind: row.item.kind,
+                mediaId: row.item.mediaId,
                 giftedBy: row.giftedBy?.name ?? null,
               }))}
               equippedFrame={user.frameId}
               equippedTheme={user.backgroundId}
+              equippedCharm={user.charmId}
             />
             <Link
               href="/settings/privacy"

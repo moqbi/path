@@ -56,6 +56,7 @@ export default async function CirclePage({
             isPlus: true,
             avatarMediaId: true,
             frame: { select: { spec: true } },
+            charm: { select: { spec: true, mediaId: true } },
             tag: { select: { name: true, bg: true, fg: true } },
           },
         },
@@ -80,6 +81,7 @@ export default async function CirclePage({
       lastSeenAt: true,
       avatarMediaId: true,
       frame: { select: { spec: true } },
+      charm: { select: { spec: true, mediaId: true } },
       tag: { select: { name: true, bg: true, fg: true } },
       moments: { select: { createdAt: true }, orderBy: { createdAt: "desc" }, take: 1 },
     },
@@ -163,6 +165,7 @@ export default async function CirclePage({
                     name={request.requester.name}
                     size={44}
                     frameSpec={request.requester.frame?.spec}
+                    charm={request.requester.charm}
                     mediaId={request.requester.avatarMediaId}
                   />
                   <div className="min-w-0 grow">
@@ -236,6 +239,7 @@ export default async function CirclePage({
                           name={member.name}
                           size={46}
                           frameSpec={member.frame?.spec}
+                          charm={member.charm}
                           mediaId={member.avatarMediaId}
                         />
                         {online(member) ? (
@@ -331,6 +335,7 @@ export default async function CirclePage({
                       name={member.name}
                       size={38}
                       frameSpec={member.frame?.spec}
+                          charm={member.charm}
                       mediaId={member.avatarMediaId}
                     />
                     <span className="min-w-0 grow truncate text-[14px] font-semibold">
@@ -398,6 +403,7 @@ export default async function CirclePage({
                         name={person.name}
                         size={44}
                         frameSpec={person.frame?.spec}
+                        charm={person.charm}
                         mediaId={person.avatarMediaId}
                       />
                     </Link>

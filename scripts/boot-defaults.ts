@@ -145,10 +145,59 @@ async function store() {
   console.log("أُنشئت تصنيفات المتجر وأصنافها الأولى");
 }
 
+
+/**
+ * تميمتان للتجربة: نجمة وهلال.
+ *
+ * تُنشآن إن لم توجد تميمةٌ واحدة — مستقلّتين عن حارس التصنيفات، فقاعدةٌ
+ * أُنشئت قبل التمائم تنالهما عند أول إقلاع بعد التحديث. ورسمهما SVG داخل
+ * `spec`، والمشرف يرفع صورةً حقيقية فوقهما من اللوحة متى شاء.
+ */
+const CHARMS = [
+  {
+    name: "نجمة",
+    price: 800,
+    spec: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="%230e1a24"/><path d="M12 5l2.1 4.3 4.7.7-3.4 3.3.8 4.7L12 15.8 7.8 18l.8-4.7L5.2 10l4.7-.7z" fill="%23f6b93b"/></svg>') center/cover no-repeat`,
+  },
+  {
+    name: "هلال",
+    price: 800,
+    spec: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="%231f6f5c"/><path d="M15.6 5.4a7 7 0 1 0 3 8.9 5.6 5.6 0 0 1-3-8.9z" fill="%23f7f5ef"/></svg>') center/cover no-repeat`,
+  },
+] as const;
+
+async function charms() {
+  const existing = await prisma.storeItem.count({ where: { kind: "CHARM" } });
+  if (existing > 0) {
+    console.log(`التمائم الحالية: ${existing}`);
+    return;
+  }
+
+  const category = await prisma.storeCategory.findUnique({ where: { slug: "charms" } });
+  let order = 200;
+  let minutes = 20;
+  for (const charm of CHARMS) {
+    await prisma.storeItem.create({
+      data: {
+        kind: "CHARM",
+        name: charm.name,
+        priceHalalas: charm.price,
+        spec: charm.spec,
+        categoryId: category?.id ?? null,
+        sortOrder: order++,
+        // تُؤرَّخ قبل أصناف الافتتاح كي يبقى صفّ «وصل حديثاً» كما رُسم.
+        createdAt: new Date(Date.now() - minutes++ * 60_000),
+      },
+    });
+  }
+  console.log("أُنشئت تميمتا التجربة: نجمة وهلال");
+}
+
 async function main() {
   await admins();
   await tags();
   await store();
+  await charms();
 }
 
 main()

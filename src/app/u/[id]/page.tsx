@@ -58,6 +58,7 @@ export default async function FriendProfilePage({
       avatarMediaId: true,
       coverMediaId: true,
       frame: { select: { spec: true } },
+      charm: { select: { spec: true, mediaId: true } },
       background: { select: { spec: true } },
       tag: { select: { name: true, bg: true, fg: true } },
     },
@@ -103,8 +104,9 @@ export default async function FriendProfilePage({
     }),
     circleIds(id),
     plusTag(),
-    // أصناف المتجر تُقرأ هنا لتُعرض في نافذة الإهداء بلا مغادرة الملف.
-    prisma.storeItem.findMany({ where: { kind: "FRAME" }, orderBy: { sortOrder: "asc" } }),
+    // أصناف المتجر كلها تُقرأ هنا لتُعرض في نافذة الإهداء بلا مغادرة الملف:
+    // الإطار والثيم والتميمة كلّها تُهدى.
+    prisma.storeItem.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.purchase.findMany({ where: { userId: id }, select: { itemId: true } }),
   ]);
 
@@ -134,6 +136,7 @@ export default async function FriendProfilePage({
               name={person.name}
               size={78}
               frameSpec={person.frame?.spec}
+              charm={person.charm}
               mediaId={person.avatarMediaId}
             />
             <div className="flex items-center gap-2 pb-1.5">
@@ -145,6 +148,7 @@ export default async function FriendProfilePage({
                   priceHalalas: item.priceHalalas,
                   plusOnly: item.plusOnly,
                   earnedAfterDays: item.earnedAfterDays,
+                  mediaId: item.mediaId,
                 }))}
                 owned={theirs.map((row) => row.itemId)}
                 friendId={person.id}
@@ -229,6 +233,7 @@ type Person = {
   avatarMediaId: string | null;
   coverMediaId: string | null;
   frame: { spec: string } | null;
+  charm: { spec: string; mediaId: string | null } | null;
   background: { spec: string } | null;
   tag: { name: string; bg: string; fg: string } | null;
 };
@@ -266,6 +271,7 @@ function LockedProfile({
             name={person.name}
             size={78}
             frameSpec={person.frame?.spec}
+              charm={person.charm}
             mediaId={person.avatarMediaId}
           />
 

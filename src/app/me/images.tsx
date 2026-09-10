@@ -14,14 +14,16 @@ export function ProfileImages({
   name,
   frameSpec,
   avatarMediaId,
+  charm,
 }: {
   name: string;
   frameSpec: string | null;
   avatarMediaId: string | null;
+  charm?: { spec: string; mediaId: string | null } | null;
 }) {
   return (
     <div className="relative">
-      <Avatar name={name} size={84} frameSpec={frameSpec} mediaId={avatarMediaId} />
+      <Avatar name={name} size={84} frameSpec={frameSpec} mediaId={avatarMediaId} charm={charm} />
 
       <div className="absolute -bottom-1 -left-1">
         <ImagePicker

@@ -31,6 +31,7 @@ export default async function ThreadPage({
             name={conversation.other.name}
             size={34}
             frameSpec={conversation.other.frame?.spec}
+            charm={conversation.other.charm}
           />
         }
       />

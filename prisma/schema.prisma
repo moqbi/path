@@ -111,8 +111,10 @@ model User {
 
   frameId      String?
   backgroundId String?
+  charmId      String?
   frame        StoreItem? @relation("UserFrame", fields: [frameId], references: [id], onDelete: SetNull)
   background   StoreItem? @relation("UserBackground", fields: [backgroundId], references: [id], onDelete: SetNull)
+  charm        StoreItem? @relation("UserCharm", fields: [charmId], references: [id], onDelete: SetNull)
 
   /// الخصوصية.
   /// تصنيفٌ يحدّ من يرى لحظاتي الجديدة افتراضياً، وآخر يحدّ من يتفاعل معي.
@@ -395,8 +397,11 @@ model StoreItem {
   name  String
   /// السعر بالهللات. صفر يعني أن الصنف يُكتسب ولا يُشترى.
   priceHalalas Int
-  /// تدرّج CSS يرسم الإطار أو الخلفية.
+  /// تدرّج CSS يرسم الإطار. وللثيم والتميمة صورةٌ تُرفع، والتدرّج بديلها.
   spec String
+  /// صورة الصنف — الثيم خلفيةٌ للتطبيق، والتميمة شعارٌ تحت صورة العرض.
+  mediaId String? @unique
+  media   Media?  @relation("StoreItemMedia", fields: [mediaId], references: [id], onDelete: SetNull)
   /// أصناف حصرية لمشتركي أثر+.
   plusOnly Boolean @default(false)
   /// أصناف تُكتسب بالبقاء لا بالدفع (مثل إطار «سنة كاملة»).
@@ -414,6 +419,7 @@ model StoreItem {
   purchases      Purchase[]
   usersWithFrame User[]     @relation("UserFrame")
   usersWithBg    User[]     @relation("UserBackground")
+  usersWithCharm User[]     @relation("UserCharm")
 }
 
 model Purchase {
@@ -494,6 +500,7 @@ model Media {
   coverOf  User?   @relation("UserCover")
   storyOf  Story?  @relation("StoryMedia")
   moment   Moment? @relation("MomentMedia")
+  storeItem StoreItem? @relation("StoreItemMedia")
 
   @@index([ownerId, createdAt])
 }

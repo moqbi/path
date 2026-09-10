@@ -32,6 +32,7 @@ const PERSON = {
   lastSeenAt: true,
   avatarMediaId: true,
   frame: { select: { spec: true } },
+  charm: { select: { spec: true, mediaId: true } },
   tag: { select: { name: true, bg: true, fg: true } },
 } as const;
 

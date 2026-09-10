@@ -47,6 +47,7 @@ export default async function StorePage({
     plusOnly: item.plusOnly,
     earnedAfterDays: item.earnedAfterDays,
     limited: item.limited,
+    mediaId: item.mediaId,
   });
 
   const grid = (items: typeof all) => (
@@ -56,7 +57,7 @@ export default async function StorePage({
       isPlus={user.isPlus}
       credit={user.storeCredit}
       daysHere={daysHere}
-      equipped={{ frame: user.frameId, theme: user.backgroundId }}
+      equipped={{ frame: user.frameId, theme: user.backgroundId, charm: user.charmId }}
     />
   );
 

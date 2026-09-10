@@ -54,7 +54,12 @@ export default async function MomentPage({
 
       <main className="scroll-area px-5 pt-4">
         <div className="mb-3 flex items-center gap-2.5">
-          <Avatar name={moment.author.name} size={36} frameSpec={moment.author.frame?.spec} />
+          <Avatar
+            name={moment.author.name}
+            size={36}
+            frameSpec={moment.author.frame?.spec}
+            charm={moment.author.charm}
+          />
           <div className="grow">
             <p className="text-[14px] font-semibold">{moment.author.name}</p>
             <p className="text-[11px] text-faint">

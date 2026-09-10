@@ -14,17 +14,42 @@ function tintFor(name: string): string {
   return TINTS[sum % TINTS.length];
 }
 
+/**
+ * التميمة: شعارٌ صغير يجلس أسفل يسار صورة العرض أينما ظهرت الصورة.
+ * صورةٌ إن رُفعت، وتدرّجٌ إن لم تُرفع — كبقية أصناف المتجر.
+ */
+export type Charm = { spec: string; mediaId: string | null } | null | undefined;
+
+/**
+ * خلفية صنف المتجر: صورته إن رُفعت، وإلا قيمة `spec` كما هي.
+ *
+ * إمّا المختصر وإمّا المفصّل، لا الاثنان في كائنٍ واحد — خلطهما يجعل React
+ * يحذّر ويترك بقايا الخلفية السابقة بعد إعادة الرسم.
+ */
+export function itemPaint(item: { spec: string; mediaId?: string | null }) {
+  return item.mediaId
+    ? {
+        backgroundImage: `url(/api/media/${item.mediaId})`,
+        backgroundSize: "cover" as const,
+        backgroundPosition: "center" as const,
+        backgroundRepeat: "no-repeat" as const,
+      }
+    : { background: item.spec };
+}
+
 export function Avatar({
   name,
   size = 40,
   frameSpec,
   mediaId,
+  charm,
   ring = "var(--color-paper)",
 }: {
   name: string;
   size?: number;
   frameSpec?: string | null;
   mediaId?: string | null;
+  charm?: Charm;
   ring?: string;
 }) {
   const inner = (
@@ -48,10 +73,14 @@ export function Avatar({
     </div>
   );
 
+  // التميمة تُعلَّق على الحاوية لا على الصورة، فلا يقصّها الإطار.
+  const badge = charm ? <CharmBadge charm={charm} size={size} /> : null;
+
   if (!frameSpec) {
     return (
-      <div style={{ width: size, height: size }} className="shrink-0 rounded-full">
+      <div style={{ width: size, height: size }} className="relative shrink-0 rounded-full">
         {inner}
+        {badge}
       </div>
     );
   }
@@ -59,11 +88,34 @@ export function Avatar({
   // الإطار المشترى يُرسم كحلقة تدرّج حول الصورة بحشوة تتناسب مع الحجم.
   return (
     <div
-      className="shrink-0 rounded-full"
+      className="relative shrink-0 rounded-full"
       style={{ width: size, height: size, background: frameSpec, padding: Math.max(2, size * 0.045) }}
     >
       {inner}
+      {badge}
     </div>
+  );
+}
+
+function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }) {
+  // ربع الصورة تقريباً: تُرى ولا تزاحم الوجه، وتحت حدٍّ معيّن لا تُرسم أصلاً.
+  const badge = Math.round(size * 0.38);
+  if (badge < 10) return null;
+
+  return (
+    <span
+      aria-hidden="true"
+      data-charm="1"
+      className="absolute rounded-full bg-cover bg-center"
+      style={{
+        width: badge,
+        height: badge,
+        bottom: -badge * 0.08,
+        left: -badge * 0.08,
+        ...itemPaint(charm),
+        boxShadow: "0 0 0 1.5px var(--color-card)",
+      }}
+    />
   );
 }
 

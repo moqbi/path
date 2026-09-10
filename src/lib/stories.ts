@@ -36,6 +36,7 @@ export async function storyRings(userId: string): Promise<StoryRing[]> {
           name: true,
           avatarMediaId: true,
           frame: { select: { spec: true } },
+          charm: { select: { spec: true, mediaId: true } },
         },
       },
       views: { where: { userId }, select: { id: true } },

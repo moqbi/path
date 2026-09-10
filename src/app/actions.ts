@@ -470,7 +470,7 @@ const storeItemInput = z.object({
   kind: z.enum(["FRAME", "BACKGROUND", "THEME", "CHARM"]),
   name: z.string().trim().min(1, "اكتب الاسم").max(40),
   priceRiyals: z.coerce.number().min(0).max(9999),
-  spec: z.string().trim().min(1, "اكتب تدرّج CSS").max(400),
+  spec: z.string().trim().min(1, "اكتب تدرّج CSS").max(1000),
   plusOnly: z.coerce.boolean(),
   earnedAfterDays: z.coerce.number().int().min(0).max(3650).optional(),
   /** التصنيف اختياري: صنفٌ بلا تصنيف يظهر في «المميز» وحده. */
@@ -1284,26 +1284,60 @@ export async function equip(itemId: string): Promise<void> {
   });
   if (!purchase) throw new Error("لا تملك هذا الصنف");
 
-  // التميمة تُملَك ولا تُلبَس بعد: نقولها صراحةً بدل أن نكتب حقلاً خاطئاً.
-  if (purchase.item.kind === "CHARM") throw new Error("التمائم قريباً");
+  const field =
+    purchase.item.kind === "FRAME"
+      ? { frameId: itemId }
+      : purchase.item.kind === "CHARM"
+        ? { charmId: itemId }
+        : { backgroundId: itemId };
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: purchase.item.kind === "FRAME" ? { frameId: itemId } : { backgroundId: itemId },
-  });
+  await prisma.user.update({ where: { id: user.id }, data: field });
 
   revalidatePath("/me");
   revalidatePath("/store");
   revalidatePath("/");
 }
 
-export async function unequip(kind: "FRAME" | "BACKGROUND"): Promise<void> {
+export async function unequip(kind: "FRAME" | "BACKGROUND" | "CHARM"): Promise<void> {
   const user = await requireUser();
   await prisma.user.update({
     where: { id: user.id },
-    data: kind === "FRAME" ? { frameId: null } : { backgroundId: null },
+    data:
+      kind === "FRAME"
+        ? { frameId: null }
+        : kind === "CHARM"
+          ? { charmId: null }
+          : { backgroundId: null },
   });
   revalidatePath("/me");
+  revalidatePath("/store");
+  revalidatePath("/");
+}
+
+/**
+ * صورة صنف المتجر: الثيم صورةٌ تملأ خلفية التطبيق، والتميمة شعارٌ صغير.
+ * ترفعها اللوحة كما تُرفع صورة الغلاف — تُخزَّن في القاعدة وتُقدَّم من
+ * `/api/media`، فلا استضافة خارجية ولا رابطٌ ينكسر.
+ */
+export async function setItemImage(
+  itemId: string,
+  dataUrl: string,
+  width: number,
+  height: number,
+): Promise<void> {
+  const admin = await requireAdmin();
+  const media = await storeDataUrl(admin.id, dataUrl, width, height);
+  await prisma.storeItem.update({ where: { id: itemId }, data: { mediaId: media.id } });
+  revalidatePath("/admin");
+  revalidatePath("/store");
+  revalidatePath("/");
+}
+
+export async function clearItemImage(itemId: string): Promise<void> {
+  await requireAdmin();
+  await prisma.storeItem.update({ where: { id: itemId }, data: { mediaId: null } });
+  revalidatePath("/admin");
+  revalidatePath("/store");
 }
 
 /**

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { buyItem, equip, unequip } from "@/app/actions";
 import { riyals, ar } from "@/lib/format";
 import { LockIcon, CheckIcon } from "@/components/icons";
+import { itemPaint } from "@/components/ui";
 
 /**
  * شبكة أصناف المتجر.
@@ -20,6 +21,8 @@ export type Item = {
   plusOnly: boolean;
   earnedAfterDays: number | null;
   limited: boolean;
+  /** صورة الصنف — الثيم والتميمة صورتان، والإطار تدرّج. */
+  mediaId: string | null;
 };
 
 function Preview({ item }: { item: Item }) {
@@ -27,7 +30,7 @@ function Preview({ item }: { item: Item }) {
     return (
       <span
         className="rounded-full"
-        style={{ width: 62, height: 62, background: item.spec, padding: 3 }}
+        style={{ width: 62, height: 62, ...itemPaint(item), padding: 3 }}
       >
         <span className="block h-full w-full rounded-full" style={{ background: "var(--color-card)" }} />
       </span>
@@ -37,17 +40,14 @@ function Preview({ item }: { item: Item }) {
   if (item.kind === "CHARM") {
     return (
       <span
-        className="rounded-2xl"
-        style={{ width: 46, height: 46, background: item.spec, marginBlock: 8 }}
+        className="rounded-full"
+        style={{ width: 46, height: 46, ...itemPaint(item), marginBlock: 8 }}
       />
     );
   }
 
   return (
-    <span
-      className="w-full rounded-xl"
-      style={{ height: 62, background: item.spec }}
-    />
+    <span className="w-full rounded-xl" style={{ height: 62, ...itemPaint(item) }} />
   );
 }
 
@@ -64,8 +64,8 @@ export function StoreGrid({
   isPlus: boolean;
   credit: number;
   daysHere: number;
-  /** ما هو ملبوس الآن: إطارٌ وثيم. */
-  equipped: { frame: string | null; theme: string | null };
+  /** ما هو ملبوس الآن: إطارٌ وثيمٌ وتميمة. */
+  equipped: { frame: string | null; theme: string | null; charm: string | null };
 }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -74,15 +74,19 @@ export function StoreGrid({
   const price = (item: Item) =>
     isPlus ? Math.round(item.priceHalalas * 0.8) : item.priceHalalas;
 
-  const wornId = (item: Item) => (item.kind === "FRAME" ? equipped.frame : equipped.theme);
+  const wornId = (item: Item) =>
+    item.kind === "FRAME" ? equipped.frame : item.kind === "CHARM" ? equipped.charm : equipped.theme;
 
   function act(item: Item) {
     setError(null);
 
     if (ownedSet.has(item.id)) {
-      if (item.kind === "CHARM") return setError("التمائم قريباً");
       if (wornId(item) === item.id) {
-        start(() => void unequip(item.kind === "FRAME" ? "FRAME" : "BACKGROUND"));
+        start(() =>
+          void unequip(
+            item.kind === "FRAME" ? "FRAME" : item.kind === "CHARM" ? "CHARM" : "BACKGROUND",
+          ),
+        );
         return;
       }
       start(() => void equip(item.id));
@@ -161,7 +165,7 @@ export function StoreGrid({
                 </span>
               ) : have ? (
                 <span className="text-[10.5px] font-semibold text-clay">
-                  {item.kind === "CHARM" ? "قريباً" : "ألبسه"}
+                  ألبسه
                 </span>
               ) : locked ? (
                 <span className="flex items-center gap-1 text-[10.5px] text-faint">

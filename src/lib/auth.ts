@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { cookies } from "next/headers";
@@ -115,12 +116,19 @@ export type SessionUser = {
   /** الملبوس الآن: المعرّفان ليُعرف أيّ صنفٍ عليه علامة «ملبوس». */
   frameId: string | null;
   backgroundId: string | null;
+  charmId: string | null;
   frame: { spec: string } | null;
-  background: { spec: string } | null;
+  /** الثيم الملبوس: صورته إن رُفعت، وتدرّجه إن لم تُرفع. */
+  background: { spec: string; mediaId: string | null } | null;
+  charm: { spec: string; mediaId: string | null } | null;
   tag: { name: string; bg: string; fg: string } | null;
 };
 
-export async function currentUser(): Promise<SessionUser | null> {
+/**
+ * تُقرأ مرّة واحدة لكل طلب: التخطيط يقرأها ليلبس الثيم، والصفحة تقرأها
+ * لمحتواها — بلا `cache` لصار الاستعلامان اثنين وختمُ الحضور مرّتين.
+ */
+export const currentUser = cache(async function currentUser(): Promise<SessionUser | null> {
   const id = await currentUserId();
   if (!id) return null;
 
@@ -145,8 +153,10 @@ export async function currentUser(): Promise<SessionUser | null> {
       lastSeenAt: true,
       frameId: true,
       backgroundId: true,
+      charmId: true,
       frame: { select: { spec: true } },
-      background: { select: { spec: true } },
+      background: { select: { spec: true, mediaId: true } },
+      charm: { select: { spec: true, mediaId: true } },
       tag: { select: { name: true, bg: true, fg: true } },
     },
   });
@@ -174,11 +184,13 @@ export async function currentUser(): Promise<SessionUser | null> {
     coverY: user.coverY,
     frameId: user.frameId,
     backgroundId: user.backgroundId,
+    charmId: user.charmId,
     frame: user.frame,
     background: user.background,
+    charm: user.charm,
     tag: user.tag,
   };
-}
+});
 
 /** يستخدمها كل إجراء خادم يحتاج مستخدماً مسجَّلاً. */
 export async function requireUser(): Promise<SessionUser> {

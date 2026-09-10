@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { giftItem } from "@/app/actions";
 import { CloseIcon, SparkIcon } from "@/components/icons";
+import { itemPaint } from "@/components/ui";
 import { ar, riyals } from "@/lib/format";
 
 /**
@@ -18,6 +19,7 @@ type Item = {
   priceHalalas: number;
   plusOnly: boolean;
   earnedAfterDays: number | null;
+  mediaId: string | null;
 };
 
 export function GiftButton({
@@ -148,9 +150,19 @@ export function GiftButton({
                   >
                     <span
                       className="rounded-full"
-                      style={{ width: 58, height: 58, background: item.spec, padding: 3 }}
+                      style={{
+                        width: 58,
+                        height: 58,
+                        ...itemPaint(item),
+                        padding: item.mediaId ? 0 : 3,
+                      }}
                     >
-                      <span className="block h-full w-full rounded-full" style={{ background: "var(--color-card)" }} />
+                      {item.mediaId ? null : (
+                        <span
+                          className="block h-full w-full rounded-full"
+                          style={{ background: "var(--color-card)" }}
+                        />
+                      )}
                     </span>
                     <span className="text-[11.5px] font-medium">{item.name}</span>
                     <span className="text-[10.5px] font-semibold text-clay">
