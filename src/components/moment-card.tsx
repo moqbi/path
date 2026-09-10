@@ -11,6 +11,7 @@ import {
 import { MomentBar } from "@/components/moment-bar";
 import { Photo } from "@/components/photo";
 import { Reactors } from "@/components/reactions";
+import { CommentList } from "@/components/comments";
 import { ar, relative, timeOfDay } from "@/lib/format";
 import type { FeedMoment } from "@/lib/feed";
 
@@ -89,24 +90,13 @@ function Spine({
  * التعليقات داخل الخط الزمني.
  * تُعرض ثلاثة، وما زاد يُقرأ بفتح اللحظة — فلا تبتلع لحظةٌ واحدة الشاشة.
  */
-function Comments({ moment }: { moment: FeedMoment }) {
+function Comments({ moment, viewerId }: { moment: FeedMoment; viewerId: string }) {
   if (moment.comments.length === 0) return null;
   const hidden = moment._count.comments - moment.comments.length;
 
   return (
     <div className="flex flex-col gap-2">
-      {moment.comments.map((comment) => (
-        <div key={comment.id} className="flex items-start gap-2">
-          <Avatar name={comment.user.name} size={22} mediaId={comment.user.avatarMediaId} />
-          <p className="min-w-0 grow break-words text-[12.5px] leading-relaxed">
-            <span className="font-semibold">{comment.user.name}</span>{" "}
-            <span className="text-ink-2">{comment.body}</span>
-          </p>
-          <span className="shrink-0 pt-0.5 text-[10px] text-faint">
-            {relative(comment.createdAt)}
-          </span>
-        </div>
-      ))}
+      <CommentList comments={moment.comments} viewerId={viewerId} />
       {hidden > 0 ? (
         <Link href={`/m/${moment.id}`} className="text-[11.5px] font-semibold text-clay-ink">
           اقرأ {ar(hidden)} تعليقاً آخر
@@ -130,7 +120,7 @@ function Bubble({ moment, viewerId }: { moment: FeedMoment; viewerId: string }) 
     <div className="mt-2 rounded-2xl border border-line bg-card px-3 py-2.5">
       {hasReactions ? <Reactors reactions={moment.reactions} viewerId={viewerId} /> : null}
       {hasReactions && hasComments ? <div className="my-2.5 h-px bg-line" /> : null}
-      <Comments moment={moment} />
+      <Comments moment={moment} viewerId={viewerId} />
     </div>
   );
 }
@@ -346,7 +336,7 @@ export function MomentCard({
                 {moment.reactions.length > 0 ? <Reactors reactions={moment.reactions} viewerId={viewerId} /> : null}
                 {moment.comments.length > 0 ? (
                   <div className="mt-2.5 border-t border-line pt-2.5">
-                    <Comments moment={moment} />
+                    <Comments moment={moment} viewerId={viewerId} />
                   </div>
                 ) : null}
               </div>

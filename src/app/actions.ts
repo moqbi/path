@@ -1124,6 +1124,62 @@ export async function buyItem(itemId: string): Promise<void> {
   revalidatePath("/me");
 }
 
+/**
+ * الإهداء: تشتري الصنف بمالك فيملكه صاحبك.
+ *
+ * الشرط أن يكون في دائرتك — لا هدايا من غريب، فالهدية بابُ إزعاجٍ إن
+ * فُتح للجميع. ولا يُهدى ما يُكتسب بالوقت (يُنال بالبقاء لا بالمال)، ولا
+ * ما يملكه أصلاً، ولا صنفُ «أثر+» لمن ليس مشتركاً — يبقى في صندوقه لا
+ * يلبسه. والخصم والتمليك في معاملة واحدة.
+ */
+export async function giftItem(
+  itemId: string,
+  toUserId: string,
+): Promise<{ ok?: string; error?: string }> {
+  const user = await requireUser();
+  if (toUserId === user.id) return { error: "الإهداء لصاحبك لا لنفسك" };
+
+  const circle = await circleIds(user.id);
+  if (!circle.includes(toUserId)) return { error: "الإهداء للأصدقاء فقط" };
+
+  const [item, friend] = await Promise.all([
+    prisma.storeItem.findUnique({ where: { id: itemId } }),
+    prisma.user.findUnique({
+      where: { id: toUserId },
+      select: { name: true, isPlus: true },
+    }),
+  ]);
+  if (!item || !friend) return { error: "الصنف غير موجود" };
+  if (item.earnedAfterDays !== null) return { error: "هذا الصنف يُكتسب بالوقت، لا يُهدى" };
+  if (item.plusOnly && !friend.isPlus) return { error: `${friend.name} ليس مشتركاً في أثر+` };
+
+  const owned = await prisma.purchase.findUnique({
+    where: { userId_itemId: { userId: toUserId, itemId } },
+  });
+  if (owned) return { error: `${friend.name} يملكه أصلاً` };
+
+  // الخصم خصمُ المُهدي: هو الدافع، فله سعره هو.
+  const price = user.isPlus
+    ? Math.round(item.priceHalalas * (1 - PLUS_DISCOUNT))
+    : item.priceHalalas;
+  if (user.storeCredit < price) return { error: "رصيدك لا يكفي" };
+
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: user.id },
+      data: { storeCredit: { decrement: price } },
+    }),
+    prisma.purchase.create({
+      data: { userId: toUserId, itemId, paidHalalas: price, giftedById: user.id },
+    }),
+  ]);
+
+  revalidatePath(`/u/${toUserId}`);
+  revalidatePath("/store");
+  revalidatePath("/me");
+  return { ok: `أُهديت ${item.name} إلى ${friend.name}` };
+}
+
 export async function equip(itemId: string): Promise<void> {
   const user = await requireUser();
 

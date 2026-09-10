@@ -9,6 +9,7 @@ import { plusTag, tagOf } from "@/lib/tags";
 import { ProfileImages } from "./images";
 import { ProfileCover } from "./cover";
 import { ProfileShell } from "./shell";
+import { Accessories } from "./accessories";
 import { DeleteAccount } from "./delete";
 import { coverStyle, TagPill } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
@@ -24,7 +25,7 @@ export default async function ProfilePage() {
   const user = await currentUser();
   if (!user) redirect("/login");
 
-  const [ids, moments, mine, places, auto] = await Promise.all([
+  const [ids, moments, mine, places, auto, purchases] = await Promise.all([
     circleIds(user.id),
     archive(user.id),
     myMoments(user.id),
@@ -34,6 +35,15 @@ export default async function ProfilePage() {
       distinct: ["placeName"],
     }),
     plusTag(),
+    // ما تملكه من المتجر — يُلبَس من هنا لا من صفحة الشراء.
+    prisma.purchase.findMany({
+      where: { userId: user.id },
+      select: {
+        item: { select: { id: true, name: true, spec: true, kind: true } },
+        giftedBy: { select: { name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
 
   const joined = `${MONTHS[user.createdAt.getMonth()]} ${ar(user.createdAt.getFullYear())}`;
@@ -131,11 +141,21 @@ export default async function ProfilePage() {
           <div className="mb-4 flex gap-2.5">
             <Link
               href="/me/edit"
-              className="flex grow items-center justify-center rounded-xl border border-line bg-card text-[13.5px] font-semibold text-ink-2"
+              className="flex min-w-0 grow items-center justify-center truncate rounded-xl border border-line bg-card px-2 text-[13.5px] font-semibold text-ink-2"
               style={{ height: 46 }}
             >
-              تعديل الملف الشخصي
+              تعديل الملف
             </Link>
+            <Accessories
+              owned={purchases.map((row) => ({
+                id: row.item.id,
+                name: row.item.name,
+                spec: row.item.spec,
+                kind: row.item.kind,
+                giftedBy: row.giftedBy?.name ?? null,
+              }))}
+              equippedFrame={user.frameId}
+            />
             <Link
               href="/settings/privacy"
               aria-label="الإعدادات"

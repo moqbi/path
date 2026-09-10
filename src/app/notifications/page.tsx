@@ -6,7 +6,7 @@ import { ReactionGlyph } from "@/components/reactions";
 import { Avatar, Empty } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import { AthrHeaderMark } from "@/components/brand";
-import { GearIcon, MessageIcon, TagIcon, WithIcon } from "@/components/icons";
+import { GearIcon, MessageIcon, SparkIcon, TagIcon, WithIcon } from "@/components/icons";
 import { ar, dayLabel, relative } from "@/lib/format";
 
 const FILTERS = [
@@ -29,6 +29,7 @@ const KIND_STYLE: Record<NoteKind, { bg: string; ink: string }> = {
   TAG: { bg: "var(--color-live-soft)", ink: "var(--color-live)" },
   FRIEND: { bg: "#e3f3e8", ink: "#2f9e58" },
   MESSAGE: { bg: "var(--color-gold-soft)", ink: "var(--color-gold-ink)" },
+  GIFT: { bg: "var(--color-gold-soft)", ink: "var(--color-gold-ink)" },
 };
 
 export default async function NotificationsPage({
@@ -126,6 +127,8 @@ export default async function NotificationsPage({
                             <TagIcon size={11} />
                           ) : note.kind === "FRIEND" ? (
                             <WithIcon size={11} />
+                          ) : note.kind === "GIFT" ? (
+                            <SparkIcon size={11} />
                           ) : (
                             <MessageIcon size={11} />
                           )}

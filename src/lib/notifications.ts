@@ -2,7 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { blockedWith } from "@/lib/visibility";
 
-export type NoteKind = "REACTION" | "COMMENT" | "TAG" | "FRIEND" | "MESSAGE";
+export type NoteKind = "REACTION" | "COMMENT" | "TAG" | "FRIEND" | "MESSAGE" | "GIFT";
 
 export type Note = {
   id: string;
@@ -33,7 +33,7 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
 
   const person = { select: { id: true, name: true, avatarMediaId: true } };
 
-  const [reactions, comments, tags, friendships, messages] = await Promise.all([
+  const [reactions, comments, tags, friendships, messages, gifts] = await Promise.all([
     prisma.reaction.findMany({
       where: { moment: { authorId: userId }, userId: { not: userId } },
       select: {
@@ -100,6 +100,18 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
       orderBy: { createdAt: "desc" },
       take: limit,
     }),
+    // الهدايا تُشتقّ من الشراء نفسه: من دفع ومن ملك ومتى.
+    prisma.purchase.findMany({
+      where: { userId, giftedById: { not: null } },
+      select: {
+        id: true,
+        createdAt: true,
+        item: { select: { name: true } },
+        giftedBy: person,
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    }),
   ]);
 
   const notes: Note[] = [
@@ -150,6 +162,20 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
         person: other,
       };
     }),
+    ...gifts.flatMap((row) =>
+      row.giftedBy
+        ? [
+            {
+              id: `g-${row.id}`,
+              kind: "GIFT" as const,
+              at: row.createdAt,
+              text: `${row.giftedBy.name} أهداك ${row.item.name}`,
+              href: "/me",
+              person: row.giftedBy,
+            },
+          ]
+        : [],
+    ),
     ...messages.map((row) => ({
       id: `m-${row.id}`,
       kind: "MESSAGE" as const,

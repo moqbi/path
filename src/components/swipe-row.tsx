@@ -15,10 +15,15 @@ const REVEAL = 88;
 export function SwipeRow({
   onDelete,
   confirmLabel = "حذف",
+  onSecond,
+  secondLabel,
   children,
 }: {
   onDelete: () => void | Promise<void>;
   confirmLabel?: string;
+  /** فعلٌ ثانٍ يظهر بجانب الأول — الحظر مثلاً بجانب الإزالة. */
+  onSecond?: () => void | Promise<void>;
+  secondLabel?: string;
   children: React.ReactNode;
 }) {
   const [offset, setOffset] = useState(0);
@@ -27,22 +32,40 @@ export function SwipeRow({
   const origin = useRef<{ x: number; y: number } | null>(null);
   const axis = useRef<"none" | "x" | "y">("none");
 
+  const second = onSecond && secondLabel ? { run: onSecond, label: secondLabel } : null;
+  const reveal = second ? REVEAL * 2 : REVEAL;
+
+  function fire(run: () => void | Promise<void>) {
+    setOpen(false);
+    setOffset(0);
+    start(() => void run());
+  }
+
   return (
     <div className="relative overflow-hidden" style={{ touchAction: "pan-y" }}>
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => {
-          setOpen(false);
-          setOffset(0);
-          start(() => void onDelete());
-        }}
-        className="absolute inset-y-0 left-0 flex items-center justify-center gap-1.5 px-4 text-[13px] font-bold disabled:opacity-60"
-        style={{ width: REVEAL, background: "var(--color-live)", color: "#fff" }}
-      >
-        <CloseIcon size={16} />
-        {confirmLabel}
-      </button>
+      <div className="absolute inset-y-0 left-0 flex" style={{ width: reveal }}>
+        {second ? (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => fire(second.run)}
+            className="flex grow items-center justify-center px-2 text-[13px] font-bold disabled:opacity-60"
+            style={{ background: "var(--color-night)", color: "#f7f5ef" }}
+          >
+            {second.label}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => fire(onDelete)}
+          className="flex grow items-center justify-center gap-1.5 px-2 text-[13px] font-bold disabled:opacity-60"
+          style={{ background: "var(--color-live)", color: "#fff" }}
+        >
+          <CloseIcon size={16} />
+          {confirmLabel}
+        </button>
+      </div>
 
       <div
         draggable={false}
@@ -66,20 +89,20 @@ export function SwipeRow({
           if (axis.current !== "x") return;
 
           // السحب من اليسار إلى اليمين يزيح الصف فتنكشف حافته اليسرى وزرها.
-          const base = open ? REVEAL : 0;
-          setOffset(Math.max(0, Math.min(REVEAL, base + dx)));
+          const base = open ? reveal : 0;
+          setOffset(Math.max(0, Math.min(reveal, base + dx)));
         }}
         onPointerUp={() => {
           if (axis.current === "x") {
-            const settled = offset > REVEAL / 2;
+            const settled = offset > reveal / 2;
             setOpen(settled);
-            setOffset(settled ? REVEAL : 0);
+            setOffset(settled ? reveal : 0);
           }
           origin.current = null;
           axis.current = "none";
         }}
         onPointerCancel={() => {
-          setOffset(open ? REVEAL : 0);
+          setOffset(open ? reveal : 0);
           origin.current = null;
           axis.current = "none";
         }}

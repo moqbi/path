@@ -14,17 +14,26 @@ import { signOut } from "@/app/actions";
  * وضع الضبط: الصورة تُسحب عمودياً فيتحرّك موضعها داخل الإطار، ويُحفظ
  * الموضع نسبةً مئوية. القصّ نفسه لا يمسّ الملف — الصورة تبقى كما رُفعت،
  * وما يُحفظ هو أيّ جزءٍ منها يُرى.
+ *
+ * وزرّا «اضبط» و«أزل» يعيشان في صفحة التعديل لا فوق الملف: الملف يُقرأ
+ * لا يُحرَّر، وبقاء أدوات التحرير فوقه ضجيجٌ دائم لعملٍ يُفعل مرة.
  */
 export function ProfileCover({
   mediaId,
   spec,
   initialY,
   height = 168,
+  manage = false,
+  chrome = true,
 }: {
   mediaId: string | null;
   spec: string | null;
   initialY: number;
   height?: number;
+  /** أزرار الضبط والإزالة: في صفحة التعديل وحدها، لا فوق الملف. */
+  manage?: boolean;
+  /** أدوات الملف (الخصوصية والخروج) — لا مكان لها في صفحة التعديل. */
+  chrome?: boolean;
 }) {
   const [y, setY] = useState(initialY);
   const [adjusting, setAdjusting] = useState(false);
@@ -117,7 +126,7 @@ export function ProfileCover({
               </span>
             </ImagePicker>
 
-            {mediaId ? (
+            {manage && mediaId ? (
               <>
                 <button type="button" onClick={() => setAdjusting(true)} className={chip} style={dark}>
                   اضبط
@@ -136,6 +145,7 @@ export function ProfileCover({
             ) : null}
           </div>
 
+          {chrome ? (
           <div className="absolute left-4 top-4 flex gap-2">
             <Link
               href="/settings/privacy"
@@ -151,6 +161,7 @@ export function ProfileCover({
               </button>
             </form>
           </div>
+          ) : null}
         </>
       )}
     </div>

@@ -46,7 +46,14 @@ export const momentShape = {
       id: true,
       body: true,
       createdAt: true,
-      user: { select: { id: true, name: true, avatarMediaId: true } },
+      user: {
+        select: {
+          id: true,
+          name: true,
+          avatarMediaId: true,
+          frame: { select: { spec: true } },
+        },
+      },
     },
     orderBy: { createdAt: "asc" },
     take: 3,

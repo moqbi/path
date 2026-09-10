@@ -6,8 +6,9 @@ import { addComment } from "@/app/actions";
 import { Avatar, ScreenHeader } from "@/components/ui";
 import { SeenTracker } from "@/components/interactive";
 import { Reactions, Reactors } from "@/components/reactions";
+import { CommentList } from "@/components/comments";
 import { EyeIcon } from "@/components/icons";
-import { ar, relative, timeOfDay } from "@/lib/format";
+import { ar, timeOfDay } from "@/lib/format";
 
 export default async function MomentPage({
   params,
@@ -108,19 +109,14 @@ export default async function MomentPage({
           )}
         </section>
 
-        <section className="flex flex-col gap-3.5">
-          {moment.comments.map((comment) => (
-            <div key={comment.id} className="flex gap-2.5">
-              <Avatar name={comment.user.name} size={32} />
-              <div className="grow">
-                <p className="text-[13px] leading-relaxed">
-                  <span className="font-semibold">{comment.user.name}</span>{" "}
-                  <span className="text-ink-2">{comment.body}</span>
-                </p>
-                <p className="mt-1 text-[10.5px] text-faint">{relative(comment.createdAt)}</p>
-              </div>
-            </div>
-          ))}
+        <section className="pb-2">
+          {moment.comments.length === 0 ? (
+            <p className="rounded-2xl border border-line bg-card px-4 py-6 text-center text-[12.5px] text-muted">
+              ما علّق أحد بعد. اكتب أول سطر.
+            </p>
+          ) : (
+            <CommentList comments={moment.comments} viewerId={user.id} size={30} />
+          )}
         </section>
       </main>
 

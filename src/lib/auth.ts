@@ -112,6 +112,8 @@ export type SessionUser = {
   avatarMediaId: string | null;
   coverMediaId: string | null;
   coverY: number;
+  /** الإطار الملبوس: المعرّف ليُعرف أيّ صنفٍ عليه علامة «ملبوس». */
+  frameId: string | null;
   frame: { spec: string } | null;
   background: { spec: string } | null;
   tag: { name: string; bg: string; fg: string } | null;
@@ -140,6 +142,7 @@ export async function currentUser(): Promise<SessionUser | null> {
       coverMediaId: true,
       coverY: true,
       lastSeenAt: true,
+      frameId: true,
       frame: { select: { spec: true } },
       background: { select: { spec: true } },
       tag: { select: { name: true, bg: true, fg: true } },
@@ -167,6 +170,7 @@ export async function currentUser(): Promise<SessionUser | null> {
     avatarMediaId: user.avatarMediaId,
     coverMediaId: user.coverMediaId,
     coverY: user.coverY,
+    frameId: user.frameId,
     frame: user.frame,
     background: user.background,
     tag: user.tag,

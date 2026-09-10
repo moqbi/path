@@ -8,12 +8,12 @@ import { momentShape } from "@/lib/feed";
 import { plusTag, tagOf } from "@/lib/tags";
 import {
   acceptFriend,
-  blockUser,
   ignoreFriend,
   requestFriend,
   startConversation,
 } from "@/app/actions";
 import { MomentCard } from "@/components/moment-card";
+import { GiftButton } from "./gift";
 import { Avatar, coverStyle, Empty, ScreenHeader, TagPill } from "@/components/ui";
 import {
   CheckIcon,
@@ -93,7 +93,7 @@ export default async function FriendProfilePage({
     );
   }
 
-  const [moments, theirCircle, auto] = await Promise.all([
+  const [moments, theirCircle, auto, frames, theirs] = await Promise.all([
     prisma.moment.findMany({
       where: { authorId: id },
       select: momentShape,
@@ -102,6 +102,9 @@ export default async function FriendProfilePage({
     }),
     circleIds(id),
     plusTag(),
+    // أصناف المتجر تُقرأ هنا لتُعرض في نافذة الإهداء بلا مغادرة الملف.
+    prisma.storeItem.findMany({ where: { kind: "FRAME" }, orderBy: { sortOrder: "asc" } }),
+    prisma.purchase.findMany({ where: { userId: id }, select: { itemId: true } }),
   ]);
 
   const joined = `${MONTHS[person.createdAt.getMonth()]} ${ar(person.createdAt.getFullYear())}`;
@@ -133,6 +136,22 @@ export default async function FriendProfilePage({
               mediaId={person.avatarMediaId}
             />
             <div className="flex items-center gap-2 pb-1.5">
+              <GiftButton
+                items={frames.map((item) => ({
+                  id: item.id,
+                  name: item.name,
+                  spec: item.spec,
+                  priceHalalas: item.priceHalalas,
+                  plusOnly: item.plusOnly,
+                  earnedAfterDays: item.earnedAfterDays,
+                }))}
+                owned={theirs.map((row) => row.itemId)}
+                friendId={person.id}
+                friendName={person.name}
+                friendIsPlus={person.isPlus}
+                credit={viewer.storeCredit}
+                isPlus={viewer.isPlus}
+              />
               <Link
                 href={`/?view=together&with=${person.id}`}
                 className="flex items-center gap-1.5 rounded-xl border border-line bg-card px-3.5 text-[13px] font-semibold text-ink-2"
@@ -164,28 +183,6 @@ export default async function FriendProfilePage({
             معك من {joined} · {ar(theirCircle.length)} من أصدقائه
           </p>
         </div>
-
-        <details className="mx-5 mb-4 rounded-2xl border border-line bg-card">
-          <summary className="flex cursor-pointer list-none items-center justify-between p-3.5">
-            <span className="text-[12.5px] font-semibold text-muted">خيارات</span>
-            <span className="text-[12px]" style={{ color: "var(--color-live)" }}>
-              حظر
-            </span>
-          </summary>
-          <form action={blockUser.bind(null, person.id)} className="border-t border-line p-3.5">
-            <p className="mb-2.5 text-[11.5px] leading-relaxed text-muted">
-              الحظر في الاتجاهين: لا ترى لحظاته ولا يراها، ولا يتفاعل معك، وتُفكّ
-              الصداقة. تقدر تفكّه من الخصوصية.
-            </p>
-            <button
-              type="submit"
-              className="w-full rounded-xl text-[13px] font-bold"
-              style={{ height: 44, background: "var(--color-live)", color: "#fff" }}
-            >
-              احظر {person.name}
-            </button>
-          </form>
-        </details>
 
         <div className="px-5">
           {moments.length === 0 ? (

@@ -8,6 +8,7 @@ import { plusTag, tagOf } from "@/lib/tags";
 import {
   acceptFriend,
   ignoreFriend,
+  blockUser,
   removeFriend,
   requestFriend,
   setFriendGroup,
@@ -220,6 +221,8 @@ export default async function CirclePage({
                     key={member.id}
                     confirmLabel="إزالة"
                     onDelete={removeFriend.bind(null, member.id)}
+                    secondLabel="حظر"
+                    onSecond={blockUser.bind(null, member.id)}
                   >
                     <div
                       className="flex items-center gap-3 p-3"
