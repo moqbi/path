@@ -3,7 +3,6 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { postSleep } from "@/app/actions";
-import { CameraIcon, MoonIcon, MusicIcon, PinIcon, TextIcon } from "@/components/icons";
 import { playClose, playOpen } from "@/lib/sound";
 
 /**
@@ -16,12 +15,23 @@ import { playClose, playOpen } from "@/lib/sound";
 type Item = {
   key: string;
   label: string;
-  Icon: typeof CameraIcon;
+  /** رسمُ الصنف في `public/composer` — استبداله يغيّر شكله بلا لمس الكود. */
+  src: string;
   angle: number;
   run: () => void;
 };
 
-const RADIUS = 168;
+/*
+ * نصف قطر القوس وزاويةُ ما بين صنفين.
+ *
+ * المسافة على القوس = نصف القطر × الزاوية بالراديان: ٢٠٥ × ٢١° ≈ ٧٥
+ * بكسل بين مركزين، والقرص ٥٦ — فيبقى بينهما فرجة تُرى. أقلّ من ذلك كانت
+ * الأقراص تتلامس. وأعلى الأصناف عند ٨٨° لا ٩٠: القرص عند القائمة تماماً
+ * يخرج من حافة الإطار اليمنى.
+ */
+const RADIUS = 205;
+const SPREAD = 21;
+const START = 4;
 
 export function ComposerFan() {
   const router = useRouter();
@@ -55,36 +65,36 @@ export function ComposerFan() {
     {
       key: "write",
       label: "اكتب",
-      Icon: TextIcon,
-      angle: 88,
+      src: "/composer/write.png",
+      angle: START + SPREAD * 4,
       run: () => router.push("/compose?kind=THOUGHT"),
     },
     {
       key: "photo",
       label: "صورة",
-      Icon: CameraIcon,
-      angle: 70,
+      src: "/composer/photo.png",
+      angle: START + SPREAD * 3,
       run: () => router.push("/compose?kind=PHOTO"),
     },
     {
       key: "place",
       label: "مكان",
-      Icon: PinIcon,
-      angle: 52,
+      src: "/composer/place.png",
+      angle: START + SPREAD * 2,
       run: () => router.push("/compose?kind=PLACE"),
     },
     {
       key: "music",
       label: "أغنية",
-      Icon: MusicIcon,
-      angle: 34,
+      src: "/composer/music.png",
+      angle: START + SPREAD,
       run: () => router.push("/compose?kind=MUSIC"),
     },
     {
       key: "sleep",
       label: "نوم",
-      Icon: MoonIcon,
-      angle: 14,
+      src: "/composer/sleep.png",
+      angle: START,
       run: () => {
         setBusy("sleep");
         start(() => void postSleep());
@@ -131,7 +141,6 @@ export function ComposerFan() {
                 style={{
                   background: "var(--color-card)",
                   border: "1px solid var(--color-line)",
-                  color: busy === item.key ? "var(--color-clay)" : "var(--color-ink)",
                   transform: open
                     ? `translate(${x}px, ${y}px) scale(1)`
                     : "translate(0,0) scale(.35)",
@@ -146,7 +155,19 @@ export function ComposerFan() {
                   boxShadow: "0 8px 22px rgba(0,0,0,.45)",
                 }}
               >
-                <item.Icon size={23} />
+                {/* الرسم صورةٌ لا خطّ: تُستبدل من `public/composer` وحدها. */}
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 30,
+                    height: 30,
+                    backgroundImage: `url(${item.src})`,
+                    backgroundSize: "contain",
+                    backgroundPosition: "center",
+                    backgroundRepeat: "no-repeat",
+                    opacity: busy === item.key ? 0.45 : 1,
+                  }}
+                />
               </button>
             );
           })}
