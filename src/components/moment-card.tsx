@@ -81,7 +81,7 @@ function Spine({
       >
         <Avatar name={name} size={34} frameSpec={frameSpec} mediaId={mediaId} />
       </Link>
-      <span className="text-[10px] text-faint">{timeOfDay(at)}</span>
+      <span className="text-[10px] font-semibold text-muted">{timeOfDay(at)}</span>
     </div>
   );
 }
@@ -199,16 +199,16 @@ function EventLine({
     <div className="flex items-start gap-2.5">
       <EventIcon kind={kind} />
       <div className="min-w-0 grow pt-1">
-        <p dir="auto" className="text-[13.5px] leading-snug text-ink">
+        <p dir="auto" className="text-[13.5px] font-semibold leading-snug text-ink">
           {title}
         </p>
         {subtitle ? (
-          <p dir="auto" className="mt-0.5 truncate text-[12px] text-muted">
+          <p dir="auto" className="mt-0.5 truncate text-[12px] font-medium text-ink-2">
             {subtitle}
           </p>
         ) : null}
         {withNames.length > 0 ? (
-          <p className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-muted">
+          <p className="mt-0.5 flex items-center gap-1.5 text-[11.5px] font-medium text-ink-2">
             <WithIcon size={12} />
             مع {withNames.join(" و")}
           </p>

@@ -25,7 +25,8 @@ export function ProfileImages({
     <div className="relative">
       <Avatar name={name} size={84} frameSpec={frameSpec} mediaId={avatarMediaId} charm={charm} />
 
-      <div className="absolute -bottom-1 -left-1">
+      {/* زرّ الصورة على اليمين: اليسار مقعد التميمة في كل مكان. */}
+      <div className="absolute -bottom-1 -right-1">
         <ImagePicker
           label="غيّر صورتك"
           maxSize={512}

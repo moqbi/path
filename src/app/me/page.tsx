@@ -201,7 +201,7 @@ export default async function ProfilePage() {
                   <div className="flex w-14 justify-center">
                     <span className="block h-1.5 w-1.5 rounded-full bg-line" />
                   </div>
-                  <h3 className="text-[15px] font-semibold text-muted">{day.label}</h3>
+                  <h3 className="text-[15px] font-bold text-ink-2">{day.label}</h3>
                 </div>
                 {day.items.map((moment) => (
                   <MomentCard

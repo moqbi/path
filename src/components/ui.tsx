@@ -26,11 +26,14 @@ export type Charm = { spec: string; mediaId: string | null } | null | undefined;
  * إمّا المختصر وإمّا المفصّل، لا الاثنان في كائنٍ واحد — خلطهما يجعل React
  * يحذّر ويترك بقايا الخلفية السابقة بعد إعادة الرسم.
  */
-export function itemPaint(item: { spec: string; mediaId?: string | null }) {
+export function itemPaint(
+  item: { spec: string; mediaId?: string | null },
+  fit: "cover" | "contain" = "cover",
+) {
   return item.mediaId
     ? {
         backgroundImage: `url(/api/media/${item.mediaId})`,
-        backgroundSize: "cover" as const,
+        backgroundSize: fit,
         backgroundPosition: "center" as const,
         backgroundRepeat: "no-repeat" as const,
       }
@@ -98,22 +101,36 @@ export function Avatar({
 }
 
 function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }) {
-  // ربع الصورة تقريباً: تُرى ولا تزاحم الوجه، وتحت حدٍّ معيّن لا تُرسم أصلاً.
-  const badge = Math.round(size * 0.38);
-  if (badge < 10) return null;
+  /*
+   * نصف الصورة تقريباً، حرّةً بلا إطار: التميمة شعارٌ يتدلّى من حافة
+   * الصورة — قصُّها في قرصٍ صغير بحلقةٍ حوله كان يخنقها ويُخفي رسمها.
+   * ولذلك `contain`: الشعار يُرى كاملاً، لا مقصوصاً ليملأ مربّعاً.
+   */
+  const badge = Math.round(size * 0.52);
+  if (badge < 12) return null;
+
+  const paint = charm.mediaId
+    ? {
+        backgroundImage: `url(/api/media/${charm.mediaId})`,
+        backgroundSize: "contain" as const,
+        backgroundPosition: "center" as const,
+        backgroundRepeat: "no-repeat" as const,
+      }
+    : { background: charm.spec };
 
   return (
     <span
       aria-hidden="true"
       data-charm="1"
-      className="absolute rounded-full bg-cover bg-center"
+      className="pointer-events-none absolute"
       style={{
         width: badge,
         height: badge,
-        bottom: -badge * 0.08,
-        left: -badge * 0.08,
-        ...itemPaint(charm),
-        boxShadow: "0 0 0 1.5px var(--color-card)",
+        bottom: -badge * 0.2,
+        left: -badge * 0.24,
+        // ظلٌّ خفيف يفصلها عن الصورة تحتها بلا حلقةٍ تحيط بها.
+        filter: "drop-shadow(0 2px 4px rgba(14,26,36,.35))",
+        ...paint,
       }}
     />
   );

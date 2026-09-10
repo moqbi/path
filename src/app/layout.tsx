@@ -26,7 +26,7 @@ export default async function RootLayout({
   const theme = user?.background ?? null;
   const image = theme?.mediaId ? `url(/api/media/${theme.mediaId})` : null;
   // حجابٌ خفيف: يكفي لقراءة النصّ ولا يطمس الصورة. أعلى من هذا كان يخفيها.
-  const veil = "linear-gradient(rgba(247,245,239,.6),rgba(247,245,239,.6))";
+  const veil = "linear-gradient(rgba(247,245,239,.7),rgba(247,245,239,.7))";
   return (
     <html lang="ar" dir="rtl">
       <head>

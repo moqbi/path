@@ -179,8 +179,7 @@ function Group({
                   </span>
                 ) : item.kind === "CHARM" ? (
                   <span
-                    className="rounded-full"
-                    style={{ width: 44, height: 44, ...itemPaint(item), marginBlock: 7 }}
+                    style={{ width: 50, height: 50, ...itemPaint(item, "contain"), marginBlock: 4 }}
                   />
                 ) : (
                   <span className="w-full rounded-xl" style={{ height: 58, ...itemPaint(item) }} />

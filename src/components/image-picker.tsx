@@ -10,7 +10,11 @@ import { CameraIcon } from "@/components/icons";
  * ١٦٠٠ بكسل بجودة ٠٫٨ يبقيها واضحة على الشاشة ويهبط بالحجم إلى مئات
  * الكيلوبايتات، وهو الفرق بين قاعدة تتحمّل وقاعدة تنفجر.
  */
-async function shrink(file: File, max: number): Promise<{ dataUrl: string; width: number; height: number }> {
+async function shrink(
+  file: File,
+  max: number,
+  keepAlpha: boolean,
+): Promise<{ dataUrl: string; width: number; height: number }> {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
   const width = Math.round(bitmap.width * scale);
@@ -25,18 +29,26 @@ async function shrink(file: File, max: number): Promise<{ dataUrl: string; width
   context.drawImage(bitmap, 0, 0, width, height);
   bitmap.close();
 
-  return { dataUrl: canvas.toDataURL("image/jpeg", 0.82), width, height };
+  // JPEG يمحو الشفافية بخلفيةٍ سوداء — والتميمة شعارٌ شفّاف، فتبقى PNG.
+  return {
+    dataUrl: keepAlpha ? canvas.toDataURL("image/png") : canvas.toDataURL("image/jpeg", 0.82),
+    width,
+    height,
+  };
 }
 
 export function ImagePicker({
   onPicked,
   maxSize = 1600,
+  keepAlpha = false,
   label,
   className,
   children,
 }: {
   onPicked: (dataUrl: string, width: number, height: number) => void | Promise<void>;
   maxSize?: number;
+  /** يُبقي الشفافية (PNG): للشعارات التي تُعلَّق على صورةٍ تحتها. */
+  keepAlpha?: boolean;
   label: string;
   className?: string;
   children?: React.ReactNode;
@@ -59,7 +71,7 @@ export function ImagePicker({
 
           setError(null);
           try {
-            const image = await shrink(file, maxSize);
+            const image = await shrink(file, maxSize, keepAlpha);
             start(() => void onPicked(image.dataUrl, image.width, image.height));
           } catch {
             setError("تعذّر قراءة الصورة. جرّب صورة ثانية.");

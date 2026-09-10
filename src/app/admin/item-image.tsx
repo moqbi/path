@@ -9,7 +9,8 @@ import { itemPaint } from "@/components/ui";
  * صورة الصنف في اللوحة.
  *
  * الثيم خلفيةُ التطبيق كلّه فيُرفع كبيراً (١٦٠٠ بكسل)، والتميمة شعارٌ
- * صغير يكفيه ٢٥٦ — لا نُثقل القاعدة بصورةٍ تُعرض بحجم ظفر.
+ * صغير يكفيه ٣٢٠ — لا نُثقل القاعدة بصورةٍ تُعرض بحجم ظفر. وتُحفظ
+ * التميمة PNG بشفافيتها: ضغطها JPEG يُلبسها مربّعاً أسود.
  */
 export function ItemImage({
   itemId,
@@ -26,12 +27,13 @@ export function ItemImage({
     <div className="flex items-center gap-2.5">
       <span
         className="h-12 w-12 shrink-0 rounded-xl"
-        style={itemPaint({ spec: "var(--color-chip)", mediaId })}
+        style={itemPaint({ spec: "var(--color-chip)", mediaId }, charm ? "contain" : "cover")}
       />
 
       <ImagePicker
         label={charm ? "صورة التميمة" : "صورة الثيم"}
-        maxSize={charm ? 256 : 1600}
+        maxSize={charm ? 320 : 1600}
+        keepAlpha={charm}
         onPicked={(dataUrl, width, height) => setItemImage(itemId, dataUrl, width, height)}
         className="grow"
       >

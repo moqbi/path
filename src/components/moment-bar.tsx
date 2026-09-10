@@ -102,16 +102,18 @@ export function MomentBar({
           style={{
             width: 30,
             height: 30,
-            background: mine ? "var(--color-clay-soft)" : "transparent",
+            // أرضيةٌ صلبة لا شفافة: فوق صورة الثيم كان الزرّ يكاد يختفي.
+            background: mine ? "var(--color-clay-soft)" : "var(--color-card)",
             borderColor: mine ? "var(--color-clay)" : "var(--color-line)",
+            boxShadow: "0 1px 3px rgba(14,26,36,.10)",
           }}
         >
           <span
             style={{
               transform: popped ? "scale(1.4)" : "scale(1)",
               transition: "transform 400ms cubic-bezier(.18,1.5,.4,1)",
-              opacity: mine ? 1 : 0.5,
-              filter: mine ? "none" : "grayscale(.85)",
+              opacity: mine ? 1 : 0.72,
+              filter: mine ? "none" : "grayscale(.7)",
             }}
           >
             <ReactionGlyph kind={mine?.kind ?? "SMILE"} emoji={mine?.emoji} size={20} />

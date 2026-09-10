@@ -40,8 +40,7 @@ function Preview({ item }: { item: Item }) {
   if (item.kind === "CHARM") {
     return (
       <span
-        className="rounded-full"
-        style={{ width: 46, height: 46, ...itemPaint(item), marginBlock: 8 }}
+        style={{ width: 52, height: 52, ...itemPaint(item, "contain"), marginBlock: 5 }}
       />
     );
   }
