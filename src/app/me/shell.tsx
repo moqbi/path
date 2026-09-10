@@ -64,7 +64,7 @@ export function ProfileShell({
       <div className="shrink-0">
         {cover}
 
-        <div className="relative px-5" style={{ marginTop: -52 }}>
+        <div className="relative px-5" style={{ marginTop: -62 }}>
           <div
             className="mb-2 flex justify-center"
             style={{

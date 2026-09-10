@@ -64,6 +64,7 @@ function Spine({
   name,
   frameSpec,
   mediaId,
+  charm,
   at,
 }: {
   authorId: string;
@@ -71,6 +72,7 @@ function Spine({
   name: string;
   frameSpec?: string | null;
   mediaId?: string | null;
+  charm?: { spec: string; mediaId: string | null } | null;
   at: Date;
 }) {
   return (
@@ -79,7 +81,7 @@ function Spine({
         href={authorId === viewerId ? "/me" : `/u/${authorId}`}
         aria-label={`ملف ${name}`}
       >
-        <Avatar name={name} size={34} frameSpec={frameSpec} mediaId={mediaId} />
+        <Avatar name={name} size={46} frameSpec={frameSpec} mediaId={mediaId} charm={charm} />
       </Link>
       <span className="text-[10px] font-semibold text-muted">{timeOfDay(at)}</span>
     </div>
@@ -142,6 +144,7 @@ function Row({
         name={moment.author.name}
         frameSpec={moment.author.frame?.spec}
         mediaId={moment.author.avatarMediaId}
+        charm={moment.author.charm}
         at={moment.createdAt}
       />
       <div className="min-w-0 grow">{children}</div>

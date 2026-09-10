@@ -965,18 +965,18 @@ export async function unblockUser(targetId: string): Promise<void> {
 
 /** الملف الشخصي: الاسم والمعرّف والنبذة والمدينة. */
 export async function saveProfile(
-  _prev: string | null,
+  _prev: AdminResult,
   formData: FormData,
-): Promise<string | null> {
+): Promise<AdminResult> {
   const user = await requireUser();
 
   const name = String(formData.get("name") ?? "").trim().slice(0, 40);
-  if (!name) return "الاسم مطلوب";
+  if (!name) return { error: "الاسم مطلوب" };
 
   const rawHandle = String(formData.get("handle") ?? "").trim().replace(/^@/, "").toLowerCase();
   // المعرّف حروف لاتينية وأرقام وشرطة سفلية: يُكتب في الروابط ويُنطق.
   if (rawHandle && !/^[a-z0-9_]{3,20}$/.test(rawHandle)) {
-    return "المعرّف حروف إنجليزية وأرقام و_ من ٣ إلى ٢٠";
+    return { error: "المعرّف حروف إنجليزية وأرقام و_ من ٣ إلى ٢٠" };
   }
 
   if (rawHandle) {
@@ -984,7 +984,7 @@ export async function saveProfile(
       where: { handle: rawHandle, id: { not: user.id } },
       select: { id: true },
     });
-    if (taken) return "المعرّف محجوز";
+    if (taken) return { error: "المعرّف محجوز" };
   }
 
   await prisma.user.update({
@@ -997,9 +997,10 @@ export async function saveProfile(
     },
   });
 
+  // لا إعادة توجيه: التحرير يجري في نافذةٍ فوق التبويب، فتُغلق وحدها.
   revalidatePath("/me");
   revalidatePath("/");
-  redirect("/me");
+  return { ok: "حُفظ" };
 }
 
 // ───────────────────────────── التفاعل ─────────────────────────────

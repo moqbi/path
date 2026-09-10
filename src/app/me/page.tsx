@@ -7,12 +7,12 @@ import { signOut } from "@/app/actions";
 import { archive, myMoments } from "@/lib/feed";
 import { MomentCard } from "@/components/moment-card";
 import { plusTag, tagOf } from "@/lib/tags";
-import { ProfileImages } from "./images";
+import { EditProfileSheet } from "./edit-sheet";
 import { ProfileCover } from "./cover";
 import { ProfileShell } from "./shell";
 import { Accessories } from "./accessories";
 import { DeleteAccount } from "./delete";
-import { coverStyle, TagPill } from "@/components/ui";
+import { Avatar, coverStyle, TagPill } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import { BookIcon, ExitIcon, GearIcon, SparkIcon } from "@/components/icons";
 import { ar, dayLabel } from "@/lib/format";
@@ -90,11 +90,13 @@ export default async function ProfilePage() {
           />
         }
         avatar={
-          <ProfileImages
+          <Avatar
             name={user.name}
+            size={104}
             frameSpec={user.frame?.spec ?? null}
             charm={user.charm}
-            avatarMediaId={user.avatarMediaId}
+            mediaId={user.avatarMediaId}
+            ring="var(--color-paper)"
           />
         }
         identity={
@@ -141,13 +143,18 @@ export default async function ProfilePage() {
         }
         actions={
           <div className="mb-4 flex gap-2.5">
-            <Link
-              href="/me/edit"
-              className="flex min-w-0 grow items-center justify-center truncate rounded-xl border border-line bg-card px-2 text-[13.5px] font-semibold text-ink-2"
-              style={{ height: 46 }}
-            >
-              تعديل الملف
-            </Link>
+            <EditProfileSheet
+              name={user.name}
+              handle={user.handle}
+              bio={user.bio}
+              city={user.city}
+              avatarMediaId={user.avatarMediaId}
+              frameSpec={user.frame?.spec ?? null}
+              charm={user.charm}
+              coverMediaId={user.coverMediaId}
+              coverSpec={user.background?.spec ?? null}
+              coverY={user.coverY}
+            />
             <Accessories
               owned={purchases.map((row) => ({
                 id: row.item.id,

@@ -128,7 +128,7 @@ export default async function TimelinePage({
         avatar={
           <Avatar
             name={user.name}
-            size={56}
+            size={68}
             frameSpec={user.frame?.spec}
             charm={user.charm}
             mediaId={user.avatarMediaId}

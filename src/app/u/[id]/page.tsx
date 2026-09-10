@@ -134,7 +134,7 @@ export default async function FriendProfilePage({
           <div className="mb-3 flex items-end justify-between">
             <Avatar
               name={person.name}
-              size={78}
+              size={96}
               frameSpec={person.frame?.spec}
               charm={person.charm}
               mediaId={person.avatarMediaId}
@@ -269,7 +269,7 @@ function LockedProfile({
         <div className="relative px-5" style={{ marginTop: -34 }}>
           <Avatar
             name={person.name}
-            size={78}
+            size={96}
             frameSpec={person.frame?.spec}
               charm={person.charm}
             mediaId={person.avatarMediaId}

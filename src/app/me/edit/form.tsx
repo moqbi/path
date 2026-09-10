@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { saveProfile } from "@/app/actions";
 
 const FIELD =
@@ -11,13 +11,21 @@ export function EditProfileForm({
   handle,
   bio,
   city,
+  onSaved,
 }: {
   name: string;
   handle: string | null;
   bio: string | null;
   city: string | null;
+  /** تُستدعى بعد حفظٍ ناجح — النافذة تُغلق نفسها. */
+  onSaved?: () => void;
 }) {
-  const [error, action, pending] = useActionState(saveProfile, null);
+  const [state, action, pending] = useActionState(saveProfile, null);
+
+  useEffect(() => {
+    if (state?.ok) onSaved?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   return (
     <form action={action} className="flex flex-col gap-3">
@@ -61,9 +69,9 @@ export function EditProfileForm({
         style={{ height: 48 }}
       />
 
-      {error ? (
+      {state?.error ? (
         <p role="alert" className="text-[12.5px]" style={{ color: "var(--color-live)" }}>
-          {error}
+          {state.error}
         </p>
       ) : null}
 

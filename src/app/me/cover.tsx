@@ -13,8 +13,9 @@ import { CameraIcon, CheckIcon, CloseIcon } from "@/components/icons";
  * الموضع نسبةً مئوية. القصّ نفسه لا يمسّ الملف — الصورة تبقى كما رُفعت،
  * وما يُحفظ هو أيّ جزءٍ منها يُرى.
  *
- * وزرّا «اضبط» و«أزل» يعيشان في صفحة التعديل لا فوق الملف: الملف يُقرأ
- * لا يُحرَّر، وبقاء أدوات التحرير فوقه ضجيجٌ دائم لعملٍ يُفعل مرة.
+ * وأزرار الغلاف كلّها — تغييره وضبطه وإزالته — تعيش في نافذة «تعديل
+ * الملف» لا فوقه: الملف يُقرأ لا يُحرَّر، وبقاء أدوات التحرير فوقه ضجيجٌ
+ * دائم لعملٍ يُفعل مرة.
  */
 export function ProfileCover({
   mediaId,
@@ -108,6 +109,7 @@ export function ProfileCover({
         </>
       ) : (
         <>
+          {manage ? (
           <div className="absolute right-4 top-4 flex gap-2">
             <ImagePicker
               label="غيّر الغلاف"
@@ -121,7 +123,7 @@ export function ProfileCover({
               </span>
             </ImagePicker>
 
-            {manage && mediaId ? (
+            {mediaId ? (
               <>
                 <button type="button" onClick={() => setAdjusting(true)} className={chip} style={dark}>
                   اضبط
@@ -139,6 +141,7 @@ export function ProfileCover({
               </>
             ) : null}
           </div>
+          ) : null}
 
         </>
       )}
