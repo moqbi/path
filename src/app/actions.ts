@@ -476,6 +476,7 @@ const storeItemInput = z.object({
   /** التصنيف اختياري: صنفٌ بلا تصنيف يظهر في «المميز» وحده. */
   categoryId: z.string().trim().optional(),
   limited: z.coerce.boolean(),
+  sortOrder: z.coerce.number().int().min(0).max(9999).optional(),
 });
 
 const categoryInput = z.object({
@@ -548,11 +549,21 @@ export async function updateStoreItem(
     earnedAfterDays: formData.get("earnedAfterDays") || undefined,
     categoryId: formData.get("categoryId") || undefined,
     limited: formData.get("limited") === "on",
+    sortOrder: formData.get("sortOrder") || undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
 
-  const { kind, name, priceRiyals, spec, plusOnly, earnedAfterDays, categoryId, limited } =
-    parsed.data;
+  const {
+    kind,
+    name,
+    priceRiyals,
+    spec,
+    plusOnly,
+    earnedAfterDays,
+    categoryId,
+    limited,
+    sortOrder,
+  } = parsed.data;
   await prisma.storeItem.update({
     where: { id: itemId },
     data: {
@@ -564,6 +575,7 @@ export async function updateStoreItem(
       earnedAfterDays: earnedAfterDays && earnedAfterDays > 0 ? earnedAfterDays : null,
       categoryId: categoryId || null,
       limited,
+      sortOrder: sortOrder ?? undefined,
     },
   });
 

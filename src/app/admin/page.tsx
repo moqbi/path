@@ -40,6 +40,93 @@ function Color({ name, label, value }: { name: string; label: string; value: str
   );
 }
 
+
+const SELECT =
+  "w-full rounded-xl border border-line bg-card px-3 text-[13.5px] text-ink outline-none focus:border-clay";
+
+const KINDS = [
+  { value: "FRAME", label: "إطار" },
+  { value: "THEME", label: "ثيم" },
+  { value: "CHARM", label: "تميمة" },
+  { value: "BACKGROUND", label: "خلفية" },
+] as const;
+
+const KIND_LABEL: Record<string, string> = {
+  FRAME: "إطار",
+  THEME: "ثيم",
+  CHARM: "تميمة",
+  BACKGROUND: "خلفية",
+};
+
+const STORE_VIEWS = [
+  { key: "items", label: "الأصناف" },
+  { key: "cats", label: "التصنيفات" },
+] as const;
+
+/** حقلٌ باسمه: الصفّ العاري من الحقول لا يقول ما يُكتب فيه. */
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="flex min-w-0 grow flex-col gap-1">
+      <span className="px-1 text-[11.5px] font-semibold text-muted">{label}</span>
+      {children}
+      {hint ? <span className="px-1 text-[10.5px] text-faint">{hint}</span> : null}
+    </label>
+  );
+}
+
+function Check({ name, label, on }: { name: string; label: string; on?: boolean }) {
+  return (
+    <label className="flex items-center gap-2.5 px-1 text-[12.5px]">
+      <input
+        name={name}
+        type="checkbox"
+        defaultChecked={on}
+        className="h-4 w-4 accent-[#f6b93b]"
+      />
+      {label}
+    </label>
+  );
+}
+
+/** شارة صغيرة تصف الصنف بكلمة: نوعه، أو حصريّته، أو محدوديّته. */
+function Chip({
+  children,
+  gold = false,
+  live = false,
+}: {
+  children: React.ReactNode;
+  gold?: boolean;
+  live?: boolean;
+}) {
+  return (
+    <span
+      className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+      style={{
+        background: gold
+          ? "var(--color-gold-soft)"
+          : live
+            ? "var(--color-live-soft)"
+            : "var(--color-chip)",
+        color: gold
+          ? "var(--color-gold-ink)"
+          : live
+            ? "var(--color-live)"
+            : "var(--color-muted)",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
 const SECTIONS = [
   { key: "tags", label: "الوسوم" },
   { key: "users", label: "الحسابات" },
@@ -49,10 +136,11 @@ const SECTIONS = [
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ s?: string }>;
+  searchParams: Promise<{ s?: string; v?: string }>;
 }) {
-  const { s: raw } = await searchParams;
+  const { s: raw, v } = await searchParams;
   const section = SECTIONS.some((item) => item.key === raw) ? raw! : "tags";
+  const view = v === "cats" ? "cats" : "items";
   const user = await currentUser();
   if (!user) redirect("/login");
   // الدور يُفحص هنا وفي كل إجراء — إخفاء الرابط ليس حماية.
@@ -85,6 +173,16 @@ export default async function AdminPage({
       include: { _count: { select: { items: true } } },
     }),
   ]);
+
+  // الأصناف مرصوفة تحت تصنيفاتها كما تُرى في المتجر، وما بلا تصنيف في آخرها.
+  const groups = [
+    ...categories.map((category) => ({
+      id: category.id,
+      name: category.name,
+      items: items.filter((item) => item.categoryId === category.id),
+    })),
+    { id: "none", name: "بلا تصنيف", items: items.filter((item) => !item.categoryId) },
+  ].filter((group) => group.id !== "none" || group.items.length > 0);
 
   return (
     <div className="screen">
@@ -291,365 +389,430 @@ export default async function AdminPage({
 
         {section === "store" ? (
         <>
-        <h2 className="mb-3 text-[15px] font-bold">تصنيفات المتجر</h2>
-        <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
-          التصنيف شريحةٌ في أعلى المتجر. «المميز» واجهةٌ ثابتة تُبنى من
-          الأصناف نفسها، وما تضيفه هنا يجلس بعدها بالترتيب.
-        </p>
+        {/* المتجر بابان: الأصناف والتصنيفات — لا جدارٌ واحد يُمرَّر طويلاً. */}
+        <div className="mb-4 flex gap-2">
+          {STORE_VIEWS.map((tab) => {
+            const on = view === tab.key;
+            return (
+              <Link
+                key={tab.key}
+                href={tab.key === "items" ? "/admin?s=store" : `/admin?s=store&v=${tab.key}`}
+                className="grow rounded-xl py-2.5 text-center text-[12.5px] font-semibold"
+                style={{
+                  background: on ? "var(--color-night)" : "var(--color-card)",
+                  color: on ? "#f7f5ef" : "var(--color-ink-2)",
+                  border: `1px solid ${on ? "var(--color-night)" : "var(--color-line)"}`,
+                }}
+              >
+                {tab.label}
+                <span className="mr-1.5 text-[11px] opacity-70">
+                  {ar(tab.key === "items" ? items.length : categories.length)}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
 
-        <Saver action={createCategory} className="mb-4 flex flex-col gap-2.5">
-          <div className="flex gap-2.5">
-            <input
-              name="name"
-              required
-              maxLength={30}
-              placeholder="الاسم (الإطارات)"
-              className={`grow ${FIELD}`}
-              style={{ height: 48 }}
-            />
-            <input
-              name="slug"
-              required
-              dir="ltr"
-              maxLength={24}
-              placeholder="frames"
-              className={`grow ${FIELD}`}
-              style={{ height: 48 }}
-            />
-          </div>
-          <button
-            type="submit"
-            className="rounded-xl text-[13.5px] font-bold"
-            style={{ height: 46, background: "var(--color-clay)", color: "var(--color-on-brand)" }}
-          >
-            أضف تصنيفاً
-          </button>
-        </Saver>
-
-        <div className="mb-7 flex flex-col gap-2">
-          {categories.map((row) => (
-            <details key={row.id} className="rounded-2xl border border-line bg-card">
-              <summary className="flex cursor-pointer list-none items-center gap-3 p-3">
-                <div className="min-w-0 grow">
-                  <p className="truncate text-[13.5px] font-semibold">
-                    {row.name}
-                    <span dir="ltr" className="mr-2 text-[11px] font-normal text-muted">
-                      {row.slug}
-                    </span>
-                  </p>
-                  <p className="text-[11.5px] text-muted">
-                    {ar(row._count.items)} صنف · ترتيب {ar(row.sortOrder)}
-                    {row.active ? "" : " · مخفي"}
-                  </p>
-                </div>
-                <span className="shrink-0 text-[12px] font-semibold text-clay-ink">تعديل</span>
+        {view === "items" ? (
+          <>
+            <details className="mb-4 rounded-2xl border border-line bg-card">
+              <summary className="flex cursor-pointer list-none items-center justify-between p-3.5">
+                <span className="text-[13.5px] font-bold">أضف صنفاً</span>
+                <span className="text-[12px] font-semibold text-clay-ink">افتح</span>
               </summary>
 
-              <Saver
-                action={updateCategory.bind(null, row.id)}
-                className="flex flex-col gap-2.5 border-t border-line p-3"
-              >
+              <Saver action={createStoreItem} className="flex flex-col gap-3 border-t border-line p-3.5">
+                <Field label="النوع">
+                  <select name="kind" className={SELECT} style={{ height: 46 }}>
+                    {KINDS.map((kind) => (
+                      <option key={kind.value} value={kind.value}>
+                        {kind.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
+                <Field label="الاسم">
+                  <input
+                    name="name"
+                    required
+                    maxLength={40}
+                    placeholder="كهرمان"
+                    className={FIELD}
+                    style={{ height: 46 }}
+                  />
+                </Field>
+
                 <div className="flex gap-2.5">
+                  <Field label="السعر (ر.س)">
+                    <input
+                      name="priceRiyals"
+                      type="number"
+                      min={0}
+                      step="1"
+                      defaultValue={15}
+                      className={FIELD}
+                      style={{ height: 46 }}
+                    />
+                  </Field>
+                  <Field label="يُكتسب بعد (يوم)" hint="اتركه فارغاً إن كان يُشترى">
+                    <input
+                      name="earnedAfterDays"
+                      type="number"
+                      min={0}
+                      max={3650}
+                      className={FIELD}
+                      style={{ height: 46 }}
+                    />
+                  </Field>
+                </div>
+
+                <Field label="التصنيف">
+                  <select name="categoryId" defaultValue="" className={SELECT} style={{ height: 46 }}>
+                    <option value="">بلا تصنيف</option>
+                    {categories.map((row) => (
+                      <option key={row.id} value={row.id}>
+                        {row.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
+                <Field label="تدرّج CSS" hint="يُرسم إن لم تُرفع صورة — الصورة تُضاف بعد الحفظ">
+                  <input
+                    name="spec"
+                    required
+                    dir="ltr"
+                    defaultValue="linear-gradient(135deg,#f6b93b,#ff7a5a)"
+                    className={FIELD}
+                    style={{ height: 46 }}
+                  />
+                </Field>
+
+                <div className="flex flex-col gap-2">
+                  <Check name="plusOnly" label="حصري لمشتركي أثر+" />
+                  <Check name="limited" label="حزمة محدودة — تظهر في صفّ «حزم محدودة»" />
+                </div>
+
+                <button
+                  type="submit"
+                  className="brand-gradient rounded-xl text-[14px] font-bold"
+                  style={{ height: 48, color: "var(--color-on-brand)" }}
+                >
+                  أضف الصنف
+                </button>
+              </Saver>
+            </details>
+
+            {/* الأصناف مرصوفة تحت تصنيفاتها كما تُرى في المتجر. */}
+            {groups.map((group) => (
+              <section key={group.id} className="mb-5">
+                <div className="mb-2 flex items-baseline justify-between px-1">
+                  <h2 className="text-[13.5px] font-bold">{group.name}</h2>
+                  <span className="text-[11px] text-muted">{ar(group.items.length)} صنف</span>
+                </div>
+
+                {group.items.length === 0 ? (
+                  <p className="rounded-2xl border border-line bg-card px-4 py-5 text-center text-[12px] text-muted">
+                    لا أصناف في هذا التصنيف.
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {group.items.map((item) => (
+                      <details key={item.id} className="rounded-2xl border border-line bg-card">
+                        <summary className="flex cursor-pointer list-none items-center gap-3 p-3">
+                          <span className="h-11 w-11 shrink-0 rounded-full" style={itemPaint(item)} />
+                          <div className="min-w-0 grow">
+                            <p className="flex items-center gap-1.5 truncate text-[13.5px] font-semibold">
+                              {item.name}
+                              <Chip>{KIND_LABEL[item.kind]}</Chip>
+                              {item.plusOnly ? <Chip gold>أثر+</Chip> : null}
+                              {item.limited ? <Chip live>محدودة</Chip> : null}
+                            </p>
+                            <p className="truncate text-[11.5px] text-muted">
+                              {item.earnedAfterDays
+                                ? `يُكتسب بعد ${ar(item.earnedAfterDays)} يوم`
+                                : riyals(item.priceHalalas)}
+                              {item.mediaId ? " · بصورة" : ""}
+                              {item._count.purchases > 0
+                                ? ` · ${ar(item._count.purchases)} شراء`
+                                : ""}
+                            </p>
+                          </div>
+                          <span className="shrink-0 text-[12px] font-semibold text-clay-ink">تعديل</span>
+                        </summary>
+
+                        <div className="border-t border-line p-3.5">
+                          <p className="mb-2 text-[12px] font-semibold text-muted">الصورة</p>
+                          <ItemImage itemId={item.id} mediaId={item.mediaId} kind={item.kind} />
+                          <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
+                            الثيم يُلبَس خلفيةً للتطبيق، والتميمة شعاراً تحت صورة العرض.
+                            بلا صورة يُرسم التدرّج.
+                          </p>
+                        </div>
+
+                        <Saver
+                          action={updateStoreItem.bind(null, item.id)}
+                          className="flex flex-col gap-3 border-t border-line p-3.5"
+                        >
+                          <div className="flex gap-2.5">
+                            <Field label="النوع">
+                              <select
+                                name="kind"
+                                defaultValue={item.kind}
+                                className={SELECT}
+                                style={{ height: 46 }}
+                              >
+                                {KINDS.map((kind) => (
+                                  <option key={kind.value} value={kind.value}>
+                                    {kind.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </Field>
+                            <Field label="الاسم">
+                              <input
+                                name="name"
+                                required
+                                maxLength={40}
+                                defaultValue={item.name}
+                                className={FIELD}
+                                style={{ height: 46 }}
+                              />
+                            </Field>
+                          </div>
+
+                          <div className="flex gap-2.5">
+                            <Field label="السعر (ر.س)">
+                              <input
+                                name="priceRiyals"
+                                type="number"
+                                min={0}
+                                step="1"
+                                defaultValue={item.priceHalalas / 100}
+                                className={FIELD}
+                                style={{ height: 46 }}
+                              />
+                            </Field>
+                            <Field label="يُكتسب بعد (يوم)">
+                              <input
+                                name="earnedAfterDays"
+                                type="number"
+                                min={0}
+                                max={3650}
+                                defaultValue={item.earnedAfterDays ?? undefined}
+                                className={FIELD}
+                                style={{ height: 46 }}
+                              />
+                            </Field>
+                          </div>
+
+                          <div className="flex gap-2.5">
+                            <Field label="التصنيف">
+                              <select
+                                name="categoryId"
+                                defaultValue={item.categoryId ?? ""}
+                                className={SELECT}
+                                style={{ height: 46 }}
+                              >
+                                <option value="">بلا تصنيف</option>
+                                {categories.map((row) => (
+                                  <option key={row.id} value={row.id}>
+                                    {row.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </Field>
+                            <Field label="الترتيب">
+                              <input
+                                name="sortOrder"
+                                type="number"
+                                min={0}
+                                max={9999}
+                                defaultValue={item.sortOrder}
+                                className={FIELD}
+                                style={{ height: 46, width: 88 }}
+                              />
+                            </Field>
+                          </div>
+
+                          <Field label="تدرّج CSS">
+                            <input
+                              name="spec"
+                              required
+                              dir="ltr"
+                              defaultValue={item.spec}
+                              className={FIELD}
+                              style={{ height: 46 }}
+                            />
+                          </Field>
+
+                          <div className="flex flex-col gap-2">
+                            <Check name="plusOnly" label="حصري لمشتركي أثر+" on={item.plusOnly} />
+                            <Check name="limited" label="حزمة محدودة" on={item.limited} />
+                          </div>
+
+                          <button
+                            type="submit"
+                            className="rounded-xl text-[13.5px] font-bold"
+                            style={{
+                              height: 46,
+                              background: "var(--color-clay)",
+                              color: "var(--color-on-brand)",
+                            }}
+                          >
+                            احفظ
+                          </button>
+                        </Saver>
+
+                        <form action={deleteStoreItem.bind(null, item.id)} className="px-3.5 pb-3.5">
+                          <button
+                            type="submit"
+                            className="w-full rounded-xl border border-line text-[12.5px] font-semibold"
+                            style={{ height: 42, color: "var(--color-live)" }}
+                          >
+                            احذف الصنف
+                          </button>
+                        </form>
+                      </details>
+                    ))}
+                  </div>
+                )}
+              </section>
+            ))}
+          </>
+        ) : (
+          <>
+            <p className="mb-3 px-1 text-[11.5px] leading-relaxed text-muted">
+              التصنيف شريحةٌ في أعلى المتجر. «المميز» واجهةٌ ثابتة تُبنى من الأصناف
+              نفسها، وما تضيفه هنا يجلس بعدها بالترتيب.
+            </p>
+
+            <details className="mb-4 rounded-2xl border border-line bg-card">
+              <summary className="flex cursor-pointer list-none items-center justify-between p-3.5">
+                <span className="text-[13.5px] font-bold">أضف تصنيفاً</span>
+                <span className="text-[12px] font-semibold text-clay-ink">افتح</span>
+              </summary>
+
+              <Saver action={createCategory} className="flex flex-col gap-3 border-t border-line p-3.5">
+                <Field label="الاسم">
                   <input
                     name="name"
                     required
                     maxLength={30}
-                    defaultValue={row.name}
-                    className={`grow ${FIELD}`}
+                    placeholder="الإطارات"
+                    className={FIELD}
                     style={{ height: 46 }}
                   />
+                </Field>
+                <Field label="المعرّف" hint="إنجليزي صغير — يظهر في رابط المتجر">
                   <input
                     name="slug"
                     required
                     dir="ltr"
                     maxLength={24}
-                    defaultValue={row.slug}
-                    className={`grow ${FIELD}`}
-                    style={{ height: 46 }}
-                  />
-                  <input
-                    name="sortOrder"
-                    type="number"
-                    min={0}
-                    max={999}
-                    defaultValue={row.sortOrder}
+                    placeholder="frames"
                     className={FIELD}
-                    style={{ height: 46, width: 82 }}
+                    style={{ height: 46 }}
                   />
-                </div>
-
-                <label className="flex items-center gap-2.5 px-1 text-[13px]">
-                  <input
-                    name="active"
-                    type="checkbox"
-                    defaultChecked={row.active}
-                    className="h-4 w-4 accent-[#f6b93b]"
-                  />
-                  ظاهر في المتجر
-                </label>
-
+                </Field>
                 <button
                   type="submit"
-                  className="rounded-xl text-[13.5px] font-bold"
-                  style={{ height: 46, background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+                  className="brand-gradient rounded-xl text-[14px] font-bold"
+                  style={{ height: 48, color: "var(--color-on-brand)" }}
                 >
-                  احفظ
+                  أضف التصنيف
                 </button>
               </Saver>
-
-              <form action={deleteCategory.bind(null, row.id)} className="px-3 pb-3">
-                <button
-                  type="submit"
-                  className="w-full rounded-xl border border-line text-[12.5px] font-semibold"
-                  style={{ height: 42, color: "var(--color-live)" }}
-                >
-                  احذف التصنيف (تبقى أصنافه)
-                </button>
-              </form>
             </details>
-          ))}
-        </div>
 
-        <h2 className="mb-3 text-[15px] font-bold">أضف صنفاً للمتجر</h2>
-        <Saver action={createStoreItem} className="mb-7 flex flex-col gap-2.5">
-          <div className="flex gap-2.5">
-            <select
-              name="kind"
-              className="grow rounded-xl border border-line bg-card px-3 text-[13.5px] text-ink outline-none"
-              style={{ height: 48 }}
-            >
-              <option value="FRAME">إطار</option>
-              <option value="THEME">ثيم</option>
-              <option value="CHARM">تميمة</option>
-              <option value="BACKGROUND">خلفية</option>
-            </select>
-            <input
-              name="name"
-              required
-              maxLength={40}
-              placeholder="الاسم"
-              className={`grow ${FIELD}`}
-              style={{ height: 48 }}
-            />
-          </div>
+            <div className="flex flex-col gap-2 pb-4">
+              {categories.map((row) => (
+                <details key={row.id} className="rounded-2xl border border-line bg-card">
+                  <summary className="flex cursor-pointer list-none items-center gap-3 p-3">
+                    <div className="min-w-0 grow">
+                      <p className="flex items-center gap-1.5 truncate text-[13.5px] font-semibold">
+                        {row.name}
+                        <span dir="ltr" className="text-[11px] font-normal text-faint">
+                          {row.slug}
+                        </span>
+                        {row.active ? null : <Chip>مخفي</Chip>}
+                      </p>
+                      <p className="text-[11.5px] text-muted">
+                        {ar(row._count.items)} صنف · ترتيب {ar(row.sortOrder)}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-[12px] font-semibold text-clay-ink">تعديل</span>
+                  </summary>
 
-          <div className="flex gap-2.5">
-            <input
-              name="priceRiyals"
-              type="number"
-              min={0}
-              step="1"
-              defaultValue={15}
-              placeholder="السعر بالريال"
-              className={`grow ${FIELD}`}
-              style={{ height: 48 }}
-            />
-            <input
-              name="earnedAfterDays"
-              type="number"
-              min={0}
-              max={3650}
-              placeholder="يُكتسب بعد (يوم)"
-              className={`grow ${FIELD}`}
-              style={{ height: 48 }}
-            />
-          </div>
-
-          <input
-            name="spec"
-            required
-            dir="ltr"
-            defaultValue="linear-gradient(135deg,#f6b93b,#ff7a5a)"
-            placeholder="تدرّج CSS"
-            className={FIELD}
-            style={{ height: 48 }}
-          />
-
-          <select
-            name="categoryId"
-            defaultValue=""
-            className="rounded-xl border border-line bg-card px-3 text-[13.5px] text-ink outline-none"
-            style={{ height: 48 }}
-          >
-            <option value="">بلا تصنيف</option>
-            {categories.map((row) => (
-              <option key={row.id} value={row.id}>
-                {row.name}
-              </option>
-            ))}
-          </select>
-
-          <label className="flex items-center gap-2.5 px-1 text-[13px]">
-            <input name="plusOnly" type="checkbox" className="h-4 w-4 accent-[#f6b93b]" />
-            حصري لمشتركي أثر+
-          </label>
-
-          <label className="flex items-center gap-2.5 px-1 text-[13px]">
-            <input name="limited" type="checkbox" className="h-4 w-4 accent-[#f6b93b]" />
-            حزمة محدودة (تظهر في صفّ «حزم محدودة»)
-          </label>
-
-          <button
-            type="submit"
-            className="brand-gradient rounded-xl text-[14.5px] font-bold"
-            style={{ height: 50, color: "var(--color-on-brand)" }}
-          >
-            أضف الصنف
-          </button>
-        </Saver>
-
-        <h2 className="mb-3 text-[15px] font-bold">الأصناف الحالية</h2>
-        <div className="flex flex-col gap-2 pb-4">
-          {items.map((item) => (
-            <details key={item.id} className="rounded-2xl border border-line bg-card">
-              <summary className="flex cursor-pointer list-none items-center gap-3 p-3">
-                <span className="h-11 w-11 shrink-0 rounded-full" style={itemPaint(item)} />
-                <div className="min-w-0 grow">
-                  <p className="truncate text-[13.5px] font-semibold">
-                    {item.name}
-                    <span className="mr-2 text-[11px] font-normal text-muted">
-                      {item.kind === "FRAME"
-                        ? "إطار"
-                        : item.kind === "THEME"
-                          ? "ثيم"
-                          : item.kind === "CHARM"
-                            ? "تميمة"
-                            : "خلفية"}
-                    </span>
-                  </p>
-                  <p className="truncate text-[11.5px] text-muted">
-                    {item.earnedAfterDays
-                      ? `يُكتسب بعد ${ar(item.earnedAfterDays)} يوم`
-                      : riyals(item.priceHalalas)}
-                    {item.plusOnly ? " · أثر+" : null}
-                    {item._count.purchases > 0 ? ` · ${ar(item._count.purchases)} شراء` : null}
-                  </p>
-                </div>
-                <span className="shrink-0 text-[12px] font-semibold text-clay-ink">تعديل</span>
-              </summary>
-
-              <div className="border-t border-line p-3">
-                <ItemImage itemId={item.id} mediaId={item.mediaId} kind={item.kind} />
-                <p className="mt-1.5 text-[11px] text-muted">
-                  الثيم يُلبَس خلفيةً للتطبيق، والتميمة شعاراً تحت صورة العرض.
-                  بلا صورة يُرسم التدرّج.
-                </p>
-              </div>
-
-              <Saver
-                action={updateStoreItem.bind(null, item.id)}
-                className="flex flex-col gap-2.5 border-t border-line p-3"
-              >
-                <div className="flex gap-2.5">
-                  <select
-                    name="kind"
-                    defaultValue={item.kind}
-                    className="grow rounded-xl border border-line bg-card px-3 text-[13.5px] text-ink outline-none"
-                    style={{ height: 46 }}
+                  <Saver
+                    action={updateCategory.bind(null, row.id)}
+                    className="flex flex-col gap-3 border-t border-line p-3.5"
                   >
-                    <option value="FRAME">إطار</option>
-                    <option value="THEME">ثيم</option>
-                    <option value="CHARM">تميمة</option>
-                    <option value="BACKGROUND">خلفية</option>
-                  </select>
-                  <input
-                    name="name"
-                    required
-                    maxLength={40}
-                    defaultValue={item.name}
-                    className={`grow ${FIELD}`}
-                    style={{ height: 46 }}
-                  />
-                </div>
+                    <div className="flex gap-2.5">
+                      <Field label="الاسم">
+                        <input
+                          name="name"
+                          required
+                          maxLength={30}
+                          defaultValue={row.name}
+                          className={FIELD}
+                          style={{ height: 46 }}
+                        />
+                      </Field>
+                      <Field label="المعرّف">
+                        <input
+                          name="slug"
+                          required
+                          dir="ltr"
+                          maxLength={24}
+                          defaultValue={row.slug}
+                          className={FIELD}
+                          style={{ height: 46 }}
+                        />
+                      </Field>
+                      <Field label="الترتيب">
+                        <input
+                          name="sortOrder"
+                          type="number"
+                          min={0}
+                          max={999}
+                          defaultValue={row.sortOrder}
+                          className={FIELD}
+                          style={{ height: 46, width: 82 }}
+                        />
+                      </Field>
+                    </div>
 
-                <div className="flex gap-2.5">
-                  <input
-                    name="priceRiyals"
-                    type="number"
-                    min={0}
-                    step="1"
-                    defaultValue={item.priceHalalas / 100}
-                    className={`grow ${FIELD}`}
-                    style={{ height: 46 }}
-                  />
-                  <input
-                    name="earnedAfterDays"
-                    type="number"
-                    min={0}
-                    max={3650}
-                    defaultValue={item.earnedAfterDays ?? undefined}
-                    placeholder="يُكتسب بعد (يوم)"
-                    className={`grow ${FIELD}`}
-                    style={{ height: 46 }}
-                  />
-                </div>
+                    <Check name="active" label="ظاهر في المتجر" on={row.active} />
 
-                <input
-                  name="spec"
-                  required
-                  dir="ltr"
-                  defaultValue={item.spec}
-                  className={FIELD}
-                  style={{ height: 46 }}
-                />
+                    <button
+                      type="submit"
+                      className="rounded-xl text-[13.5px] font-bold"
+                      style={{
+                        height: 46,
+                        background: "var(--color-clay)",
+                        color: "var(--color-on-brand)",
+                      }}
+                    >
+                      احفظ
+                    </button>
+                  </Saver>
 
-                <select
-                  name="categoryId"
-                  defaultValue={item.categoryId ?? ""}
-                  className="rounded-xl border border-line bg-card px-3 text-[13.5px] text-ink outline-none"
-                  style={{ height: 46 }}
-                >
-                  <option value="">بلا تصنيف</option>
-                  {categories.map((row) => (
-                    <option key={row.id} value={row.id}>
-                      {row.name}
-                    </option>
-                  ))}
-                </select>
-
-                <label className="flex items-center gap-2.5 px-1 text-[13px]">
-                  <input
-                    name="plusOnly"
-                    type="checkbox"
-                    defaultChecked={item.plusOnly}
-                    className="h-4 w-4 accent-[#f6b93b]"
-                  />
-                  حصري لمشتركي أثر+
-                </label>
-
-                <label className="flex items-center gap-2.5 px-1 text-[13px]">
-                  <input
-                    name="limited"
-                    type="checkbox"
-                    defaultChecked={item.limited}
-                    className="h-4 w-4 accent-[#f6b93b]"
-                  />
-                  حزمة محدودة
-                </label>
-
-                <div className="flex gap-2.5">
-                  <button
-                    type="submit"
-                    className="grow rounded-xl text-[13.5px] font-bold"
-                    style={{ height: 46, background: "var(--color-clay)", color: "var(--color-on-brand)" }}
-                  >
-                    احفظ
-                  </button>
-                </div>
-              </Saver>
-
-              <form action={deleteStoreItem.bind(null, item.id)} className="px-3 pb-3">
-                <button
-                  type="submit"
-                  className="w-full rounded-xl border border-line text-[12.5px] font-semibold"
-                  style={{ height: 42, color: "var(--color-live)" }}
-                >
-                  احذف الصنف
-                </button>
-              </form>
-            </details>
-          ))}
-        </div>
+                  <form action={deleteCategory.bind(null, row.id)} className="px-3.5 pb-3.5">
+                    <button
+                      type="submit"
+                      className="w-full rounded-xl border border-line text-[12.5px] font-semibold"
+                      style={{ height: 42, color: "var(--color-live)" }}
+                    >
+                      احذف التصنيف — تبقى أصنافه بلا تصنيف
+                    </button>
+                  </form>
+                </details>
+              ))}
+            </div>
+          </>
+        )}
         </>
         ) : null}
       </main>

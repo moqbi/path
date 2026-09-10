@@ -5,9 +5,9 @@ import { relative } from "@/lib/format";
 /**
  * التعليقات: كلّ تعليق في فقاعته — صورة صاحبه، ثم اسمه ووقته، ثم نصّه.
  *
- * قبلها كانت أسطراً عاريةً يتداخل فيها الاسم بالنص فلا يُعرف أين ينتهي
- * تعليقٌ ويبدأ آخر. والصورة رابطٌ إلى ملف صاحبها: من كتب سطراً يستحقّ
- * أن يُعرف من هو بضغطة.
+ * قبلها كان الاسم يلتصق بالنص فلا يُعرف أين ينتهي تعليقٌ ويبدأ آخر:
+ * الآن سطرٌ للاسم ووقته وسطرٌ لكلامه. بلا أرضيةٍ تحته — الطبقة الملوّنة
+ * كانت تُظلم القراءة، والترتيب وحده يكفي. والصورة رابطٌ إلى ملف صاحبها.
  */
 export type CommentShape = {
   id: string;
@@ -50,10 +50,7 @@ export function CommentList({
               />
             </Link>
 
-            <div
-              className="min-w-0 grow rounded-2xl px-3 py-2"
-              style={{ background: "var(--color-paper)" }}
-            >
+            <div className="min-w-0 grow pt-0.5">
               <div className="mb-0.5 flex items-baseline gap-2">
                 <Link href={href} className="truncate text-[12px] font-semibold">
                   {comment.user.name}
