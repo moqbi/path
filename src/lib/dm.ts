@@ -44,7 +44,13 @@ export async function conversationsFor(userId: string) {
       a: { select: PERSON },
       b: { select: PERSON },
       messages: {
-        select: { body: true, createdAt: true, senderId: true, readAt: true },
+        select: {
+          body: true,
+          createdAt: true,
+          senderId: true,
+          deliveredAt: true,
+          readAt: true,
+        },
         orderBy: { createdAt: "desc" },
         take: 1,
       },
@@ -78,7 +84,15 @@ export async function conversationFor(userId: string, conversationId: string) {
       a: { select: PERSON },
       b: { select: PERSON },
       messages: {
-        select: { id: true, body: true, senderId: true, createdAt: true },
+        select: {
+          id: true,
+          body: true,
+          senderId: true,
+          createdAt: true,
+          deliveredAt: true,
+          readAt: true,
+          editedAt: true,
+        },
         orderBy: { createdAt: "asc" },
         take: 200,
       },
@@ -91,6 +105,23 @@ export async function conversationFor(userId: string, conversationId: string) {
     ...conversation,
     other: conversation.a.id === userId ? conversation.b : conversation.a,
   };
+}
+
+/**
+ * التسليم: حضورُ المستلم على الشاشة هو دليل الوصول — لا خادم دائم بيننا
+ * يخبرنا أنّ الرسالة نزلت جهازه. تُستدعى مع ختم الحضور ومع فتح المحادثات.
+ */
+export async function deliverTo(userId: string): Promise<void> {
+  try {
+    await prisma.message.updateMany({
+      where: {
+        senderId: { not: userId },
+        deliveredAt: null,
+        conversation: { OR: [{ aId: userId }, { bId: userId }] },
+      },
+      data: { deliveredAt: new Date() },
+    });
+  } catch {}
 }
 
 export async function unreadCount(userId: string): Promise<number> {

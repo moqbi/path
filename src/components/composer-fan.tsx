@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { postSleep } from "@/app/actions";
 import { CameraIcon, MoonIcon, MusicIcon, PinIcon, TextIcon } from "@/components/icons";
+import { playClose, playOpen } from "@/lib/sound";
 
 /**
  * زر النشر وقائمته المتطايرة — على نمط Path.
@@ -25,6 +26,13 @@ const RADIUS = 168;
 export function ComposerFan() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+
+  // فتح القائمة وإغلاقها لهما نقرة: صاعدة عند التطاير، هابطة عند الانطواء.
+  function toggle(next: boolean) {
+    if (next) playOpen();
+    else playClose();
+    setOpen(next);
+  }
   const [busy, setBusy] = useState<string | null>(null);
   // إجراءات الخادم التي تعيد التوجيه يجب أن تُستدعى داخل انتقال.
   const [, start] = useTransition();
@@ -32,7 +40,9 @@ export function ComposerFan() {
   // الهروب يغلق القائمة، ومنع تمرير الصفحة خلف الغطاء.
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") toggle(false);
+    };
     window.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
     return () => {
@@ -86,7 +96,7 @@ export function ComposerFan() {
     <>
       {/* غطاء يعتّم الخط الزمني ويغلق القائمة عند اللمس خارجها. */}
       <div
-        onClick={() => setOpen(false)}
+        onClick={() => toggle(false)}
         aria-hidden={!open}
         className="fixed inset-0 z-20 transition-opacity duration-300"
         style={{
@@ -113,7 +123,7 @@ export function ComposerFan() {
                 aria-hidden={!open}
                 disabled={busy !== null}
                 onClick={() => {
-                  setOpen(false);
+                  toggle(false);
                   item.run();
                 }}
                 aria-label={item.label}
@@ -145,7 +155,7 @@ export function ComposerFan() {
             type="button"
             aria-label={open ? "إغلاق" : "لحظة جديدة"}
             aria-expanded={open}
-            onClick={() => setOpen((v) => !v)}
+            onClick={() => toggle(!open)}
             className="pointer-events-auto absolute inset-0 flex items-center justify-center rounded-full"
             style={{
               // الزر بلون العمق، وعلامة الزائد وحدها بتدرّج الشعار.

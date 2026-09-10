@@ -11,7 +11,8 @@ import { SearchIcon, TextIcon } from "@/components/icons";
 import { plusTag, tagOf } from "@/lib/tags";
 import { ar, timeOfDay } from "@/lib/format";
 import { SwipeRow } from "@/components/swipe-row";
-import { deleteConversation, startConversation } from "@/app/actions";
+import { deleteConversation, markDelivered, startConversation } from "@/app/actions";
+import { Ticks, receiptOf } from "@/components/receipt";
 
 const FILTERS = [
   { key: "", label: "الكل" },
@@ -35,6 +36,9 @@ export default async function MessagesPage({
   const { q, f } = await searchParams;
   const term = (q ?? "").trim();
   const filter = FILTERS.some((item) => item.key === f) ? f! : "";
+
+  // فتحُ الشاشة يعني أنّ ما وصلني قد وصل فعلاً: نكتب التسليم قبل القراءة.
+  await markDelivered();
 
   const [conversations, auto, ids] = await Promise.all([
     conversationsFor(user.id),
@@ -185,7 +189,10 @@ export default async function MessagesPage({
                       <TagPill tag={tagOf(conversation.other, auto)} size={10} />
                       <span className="grow" />
                       {conversation.last ? (
-                        <span className="shrink-0 text-[10.5px] text-faint">
+                        <span className="flex shrink-0 items-center gap-1 text-[10.5px] text-faint">
+                          {conversation.last.senderId === user.id ? (
+                            <Ticks state={receiptOf(conversation.last)} size={14} />
+                          ) : null}
                           {timeOfDay(conversation.last.createdAt)}
                         </span>
                       ) : null}

@@ -3,7 +3,7 @@ import { currentUser } from "@/lib/auth";
 import { conversationFor } from "@/lib/dm";
 import { markConversationRead, sendMessage } from "@/app/actions";
 import { Avatar, ScreenHeader } from "@/components/ui";
-import { timeOfDay } from "@/lib/format";
+import { Thread } from "./thread";
 
 export default async function ThreadPage({
   params,
@@ -36,36 +36,7 @@ export default async function ThreadPage({
       />
 
       <main className="scroll-area flex flex-col justify-end gap-2 px-5 py-4">
-        {conversation.messages.length === 0 ? (
-          <p className="pb-6 text-center text-[13px] text-muted">
-            لا رسائل بعد. اكتب أول سطر.
-          </p>
-        ) : (
-          conversation.messages.map((message) => {
-            const mine = message.senderId === user.id;
-            return (
-              <div
-                key={message.id}
-                className="flex flex-col"
-                style={{ alignItems: mine ? "flex-start" : "flex-end" }}
-              >
-                <div
-                  className="max-w-[78%] rounded-2xl px-3.5 py-2.5"
-                  style={{
-                    background: mine ? "var(--color-clay)" : "var(--color-card)",
-                    color: mine ? "var(--color-on-brand)" : "var(--color-ink)",
-                    border: mine ? "none" : "1px solid var(--color-line)",
-                  }}
-                >
-                  <p className="text-[13.5px] leading-relaxed">{message.body}</p>
-                </div>
-                <span className="mt-1 px-1 text-[10px] text-faint">
-                  {timeOfDay(message.createdAt)}
-                </span>
-              </div>
-            );
-          })
-        )}
+        <Thread lines={conversation.messages} meId={user.id} />
       </main>
 
       <form action={send} className="flex items-center gap-2 px-5 pb-8 pt-3">

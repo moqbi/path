@@ -6,6 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import {
   createSession,
+  currentUser,
   destroySession,
   requireUser,
   verifyPassword,
@@ -13,7 +14,7 @@ import {
 import { assertRoomForBoth, circleIds, mutualCount } from "@/lib/circle";
 import { canInteract, canSeeMoment } from "@/lib/visibility";
 import { reverseGeocode } from "@/lib/places";
-import { openConversation } from "@/lib/dm";
+import { deliverTo, openConversation } from "@/lib/dm";
 import { storeDataUrl } from "@/lib/media";
 import { isSupportedMusicUrl, resolveTrack } from "@/lib/music-link";
 import type { MomentKind, ReactionKind } from "@/generated/prisma/client";
@@ -1038,10 +1039,49 @@ export async function deleteConversation(conversationId: string): Promise<void> 
 
 export async function markConversationRead(conversationId: string): Promise<void> {
   const user = await requireUser();
+  const now = new Date();
   await prisma.message.updateMany({
     where: { conversationId, senderId: { not: user.id }, readAt: null },
-    data: { readAt: new Date() },
+    // القراءة تستلزم التسليم، فنكتبهما معاً ولا نترك رسالةً «مقروءة غير واصلة».
+    data: { readAt: now, deliveredAt: now },
   });
+}
+
+/**
+ * التسليم: يُكتب حين يفتح المستلم شاشة المحادثات — وصلت جهازه وإن لم يقرأها.
+ * لا خادم دائم بيننا، فحضوره على الشاشة هو أصدق دليلٍ على الوصول.
+ */
+export async function markDelivered(): Promise<void> {
+  const user = await currentUser();
+  if (!user) return;
+  await deliverTo(user.id);
+}
+
+/** تعديل رسالة: لصاحبها وحده، ويبقى أثر التعديل ظاهراً للطرفين. */
+export async function editMessage(
+  messageId: string,
+  formData: FormData,
+): Promise<void> {
+  const user = await requireUser();
+
+  const message = await prisma.message.findUnique({
+    where: { id: messageId },
+    select: { senderId: true, conversationId: true, body: true },
+  });
+  if (!message) throw new Error("الرسالة غير موجودة");
+  if (message.senderId !== user.id) throw new Error("لا تُعدَّل رسالة غيرك");
+
+  const body = String(formData.get("body") ?? "").trim();
+  if (!body) return;
+  if (body === message.body) return;
+
+  await prisma.message.update({
+    where: { id: messageId },
+    data: { body: body.slice(0, 2000), editedAt: new Date() },
+  });
+
+  revalidatePath(`/messages/${message.conversationId}`);
+  revalidatePath("/messages");
 }
 
 // ───────────────────────────── المتجر والاشتراك ─────────────────────────────

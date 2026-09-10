@@ -4,6 +4,7 @@ import { promisify } from "node:util";
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import { prisma } from "@/lib/db";
+import { deliverTo } from "@/lib/dm";
 
 const scrypt = promisify(scryptCallback) as (
   password: string,
@@ -92,6 +93,8 @@ async function touch(id: string, lastSeenAt: Date | null) {
   try {
     await prisma.user.update({ where: { id }, data: { lastSeenAt: new Date() } });
   } catch {}
+  // حضوره يعني أنّ ما أُرسل إليه قد وصله، فيرى المرسل الصحّين.
+  await deliverTo(id);
 }
 
 export type SessionUser = {

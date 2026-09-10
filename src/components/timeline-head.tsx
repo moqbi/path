@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition, type ReactNode } from "reac
 import { useRouter } from "next/navigation";
 import { RefreshIcon } from "@/components/icons";
 import { coverStyle } from "@/components/ui";
+import { playRefresh } from "@/lib/sound";
 import { timeOfDay } from "@/lib/format";
 
 const COVER = 176;
@@ -62,6 +63,8 @@ export function TimelineHead({
   }
 
   function refresh() {
+    // نقرة خفيفة تُسمع عند انطلاق الطلب — الأذن تؤكّد ما رأته العين.
+    playRefresh();
     start(() => router.refresh());
   }
 
