@@ -49,6 +49,10 @@ enum ReactionKind {
 enum StoreItemKind {
   FRAME
   BACKGROUND
+  /// ثيم: لونٌ ومزاجٌ يلبسه ملفك.
+  THEME
+  /// تميمة تُعلَّق على الصورة — قادمة.
+  CHARM
 }
 
 enum FriendshipStatus {
@@ -373,6 +377,18 @@ model Tag {
   users     User[]
 }
 
+/// تصنيف في المتجر: اسمه ومعرّفه وترتيبه. يُضاف ويُعاد ترتيبه من اللوحة،
+/// فالمتجر يكبر بلا نشر نسخة جديدة.
+model StoreCategory {
+  id        String  @id @default(cuid())
+  name      String
+  slug      String  @unique
+  sortOrder Int     @default(0)
+  active    Boolean @default(true)
+
+  items StoreItem[]
+}
+
 model StoreItem {
   id    String        @id @default(cuid())
   kind  StoreItemKind
@@ -387,6 +403,13 @@ model StoreItem {
   earnedAfterDays Int?
 
   sortOrder Int @default(0)
+  /// متى أُضيف — منه يُبنى صفّ «وصل حديثاً» بلا علمٍ يُرفع يدوياً.
+  createdAt DateTime @default(now())
+  /// حزمة موسمية: تُعرض في «حزم محدودة» ما دامت مرفوعة.
+  limited   Boolean  @default(false)
+
+  categoryId String?
+  category   StoreCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   purchases      Purchase[]
   usersWithFrame User[]     @relation("UserFrame")

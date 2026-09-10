@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { circleIds } from "@/lib/circle";
+import { signOut } from "@/app/actions";
 import { archive, myMoments } from "@/lib/feed";
 import { MomentCard } from "@/components/moment-card";
 import { plusTag, tagOf } from "@/lib/tags";
@@ -13,7 +14,7 @@ import { Accessories } from "./accessories";
 import { DeleteAccount } from "./delete";
 import { coverStyle, TagPill } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
-import { BookIcon, GearIcon, SparkIcon } from "@/components/icons";
+import { BookIcon, ExitIcon, GearIcon, SparkIcon } from "@/components/icons";
 import { ar, dayLabel } from "@/lib/format";
 
 const MONTHS = [
@@ -155,15 +156,27 @@ export default async function ProfilePage() {
                 giftedBy: row.giftedBy?.name ?? null,
               }))}
               equippedFrame={user.frameId}
+              equippedTheme={user.backgroundId}
             />
             <Link
               href="/settings/privacy"
-              aria-label="الإعدادات"
-              className="flex w-12 shrink-0 items-center justify-center rounded-xl border border-line bg-card text-ink-2"
+              aria-label="الخصوصية والإعدادات"
+              className="flex w-11 shrink-0 items-center justify-center rounded-xl border border-line bg-card text-ink-2"
               style={{ height: 46 }}
             >
               <GearIcon size={18} />
             </Link>
+            {/* الخروج هنا وحده: كان مكرّراً فوق الغلاف بلا داعٍ. */}
+            <form action={signOut} className="shrink-0">
+              <button
+                type="submit"
+                aria-label="خروج"
+                className="flex w-11 items-center justify-center rounded-xl border border-line bg-card text-ink-2"
+                style={{ height: 46 }}
+              >
+                <ExitIcon size={18} />
+              </button>
+            </form>
           </div>
         }
       >

@@ -3,8 +3,11 @@ import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
+  createCategory,
   createStoreItem,
   createTag,
+  deleteCategory,
+  updateCategory,
   deleteStoreItem,
   deleteTag,
   setUserTag,
@@ -54,7 +57,7 @@ export default async function AdminPage({
   // الدور يُفحص هنا وفي كل إجراء — إخفاء الرابط ليس حماية.
   if (user.role !== "ADMIN") redirect("/");
 
-  const [items, tags, people] = await Promise.all([
+  const [items, tags, people, categories] = await Promise.all([
     prisma.storeItem.findMany({
       orderBy: { sortOrder: "asc" },
       include: { _count: { select: { purchases: true } } },
@@ -75,6 +78,10 @@ export default async function AdminPage({
         tag: { select: { name: true, bg: true, fg: true } },
         tagId: true,
       },
+    }),
+    prisma.storeCategory.findMany({
+      orderBy: { sortOrder: "asc" },
+      include: { _count: { select: { items: true } } },
     }),
   ]);
 
@@ -283,6 +290,125 @@ export default async function AdminPage({
 
         {section === "store" ? (
         <>
+        <h2 className="mb-3 text-[15px] font-bold">تصنيفات المتجر</h2>
+        <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
+          التصنيف شريحةٌ في أعلى المتجر. «المميز» واجهةٌ ثابتة تُبنى من
+          الأصناف نفسها، وما تضيفه هنا يجلس بعدها بالترتيب.
+        </p>
+
+        <Saver action={createCategory} className="mb-4 flex flex-col gap-2.5">
+          <div className="flex gap-2.5">
+            <input
+              name="name"
+              required
+              maxLength={30}
+              placeholder="الاسم (الإطارات)"
+              className={`grow ${FIELD}`}
+              style={{ height: 48 }}
+            />
+            <input
+              name="slug"
+              required
+              dir="ltr"
+              maxLength={24}
+              placeholder="frames"
+              className={`grow ${FIELD}`}
+              style={{ height: 48 }}
+            />
+          </div>
+          <button
+            type="submit"
+            className="rounded-xl text-[13.5px] font-bold"
+            style={{ height: 46, background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+          >
+            أضف تصنيفاً
+          </button>
+        </Saver>
+
+        <div className="mb-7 flex flex-col gap-2">
+          {categories.map((row) => (
+            <details key={row.id} className="rounded-2xl border border-line bg-card">
+              <summary className="flex cursor-pointer list-none items-center gap-3 p-3">
+                <div className="min-w-0 grow">
+                  <p className="truncate text-[13.5px] font-semibold">
+                    {row.name}
+                    <span dir="ltr" className="mr-2 text-[11px] font-normal text-muted">
+                      {row.slug}
+                    </span>
+                  </p>
+                  <p className="text-[11.5px] text-muted">
+                    {ar(row._count.items)} صنف · ترتيب {ar(row.sortOrder)}
+                    {row.active ? "" : " · مخفي"}
+                  </p>
+                </div>
+                <span className="shrink-0 text-[12px] font-semibold text-clay-ink">تعديل</span>
+              </summary>
+
+              <Saver
+                action={updateCategory.bind(null, row.id)}
+                className="flex flex-col gap-2.5 border-t border-line p-3"
+              >
+                <div className="flex gap-2.5">
+                  <input
+                    name="name"
+                    required
+                    maxLength={30}
+                    defaultValue={row.name}
+                    className={`grow ${FIELD}`}
+                    style={{ height: 46 }}
+                  />
+                  <input
+                    name="slug"
+                    required
+                    dir="ltr"
+                    maxLength={24}
+                    defaultValue={row.slug}
+                    className={`grow ${FIELD}`}
+                    style={{ height: 46 }}
+                  />
+                  <input
+                    name="sortOrder"
+                    type="number"
+                    min={0}
+                    max={999}
+                    defaultValue={row.sortOrder}
+                    className={FIELD}
+                    style={{ height: 46, width: 82 }}
+                  />
+                </div>
+
+                <label className="flex items-center gap-2.5 px-1 text-[13px]">
+                  <input
+                    name="active"
+                    type="checkbox"
+                    defaultChecked={row.active}
+                    className="h-4 w-4 accent-[#f6b93b]"
+                  />
+                  ظاهر في المتجر
+                </label>
+
+                <button
+                  type="submit"
+                  className="rounded-xl text-[13.5px] font-bold"
+                  style={{ height: 46, background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+                >
+                  احفظ
+                </button>
+              </Saver>
+
+              <form action={deleteCategory.bind(null, row.id)} className="px-3 pb-3">
+                <button
+                  type="submit"
+                  className="w-full rounded-xl border border-line text-[12.5px] font-semibold"
+                  style={{ height: 42, color: "var(--color-live)" }}
+                >
+                  احذف التصنيف (تبقى أصنافه)
+                </button>
+              </form>
+            </details>
+          ))}
+        </div>
+
         <h2 className="mb-3 text-[15px] font-bold">أضف صنفاً للمتجر</h2>
         <Saver action={createStoreItem} className="mb-7 flex flex-col gap-2.5">
           <div className="flex gap-2.5">
@@ -292,6 +418,8 @@ export default async function AdminPage({
               style={{ height: 48 }}
             >
               <option value="FRAME">إطار</option>
+              <option value="THEME">ثيم</option>
+              <option value="CHARM">تميمة</option>
               <option value="BACKGROUND">خلفية</option>
             </select>
             <input
@@ -336,9 +464,28 @@ export default async function AdminPage({
             style={{ height: 48 }}
           />
 
+          <select
+            name="categoryId"
+            defaultValue=""
+            className="rounded-xl border border-line bg-card px-3 text-[13.5px] text-ink outline-none"
+            style={{ height: 48 }}
+          >
+            <option value="">بلا تصنيف</option>
+            {categories.map((row) => (
+              <option key={row.id} value={row.id}>
+                {row.name}
+              </option>
+            ))}
+          </select>
+
           <label className="flex items-center gap-2.5 px-1 text-[13px]">
             <input name="plusOnly" type="checkbox" className="h-4 w-4 accent-[#f6b93b]" />
             حصري لمشتركي أثر+
+          </label>
+
+          <label className="flex items-center gap-2.5 px-1 text-[13px]">
+            <input name="limited" type="checkbox" className="h-4 w-4 accent-[#f6b93b]" />
+            حزمة محدودة (تظهر في صفّ «حزم محدودة»)
           </label>
 
           <button
@@ -360,7 +507,13 @@ export default async function AdminPage({
                   <p className="truncate text-[13.5px] font-semibold">
                     {item.name}
                     <span className="mr-2 text-[11px] font-normal text-muted">
-                      {item.kind === "FRAME" ? "إطار" : "خلفية"}
+                      {item.kind === "FRAME"
+                        ? "إطار"
+                        : item.kind === "THEME"
+                          ? "ثيم"
+                          : item.kind === "CHARM"
+                            ? "تميمة"
+                            : "خلفية"}
                     </span>
                   </p>
                   <p className="truncate text-[11.5px] text-muted">
@@ -386,6 +539,8 @@ export default async function AdminPage({
                     style={{ height: 46 }}
                   >
                     <option value="FRAME">إطار</option>
+                    <option value="THEME">ثيم</option>
+                    <option value="CHARM">تميمة</option>
                     <option value="BACKGROUND">خلفية</option>
                   </select>
                   <input
@@ -429,6 +584,20 @@ export default async function AdminPage({
                   style={{ height: 46 }}
                 />
 
+                <select
+                  name="categoryId"
+                  defaultValue={item.categoryId ?? ""}
+                  className="rounded-xl border border-line bg-card px-3 text-[13.5px] text-ink outline-none"
+                  style={{ height: 46 }}
+                >
+                  <option value="">بلا تصنيف</option>
+                  {categories.map((row) => (
+                    <option key={row.id} value={row.id}>
+                      {row.name}
+                    </option>
+                  ))}
+                </select>
+
                 <label className="flex items-center gap-2.5 px-1 text-[13px]">
                   <input
                     name="plusOnly"
@@ -437,6 +606,16 @@ export default async function AdminPage({
                     className="h-4 w-4 accent-[#f6b93b]"
                   />
                   حصري لمشتركي أثر+
+                </label>
+
+                <label className="flex items-center gap-2.5 px-1 text-[13px]">
+                  <input
+                    name="limited"
+                    type="checkbox"
+                    defaultChecked={item.limited}
+                    className="h-4 w-4 accent-[#f6b93b]"
+                  />
+                  حزمة محدودة
                 </label>
 
                 <div className="flex gap-2.5">

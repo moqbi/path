@@ -1,12 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { clearCover, setCoverPosition, setCover } from "@/app/actions";
 import { ImagePicker } from "@/components/image-picker";
 import { coverStyle } from "@/components/ui";
-import { CameraIcon, CheckIcon, CloseIcon, GearIcon } from "@/components/icons";
-import { signOut } from "@/app/actions";
+import { CameraIcon, CheckIcon, CloseIcon } from "@/components/icons";
 
 /**
  * الغلاف وأزراره.
@@ -24,7 +22,6 @@ export function ProfileCover({
   initialY,
   height = 168,
   manage = false,
-  chrome = true,
 }: {
   mediaId: string | null;
   spec: string | null;
@@ -32,8 +29,6 @@ export function ProfileCover({
   height?: number;
   /** أزرار الضبط والإزالة: في صفحة التعديل وحدها، لا فوق الملف. */
   manage?: boolean;
-  /** أدوات الملف (الخصوصية والخروج) — لا مكان لها في صفحة التعديل. */
-  chrome?: boolean;
 }) {
   const [y, setY] = useState(initialY);
   const [adjusting, setAdjusting] = useState(false);
@@ -145,23 +140,6 @@ export function ProfileCover({
             ) : null}
           </div>
 
-          {chrome ? (
-          <div className="absolute left-4 top-4 flex gap-2">
-            <Link
-              href="/settings/privacy"
-              aria-label="الخصوصية"
-              className="flex h-9 w-9 items-center justify-center rounded-full"
-              style={dark}
-            >
-              <GearIcon size={17} />
-            </Link>
-            <form action={signOut}>
-              <button type="submit" aria-label="خروج" className={chip} style={dark}>
-                خروج
-              </button>
-            </form>
-          </div>
-          ) : null}
         </>
       )}
     </div>

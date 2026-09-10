@@ -208,3 +208,16 @@ export const TagIcon = ({ size = 20, className }: IconProps) => (
     <circle cx="15" cy="8" r="1.3" />
   </svg>
 );
+
+export const ExitIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M14.5 4.5H6.5A1.5 1.5 0 0 0 5 6v12a1.5 1.5 0 0 0 1.5 1.5h8" />
+    <path d="M17.5 15.5 21 12l-3.5-3.5M21 12h-9" />
+  </svg>
+);
+
+export const FlameIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M12 3.5s5 4 5 8.2a5 5 0 0 1-10 0c0-1.7 1-3.2 1.9-4.2.2 1.1.9 1.9 1.8 1.9 1.2 0 1.9-1 1.6-2.6-.2-1.2-.3-2.3-.3-3.3Z" />
+  </svg>
+);

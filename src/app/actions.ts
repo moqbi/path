@@ -467,12 +467,26 @@ async function requireAdmin() {
 export type AdminResult = { ok?: string; error?: string } | null;
 
 const storeItemInput = z.object({
-  kind: z.enum(["FRAME", "BACKGROUND"]),
+  kind: z.enum(["FRAME", "BACKGROUND", "THEME", "CHARM"]),
   name: z.string().trim().min(1, "اكتب الاسم").max(40),
   priceRiyals: z.coerce.number().min(0).max(9999),
   spec: z.string().trim().min(1, "اكتب تدرّج CSS").max(400),
   plusOnly: z.coerce.boolean(),
   earnedAfterDays: z.coerce.number().int().min(0).max(3650).optional(),
+  /** التصنيف اختياري: صنفٌ بلا تصنيف يظهر في «المميز» وحده. */
+  categoryId: z.string().trim().optional(),
+  limited: z.coerce.boolean(),
+});
+
+const categoryInput = z.object({
+  name: z.string().trim().min(1, "اكتب اسم التصنيف").max(30),
+  slug: z
+    .string()
+    .trim()
+    .min(2, "اكتب معرّفاً إنجليزياً")
+    .max(24)
+    .regex(/^[a-z0-9-]+$/, "المعرّف حروف إنجليزية صغيرة وأرقام وشرطة"),
+  sortOrder: z.coerce.number().int().min(0).max(999).optional(),
 });
 
 export async function createStoreItem(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
@@ -486,10 +500,13 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
     spec: formData.get("spec"),
     plusOnly: formData.get("plusOnly") === "on",
     earnedAfterDays: formData.get("earnedAfterDays") || undefined,
+    categoryId: formData.get("categoryId") || undefined,
+    limited: formData.get("limited") === "on",
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
 
-  const { kind, name, priceRiyals, spec, plusOnly, earnedAfterDays } = parsed.data;
+  const { kind, name, priceRiyals, spec, plusOnly, earnedAfterDays, categoryId, limited } =
+    parsed.data;
   const last = await prisma.storeItem.findFirst({
     orderBy: { sortOrder: "desc" },
     select: { sortOrder: true },
@@ -504,6 +521,8 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
       spec,
       plusOnly,
       earnedAfterDays: earnedAfterDays && earnedAfterDays > 0 ? earnedAfterDays : null,
+      categoryId: categoryId || null,
+      limited,
       sortOrder: (last?.sortOrder ?? 0) + 1,
     },
   });
@@ -527,10 +546,13 @@ export async function updateStoreItem(
     spec: formData.get("spec"),
     plusOnly: formData.get("plusOnly") === "on",
     earnedAfterDays: formData.get("earnedAfterDays") || undefined,
+    categoryId: formData.get("categoryId") || undefined,
+    limited: formData.get("limited") === "on",
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
 
-  const { kind, name, priceRiyals, spec, plusOnly, earnedAfterDays } = parsed.data;
+  const { kind, name, priceRiyals, spec, plusOnly, earnedAfterDays, categoryId, limited } =
+    parsed.data;
   await prisma.storeItem.update({
     where: { id: itemId },
     data: {
@@ -540,12 +562,85 @@ export async function updateStoreItem(
       spec,
       plusOnly,
       earnedAfterDays: earnedAfterDays && earnedAfterDays > 0 ? earnedAfterDays : null,
+      categoryId: categoryId || null,
+      limited,
     },
   });
 
   revalidatePath("/admin");
   revalidatePath("/store");
   return { ok: "حُفظ" };
+}
+
+// ───────────────────────── تصنيفات المتجر (اللوحة) ─────────────────────────
+
+export async function createCategory(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  await requireAdmin();
+
+  const parsed = categoryInput.safeParse({
+    name: formData.get("name"),
+    slug: formData.get("slug"),
+    sortOrder: formData.get("sortOrder") || undefined,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
+
+  const { name, slug, sortOrder } = parsed.data;
+  const taken = await prisma.storeCategory.findUnique({ where: { slug } });
+  if (taken) return { error: "المعرّف مستعمل" };
+
+  const last = await prisma.storeCategory.findFirst({
+    orderBy: { sortOrder: "desc" },
+    select: { sortOrder: true },
+  });
+
+  await prisma.storeCategory.create({
+    data: { name, slug, sortOrder: sortOrder ?? (last?.sortOrder ?? 0) + 1 },
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/store");
+  return { ok: `أُضيف تصنيف «${name}»` };
+}
+
+export async function updateCategory(
+  categoryId: string,
+  _prev: AdminResult,
+  formData: FormData,
+): Promise<AdminResult> {
+  await requireAdmin();
+
+  const parsed = categoryInput.safeParse({
+    name: formData.get("name"),
+    slug: formData.get("slug"),
+    sortOrder: formData.get("sortOrder") || undefined,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
+
+  const { name, slug, sortOrder } = parsed.data;
+  const taken = await prisma.storeCategory.findUnique({ where: { slug } });
+  if (taken && taken.id !== categoryId) return { error: "المعرّف مستعمل" };
+
+  await prisma.storeCategory.update({
+    where: { id: categoryId },
+    data: {
+      name,
+      slug,
+      sortOrder: sortOrder ?? undefined,
+      active: formData.get("active") === "on",
+    },
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/store");
+  return { ok: "حُفظ" };
+}
+
+/** حذف تصنيف لا يحذف أصنافه: تعود بلا تصنيف، ولا يضيع ما اشتراه أحد. */
+export async function deleteCategory(categoryId: string): Promise<void> {
+  await requireAdmin();
+  await prisma.storeCategory.delete({ where: { id: categoryId } });
+  revalidatePath("/admin");
+  revalidatePath("/store");
 }
 
 // ───────────────────────────── الوسوم ─────────────────────────────
@@ -1188,6 +1283,9 @@ export async function equip(itemId: string): Promise<void> {
     include: { item: { select: { kind: true } } },
   });
   if (!purchase) throw new Error("لا تملك هذا الصنف");
+
+  // التميمة تُملَك ولا تُلبَس بعد: نقولها صراحةً بدل أن نكتب حقلاً خاطئاً.
+  if (purchase.item.kind === "CHARM") throw new Error("التمائم قريباً");
 
   await prisma.user.update({
     where: { id: user.id },

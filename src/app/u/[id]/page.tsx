@@ -15,6 +15,7 @@ import {
 import { MomentCard } from "@/components/moment-card";
 import { GiftButton } from "./gift";
 import { Avatar, coverStyle, Empty, ScreenHeader, TagPill } from "@/components/ui";
+import { TabBar } from "@/components/tab-bar";
 import {
   CheckIcon,
   CloseIcon,
@@ -119,7 +120,7 @@ export default async function FriendProfilePage({
 
   return (
     <div className="screen">
-      <ScreenHeader title={person.name} back="/" />
+      <ScreenHeader title={person.name} />
 
       <div className="scroll-area">
         <div
@@ -211,6 +212,9 @@ export default async function FriendProfilePage({
           )}
         </div>
       </div>
+
+      {/* الشريط السفلي يبقى: التبويب يؤدّي غرض الرجوع، فلا زرّ رجوع فوقه. */}
+      <TabBar active="/circle" />
     </div>
   );
 }
@@ -249,7 +253,7 @@ function LockedProfile({
 }) {
   return (
     <div className="screen">
-      <ScreenHeader title={person.name} back="/circle" />
+      <ScreenHeader title={person.name} />
 
       <div className="scroll-area">
         <div
@@ -331,6 +335,8 @@ function LockedProfile({
           </div>
         </div>
       </div>
+
+      <TabBar active="/circle" />
     </div>
   );
 }

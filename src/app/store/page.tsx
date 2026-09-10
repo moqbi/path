@@ -1,23 +1,73 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ScreenHeader } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
-import { InfoIcon, SparkIcon } from "@/components/icons";
-import { StoreGrid } from "./grid";
+import { FlameIcon, InfoIcon, SparkIcon } from "@/components/icons";
+import { StoreGrid, type Item } from "./grid";
 import { riyals } from "@/lib/format";
 
-export default async function StorePage() {
+/** كم صنفاً يظهر في صفّ «وصل حديثاً» — صفٌّ واحد من ثلاثة. */
+const FRESH = 3;
+
+/**
+ * المتجر: شريط تصنيفات، ثم صفوف.
+ *
+ * التصنيفات تأتي من القاعدة فيضيفها المشرف من اللوحة بلا نشر نسخة.
+ * و«المميز» ليس تصنيفاً بل واجهة: ما وصل حديثاً، ثم ثيمات أثر، ثم الحزم
+ * المحدودة — صفوفٌ مشتقّة من الأصناف نفسها لا مرصوفة يدوياً.
+ */
+export default async function StorePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ c?: string }>;
+}) {
   const user = await currentUser();
   if (!user) redirect("/login");
 
-  const [items, purchases] = await Promise.all([
-    prisma.storeItem.findMany({ where: { kind: "FRAME" }, orderBy: { sortOrder: "asc" } }),
+  const { c } = await searchParams;
+
+  const [categories, all, purchases] = await Promise.all([
+    prisma.storeCategory.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),
+    prisma.storeItem.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.purchase.findMany({ where: { userId: user.id }, select: { itemId: true } }),
   ]);
 
-  const owned = new Set(purchases.map((p) => p.itemId));
+  const category = categories.find((row) => row.slug === c) ?? null;
+  const owned = purchases.map((row) => row.itemId);
   const daysHere = Math.floor((Date.now() - user.createdAt.getTime()) / 86_400_000);
+
+  const shape = (item: (typeof all)[number]): Item => ({
+    id: item.id,
+    kind: item.kind,
+    name: item.name,
+    priceHalalas: item.priceHalalas,
+    spec: item.spec,
+    plusOnly: item.plusOnly,
+    earnedAfterDays: item.earnedAfterDays,
+    limited: item.limited,
+  });
+
+  const grid = (items: typeof all) => (
+    <StoreGrid
+      items={items.map(shape)}
+      owned={owned}
+      isPlus={user.isPlus}
+      credit={user.storeCredit}
+      daysHere={daysHere}
+      equipped={{ frame: user.frameId, theme: user.backgroundId }}
+    />
+  );
+
+  const fresh = [...all]
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, FRESH);
+  // الحزم المحدودة لها صفّها تحت، فلا تُعاد هنا.
+  const themes = all.filter(
+    (item) => (item.kind === "THEME" || item.kind === "BACKGROUND") && !item.limited,
+  );
+  const limited = all.filter((item) => item.limited);
 
   return (
     <div className="screen">
@@ -37,23 +87,43 @@ export default async function StorePage() {
         }
       />
 
+      {/* شريط التصنيفات: «المميز» أولاً، ثم ما يضيفه المشرف. */}
+      <div className="shrink-0 px-5 pb-1 pt-3">
+        <div className="no-bar flex gap-2 overflow-x-auto">
+          {[{ slug: "", name: "المميز" }, ...categories].map((chip) => {
+            const on = (category?.slug ?? "") === chip.slug;
+            return (
+              <Link
+                key={chip.slug || "featured"}
+                href={chip.slug ? `/store?c=${chip.slug}` : "/store"}
+                className="shrink-0 rounded-full px-4 py-2 text-[12.5px] font-semibold"
+                style={{
+                  background: on ? "var(--color-clay)" : "var(--color-card)",
+                  color: on ? "var(--color-on-brand)" : "var(--color-ink-2)",
+                  border: `1px solid ${on ? "var(--color-clay)" : "var(--color-line)"}`,
+                }}
+              >
+                {chip.name}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
       <main className="scroll-area px-5 pt-4">
-        <StoreGrid
-          items={items.map((item) => ({
-            id: item.id,
-            kind: item.kind,
-            name: item.name,
-            priceHalalas: item.priceHalalas,
-            spec: item.spec,
-            plusOnly: item.plusOnly,
-            earnedAfterDays: item.earnedAfterDays,
-          }))}
-          owned={[...owned]}
-          isPlus={user.isPlus}
-          credit={user.storeCredit}
-          daysHere={daysHere}
-          equippedFrame={null}
-        />
+        {category ? (
+          grid(all.filter((item) => item.categoryId === category.id))
+        ) : (
+          <>
+            <Row title="وصل حديثاً" flame>
+              {grid(fresh)}
+            </Row>
+
+            <Row title="ثيمات أثر">{grid(themes)}</Row>
+
+            <Row title="حزم محدودة">{grid(limited)}</Row>
+          </>
+        )}
 
         {!user.isPlus ? (
           <div
@@ -81,5 +151,30 @@ export default async function StorePage() {
 
       <TabBar active="/store" />
     </div>
+  );
+}
+
+/** عنوان صفٍّ في «المميز» — واللهب رسمٌ لا إيموجي، كبقية أيقونات التطبيق. */
+function Row({
+  title,
+  flame = false,
+  children,
+}: {
+  title: string;
+  flame?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <h2 className="mb-2.5 flex items-center gap-1.5 text-[14px] font-bold">
+        {flame ? (
+          <span style={{ color: "var(--color-live)" }}>
+            <FlameIcon size={16} />
+          </span>
+        ) : null}
+        {title}
+      </h2>
+      {children}
+    </section>
   );
 }

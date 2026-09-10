@@ -26,7 +26,6 @@ export default async function EditProfilePage() {
             initialY={user.coverY}
             height={146}
             manage
-            chrome={false}
           />
         </section>
 
