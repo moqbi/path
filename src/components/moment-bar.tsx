@@ -80,7 +80,7 @@ export function MomentBar({
       {/* في RTL يضع `justify-end` الزرَّ في الطرف الأيسر من المنشور. */}
       <div
         className={`${head ? "flex items-start gap-2" : "flex justify-end"} ${
-          inset ? "px-3 pt-3" : ""
+          inset ? "px-3 pb-2 pt-2.5" : ""
         }`}
       >
         {head ? <div className="min-w-0 grow">{head}</div> : null}
@@ -92,8 +92,12 @@ export function MomentBar({
             stop(event);
             setOpen((v) => !v);
           }}
-          className="flex h-9 items-center gap-1.5 rounded-full border px-2.5"
+          // دائرة بحجم الوجه لا أكبر: الإطار الواسع كان يبدو زرّاً غريباً
+          // ملتصقاً بالصورة تحته.
+          className="flex items-center justify-center rounded-full border"
           style={{
+            width: 30,
+            height: 30,
             background: mine ? "var(--color-clay-soft)" : "transparent",
             borderColor: mine ? "var(--color-clay)" : "var(--color-line)",
           }}
@@ -106,7 +110,7 @@ export function MomentBar({
               filter: mine ? "none" : "grayscale(.85)",
             }}
           >
-            <ReactionGlyph kind={mine?.kind ?? "SMILE"} emoji={mine?.emoji} size={19} />
+            <ReactionGlyph kind={mine?.kind ?? "SMILE"} emoji={mine?.emoji} size={20} />
           </span>
         </button>
       </div>
