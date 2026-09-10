@@ -25,14 +25,14 @@ const HOLD_MS = 450;
 
 const HIDDEN = [
   {
-    href: "/private",
+    href: "/?view=private",
     label: "اللحظات الخاصة",
     Icon: LockIcon,
     bg: "var(--color-night)",
     ink: "#f7f5ef",
   },
   {
-    href: "/together",
+    href: "/?view=together",
     label: "آثارنا",
     Icon: WithIcon,
     bg: "var(--color-clay)",

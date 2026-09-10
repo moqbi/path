@@ -173,7 +173,6 @@ export default async function ProfilePage() {
                     moment={moment}
                     viewerId={user.id}
                     isPlus={user.isPlus}
-                    circleSize={ids.length}
                   />
                 ))}
               </section>

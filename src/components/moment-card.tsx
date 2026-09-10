@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Avatar } from "@/components/ui";
 import {
-  EyeIcon,
   MoonIcon,
   MusicIcon,
   PinIcon,
@@ -122,15 +121,7 @@ function Comments({ moment }: { moment: FeedMoment }) {
  * الحدث نفسه سطرٌ عارٍ، وما يجتمع حوله من ناس يجلس في قالبٍ أبيض تحته —
  * فيُقرأ الفرق بين ما قاله صاحبه وما ردّ به الناس.
  */
-function Bubble({
-  moment,
-  circleSize,
-  viewerId,
-}: {
-  moment: FeedMoment;
-  circleSize: number;
-  viewerId: string;
-}) {
+function Bubble({ moment, viewerId }: { moment: FeedMoment; viewerId: string }) {
   const hasComments = moment.comments.length > 0;
   const hasReactions = moment.reactions.length > 0;
   if (!hasComments && !hasReactions) return null;
@@ -140,10 +131,6 @@ function Bubble({
       {hasReactions ? <Reactors reactions={moment.reactions} viewerId={viewerId} /> : null}
       {hasReactions && hasComments ? <div className="my-2.5 h-px bg-line" /> : null}
       <Comments moment={moment} />
-      <p className="mt-2 flex items-center justify-end gap-1.5 text-[10.5px] text-faint">
-        <EyeIcon size={13} />
-        {ar(moment._count.views)}/{ar(circleSize)}
-      </p>
     </div>
   );
 }
@@ -264,11 +251,9 @@ export function MomentCard({
   moment,
   viewerId,
   isPlus,
-  circleSize,
 }: {
   moment: FeedMoment;
   viewerId: string;
-  circleSize: number;
   isPlus: boolean;
 }) {
   const { author, kind } = moment;
@@ -303,7 +288,7 @@ export function MomentCard({
                   <Photo mediaId={moment.mediaId} height={190} rounded />
                 </div>
               ) : null}
-              <Bubble moment={moment} circleSize={circleSize} viewerId={viewerId} />
+              <Bubble moment={moment} viewerId={viewerId} />
             </>
           }
         />
@@ -364,10 +349,6 @@ export function MomentCard({
                     <Comments moment={moment} />
                   </div>
                 ) : null}
-                <p className="mt-2 flex items-center justify-end gap-1.5 text-[10.5px] text-faint">
-                  <EyeIcon size={13} />
-                  {ar(moment._count.views)}/{ar(circleSize)}
-                </p>
               </div>
             </>
           }

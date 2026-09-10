@@ -134,7 +134,7 @@ export default async function FriendProfilePage({
             />
             <div className="flex items-center gap-2 pb-1.5">
               <Link
-                href={`/together/${person.id}`}
+                href={`/?view=together&with=${person.id}`}
                 className="flex items-center gap-1.5 rounded-xl border border-line bg-card px-3.5 text-[13px] font-semibold text-ink-2"
                 style={{ height: 42 }}
               >
@@ -206,7 +206,6 @@ export default async function FriendProfilePage({
                       moment={moment}
                       viewerId={viewer.id}
                       isPlus={viewer.isPlus}
-                      circleSize={ids.length}
                     />
                   ))}
                 </section>
