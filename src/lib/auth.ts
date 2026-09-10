@@ -81,6 +81,19 @@ export async function currentUserId(): Promise<string | null> {
   }
 }
 
+/**
+ * ختم الحضور.
+ *
+ * كتابةٌ عند كل طلب تُثقل القاعدة بلا فائدة — دقيقة واحدة تكفي لتمييز
+ * «متصل الآن» عن «آخر ظهور». والفشل يُبتلع: الحضور زينة لا تُعطّل الصفحة.
+ */
+async function touch(id: string, lastSeenAt: Date | null) {
+  if (lastSeenAt && Date.now() - lastSeenAt.getTime() < 60_000) return;
+  try {
+    await prisma.user.update({ where: { id }, data: { lastSeenAt: new Date() } });
+  } catch {}
+}
+
 export type SessionUser = {
   id: string;
   memberNo: number;
@@ -123,12 +136,15 @@ export async function currentUser(): Promise<SessionUser | null> {
       avatarMediaId: true,
       coverMediaId: true,
       coverY: true,
+      lastSeenAt: true,
       frame: { select: { spec: true } },
       background: { select: { spec: true } },
       tag: { select: { name: true, bg: true, fg: true } },
     },
   });
   if (!user) return null;
+
+  await touch(user.id, user.lastSeenAt);
 
   // الاشتراك المنتهي يُقرأ كغير مشترك دون انتظار مهمة تنظيف.
   const active = user.isPlus && (!user.plusUntil || user.plusUntil > new Date());

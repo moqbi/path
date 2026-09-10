@@ -401,6 +401,39 @@ export async function setCover(dataUrl: string, width: number, height: number): 
 }
 
 /** ضبط الغلاف: نسبة الموضع العمودي التي وقف عندها السحب. */
+/** نشر قصة: صورة تُعرض لأصدقائك يوماً ثم تذهب. */
+export async function postStory(dataUrl: string, width: number, height: number): Promise<void> {
+  const user = await requireUser();
+  const media = await storeDataUrl(user.id, dataUrl, width, height);
+
+  await prisma.story.create({
+    data: {
+      authorId: user.id,
+      mediaId: media.id,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    },
+  });
+
+  revalidatePath("/circle");
+  revalidatePath("/");
+}
+
+/** إيصال مشاهدة القصة — منه تُطفأ حلقتها. */
+export async function seeStory(storyId: string): Promise<void> {
+  const user = await requireUser();
+  await prisma.storyView.upsert({
+    where: { storyId_userId: { storyId, userId: user.id } },
+    create: { storyId, userId: user.id },
+    update: {},
+  });
+}
+
+export async function deleteStory(storyId: string): Promise<void> {
+  const user = await requireUser();
+  await prisma.story.deleteMany({ where: { id: storyId, authorId: user.id } });
+  revalidatePath("/circle");
+}
+
 export async function setCoverPosition(y: number): Promise<void> {
   const user = await requireUser();
   const value = Math.round(Math.min(100, Math.max(0, Number(y) || 0)));

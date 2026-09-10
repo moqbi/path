@@ -58,3 +58,22 @@ export function until(expiresAt: Date): string {
 export function initial(name: string): string {
   return name.trim().charAt(0) || "؟";
 }
+
+/** «متصل الآن» أو «آخر ظهور …» — من ختم آخر فتح. */
+export function presence(lastSeenAt: Date | null | undefined): string {
+  if (!lastSeenAt) return "";
+  const minutes = Math.floor((Date.now() - lastSeenAt.getTime()) / 60000);
+  if (minutes < 3) return "متصل الآن";
+  if (minutes < 60) return `آخر ظهور قبل ${ar(minutes)} دقيقة`;
+
+  const today = new Date();
+  const sameDay =
+    lastSeenAt.getFullYear() === today.getFullYear() &&
+    lastSeenAt.getMonth() === today.getMonth() &&
+    lastSeenAt.getDate() === today.getDate();
+  if (sameDay) return `آخر ظهور اليوم ${timeOfDay(lastSeenAt)}`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 48) return "آخر ظهور أمس";
+  return `آخر ظهور ${dayLabel(lastSeenAt)}`;
+}

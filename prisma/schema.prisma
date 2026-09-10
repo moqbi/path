@@ -120,6 +120,9 @@ model User {
   /// إشعار حين يُشار إليّ في لحظة.
   notifyOnTag Boolean @default(true)
 
+  /// آخر ظهور: يُحدَّث عند فتح التطبيق، ومنه «متصل الآن».
+  lastSeenAt DateTime?
+
   createdAt DateTime @default(now())
 
   moments   Moment[]
@@ -137,11 +140,44 @@ model User {
   friendshipsSent     Friendship[] @relation("Requester")
   friendshipsReceived Friendship[] @relation("Addressee")
 
+  stories       Story[]        @relation("StoryAuthor")
+  storyViews    StoryView[]
   groups        FriendGroup[]  @relation("GroupOwner")
   groupsIn      GroupMember[]
   momentsSeenBy MomentViewer[]
   blocksMade    Block[]        @relation("Blocker")
   blocksGot     Block[]        @relation("Blocked")
+}
+
+/// قصة: صورة تُعرض لأصدقائك يوماً ثم تذهب.
+/// لا تدخل الخط الزمني ولا الأرشيف — هذا هو الفرق بينها وبين اللحظة.
+model Story {
+  id        String   @id @default(cuid())
+  authorId  String
+  mediaId   String   @unique
+  caption   String?
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  author User        @relation("StoryAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  media  Media       @relation("StoryMedia", fields: [mediaId], references: [id], onDelete: Cascade)
+  views  StoryView[]
+
+  @@index([authorId, expiresAt])
+  @@index([expiresAt])
+}
+
+model StoryView {
+  id      String   @id @default(cuid())
+  storyId String
+  userId  String
+  seenAt  DateTime @default(now())
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, userId])
+  @@index([userId])
 }
 
 /// تصنيف داخل الدائرة: الأصدقاء، العائلة، الزملاء…
@@ -426,6 +462,7 @@ model Media {
 
   avatarOf User?   @relation("UserAvatar")
   coverOf  User?   @relation("UserCover")
+  storyOf  Story?  @relation("StoryMedia")
   moment   Moment? @relation("MomentMedia")
 
   @@index([ownerId, createdAt])

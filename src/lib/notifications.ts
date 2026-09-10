@@ -13,6 +13,8 @@ export type Note = {
   person: { id: string; name: string; avatarMediaId: string | null };
   emoji?: string | null;
   reaction?: string;
+  /** صورة اللحظة المعنية — تظهر مصغّرة في طرف الصف. */
+  thumb?: string | null;
 };
 
 /**
@@ -34,13 +36,28 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
   const [reactions, comments, tags, friendships, messages] = await Promise.all([
     prisma.reaction.findMany({
       where: { moment: { authorId: userId }, userId: { not: userId } },
-      select: { id: true, kind: true, emoji: true, createdAt: true, momentId: true, user: person },
+      select: {
+        id: true,
+        kind: true,
+        emoji: true,
+        createdAt: true,
+        momentId: true,
+        moment: { select: { mediaId: true } },
+        user: person,
+      },
       orderBy: { createdAt: "desc" },
       take: limit,
     }),
     prisma.comment.findMany({
       where: { moment: { authorId: userId }, userId: { not: userId } },
-      select: { id: true, body: true, createdAt: true, momentId: true, user: person },
+      select: {
+        id: true,
+        body: true,
+        createdAt: true,
+        momentId: true,
+        moment: { select: { mediaId: true } },
+        user: person,
+      },
       orderBy: { createdAt: "desc" },
       take: limit,
     }),
@@ -48,7 +65,10 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
       ? []
       : prisma.momentTag.findMany({
           where: { userId, moment: { authorId: { not: userId } } },
-          select: { id: true, moment: { select: { id: true, createdAt: true, author: person } } },
+          select: {
+            id: true,
+            moment: { select: { id: true, createdAt: true, mediaId: true, author: person } },
+          },
           orderBy: { moment: { createdAt: "desc" } },
           take: limit,
         }),
@@ -92,6 +112,7 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
       person: row.user,
       reaction: row.kind,
       emoji: row.emoji,
+      thumb: row.moment.mediaId,
     })),
     ...comments.map((row) => ({
       id: `c-${row.id}`,
@@ -100,6 +121,7 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
       text: `${row.user.name} علّق: ${row.body.slice(0, 40)}`,
       href: `/m/${row.momentId}`,
       person: row.user,
+      thumb: row.moment.mediaId,
     })),
     ...tags.map((row) => ({
       id: `t-${row.id}`,
@@ -108,6 +130,7 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
       text: `${row.moment.author.name} أشار إليك في لحظة`,
       href: `/m/${row.moment.id}`,
       person: row.moment.author,
+      thumb: row.moment.mediaId,
     })),
     ...friendships.map((row) => {
       const mine = row.requesterId === userId;

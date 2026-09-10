@@ -3,16 +3,17 @@ import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { notifications, type NoteKind } from "@/lib/notifications";
 import { ReactionGlyph } from "@/components/reactions";
-import { Avatar, Empty, ScreenHeader } from "@/components/ui";
+import { Avatar, Empty } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
-import { MessageIcon, TagIcon, WithIcon } from "@/components/icons";
-import { dayLabel, relative } from "@/lib/format";
+import { AthrHeaderMark } from "@/components/brand";
+import { GearIcon, MessageIcon, TagIcon, WithIcon } from "@/components/icons";
+import { ar, dayLabel, relative } from "@/lib/format";
 
 const FILTERS = [
   { key: "", label: "الكل" },
-  { key: "reactions", label: "تفاعلات" },
-  { key: "tags", label: "إشارات" },
-  { key: "messages", label: "رسائل" },
+  { key: "reactions", label: "التفاعلات" },
+  { key: "tags", label: "الإشارات" },
+  { key: "messages", label: "الرسائل" },
 ] as const;
 
 const OF: Record<string, NoteKind[]> = {
@@ -21,7 +22,15 @@ const OF: Record<string, NoteKind[]> = {
   messages: ["MESSAGE"],
 };
 
-/** الإشعارات مشتقّة من الجداول القائمة — `lib/notifications`. */
+/** لون دائرة النوع: التفاعل كهرماني، الإشارة مرجانية، الصداقة خضراء. */
+const KIND_STYLE: Record<NoteKind, { bg: string; ink: string }> = {
+  REACTION: { bg: "var(--color-clay-soft)", ink: "var(--color-clay-ink)" },
+  COMMENT: { bg: "var(--color-chip)", ink: "var(--color-ink-2)" },
+  TAG: { bg: "var(--color-live-soft)", ink: "var(--color-live)" },
+  FRIEND: { bg: "#e3f3e8", ink: "#2f9e58" },
+  MESSAGE: { bg: "var(--color-gold-soft)", ink: "var(--color-gold-ink)" },
+};
+
 export default async function NotificationsPage({
   searchParams,
 }: {
@@ -35,7 +44,6 @@ export default async function NotificationsPage({
   const kinds = t ? OF[t] : undefined;
   const notes = kinds ? all.filter((note) => kinds.includes(note.kind)) : all;
 
-  // تجميع بالأيام: «اليوم» ثم «أمس» ثم التواريخ — كما يُقرأ الخط الزمني.
   const days: { label: string; items: typeof notes }[] = [];
   for (const note of notes) {
     const label = dayLabel(note.at);
@@ -46,15 +54,25 @@ export default async function NotificationsPage({
 
   return (
     <div className="screen">
-      <ScreenHeader title="الإشعارات" back="/" />
+      <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
+        <AthrHeaderMark />
+        <Link
+          href="/settings/privacy"
+          aria-label="الإعدادات"
+          className="flex h-10 w-10 items-center justify-center rounded-full"
+          style={{ background: "var(--color-chrome-2)", color: "var(--color-chrome-ink)" }}
+        >
+          <GearIcon size={18} />
+        </Link>
+      </header>
 
-      <main className="scroll-area px-5">
-        <div className="no-bar flex gap-2 overflow-x-auto py-3">
+      <div className="shrink-0 px-5 pb-1 pt-3">
+        <div className="no-bar flex gap-2 overflow-x-auto">
           {FILTERS.map((filter) => {
             const on = (t ?? "") === filter.key;
             return (
               <Link
-                key={filter.key}
+                key={filter.key || "all"}
                 href={filter.key ? `/notifications?t=${filter.key}` : "/notifications"}
                 className="shrink-0 rounded-full px-4 py-2 text-[12.5px] font-semibold"
                 style={{
@@ -68,7 +86,9 @@ export default async function NotificationsPage({
             );
           })}
         </div>
+      </div>
 
+      <main className="scroll-area px-5 pt-3">
         {notes.length === 0 ? (
           <Empty
             title="ما فيه إشعارات"
@@ -77,40 +97,59 @@ export default async function NotificationsPage({
           />
         ) : (
           days.map((day) => (
-          <section key={day.label} className="mb-4">
-            <p className="mb-2 px-1 text-[11.5px] font-semibold tracking-wide text-faint">
-              {day.label}
-            </p>
-            <div className="overflow-hidden rounded-2xl border border-line bg-card">
-            {day.items.map((note, index) => (
-              <Link
-                key={note.id}
-                href={note.href}
-                className="flex items-center gap-3 p-3"
-                style={{ borderTop: index === 0 ? "none" : "1px solid var(--color-line)" }}
-              >
-                <Avatar name={note.person.name} size={42} mediaId={note.person.avatarMediaId} />
-                <span className="min-w-0 grow">
-                  <span className="block truncate text-[13.5px] leading-snug">{note.text}</span>
-                  <span className="block text-[11px] text-faint">{relative(note.at)}</span>
-                </span>
-                <span className="shrink-0 text-muted">
-                  {note.kind === "REACTION" ? (
-                    <ReactionGlyph kind={note.reaction ?? "SMILE"} emoji={note.emoji} size={20} />
-                  ) : note.kind === "MESSAGE" ? (
-                    <MessageIcon size={18} />
-                  ) : note.kind === "TAG" ? (
-                    <TagIcon size={18} />
-                  ) : note.kind === "FRIEND" ? (
-                    <WithIcon size={18} />
-                  ) : (
-                    <MessageIcon size={18} />
-                  )}
-                </span>
-              </Link>
-            ))}
-            </div>
-          </section>
+            <section key={day.label} className="mb-4">
+              <p className="mb-2 px-1 text-[11.5px] font-semibold tracking-wide text-faint">
+                {day.label}
+              </p>
+
+              <div className="flex flex-col gap-2">
+                {day.items.map((note) => {
+                  const style = KIND_STYLE[note.kind];
+                  return (
+                    <Link
+                      key={note.id}
+                      href={note.href}
+                      className="flex items-center gap-3 rounded-2xl border border-line bg-card p-3"
+                    >
+                      {/* الصورة ومعها دائرة النوع — من فعل، وماذا فعل. */}
+                      <span className="relative shrink-0">
+                        <Avatar name={note.person.name} size={44} mediaId={note.person.avatarMediaId} />
+                        <span
+                          className="absolute -bottom-1 -left-1 flex h-5 w-5 items-center justify-center rounded-full"
+                          style={{ background: style.bg, color: style.ink, border: "1.5px solid var(--color-card)" }}
+                        >
+                          {note.kind === "REACTION" ? (
+                            <ReactionGlyph kind={note.reaction ?? "SMILE"} emoji={note.emoji} size={12} />
+                          ) : note.kind === "MESSAGE" ? (
+                            <MessageIcon size={11} />
+                          ) : note.kind === "TAG" ? (
+                            <TagIcon size={11} />
+                          ) : note.kind === "FRIEND" ? (
+                            <WithIcon size={11} />
+                          ) : (
+                            <MessageIcon size={11} />
+                          )}
+                        </span>
+                      </span>
+
+                      <span className="min-w-0 grow">
+                        <span className="block text-[13.5px] leading-snug">{note.text}</span>
+                        <span className="mt-0.5 block text-[11px] text-faint">
+                          {relative(note.at)}
+                        </span>
+                      </span>
+
+                      {note.thumb ? (
+                        <span
+                          className="h-11 w-11 shrink-0 rounded-xl bg-cover bg-center"
+                          style={{ backgroundImage: `url(/api/media/${note.thumb})` }}
+                        />
+                      ) : null}
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
           ))
         )}
       </main>

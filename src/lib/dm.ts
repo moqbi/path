@@ -29,6 +29,7 @@ const PERSON = {
   id: true,
   name: true,
   isPlus: true,
+  lastSeenAt: true,
   avatarMediaId: true,
   frame: { select: { spec: true } },
   tag: { select: { name: true, bg: true, fg: true } },
@@ -47,6 +48,9 @@ export async function conversationsFor(userId: string) {
         orderBy: { createdAt: "desc" },
         take: 1,
       },
+      _count: {
+        select: { messages: { where: { senderId: { not: userId }, readAt: null } } },
+      },
     },
     orderBy: { updatedAt: "desc" },
   });
@@ -58,7 +62,9 @@ export async function conversationsFor(userId: string) {
       id: row.id,
       other,
       last,
-      unread: last !== null && last.senderId !== userId && last.readAt === null,
+      unread: row._count.messages > 0,
+      // الشارة تقول كم رسالة تنتظر، لا «فيه جديد» وحدها.
+      unseen: row._count.messages,
     };
   });
 }
