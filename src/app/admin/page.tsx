@@ -149,7 +149,10 @@ export default async function AdminPage({
   const [items, tags, people, categories] = await Promise.all([
     prisma.storeItem.findMany({
       orderBy: { sortOrder: "asc" },
-      include: { _count: { select: { purchases: true } } },
+      include: {
+        _count: { select: { purchases: true } },
+        media: { select: { mime: true } },
+      },
     }),
     prisma.tag.findMany({
       orderBy: { sortOrder: "asc" },
@@ -544,7 +547,12 @@ export default async function AdminPage({
 
                         <div className="border-t border-line p-3.5">
                           <p className="mb-2 text-[12px] font-semibold text-muted">الصورة</p>
-                          <ItemImage itemId={item.id} mediaId={item.mediaId} kind={item.kind} />
+                          <ItemImage
+                            itemId={item.id}
+                            mediaId={item.mediaId}
+                            kind={item.kind}
+                            mime={item.media?.mime ?? null}
+                          />
                           <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
                             الثيم يُلبَس خلفيةً للتطبيق، والتميمة شعاراً تحت صورة العرض.
                             بلا صورة يُرسم التدرّج.

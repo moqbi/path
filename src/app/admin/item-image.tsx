@@ -16,14 +16,30 @@ export function ItemImage({
   itemId,
   mediaId,
   kind,
+  mime,
 }: {
   itemId: string;
   mediaId: string | null;
   kind: string;
+  /** صيغة المحفوظ: تميمةٌ بغير PNG فقدت شفافيتها ويجب رفعها ثانيةً. */
+  mime?: string | null;
 }) {
   const charm = kind === "CHARM";
+  const flattened = charm && Boolean(mediaId) && mime !== "image/png";
 
   return (
+    <>
+    {flattened ? (
+      <p
+        role="alert"
+        className="mb-2 rounded-xl px-3 py-2 text-[11.5px] leading-relaxed"
+        style={{ background: "var(--color-clay-soft)", color: "var(--color-clay)" }}
+      >
+        هذه التميمة محفوظة بلا شفافية (خلفيةٌ سوداء خلف الشعار) — أعِد رفعها
+        الآن فتُحفظ PNG كما رُسمت.
+      </p>
+    ) : null}
+
     <div className="flex items-center gap-2.5">
       <span
         className="h-12 w-12 shrink-0 rounded-xl"
@@ -34,6 +50,7 @@ export function ItemImage({
         label={charm ? "صورة التميمة" : "صورة الثيم"}
         maxSize={charm ? 320 : 1600}
         keepAlpha={charm}
+        accept={charm ? "image/png,image/webp" : "image/jpeg,image/png,image/webp"}
         onPicked={(dataUrl, width, height) => setItemImage(itemId, dataUrl, width, height)}
         className="grow"
       >
@@ -59,5 +76,6 @@ export function ItemImage({
         </form>
       ) : null}
     </div>
+    </>
   );
 }

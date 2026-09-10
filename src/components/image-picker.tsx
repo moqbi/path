@@ -41,6 +41,7 @@ export function ImagePicker({
   onPicked,
   maxSize = 1600,
   keepAlpha = false,
+  accept = "image/jpeg,image/png,image/webp",
   label,
   className,
   children,
@@ -49,6 +50,8 @@ export function ImagePicker({
   maxSize?: number;
   /** يُبقي الشفافية (PNG): للشعارات التي تُعلَّق على صورةٍ تحتها. */
   keepAlpha?: boolean;
+  /** الصيغ المقبولة — الشعار الشفّاف لا يأتي من JPEG أصلاً. */
+  accept?: string;
   label: string;
   className?: string;
   children?: React.ReactNode;
@@ -62,7 +65,7 @@ export function ImagePicker({
       <input
         ref={input}
         type="file"
-        accept="image/jpeg,image/png,image/webp"
+        accept={accept}
         hidden
         onChange={async (event) => {
           const file = event.target.files?.[0];
