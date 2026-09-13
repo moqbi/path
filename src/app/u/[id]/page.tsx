@@ -5,7 +5,6 @@ import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { circleIds, mutualCount } from "@/lib/circle";
 import { momentShape } from "@/lib/feed";
-import { plusTag, tagOf } from "@/lib/tags";
 import {
   acceptFriend,
   ignoreFriend,
@@ -14,14 +13,13 @@ import {
 } from "@/app/actions";
 import { MomentCard } from "@/components/moment-card";
 import { GiftButton } from "./gift";
-import { Avatar, CoverFade, coverStyle, Empty, ScreenHeader, TagPill } from "@/components/ui";
+import { Avatar, CoverLayer, Empty, ScreenHeader, NameTag } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import {
   CheckIcon,
   CloseIcon,
   LockIcon,
   MessageIcon,
-  SparkIcon,
   WithIcon,
 } from "@/components/icons";
 import { ar, dayLabel } from "@/lib/format";
@@ -90,12 +88,11 @@ export default async function FriendProfilePage({
         mutual={mutual}
         sentByMe={pending?.requesterId === viewer.id}
         incoming={pending && pending.requesterId === id ? pending.id : null}
-        auto={await plusTag()}
       />
     );
   }
 
-  const [moments, theirCircle, auto, frames, theirs] = await Promise.all([
+  const [moments, theirCircle, frames, theirs] = await Promise.all([
     prisma.moment.findMany({
       where: { authorId: id },
       select: momentShape,
@@ -103,7 +100,6 @@ export default async function FriendProfilePage({
       take: 40,
     }),
     circleIds(id),
-    plusTag(),
     // أصناف المتجر كلها تُقرأ هنا لتُعرض في نافذة الإهداء بلا مغادرة الملف:
     // الإطار والثيم والتميمة كلّها تُهدى.
     prisma.storeItem.findMany({ orderBy: { sortOrder: "asc" } }),
@@ -125,11 +121,8 @@ export default async function FriendProfilePage({
       <ScreenHeader title={person.name} />
 
       <div className="scroll-area">
-        <div
-          className="relative shrink-0 overflow-hidden"
-          style={{ height: 140, ...coverStyle(person.coverMediaId, person.background?.spec) }}
-        >
-          <CoverFade height={44} />
+        <div className="relative shrink-0 overflow-hidden" style={{ height: 140 }}>
+          <CoverLayer mediaId={person.coverMediaId} spec={person.background?.spec} />
         </div>
 
         <div className="relative px-5" style={{ marginTop: -34 }}>
@@ -182,8 +175,7 @@ export default async function FriendProfilePage({
 
           <h1 className="mb-1 flex flex-wrap items-center gap-2 text-[19px] font-bold">
             {person.name}
-            {person.isPlus ? <SparkIcon size={16} className="text-gold" /> : null}
-            <TagPill tag={tagOf(person, auto)} size={11} />
+            <NameTag isPlus={person.isPlus} tag={person.tag} size={11} />
           </h1>
           <p className="mb-4 text-[12.5px] text-muted">
             عضوية رقم {ar(person.memberNo)} · {person.city ? `${person.city} · ` : null}
@@ -250,24 +242,19 @@ function LockedProfile({
   mutual,
   sentByMe,
   incoming,
-  auto,
 }: {
   person: Person;
   mutual: number;
   sentByMe: boolean;
   incoming: string | null;
-  auto: { name: string; bg: string; fg: string } | null;
 }) {
   return (
     <div className="screen">
       <ScreenHeader title={person.name} />
 
       <div className="scroll-area">
-        <div
-          className="relative shrink-0 overflow-hidden"
-          style={{ height: 140, ...coverStyle(person.coverMediaId, person.background?.spec) }}
-        >
-          <CoverFade height={44} />
+        <div className="relative shrink-0 overflow-hidden" style={{ height: 140 }}>
+          <CoverLayer mediaId={person.coverMediaId} spec={person.background?.spec} />
         </div>
 
         <div className="relative px-5" style={{ marginTop: -34 }}>
@@ -281,8 +268,7 @@ function LockedProfile({
 
           <h1 className="mb-1 mt-3 flex flex-wrap items-center gap-2 text-[19px] font-bold">
             {person.name}
-            {person.isPlus ? <SparkIcon size={16} className="text-gold" /> : null}
-            <TagPill tag={tagOf(person, auto)} size={11} />
+            <NameTag isPlus={person.isPlus} tag={person.tag} size={11} />
           </h1>
           <p className="mb-5 text-[12.5px] text-muted">
             عضوية رقم {ar(person.memberNo)}

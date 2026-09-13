@@ -4,11 +4,10 @@ import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { circleIds } from "@/lib/circle";
 import { conversationsFor } from "@/lib/dm";
-import { Avatar, Empty, TagPill } from "@/components/ui";
+import { Avatar, Empty, NameTag } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import { AthrHeaderMark } from "@/components/brand";
 import { SearchIcon, TextIcon } from "@/components/icons";
-import { plusTag, tagOf } from "@/lib/tags";
 import { ar, timeOfDay } from "@/lib/format";
 import { SwipeRow } from "@/components/swipe-row";
 import { deleteConversation, markDelivered, startConversation } from "@/app/actions";
@@ -40,9 +39,8 @@ export default async function MessagesPage({
   // فتحُ الشاشة يعني أنّ ما وصلني قد وصل فعلاً: نكتب التسليم قبل القراءة.
   await markDelivered();
 
-  const [conversations, auto, ids] = await Promise.all([
+  const [conversations, ids] = await Promise.all([
     conversationsFor(user.id),
-    plusTag(),
     circleIds(user.id),
   ]);
 
@@ -188,7 +186,7 @@ export default async function MessagesPage({
                       <span className="truncate text-[14.5px] font-bold">
                         {conversation.other.name}
                       </span>
-                      <TagPill tag={tagOf(conversation.other, auto)} size={10} />
+                      <NameTag isPlus={conversation.other.isPlus} tag={conversation.other.tag} size={10} />
                       <span className="grow" />
                       {conversation.last ? (
                         <span className="flex shrink-0 items-center gap-1 text-[10.5px] text-faint">
@@ -258,7 +256,7 @@ export default async function MessagesPage({
                     </span>
                     <span className="flex min-w-0 grow items-center gap-1.5">
                       <span className="truncate text-[14px] font-semibold">{person.name}</span>
-                      <TagPill tag={tagOf(person, auto)} size={10} />
+                      <NameTag isPlus={person.isPlus} tag={person.tag} size={10} />
                     </span>
                     <span className="shrink-0 text-[12px] font-semibold text-clay-ink">تحدّث</span>
                   </button>

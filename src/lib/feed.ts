@@ -51,9 +51,11 @@ export const momentShape = {
         select: {
           id: true,
           name: true,
+          isPlus: true,
           avatarMediaId: true,
           frame: { select: { spec: true } },
           charm: { select: { spec: true, mediaId: true } },
+          tag: { select: { name: true, bg: true, fg: true } },
         },
       },
     },

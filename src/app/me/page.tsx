@@ -6,15 +6,15 @@ import { circleIds } from "@/lib/circle";
 import { signOut } from "@/app/actions";
 import { archive, myMoments } from "@/lib/feed";
 import { MomentCard } from "@/components/moment-card";
-import { plusTag, tagOf } from "@/lib/tags";
 import { EditProfileSheet } from "./edit-sheet";
 import { ProfileCover } from "./cover";
 import { ProfileShell } from "./shell";
 import { Accessories } from "./accessories";
 import { DeleteAccount } from "./delete";
-import { Avatar, coverStyle, TagPill } from "@/components/ui";
+import { Avatar, coverStyle, NameTag } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import { BookIcon, ExitIcon, GearIcon, SparkIcon } from "@/components/icons";
+import { AthrPageMark } from "@/components/brand";
 import { ar, dayLabel } from "@/lib/format";
 
 const MONTHS = [
@@ -26,7 +26,7 @@ export default async function ProfilePage() {
   const user = await currentUser();
   if (!user) redirect("/login");
 
-  const [ids, moments, mine, places, auto, purchases] = await Promise.all([
+  const [ids, moments, mine, places, purchases] = await Promise.all([
     circleIds(user.id),
     archive(user.id),
     myMoments(user.id),
@@ -35,7 +35,6 @@ export default async function ProfilePage() {
       select: { placeName: true },
       distinct: ["placeName"],
     }),
-    plusTag(),
     // ما تملكه من المتجر — يُلبَس من هنا لا من صفحة الشراء.
     prisma.purchase.findMany({
       where: { userId: user.id },
@@ -75,6 +74,19 @@ export default async function ProfilePage() {
 
   return (
     <div className="screen">
+      {/* رأسٌ كبقية التبويبات: العلامة ثم فاصل ثم اسم الشاشة. */}
+      <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
+        <AthrPageMark label="أنا" />
+        <Link
+          href="/settings/privacy"
+          aria-label="الخصوصية والإعدادات"
+          className="flex h-10 w-10 items-center justify-center rounded-full"
+          style={{ background: "var(--color-chrome-2)", color: "var(--color-chrome-ink)" }}
+        >
+          <GearIcon size={18} />
+        </Link>
+      </header>
+
       {/*
         الرأس ثابت — الغلاف والصورة والبيانات وزرّ التعديل — ولحظاتي
         وحدها تمرّ تحته. قبلها كانت الصفحة كلها تمرّ فتتداخل اللحظات مع
@@ -86,7 +98,7 @@ export default async function ProfilePage() {
             mediaId={user.coverMediaId}
             spec={user.background?.spec ?? null}
             initialY={user.coverY}
-            height={146}
+            height={176}
           />
         }
         avatar={
@@ -103,8 +115,7 @@ export default async function ProfilePage() {
           <>
             <h1 className="flex flex-wrap items-center justify-center gap-2 text-center text-[20px] font-semibold">
               {user.name}
-              {user.isPlus ? <SparkIcon size={17} className="text-gold" /> : null}
-              <TagPill tag={tagOf(user, auto)} size={12} />
+              <NameTag isPlus={user.isPlus} tag={user.tag} size={12} />
             </h1>
             {user.handle ? (
               <p dir="ltr" className="mt-0.5 text-center text-[13px] text-muted">

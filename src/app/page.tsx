@@ -9,12 +9,11 @@ import { unreadCount } from "@/lib/dm";
 import { MomentCard } from "@/components/moment-card";
 import { ComposerFan } from "@/components/composer-fan";
 import { Tour } from "@/components/tour";
-import { Avatar, Empty, TagPill } from "@/components/ui";
+import { Avatar, Empty, NameTag } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import { TimelineHead } from "@/components/timeline-head";
 import { AthrHeaderMark } from "@/components/brand";
-import { MessageIcon } from "@/components/icons";
-import { plusTag, tagOf } from "@/lib/tags";
+import { MessageIcon, SparkIcon } from "@/components/icons";
 import { ar, dayLabel } from "@/lib/format";
 
 const MONTHS = [
@@ -40,9 +39,8 @@ export default async function TimelinePage({
   const view = params.view === "private" || params.view === "together" ? params.view : "";
   const withId = view === "together" ? (params.with ?? "") : "";
 
-  const [unread, auto, ids] = await Promise.all([
+  const [unread, ids] = await Promise.all([
     unreadCount(user.id),
-    plusTag(),
     circleIds(user.id),
   ]);
 
@@ -99,7 +97,22 @@ export default async function TimelinePage({
     <div className="screen">
       <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
         <AthrHeaderMark />
-        <div className="flex gap-1">
+        <div className="flex items-center gap-1.5">
+          {/* «أثر+» قبل الرسائل: بابُ الاشتراك ومزاياه، لا زرّ دفعٍ مباشر. */}
+          <Link
+            href="/subscribe"
+            className="flex items-center gap-1 rounded-full px-3 text-[12px] font-bold"
+            style={{
+              height: 32,
+              background: "var(--color-gold-soft)",
+              color: "var(--color-gold-ink)",
+              border: "1px solid var(--color-gold-line)",
+            }}
+          >
+            <SparkIcon size={13} />
+            أثر+
+          </Link>
+
           <Link
             href="/messages"
             aria-label="المحادثات"
@@ -125,7 +138,7 @@ export default async function TimelinePage({
         coverSpec={user.background?.spec ?? null}
         coverY={user.coverY}
         name={user.name}
-        tag={<TagPill tag={tagOf(user, auto)} size={10} />}
+        tag={<NameTag isPlus={user.isPlus} tag={user.tag} size={10} />}
         avatar={
           <Avatar
             name={user.name}

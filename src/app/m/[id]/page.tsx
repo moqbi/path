@@ -7,7 +7,6 @@ import { Avatar, ScreenHeader } from "@/components/ui";
 import { SeenTracker } from "@/components/interactive";
 import { Reactions, Reactors } from "@/components/reactions";
 import { CommentList } from "@/components/comments";
-import { EyeIcon } from "@/components/icons";
 import { ar, timeOfDay } from "@/lib/format";
 
 export default async function MomentPage({
@@ -35,22 +34,15 @@ export default async function MomentPage({
     <div className="screen">
       <SeenTracker momentId={moment.id} />
 
+      {/*
+        الرأس واحدٌ لكل لحظة — بعلامته ورجوعه. قبلها كانت اللحظة المصوّرة
+        تُخفيه وتضع سهماً عائماً فوق الصورة، فتختلف الشاشة عن بقية التطبيق.
+      */}
+      <ScreenHeader title="لحظة" back="/" mark />
+
       {moment.imageSpec ? (
-        <div className="relative shrink-0" style={{ height: 300, background: moment.imageSpec }}>
-          <a
-            href="/"
-            aria-label="رجوع"
-            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full"
-            style={{ background: "rgba(11,17,32,.55)" }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f5efe7" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M15 5 8 12l7 7" />
-            </svg>
-          </a>
-        </div>
-      ) : (
-        <ScreenHeader title="لحظة" back="/" />
-      )}
+        <div className="shrink-0" style={{ height: 260, background: moment.imageSpec }} />
+      ) : null}
 
       <main className="scroll-area px-5 pt-4">
         <div className="mb-3 flex items-center gap-2.5">
@@ -91,32 +83,13 @@ export default async function MomentPage({
           />
         </div>
 
-        <section className="mb-3.5 rounded-2xl border border-line bg-card px-4 py-3.5">
-          <p className="mb-3 flex items-center gap-2 text-[11.5px] font-semibold text-ink-2">
-            <EyeIcon size={15} />
-            شافها {ar(moment.views.length)} من {ar(ids.length)}
+        {/* التعليقات في قالبٍ واحد كبقية التطبيق، لا سطوراً سائبة. */}
+        <section className="mb-4 rounded-2xl border border-line bg-card px-4 py-3.5">
+          <p className="mb-3 text-[12px] font-semibold text-muted">
+            التعليقات {moment.comments.length > 0 ? ar(moment.comments.length) : ""}
           </p>
-          {moment.views.length > 0 ? (
-            <div className="flex items-center">
-              {moment.views.slice(0, 5).map((v, i) => (
-                <div key={v.user.id} style={{ marginRight: i === 0 ? 0 : -10 }}>
-                  <Avatar name={v.user.name} size={29} ring="var(--color-card)" />
-                </div>
-              ))}
-              {moment.views.length > 5 ? (
-                <span className="mr-2 text-[11px] font-semibold text-muted">
-                  +{ar(moment.views.length - 5)}
-                </span>
-              ) : null}
-            </div>
-          ) : (
-            <p className="text-[12px] text-faint">ما شافها أحد بعد</p>
-          )}
-        </section>
-
-        <section className="pb-2">
           {moment.comments.length === 0 ? (
-            <p className="rounded-2xl border border-line bg-card px-4 py-6 text-center text-[12.5px] text-muted">
+            <p className="py-2 text-center text-[12.5px] text-muted">
               ما علّق أحد بعد. اكتب أول سطر.
             </p>
           ) : (

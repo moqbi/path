@@ -253,6 +253,8 @@ export async function postPlace(formData: FormData): Promise<void> {
   const { lat, lng } = parsed.data;
   const place = await reverseGeocode(lat, lng);
   const city = place.city ?? user.city;
+  // ما اختاره صاحبها من الأماكن حوله أصدق من أقرب عنوان: هو يعرف أين هو.
+  const picked = String(formData.get("place") ?? "").trim().slice(0, 80);
 
   const settings = await prisma.user.findUnique({
     where: { id: user.id },
@@ -268,7 +270,7 @@ export async function postPlace(formData: FormData): Promise<void> {
       kind: "PLACE",
       lat: precise ? lat : null,
       lng: precise ? lng : null,
-      placeName: precise ? place.name : (city ?? "مكان"),
+      placeName: precise ? (picked || place.name) : (city ?? "مكان"),
       placeCity: city,
       text: String(formData.get("text") ?? "").trim().slice(0, 200) || null,
       audience: seen.audience,
@@ -1060,6 +1062,28 @@ export async function react(momentId: string, kind: string, emoji?: string): Pro
 
   revalidatePath("/");
   revalidatePath(`/m/${momentId}`);
+}
+
+/**
+ * حذف لحظة: لصاحبها وحده.
+ *
+ * التفاعلات والتعليقات والمشاهدات تذهب معها بحكم `onDelete: Cascade`،
+ * فلا تبقى في القاعدة يتيمةٌ تشير إلى لحظةٍ لم تعد موجودة.
+ */
+export async function deleteMoment(momentId: string): Promise<void> {
+  const user = await requireUser();
+
+  const moment = await prisma.moment.findUnique({
+    where: { id: momentId },
+    select: { authorId: true },
+  });
+  if (!moment) return;
+  if (moment.authorId !== user.id) throw new Error("لا تُحذف لحظة غيرك");
+
+  await prisma.moment.delete({ where: { id: momentId } });
+
+  revalidatePath("/");
+  revalidatePath("/me");
 }
 
 export async function markSeen(momentId: string): Promise<void> {

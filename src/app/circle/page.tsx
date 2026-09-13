@@ -4,7 +4,6 @@ import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { CIRCLE_CAP, circleIds, suggestions } from "@/lib/circle";
 import { storyRings } from "@/lib/stories";
-import { plusTag, tagOf } from "@/lib/tags";
 import {
   acceptFriend,
   ignoreFriend,
@@ -16,9 +15,9 @@ import {
 } from "@/app/actions";
 import { SwipeRow } from "@/components/swipe-row";
 import { StoryStrip } from "@/components/stories";
-import { Avatar, Empty, TagPill } from "@/components/ui";
+import { Avatar, Empty, NameTag } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
-import { CheckIcon, CloseIcon, MessageIcon, SparkIcon } from "@/components/icons";
+import { CheckIcon, CloseIcon, MessageIcon } from "@/components/icons";
 import { AthrHeaderMark } from "@/components/brand";
 import { ar, presence, relative } from "@/lib/format";
 
@@ -39,9 +38,8 @@ export default async function CirclePage({
   const { t, g } = await searchParams;
   const tab = TABS.some((item) => item.key === t) ? t! : "friends";
 
-  const [ids, auto, suggested, requests, groups, rings] = await Promise.all([
+  const [ids, suggested, requests, groups, rings] = await Promise.all([
     circleIds(user.id),
-    plusTag(),
     suggestions(user.id),
     prisma.friendship.findMany({
       where: { addresseeId: user.id, status: "PENDING" },
@@ -171,7 +169,7 @@ export default async function CirclePage({
                   <div className="min-w-0 grow">
                     <p className="flex items-center gap-1.5 truncate text-[14px] font-semibold">
                       {request.requester.name}
-                      <TagPill tag={tagOf(request.requester, auto)} size={10} />
+                      <NameTag isPlus={request.requester.isPlus} tag={request.requester.tag} size={10} />
                     </p>
                     <p className="text-[11.5px] text-faint">طلب {relative(request.createdAt)}</p>
                   </div>
@@ -253,8 +251,7 @@ export default async function CirclePage({
                       <Link href={`/u/${member.id}`} className="min-w-0 grow">
                         <p className="mb-0.5 flex items-center gap-1.5 truncate text-[14.5px] font-semibold">
                           {member.name}
-                          {member.isPlus ? <SparkIcon size={13} className="shrink-0 text-gold" /> : null}
-                          <TagPill tag={tagOf(member, auto)} size={10} />
+                          <NameTag isPlus={member.isPlus} tag={member.tag} size={10} />
                           {groupOf.get(member.id) ? (
                             <span
                               className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold"
@@ -410,7 +407,7 @@ export default async function CirclePage({
                     <Link href={`/u/${person.id}`} className="min-w-0 grow">
                       <p className="flex items-center gap-1.5 truncate text-[14px] font-semibold">
                         {person.name}
-                        <TagPill tag={tagOf(person, auto)} size={10} />
+                        <NameTag isPlus={person.isPlus} tag={person.tag} size={10} />
                       </p>
                       <p className="truncate text-[11.5px] text-faint">
                         {person.mutual === 1

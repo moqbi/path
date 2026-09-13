@@ -227,23 +227,34 @@ function EventLine({
         ) : null}
       </div>
 
+      {/*
+        صورة الأغنية هي زرّ التشغيل: زرٌّ ثالثٌ بجانبها كان يزاحم زرّ
+        التفاعل في الطرف نفسه. والمثلّث يظهر فوقها فيُعرف أنها تُضغط.
+      */}
       {moment.kind === "MUSIC" && moment.musicThumb ? (
-        <span
-          className="h-11 w-11 shrink-0 rounded-xl bg-cover bg-center"
-          style={{ backgroundImage: `url(${moment.musicThumb})` }}
-        />
-      ) : null}
-      {moment.kind === "MUSIC" && moment.musicUrl ? (
-        <a
-          href={moment.musicUrl}
-          target="_blank"
-          rel="noreferrer noopener"
-          aria-label="استمع"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-          style={{ background: "var(--color-clay-soft)", color: "var(--color-clay-ink)" }}
-        >
-          <PlayIcon size={16} />
-        </a>
+        moment.musicUrl ? (
+          <a
+            href={moment.musicUrl}
+            target="_blank"
+            rel="noreferrer noopener"
+            aria-label="استمع"
+            onClick={(event) => event.stopPropagation()}
+            className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-cover bg-center"
+            style={{ backgroundImage: `url(${moment.musicThumb})` }}
+          >
+            <span
+              className="flex h-6 w-6 items-center justify-center rounded-full"
+              style={{ background: "rgba(14,26,36,.62)", color: "#fff" }}
+            >
+              <PlayIcon size={13} />
+            </span>
+          </a>
+        ) : (
+          <span
+            className="h-11 w-11 shrink-0 rounded-xl bg-cover bg-center"
+            style={{ backgroundImage: `url(${moment.musicThumb})` }}
+          />
+        )
       ) : null}
     </div>
   );
@@ -274,6 +285,7 @@ export function MomentCard({
           momentKind={kind}
           mine={mine}
           isPlus={isPlus}
+          author={moment.author.id === viewerId}
           head={
             opens ? (
               <Link href={`/m/${moment.id}`} className="block">
@@ -331,6 +343,7 @@ export function MomentCard({
           momentKind={kind}
           mine={mine}
           isPlus={isPlus}
+          author={moment.author.id === viewerId}
           inset
           panelFirst
           head={<span className="block" style={{ height: 2 }} />}

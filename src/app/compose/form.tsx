@@ -4,9 +4,13 @@ import { useEffect, useState, useTransition } from "react";
 import { postMusicLink, postPlace, postSimple } from "@/app/actions";
 import { ImagePicker } from "@/components/image-picker";
 import { ScreenHeader } from "@/components/ui";
-import { CameraIcon, MusicIcon, PinIcon, TextIcon, WithIcon, LockIcon } from "@/components/icons";
+import { CameraIcon, CheckIcon, MusicIcon, PinIcon, TextIcon, WithIcon, LockIcon } from "@/components/icons";
+import { ar } from "@/lib/format";
 
 type Kind = "PHOTO" | "THOUGHT" | "PLACE" | "MUSIC";
+
+/** مكانٌ حول المستخدم، كما تردّه `/api/places`. */
+type Spot = { id: string; name: string; kind: string | null; meters: number };
 type Friend = { id: string; name: string };
 type Group = { id: string; name: string; count: number };
 
@@ -41,6 +45,8 @@ export function ComposeForm({
   const [musicUrl, setMusicUrl] = useState("");
   const [geoError, setGeoError] = useState<string | null>(null);
   const [locating, setLocating] = useState(kind === "PLACE");
+  const [spots, setSpots] = useState<Spot[] | null>(null);
+  const [spot, setSpot] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   /**
@@ -59,8 +65,14 @@ export function ComposeForm({
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setFix({ lat: position.coords.latitude, lng: position.coords.longitude });
+        const here = { lat: position.coords.latitude, lng: position.coords.longitude };
+        setFix(here);
         setLocating(false);
+        // الأماكن حولك تُجلب بعد الإحداثيات: تختار أين أنت بالضبط.
+        fetch(`/api/places?lat=${here.lat}&lng=${here.lng}`)
+          .then((response) => (response.ok ? response.json() : { places: [] }))
+          .then((data: { places: Spot[] }) => setSpots(data.places ?? []))
+          .catch(() => setSpots([]));
       },
       (error) => {
         setLocating(false);
@@ -88,6 +100,8 @@ export function ComposeForm({
           if (!fix) return;
           data.set("lat", String(fix.lat));
           data.set("lng", String(fix.lng));
+          const chosen = spots?.find((item) => item.id === spot);
+          if (chosen) data.set("place", chosen.name);
           start(() => void postPlace(data));
         } else {
           if (picture) {
@@ -149,29 +163,67 @@ export function ComposeForm({
         ) : null}
 
         {kind === "PLACE" ? (
-          <div className="mb-4 flex items-center gap-3 rounded-2xl border border-line bg-card p-4">
-            <span
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-              style={{ background: "var(--color-live-soft)", color: "var(--color-live)" }}
-            >
-              <PinIcon size={20} />
-            </span>
-            <div className="grow">
-              {locating ? (
-                <p className="text-[13.5px] text-muted">نحدّد موقعك…</p>
-              ) : fix ? (
-                <>
-                  <p className="text-[14px] font-semibold">تم تحديد موقعك</p>
-                  <p className="mt-0.5 text-[11.5px] text-muted">
-                    اسم المكان يُحدَّد تلقائياً عند النشر
+          <div className="mb-4 overflow-hidden rounded-2xl border border-line bg-card">
+            <div className="flex items-center gap-3 p-4">
+              <span
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+                style={{ background: "var(--color-live-soft)", color: "var(--color-live)" }}
+              >
+                <PinIcon size={20} />
+              </span>
+              <div className="grow">
+                {locating ? (
+                  <p className="text-[13.5px] text-muted">نحدّد موقعك…</p>
+                ) : fix ? (
+                  <>
+                    <p className="text-[14px] font-semibold">وين أنت بالضبط؟</p>
+                    <p className="mt-0.5 text-[11.5px] text-muted">
+                      {spots === null
+                        ? "نبحث عن الأماكن حولك…"
+                        : spots.length === 0
+                          ? "ما لقينا أماكن مسمّاة حولك — يُكتب أقرب عنوان."
+                          : "اختر مكانك من حولك، أو اتركه لأقرب عنوان."}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-[13px] leading-relaxed" style={{ color: "var(--color-live)" }}>
+                    {geoError}
                   </p>
-                </>
-              ) : (
-                <p className="text-[13px] leading-relaxed" style={{ color: "var(--color-live)" }}>
-                  {geoError}
-                </p>
-              )}
+                )}
+              </div>
             </div>
+
+            {spots && spots.length > 0 ? (
+              <div className="max-h-[232px] overflow-y-auto border-t border-line">
+                {spots.map((item) => {
+                  const on = spot === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setSpot(on ? null : item.id)}
+                      className="flex w-full items-center gap-3 border-b border-line px-4 py-3 text-right last:border-b-0"
+                      style={{ background: on ? "var(--color-clay-soft)" : "transparent" }}
+                    >
+                      <span className="min-w-0 grow">
+                        <span dir="auto" className="block truncate text-[13.5px] font-semibold">
+                          {item.name}
+                        </span>
+                        <span className="mt-0.5 block text-[11px] text-muted">
+                          {item.kind ? `${item.kind} · ` : ""}
+                          {ar(item.meters)} متر
+                        </span>
+                      </span>
+                      {on ? (
+                        <span className="shrink-0 text-clay">
+                          <CheckIcon size={17} />
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
           </div>
         ) : null}
 

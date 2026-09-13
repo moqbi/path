@@ -129,53 +129,6 @@ h3 {
   box-shadow: 0 -8px 24px rgba(14, 26, 36, 0.06);
 }
 
-/*
- * الوضع الليلي.
- *
- * الرموز نفسها تُعاد تعريفها على `[data-theme="dark"]`، فتتبعها كل شاشة
- * بلا سطر واحد فيها: ما بُني على `var(--color-*)` يتحوّل من نفسه، وما
- * كُتب بلونٍ ثابت لا يتحوّل — ولهذا كل لون في التطبيق رمز.
- *
- * الورقة أغمق من البطاقة هنا أيضاً (المنشور يطفو على الأرضية لا يذوب
- * فيها)، والكهرماني يُخفَّف قليلاً لأن اللون المشبع على أرضية داكنة
- * يهتزّ للعين.
- */
-[data-theme="dark"] {
-  --color-paper: #0f171e;
-  --color-card: #17222c;
-  --color-chip: #22303c;
-
-  --color-chrome: #0b1219;
-  --color-chrome-2: #14202a;
-  --color-chrome-ink: #f2efe6;
-  --color-chrome-muted: #7f8d99;
-  --color-chrome-line: #223140;
-
-  --color-ink: #f0ece1;
-  --color-ink-2: #cdd5dd;
-  --color-muted: #97a4ae;
-  --color-faint: #7a8791;
-  --color-line: #29394a;
-
-  --color-clay: #f0b444;
-  --color-clay-ink: #f5c96f;
-  --color-clay-soft: #2c2718;
-  --color-on-brand: #14202a;
-
-  --color-live: #e2694a;
-  --color-live-soft: #351f18;
-
-  --color-gold-ink: #f0c675;
-  --color-gold-soft: #251f14;
-  --color-gold-line: #3a3018;
-
-  color-scheme: dark;
-}
-
-/* الصور والأغلفة تخفّ قليلاً في الليل فلا تضيء الشاشة كلها. */
-[data-theme="dark"] img {
-  filter: brightness(0.94);
-}
 
 /*
  * موبايل أولاً: كل الشاشات مصمّمة على عرض ٣٩٠ بكسل، فيُثبَّت العرض ويُتوسَّط

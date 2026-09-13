@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { addComment, react } from "@/app/actions";
+import { addComment, deleteMoment, react } from "@/app/actions";
 import { LockIcon } from "@/components/icons";
 import { CUSTOM, facesFor, ReactionGlyph } from "@/components/reactions";
 
@@ -19,6 +19,7 @@ export function MomentBar({
   momentKind,
   mine,
   isPlus,
+  author = false,
   head,
   extra,
   inset = false,
@@ -28,6 +29,8 @@ export function MomentBar({
   /** نوع اللحظة: منه يُعرف هل يُعرض وجه النوم. */
   momentKind?: string;
   mine: Mine;
+  /** صاحب اللحظة يرى «احذف اللحظة» في اللوحة نفسها. */
+  author?: boolean;
   isPlus: boolean;
   /** سطر الحدث — يجلس الزرّ في طرفه الأيسر بدل أن يطفو تحته. */
   head?: React.ReactNode;
@@ -39,6 +42,7 @@ export function MomentBar({
   panelFirst?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [asking, setAsking] = useState(false);
   const [popped, setPopped] = useState(false);
   const [body, setBody] = useState("");
   const [pending, start] = useTransition();
@@ -76,6 +80,7 @@ export function MomentBar({
     // الوجه فعلٌ كامل بنفسه: يُختار فيُطوى الشريط، ويُفتح ثانيةً لمن أراد
     // أن يكتب بعده.
     setOpen(false);
+    setAsking(false);
     start(() => void react(momentId, kind, emoji));
   }
 
@@ -176,6 +181,51 @@ export function MomentBar({
               </a>
             )}
           </div>
+
+          {author ? (
+            <div className="flex items-center justify-end">
+              {asking ? (
+                <span className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={(event) => {
+                      stop(event);
+                      setOpen(false);
+                      setAsking(false);
+                      start(() => void deleteMoment(momentId));
+                    }}
+                    className="h-8 rounded-full px-3 text-[11.5px] font-bold disabled:opacity-60"
+                    style={{ background: "var(--color-live)", color: "#fff" }}
+                  >
+                    أحذفها
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      stop(event);
+                      setAsking(false);
+                    }}
+                    className="h-8 rounded-full px-2.5 text-[11.5px] font-semibold text-muted"
+                  >
+                    تراجع
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    stop(event);
+                    setAsking(true);
+                  }}
+                  className="h-8 rounded-full px-2.5 text-[11.5px] font-semibold"
+                  style={{ color: "var(--color-live)" }}
+                >
+                  احذف اللحظة
+                </button>
+              )}
+            </div>
+          ) : null}
 
           <form
             action={() => {

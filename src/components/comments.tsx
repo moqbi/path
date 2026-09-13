@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Avatar } from "@/components/ui";
+import { Avatar, NameTag } from "@/components/ui";
 import { relative } from "@/lib/format";
 
 /**
@@ -19,6 +19,8 @@ export type CommentShape = {
     avatarMediaId?: string | null;
     frame?: { spec: string } | null;
     charm?: { spec: string; mediaId: string | null } | null;
+    isPlus?: boolean;
+    tag?: { name: string; bg: string; fg: string } | null;
   };
 };
 
@@ -51,10 +53,13 @@ export function CommentList({
             </Link>
 
             <div className="min-w-0 grow pt-0.5">
-              <div className="mb-0.5 flex items-baseline gap-2">
-                <Link href={href} className="truncate text-[12px] font-semibold">
+              <div className="mb-0.5 flex items-center gap-1.5">
+                {/* `dir=auto` لأن بعض الأسماء لاتينية: يبقى ترتيب الصفّ عربياً
+                    ويُقرأ الاسم باتجاهه هو. */}
+                <Link href={href} dir="auto" className="truncate text-[12px] font-semibold">
                   {comment.user.name}
                 </Link>
+                <NameTag isPlus={comment.user.isPlus} tag={comment.user.tag} size={9.5} />
                 <span className="shrink-0 text-[10px] text-faint">
                   {relative(comment.createdAt)}
                 </span>

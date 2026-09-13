@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { clearCover, setCoverPosition, setCover } from "@/app/actions";
 import { ImagePicker } from "@/components/image-picker";
-import { CoverFade, coverStyle } from "@/components/ui";
+import { CoverLayer } from "@/components/ui";
 import { CameraIcon, CheckIcon, CloseIcon } from "@/components/icons";
 
 /**
@@ -59,7 +59,6 @@ export function ProfileCover({
       className="relative shrink-0 overflow-hidden"
       style={{
         height,
-        ...coverStyle(mediaId, spec, y),
         touchAction: adjusting ? "none" : undefined,
         // أثناء الضبط يعلو الغلاف فوق كتلة البيانات: هي تغطّي أسفله
         // بإزاحتها السالبة، فكان زرّ الحفظ يُرى ولا يُضغط.
@@ -71,7 +70,7 @@ export function ProfileCover({
       onPointerCancel={up}
     >
       {/* أسفل الغلاف يذوب في أرضية الصفحة — لا حدَّ حادّاً بين صورتين. */}
-      <CoverFade height={44} />
+      <CoverLayer mediaId={mediaId} spec={spec} y={y} />
 
       {adjusting ? (
         <>

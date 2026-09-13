@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { initial } from "@/lib/format";
-import { BackIcon } from "@/components/icons";
+import { BackIcon, SparkIcon } from "@/components/icons";
+import { AthrPageMark } from "@/components/brand";
 
 /**
  * خلفية الحرف تُشتق من الاسم لا تُخزَّن، فتبقى ثابتة لكل شخص بلا عمود إضافي
@@ -127,8 +128,9 @@ function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }
       style={{
         width: badge,
         height: badge,
-        bottom: -badge * 0.16,
-        left: -badge * 0.2,
+        // مركزها على حافة الدائرة تماماً: نصفها داخل الصورة ونصفها خارجها.
+        bottom: -badge * 0.26,
+        left: -badge * 0.26,
         // ظلٌّ خفيف يفصلها عن الصورة تحتها بلا حلقةٍ تحيط بها.
         filter: "drop-shadow(0 2px 4px rgba(14,26,36,.35))",
         ...paint,
@@ -144,18 +146,34 @@ export const DEFAULT_COVER = "linear-gradient(140deg,#f2e6d5,#e8cdb4 45%,#c9a68f
  * ذوبان أسفل الغلاف.
  *
  * الغلاف صورةٌ مصمتة، وتحته أرضية الصفحة — وقد تكون صورة ثيمٍ أخرى.
- * التقاؤهما بحدٍّ حادّ يُقرأ صورتين مرصوفتين بالغلط، فنُذيب آخر الغلاف
- * في لون الأرضية نفسه: يبقى الغلاف غلافاً، ويبدأ ما تحته بلا خطٍّ فاصل.
+ * التقاؤهما بحدٍّ حادّ يُقرأ صورتين مرصوفتين بالغلط.
+ *
+ * والحلّ قناعٌ على الصورة نفسها لا طلاءٌ فوقها: دهنُ تدرّجٍ بلون الورق
+ * كان يترك شريطاً رمادياً يُرى فوق الصورة — لأن الورق لونٌ مصمت والثيم
+ * تحته صورة. أمّا القناع فيُذيب بكسلات الغلاف نفسها، فيظهر ما تحته
+ * أيّاً كان.
  */
-export function CoverFade({ height = 56 }: { height?: number }) {
+const FADE = "linear-gradient(180deg,#000 0%,#000 68%,rgba(0,0,0,.55) 86%,transparent 100%)";
+
+/** طبقة الغلاف: صورته مقنَّعة بالذوبان، وتحتها المحتوى يعلوها. */
+export function CoverLayer({
+  mediaId,
+  spec,
+  y = 50,
+  fade = true,
+}: {
+  mediaId: string | null | undefined;
+  spec: string | null | undefined;
+  y?: number;
+  fade?: boolean;
+}) {
   return (
     <span
       aria-hidden="true"
-      className="pointer-events-none absolute inset-x-0 bottom-0 block"
+      className="absolute inset-0 block"
       style={{
-        height,
-        background:
-          "linear-gradient(180deg, rgba(234,229,217,0) 0%, rgba(234,229,217,.35) 45%, var(--color-paper) 100%)",
+        ...coverStyle(mediaId, spec, y),
+        ...(fade ? { maskImage: FADE, WebkitMaskImage: FADE } : null),
       }}
     />
   );
@@ -194,11 +212,14 @@ export function ScreenHeader({
   back,
   action,
   display = false,
+  mark = false,
 }: {
   title: string;
   back?: string;
   action?: React.ReactNode;
   display?: boolean;
+  /** العلامة بدل الاسم العاري: الرمز، ثم فاصل، ثم اسم الشاشة. */
+  mark?: boolean;
 }) {
   return (
     <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
@@ -213,12 +234,16 @@ export function ScreenHeader({
             <BackIcon size={19} />
           </Link>
         ) : null}
-        <h1
-          className={display ? "text-[23px]" : "text-[18px] font-semibold"}
-          style={display ? { fontFamily: "var(--font-display)" } : undefined}
-        >
-          {title}
-        </h1>
+        {mark ? (
+          <AthrPageMark label={title} />
+        ) : (
+          <h1
+            className={display ? "text-[23px]" : "text-[18px] font-semibold"}
+            style={display ? { fontFamily: "var(--font-display)" } : undefined}
+          >
+            {title}
+          </h1>
+        )}
       </div>
       {action}
     </header>
@@ -263,6 +288,35 @@ export function Empty({
  * وسم بجانب الاسم بلونَي المشرف. حجمه صغير عمداً: الاسم هو البطل،
  * والوسم صفة عليه لا عنوان فوقه.
  */
+/**
+ * ما يلي الاسم: نجمةُ المشترك ثم وسمه الممنوح.
+ *
+ * الاشتراك كان وسماً نصّياً يُمنح تلقائياً («داعم»)، فصار نجمةً: أصغر،
+ * ولا يزاحم وسماً حقيقياً منحه المشرف، ولا يحتاج ترجمةً حين يكون الاسم
+ * لاتينياً. والوسم الممنوح يبقى كما هو بجانبها.
+ */
+export function NameTag({
+  isPlus,
+  tag,
+  size = 11,
+}: {
+  isPlus?: boolean;
+  tag?: { name: string; bg: string; fg: string } | null;
+  size?: number;
+}) {
+  if (!isPlus && !tag) return null;
+  return (
+    <>
+      {isPlus ? (
+        <span className="shrink-0 text-gold" aria-label="مشترك في أثر+" title="مشترك في أثر+">
+          <SparkIcon size={Math.round(size * 1.25)} />
+        </span>
+      ) : null}
+      <TagPill tag={tag ?? null} size={size} />
+    </>
+  );
+}
+
 export function TagPill({
   tag,
   size = 11,
