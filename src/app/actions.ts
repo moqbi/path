@@ -219,6 +219,19 @@ export async function postSleep(): Promise<void> {
   redirect("/");
 }
 
+/**
+ * «صحيت»: لحظةٌ بلا متن — ساعتها هي خبرها.
+ *
+ * لا نكتب الوقت نصّاً: `createdAt` يحمله، والعرض يقرأه منه. نصٌّ مكتوب
+ * يتجمّد حين يتغيّر تنسيق الساعة أو منطقتها، والطابع لا يتجمّد.
+ */
+export async function postWake(): Promise<void> {
+  const user = await requireUser();
+  await prisma.moment.create({ data: { authorId: user.id, kind: "WAKE" } });
+  revalidatePath("/");
+  redirect("/");
+}
+
 const placeInput = z.object({
   lat: z.coerce.number().min(-90).max(90),
   lng: z.coerce.number().min(-180).max(180),

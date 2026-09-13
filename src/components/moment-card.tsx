@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Avatar } from "@/components/ui";
 import {
   MoonIcon,
+  SunIcon,
   MusicIcon,
   PinIcon,
   PlaneIcon,
@@ -23,12 +24,13 @@ const INLINE_COMMENTS = 3;
  * صديق جديد، أغنية. البطاقة تُحفظ لما له متن — صورة أو خاطرة — وهكذا
  * كان Path: الخطّ الزمني يوميّات، والأحداث أسطرٌ فيها.
  */
-const EVENTS = new Set(["CITY", "PLACE", "SLEEP", "MUSIC", "FRIEND_ADDED"]);
+const EVENTS = new Set(["CITY", "PLACE", "SLEEP", "WAKE", "MUSIC", "FRIEND_ADDED"]);
 
 const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
   CITY: { bg: "var(--color-night)", ink: "#f7f5ef" },
   PLACE: { bg: "var(--color-live-soft)", ink: "var(--color-live)" },
   SLEEP: { bg: "var(--color-night-2)", ink: "#f7f5ef" },
+  WAKE: { bg: "var(--color-gold-soft)", ink: "var(--color-gold-ink)" },
   MUSIC: { bg: "var(--color-clay)", ink: "var(--color-on-brand)" },
   FRIEND_ADDED: { bg: "var(--color-gold-soft)", ink: "var(--color-gold-ink)" },
 };
@@ -40,6 +42,8 @@ function EventIcon({ kind }: { kind: string }) {
       <PlaneIcon size={16} />
     ) : kind === "SLEEP" ? (
       <MoonIcon size={16} />
+    ) : kind === "WAKE" ? (
+      <SunIcon size={16} />
     ) : kind === "MUSIC" ? (
       <MusicIcon size={16} />
     ) : kind === "FRIEND_ADDED" ? (
@@ -169,6 +173,8 @@ function EventLine({
       </>
     ) : kind === "SLEEP" ? (
       <span className="font-bold">نام</span>
+    ) : kind === "WAKE" ? (
+      <span className="font-bold">صحا</span>
     ) : kind === "FRIEND_ADDED" ? (
       <>
         أصبح صديق <span className="font-bold">{moment.text ?? "أحدهم"}</span>
@@ -196,7 +202,10 @@ function EventLine({
         ? [moment.placeCity, moment.text].filter(Boolean).join(" · ") || null
         : kind === "SLEEP"
           ? "تصبح على خير"
-          : null;
+          // خبر «صحا» ساعتُه: تُقرأ من طابع اللحظة لا من نصٍّ محفوظ.
+          : kind === "WAKE"
+            ? `الساعة ${timeOfDay(moment.createdAt)}`
+            : null;
 
   return (
     <div className="flex items-start gap-2.5">

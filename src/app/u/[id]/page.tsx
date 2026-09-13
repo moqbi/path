@@ -14,7 +14,7 @@ import {
 } from "@/app/actions";
 import { MomentCard } from "@/components/moment-card";
 import { GiftButton } from "./gift";
-import { Avatar, coverStyle, Empty, ScreenHeader, TagPill } from "@/components/ui";
+import { Avatar, CoverFade, coverStyle, Empty, ScreenHeader, TagPill } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import {
   CheckIcon,
@@ -126,9 +126,11 @@ export default async function FriendProfilePage({
 
       <div className="scroll-area">
         <div
-          className="relative shrink-0"
+          className="relative shrink-0 overflow-hidden"
           style={{ height: 140, ...coverStyle(person.coverMediaId, person.background?.spec) }}
-        />
+        >
+          <CoverFade height={44} />
+        </div>
 
         <div className="relative px-5" style={{ marginTop: -34 }}>
           <div className="mb-3 flex items-end justify-between">
@@ -262,9 +264,11 @@ function LockedProfile({
 
       <div className="scroll-area">
         <div
-          className="relative shrink-0"
+          className="relative shrink-0 overflow-hidden"
           style={{ height: 140, ...coverStyle(person.coverMediaId, person.background?.spec) }}
-        />
+        >
+          <CoverFade height={44} />
+        </div>
 
         <div className="relative px-5" style={{ marginTop: -34 }}>
           <Avatar

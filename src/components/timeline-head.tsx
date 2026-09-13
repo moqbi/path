@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { RefreshIcon } from "@/components/icons";
-import { coverStyle } from "@/components/ui";
+import { CoverFade, coverStyle } from "@/components/ui";
 import { playRefresh } from "@/lib/sound";
 import { timeOfDay } from "@/lib/format";
 
@@ -156,6 +156,9 @@ export function TimelineHead({
             ...coverStyle(coverMediaId, coverSpec, coverY),
           }}
         >
+          {/* الغلاف يذوب في أرضية الصفحة فلا يلتقي بصورة الثيم بحدٍّ حادّ. */}
+          <CoverFade height={44} />
+
           {/* درع خفيف يضمن قراءة الاسم والساعة فوق أي غلاف. */}
           <div
             className="pointer-events-none absolute inset-x-0 bottom-0"

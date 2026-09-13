@@ -97,13 +97,14 @@ export default async function TimelinePage({
 
   return (
     <div className="screen">
-      <header className="chrome flex items-center justify-between px-5 pb-4 pt-5">
+      <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
         <AthrHeaderMark />
         <div className="flex gap-1">
           <Link
             href="/messages"
             aria-label="المحادثات"
-            className="relative flex h-11 w-11 items-center justify-center"
+            // ٤٠ لا ٤٤: القرص الأكبر كان يرفع الرأس عن بقية التبويبات.
+            className="relative flex h-10 w-10 items-center justify-center"
             style={{ color: "var(--color-chrome-ink)" }}
           >
             <MessageIcon size={21} />

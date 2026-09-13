@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { clearCover, setCoverPosition, setCover } from "@/app/actions";
 import { ImagePicker } from "@/components/image-picker";
-import { coverStyle } from "@/components/ui";
+import { CoverFade, coverStyle } from "@/components/ui";
 import { CameraIcon, CheckIcon, CloseIcon } from "@/components/icons";
 
 /**
@@ -70,6 +70,9 @@ export function ProfileCover({
       onPointerUp={up}
       onPointerCancel={up}
     >
+      {/* أسفل الغلاف يذوب في أرضية الصفحة — لا حدَّ حادّاً بين صورتين. */}
+      <CoverFade height={44} />
+
       {adjusting ? (
         <>
           <div className="pointer-events-none absolute inset-0" style={{ background: "rgba(14,26,36,.25)" }} />

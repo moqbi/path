@@ -58,5 +58,25 @@ export function AthrHeaderMark() {
   );
 }
 
+/**
+ * علامةٌ لشاشةٍ لها اسمها الخاص (المتجر مثلاً): الرمز، ثم خطٌّ فاصل، ثم
+ * اسم الشاشة — بنفس وزن `AthrHeaderMark` حتى لا يبدو رأس الشاشة أخفّ أو
+ * أثقل من بقية التبويبات.
+ */
+export function AthrPageMark({ label }: { label: string }) {
+  return (
+    <span className="flex items-center gap-3">
+      <AthrMark size={34} />
+      <span
+        aria-hidden="true"
+        style={{ width: 1, height: 18, background: "var(--color-chrome-line)" }}
+      />
+      <span style={{ fontSize: 18, fontWeight: 700, color: "var(--color-chrome-ink)" }}>
+        {label}
+      </span>
+    </span>
+  );
+}
+
 export const TAGLINE_AR = "لحظاتك، مع ناسك.";
 export const TAGLINE_EN = "Your people. Your moments. Your story.";

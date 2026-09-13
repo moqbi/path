@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { postSleep } from "@/app/actions";
+import { postSleep, postWake } from "@/app/actions";
 import { playClose, playOpen } from "@/lib/sound";
 
 /**
@@ -17,21 +17,22 @@ type Item = {
   label: string;
   /** رسمُ الصنف في `public/composer` — استبداله يغيّر شكله بلا لمس الكود. */
   src: string;
-  angle: number;
   run: () => void;
 };
 
 /*
- * نصف قطر القوس وزاويةُ ما بين صنفين.
+ * قوس القائمة.
  *
- * المسافة على القوس = نصف القطر × الزاوية بالراديان: ٢٠٥ × ٢١° ≈ ٧٥
- * بكسل بين مركزين، والقرص ٥٦ — فيبقى بينهما فرجة تُرى. أقلّ من ذلك كانت
- * الأقراص تتلامس. وأعلى الأصناف عند ٨٨° لا ٩٠: القرص عند القائمة تماماً
- * يخرج من حافة الإطار اليمنى.
+ * الزوايا تُقسَّم على عدد الأصناف لا تُكتب لكل صنف: إضافة صنفٍ سادس
+ * بزاوياتٍ ثابتة كانت ستُخرج أعلاها عن الشاشة أو تُلصق الأقراص.
+ *
+ * والمسافة بين مركزين = نصف القطر × الزاوية بالراديان: ٢٤٦ × ١٦٫٨° ≈ ٧٢
+ * بكسلاً والقرص ٥٦، فتبقى فرجة تُرى. وأعلى الأصناف عند ٨٨° لا ٩٠: القرص
+ * عند القائمة تماماً يخرج من حافة الإطار اليمنى.
  */
-const RADIUS = 205;
-const SPREAD = 21;
-const START = 4;
+const RADIUS = 246;
+const TOP = 88;
+const BOTTOM = 4;
 
 export function ComposerFan() {
   const router = useRouter();
@@ -66,38 +67,43 @@ export function ComposerFan() {
       key: "write",
       label: "اكتب",
       src: "/composer/write.png",
-      angle: START + SPREAD * 4,
       run: () => router.push("/compose?kind=THOUGHT"),
     },
     {
       key: "photo",
       label: "صورة",
       src: "/composer/photo.png",
-      angle: START + SPREAD * 3,
       run: () => router.push("/compose?kind=PHOTO"),
     },
     {
       key: "place",
       label: "مكان",
       src: "/composer/place.png",
-      angle: START + SPREAD * 2,
       run: () => router.push("/compose?kind=PLACE"),
     },
     {
       key: "music",
       label: "أغنية",
       src: "/composer/music.png",
-      angle: START + SPREAD,
       run: () => router.push("/compose?kind=MUSIC"),
     },
     {
       key: "sleep",
       label: "نوم",
       src: "/composer/sleep.png",
-      angle: START,
       run: () => {
         setBusy("sleep");
         start(() => void postSleep());
+      },
+    },
+    // النوم والصحو طرفا اليوم، فيجلسان متجاورين في طرف القوس.
+    {
+      key: "wake",
+      label: "صحيت",
+      src: "/composer/wake.svg",
+      run: () => {
+        setBusy("wake");
+        start(() => void postWake());
       },
     },
   ];
@@ -120,7 +126,9 @@ export function ComposerFan() {
       <div className="shell-fixed z-30">
         <div className="relative mb-[86px] ml-5 h-14 w-14">
           {items.map((item, index) => {
-            const radians = (item.angle * Math.PI) / 180;
+            // الأوّل في الأعلى والأخير في الأسفل، وما بينهما بالتساوي.
+            const angle = TOP - ((TOP - BOTTOM) * index) / (items.length - 1);
+            const radians = (angle * Math.PI) / 180;
             const x = -Math.cos(radians) * RADIUS;
             const y = -Math.sin(radians) * RADIUS;
             const delay = open ? index * 42 : (items.length - 1 - index) * 26;

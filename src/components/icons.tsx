@@ -221,3 +221,10 @@ export const FlameIcon = ({ size = 20, className }: IconProps) => (
     <path d="M12 3.5s5 4 5 8.2a5 5 0 0 1-10 0c0-1.7 1-3.2 1.9-4.2.2 1.1.9 1.9 1.8 1.9 1.2 0 1.9-1 1.6-2.6-.2-1.2-.3-2.3-.3-3.3Z" />
   </svg>
 );
+
+export const SunIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <circle cx="12" cy="12" r="4.4" />
+    <path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4 17 7M7 17l-1.6 1.6" />
+  </svg>
+);

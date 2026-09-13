@@ -2,8 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { ScreenHeader } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
+import { AthrPageMark } from "@/components/brand";
 import { FlameIcon, InfoIcon, SparkIcon } from "@/components/icons";
 import { StoreGrid, type Item } from "./grid";
 import { riyals } from "@/lib/format";
@@ -72,21 +72,18 @@ export default async function StorePage({
 
   return (
     <div className="screen">
-      <ScreenHeader
-        title="المتجر"
-        display
-        action={
-          <span
-            className="flex items-center gap-2 rounded-full border px-3.5 py-2"
-            style={{ background: "var(--color-gold-soft)", borderColor: "var(--color-gold-line)" }}
-          >
-            <SparkIcon size={14} className="text-gold" />
-            <span className="text-[12.5px] font-semibold text-gold">
-              رصيدك {riyals(user.storeCredit)}
-            </span>
+      <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
+        <AthrPageMark label="المتجر" />
+        <span
+          className="flex items-center gap-2 rounded-full border px-3.5 py-2"
+          style={{ background: "var(--color-gold-soft)", borderColor: "var(--color-gold-line)" }}
+        >
+          <SparkIcon size={14} className="text-gold" />
+          <span className="text-[12.5px] font-semibold text-gold">
+            رصيدك {riyals(user.storeCredit)}
           </span>
-        }
-      />
+        </span>
+      </header>
 
       {/* شريط التصنيفات: «المميز» أولاً، ثم ما يضيفه المشرف. */}
       <div className="shrink-0 px-5 pb-1 pt-3">

@@ -102,12 +102,13 @@ export function Avatar({
 
 function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }) {
   /*
-   * نصف الصورة تقريباً، حرّةً بلا إطار: التميمة شعارٌ يتدلّى من حافة
-   * الصورة — قصُّها في قرصٍ صغير بحلقةٍ حوله كان يخنقها ويُخفي رسمها.
+   * قرابة ثلثي الصورة، حرّةً بلا إطار: التميمة شعارٌ يتدلّى من حافة
+   * الصورة — قصُّها في قرصٍ صغير بحلقةٍ حوله كان يخنقها ويُخفي رسمها،
+   * و٠٫٥٢ من قبل بقيت تُقرأ صغيرة بجانب الصورة الأكبر.
    * ولذلك `contain`: الشعار يُرى كاملاً، لا مقصوصاً ليملأ مربّعاً.
    */
-  const badge = Math.round(size * 0.52);
-  if (badge < 12) return null;
+  const badge = Math.round(size * 0.68);
+  if (badge < 14) return null;
 
   const paint = charm.mediaId
     ? {
@@ -126,8 +127,8 @@ function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }
       style={{
         width: badge,
         height: badge,
-        bottom: -badge * 0.2,
-        left: -badge * 0.24,
+        bottom: -badge * 0.16,
+        left: -badge * 0.2,
         // ظلٌّ خفيف يفصلها عن الصورة تحتها بلا حلقةٍ تحيط بها.
         filter: "drop-shadow(0 2px 4px rgba(14,26,36,.35))",
         ...paint,
@@ -138,6 +139,27 @@ function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }
 
 /** التدرّج الافتراضي للغلاف حين لا صورة ولا خلفية مشتراة. */
 export const DEFAULT_COVER = "linear-gradient(140deg,#f2e6d5,#e8cdb4 45%,#c9a68f)";
+
+/**
+ * ذوبان أسفل الغلاف.
+ *
+ * الغلاف صورةٌ مصمتة، وتحته أرضية الصفحة — وقد تكون صورة ثيمٍ أخرى.
+ * التقاؤهما بحدٍّ حادّ يُقرأ صورتين مرصوفتين بالغلط، فنُذيب آخر الغلاف
+ * في لون الأرضية نفسه: يبقى الغلاف غلافاً، ويبدأ ما تحته بلا خطٍّ فاصل.
+ */
+export function CoverFade({ height = 56 }: { height?: number }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-x-0 bottom-0 block"
+      style={{
+        height,
+        background:
+          "linear-gradient(180deg, rgba(234,229,217,0) 0%, rgba(234,229,217,.35) 45%, var(--color-paper) 100%)",
+      }}
+    />
+  );
+}
 
 /**
  * خلفية الغلاف في مكان واحد.
@@ -179,7 +201,7 @@ export function ScreenHeader({
   display?: boolean;
 }) {
   return (
-    <header className="chrome flex items-center justify-between px-5 pb-4 pt-5">
+    <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
       <div className="flex items-center gap-1">
         {back ? (
           <Link
