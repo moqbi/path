@@ -160,9 +160,12 @@ function Row({
 function EventLine({
   moment,
   withNames,
+  href,
 }: {
   moment: FeedMoment;
   withNames: string[];
+  /** وجهة الفتح حين تُفتح اللحظة في صفحتها — على النصّ وحده لا على الصفّ. */
+  href?: string;
 }) {
   const { kind } = moment;
 
@@ -207,8 +210,8 @@ function EventLine({
             ? `الساعة ${timeOfDay(moment.createdAt)}`
             : null;
 
-  return (
-    <div className="flex items-start gap-2.5">
+  const body = (
+    <>
       <EventIcon kind={kind} />
       <div className="min-w-0 grow pt-1">
         <p dir="auto" className="text-[13.5px] font-semibold leading-snug text-ink">
@@ -226,6 +229,23 @@ function EventLine({
           </p>
         ) : null}
       </div>
+    </>
+  );
+
+  return (
+    <div className="flex items-start gap-2.5">
+      {/*
+        الفتحُ على النصّ وحده: لفُّ الصفّ كلّه برابطٍ يضع رابط الأغنية داخل
+        رابط — وهو غير جائز في HTML، وكان يُصلَح بمعالج ضغطٍ يوقف الصعود،
+        ومكوّن الخادم لا يملك أن يمرّر معالجاً فيسقط العرض كلّه.
+      */}
+      {href ? (
+        <Link href={href} className="flex min-w-0 grow items-start gap-2.5">
+          {body}
+        </Link>
+      ) : (
+        body
+      )}
 
       {/*
         صورة الأغنية هي زرّ التشغيل: زرٌّ ثالثٌ بجانبها كان يزاحم زرّ
@@ -238,7 +258,6 @@ function EventLine({
             target="_blank"
             rel="noreferrer noopener"
             aria-label="استمع"
-            onClick={(event) => event.stopPropagation()}
             className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-cover bg-center"
             style={{ backgroundImage: `url(${moment.musicThumb})` }}
           >
@@ -276,7 +295,13 @@ export function MomentCard({
   const opens = moment._count.comments > INLINE_COMMENTS;
 
   if (EVENTS.has(kind)) {
-    const line = <EventLine moment={moment} withNames={withNames} />;
+    const line = (
+      <EventLine
+        moment={moment}
+        withNames={withNames}
+        href={opens ? `/m/${moment.id}` : undefined}
+      />
+    );
 
     return (
       <Row moment={moment} viewerId={viewerId}>
@@ -286,15 +311,7 @@ export function MomentCard({
           mine={mine}
           isPlus={isPlus}
           author={moment.author.id === viewerId}
-          head={
-            opens ? (
-              <Link href={`/m/${moment.id}`} className="block">
-                {line}
-              </Link>
-            ) : (
-              line
-            )
-          }
+          head={line}
           extra={
             <>
               {moment.mediaId ? (
