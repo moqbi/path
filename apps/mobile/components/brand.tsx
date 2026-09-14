@@ -43,3 +43,7 @@ export function AthrLockup({ size = 44 }: { size?: number }) {
     </View>
   );
 }
+
+/** عبارتا العلامة — نفس نصّ `src/components/brand.tsx` حرفاً بحرف. */
+export const TAGLINE_AR = "لحظاتك، مع ناسك.";
+export const TAGLINE_EN = "Your people. Your moments. Your story.";

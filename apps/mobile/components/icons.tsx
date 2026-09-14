@@ -226,3 +226,10 @@ export const StarIcon = ({ size = 20, color = "currentColor" }: Props) => (
     <Path d="M12 3.6l2.5 5.3 5.6.8-4.1 4 1 5.7-5-2.7-5 2.7 1-5.7-4.1-4 5.6-.8L12 3.6Z" />
   </Svg>
 );
+
+/** سهم الرجوع — يشير يساراً كما في الويب، ولا يُعكس مع RTL. */
+export const BackIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)} strokeWidth={1.8}>
+    <Path d="M15 5 8 12l7 7" />
+  </Svg>
+);

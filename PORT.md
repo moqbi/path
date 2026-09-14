@@ -37,31 +37,24 @@
 | `src/app/stories/[id]/viewer.tsx` | `app/stories/[id].tsx` |
 | `src/components/story-composer.tsx` | `app/stories/new.tsx` |
 | `src/app/subscribe/page.tsx` | `app/subscribe.tsx` |
+| `src/app/login/form.tsx` | `app/login.tsx` |
 
 ### لم يُنقل بعد — بالترتيب
-1. **`src/app/login/form.tsx`** ← `app/login.tsx`
-   الموجود الآن نموذجٌ عارٍ، والويب فيه:
-   - خلفية: `/login-bg.jpg` إن وُجدت، وإلا تدرّجٌ شعاعيّ + طبقيّ
-     **وجبلان** بـ`clipPath` (السطور ٨٢–١١٦).
-   - مقدّمةٌ بثلاث مراحل (`usePhases`): الشعار يدخل من الأعلى ثم يغادر
-     إلى الأعلى، ثم يصعد النموذج. المدد والمنحنيات مكتوبةٌ في الملف.
-   - أزرار المزوّدين الأربعة (Apple، Google، Facebook، X) برسومها.
-   - زرّ «المتابعة بالبريد» يكشف الحقلين.
-2. **`src/components/avatar-menu.tsx`** ← نافذة الضغط على صورة العرض
+1. **`src/components/avatar-menu.tsx`** ← نافذة الضغط على صورة العرض
    (عرض الصورة / معلومات التميمة / معلومات الإطار + شراءٌ مباشر).
-3. **`src/app/me/edit/`** و`src/app/me/edit-sheet.tsx` و`accessories.tsx`
+2. **`src/app/me/edit/`** و`src/app/me/edit-sheet.tsx` و`accessories.tsx`
    و`cover.tsx` و`images.tsx` و`share.tsx` ← `app/me/edit.tsx` و
    `app/me/accessories.tsx` (كلاهما الآن شاشتا «قريباً»).
-4. **`src/app/settings/privacy/page.tsx`** ← `app/settings/privacy.tsx`
+3. **`src/app/settings/privacy/page.tsx`** ← `app/settings/privacy.tsx`
    (الآن «قريباً»)، ومعها `src/app/settings/email.tsx` و
    `src/app/me/delete.tsx`.
-5. **`src/app/settings/blocked/page.tsx`** و**`support/`** ← غير موجودتين.
-6. **`src/app/together/`** و`/private` ← العدستان، ومعهما الضغطة
+4. **`src/app/settings/blocked/page.tsx`** و**`support/`** ← غير موجودتين.
+5. **`src/app/together/`** و`/private` ← العدستان، ومعهما الضغطة
    المطوّلة على تبويب «اللحظات» في `src/components/tabbar.tsx`.
-7. **`src/app/music/page.tsx`** ← غير موجودة.
-8. **`src/components/swipe-row.tsx`** ← السحب لحذف صفٍّ.
-9. **`src/components/tour.tsx`** ← جولة التعريف.
-10. **`src/app/admin/`** ← **لا يُنقل للموبايل**: مكانه `apps/web` حسب
+6. **`src/app/music/page.tsx`** ← غير موجودة.
+7. **`src/components/swipe-row.tsx`** ← السحب لحذف صفٍّ.
+8. **`src/components/tour.tsx`** ← جولة التعريف.
+9. **`src/app/admin/`** ← **لا يُنقل للموبايل**: مكانه `apps/web` حسب
     `MIGRATION.md`. أكّد مع صاحب المشروع قبل أيّ عمل عليه.
 
 ## الخادم

@@ -1,23 +1,225 @@
-import { useState } from "react";
-import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
-import { useRouter } from "expo-router";
-import { AthrLockup } from "../components/brand";
+import { useEffect, useRef, useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  Animated,
+  Easing,
+  KeyboardAvoidingView,
+  Platform,
+  useWindowDimensions,
+} from "react-native";
+import Svg, {
+  Defs,
+  Ellipse,
+  Path,
+  Polygon,
+  RadialGradient,
+  Stop,
+} from "react-native-svg";
+import { LinearGradient } from "expo-linear-gradient";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { AthrMark, TAGLINE_AR, TAGLINE_EN } from "../components/brand";
+import { BackIcon } from "../components/icons";
 import { useSession } from "../lib/session";
-import { colors } from "../theme/tokens";
+import { brandGradient, colors } from "../theme/tokens";
 
-const TAGLINE = "دائرتك الصغيرة، بلا ضجيج";
+/*
+  حسابُ تجربةٍ يُملأ في التطوير وحده.
 
+  في الويب شرطٌ على `NODE_ENV` يُطوى في البناء، وهنا `__DEV__` — يُطوى
+  في حزمة الإصدار كذلك، فلا يخرج النصّ إلى جهاز أحد.
+*/
+const TRIAL = __DEV__
+  ? { email: "mohammed@athar.test", password: "athar1234" }
+  : { email: "", password: "" };
+
+type Phase = "intro" | "leaving" | "form";
+
+/**
+ * المقدّمة مرةً واحدة لكل تشغيل.
+ *
+ * الويب يكتبها في `sessionStorage` — «جلسة متصفح». ومكافئها هنا متغيّرٌ
+ * في وحدة الملف: يعيش ما دام التطبيق حيّاً ويذهب بإغلاقه. والمخزن الدائم
+ * كان سيعرضها مرةً واحدة في العمر، وهذا غير ما في الويب.
+ */
+let introSeen = false;
+
+function usePhases(): Phase {
+  const [phase, setPhase] = useState<Phase>("intro");
+
+  useEffect(() => {
+    if (introSeen) {
+      setPhase("form");
+      return;
+    }
+
+    const leave = setTimeout(() => setPhase("leaving"), 2000);
+    const done = setTimeout(() => {
+      setPhase("form");
+      introSeen = true;
+    }, 3100);
+
+    return () => {
+      clearTimeout(leave);
+      clearTimeout(done);
+    };
+  }, []);
+
+  return phase;
+}
+
+/* منحنيات الويب نفسها: `ease` هو cubic-bezier(.25,.1,.25,1). */
+const EASE = Easing.bezier(0.25, 0.1, 0.25, 1);
+const INTRO_OUT = Easing.bezier(0.3, 0, 0.2, 1);
+const FORM_IN = Easing.bezier(0.2, 0.8, 0.3, 1);
+
+/**
+ * الخلفية: لا تتحرّك أبداً — هي التي تربط المراحل الثلاث ببعضها.
+ *
+ * في الويب تدرّجان فوق بعضهما وتلّان بـ`clipPath`. ولا تدرّجَ شعاعياً
+ * ولا `clipPath` في React Native، فيُرسمان بـSVG بنفس الأرقام:
+ * - الشعاعيّ `120% 60% at 85% 18%` قطعٌ ناقص نصفاه ١٢٠٪ من العرض و٦٠٪
+ *   من الارتفاع، مركزه عند (٨٥٪، ١٨٪)، وتدرّجه إلى الشفافية عند ٦٠٪ من
+ *   نصف القطر — وهي نسبةٌ من صندوق القطع نفسه، فتُكتب `offset="0.6"`.
+ * - التلّان مضلّعان بنفس نقاط `polygon()` على شبكة ١٠٠×١٠٠
+ *   (`preserveAspectRatio="none"`)، فالنسب تبقى نسباً.
+ */
+function Sky() {
+  const { width, height } = useWindowDimensions();
+
+  return (
+    <View style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0 }} pointerEvents="none">
+      {/* linear-gradient(180deg,#16293a 0%,#2c4055 30%,#7b6a63 62%,#3d3a3a 78%,#171d24 100%) */}
+      <LinearGradient
+        colors={["#16293a", "#2c4055", "#7b6a63", "#3d3a3a", "#171d24"]}
+        locations={[0, 0.3, 0.62, 0.78, 1]}
+        style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0 }}
+      />
+
+      <Svg width={width} height={height} style={{ position: "absolute", top: 0, left: 0 }}>
+        <Defs>
+          <RadialGradient id="loginGlow" cx="50%" cy="50%" r="50%">
+            <Stop offset="0" stopColor="#ffc478" stopOpacity={0.55} />
+            <Stop offset="0.6" stopColor="#ffc478" stopOpacity={0} />
+          </RadialGradient>
+        </Defs>
+        <Ellipse
+          cx={width * 0.85}
+          cy={height * 0.18}
+          rx={width * 1.2}
+          ry={height * 0.6}
+          fill="url(#loginGlow)"
+        />
+      </Svg>
+
+      {/* التلّ الأعلى: ارتفاعه ١٩٠ وقاعدته عند ٢٢٪ من أسفل الشاشة. */}
+      <View style={{ position: "absolute", left: 0, right: 0, bottom: height * 0.22, height: 190, opacity: 0.55 }}>
+        <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <Polygon
+            points="0,62 18,30 34,55 52,18 72,48 88,26 100,46 100,100 0,100"
+            fill="#2b3a48"
+          />
+        </Svg>
+      </View>
+
+      {/* والتلّ الأقرب: ارتفاعه ٣٠٠ من أسفل الشاشة. */}
+      <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 300 }}>
+        <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <Polygon
+            points="0,55 14,32 30,52 48,22 66,46 84,28 100,50 100,100 0,100"
+            fill="#1a2029"
+          />
+        </Svg>
+      </View>
+    </View>
+  );
+}
+
+const PROVIDERS = [
+  { key: "apple", label: "Apple", mark: <AppleMark /> },
+  { key: "google", label: "Google", mark: <GoogleMark /> },
+  { key: "facebook", label: "Facebook", mark: <FacebookMark /> },
+  { key: "x", label: "X", mark: <XMark /> },
+];
+
+const FIELD = {
+  height: 52,
+  borderRadius: 12,
+  paddingHorizontal: 16,
+  fontSize: 14.5,
+  backgroundColor: "rgba(247,245,239,.1)",
+  borderWidth: 1,
+  borderColor: "rgba(247,245,239,.22)",
+  color: "#f7f5ef",
+} as const;
+
+/**
+ * الدخول على ثلاث مراحل فوق خلفية ثابتة: يدخل الشعار والعبارتان، ثم
+ * يغادران بارتفاع وتلاشٍ، ثم تدخل خيارات الدخول من الأسفل.
+ *
+ * والمقدّمة مرفوعةٌ من السياق (`position: absolute`) كما في الويب: هناك
+ * تصير كذلك عند ظهور النموذج، فلا تدفع ما تحتها.
+ */
 export default function Login() {
   const router = useRouter();
+  const { deleted } = useLocalSearchParams<{ deleted?: string }>();
+  const phase = usePhases();
   const signIn = useSession((s) => s.signIn);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+
+  const [showEmail, setShowEmail] = useState(false);
+  const [email, setEmail] = useState(TRIAL.email);
+  const [password, setPassword] = useState(TRIAL.password);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [notice, setNotice] = useState<string | null>(
+    // العودة إلى هذه الشاشة بعد الحذف تحتاج جملة تؤكد أن ما طُلب قد تمّ.
+    deleted === "1" ? "حُذف حسابك وكل ما فيه. تسعدنا عودتك متى شئت." : null,
+  );
+
+  const introVisible = phase === "intro";
+  const formVisible = phase === "form";
+
+  const introFade = useRef(new Animated.Value(1)).current;
+  const introLift = useRef(new Animated.Value(0)).current;
+  const formFade = useRef(new Animated.Value(0)).current;
+  const formRise = useRef(new Animated.Value(26)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(introFade, {
+        toValue: introVisible ? 1 : 0,
+        duration: 800,
+        easing: EASE,
+        useNativeDriver: true,
+      }),
+      Animated.timing(introLift, {
+        toValue: introVisible ? 0 : phase === "leaving" ? -28 : -40,
+        duration: 900,
+        easing: INTRO_OUT,
+        useNativeDriver: true,
+      }),
+      Animated.timing(formFade, {
+        toValue: formVisible ? 1 : 0,
+        duration: 700,
+        delay: 120,
+        easing: EASE,
+        useNativeDriver: true,
+      }),
+      Animated.timing(formRise, {
+        toValue: formVisible ? 0 : 26,
+        duration: 800,
+        delay: 120,
+        easing: FORM_IN,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [phase, introVisible, formVisible, introFade, introLift, formFade, formRise]);
 
   async function submit() {
-    if (busy) return;
-    setBusy(true);
+    if (pending) return;
+    setPending(true);
     setError(null);
     try {
       await signIn(email, password);
@@ -26,80 +228,259 @@ export default function Login() {
       // رسالةٌ واحدة للحالتين: أيُّ بريدٍ مسجَّل ليس خبراً يُعطى.
       setError(problem instanceof Error ? problem.message : "تعذّر الدخول");
     } finally {
-      setBusy(false);
+      setPending(false);
     }
   }
 
-  const field = {
-    height: 52,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    fontSize: 14.5,
-    color: colors.ink,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.line,
-  } as const;
-
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ flex: 1, backgroundColor: colors.paper }}
-    >
-      <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 28, gap: 10 }}>
-        <View style={{ alignItems: "center", marginBottom: 26 }}>
-          <AthrLockup size={44} />
-          <Text style={{ color: colors.muted, fontSize: 13, marginTop: 10 }}>{TAGLINE}</Text>
+    <View style={{ flex: 1, backgroundColor: "#171d24" }}>
+      <Sky />
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1 }}
+      >
+        <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 64, paddingBottom: 40 }}>
+          {/* المقدّمة: تدخل من الأعلى ثم تغادر إلى الأعلى. */}
+          <Animated.View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              top: 64,
+              left: 24,
+              right: 24,
+              paddingTop: 24,
+              alignItems: "center",
+              opacity: introFade,
+              transform: [{ translateY: introLift }],
+            }}
+          >
+            <AthrMark size={76} />
+            <Text style={{ marginTop: 20, fontSize: 32, fontWeight: "700", color: "#f7f5ef" }}>
+              ATHR
+            </Text>
+            <Text style={{ marginTop: 20, fontSize: 15, fontWeight: "500", color: "#f0ece4" }}>
+              {TAGLINE_AR}
+            </Text>
+            <Text
+              style={{
+                marginTop: 6,
+                fontSize: 10.5,
+                lineHeight: 17,
+                textAlign: "center",
+                color: "#b9b2a8",
+                letterSpacing: 1.05,
+                writingDirection: "ltr",
+              }}
+            >
+              {TAGLINE_EN}
+            </Text>
+          </Animated.View>
+
+          {/* خيارات الدخول: تدخل من الأسفل بعد مغادرة المقدّمة. */}
+          <Animated.View
+            pointerEvents={formVisible ? "auto" : "none"}
+            style={{ opacity: formFade, transform: [{ translateY: formRise }] }}
+          >
+            <View style={{ alignItems: "center", marginBottom: 28 }}>
+              <AthrMark size={44} />
+              <Text style={{ marginTop: 10, fontSize: 20, fontWeight: "700", color: "#f7f5ef" }}>
+                ATHR
+              </Text>
+              <Text style={{ marginTop: 8, fontSize: 13, color: "#cbc5bb" }}>{TAGLINE_AR}</Text>
+            </View>
+
+            {showEmail ? (
+              <View style={{ gap: 10 }}>
+                <Pressable
+                  onPress={() => setShowEmail(false)}
+                  style={{
+                    marginBottom: 4,
+                    alignSelf: "flex-start",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <BackIcon size={15} color="#b9b2a8" />
+                  <Text style={{ fontSize: 12.5, color: "#b9b2a8" }}>كل الخيارات</Text>
+                </Pressable>
+
+                <TextInput
+                  style={FIELD}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="البريد"
+                  // لون المُلمِّح في الويب لون المتصفح الافتراضي: حبرٌ باهت
+                  // على الأرضية نفسها.
+                  placeholderTextColor="rgba(247,245,239,.5)"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  textContentType="emailAddress"
+                />
+                <TextInput
+                  style={FIELD}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="كلمة المرور"
+                  placeholderTextColor="rgba(247,245,239,.5)"
+                  secureTextEntry
+                  textContentType="password"
+                  onSubmitEditing={submit}
+                />
+
+                {error ? (
+                  <Text
+                    accessibilityRole="alert"
+                    style={{ fontSize: 12.5, fontWeight: "500", color: "#ff9d84" }}
+                  >
+                    {error}
+                  </Text>
+                ) : null}
+
+                <BrandButton onPress={submit} disabled={pending} style={{ marginTop: 8 }}>
+                  <Text style={{ fontSize: 15.5, fontWeight: "700", color: colors.onBrand }}>
+                    {pending ? "لحظة…" : "دخول"}
+                  </Text>
+                </BrandButton>
+              </View>
+            ) : (
+              <View style={{ gap: 10 }}>
+                <View style={{ flexDirection: "row", gap: 10 }}>
+                  {PROVIDERS.map((provider) => (
+                    <Pressable
+                      key={provider.key}
+                      accessibilityRole="button"
+                      accessibilityLabel={`المتابعة بحساب ${provider.label}`}
+                      onPress={() =>
+                        setNotice(
+                          "الدخول عبر المزوّدين يحتاج تسجيل التطبيق عندهم وإضافة مفاتيحه. استخدم البريد الآن.",
+                        )
+                      }
+                      style={{
+                        flex: 1,
+                        height: 54,
+                        borderRadius: 12,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: "rgba(247,245,239,.94)",
+                        borderWidth: 1,
+                        borderColor: "rgba(247,245,239,.3)",
+                      }}
+                    >
+                      {provider.mark}
+                    </Pressable>
+                  ))}
+                </View>
+
+                <BrandButton onPress={() => setShowEmail(true)} style={{ marginTop: 4 }}>
+                  <Text style={{ fontSize: 15, fontWeight: "700", color: colors.onBrand }}>
+                    المتابعة بالبريد
+                  </Text>
+                </BrandButton>
+
+                {notice ? (
+                  <Text
+                    accessibilityRole="text"
+                    style={{
+                      marginTop: 4,
+                      borderRadius: 12,
+                      paddingHorizontal: 16,
+                      paddingVertical: 12,
+                      fontSize: 12,
+                      lineHeight: 19.5,
+                      backgroundColor: "rgba(14,26,36,.6)",
+                      color: "#e8e2d8",
+                    }}
+                  >
+                    {notice}
+                  </Text>
+                ) : null}
+              </View>
+            )}
+
+            {__DEV__ ? (
+              <Text
+                style={{
+                  marginTop: 24,
+                  textAlign: "center",
+                  fontSize: 10.5,
+                  lineHeight: 17,
+                  color: "#9a948b",
+                }}
+              >
+                حسابان تجريبيان: mohammed@athar.test و noura@athar.test — كلمة المرور athar1234
+              </Text>
+            ) : null}
+          </Animated.View>
         </View>
+      </KeyboardAvoidingView>
+    </View>
+  );
+}
 
-        <TextInput
-          style={field}
-          value={email}
-          onChangeText={setEmail}
-          placeholder="البريد"
-          placeholderTextColor={colors.faint}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-          textContentType="emailAddress"
-        />
-        <TextInput
-          style={field}
-          value={password}
-          onChangeText={setPassword}
-          placeholder="كلمة المرور"
-          placeholderTextColor={colors.faint}
-          secureTextEntry
-          textContentType="password"
-          onSubmitEditing={submit}
-        />
+/**
+ * الفعل الأساسي بتدرّج العلامة.
+ *
+ * في الويب `linear-gradient(135deg,…)` — زاويةٌ حقيقية، وهنا نقطتا بداية
+ * ونهاية بإحداثيات الصندوق: الزاوية العليا اليسرى إلى السفلى اليمنى.
+ * على زرٍّ عرضه أضعاف ارتفاعه يكون محور التدرّج أفقيّ الميل في الحالتين.
+ */
+function BrandButton({
+  onPress,
+  disabled,
+  style,
+  children,
+}: {
+  onPress: () => void;
+  disabled?: boolean;
+  style?: object;
+  children: React.ReactNode;
+}) {
+  return (
+    <Pressable onPress={onPress} disabled={disabled} style={[{ opacity: disabled ? 0.6 : 1 }, style]}>
+      <LinearGradient
+        colors={[brandGradient[0], brandGradient[1]]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ height: 54, borderRadius: 12, alignItems: "center", justifyContent: "center" }}
+      >
+        {children}
+      </LinearGradient>
+    </Pressable>
+  );
+}
 
-        {error ? (
-          <Text accessibilityRole="alert" style={{ color: colors.live, fontSize: 12.5 }}>
-            {error}
-          </Text>
-        ) : null}
-
-        <Pressable
-          onPress={submit}
-          disabled={busy}
-          style={{
-            height: 54,
-            borderRadius: 12,
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: colors.clay,
-            opacity: busy ? 0.6 : 1,
-            marginTop: 4,
-          }}
-        >
-          {busy ? (
-            <ActivityIndicator color={colors.onBrand} />
-          ) : (
-            <Text style={{ color: colors.onBrand, fontSize: 15, fontWeight: "700" }}>دخول</Text>
-          )}
-        </Pressable>
-      </View>
-    </KeyboardAvoidingView>
+/* شعارات المزوّدين — أشكال مبسّطة، بلا استعمال علاماتهم الرسمية. */
+function AppleMark() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="#0e1a24">
+      <Path d="M16.4 12.7c0-2.4 2-3.6 2.1-3.6-1.1-1.7-2.9-1.9-3.6-1.9-1.5-.2-3 .9-3.8.9-.8 0-2-.9-3.3-.8-1.7 0-3.2 1-4.1 2.5-1.7 3-.4 7.5 1.3 9.9.8 1.2 1.8 2.5 3.1 2.5 1.2 0 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8-.1 0-2.4-.9-2.4-3.6ZM14 5.6c.7-.8 1.1-2 1-3.1-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.9-1 3 1.1.1 2.2-.6 2.9-1.4Z" />
+    </Svg>
+  );
+}
+function GoogleMark() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24">
+      <Path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.9h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.4Z" />
+      <Path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22Z" />
+      <Path fill="#FBBC05" d="M6.4 14a6 6 0 0 1 0-3.8V7.6H3.1a10 10 0 0 0 0 8.9L6.4 14Z" />
+      <Path fill="#EA4335" d="M12 5.9c1.5 0 2.8.5 3.8 1.5l2.8-2.8A10 10 0 0 0 3.1 7.6l3.3 2.6C7.2 7.8 9.4 5.9 12 5.9Z" />
+    </Svg>
+  );
+}
+function FacebookMark() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="#1877F2">
+      <Path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12Z" />
+    </Svg>
+  );
+}
+function XMark() {
+  return (
+    <Svg width={17} height={17} viewBox="0 0 24 24" fill="#0e1a24">
+      <Path d="M17.7 3h3.3l-7.2 8.3L22 21h-6.6l-5.2-6.8L4.3 21H1l7.7-8.8L1.3 3H8l4.7 6.2L17.7 3Zm-1.2 16h1.8L7.6 4.8H5.7L16.5 19Z" />
+    </Svg>
   );
 }
