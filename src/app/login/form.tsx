@@ -1,18 +1,5 @@
 "use client";
 
-/*
-  حسابُ تجربةٍ يُملأ في التطوير وحده.
-
-  كان مكتوباً في `defaultValue` بلا شرط، فكانت صفحةُ الدخول في الإنتاج
-  تعرض بريد المالك وكلمةَ مروره جاهزين: من فتح الصفحة يضغط «دخول» فيصير
-  مالكاً. والشرط على `NODE_ENV` يُطوى في البناء، فلا يخرج النصّ في حزمة
-  الإنتاج أصلاً — لا يُخفى بل لا يوجد.
-*/
-const TRIAL =
-  process.env.NODE_ENV === "development"
-    ? { email: "mohammed@athar.test", password: "athar1234" }
-    : { email: "", password: "" };
-
 import { useActionState, useEffect, useState } from "react";
 import { signIn } from "@/app/actions";
 import { AthrMark, TAGLINE_AR, TAGLINE_EN } from "@/components/brand";
@@ -62,7 +49,6 @@ const PROVIDERS = [
   { key: "apple", label: "Apple", mark: <AppleMark /> },
   { key: "google", label: "Google", mark: <GoogleMark /> },
   { key: "facebook", label: "Facebook", mark: <FacebookMark /> },
-  { key: "x", label: "X", mark: <XMark /> },
 ];
 
 export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?: boolean }) {
@@ -187,7 +173,6 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
                 type="email"
                 autoComplete="email"
                 required
-                defaultValue={TRIAL.email}
                 placeholder="البريد"
                 className="rounded-xl px-4 text-[14.5px] outline-none"
                 style={{
@@ -202,7 +187,6 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
                 type="password"
                 autoComplete="current-password"
                 required
-                defaultValue={TRIAL.password}
                 placeholder="كلمة المرور"
                 className="rounded-xl px-4 text-[14.5px] outline-none"
                 style={{
@@ -273,16 +257,6 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
               ) : null}
             </div>
           )}
-
-          {/* وسطرُ الحسابين التجريبيين كان يطبع كلمة المرور للعالم. */}
-          {process.env.NODE_ENV === "development" ? (
-            <p
-              className="mt-6 text-center text-[10.5px] leading-relaxed"
-              style={{ color: "#9a948b" }}
-            >
-              حسابان تجريبيان: mohammed@athar.test و noura@athar.test — كلمة المرور athar1234
-            </p>
-          ) : null}
         </div>
       </div>
     </div>
@@ -311,13 +285,6 @@ function FacebookMark() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="#1877F2">
       <path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12Z" />
-    </svg>
-  );
-}
-function XMark() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="#0e1a24">
-      <path d="M17.7 3h3.3l-7.2 8.3L22 21h-6.6l-5.2-6.8L4.3 21H1l7.7-8.8L1.3 3H8l4.7 6.2L17.7 3Zm-1.2 16h1.8L7.6 4.8H5.7L16.5 19Z" />
     </svg>
   );
 }

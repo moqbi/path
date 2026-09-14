@@ -25,16 +25,6 @@ import { BackIcon } from "../components/icons";
 import { useSession } from "../lib/session";
 import { brandGradient, colors } from "../theme/tokens";
 
-/*
-  حسابُ تجربةٍ يُملأ في التطوير وحده.
-
-  في الويب شرطٌ على `NODE_ENV` يُطوى في البناء، وهنا `__DEV__` — يُطوى
-  في حزمة الإصدار كذلك، فلا يخرج النصّ إلى جهاز أحد.
-*/
-const TRIAL = __DEV__
-  ? { email: "mohammed@athar.test", password: "athar1234" }
-  : { email: "", password: "" };
-
 type Phase = "intro" | "leaving" | "form";
 
 /**
@@ -141,7 +131,6 @@ const PROVIDERS = [
   { key: "apple", label: "Apple", mark: <AppleMark /> },
   { key: "google", label: "Google", mark: <GoogleMark /> },
   { key: "facebook", label: "Facebook", mark: <FacebookMark /> },
-  { key: "x", label: "X", mark: <XMark /> },
 ];
 
 const FIELD = {
@@ -169,8 +158,8 @@ export default function Login() {
   const signIn = useSession((s) => s.signIn);
 
   const [showEmail, setShowEmail] = useState(false);
-  const [email, setEmail] = useState(TRIAL.email);
-  const [password, setPassword] = useState(TRIAL.password);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [notice, setNotice] = useState<string | null>(
@@ -399,20 +388,6 @@ export default function Login() {
                 ) : null}
               </View>
             )}
-
-            {__DEV__ ? (
-              <Text
-                style={{
-                  marginTop: 24,
-                  textAlign: "center",
-                  fontSize: 10.5,
-                  lineHeight: 17,
-                  color: "#9a948b",
-                }}
-              >
-                حسابان تجريبيان: mohammed@athar.test و noura@athar.test — كلمة المرور athar1234
-              </Text>
-            ) : null}
           </Animated.View>
         </View>
       </KeyboardAvoidingView>
@@ -474,13 +449,6 @@ function FacebookMark() {
   return (
     <Svg width={20} height={20} viewBox="0 0 24 24" fill="#1877F2">
       <Path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12Z" />
-    </Svg>
-  );
-}
-function XMark() {
-  return (
-    <Svg width={17} height={17} viewBox="0 0 24 24" fill="#0e1a24">
-      <Path d="M17.7 3h3.3l-7.2 8.3L22 21h-6.6l-5.2-6.8L4.3 21H1l7.7-8.8L1.3 3H8l4.7 6.2L17.7 3Zm-1.2 16h1.8L7.6 4.8H5.7L16.5 19Z" />
     </Svg>
   );
 }
