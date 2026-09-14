@@ -6,6 +6,7 @@ import { createGroup, deleteGroup, savePrivacy } from "@/app/actions";
 import { ScreenHeader } from "@/components/ui";
 import { LifeIcon } from "@/components/icons";
 import { DeleteAccount } from "@/app/me/delete";
+import { ChangeEmail } from "@/app/settings/email";
 import { ShieldIcon } from "@/components/icons";
 import { ar } from "@/lib/format";
 
@@ -171,6 +172,9 @@ export default async function PrivacyPage() {
             </div>
           ))}
         </div>
+
+        {/* البريد قبل الدعم والحذف: بيانات الحساب أولاً ثم ما يُفعل به. */}
+        <ChangeEmail current={user.email} />
 
         {/* الدعم داخل الخصوصية: هنا يبحث الناس عمّن يكلّمونه. */}
         <Link

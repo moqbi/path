@@ -1813,3 +1813,112 @@ export async function moveMediaToCloud(
     return { error: problem instanceof Error ? problem.message : "تعذّر النقل" };
   }
 }
+
+// ───────────────────────────── تغيير البريد ─────────────────────────────
+
+/**
+ * البريد يُصغَّر دائماً.
+ *
+ * الدخول يبحث عن البريد مُصغَّراً (`credentials` أعلاه)، فلو حُفظ
+ * «Ali@Athar.sa» كما كُتب لما وجده البحث أبداً — يُحفظ الحساب ولا يُدخَل
+ * إليه. والتصغير هنا وفي الدخول واحد، لا تصادفاً بل لأنّه مكتوبٌ مرّتين
+ * بنفس المخطّط.
+ */
+const emailInput = z.object({
+  email: z.string().trim().toLowerCase().email("بريد غير صالح").max(120),
+});
+
+/**
+ * يفحص بريداً جديداً لحسابٍ بعينه.
+ *
+ * فحصٌ واحد للطريقين — صاحبُ الحساب من الخصوصية، والمالكُ من اللوحة —
+ * فلا يفترق ما يُقبل هنا عمّا يُقبل هناك.
+ *
+ * والحجز يُفحص قبل الكتابة وتُمسك الكتابة أيضاً: بين الفحص والكتابة
+ * لحظةٌ يسع فيها طلبٌ آخر أن يأخذ البريد، وقيدُ الفرادة في القاعدة هو
+ * الحَكَم الأخير لا الفحص.
+ */
+async function readNewEmail(
+  userId: string,
+  formData: FormData,
+): Promise<{ email: string } | { error: string }> {
+  const parsed = emailInput.safeParse({ email: formData.get("email") });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بريد غير صالح" };
+
+  const email = parsed.data.email;
+  const row = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+  if (!row) return { error: "لا يوجد هذا الحساب" };
+  if (row.email === email) return { error: "هذا بريده الحالي" };
+
+  const taken = await prisma.user.findFirst({
+    where: { email, id: { not: userId } },
+    select: { id: true },
+  });
+  if (taken) return { error: "هذا البريد مستعمل في حسابٍ آخر" };
+
+  return { email };
+}
+
+/** يكتب البريد، ويترجم اصطدام قيد الفرادة إلى رسالةٍ لا صفحة خطأ. */
+async function writeEmail(userId: string, email: string): Promise<AdminResult> {
+  try {
+    await prisma.user.update({ where: { id: userId }, data: { email } });
+    return { ok: `صار البريد ${email}` };
+  } catch {
+    return { error: "هذا البريد مستعمل في حسابٍ آخر" };
+  }
+}
+
+/**
+ * تغيير البريد من صفحة الخصوصية — بكلمة المرور.
+ *
+ * البريد هو اسم الدخول، فتغييرُه تغييرُ مفتاحِ الباب. وجهازٌ مفتوحٌ في
+ * يد غيرك لا يجب أن ينقل حسابك إلى عنوانه بضغطتين — ولهذا تُطلب كلمة
+ * المرور كما تُطلب عند الحذف.
+ *
+ * ولا يُرسَل إلى العنوان الجديد ما يؤكّده: لا بريد صادر في المنظومة
+ * بعد. فالتأكيد بالرابط يأتي يوم يُربط مزوّدُ بريد، ويُكتب حينها عمودٌ
+ * «مؤكَّد» — وحتى ذلك اليوم كلمةُ المرور هي الحارس.
+ */
+export async function changeEmail(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  const user = await requireUser();
+
+  const password = String(formData.get("password") ?? "");
+  const row = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { passwordHash: true },
+  });
+  if (!row || !(await verifyPassword(password, row.passwordHash))) {
+    return { error: "كلمة المرور غير صحيحة" };
+  }
+
+  const checked = await readNewEmail(user.id, formData);
+  if ("error" in checked) return checked;
+
+  const result = await writeEmail(user.id, checked.email);
+  revalidatePath("/settings/privacy");
+  revalidatePath("/me");
+  return result;
+}
+
+/**
+ * تغيير بريد حسابٍ من اللوحة — للمالك وحده.
+ *
+ * وليست هذه صرامةً زائدة: من يغيّر بريد حسابٍ يملك الحساب: ينقله إلى
+ * عنوانٍ يقرأه هو. فلو مُنحت للوحة كاملةً لصار كلُّ مشرفٍ قادراً على
+ * أخذ حساب المالك نفسه. تُمنح الصلاحيات من هنا، ولا تُمنح هذه.
+ */
+export async function setUserEmail(
+  userId: string,
+  _prev: AdminResult,
+  formData: FormData,
+): Promise<AdminResult> {
+  await requireOwner();
+
+  const checked = await readNewEmail(userId, formData);
+  if ("error" in checked) return checked;
+
+  const result = await writeEmail(userId, checked.email);
+  revalidatePath("/admin");
+  return result;
+}

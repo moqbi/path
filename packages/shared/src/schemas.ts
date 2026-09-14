@@ -100,3 +100,8 @@ export const friendGroupInput = z.object({ groupId: cuid.nullish() });
 
 export type ProfileInput = z.infer<typeof profileInput>;
 export type PrivacyInput = z.infer<typeof privacyInput>;
+
+export const emailChangeInput = z.object({
+  email,
+  password: z.string().min(1, "اكتب كلمة المرور").max(200),
+});

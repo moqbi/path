@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { coverInput, privacyInput, profileInput } from "@athar/shared";
+import { coverInput, emailChangeInput, privacyInput, profileInput } from "@athar/shared";
 import { zValidator } from "../../lib/validate";
 import { requireAuth, me } from "../../middleware/auth";
 import * as profile from "../../services/profile";
@@ -17,6 +17,11 @@ export const profileRoutes = new Hono()
 
   .patch("/", zValidator("json", profileInput), async (c) =>
     c.json({ user: await profile.saveProfile(me(c), c.req.valid("json")) }),
+  )
+
+  /** البريد وحده خلف كلمة المرور: تغييرُه نقلٌ للحساب. */
+  .put("/email", zValidator("json", emailChangeInput), async (c) =>
+    c.json({ user: await profile.changeEmail(me(c), c.req.valid("json")) }),
   )
 
   .put("/privacy", zValidator("json", privacyInput), async (c) =>

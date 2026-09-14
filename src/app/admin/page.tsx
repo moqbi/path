@@ -21,6 +21,7 @@ import {
 } from "@/app/actions";
 import { itemPaint, ScreenHeader, TagPill } from "@/components/ui";
 import { Saver } from "./saver";
+import { AdminEmail } from "./email";
 import { ItemImage } from "./item-image";
 import { riyals, ar, relative } from "@/lib/format";
 import { parsePalette } from "@/lib/theme";
@@ -419,49 +420,54 @@ export default async function AdminPage({
         <h2 className="mb-1 text-[15px] font-bold">الحسابات</h2>
         <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
           امنح وسماً لحساب أو انزعه. الرقم على اليمين رقم العضوية.
+          {owner ? " وتغييرُ البريد لك وحدك: من يبدّل بريد حسابٍ ينقله إلى عنوانه." : ""}
         </p>
         <div className="mb-7 flex flex-col gap-2">
           {people.map((person) => (
-            <form
-              key={person.id}
-              action={setUserTag.bind(null, person.id)}
-              className="flex items-center gap-2 rounded-2xl border border-line bg-card p-3"
-            >
-              <span
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
-                style={{ background: "var(--color-chip)", color: "var(--color-muted)" }}
+            /* البطاقة تحوي نموذجين: الوسم وطيّةُ البريد — ولا يتداخلان. */
+            <div key={person.id} className="rounded-2xl border border-line bg-card">
+              <form
+                action={setUserTag.bind(null, person.id)}
+                className="flex items-center gap-2 p-3"
               >
-                {ar(person.memberNo)}
-              </span>
-              <div className="min-w-0 grow">
-                <p className="flex items-center gap-1.5 truncate text-[13.5px] font-semibold">
-                  {person.name}
-                  <TagPill tag={person.tag} size={10} />
-                </p>
-                <p dir="ltr" className="truncate text-right text-[11px] text-faint">
-                  {person.email}
-                </p>
-              </div>
-              <select
-                name="tagId"
-                defaultValue={person.tagId ?? ""}
-                className="h-10 max-w-[110px] shrink-0 rounded-xl border border-line bg-paper px-2 text-[12px] text-ink outline-none"
-              >
-                <option value="">بلا وسم</option>
-                {tags.map((tag) => (
-                  <option key={tag.id} value={tag.id}>
-                    {tag.name}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="submit"
-                className="h-10 shrink-0 rounded-xl px-3 text-[12px] font-bold"
-                style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
-              >
-                امنح
-              </button>
-            </form>
+                <span
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
+                  style={{ background: "var(--color-chip)", color: "var(--color-muted)" }}
+                >
+                  {ar(person.memberNo)}
+                </span>
+                <div className="min-w-0 grow">
+                  <p className="flex items-center gap-1.5 truncate text-[13.5px] font-semibold">
+                    {person.name}
+                    <TagPill tag={person.tag} size={10} />
+                  </p>
+                  <p dir="ltr" className="truncate text-right text-[11px] text-faint">
+                    {person.email}
+                  </p>
+                </div>
+                <select
+                  name="tagId"
+                  defaultValue={person.tagId ?? ""}
+                  className="h-10 max-w-[110px] shrink-0 rounded-xl border border-line bg-paper px-2 text-[12px] text-ink outline-none"
+                >
+                  <option value="">بلا وسم</option>
+                  {tags.map((tag) => (
+                    <option key={tag.id} value={tag.id}>
+                      {tag.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  className="h-10 shrink-0 rounded-xl px-3 text-[12px] font-bold"
+                  style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+                >
+                  امنح
+                </button>
+              </form>
+
+              {owner ? <AdminEmail userId={person.id} current={person.email} /> : null}
+            </div>
           ))}
         </div>
 

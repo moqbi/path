@@ -1,5 +1,5 @@
 import { prisma } from "@athar/db";
-import { badRequest, notFound } from "../lib/errors";
+import { badRequest, forbidden, notFound } from "../lib/errors";
 import { dropMedia } from "./media";
 
 /** الحساب كما يقرؤه صاحبه: كل ما تعرضه شاشة «الملف الشخصي» وتحريرها. */
@@ -128,4 +128,51 @@ export async function clearCover(userId: string) {
   await prisma.user.update({ where: { id: userId }, data: { coverMediaId: null } });
   if (user?.coverMediaId) await dropMedia([user.coverMediaId]);
   return { ok: true };
+}
+
+/**
+ * تغيير البريد — بكلمة المرور.
+ *
+ * البريد اسمُ الدخول، فتغييرُه تغييرُ مفتاحِ الباب: توكنٌ مسروقٌ لا يجب
+ * أن ينقل الحساب إلى عنوان سارقه. ولهذا تُطلب كلمة المرور ولا يكفي أن
+ * يكون الطلب موقّعاً.
+ *
+ * ويُصغَّر البريد كما يُصغَّر عند الدخول: لولا ذلك لحُفظ عنوانٌ لا يجده
+ * البحث، فيبقى الحساب بلا بابٍ يُدخَل منه.
+ */
+export async function changeEmail(
+  userId: string,
+  input: { email: string; password: string },
+) {
+  const { verifyPassword } = await import("./auth");
+
+  const row = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true, passwordHash: true },
+  });
+  if (!row) throw notFound("لا يوجد هذا الحساب");
+  if (!(await verifyPassword(input.password, row.passwordHash))) {
+    throw forbidden("كلمة المرور غير صحيحة");
+  }
+
+  const email = input.email.trim().toLowerCase();
+  if (email === row.email) throw badRequest("هذا بريدك الحالي");
+
+  const taken = await prisma.user.findFirst({
+    where: { email, id: { not: userId } },
+    select: { id: true },
+  });
+  if (taken) throw badRequest("هذا البريد مستعمل في حسابٍ آخر");
+
+  try {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { email },
+      select: { id: true, email: true },
+    });
+    return user;
+  } catch {
+    // بين الفحص والكتابة لحظةٌ يسع فيها طلبٌ آخر أن يأخذه؛ والقيد هو الحَكَم.
+    throw badRequest("هذا البريد مستعمل في حسابٍ آخر");
+  }
 }
