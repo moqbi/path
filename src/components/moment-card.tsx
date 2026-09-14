@@ -24,7 +24,7 @@ const INLINE_COMMENTS = 3;
  * صديق جديد، أغنية. البطاقة تُحفظ لما له متن — صورة أو خاطرة — وهكذا
  * كان Path: الخطّ الزمني يوميّات، والأحداث أسطرٌ فيها.
  */
-const EVENTS = new Set(["CITY", "PLACE", "SLEEP", "WAKE", "MUSIC", "FRIEND_ADDED"]);
+export const EVENTS = new Set(["CITY", "PLACE", "SLEEP", "WAKE", "MUSIC", "FRIEND_ADDED"]);
 
 const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
   CITY: { bg: "var(--color-night)", ink: "#f7f5ef" },
@@ -157,7 +157,7 @@ function Row({
 }
 
 /** عنوان الحدث وسطره الثاني — بلا إطار، على ورق الخط الزمني نفسه. */
-function EventLine({
+export function EventLine({
   moment,
   withNames,
   href,
@@ -258,14 +258,20 @@ function EventLine({
             target="_blank"
             rel="noreferrer noopener"
             aria-label="استمع"
-            className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-cover bg-center"
+            className="relative block h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-cover bg-center"
             style={{ backgroundImage: `url(${moment.musicThumb})` }}
           >
+            {/* المثلّث فوق الصورة لا في وسطها: الوسط يحجب وجهها. */}
             <span
-              className="flex h-6 w-6 items-center justify-center rounded-full"
-              style={{ background: "rgba(14,26,36,.62)", color: "#fff" }}
+              className="absolute flex h-5 w-5 items-center justify-center rounded-full"
+              style={{
+                top: 3,
+                insetInlineStart: 3,
+                background: "rgba(14,26,36,.68)",
+                color: "#fff",
+              }}
             >
-              <PlayIcon size={13} />
+              <PlayIcon size={11} />
             </span>
           </a>
         ) : (
@@ -338,7 +344,15 @@ export function MomentCard({
 
       <div className="px-4 pt-3">
         {moment.text ? (
-          <p className="mb-2 text-[13.5px] leading-relaxed text-ink">{moment.text}</p>
+          <p dir="auto" className="mb-2 text-[13.5px] leading-relaxed text-ink">{moment.text}</p>
+        ) : null}
+
+        {/* الموقع على لحظةٍ أو صورة: سطرٌ صغير، لا حدثُ مكانٍ مستقل. */}
+        {moment.placeName ? (
+          <p dir="auto" className="mb-2 flex items-center gap-1.5 text-[12px] text-muted">
+            <PinIcon size={12} />
+            {moment.placeName}
+          </p>
         ) : null}
 
         {withNames.length > 0 ? (

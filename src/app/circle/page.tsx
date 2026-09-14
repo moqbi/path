@@ -104,16 +104,9 @@ export default async function CirclePage({
 
   return (
     <div className="screen">
+      {/* لا زرّ زائد في الرأس: كان يفتح «مقترحون» وهو تبويبٌ ظاهرٌ تحته. */}
       <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
         <AthrHeaderMark />
-        <Link
-          href="/circle?t=suggested"
-          aria-label="أضف صديقاً"
-          className="flex h-10 w-10 items-center justify-center rounded-full"
-          style={{ background: "var(--color-chrome-2)", color: "var(--color-chrome-ink)" }}
-        >
-          <span className="text-[20px] leading-none">+</span>
-        </Link>
       </header>
 
       {/* شريط القصص: قصتك أولاً ثم من عندهم جديد. */}

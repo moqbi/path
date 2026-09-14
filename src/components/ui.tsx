@@ -228,7 +228,8 @@ export function ScreenHeader({
           <Link
             href={back}
             aria-label="رجوع"
-            className="-mr-2 flex h-11 w-11 items-center justify-center"
+            // ٤٠ لا ٤٤: القرص الأكبر كان يرفع الرأس ٤ بكسلات عن بقية التبويبات.
+            className="-mr-2 flex h-10 w-10 items-center justify-center"
             style={{ color: "var(--color-chrome-muted)" }}
           >
             <BackIcon size={19} />

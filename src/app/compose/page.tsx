@@ -23,7 +23,7 @@ export default async function ComposePage({
   const [friends, groups, settings] = await Promise.all([
     prisma.user.findMany({
       where: { id: { in: ids } },
-      select: { id: true, name: true },
+      select: { id: true, name: true, avatarMediaId: true },
       orderBy: { name: "asc" },
     }),
     prisma.friendGroup.findMany({

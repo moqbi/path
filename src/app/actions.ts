@@ -168,6 +168,41 @@ async function attachViewers(momentId: string, viewers: string[]): Promise<void>
   });
 }
 
+/** حدّ نصّ اللحظة — نفس حدّ الشاشة، فلا يقصّ الخادم ما سمحت به. */
+const TEXT_MAX = 250;
+
+/**
+ * موقعٌ اختياريٌّ على لحظةٍ ليست لحظة مكان.
+ *
+ * نفس قواعد لحظة المكان: الإحداثيات من الجهاز، والاسم ما اختاره صاحبها من
+ * الأماكن حوله وإلا أقرب عنوان — و«إظهار موقعي» مطفأً يُبقي المدينة وحدها.
+ */
+async function readPlace(
+  formData: FormData,
+  user: { id: string; city: string | null },
+): Promise<{ lat: number | null; lng: number | null; placeName: string | null; placeCity: string | null } | Record<string, never>> {
+  const parsed = placeInput.safeParse({ lat: formData.get("lat"), lng: formData.get("lng") });
+  if (!parsed.success) return {};
+
+  const { lat, lng } = parsed.data;
+  const place = await reverseGeocode(lat, lng);
+  const city = place.city ?? user.city;
+  const picked = String(formData.get("place") ?? "").trim().slice(0, 80);
+
+  const settings = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { shareLocation: true },
+  });
+  const precise = settings?.shareLocation !== false;
+
+  return {
+    lat: precise ? lat : null,
+    lng: precise ? lng : null,
+    placeName: precise ? (picked || place.name) : null,
+    placeCity: city,
+  };
+}
+
 /** لحظة صورة أو فكرة: نص، وإشارة اختيارية. */
 export async function postSimple(formData: FormData): Promise<void> {
   const user = await requireUser();
@@ -175,7 +210,7 @@ export async function postSimple(formData: FormData): Promise<void> {
   const kind = String(formData.get("kind") ?? "");
   if (kind !== "PHOTO" && kind !== "THOUGHT") throw new Error("نوع غير صالح");
 
-  const text = String(formData.get("text") ?? "").trim().slice(0, 400);
+  const text = String(formData.get("text") ?? "").trim().slice(0, TEXT_MAX);
   if (!text && kind === "THOUGHT") throw new Error("اكتب شيئاً");
 
   // الصورة المرفوعة تسبق التدرّج؛ التدرّج بديل حين لا توجد صورة.
@@ -192,6 +227,8 @@ export async function postSimple(formData: FormData): Promise<void> {
   }
 
   const seen = await readAudience(formData, user);
+  // الموقع اختياريٌّ هنا: اللحظة والصورة تحملان مكانهما كما يحمله المكان.
+  const where = await readPlace(formData, user);
 
   const moment = await prisma.moment.create({
     data: {
@@ -200,6 +237,7 @@ export async function postSimple(formData: FormData): Promise<void> {
       text: text || null,
       mediaId,
       imageSpec: kind === "PHOTO" && !mediaId ? randomImage() : null,
+      ...where,
       audience: seen.audience,
       audienceGroupId: seen.audienceGroupId,
     },

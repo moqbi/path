@@ -1,16 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import { circleIds } from "@/lib/circle";
 import { conversationsFor } from "@/lib/dm";
 import { Avatar, Empty, NameTag } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import { AthrHeaderMark } from "@/components/brand";
-import { SearchIcon, TextIcon } from "@/components/icons";
+import { SearchIcon } from "@/components/icons";
 import { ar, timeOfDay } from "@/lib/format";
 import { SwipeRow } from "@/components/swipe-row";
-import { deleteConversation, markDelivered, startConversation } from "@/app/actions";
+import { deleteConversation, markDelivered } from "@/app/actions";
 import { Ticks, receiptOf } from "@/components/receipt";
 
 const FILTERS = [
@@ -22,7 +20,7 @@ const FILTERS = [
 /**
  * المحادثات: العلامة في الرأس، ثم بحث، ثم مرشّحات، ثم الصفوف —
  * الاسم والوقت في سطر، وآخر رسالة تحته، وشارة تقول كم ينتظر.
- * وتحتها أصدقاؤك لتبدأ محادثة بضغطة، فالسؤال «مع من أتحدّث؟».
+ * محادثاتٌ فقط: قائمة الأصدقاء لها تبويبها، ومنه تُفتح محادثة جديدة.
  */
 export default async function MessagesPage({
   searchParams,
@@ -39,26 +37,7 @@ export default async function MessagesPage({
   // فتحُ الشاشة يعني أنّ ما وصلني قد وصل فعلاً: نكتب التسليم قبل القراءة.
   await markDelivered();
 
-  const [conversations, ids] = await Promise.all([
-    conversationsFor(user.id),
-    circleIds(user.id),
-  ]);
-
-  const talking = new Set(conversations.map((row) => row.other.id));
-  const rest = await prisma.user.findMany({
-    where: { id: { in: ids.filter((id) => !talking.has(id)) } },
-    select: {
-      id: true,
-      name: true,
-      isPlus: true,
-      lastSeenAt: true,
-      avatarMediaId: true,
-      frame: { select: { spec: true } },
-      charm: { select: { spec: true, mediaId: true } },
-      tag: { select: { name: true, bg: true, fg: true } },
-    },
-    orderBy: { name: "asc" },
-  });
+  const conversations = await conversationsFor(user.id);
 
   const online = (at: Date | null | undefined) =>
     Boolean(at && Date.now() - at.getTime() < 3 * 60_000);
@@ -69,25 +48,17 @@ export default async function MessagesPage({
     .filter((row) =>
       filter === "unread" ? row.unseen > 0 : filter === "online" ? online(row.other.lastSeenAt) : true,
     );
-  const others = rest
-    .filter((person) => match(person.name))
-    .filter((person) => (filter === "online" ? online(person.lastSeenAt) : filter !== "unread"));
-
   const unreadTotal = conversations.reduce((sum, row) => sum + row.unseen, 0);
 
   return (
     <div className="screen">
+      {/*
+        الرأس علامةٌ وبحث، بلا أيقونة «محادثة جديدة»: كانت تفتح الأصدقاء،
+        وهم تبويبٌ في الشريط تحت — وهذه الشاشة صارت محادثاتٍ فقط.
+      */}
       <header className="chrome px-4 pb-3 pt-4">
         <div className="mb-3 flex items-center justify-between">
           <AthrHeaderMark />
-          <Link
-            href="/circle"
-            aria-label="محادثة جديدة"
-            className="flex h-10 w-10 items-center justify-center rounded-full"
-            style={{ background: "var(--color-chrome-2)", color: "var(--color-chrome-ink)" }}
-          >
-            <TextIcon size={18} />
-          </Link>
         </div>
 
         <form
@@ -145,10 +116,10 @@ export default async function MessagesPage({
       </div>
 
       <main className="scroll-area px-4 pt-2">
-        {threads.length === 0 && others.length === 0 ? (
+        {threads.length === 0 ? (
           <Empty
             title={term || filter ? "ما فيه شيء هنا" : "ما عندك محادثات"}
-            hint={term || filter ? undefined : "اختر أحداً من أصدقائك تحت لتبدأ معه."}
+            hint={term || filter ? undefined : "افتح أصدقائك واضغط أيقونة الرسالة بجانب صاحبك."}
             action={term || filter ? undefined : { href: "/circle", label: "افتح أصدقائي" }}
           />
         ) : null}
@@ -226,45 +197,6 @@ export default async function MessagesPage({
           </div>
         ) : null}
 
-        {others.length > 0 ? (
-          <>
-            <p className="mb-1.5 px-1 text-[11.5px] font-semibold tracking-wide text-faint">
-              ابدأ محادثة
-            </p>
-            <div className="overflow-hidden rounded-2xl border border-line bg-card">
-              {others.map((person, index) => (
-                <form
-                  key={person.id}
-                  action={startConversation.bind(null, person.id)}
-                  style={{ borderTop: index === 0 ? "none" : "1px solid var(--color-line)" }}
-                >
-                  <button type="submit" className="flex w-full items-center gap-3 p-3 text-right">
-                    <span className="relative shrink-0">
-                      <Avatar
-                        name={person.name}
-                        size={42}
-                        frameSpec={person.frame?.spec}
-                        charm={person.charm}
-                        mediaId={person.avatarMediaId}
-                      />
-                      {online(person.lastSeenAt) ? (
-                        <span
-                          className="absolute bottom-0 left-0 block h-2.5 w-2.5 rounded-full"
-                          style={{ background: "#3fbf6a", border: "2px solid var(--color-card)" }}
-                        />
-                      ) : null}
-                    </span>
-                    <span className="flex min-w-0 grow items-center gap-1.5">
-                      <span className="truncate text-[14px] font-semibold">{person.name}</span>
-                      <NameTag isPlus={person.isPlus} tag={person.tag} size={10} />
-                    </span>
-                    <span className="shrink-0 text-[12px] font-semibold text-clay-ink">تحدّث</span>
-                  </button>
-                </form>
-              ))}
-            </div>
-          </>
-        ) : null}
       </main>
 
       <TabBar active="/messages" />
