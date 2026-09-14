@@ -86,6 +86,20 @@ export function useFeed(view: "" | "private" = "") {
   });
 }
 
+/**
+ * «آثارنا»: ما يجمعك بصديقٍ بعينه.
+ *
+ * صفحةٌ واحدة بلا مؤشّر — الخادم يردّ ثمانين لحظة كما في الويب: ما
+ * يجمع اثنين ليس تدفّقاً لا ينتهي.
+ */
+export const useTogether = (friendId: string) =>
+  useQuery({
+    queryKey: ["feed", "together", friendId],
+    enabled: friendId.length > 0,
+    queryFn: () =>
+      api<{ moments: Moment[]; since: string | null }>(`/v1/feed/together/${friendId}`),
+  });
+
 export const useMoment = (id: string) =>
   useQuery({ queryKey: keys.moment(id), queryFn: () => api<{ moment: Moment }>(`/v1/moments/${id}`) });
 

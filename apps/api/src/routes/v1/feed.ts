@@ -25,6 +25,11 @@ export const feedRoutes = new Hono()
 
   .get("/private", zValidator("query", pageQuery), async (c) =>
     c.json(await feed.privateTimeline(me(c), c.req.valid("query"))),
+  )
+
+  /** «آثارنا»: ما يجمعك بصديقٍ بعينه — ومن ليس في دائرتك لا أثرَ معه. */
+  .get("/together/:id", zValidator("param", byId), async (c) =>
+    c.json(await feed.togetherTimeline(me(c), c.req.valid("param").id)),
   );
 
 /**

@@ -140,6 +140,65 @@ export async function privateTimeline(userId: string, options: { cursor?: string
 }
 
 /**
+ * «أثرنا»: الخط الزمني المشترك بين اثنين.
+ *
+ * ليس كل ما نشراه، بل ما يجمعهما فعلاً — لحظةٌ أشار فيها أحدهما إلى
+ * الآخر، أو ترك عليها أثراً بتفاعلٍ أو تعليق. وشرط الرؤية يبقى فوق ذلك
+ * كلّه: `visibleWhere` هي الباب الوحيد لقراءة اللحظات.
+ *
+ * ومن ليس في دائرتك لا أثرَ معه: الخادم يمنع، لا الواجهة.
+ */
+function involves(authorId: string, otherId: string) {
+  return {
+    AND: [
+      { authorId },
+      {
+        OR: [
+          { tags: { some: { userId: otherId } } },
+          { reactions: { some: { userId: otherId } } },
+          { comments: { some: { userId: otherId } } },
+        ],
+      },
+    ],
+  };
+}
+
+export async function togetherTimeline(userId: string, friendId: string) {
+  const { circleIds } = await import("./visibility");
+  const ids = await circleIds(userId);
+  if (!ids.includes(friendId)) throw notFound("لا يوجد هذا الحساب");
+
+  const [visible, friendship] = await Promise.all([
+    visibleWhere(userId),
+    prisma.friendship.findFirst({
+      where: {
+        status: "ACCEPTED",
+        OR: [
+          { requesterId: userId, addresseeId: friendId },
+          { requesterId: friendId, addresseeId: userId },
+        ],
+      },
+      select: { createdAt: true },
+    }),
+  ]);
+
+  const rows = await prisma.moment.findMany({
+    where: {
+      AND: [visible, { OR: [involves(userId, friendId), involves(friendId, userId)] }],
+    },
+    select: shape,
+    orderBy: { createdAt: "desc" },
+    take: 80,
+  });
+
+  return {
+    ...page(rows, rows.length, userId),
+    /** متى بدأ الأثر: تاريخ الصداقة. */
+    since: friendship?.createdAt ?? null,
+  };
+}
+
+/**
  * لحظةٌ بعينها.
  *
  * الشرط نفسه يُدمج هنا: «غير موجودة» لمن لا يراها — لا «غير مصرّح».
