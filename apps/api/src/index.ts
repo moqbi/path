@@ -6,6 +6,10 @@ import { logger } from "hono/logger";
 import { corsOrigins, env, isProd } from "./env";
 import { secureHeaders } from "./middleware/secure";
 import { authRoutes } from "./routes/v1/auth";
+import { circleRoutes, userRoutes } from "./routes/v1/circle";
+import { feedRoutes, momentRoutes } from "./routes/v1/feed";
+import { mediaRoutes } from "./routes/v1/media";
+import { storeRoutes } from "./routes/v1/store";
 
 /**
  * خادم أثر.
@@ -38,6 +42,12 @@ if (!isProd) app.use("*", logger());
 app.get("/health", (c) => c.json({ ok: true, at: new Date().toISOString() }));
 
 app.route("/v1/auth", authRoutes);
+app.route("/v1/feed", feedRoutes);
+app.route("/v1/moments", momentRoutes);
+app.route("/v1/circle", circleRoutes);
+app.route("/v1/users", userRoutes);
+app.route("/v1/store", storeRoutes);
+app.route("/v1/media", mediaRoutes);
 
 app.notFound((c) => c.json({ error: "المسار غير موجود" }, 404));
 

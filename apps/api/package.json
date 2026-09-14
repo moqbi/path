@@ -15,7 +15,11 @@
     "@sentry/node": "^10.0.0",
     "hono": "^4.7.0",
     "jose": "6.1.3",
-    "zod": "4.4.3"
+    "zod": "4.4.3",
+    "@athar/storage": "workspace:*"
   },
-  "devDependencies": { "tsx": "^4.19.2", "typescript": "^5" }
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5"
+  }
 }

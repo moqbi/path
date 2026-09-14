@@ -1,0 +1,177 @@
+import { prisma } from "@athar/db";
+import { notFound } from "../lib/errors";
+import { visibleWhere } from "./visibility";
+
+/**
+ * شكل اللحظة كما يقرؤها الموبايل.
+ *
+ * مسطّحٌ لا متداخل: الشاشة تقرأ `author.name` لا
+ * `author.profile.display.name`، وكل حقلٍ لا تعرضه شاشةٌ لا يُرسل — فبايتاتُ
+ * الشبكة على جوّالٍ في مصعد ليست مجانية.
+ */
+const shape = {
+  id: true,
+  kind: true,
+  text: true,
+  placeName: true,
+  placeCity: true,
+  musicTitle: true,
+  musicArtist: true,
+  musicUrl: true,
+  musicThumb: true,
+  imageSpec: true,
+  mediaId: true,
+  createdAt: true,
+  author: {
+    select: {
+      id: true,
+      name: true,
+      isPlus: true,
+      avatarMediaId: true,
+      frame: { select: { spec: true, mediaId: true } },
+      charm: { select: { spec: true, mediaId: true } },
+      tag: { select: { name: true, bg: true, fg: true } },
+    },
+  },
+  tags: { select: { user: { select: { id: true, name: true } } } },
+  reactions: {
+    select: {
+      userId: true,
+      kind: true,
+      emoji: true,
+      user: { select: { name: true, avatarMediaId: true } },
+    },
+  },
+  comments: {
+    select: {
+      id: true,
+      body: true,
+      createdAt: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          isPlus: true,
+          avatarMediaId: true,
+          tag: { select: { name: true, bg: true, fg: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+    take: 3,
+  },
+  _count: { select: { views: true, comments: true } },
+} as const;
+
+/**
+ * يُسطّح ما ورد متداخلاً من Prisma.
+ *
+ * `tags` تأتي `{user:{…}}` و`reactions` تحمل `user` داخلها، والشاشة تقرأ
+ * شخصاً لا غلافاً حوله. التسطيح هنا مرّةً أوفر من تكراره في كل شاشة.
+ */
+function flatten<T extends Row>(row: T) {
+  const { tags, reactions, ...rest } = row;
+  return {
+    ...rest,
+    tags: tags.map((t) => t.user),
+    reactions: reactions.map(({ user, ...r }) => ({ ...r, ...user })),
+  };
+}
+
+type Row = {
+  tags: { user: { id: string; name: string } }[];
+  reactions: { userId: string; kind: string; emoji: string | null; user: { name: string; avatarMediaId: string | null } }[];
+};
+
+/** صفحةٌ بمؤشّر: نقرأ واحدةً زائدة لنعرف أثمّة تالٍ، ولا نعدّ الكلّ. */
+function page<T extends Row & { id: string }>(rows: T[], limit: number) {
+  const more = rows.length > limit;
+  const moments = (more ? rows.slice(0, limit) : rows).map(flatten);
+  return { moments, nextCursor: more ? moments.at(-1)?.id : undefined };
+}
+
+/** المؤشّر يُقصي نفسه: نبدأ بما بعده لا به. */
+const cursorOf = (cursor?: string) => ({
+  cursor: cursor ? { id: cursor } : undefined,
+  skip: cursor ? 1 : 0,
+});
+
+export type FeedMoment = Awaited<ReturnType<typeof timeline>>["moments"][number];
+
+/**
+ * الخط الزمني بصفحاتٍ بمؤشّر لا برقم صفحة.
+ *
+ * الترقيم بالرقم يكرّر لحظةً ويُسقط أخرى كلما نُشرت واحدةٌ أثناء التصفّح.
+ * والمؤشّر هو معرّف آخر لحظةٍ قُرئت: ما بعده يأتي، ولو نُشر ألفٌ فوقه.
+ */
+export async function timeline(userId: string, options: { cursor?: string; limit: number }) {
+  const where = await visibleWhere(userId);
+
+  const rows = await prisma.moment.findMany({
+    where,
+    select: shape,
+    orderBy: { createdAt: "desc" },
+    take: options.limit + 1,
+    ...cursorOf(options.cursor),
+  });
+
+  return page(rows, options.limit);
+}
+
+/** اللحظات الخاصة: ما لم يُنشر للدائرة كلها. */
+export async function privateTimeline(userId: string, options: { cursor?: string; limit: number }) {
+  const where = await visibleWhere(userId);
+
+  const rows = await prisma.moment.findMany({
+    where: { ...where, audience: { not: "CIRCLE" } },
+    select: shape,
+    orderBy: { createdAt: "desc" },
+    take: options.limit + 1,
+    ...cursorOf(options.cursor),
+  });
+
+  return page(rows, options.limit);
+}
+
+/**
+ * لحظةٌ بعينها.
+ *
+ * الشرط نفسه يُدمج هنا: «غير موجودة» لمن لا يراها — لا «غير مصرّح».
+ * التفريق بينهما يقول للفضولي إنّ الشيء موجود.
+ */
+export async function momentById(userId: string, momentId: string) {
+  const where = await visibleWhere(userId);
+
+  const moment = await prisma.moment.findFirst({
+    where: { id: momentId, ...where },
+    select: {
+      ...shape,
+      comments: {
+        select: shape.comments.select,
+        orderBy: { createdAt: "asc" },
+        take: 100,
+      },
+    },
+  });
+  if (!moment) throw notFound("اللحظة غير موجودة");
+  return flatten(moment);
+}
+
+/** لحظات شخصٍ بعينه — بنفس شرط الرؤية. */
+export async function momentsOf(
+  userId: string,
+  authorId: string,
+  options: { cursor?: string; limit: number },
+) {
+  const where = await visibleWhere(userId);
+
+  const rows = await prisma.moment.findMany({
+    where: { ...where, authorId },
+    select: shape,
+    orderBy: { createdAt: "desc" },
+    take: options.limit + 1,
+    ...cursorOf(options.cursor),
+  });
+
+  return page(rows, options.limit);
+}

@@ -1,0 +1,80 @@
+import { prisma } from "@athar/db";
+
+/**
+ * من يرى ماذا.
+ *
+ * هذه القواعد هي قلب أثر، وهي منسوخةٌ حرفاً عن `src/lib/visibility.ts`
+ * في الويب الحالي عمداً: تشغيلان لقاعدةٍ واحدة في وقتٍ واحد، فاختلاف
+ * قاعدة رؤيةٍ بينهما يعني أن لحظةً خاصة تظهر في أحدهما ولا تظهر في الآخر.
+ * تُحذف النسخة القديمة يوم يُطفأ `src/`، لا قبله.
+ */
+
+/** الحظر في الاتجاهين: من حظرتَه ومن حظرك كلاهما يختفي عنك. */
+export async function blockedWith(userId: string): Promise<string[]> {
+  const rows = await prisma.block.findMany({
+    where: { OR: [{ blockerId: userId }, { blockedId: userId }] },
+    select: { blockerId: true, blockedId: true },
+  });
+  return rows.map((row) => (row.blockerId === userId ? row.blockedId : row.blockerId));
+}
+
+/** معرّفات الدائرة (المقبولون)، بلا صاحبها. */
+export async function circleIds(userId: string): Promise<string[]> {
+  const rows = await prisma.friendship.findMany({
+    where: { status: "ACCEPTED", OR: [{ requesterId: userId }, { addresseeId: userId }] },
+    select: { requesterId: true, addresseeId: true },
+  });
+  return rows.map((row) => (row.requesterId === userId ? row.addresseeId : row.requesterId));
+}
+
+/** من تراه لحظاتُهم: دائرتك ناقص المحظورين، ومعك أنت. */
+export async function visibleAuthors(userId: string): Promise<string[]> {
+  const [ids, blocked] = await Promise.all([circleIds(userId), blockedWith(userId)]);
+  const hidden = new Set(blocked);
+  return [...ids.filter((id) => !hidden.has(id)), userId];
+}
+
+/**
+ * شرط رؤية اللحظة: كاتبها ممّن ترى، وجمهورها يشملك.
+ *
+ * ويُدمج في **كل** استعلام لحظات — لا في الأول وحده. استعلامٌ ينسى هذا
+ * الشرط يسرّب لحظةً خاصة بلا رسالة خطأ تُنبّه.
+ */
+export async function visibleWhere(userId: string) {
+  const authors = await visibleAuthors(userId);
+
+  return {
+    authorId: { in: authors },
+    OR: [
+      { authorId: userId },
+      { audience: "CIRCLE" as const },
+      { audience: "GROUP" as const, audienceGroup: { members: { some: { userId } } } },
+      { audience: "PICKED" as const, viewers: { some: { userId } } },
+    ],
+  };
+}
+
+export async function canSeeMoment(userId: string, momentId: string): Promise<boolean> {
+  const found = await prisma.moment.findFirst({
+    where: { id: momentId, ...(await visibleWhere(userId)) },
+    select: { id: true },
+  });
+  return Boolean(found);
+}
+
+/** التفاعل قد يُحصر في تصنيفٍ من الدائرة — «من يمكنه التفاعل معك». */
+export async function canInteract(userId: string, authorId: string): Promise<boolean> {
+  if (userId === authorId) return true;
+
+  const author = await prisma.user.findUnique({
+    where: { id: authorId },
+    select: { interactGroupId: true },
+  });
+  if (!author?.interactGroupId) return true;
+
+  const member = await prisma.groupMember.findFirst({
+    where: { groupId: author.interactGroupId, userId },
+    select: { id: true },
+  });
+  return Boolean(member);
+}
