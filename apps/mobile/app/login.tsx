@@ -142,6 +142,7 @@ const FIELD = {
   borderWidth: 1,
   borderColor: "rgba(247,245,239,.22)",
   color: "#f7f5ef",
+  textAlign: "right",
 } as const;
 
 /**
@@ -285,8 +286,11 @@ export default function Login() {
                   onPress={() => setShowEmail(false)}
                   style={{
                     marginBottom: 4,
-                    alignSelf: "flex-start",
-                    flexDirection: "row",
+                    // «البداية» في واجهةٍ عربية هي اليمين. والاتجاه يُكتب
+                    // صريحاً هنا كما في بقية الشاشات: `I18nManager` لا
+                    // يُقلب الصفوف في هذا التطبيق.
+                    alignSelf: "flex-end",
+                    flexDirection: "row-reverse",
                     alignItems: "center",
                     gap: 6,
                   }}
@@ -322,7 +326,7 @@ export default function Login() {
                 {error ? (
                   <Text
                     accessibilityRole="alert"
-                    style={{ fontSize: 12.5, fontWeight: "500", color: "#ff9d84" }}
+                    style={{ fontSize: 12.5, fontWeight: "500", color: "#ff9d84", textAlign: "right" }}
                   >
                     {error}
                   </Text>
@@ -336,7 +340,7 @@ export default function Login() {
               </View>
             ) : (
               <View style={{ gap: 10 }}>
-                <View style={{ flexDirection: "row", gap: 10 }}>
+                <View style={{ flexDirection: "row-reverse", gap: 10 }}>
                   {PROVIDERS.map((provider) => (
                     <Pressable
                       key={provider.key}
@@ -379,6 +383,7 @@ export default function Login() {
                       paddingVertical: 12,
                       fontSize: 12,
                       lineHeight: 19.5,
+                      textAlign: "right",
                       backgroundColor: "rgba(14,26,36,.6)",
                       color: "#e8e2d8",
                     }}
