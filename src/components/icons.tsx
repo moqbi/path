@@ -259,3 +259,10 @@ export const LifeIcon = ({ size = 20, className }: IconProps) => (
     <path d="m5.6 5.6 3.9 3.9M14.5 14.5l3.9 3.9M18.4 5.6l-3.9 3.9M9.5 14.5l-3.9 3.9" />
   </svg>
 );
+
+export const ShareIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M12 15.5V4m0 0L8.2 7.8M12 4l3.8 3.8" />
+    <path d="M5.5 12.5v5A2.5 2.5 0 0 0 8 20h8a2.5 2.5 0 0 0 2.5-2.5v-5" />
+  </svg>
+);

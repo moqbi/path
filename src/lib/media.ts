@@ -3,8 +3,9 @@ import { prisma } from "@/lib/db";
 
 /** أقصى حجم مقبول بعد تصغير المتصفح — حارس ضد رفع ملف ضخم يدوياً. */
 const MAX_BYTES = 1_500_000;
-/** المتحرّكة تُرفع بملفها بلا تصغير، فحدُّها أعلى. */
-const MAX_ANIMATED_BYTES = 2_600_000;
+/** المتحرّكة تُرفع بملفها بلا تصغير، فحدُّها أعلى — ونفس ما يُقال للمستخدم. */
+const MAX_ANIMATED_BYTES = 3_000_000;
+const MAX_ANIMATED_SIDE = 1024;
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 /**
@@ -55,6 +56,9 @@ export async function storeDataUrl(
   if (!moving && mime === "image/gif") throw new Error("يُقبل JPEG أو PNG أو WebP فقط");
   const cap = moving ? MAX_ANIMATED_BYTES : MAX_BYTES;
   if (bytes.length > cap) throw new Error("الصورة كبيرة — صغّرها وأعد المحاولة");
+  if (moving && Math.max(width, height) > MAX_ANIMATED_SIDE) {
+    throw new Error("مقاس الصورة المتحركة أكبر من ١٠٢٤×١٠٢٤");
+  }
 
   return prisma.media.create({
     data: {

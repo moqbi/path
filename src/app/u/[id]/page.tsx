@@ -104,7 +104,7 @@ export default async function FriendProfilePage({
     );
   }
 
-  const [moments, theirCircle, frames, theirs] = await Promise.all([
+  const [moments, theirCircle, frames, theirs, mine] = await Promise.all([
     prisma.moment.findMany({
       where: { authorId: id },
       select: momentShape,
@@ -116,6 +116,7 @@ export default async function FriendProfilePage({
     // الإطار والثيم والتميمة كلّها تُهدى.
     prisma.storeItem.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.purchase.findMany({ where: { userId: id }, select: { itemId: true } }),
+    prisma.purchase.findMany({ where: { userId: viewer.id }, select: { itemId: true } }),
   ]);
 
   const joined = `${MONTHS[person.createdAt.getMonth()]} ${ar(person.createdAt.getFullYear())}`;
@@ -130,7 +131,7 @@ export default async function FriendProfilePage({
 
   return (
     <div className="screen">
-      <ScreenHeader title={person.name} />
+      <ScreenHeader title={person.name} mark />
 
       <div className="scroll-area">
         <div className="relative shrink-0 overflow-hidden" style={{ height: 140 }}>
@@ -148,6 +149,7 @@ export default async function FriendProfilePage({
               mediaId={person.avatarMediaId}
               frame={person.frame}
               charmItem={person.charm}
+              owned={mine.map((row) => row.itemId)}
             />
             <div className="flex items-center gap-2 pb-1.5">
               <GiftButton
@@ -265,7 +267,7 @@ function LockedProfile({
 }) {
   return (
     <div className="screen">
-      <ScreenHeader title={person.name} />
+      <ScreenHeader title={person.name} mark />
 
       <div className="scroll-area">
         <div className="relative shrink-0 overflow-hidden" style={{ height: 140 }}>

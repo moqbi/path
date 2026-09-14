@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { setAvatar } from "@/app/actions";
-import { ImagePicker } from "@/components/image-picker";
+import { ANIMATED, ImagePicker } from "@/components/image-picker";
 import { Avatar } from "@/components/ui";
 import { CameraIcon } from "@/components/icons";
 
@@ -26,6 +27,8 @@ export function ProfileImages({
   isPlus?: boolean;
   size?: number;
 }) {
+  const [error, setError] = useState<string | null>(null);
+
   return (
     <div className="relative shrink-0">
       <Avatar name={name} size={size} frameSpec={frameSpec} mediaId={avatarMediaId} charm={charm} />
@@ -36,6 +39,7 @@ export function ProfileImages({
           label="غيّر صورتك"
           maxSize={512}
           animated={isPlus}
+          onError={setError}
           onPicked={(dataUrl, width, height) => setAvatar(dataUrl, width, height)}
           className="flex h-9 w-9 items-center justify-center rounded-full border-2 shadow-sm"
         >
@@ -48,6 +52,19 @@ export function ProfileImages({
         </ImagePicker>
       </div>
 
+      {/*
+        الشرط والخطأ تحت الصورة لا تحت الزرّ: الزرّ قرصٌ بحجم ٣٦ بكسلاً
+        ملتصقٌ بحافتها، ورسالةٌ تحته لا تُرى.
+      */}
+      {isPlus || error ? (
+        <p
+          className="absolute right-1/2 top-full w-[190px] translate-x-1/2 pt-2 text-center text-[10.5px] leading-relaxed"
+          style={{ color: error ? "var(--color-live)" : "var(--color-faint)" }}
+          role={error ? "alert" : undefined}
+        >
+          {error ?? `صورة متحركة؟ ${ANIMATED.rule}`}
+        </p>
+      ) : null}
     </div>
   );
 }

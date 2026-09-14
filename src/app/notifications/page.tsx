@@ -5,7 +5,7 @@ import { notifications, type NoteKind } from "@/lib/notifications";
 import { ReactionGlyph } from "@/components/reactions";
 import { Avatar, Empty } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
-import { AthrHeaderMark } from "@/components/brand";
+import { AthrPageMark } from "@/components/brand";
 import { MessageIcon, SparkIcon, TagIcon, WithIcon } from "@/components/icons";
 import { ar, dayLabel, relative } from "@/lib/format";
 
@@ -57,7 +57,7 @@ export default async function NotificationsPage({
     <div className="screen">
       {/* الإعدادات تُفتح من تبويب «أنا»، فلا ترس هنا. */}
       <header className="chrome flex items-center px-5 pb-3 pt-4">
-        <AthrHeaderMark />
+        <AthrPageMark label="الإشعارات" />
       </header>
 
       <div className="shrink-0 px-5 pb-1 pt-3">

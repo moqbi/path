@@ -10,12 +10,12 @@ import { EditProfileSheet } from "./edit-sheet";
 import { ProfileCover } from "./cover";
 import { ProfileShell } from "./shell";
 import { Accessories } from "./accessories";
-import { DeleteAccount } from "./delete";
 import { coverStyle, NameTag } from "@/components/ui";
 import { AvatarMenu } from "@/components/avatar-menu";
 import { TabBar } from "@/components/tab-bar";
 import { BookIcon, ExitIcon, GearIcon, GiftIcon, SparkIcon, WithIcon } from "@/components/icons";
 import { AthrPageMark } from "@/components/brand";
+import { ShareProfile } from "./share";
 import { ar, dayLabel } from "@/lib/format";
 
 const MONTHS = [
@@ -90,8 +90,10 @@ export default async function ProfilePage() {
     <div className="screen">
       {/* رأسٌ كبقية التبويبات: العلامة ثم فاصل ثم اسم الشاشة. */}
       {/* بلا ترسٍ في الرأس: الخصوصية زرٌّ بجانب الإكسسوارات تحت. */}
-      <header className="chrome flex items-center px-5 pb-3 pt-4">
-        <AthrPageMark label="أنا" />
+      {/* المشاركة في الطرف المقابل للعلامة: رابط ملفك ورقم عضويتك. */}
+      <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
+        <AthrPageMark label="الملف الشخصي" />
+        <ShareProfile id={user.id} name={user.name} memberNo={user.memberNo} />
       </header>
 
       {/*
@@ -117,6 +119,7 @@ export default async function ProfilePage() {
             mediaId={user.avatarMediaId}
             frame={worn(user.frameId)}
             charmItem={worn(user.charmId)}
+            owned={purchases.map((row) => row.item.id)}
           />
         }
         identity={
@@ -323,8 +326,6 @@ export default async function ProfilePage() {
             </p>
           </div>
         )}
-
-        <DeleteAccount />
       </ProfileShell>
 
       <TabBar active="/me" />

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { createGroup, deleteGroup, savePrivacy } from "@/app/actions";
 import { ScreenHeader } from "@/components/ui";
 import { LifeIcon } from "@/components/icons";
+import { DeleteAccount } from "@/app/me/delete";
 import { ShieldIcon } from "@/components/icons";
 import { ar } from "@/lib/format";
 
@@ -194,6 +195,9 @@ export default async function PrivacyPage() {
           <span className="text-[13.5px] font-semibold">حظر المستخدمين</span>
           <span className="text-[12px] text-muted">{ar(blocked)} محظور</span>
         </Link>
+
+        {/* حذف الحساب في الخصوصية: هنا يُبحث عنه، لا في أسفل الملف. */}
+        <DeleteAccount />
 
         <p className="flex items-center justify-center gap-2 pb-4 text-[11.5px] text-muted">
           <ShieldIcon size={15} />

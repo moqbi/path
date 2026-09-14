@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { BackIcon } from "@/components/icons";
 
@@ -151,16 +151,16 @@ export function BackSwipe({ href }: { href?: string }) {
  * النوافذ المنبثقة تُغلق بزرٍّ صغير في زاويتها، والإصبع أقرب إلى وسطها —
  * فالسحب إلى أسفل هو «رجوع» الطبيعي فيها.
  *
- * والمستمعات تُركَّب في `useEffect` على مرجعٍ ثابت لا في دالّة `ref`:
- * دالّة الـ`ref` تتغيّر مع كل رسم فتُفكّ وتُركّب، وربما لم تُركّب أصلاً.
+ * والعنصر يُمسك بـ`useState` لا بـ`useRef`: النافذة تُرسم في `portal`
+ * فلا يوجد عنصرٌ عند أول تركيب، ومرجعٌ صامت لا يُخبر التأثير حين يظهر —
+ * فتبقى المستمعات بلا عنصر. أما الحالة فتُعيد تشغيل التأثير حين يصل.
  */
 export function useSwipeDown(onClose: () => void) {
-  const node = useRef<HTMLDivElement>(null);
+  const [el, setEl] = useState<HTMLDivElement | null>(null);
   const close = useRef(onClose);
   close.current = onClose;
 
   useEffect(() => {
-    const el = node.current;
     if (!el) return;
 
     let startY: number | null = null;
@@ -198,7 +198,8 @@ export function useSwipeDown(onClose: () => void) {
       el.removeEventListener("touchend", end);
       el.removeEventListener("touchcancel", end);
     };
-  }, []);
+  }, [el]);
 
-  return node;
+  // دالّة `setState` ثابتة بين الرسمات، فتصلح مرجعاً لا يُعاد تركيبه.
+  return setEl;
 }

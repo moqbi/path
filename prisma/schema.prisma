@@ -24,6 +24,9 @@ enum MomentKind {
   CITY
   /// «أضاف فلاناً إلى دائرته» — تُنشأ تلقائياً عند قبول الصداقة.
   FRIEND_ADDED
+  /// «أهديت فلاناً كذا» — للمُهدي، و«وصلتك هدية» للمُهدى إليه.
+  GIFT_SENT
+  GIFT_GOT
 }
 
 enum MusicProvider {

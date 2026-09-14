@@ -18,7 +18,7 @@ import { StoryStrip } from "@/components/stories";
 import { Avatar, Empty, NameTag } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import { CheckIcon, CloseIcon, MessageIcon } from "@/components/icons";
-import { AthrHeaderMark } from "@/components/brand";
+import { AthrPageMark } from "@/components/brand";
 import { ar, presence, relative } from "@/lib/format";
 
 const TABS = [
@@ -105,8 +105,8 @@ export default async function CirclePage({
   return (
     <div className="screen">
       {/* لا زرّ زائد في الرأس: كان يفتح «مقترحون» وهو تبويبٌ ظاهرٌ تحته. */}
-      <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
-        <AthrHeaderMark />
+      <header className="chrome flex items-center px-5 pb-3 pt-4">
+        <AthrPageMark label="الأصدقاء" />
       </header>
 
       {/* شريط القصص: قصتك أولاً ثم من عندهم جديد. */}

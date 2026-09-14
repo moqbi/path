@@ -7,6 +7,7 @@ import {
   PinIcon,
   PlaneIcon,
   PlayIcon,
+  GiftIcon,
   WithIcon,
 } from "@/components/icons";
 import { MomentBar } from "@/components/moment-bar";
@@ -24,7 +25,16 @@ const INLINE_COMMENTS = 3;
  * صديق جديد، أغنية. البطاقة تُحفظ لما له متن — صورة أو خاطرة — وهكذا
  * كان Path: الخطّ الزمني يوميّات، والأحداث أسطرٌ فيها.
  */
-export const EVENTS = new Set(["CITY", "PLACE", "SLEEP", "WAKE", "MUSIC", "FRIEND_ADDED"]);
+export const EVENTS = new Set([
+  "CITY",
+  "PLACE",
+  "SLEEP",
+  "WAKE",
+  "MUSIC",
+  "FRIEND_ADDED",
+  "GIFT_SENT",
+  "GIFT_GOT",
+]);
 
 const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
   CITY: { bg: "var(--color-night)", ink: "#f7f5ef" },
@@ -33,6 +43,8 @@ const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
   WAKE: { bg: "var(--color-gold-soft)", ink: "var(--color-gold-ink)" },
   MUSIC: { bg: "var(--color-clay)", ink: "var(--color-on-brand)" },
   FRIEND_ADDED: { bg: "var(--color-gold-soft)", ink: "var(--color-gold-ink)" },
+  GIFT_SENT: { bg: "var(--color-clay-soft)", ink: "var(--color-clay-ink)" },
+  GIFT_GOT: { bg: "var(--color-clay-soft)", ink: "var(--color-clay-ink)" },
 };
 
 function EventIcon({ kind }: { kind: string }) {
@@ -48,6 +60,8 @@ function EventIcon({ kind }: { kind: string }) {
       <MusicIcon size={16} />
     ) : kind === "FRIEND_ADDED" ? (
       <WithIcon size={16} />
+    ) : kind === "GIFT_SENT" || kind === "GIFT_GOT" ? (
+      <GiftIcon size={16} />
     ) : (
       <PinIcon size={16} />
     );
@@ -182,6 +196,16 @@ export function EventLine({
       <>
         أصبح صديق <span className="font-bold">{moment.text ?? "أحدهم"}</span>
       </>
+    ) : kind === "GIFT_SENT" ? (
+      <>
+        أهديت <span className="font-bold">{withNames[0] ?? "صديقاً"}</span>{" "}
+        <span className="font-bold">{moment.text ?? "هدية"}</span>
+      </>
+    ) : kind === "GIFT_GOT" ? (
+      <>
+        وصلتك هدية من <span className="font-bold">{withNames[0] ?? "صديق"}</span>:{" "}
+        <span className="font-bold">{moment.text ?? "هدية"}</span>
+      </>
     ) : kind === "MUSIC" ? (
       <>
         يسمع <span className="font-bold">{moment.musicTitle ?? "أغنية"}</span>
@@ -222,7 +246,7 @@ export function EventLine({
             {subtitle}
           </p>
         ) : null}
-        {withNames.length > 0 ? (
+        {withNames.length > 0 && kind !== "GIFT_SENT" && kind !== "GIFT_GOT" ? (
           <p className="mt-0.5 flex items-center gap-1.5 text-[11.5px] font-medium text-ink-2">
             <WithIcon size={12} />
             مع {withNames.join(" و")}

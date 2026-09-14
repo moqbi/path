@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useEffect, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
+import { buyNow } from "@/app/actions";
 import { Avatar, itemPaint, type Charm } from "@/components/ui";
 import { CloseIcon } from "@/components/icons";
 import { useSwipeDown } from "@/components/nav";
@@ -40,6 +41,7 @@ export function AvatarMenu({
   charm,
   frame,
   charmItem,
+  owned = [],
 }: {
   name: string;
   size: number;
@@ -48,6 +50,8 @@ export function AvatarMenu({
   charm?: Charm;
   frame: WornItem;
   charmItem: WornItem;
+  /** ما تملكه أنت من الأصناف — فلا يُعرض شراءُ ما اشتريته. */
+  owned?: string[];
 }) {
   const [view, setView] = useState<"none" | "menu" | "photo" | "frame" | "charm">("none");
   const close = () => setView("none");
@@ -86,6 +90,7 @@ export function AvatarMenu({
       ) : null}
 
       {view === "photo" ? (
+        <Portal>
         <div
           onClick={close}
           className="fixed inset-0 z-50 flex items-center justify-center p-6"
@@ -111,18 +116,38 @@ export function AvatarMenu({
             <CloseIcon size={18} />
           </button>
         </div>
+        </Portal>
       ) : null}
 
       {view === "charm" && charmItem ? (
-        <ItemSheet item={charmItem} onClose={close} />
+        <ItemSheet item={charmItem} owned={owned.includes(charmItem.id)} onClose={close} />
       ) : null}
-      {view === "frame" && frame ? <ItemSheet item={frame} onClose={close} /> : null}
+      {view === "frame" && frame ? (
+        <ItemSheet item={frame} owned={owned.includes(frame.id)} onClose={close} />
+      ) : null}
     </>
   );
 }
 
-/** بطاقة الصنف كما في المتجر: شكله واسمه وسعره، وبابٌ إليه. */
-function ItemSheet({ item, onClose }: { item: NonNullable<WornItem>; onClose: () => void }) {
+/**
+ * بطاقة الصنف: شكله واسمه وسعره — ويُشترى من مكانه.
+ *
+ * «افتحه في المتجر» كان يرمي صاحبه إلى واجهةٍ فيها عشرات الأصناف ليبحث
+ * عمّا رآه قبل لحظة. الشراء هنا، ثم يُلبَس من الإكسسوارات.
+ */
+function ItemSheet({
+  item,
+  owned,
+  onClose,
+}: {
+  item: NonNullable<WornItem>;
+  owned: boolean;
+  onClose: () => void;
+}) {
+  const [said, setSaid] = useState<{ ok?: string; error?: string } | null>(null);
+  const [pending, start] = useTransition();
+  const free = item.priceHalalas === 0;
+
   return (
     <Sheet onClose={onClose} title={KIND_LABEL[item.kind] ?? "صنف"}>
       <div className="flex items-center gap-4 px-1 py-2">
@@ -144,13 +169,36 @@ function ItemSheet({ item, onClose }: { item: NonNullable<WornItem>; onClose: ()
         </div>
       </div>
 
-      <Link
-        href="/store"
-        className="mt-3 flex items-center justify-center rounded-xl text-[14px] font-bold"
-        style={{ height: 48, background: "var(--color-clay)", color: "var(--color-on-brand)" }}
-      >
-        افتحه في المتجر
-      </Link>
+      {owned || said?.ok ? (
+        <p
+          className="mt-3 flex items-center justify-center rounded-xl text-[13.5px] font-semibold"
+          style={{ height: 48, background: "var(--color-chip)", color: "var(--color-ink-2)" }}
+        >
+          {said?.ok ?? "تملكه — البسه من إكسسواراتك"}
+        </p>
+      ) : free ? (
+        <p className="mt-3 text-center text-[12px] text-muted">هذا الصنف يُكتسب بالوقت لا يُشترى.</p>
+      ) : (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() =>
+            start(async () => {
+              setSaid(await buyNow(item.id));
+            })
+          }
+          className="mt-3 flex w-full items-center justify-center rounded-xl text-[14px] font-bold disabled:opacity-60"
+          style={{ height: 48, background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+        >
+          {pending ? "نشتري…" : `اشترِ بـ${riyals(item.priceHalalas)}`}
+        </button>
+      )}
+
+      {said?.error ? (
+        <p className="mt-2 text-center text-[12px]" style={{ color: "var(--color-live)" }}>
+          {said.error}
+        </p>
+      ) : null}
     </Sheet>
   );
 }
@@ -169,6 +217,7 @@ function Sheet({
   const box = useSwipeDown(onClose);
 
   return (
+    <Portal>
     <div
       className="fixed inset-0 z-50 flex flex-col justify-end"
       style={{ background: "rgba(14,26,36,.42)", animation: "athr-veil 160ms ease both" }}
@@ -191,7 +240,22 @@ function Sheet({
         {children}
       </div>
     </div>
+    </Portal>
   );
+}
+
+/**
+ * يرسم النافذة على جسد الصفحة لا في مكانها من الشجرة.
+ *
+ * `position: fixed` داخل عنصرٍ عليه `transform` يُقاس من ذلك العنصر لا من
+ * الشاشة — وصورة العرض في تبويب «أنا» داخل صندوقٍ يتقلّص بالتمرير
+ * (`scale`)، فكانت النافذة تُحبس تحته وخلف شريط التبويبات.
+ */
+function Portal({ children }: { children: React.ReactNode }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
+  if (!ready) return null;
+  return createPortal(children, document.body);
 }
 
 function Row({

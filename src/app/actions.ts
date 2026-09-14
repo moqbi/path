@@ -439,11 +439,25 @@ export async function disconnectMusic(): Promise<void> {
 
 // ───────────────────────────── الصورة والغلاف ─────────────────────────────
 
-export async function setAvatar(dataUrl: string, width: number, height: number): Promise<void> {
+/**
+ * صورة العرض.
+ *
+ * تردّ نصَّ الخطأ ولا ترميه: رميُه في إجراءٍ يُستدعى من زرٍّ يُسقط الشاشة
+ * كلها، فيرى صاحبها «فشل» بلا سبب — أو لا يرى شيئاً أصلاً.
+ */
+export async function setAvatar(
+  dataUrl: string,
+  width: number,
+  height: number,
+): Promise<string | void> {
   const user = await requireUser();
-  // صورة العرض المتحركة من مزايا أثر+ — والفحص هنا، فالعميل ليس قيداً.
-  const media = await storeDataUrl(user.id, dataUrl, width, height, user.isPlus);
-  await prisma.user.update({ where: { id: user.id }, data: { avatarMediaId: media.id } });
+  try {
+    // صورة العرض المتحركة من مزايا أثر+ — والفحص هنا، فالعميل ليس قيداً.
+    const media = await storeDataUrl(user.id, dataUrl, width, height, user.isPlus);
+    await prisma.user.update({ where: { id: user.id }, data: { avatarMediaId: media.id } });
+  } catch (problem) {
+    return problem instanceof Error ? problem.message : "تعذّر حفظ الصورة";
+  }
   revalidatePath("/me");
   revalidatePath("/");
 }
@@ -1469,10 +1483,44 @@ export async function giftItem(
     }),
   ]);
 
+  /*
+    الهدية حدثٌ بين اثنين، فتُكتب سطراً في مخطط كلٍّ منهما: «أهديت فلاناً
+    كذا» عند المُهدي، و«وصلتك هدية من فلان» عند صاحبها — كما تُكتب الصداقة
+    سطراً عند الطرفين. والصنف في `text`، والطرف الآخر إشارةٌ (`MomentTag`)
+    فيبقى اسمه حيّاً لو تغيّر.
+  */
+  const [sent, got] = await prisma.$transaction([
+    prisma.moment.create({ data: { authorId: user.id, kind: "GIFT_SENT", text: item.name } }),
+    prisma.moment.create({ data: { authorId: toUserId, kind: "GIFT_GOT", text: item.name } }),
+  ]);
+  await prisma.momentTag.createMany({
+    data: [
+      { momentId: sent.id, userId: toUserId },
+      { momentId: got.id, userId: user.id },
+    ],
+    skipDuplicates: true,
+  });
+
   revalidatePath(`/u/${toUserId}`);
   revalidatePath("/store");
   revalidatePath("/me");
+  revalidatePath("/");
   return { ok: `أُهديت ${item.name} إلى ${friend.name}` };
+}
+
+/**
+ * شراءٌ من نافذةٍ لا من صفحة المتجر: يردّ الرسالة ولا يرميها.
+ *
+ * الرمي في `buyItem` يناسب شبكة المتجر التي تُعيد الرسم بعده، ولا يناسب
+ * نافذةً صغيرة فوق ملف صديقك — فيها تُقرأ النتيجة في مكانها.
+ */
+export async function buyNow(itemId: string): Promise<{ ok?: string; error?: string }> {
+  try {
+    await buyItem(itemId);
+    return { ok: "صار لك — البسه من إكسسواراتك" };
+  } catch (problem) {
+    return { error: problem instanceof Error ? problem.message : "تعذّر الشراء" };
+  }
 }
 
 export async function equip(itemId: string): Promise<void> {
