@@ -46,11 +46,14 @@
 | `src/app/settings/support/` | `app/settings/support.tsx` |
 | `src/app/page.tsx` العدستان + `components/tabbar.tsx` | `app/(tabs)/index.tsx` + `app/(tabs)/_layout.tsx` |
 | `src/components/swipe-row.tsx` | `components/swipe-row.tsx` |
+| `src/components/tour.tsx` | `components/tour.tsx` |
 
 ### لم يُنقل بعد — بالترتيب
-1. **`src/app/music/page.tsx`** ← غير موجودة.
-2. **`src/components/tour.tsx`** ← جولة التعريف.
-3. **`src/app/admin/`** ← **لا يُنقل للموبايل**: مكانه `apps/web` حسب
+1. **`src/app/music/page.tsx`** ← **موقوفة على قرار**: الشاشة نفسها
+   سهلة، لكن ربط سبوتيفاي في الويب مسارا OAuth
+   (`/api/music/spotify/start` و`callback`) ولا مقابل لهما في
+   `apps/api` — ولا مفاتيح. تُبنى حين يُقرّر صاحب المشروع ذلك.
+2. **`src/app/admin/`** ← **لا يُنقل للموبايل**: مكانه `apps/web` حسب
     `MIGRATION.md`. أكّد مع صاحب المشروع قبل أيّ عمل عليه.
 
 ## الخادم

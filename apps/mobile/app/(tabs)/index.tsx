@@ -9,6 +9,7 @@ import { Avatar } from "../../components/avatar";
 import { AthrMark } from "../../components/brand";
 import { MessageIcon, RefreshIcon, SparkIcon, StarIcon } from "../../components/icons";
 import { ComposerFan } from "../../components/composer-fan";
+import { Tour } from "../../components/tour";
 import { useCircle, useFeed, useTogether, type Moment } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { ar, dayLabel, membership, MONTHS } from "../../lib/format";
@@ -261,6 +262,7 @@ export default function Timeline() {
       />
 
       <ComposerFan />
+      <Tour />
     </SafeAreaView>
   );
 }
