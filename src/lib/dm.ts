@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { circleIds } from "@/lib/circle";
+import { sweepStories } from "@/lib/stories";
 
 /** الطرفان مرتّبان دائماً، فيكون للزوج صفٌّ واحد مهما بدأ المحادثة. */
 export function pairKey(x: string, y: string): { aId: string; bId: string } {
@@ -47,6 +48,8 @@ export async function conversationsFor(userId: string) {
       messages: {
         select: {
           body: true,
+          kind: true,
+          seconds: true,
           createdAt: true,
           senderId: true,
           deliveredAt: true,
@@ -88,6 +91,9 @@ export async function conversationFor(userId: string, conversationId: string) {
         select: {
           id: true,
           body: true,
+          kind: true,
+          mediaId: true,
+          seconds: true,
           senderId: true,
           createdAt: true,
           deliveredAt: true,
@@ -107,6 +113,9 @@ export async function conversationFor(userId: string, conversationId: string) {
     other: conversation.a.id === userId ? conversation.b : conversation.a,
   };
 }
+
+/** حدّ الرسالة الصوتية بالثواني: للجميع، ولمشتركي أثر+. */
+export const VOICE_SECONDS = { free: 20, plus: 120 };
 
 /** المحادثات تُحفظ ثلاثين يوماً ثم تذهب — من القاعدة نفسها لا من العرض. */
 export const KEEP_DAYS = 30;
@@ -141,6 +150,7 @@ export async function sweepOld(): Promise<void> {
  */
 export async function deliverTo(userId: string): Promise<void> {
   await sweepOld();
+  await sweepStories();
   try {
     await prisma.message.updateMany({
       where: {

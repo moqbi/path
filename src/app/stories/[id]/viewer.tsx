@@ -5,12 +5,21 @@ import { useRouter } from "next/navigation";
 import { deleteStory, seeStory } from "@/app/actions";
 import { Avatar } from "@/components/ui";
 import { CloseIcon, EyeIcon } from "@/components/icons";
+import { filterCss } from "@/components/story-composer";
 import { ar, relative } from "@/lib/format";
 
-/** مدة الشريحة الواحدة. */
+/** مدة شريحة الصورة. والفيديو مدّته مدّته. */
 const SLIDE_MS = 5000;
 
-type Story = { id: string; mediaId: string; at: string; seen: number };
+type Story = {
+  id: string;
+  mediaId: string;
+  at: string;
+  seen: number;
+  video: boolean;
+  seconds: number | null;
+  filter: string | null;
+};
 
 /**
  * عارض القصص.
@@ -35,6 +44,8 @@ export function StoryViewer({
   const started = useRef(Date.now());
 
   const story = stories[index];
+  // الفيديو يُقاس بمدّته لا بخمس ثوانٍ: القصّ في منتصفه يُفقد آخره.
+  const span = story?.video && story.seconds ? story.seconds * 1000 : SLIDE_MS;
 
   // إيصال المشاهدة يُرسل مرة لكل شريحة تُفتح.
   useEffect(() => {
@@ -50,7 +61,7 @@ export function StoryViewer({
   useEffect(() => {
     if (paused) return;
     const tick = setInterval(() => {
-      const done = (Date.now() - started.current) / SLIDE_MS;
+      const done = (Date.now() - started.current) / span;
       if (done >= 1) {
         if (index + 1 < stories.length) setIndex(index + 1);
         else router.back();
@@ -59,7 +70,7 @@ export function StoryViewer({
       setProgress(done);
     }, 60);
     return () => clearInterval(tick);
-  }, [index, paused, stories.length, router]);
+  }, [index, paused, span, stories.length, router]);
 
   if (!story) return null;
 
@@ -75,13 +86,25 @@ export function StoryViewer({
   return (
     <div className="screen" style={{ background: "#0b1219" }}>
       <div className="relative grow overflow-hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={`/api/media/${story.mediaId}`}
-          alt=""
-          className="absolute inset-0 h-full w-full"
-          style={{ objectFit: "contain" }}
-        />
+        {story.video ? (
+          <video
+            key={story.id}
+            src={`/api/media/${story.mediaId}`}
+            autoPlay
+            playsInline
+            muted={false}
+            className="absolute inset-0 h-full w-full"
+            style={{ objectFit: "contain", filter: filterCss(story.filter) }}
+          />
+        ) : (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={`/api/media/${story.mediaId}`}
+            alt=""
+            className="absolute inset-0 h-full w-full"
+            style={{ objectFit: "contain", filter: filterCss(story.filter) }}
+          />
+        )}
 
         {/* نصفان للتنقّل: يمينٌ يرجع ويسارٌ يتقدّم، والضغط المطوّل يوقف. */}
         <button

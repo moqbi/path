@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { cancelPlus, subscribe } from "@/app/actions";
-import { BookIcon, CameraIcon, SparkIcon, StoreIcon } from "@/components/icons";
+import { BookIcon, CameraIcon, MicIcon, SparkIcon, StoreIcon } from "@/components/icons";
 import { ScreenHeader } from "@/components/ui";
 
 const PERKS = [
@@ -19,6 +19,11 @@ const PERKS = [
     title: "دوائر منفصلة",
     body: "العائلة، الشلة، الشغل — كل وحدة بخصوصيتها",
     icon: <SparkIcon size={18} />,
+  },
+  {
+    title: "رسالة صوتية دقيقتان",
+    body: "٢٠ ثانية للجميع · لك ١٢٠ ثانية في كل محادثة",
+    icon: <MicIcon size={18} />,
   },
   {
     title: "صورة عرض متحركة",

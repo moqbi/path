@@ -179,6 +179,10 @@ model Story {
   authorId  String
   mediaId   String   @unique
   caption   String?
+  /// فلتر العرض («دافئ»، «رمادي»…) — الصورة تُحفظ كما صُوِّرت ويُطبَّق عند العرض.
+  filter    String?
+  /// مدّة الفيديو بالثواني — فارغة في الصور.
+  seconds   Int?
   createdAt DateTime @default(now())
   expiresAt DateTime
 
@@ -478,11 +482,23 @@ model Conversation {
   @@index([updatedAt])
 }
 
+enum MessageKind {
+  TEXT
+  VOICE
+  PHOTO
+}
+
 model Message {
   id             String   @id @default(cuid())
   conversationId String
   senderId       String
   body           String
+  kind           MessageKind @default(TEXT)
+  /// مرفقٌ واحد: صوتٌ أو صورة.
+  mediaId        String?  @unique
+  media          Media?   @relation("MessageMedia", fields: [mediaId], references: [id], onDelete: SetNull)
+  /// مدّة المقطع الصوتي بالثواني.
+  seconds        Int?
   createdAt      DateTime @default(now())
   deliveredAt    DateTime?
   readAt         DateTime?
@@ -518,6 +534,7 @@ model Media {
   avatarOf User?   @relation("UserAvatar")
   coverOf  User?   @relation("UserCover")
   storyOf  Story?  @relation("StoryMedia")
+  messageOf Message? @relation("MessageMedia")
   moment   Moment? @relation("MomentMedia")
   storeItem StoreItem? @relation("StoreItemMedia")
 

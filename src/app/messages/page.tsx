@@ -11,6 +11,13 @@ import { SwipeRow } from "@/components/swipe-row";
 import { deleteConversation, markDelivered } from "@/app/actions";
 import { Ticks, receiptOf } from "@/components/receipt";
 
+/** سطر المعاينة: الصوت والصورة لا نصّ لهما، فيُقال ما هما. */
+function preview(last: { kind: string; body: string; seconds: number | null }): string {
+  if (last.kind === "VOICE") return `رسالة صوتية · ${ar(last.seconds ?? 0)}″`;
+  if (last.kind === "PHOTO") return "صورة";
+  return last.body;
+}
+
 const FILTERS = [
   { key: "", label: "الكل" },
   { key: "unread", label: "غير مقروءة" },
@@ -178,7 +185,7 @@ export default async function MessagesPage({
                         }}
                       >
                         {conversation.last
-                          ? `${conversation.last.senderId === user.id ? "أنت: " : ""}${conversation.last.body}`
+                          ? `${conversation.last.senderId === user.id ? "أنت: " : ""}${preview(conversation.last)}`
                           : "ابدأ الحديث"}
                       </span>
                       {conversation.unseen > 0 ? (

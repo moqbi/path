@@ -1,11 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useTransition } from "react";
-import { postStory } from "@/app/actions";
-import { ImagePicker } from "@/components/image-picker";
 import { Avatar } from "@/components/ui";
-import { PlusIcon } from "@/components/icons";
+import { StoryComposer } from "@/components/story-composer";
 import type { StoryRing } from "@/lib/stories";
 
 /**
@@ -21,40 +18,15 @@ export function StoryStrip({
   rings: StoryRing[];
   me: { id: string; name: string; avatarMediaId: string | null };
 }) {
-  const [pending, start] = useTransition();
   const mine = rings.find((ring) => ring.userId === me.id) ?? null;
   const others = rings.filter((ring) => ring.userId !== me.id);
 
   return (
     <div className="no-bar flex gap-3.5 overflow-x-auto px-5 py-3">
       <div className="flex w-[68px] shrink-0 flex-col items-center gap-1.5">
-        <ImagePicker
-          label="قصة جديدة"
-          maxSize={1400}
-          onPicked={(file, width, height) => {
-            const data = new FormData();
-            data.set("image", file);
-            data.set("width", String(width));
-            data.set("height", String(height));
-            start(() => void postStory(data));
-          }}
-          className="flex h-[62px] w-[62px] items-center justify-center rounded-full border border-dashed"
-        >
-          <span
-            className="flex h-full w-full items-center justify-center rounded-full"
-            style={{
-              border: "1.5px dashed var(--color-line)",
-              background: "var(--color-card)",
-              color: "var(--color-clay-ink)",
-              opacity: pending ? 0.5 : 1,
-            }}
-          >
-            <PlusIcon size={22} />
-          </span>
-        </ImagePicker>
-        <span className="w-full truncate text-center text-[10.5px] text-muted">
-          {pending ? "نرفع…" : "قصة جديدة"}
-        </span>
+        {/* الاختيار ثم المعاينة والفلتر ثم النشر — لا رفعٌ فوريّ. */}
+        <StoryComposer />
+        <span className="w-full truncate text-center text-[10.5px] text-muted">قصة جديدة</span>
       </div>
 
       {mine ? <Ring ring={mine} label="قصتي" /> : null}

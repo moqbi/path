@@ -12,11 +12,12 @@ import {
   verifyPassword,
 } from "@/lib/auth";
 import { assertRoomForBoth, circleIds, mutualCount } from "@/lib/circle";
+import { STORY_HOURS, STORY_SECONDS } from "@/lib/stories";
 import { canInteract, canSeeMoment } from "@/lib/visibility";
 import { reverseGeocode } from "@/lib/places";
 import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
-import { deliverTo, openConversation } from "@/lib/dm";
-import { storeUpload } from "@/lib/media";
+import { deliverTo, openConversation, VOICE_SECONDS } from "@/lib/dm";
+import { storeClip, storeUpload } from "@/lib/media";
 import { isSupportedMusicUrl, resolveTrack } from "@/lib/music-link";
 import type { MomentKind, ReactionKind } from "@/generated/prisma/client";
 
@@ -485,21 +486,48 @@ export async function setCover(formData: FormData): Promise<string | void> {
 
 /** ضبط الغلاف: نسبة الموضع العمودي التي وقف عندها السحب. */
 /** نشر قصة: صورة تُعرض لأصدقائك يوماً ثم تذهب. */
-export async function postStory(formData: FormData): Promise<void> {
+export async function postStory(
+  formData: FormData,
+): Promise<{ ok?: string; error?: string }> {
   const user = await requireUser();
-  const { file, width, height } = picture(formData);
-  const media = await storeUpload(user.id, file, width, height);
+  try {
+    const file = formData.get("image");
+    if (!(file instanceof File) || file.size === 0) return { error: "ما وصل الملف" };
 
-  await prisma.story.create({
-    data: {
-      authorId: user.id,
-      mediaId: media.id,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    },
-  });
+    const width = Number(formData.get("width") ?? 0);
+    const height = Number(formData.get("height") ?? 0);
+    const filter = String(formData.get("filter") ?? "").slice(0, 20) || null;
+
+    // الفيديو له حدّه بالثواني، والصورة لا مدّة لها.
+    const video = file.type.startsWith("video/");
+    const seconds = video ? Math.round(Number(formData.get("seconds") ?? 0)) : null;
+    if (video && (!Number.isFinite(seconds) || (seconds ?? 0) < 1)) {
+      return { error: "تعذّرت قراءة مدّة الفيديو" };
+    }
+    if (video && (seconds ?? 0) > STORY_SECONDS + 1) {
+      return { error: `الحدّ ${STORY_SECONDS} ثانية` };
+    }
+
+    const media = video
+      ? await storeClip(user.id, file, "video", width, height)
+      : await storeUpload(user.id, file, width, height);
+
+    await prisma.story.create({
+      data: {
+        authorId: user.id,
+        mediaId: media.id,
+        filter,
+        seconds,
+        expiresAt: new Date(Date.now() + STORY_HOURS * 60 * 60 * 1000),
+      },
+    });
+  } catch (problem) {
+    return { error: problem instanceof Error ? problem.message : "تعذّر النشر" };
+  }
 
   revalidatePath("/circle");
   revalidatePath("/");
+  return { ok: "نُشرت" };
 }
 
 /** إيصال مشاهدة القصة — منه تُطفأ حلقتها. */
@@ -1318,15 +1346,110 @@ export async function startConversation(otherId: string): Promise<void> {
   redirect(`/messages/${id}`);
 }
 
-export async function sendMessage(conversationId: string, formData: FormData): Promise<void> {
-  const user = await requireUser();
-
+/** يتحقق أنّ المحادثة لي ثم يردّ معرّفها — كل إرسالٍ يمرّ عليه. */
+async function myConversation(conversationId: string, userId: string): Promise<void> {
   const conversation = await prisma.conversation.findUnique({
     where: { id: conversationId },
     select: { aId: true, bId: true },
   });
   if (!conversation) throw new Error("المحادثة غير موجودة");
-  if (conversation.aId !== user.id && conversation.bId !== user.id) throw new Error("غير مصرح");
+  if (conversation.aId !== userId && conversation.bId !== userId) throw new Error("غير مصرح");
+}
+
+/** يرفع طابع المحادثة فتصعد إلى أعلى القائمة. */
+function touchConversation(conversationId: string) {
+  return prisma.conversation.update({
+    where: { id: conversationId },
+    data: { updatedAt: new Date() },
+  });
+}
+
+/**
+ * رسالة صوتية.
+ *
+ * المدّة تُقاس في المتصفح وتُرسل، ويُعاد فحصها هنا: الحدّ عشرون ثانية
+ * وللمشترك مئة وعشرون — والتسجيل الأطول يُردّ برسالة لا يُقصّ صامتاً.
+ */
+export async function sendVoice(
+  conversationId: string,
+  formData: FormData,
+): Promise<{ ok?: string; error?: string }> {
+  const user = await requireUser();
+  try {
+    await myConversation(conversationId, user.id);
+
+    const clip = formData.get("clip");
+    if (!(clip instanceof File) || clip.size === 0) return { error: "ما وصل التسجيل" };
+
+    const seconds = Math.round(Number(formData.get("seconds") ?? 0));
+    const cap = user.isPlus ? VOICE_SECONDS.plus : VOICE_SECONDS.free;
+    if (!Number.isFinite(seconds) || seconds < 1) return { error: "التسجيل قصير جداً" };
+    if (seconds > cap + 1) {
+      return {
+        error: user.isPlus
+          ? `الحدّ ${cap} ثانية`
+          : `الحدّ ${cap} ثانية — ومع أثر+ ${VOICE_SECONDS.plus}`,
+      };
+    }
+
+    const media = await storeClip(user.id, clip, "audio");
+    await prisma.$transaction([
+      prisma.message.create({
+        data: {
+          conversationId,
+          senderId: user.id,
+          body: "",
+          kind: "VOICE",
+          mediaId: media.id,
+          seconds,
+        },
+      }),
+      touchConversation(conversationId),
+    ]);
+  } catch (problem) {
+    return { error: problem instanceof Error ? problem.message : "تعذّر الإرسال" };
+  }
+
+  revalidatePath(`/messages/${conversationId}`);
+  revalidatePath("/messages");
+  return { ok: "أُرسل" };
+}
+
+/** صورة في المحادثة — مضغوطةً في المتصفح قبل أن تصل. */
+export async function sendPhoto(
+  conversationId: string,
+  formData: FormData,
+): Promise<{ ok?: string; error?: string }> {
+  const user = await requireUser();
+  try {
+    await myConversation(conversationId, user.id);
+    const { file, width, height } = picture(formData);
+    const media = await storeUpload(user.id, file, width, height);
+    await prisma.$transaction([
+      prisma.message.create({
+        data: {
+          conversationId,
+          senderId: user.id,
+          body: "",
+          kind: "PHOTO",
+          mediaId: media.id,
+        },
+      }),
+      touchConversation(conversationId),
+    ]);
+  } catch (problem) {
+    return { error: problem instanceof Error ? problem.message : "تعذّر الإرسال" };
+  }
+
+  revalidatePath(`/messages/${conversationId}`);
+  revalidatePath("/messages");
+  return { ok: "أُرسلت" };
+}
+
+export async function sendMessage(conversationId: string, formData: FormData): Promise<void> {
+  const user = await requireUser();
+
+  await myConversation(conversationId, user.id);
 
   const body = String(formData.get("body") ?? "").trim();
   if (!body) return;
@@ -1335,10 +1458,7 @@ export async function sendMessage(conversationId: string, formData: FormData): P
     prisma.message.create({
       data: { conversationId, senderId: user.id, body: body.slice(0, 2000) },
     }),
-    prisma.conversation.update({
-      where: { id: conversationId },
-      data: { updatedAt: new Date() },
-    }),
+    touchConversation(conversationId),
   ]);
 
   revalidatePath(`/messages/${conversationId}`);

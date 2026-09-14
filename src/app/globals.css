@@ -289,3 +289,16 @@ h3 {
     transform: rotate(360deg);
   }
 }
+
+/* نبضةُ التسجيل: نقطةٌ حمراء تقول إنّ الميكروفون يعمل الآن. */
+@keyframes athr-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+}

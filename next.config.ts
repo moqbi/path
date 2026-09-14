@@ -16,10 +16,11 @@ const nextConfig: NextConfig = {
     إجراءات الخادم تُحدّ بميغابايت واحد افتراضياً، والصورة تصل كـdata URL
     فيكبر حجمها الثلث بترميز base64: صورةٌ متحركة بثلاثة ميغا تصير أربعة
     في الطلب. كان الحدّ يقطعها قبل أن تصل، فتفشل بلا سبب يُعرض —
-    «Body exceeded 1 MB limit» في سجلّ الخادم وحده.
+    «Body exceeded 1 MB limit» في سجلّ الخادم وحده. وفيديو القصة تسعة
+    ميغا، فالحدّ يتّسع له ولمغلّفه.
   */
   experimental: {
-    serverActions: { bodySizeLimit: "6mb" },
+    serverActions: { bodySizeLimit: "16mb" },
   },
 };
 

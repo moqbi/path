@@ -6,7 +6,20 @@ const MAX_BYTES = 1_500_000;
 /** المتحرّكة تُرفع بملفها بلا تصغير، فحدُّها أعلى — ونفس ما يُقال للمستخدم. */
 const MAX_ANIMATED_BYTES = 3_000_000;
 const MAX_ANIMATED_SIDE = 1024;
+/** الصوت مسجَّلٌ في المتصفح بجودةٍ منخفضة: دقيقتان فيه أقلّ من ميغا. */
+const MAX_AUDIO_BYTES = 2_000_000;
+/** الفيديو عشرون ثانية بمعدّل بتّ محدود — وما زاد يُردّ برسالة لا بصمت. */
+const MAX_VIDEO_BYTES = 9_000_000;
+
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+/** صيغ التسجيل التي تخرج من `MediaRecorder` على المتصفحات المختلفة. */
+const AUDIO = new Set(["audio/webm", "audio/mp4", "audio/ogg", "audio/mpeg", "audio/aac"]);
+const VIDEO = new Set(["video/webm", "video/mp4", "video/quicktime"]);
+
+/** `audio/webm;codecs=opus` ← `audio/webm`: الوسائط تُقدَّم بنوعها الأساسي. */
+export function baseMime(mime: string): string {
+  return mime.split(";")[0].trim().toLowerCase();
+}
 
 /**
  * أمتحرّكةٌ هي؟ يُقرأ من الملف لا من امتداده.
@@ -46,10 +59,44 @@ export async function storeUpload(
   height: number,
   allowAnimated = false,
 ) {
-  const mime = file.type;
+  const mime = baseMime(file.type);
   if (!ALLOWED.has(mime)) throw new Error("يُقبل JPEG أو PNG أو WebP فقط");
   const bytes = new Uint8Array(await file.arrayBuffer());
   return keep(ownerId, mime, bytes, width, height, allowAnimated);
+}
+
+/**
+ * صوتٌ أو فيديو.
+ *
+ * لا تصغير هنا: الصوت يخرج من المسجّل بجودةٍ منخفضة أصلاً، والفيديو
+ * لا يُعاد ترميزه في المتصفح — فالحدّ حجمٌ يُردّ برسالة، لا صمت.
+ */
+export async function storeClip(
+  ownerId: string,
+  file: File | Blob,
+  kind: "audio" | "video",
+  width = 0,
+  height = 0,
+) {
+  const mime = baseMime(file.type);
+  const allowed = kind === "audio" ? AUDIO : VIDEO;
+  if (!allowed.has(mime)) {
+    throw new Error(kind === "audio" ? "صيغة الصوت غير مدعومة" : "صيغة الفيديو غير مدعومة");
+  }
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (bytes.length === 0) throw new Error("الملف فارغ");
+  const cap = kind === "audio" ? MAX_AUDIO_BYTES : MAX_VIDEO_BYTES;
+  if (bytes.length > cap) {
+    throw new Error(
+      kind === "audio" ? "التسجيل كبير" : "الفيديو كبير — صوّره أقصر أو بجودة أقل",
+    );
+  }
+
+  return prisma.media.create({
+    data: { ownerId, mime, bytes, width: Math.max(0, Math.round(width)), height: Math.max(0, Math.round(height)) },
+    select: { id: true },
+  });
 }
 
 /** الفحص والحفظ في مكان واحد. */

@@ -10,7 +10,7 @@ import { CameraIcon } from "@/components/icons";
  * ١٦٠٠ بكسل بجودة ٠٫٨ يبقيها واضحة على الشاشة ويهبط بالحجم إلى مئات
  * الكيلوبايتات، وهو الفرق بين قاعدة تتحمّل وقاعدة تنفجر.
  */
-async function shrink(
+export async function shrink(
   file: File,
   max: number,
   keepAlpha: boolean,
@@ -40,7 +40,7 @@ async function shrink(
 }
 
 /** ما يُسلَّم للمستدعي: الملف نفسه ومقاسه — لا نصّاً مرمّزاً. */
-type Picked = { file: Blob; width: number; height: number };
+export type Picked = { file: Blob; width: number; height: number };
 
 /** شروط الصورة المتحركة — تُعرض للمستخدم ويُفحص بها الملف. */
 export const ANIMATED = {
@@ -56,7 +56,7 @@ export const ANIMATED = {
  * `createImageBitmap` لا يفكّ الـGIF في كل المتصفحات، فيرمي خطأً يُقرأ
  * «الصورة كبيرة» وهي ليست كبيرة — وهذا ما كان يمنع رفع صورةٍ سليمة.
  */
-function measure(file: File): Promise<{ width: number; height: number }> {
+export function measure(file: File): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const image = new Image();

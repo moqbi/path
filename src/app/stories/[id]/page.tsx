@@ -25,6 +25,9 @@ export default async function StoriesPage({ params }: { params: Promise<{ id: st
         mediaId: story.mediaId,
         at: story.createdAt.toISOString(),
         seen: story._count.views,
+        video: story.media.mime.startsWith("video/"),
+        seconds: story.seconds,
+        filter: story.filter,
       }))}
     />
   );
