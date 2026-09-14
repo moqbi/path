@@ -10,6 +10,7 @@ import { authRoutes } from "./routes/v1/auth";
 import { circleRoutes, userRoutes } from "./routes/v1/circle";
 import { commentRoutes, feedRoutes, momentRoutes } from "./routes/v1/feed";
 import { mediaRoutes } from "./routes/v1/media";
+import { notificationRoutes } from "./routes/v1/notifications";
 import { profileRoutes } from "./routes/v1/profile";
 import { dmRoutes, messageRoutes } from "./routes/v1/dm";
 import { mountWs } from "./routes/v1/ws";
@@ -80,6 +81,7 @@ app.route("/v1/users", userRoutes);
 app.route("/v1/me", profileRoutes);
 app.route("/v1/store", storeRoutes);
 app.route("/v1/media", mediaRoutes);
+app.route("/v1/notifications", notificationRoutes);
 app.route("/v1/dm", dmRoutes);
 app.route("/v1/messages", messageRoutes);
 

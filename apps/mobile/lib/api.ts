@@ -1,4 +1,4 @@
-import * as SecureStore from "expo-secure-store";
+import { deleteItem, getItem, setItem } from "./store";
 
 /**
  * بابُ الخادم الوحيد.
@@ -15,19 +15,49 @@ const BASE = process.env.EXPO_PUBLIC_API_URL ?? "http://127.0.0.1:4000";
 const ACCESS = "athr.access";
 const REFRESH = "athr.refresh";
 
+/**
+ * نسخةٌ من توكن الوصول في الذاكرة.
+ *
+ * المخزن الآمن يُقرأ بوعد، و`<Image>` لا ينتظر وعداً: مصدرُها يُبنى
+ * وقت الرسم فيلزم أن يكون التوكن حاضراً في تلك اللحظة. والمخزن يبقى
+ * هو المرجع على القرص — هذه مرآةٌ له تعيش مع العملية وتموت بموتها.
+ */
+let access: string | null = null;
+const watchers = new Set<() => void>();
+
+export const currentAccess = () => access;
+
+/** تشترك الصور فيه لتُعيد المحاولة بتوكنٍ جديد بعد التجديد. */
+export function watchAccess(fn: () => void): () => void {
+  watchers.add(fn);
+  return () => watchers.delete(fn);
+}
+
+function setAccess(token: string | null) {
+  access = token;
+  for (const fn of watchers) fn();
+}
+
 export const saveTokens = async (accessToken: string, refreshToken: string) => {
+  setAccess(accessToken);
   await Promise.all([
-    SecureStore.setItemAsync(ACCESS, accessToken),
-    SecureStore.setItemAsync(REFRESH, refreshToken),
+    setItem(ACCESS, accessToken),
+    setItem(REFRESH, refreshToken),
   ]);
 };
 
 export const clearTokens = async () => {
+  setAccess(null);
   await Promise.all([
-    SecureStore.deleteItemAsync(ACCESS),
-    SecureStore.deleteItemAsync(REFRESH),
+    deleteItem(ACCESS),
+    deleteItem(REFRESH),
   ]);
 };
+
+/** عند الإقلاع: تُملأ المرآة من القرص مرّةً واحدة. */
+export async function primeAccess(): Promise<void> {
+  setAccess(await getItem(ACCESS));
+}
 
 let refreshing: Promise<boolean> | null = null;
 
@@ -35,7 +65,7 @@ async function renew(): Promise<boolean> {
   if (refreshing) return refreshing;
 
   refreshing = (async () => {
-    const token = await SecureStore.getItemAsync(REFRESH);
+    const token = await getItem(REFRESH);
     if (!token) return false;
 
     const response = await fetch(`${BASE}/v1/auth/refresh`, {
@@ -61,13 +91,14 @@ async function renew(): Promise<boolean> {
 }
 
 export async function api<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
-  const access = await SecureStore.getItemAsync(ACCESS);
+  const token = access ?? (await getItem(ACCESS));
+  if (token && !access) setAccess(token);
 
   const response = await fetch(`${BASE}${path}`, {
     ...init,
     headers: {
       ...(init.body instanceof FormData ? {} : { "content-type": "application/json" }),
-      ...(access ? { authorization: `Bearer ${access}` } : {}),
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
       ...init.headers,
     },
   });
@@ -80,3 +111,9 @@ export async function api<T>(path: string, init: RequestInit = {}, retry = true)
   if (!response.ok) throw new Error((data as { error?: string }).error ?? "تعذّر الاتصال");
   return data as T;
 }
+
+/** يحتاجه بناءُ عناوين الملفات والخطّ الحيّ. */
+export const baseUrl = BASE;
+
+/** تجديدٌ مقصود — تستدعيه الصورة حين تُردّ بـ401. */
+export const renewAccess = renew;
