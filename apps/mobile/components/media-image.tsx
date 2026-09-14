@@ -17,10 +17,13 @@ export function MediaImage({
   mediaId,
   style,
   resizeMode = "cover",
+  onSize,
 }: {
   mediaId: string | null | undefined;
   style?: StyleProp<ImageStyle>;
   resizeMode?: "cover" | "contain";
+  /** أبعاد الملف كما وصلت — يحتاجها من يحسب موضع الغلاف بنفسه. */
+  onSize?: (width: number, height: number) => void;
 }) {
   const [token, setToken] = useState(currentAccess);
   const [tries, setTries] = useState(0);
@@ -39,6 +42,10 @@ export function MediaImage({
       }}
       style={style}
       resizeMode={resizeMode}
+      onLoad={(event) => {
+        const size = event.nativeEvent.source;
+        if (size?.width && size.height) onSize?.(size.width, size.height);
+      }}
       onError={() => {
         if (tries > 0) return;
         setTries(1);
