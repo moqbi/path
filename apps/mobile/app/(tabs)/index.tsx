@@ -7,7 +7,8 @@ import { SPINE_X } from "../../components/spine";
 import { CoverLayer } from "../../components/cover";
 import { Avatar } from "../../components/avatar";
 import { AthrMark } from "../../components/brand";
-import { MessageIcon, PlusIcon, RefreshIcon, SparkIcon, StarIcon } from "../../components/icons";
+import { MessageIcon, RefreshIcon, SparkIcon, StarIcon } from "../../components/icons";
+import { ComposerFan } from "../../components/composer-fan";
 import { useFeed, type Moment } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { dayLabel, membership } from "../../lib/format";
@@ -216,29 +217,7 @@ export default function Timeline() {
         }
       />
 
-      {/* الزائد: النشر في متناول الإبهام، في الطرف المقابل للخيط. */}
-      <Pressable
-        onPress={() => router.push("/compose" as never)}
-        accessibilityLabel="انشر لحظة"
-        style={{
-          position: "absolute",
-          insetInlineStart: 20,
-          bottom: 22,
-          width: 58,
-          height: 58,
-          borderRadius: 29,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: colors.night,
-          shadowColor: "#000",
-          shadowOpacity: 0.3,
-          shadowRadius: 12,
-          shadowOffset: { width: 0, height: 6 },
-          elevation: 6,
-        }}
-      >
-        <PlusIcon size={26} color={colors.clay} />
-      </Pressable>
+      <ComposerFan />
     </SafeAreaView>
   );
 }

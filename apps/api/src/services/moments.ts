@@ -2,6 +2,7 @@ import { prisma } from "@athar/db";
 import type { MomentInput } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { reverseGeocode } from "../lib/places";
+import { isSupportedMusicUrl, resolveTrack } from "../lib/music-link";
 import { canInteract, canSeeMoment, circleIds } from "./visibility";
 import { dropMedia } from "./media";
 
@@ -182,6 +183,31 @@ export async function createMoment(userId: string, input: MomentInput) {
     ]);
   }
 
+  return { id: moment.id };
+}
+
+/**
+ * نشر أغنية برابطها.
+ *
+ * العنوان يُقرأ تلقائياً من oEmbed — واجهةٌ عامّة بلا مفاتيح — والفشل لا
+ * يمنع النشر: يُحفظ الرابط وحده ويبقى قابلاً للفتح والسماع.
+ */
+export async function postMusic(userId: string, url: string) {
+  const clean = url.trim();
+  if (!isSupportedMusicUrl(clean)) throw badRequest("الرابط غير صالح");
+
+  const track = await resolveTrack(clean);
+  const moment = await prisma.moment.create({
+    data: {
+      authorId: userId,
+      kind: "MUSIC",
+      musicUrl: clean,
+      musicTitle: track.title,
+      musicArtist: track.artist,
+      musicThumb: track.thumb,
+    },
+    select: { id: true },
+  });
   return { id: moment.id };
 }
 

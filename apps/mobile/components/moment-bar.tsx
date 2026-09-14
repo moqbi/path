@@ -1,0 +1,265 @@
+import { useState } from "react";
+import { View, Text, Pressable, TextInput, ScrollView, ActivityIndicator } from "react-native";
+import { useRouter } from "expo-router";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ReactionGlyph, facesFor, CUSTOM } from "./reactions";
+import { LockIcon } from "./icons";
+import { api } from "../lib/api";
+import { keys, useComment, useReact } from "../lib/queries";
+import { colors } from "../theme/tokens";
+
+type Mine = { kind: string; emoji: string | null } | null;
+
+/**
+ * شريط اللحظة: زرٌّ واحد في طرف المنشور.
+ *
+ * بالضغط عليه تُفتح الوجوه ومساحةُ التعليق معاً، ويُغلق نفسه بعد اختيار
+ * وجهٍ أو إرسال تعليق — فالصندوق المفتوح على كل منشور ضجيج، والعودة
+ * إليه ضغطةٌ واحدة.
+ *
+ * منقولٌ من `src/components/moment-bar.tsx`: الوجوه، فالفاصل، فالإيموجي
+ * الحرّ (اثنان ثم «＋» يفتح الكيبورد كاملاً لمشتركي أثر+، وقفلٌ يقود إلى
+ * الاشتراك لغيرهم)، ثم «احذف اللحظة» لصاحبها، ثم حقل التعليق.
+ */
+export function MomentBar({
+  momentId,
+  momentKind,
+  mine,
+  isPlus,
+  author = false,
+  head,
+  extra,
+  inset = false,
+  panelFirst = false,
+}: {
+  momentId: string;
+  momentKind?: string;
+  mine: Mine;
+  isPlus: boolean;
+  author?: boolean;
+  head?: React.ReactNode;
+  extra?: React.ReactNode;
+  inset?: boolean;
+  panelFirst?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [board, setBoard] = useState(false);
+  const [asking, setAsking] = useState(false);
+  const [body, setBody] = useState("");
+  const router = useRouter();
+  const client = useQueryClient();
+
+  const react = useReact(momentId);
+  const comment = useComment(momentId);
+  const faces = facesFor(momentKind);
+
+  const remove = useMutation({
+    mutationFn: () => api(`/v1/moments/${momentId}`, { method: "DELETE" }),
+    onSettled: () => {
+      void client.invalidateQueries({ queryKey: ["feed"] });
+      void client.invalidateQueries({ queryKey: ["me", "moments"] });
+    },
+  });
+
+  function choose(kind: string, emoji?: string) {
+    // الوجه فعلٌ كامل بنفسه: يُختار فيُطوى الشريط.
+    setOpen(false);
+    setBoard(false);
+    setAsking(false);
+    react.mutate({ kind, emoji });
+  }
+
+  const pending = react.isPending || comment.isPending || remove.isPending;
+
+  const button = (
+    <Pressable
+      accessibilityLabel="تفاعل"
+      onPress={() => {
+        setBoard(false);
+        setOpen((v) => !v);
+      }}
+      style={{
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        alignItems: "center",
+        justifyContent: "center",
+        borderWidth: 1,
+        // أرضيةٌ صلبة لا شفافة: فوق صورة الثيم كان الزرّ يكاد يختفي.
+        backgroundColor: mine ? colors.claySoft : colors.card,
+        borderColor: mine ? colors.clay : colors.line,
+      }}
+    >
+      <View style={{ opacity: mine ? 1 : 0.72 }}>
+        <ReactionGlyph kind={mine?.kind ?? "SMILE"} emoji={mine?.emoji} size={20} />
+      </View>
+    </Pressable>
+  );
+
+  return (
+    <View style={head ? undefined : { marginTop: 8 }}>
+      {/* الزرّ في الطرف الأيسر من المنشور — كما في الويب. */}
+      <View
+        style={{
+          flexDirection: "row-reverse",
+          alignItems: head ? "flex-start" : "center",
+          justifyContent: head ? "flex-start" : "flex-end",
+          gap: head ? 8 : 0,
+          paddingHorizontal: inset ? 12 : 0,
+          paddingTop: inset ? 10 : 0,
+          paddingBottom: inset ? 8 : 0,
+        }}
+      >
+        {head ? <View style={{ flex: 1 }}>{head}</View> : null}
+        {button}
+      </View>
+
+      {panelFirst ? null : extra}
+
+      {open ? (
+        <View style={{ marginTop: 8, gap: 8, paddingHorizontal: inset ? 12 : 0 }}>
+          <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 2 }}>
+            {faces.map((kind) => (
+              <Pressable
+                key={kind}
+                accessibilityLabel={kind}
+                onPress={() => choose(kind)}
+                style={{ width: 36, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 12 }}
+              >
+                <ReactionGlyph kind={kind} size={25} />
+              </Pressable>
+            ))}
+
+            <View style={{ width: 1, height: 24, backgroundColor: colors.line, marginHorizontal: 2 }} />
+
+            {isPlus ? (
+              <>
+                {CUSTOM.slice(0, 2).map((emoji) => (
+                  <Pressable
+                    key={emoji}
+                    onPress={() => choose("CUSTOM", emoji)}
+                    style={{ width: 36, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 12 }}
+                  >
+                    <Text style={{ fontSize: 21 }}>{emoji}</Text>
+                  </Pressable>
+                ))}
+                {/* «＋» يفتح الكيبورد كاملاً — الاشتراك يَعِد بكل الإيموجي لا باثنين. */}
+                <Pressable
+                  accessibilityLabel="كل الإيموجي"
+                  onPress={() => setBoard((v) => !v)}
+                  style={{ width: 36, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 12 }}
+                >
+                  <Text style={{ fontSize: 18, fontWeight: "700", color: colors.clayInk }}>
+                    {board ? "×" : "＋"}
+                  </Text>
+                </Pressable>
+              </>
+            ) : (
+              <Pressable
+                accessibilityLabel="الإيموجي الحر لمشتركي أثر+"
+                onPress={() => router.push("/subscribe" as never)}
+                style={{ width: 36, height: 40, alignItems: "center", justifyContent: "center" }}
+              >
+                <LockIcon size={16} color={colors.goldInk} />
+              </Pressable>
+            )}
+          </View>
+
+          {board ? (
+            <ScrollView
+              style={{ maxHeight: 168, borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
+              contentContainerStyle={{ flexDirection: "row-reverse", flexWrap: "wrap", padding: 6 }}
+            >
+              {CUSTOM.map((emoji) => (
+                <Pressable
+                  key={emoji}
+                  onPress={() => choose("CUSTOM", emoji)}
+                  style={{ width: "12.5%", height: 36, alignItems: "center", justifyContent: "center" }}
+                >
+                  <Text style={{ fontSize: 20 }}>{emoji}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          ) : null}
+
+          {author ? (
+            <View style={{ flexDirection: "row-reverse", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
+              {asking ? (
+                <>
+                  <Pressable
+                    disabled={pending}
+                    onPress={() => {
+                      setOpen(false);
+                      setAsking(false);
+                      remove.mutate();
+                    }}
+                    style={{ height: 32, paddingHorizontal: 12, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: colors.live }}
+                  >
+                    <Text style={{ color: "#fff", fontSize: 11.5, fontWeight: "700" }}>أحذفها</Text>
+                  </Pressable>
+                  <Pressable onPress={() => setAsking(false)} style={{ height: 32, paddingHorizontal: 10, justifyContent: "center" }}>
+                    <Text style={{ color: colors.muted, fontSize: 11.5, fontWeight: "600" }}>تراجع</Text>
+                  </Pressable>
+                </>
+              ) : (
+                <Pressable onPress={() => setAsking(true)} style={{ height: 32, paddingHorizontal: 10, justifyContent: "center" }}>
+                  <Text style={{ color: colors.live, fontSize: 11.5, fontWeight: "600" }}>احذف اللحظة</Text>
+                </Pressable>
+              )}
+            </View>
+          ) : null}
+
+          <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>
+            <TextInput
+              value={body}
+              onChangeText={setBody}
+              placeholder="علّق…"
+              placeholderTextColor={colors.faint}
+              maxLength={500}
+              accessibilityLabel="تعليق"
+              style={{
+                flex: 1,
+                height: 36,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: colors.line,
+                backgroundColor: colors.paper,
+                paddingHorizontal: 14,
+                fontSize: 12.5,
+                color: colors.ink,
+              }}
+              onSubmitEditing={() => {
+                const text = body.trim();
+                if (!text) return;
+                setBody("");
+                setOpen(false);
+                comment.mutate(text);
+              }}
+            />
+            {body.trim() ? (
+              <Pressable
+                disabled={pending}
+                onPress={() => {
+                  const text = body.trim();
+                  if (!text) return;
+                  setBody("");
+                  setOpen(false);
+                  comment.mutate(text);
+                }}
+                style={{ height: 36, paddingHorizontal: 14, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
+              >
+                {pending ? (
+                  <ActivityIndicator size="small" color={colors.onBrand} />
+                ) : (
+                  <Text style={{ color: colors.onBrand, fontSize: 12, fontWeight: "700" }}>إرسال</Text>
+                )}
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+      ) : null}
+
+      {panelFirst ? extra : null}
+    </View>
+  );
+}

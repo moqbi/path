@@ -154,6 +154,32 @@ export const SparkIcon = ({ size = 20, color = "currentColor" }: Props) => (
   </Svg>
 );
 
+export const CheckIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="m5 12.5 4.5 4.5L19 7.5" strokeWidth={2} />
+  </Svg>
+);
+
+export const CloseIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M6 6l12 12M18 6 6 18" strokeWidth={2} />
+  </Svg>
+);
+
+export const SearchIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Circle cx={11} cy={11} r={7} />
+    <Path d="M16.5 16.5 21 21" />
+  </Svg>
+);
+
+export const LockIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M6.5 10.5h11a1.5 1.5 0 0 1 1.5 1.5v6.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 18.5V12a1.5 1.5 0 0 1 1.5-1.5Z" />
+    <Path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" />
+  </Svg>
+);
+
 export const PlusIcon = ({ size = 20, color = "currentColor" }: Props) => (
   <Svg {...stroke(size, color)}>
     <Path d="M12 5v14M5 12h14" strokeWidth={2} />
