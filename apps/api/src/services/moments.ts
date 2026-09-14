@@ -118,8 +118,9 @@ async function readPlace(
 
 /** الملف المرفوع لصاحبه وحده، وغير موصولٍ بلحظةٍ سابقة. */
 async function ownMedia(userId: string, mediaId: string) {
+  // معتمدٌ لا مرفوعٌ فقط: ما لم تُفحص بايتاته لا يُربط بلحظة.
   const media = await prisma.media.findFirst({
-    where: { id: mediaId, ownerId: userId },
+    where: { id: mediaId, ownerId: userId, ready: true },
     select: { id: true },
   });
   if (!media) throw notFound("الملف غير موجود");

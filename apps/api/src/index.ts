@@ -10,6 +10,7 @@ import { circleRoutes, userRoutes } from "./routes/v1/circle";
 import { commentRoutes, feedRoutes, momentRoutes } from "./routes/v1/feed";
 import { mediaRoutes } from "./routes/v1/media";
 import { profileRoutes } from "./routes/v1/profile";
+import { sweepPending } from "./services/upload";
 import { storeRoutes } from "./routes/v1/store";
 
 /**
@@ -41,6 +42,21 @@ app.use(
 if (!isProd) app.use("*", logger());
 
 app.get("/health", (c) => c.json({ ok: true, at: new Date().toISOString() }));
+
+/**
+ * كنسٌ دوريّ لما لم يُعتمد.
+ *
+ * كل رابط رفعٍ يُعطى ولا يُستعمل يترك صفّاً معلّقاً ومفتاحاً محجوزاً.
+ * الخادم يعيش طويلاً هنا — بخلاف دوالّ الويب — فالكنس مؤقّتٌ على البوت
+ * لا عملٌ يُعلَّق على وصول طلب. و`unref` كي لا يمنع المؤقّتُ الخروج.
+ */
+const SWEEP_MINUTES = 30;
+setInterval(
+  () => {
+    void sweepPending().catch((error) => console.error("✗ كنس المعلّقة", error));
+  },
+  SWEEP_MINUTES * 60_000,
+).unref();
 
 app.route("/v1/auth", authRoutes);
 app.route("/v1/feed", feedRoutes);

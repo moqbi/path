@@ -531,6 +531,10 @@ model Media {
   bytes     Bytes?
   width     Int
   height    Int
+  /// يُرفع بالرابط المؤقّت ثم يُعتمد بعد فحص بايتاته على الخادم.
+  ready     Boolean  @default(true)
+  /// لِمَ رُفع: يثبّت الحدّ والصيغة وقت الطلب.
+  purpose   String?
   createdAt DateTime @default(now())
 
   owner User @relation("MediaOwner", fields: [ownerId], references: [id], onDelete: Cascade)
@@ -543,6 +547,7 @@ model Media {
   storeItem StoreItem? @relation("StoreItemMedia")
 
   @@index([ownerId, createdAt])
+  @@index([ready, createdAt])
 }
 
 /// رسالة دعمٍ من مستخدم، وردُّ المشرف عليها.

@@ -111,7 +111,7 @@ export function signRequest(input: {
 }
 
 async function signed(
-  method: "GET" | "PUT" | "DELETE",
+  method: "GET" | "PUT" | "DELETE" | "HEAD" | "POST",
   objectKey: string,
   body?: Uint8Array,
   headers: Record<string, string> = {},
@@ -182,4 +182,87 @@ export async function deleteObjects(keys: string[]): Promise<void> {
       }
     }),
   );
+}
+
+/**
+ * توقيعٌ في الاستعلام لا في الترويسة — رابطٌ مؤقّت.
+ *
+ * هذا ما يجعل الجهاز يرفع إلى الدلو مباشرةً بلا أن يمرّ الملف بخادمنا:
+ * ميغاباياتٌ لا تُنقل مرّتين، وخادمٌ لا ينشغل بها. والصلاحية بالثواني
+ * وموقّعةٌ داخل التوقيع نفسه، فلا تُمدَّد بتعديل الرابط.
+ *
+ * والحمولة `UNSIGNED-PAYLOAD` هنا وحدها بالضرورة: الرابط يُوقَّع قبل أن
+ * توجد البايتات. ولهذا يبقى فحصُ ما وصل بعد الرفع لازماً — الرابط يقول
+ * «لهذا المفتاح ولهذه المدّة»، لا «هذا الملف بعينه».
+ */
+export function presignUrl(input: {
+  method: "PUT" | "GET";
+  objectKey: string;
+  expiresIn: number;
+  /** يُلزم الرافع بنوعٍ بعينه: يوقَّع ضمن الترويسات المشمولة. */
+  contentType?: string;
+  now?: Date;
+}): { url: string; headers: Record<string, string>; expiresAt: string } {
+  const store = config();
+  if (!store) throw new Error("تخزين الملفات غير مضبوط");
+
+  const url = new URL(store.endpoint);
+  const host = url.host;
+  const path = `${url.pathname.replace(/\/+$/, "")}/${store.bucket}/${encodePath(input.objectKey)}`;
+
+  const at = input.now ?? new Date();
+  const stamp = at.toISOString().replace(/[:-]|\.\d{3}/g, "");
+  const day = stamp.slice(0, 8);
+  const scope = `${day}/auto/s3/aws4_request`;
+
+  const signedHeaderMap = new Map<string, string>([["host", host]]);
+  if (input.contentType) signedHeaderMap.set("content-type", input.contentType);
+  const names = [...signedHeaderMap.keys()].sort();
+  const signedHeaders = names.join(";");
+
+  // المعاملات تُرتَّب وتُرمَّز: التوقيع يُحسب على ترتيبٍ واحد لا غيره.
+  const query = new Map<string, string>([
+    ["X-Amz-Algorithm", "AWS4-HMAC-SHA256"],
+    ["X-Amz-Credential", `${store.key}/${scope}`],
+    ["X-Amz-Date", stamp],
+    ["X-Amz-Expires", String(input.expiresIn)],
+    ["X-Amz-SignedHeaders", signedHeaders],
+  ]);
+  const canonicalQuery = [...query.entries()]
+    .map(([name, value]) => [encodeURIComponent(name), encodeURIComponent(value)] as const)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([name, value]) => `${name}=${value}`)
+    .join("&");
+
+  const canonicalHeaders = names.map((name) => `${name}:${signedHeaderMap.get(name)}\n`).join("");
+  const canonical = [
+    input.method,
+    path,
+    canonicalQuery,
+    canonicalHeaders,
+    signedHeaders,
+    "UNSIGNED-PAYLOAD",
+  ].join("\n");
+
+  const toSign = ["AWS4-HMAC-SHA256", stamp, scope, sha256(canonical)].join("\n");
+  const signing = hmac(hmac(hmac(hmac(`AWS4${store.secret}`, day), "auto"), "s3"), "aws4_request");
+  const signature = createHmac("sha256", signing).update(toSign).digest("hex");
+
+  return {
+    url: `${url.protocol}//${host}${path}?${canonicalQuery}&X-Amz-Signature=${signature}`,
+    headers: input.contentType ? { "content-type": input.contentType } : {},
+    expiresAt: new Date(at.getTime() + input.expiresIn * 1000).toISOString(),
+  };
+}
+
+/** حجم الكائن ونوعه بلا تنزيله — لفحص ما رُفع بالرابط المؤقّت. */
+export async function headObject(
+  objectKey: string,
+): Promise<{ bytes: number; mime: string } | null> {
+  const response = await signed("HEAD", objectKey);
+  if (!response.ok) return null;
+  return {
+    bytes: Number(response.headers.get("content-length") ?? 0),
+    mime: response.headers.get("content-type") ?? "application/octet-stream",
+  };
 }

@@ -9,12 +9,14 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml* ./
 COPY apps/api/package.json apps/api/
 COPY packages/db/package.json packages/db/
 COPY packages/shared/package.json packages/shared/
+COPY packages/storage/package.json packages/storage/
 RUN pnpm install --frozen-lockfile --filter @athar/api...
 
 FROM base AS runner
 ENV NODE_ENV=production
-# ffmpeg لمعالجة الصوت والفيديو، ولا شيء غيره: كل حزمةٍ زائدة سطحُ هجوم.
-RUN apk add --no-cache ffmpeg
+# ffmpeg لقياس المقاطع، و`libc6-compat` لثنائيّات sharp — ولا شيء غيرهما:
+# كل حزمةٍ زائدة سطحُ هجوم.
+RUN apk add --no-cache ffmpeg libc6-compat
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY . .

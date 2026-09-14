@@ -2,10 +2,12 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { prisma } from "@athar/db";
 import { getObject } from "@athar/storage";
-import { cuid } from "@athar/shared";
+import { cuid, presignInput } from "@athar/shared";
 import { zValidator } from "../../lib/validate";
-import { requireAuth } from "../../middleware/auth";
+import { requireAuth, me } from "../../middleware/auth";
+import { rateLimit } from "../../middleware/rate-limit";
 import { notFound } from "../../lib/errors";
+import * as upload from "../../services/upload";
 
 /**
  * تقديم الملفات.
@@ -20,14 +22,31 @@ import { notFound } from "../../lib/errors";
 export const mediaRoutes = new Hono()
   .use("*", requireAuth)
 
+  /**
+   * رابطٌ مؤقّت للرفع.
+   *
+   * محدود المعدّل: كل طلبٍ يحجز صفّاً ومفتاحاً، فلا يُترك باباً يُملأ به
+   * الدلو بصفوفٍ معلّقة.
+   */
+  .use("/presign", rateLimit(30, 60))
+  .post("/presign", zValidator("json", presignInput), async (c) =>
+    c.json(await upload.presign(me(c), c.req.valid("json")), 201),
+  )
+
+  /** اعتماد ما رُفع بعد فحص بايتاته. */
+  .post("/:id/commit", zValidator("param", z.object({ id: cuid })), async (c) =>
+    c.json(await upload.commit(me(c), c.req.valid("param").id)),
+  )
+
   .get("/:id", zValidator("param", z.object({ id: cuid })), async (c) => {
     const { id } = c.req.valid("param");
 
     const media = await prisma.media.findUnique({
       where: { id },
-      select: { bytes: true, key: true, mime: true },
+      select: { bytes: true, key: true, mime: true, ready: true },
     });
-    if (!media) throw notFound("الملف غير موجود");
+    // غير المعتمد لا يُقدَّم: بايتاته لم تُفحص بعد.
+    if (!media || !media.ready) throw notFound("الملف غير موجود");
 
     const headers = new Headers({
       "Content-Type": media.mime,
