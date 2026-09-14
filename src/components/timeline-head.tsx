@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { RefreshIcon } from "@/components/icons";
 import { CoverLayer } from "@/components/ui";
 import { playRefresh } from "@/lib/sound";
-import { timeOfDay } from "@/lib/format";
 
 const COVER = 176;
 /** أقصى ما يتمدّد الغلاف بالسحب، وحدّ الإفلات الذي يعني «حدّث». */
@@ -31,6 +30,7 @@ export function TimelineHead({
   avatar,
   name,
   tag,
+  since,
   children,
 }: {
   coverMediaId: string | null;
@@ -39,6 +39,8 @@ export function TimelineHead({
   avatar: ReactNode;
   name: string;
   tag: ReactNode;
+  /** طول العضوية: «٦ أشهر» — يُحسب على الخادم فلا يختلف عند الترطيب. */
+  since: string;
   children: ReactNode;
 }) {
   const router = useRouter();
@@ -47,15 +49,6 @@ export function TimelineHead({
   const [pull, setPull] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [pending, start] = useTransition();
-  const [clock, setClock] = useState("");
-
-  // الساعة تُحسب بعد التركيب لا على الخادم، وإلا اختلف النصّان عند الترطيب.
-  useEffect(() => {
-    const tick = () => setClock(timeOfDay(new Date()));
-    tick();
-    const id = setInterval(tick, 20_000);
-    return () => clearInterval(id);
-  }, []);
 
   function set(value: number) {
     pulled.current = value;
@@ -168,12 +161,12 @@ export function TimelineHead({
                 {name}
                 {tag}
               </p>
+              {/* تحت الاسم: كم لك معنا. الساعة يعرفها الجهاز، والمدة لا. */}
               <p
                 className="text-[11.5px]"
                 style={{ color: "rgba(255,255,255,.92)", textShadow: "0 1px 3px rgba(14,26,36,.45)" }}
-                suppressHydrationWarning
               >
-                {clock}
+                لك معانا {since}
               </p>
             </div>
             <button

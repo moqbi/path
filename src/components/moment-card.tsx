@@ -175,9 +175,9 @@ export function EventLine({
         وصل إلى <span className="font-bold">{moment.text ?? "مدينة"}</span>
       </>
     ) : kind === "SLEEP" ? (
-      <span className="font-bold">نام</span>
+      <span className="font-bold">نمت</span>
     ) : kind === "WAKE" ? (
-      <span className="font-bold">صحا</span>
+      <span className="font-bold">صحيت</span>
     ) : kind === "FRIEND_ADDED" ? (
       <>
         أصبح صديق <span className="font-bold">{moment.text ?? "أحدهم"}</span>
@@ -205,7 +205,7 @@ export function EventLine({
         ? [moment.placeCity, moment.text].filter(Boolean).join(" · ") || null
         : kind === "SLEEP"
           ? "تصبح على خير"
-          // خبر «صحا» ساعتُه: تُقرأ من طابع اللحظة لا من نصٍّ محفوظ.
+          // خبر «صحيت» ساعتُه: تُقرأ من طابع اللحظة لا من نصٍّ محفوظ.
           : kind === "WAKE"
             ? `الساعة ${timeOfDay(moment.createdAt)}`
             : null;

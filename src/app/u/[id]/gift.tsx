@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { giftItem } from "@/app/actions";
-import { CloseIcon, SparkIcon } from "@/components/icons";
+import { CloseIcon, SparkIcon, GiftIcon } from "@/components/icons";
 import { itemPaint } from "@/components/ui";
 import { ar, riyals } from "@/lib/format";
 
@@ -184,25 +184,5 @@ export function GiftButton({
         </div>
       ) : null}
     </>
-  );
-}
-
-function GiftIcon({ size = 20 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.7}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M4 11h16v9H4z" />
-      <path d="M3 7.5h18V11H3zM12 7.5V20" />
-      <path d="M12 7.5S10.6 4 8.8 4a2.1 2.1 0 0 0 0 3.5zM12 7.5s1.4-3.5 3.2-3.5a2.1 2.1 0 0 1 0 3.5z" />
-    </svg>
   );
 }

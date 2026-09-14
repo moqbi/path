@@ -77,3 +77,26 @@ export function presence(lastSeenAt: Date | null | undefined): string {
   if (hours < 48) return "آخر ظهور أمس";
   return `آخر ظهور ${dayLabel(lastSeenAt)}`;
 }
+
+/**
+ * طول العضوية بلسانٍ عربي: «١٢ يوماً»، «شهران»، «٣ سنوات».
+ *
+ * العربية تعدّ المفرد والمثنى والجمع بصيغٍ مختلفة، ورقمٌ عارٍ بجانب
+ * «شهر» يُقرأ ركيكاً. والوحدة تكبر مع الوقت: الأيام تُقال أياماً حتى
+ * يتمّ الشهر، ثم شهوراً حتى تتمّ السنة.
+ */
+export function membership(from: Date): string {
+  const days = Math.max(0, Math.floor((Date.now() - from.getTime()) / 86_400_000));
+  if (days < 1) return "أول يوم";
+  if (days < 30) return count(days, "يوم", "يومان", "أيام", "يوماً");
+  const months = Math.floor(days / 30.44);
+  if (months < 12) return count(months, "شهر", "شهران", "أشهر", "شهراً");
+  return count(Math.floor(days / 365.25), "سنة", "سنتان", "سنوات", "سنة");
+}
+
+function count(n: number, one: string, two: string, few: string, many: string): string {
+  if (n <= 1) return one;
+  if (n === 2) return two;
+  if (n <= 10) return `${ar(n)} ${few}`;
+  return `${ar(n)} ${many}`;
+}

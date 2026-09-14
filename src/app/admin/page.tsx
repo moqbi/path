@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
+  closeTicket,
   createCategory,
   createStoreItem,
   createTag,
@@ -10,6 +11,8 @@ import {
   updateCategory,
   deleteStoreItem,
   deleteTag,
+  replyTicket,
+  setAdminScope,
   setUserTag,
   updateStoreItem,
   updateTag,
@@ -17,7 +20,8 @@ import {
 import { itemPaint, ScreenHeader, TagPill } from "@/components/ui";
 import { Saver } from "./saver";
 import { ItemImage } from "./item-image";
-import { riyals, ar } from "@/lib/format";
+import { riyals, ar, relative } from "@/lib/format";
+import { parsePalette } from "@/lib/theme";
 
 const FIELD =
   "rounded-xl border border-line bg-card px-4 text-[13.5px] text-ink outline-none focus:border-clay";
@@ -127,10 +131,62 @@ function Chip({
   );
 }
 
+/** ألوان الثيم الافتراضية = ألوان التطبيق نفسها، فالمشرف يعدّل لا يبدأ من عدم. */
+const PALETTE_FIELDS = [
+  { key: "paper", label: "الأرضية", fallback: "#eae5d9" },
+  { key: "card", label: "البطاقات", fallback: "#fdfcf8" },
+  { key: "ink", label: "الحبر", fallback: "#14212b" },
+  { key: "accent", label: "اللمسة", fallback: "#f6b93b" },
+  { key: "onAccent", label: "فوق اللمسة", fallback: "#0e1a24" },
+  { key: "chrome", label: "الشريطان", fallback: "#0e1a24" },
+  { key: "chromeInk", label: "حبر الشريطين", fallback: "#f7f5ef" },
+] as const;
+
+/**
+ * ألوان الثيم في اللوحة.
+ *
+ * الثيم ليس خلفيةً تتبدّل: من يشتريه يلبس التطبيقُ ألوانَه كلها. وسبعةُ
+ * ألوانٍ تكفي — البقية تُشتقّ منها فلا يُسأل المشرف عن درجاتِ لونٍ واحد.
+ */
+function PaletteFields({ palette }: { palette: Record<string, string> | null }) {
+  return (
+    <details className="rounded-xl border border-line" open={!!palette}>
+      <summary className="flex cursor-pointer list-none items-center justify-between p-3">
+        <span className="text-[12.5px] font-semibold">ألوان الثيم</span>
+        <span className="text-[11px] text-muted">
+          {palette ? "مضبوطة" : "الافتراضية"}
+        </span>
+      </summary>
+      <div className="flex flex-col gap-2 border-t border-line p-3">
+        <Check
+          name="hasPalette"
+          label="هذا الثيم يغيّر ألوان التطبيق كلها"
+          on={!!palette}
+        />
+        <div className="flex flex-wrap gap-2">
+          {PALETTE_FIELDS.map((field) => (
+            <Color
+              key={field.key}
+              name={`palette.${field.key}`}
+              label={field.label}
+              value={palette?.[field.key] ?? field.fallback}
+            />
+          ))}
+        </div>
+        <p className="text-[10.5px] leading-relaxed text-faint">
+          بلا تفعيل يبقى الثيم خلفيةً فقط. وما عدا هذه السبعة يُشتقّ منها.
+        </p>
+      </div>
+    </details>
+  );
+}
+
 const SECTIONS = [
-  { key: "tags", label: "الوسوم" },
-  { key: "users", label: "الحسابات" },
-  { key: "store", label: "المتجر" },
+  { key: "tags", label: "الوسوم", store: false },
+  { key: "users", label: "الحسابات", store: false },
+  { key: "store", label: "المتجر", store: true },
+  { key: "team", label: "الصلاحيات", store: false, owner: true },
+  { key: "support", label: "الدعم", store: false },
 ] as const;
 
 export default async function AdminPage({
@@ -139,14 +195,24 @@ export default async function AdminPage({
   searchParams: Promise<{ s?: string; v?: string }>;
 }) {
   const { s: raw, v } = await searchParams;
-  const section = SECTIONS.some((item) => item.key === raw) ? raw! : "tags";
   const view = v === "cats" ? "cats" : "items";
   const user = await currentUser();
   if (!user) redirect("/login");
-  // الدور يُفحص هنا وفي كل إجراء — إخفاء الرابط ليس حماية.
-  if (user.role !== "ADMIN") redirect("/");
 
-  const [items, tags, people, categories] = await Promise.all([
+  /*
+    اللوحة ثلاث درجات: المالك (`ADMIN`)، وممنوحُ اللوحة كاملةً (`ALL`)،
+    وممنوحُ المتجر وحده (`STORE`). الدرجة تُفحص هنا وفي كل إجراء —
+    إخفاء القسم ليس حماية.
+  */
+  const owner = user.role === "ADMIN";
+  const scope = owner ? "ALL" : user.adminScope;
+  if (scope === "NONE") redirect("/");
+  const sections = SECTIONS.filter(
+    (item) => (scope === "ALL" || item.store) && (!("owner" in item && item.owner) || owner),
+  );
+  const section = sections.some((item) => item.key === raw) ? raw! : sections[0].key;
+
+  const [items, tags, people, categories, tickets] = await Promise.all([
     prisma.storeItem.findMany({
       orderBy: { sortOrder: "asc" },
       include: {
@@ -167,6 +233,7 @@ export default async function AdminPage({
         email: true,
         isPlus: true,
         role: true,
+        adminScope: true,
         tag: { select: { name: true, bg: true, fg: true } },
         tagId: true,
       },
@@ -175,6 +242,14 @@ export default async function AdminPage({
       orderBy: { sortOrder: "asc" },
       include: { _count: { select: { items: true } } },
     }),
+    // المفتوحة أولاً: ما يحتاج ردّاً قبل ما رُدّ عليه.
+    scope === "ALL"
+      ? prisma.supportTicket.findMany({
+          orderBy: [{ closed: "asc" }, { createdAt: "desc" }],
+          take: 60,
+          include: { user: { select: { name: true, memberNo: true } } },
+        })
+      : Promise.resolve([]),
   ]);
 
   // الأصناف مرصوفة تحت تصنيفاتها كما تُرى في المتجر، وما بلا تصنيف في آخرها.
@@ -211,7 +286,7 @@ export default async function AdminPage({
 
         {/* أقسام بدل جدارٍ واحد: قسمٌ في الشاشة لا ثلاثة فوق بعضها. */}
         <div className="no-bar mb-5 flex gap-2 overflow-x-auto">
-          {SECTIONS.map((item) => {
+          {sections.map((item) => {
             const on = section === item.key;
             return (
               <Link
@@ -497,6 +572,8 @@ export default async function AdminPage({
                   <Check name="limited" label="حزمة محدودة — تظهر في صفّ «حزم محدودة»" />
                 </div>
 
+                <PaletteFields palette={null} />
+
                 <button
                   type="submit"
                   className="brand-gradient rounded-xl text-[14px] font-bold"
@@ -660,6 +737,8 @@ export default async function AdminPage({
                             <Check name="limited" label="حزمة محدودة" on={item.limited} />
                           </div>
 
+                          <PaletteFields palette={parsePalette(item.palette)} />
+
                           <button
                             type="submit"
                             className="rounded-xl text-[13.5px] font-bold"
@@ -822,6 +901,145 @@ export default async function AdminPage({
           </>
         )}
         </>
+        ) : null}
+
+        {section === "team" ? (
+          <>
+            <h2 className="mb-1 text-[15px] font-bold">الصلاحيات</h2>
+            <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
+              امنح حساباً صلاحية اللوحة: «المتجر» يفتح الأصناف والتصنيفات وحدها،
+              و«اللوحة كاملة» يفتح كل شيء عدا هذه الصفحة — منحُ الصلاحيات لك وحدك.
+              وما يُمنح يُسحب بضغطة.
+            </p>
+
+            <div className="mb-7 flex flex-col gap-2">
+              {people
+                .filter((person) => person.id !== user.id)
+                .map((person) => (
+                  <form
+                    key={person.id}
+                    action={setAdminScope.bind(null, person.id)}
+                    className="flex items-center gap-2 rounded-2xl border border-line bg-card p-3"
+                  >
+                    <span
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
+                      style={{ background: "var(--color-chip)", color: "var(--color-muted)" }}
+                    >
+                      {ar(person.memberNo)}
+                    </span>
+                    <div className="min-w-0 grow">
+                      <p dir="auto" className="flex items-center gap-1.5 truncate text-[13.5px] font-semibold">
+                        {person.name}
+                        {person.role === "ADMIN" ? <Chip gold>مالك</Chip> : null}
+                        {person.adminScope !== "NONE" ? (
+                          <Chip>{person.adminScope === "ALL" ? "اللوحة" : "المتجر"}</Chip>
+                        ) : null}
+                      </p>
+                      <p dir="ltr" className="truncate text-right text-[11px] text-faint">
+                        {person.email}
+                      </p>
+                    </div>
+                    <select
+                      name="scope"
+                      defaultValue={person.adminScope}
+                      className="h-10 max-w-[130px] shrink-0 rounded-xl border border-line bg-paper px-2 text-[12px] text-ink outline-none"
+                    >
+                      <option value="NONE">بلا صلاحية</option>
+                      <option value="STORE">المتجر فقط</option>
+                      <option value="ALL">اللوحة كاملة</option>
+                    </select>
+                    <button
+                      type="submit"
+                      className="h-10 shrink-0 rounded-xl px-3 text-[12px] font-bold"
+                      style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+                    >
+                      احفظ
+                    </button>
+                  </form>
+                ))}
+            </div>
+          </>
+        ) : null}
+
+        {section === "support" ? (
+          <>
+            <h2 className="mb-1 text-[15px] font-bold">الدعم</h2>
+            <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
+              رسائل المستخدمين من «الدعم وتواصل معنا». الردّ يظهر لصاحب الرسالة
+              في الصفحة نفسها، والإغلاق يعني أنّ المسألة انتهت.
+            </p>
+
+            {tickets.length === 0 ? (
+              <p className="rounded-2xl border border-line bg-card px-4 py-6 text-center text-[12.5px] text-muted">
+                لا رسائل.
+              </p>
+            ) : (
+              <div className="mb-7 flex flex-col gap-2.5">
+                {tickets.map((ticket) => (
+                  <details
+                    key={ticket.id}
+                    className="rounded-2xl border border-line bg-card"
+                    open={!ticket.closed && !ticket.reply}
+                  >
+                    <summary className="flex cursor-pointer list-none items-center gap-2 p-3.5">
+                      <span className="min-w-0 grow">
+                        <span dir="auto" className="flex items-center gap-1.5 truncate text-[13px] font-semibold">
+                          {ticket.user.name}
+                          {ticket.closed ? <Chip>مغلقة</Chip> : ticket.reply ? <Chip>رُدّ</Chip> : <Chip live>جديدة</Chip>}
+                        </span>
+                        <span className="mt-0.5 block truncate text-[11.5px] text-muted">
+                          {ticket.body}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-[10.5px] text-faint">
+                        {relative(ticket.createdAt)}
+                      </span>
+                    </summary>
+
+                    <div className="border-t border-line p-3.5">
+                      <p dir="auto" className="mb-3 whitespace-pre-wrap text-[12.5px] leading-relaxed text-ink">
+                        {ticket.body}
+                      </p>
+
+                      <Saver action={replyTicket.bind(null, ticket.id)} className="flex flex-col gap-2">
+                        <textarea
+                          name="reply"
+                          rows={3}
+                          maxLength={1200}
+                          defaultValue={ticket.reply ?? ""}
+                          placeholder="اكتب الردّ…"
+                          className={`resize-none py-2.5 ${FIELD}`}
+                        />
+                        <button
+                          type="submit"
+                          className="rounded-xl text-[13px] font-bold"
+                          style={{
+                            height: 44,
+                            background: "var(--color-clay)",
+                            color: "var(--color-on-brand)",
+                          }}
+                        >
+                          {ticket.reply ? "حدّث الردّ" : "أرسل الردّ"}
+                        </button>
+                      </Saver>
+
+                      {ticket.closed ? null : (
+                        <form action={closeTicket.bind(null, ticket.id)} className="pt-2.5">
+                          <button
+                            type="submit"
+                            className="w-full rounded-xl border border-line text-[12.5px] font-semibold text-muted"
+                            style={{ height: 42 }}
+                          >
+                            أغلق الرسالة
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  </details>
+                ))}
+              </div>
+            )}
+          </>
         ) : null}
       </main>
     </div>

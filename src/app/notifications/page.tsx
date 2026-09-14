@@ -6,7 +6,7 @@ import { ReactionGlyph } from "@/components/reactions";
 import { Avatar, Empty } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import { AthrHeaderMark } from "@/components/brand";
-import { GearIcon, MessageIcon, SparkIcon, TagIcon, WithIcon } from "@/components/icons";
+import { MessageIcon, SparkIcon, TagIcon, WithIcon } from "@/components/icons";
 import { ar, dayLabel, relative } from "@/lib/format";
 
 const FILTERS = [
@@ -55,16 +55,9 @@ export default async function NotificationsPage({
 
   return (
     <div className="screen">
-      <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
+      {/* الإعدادات تُفتح من تبويب «أنا»، فلا ترس هنا. */}
+      <header className="chrome flex items-center px-5 pb-3 pt-4">
         <AthrHeaderMark />
-        <Link
-          href="/settings/privacy"
-          aria-label="الإعدادات"
-          className="flex h-10 w-10 items-center justify-center rounded-full"
-          style={{ background: "var(--color-chrome-2)", color: "var(--color-chrome-ink)" }}
-        >
-          <GearIcon size={18} />
-        </Link>
       </header>
 
       <div className="shrink-0 px-5 pb-1 pt-3">

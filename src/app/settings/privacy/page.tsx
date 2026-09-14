@@ -4,6 +4,7 @@ import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { createGroup, deleteGroup, savePrivacy } from "@/app/actions";
 import { ScreenHeader } from "@/components/ui";
+import { LifeIcon } from "@/components/icons";
 import { ShieldIcon } from "@/components/icons";
 import { ar } from "@/lib/format";
 
@@ -169,6 +170,22 @@ export default async function PrivacyPage() {
             </div>
           ))}
         </div>
+
+        {/* الدعم داخل الخصوصية: هنا يبحث الناس عمّن يكلّمونه. */}
+        <Link
+          href="/settings/support"
+          className="mb-3 flex items-center justify-between rounded-2xl border border-line bg-card p-4"
+        >
+          <span>
+            <span className="block text-[13.5px] font-semibold">الدعم الفني وتواصل معنا</span>
+            <span className="block text-[11.5px] text-muted">
+              مشكلة أو اقتراح أو بلاغ — نردّ عليك داخل التطبيق
+            </span>
+          </span>
+          <span className="shrink-0 text-clay-ink">
+            <LifeIcon size={18} />
+          </span>
+        </Link>
 
         <Link
           href="/settings/blocked"

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { TAGLINE_AR, TAGLINE_EN } from "@/components/brand";
 import { currentUser } from "@/lib/auth";
+import { parsePalette, themeVars, veilOf } from "@/lib/theme";
 
 export const metadata: Metadata = {
   title: "أثر · ATHR",
@@ -15,9 +16,12 @@ export const viewport: Viewport = {
 };
 
 /**
- * الثيم يُلبَس هنا لا في كل شاشة: صورةٌ تملأ الهيكل، وفوقها حجابٌ فاتح
- * يبقي النصّ مقروءاً. فيراها صاحبها في اللحظات والملف والأصدقاء
- * والإشعارات والرسائل — مكانٌ واحد يُضبط منه كل مكان.
+ * الثيم يُلبَس هنا لا في كل شاشة.
+ *
+ * وهو ثوبٌ كامل لا خلفية: صورةٌ تملأ الهيكل وفوقها حجابٌ من لون أرضيته،
+ * ومعها ألوان التطبيق كلها — البطاقات والحبر واللمسة والشريطان — تُكتب
+ * متغيّراتِ CSS على الهيكل فترثها كل شاشة تحته. مكانٌ واحد يُضبط منه
+ * كل مكان.
  */
 export default async function RootLayout({
   children,
@@ -25,8 +29,9 @@ export default async function RootLayout({
   const user = await currentUser();
   const theme = user?.background ?? null;
   const image = theme?.mediaId ? `url(/api/media/${theme.mediaId})` : null;
+  const palette = parsePalette(theme?.palette);
   // حجابٌ خفيف: يكفي لقراءة النصّ ولا يطمس الصورة. أعلى من هذا كان يخفيها.
-  const veil = "linear-gradient(rgba(247,245,239,.7),rgba(247,245,239,.7))";
+  const veil = veilOf(palette);
   return (
     <html lang="ar" dir="rtl">
       <head>
@@ -41,13 +46,14 @@ export default async function RootLayout({
       <body>
         <div
           className="shell"
-          style={
-            image
+          style={{
+            ...(palette ? themeVars(palette) : null),
+            ...(image
               ? { backgroundImage: `${veil}, ${image}`, backgroundSize: "cover", backgroundPosition: "center" }
               : theme
                 ? { backgroundImage: `${veil}, ${theme.spec}` }
-                : undefined
-          }
+                : null),
+          }}
         >
           {children}
         </div>

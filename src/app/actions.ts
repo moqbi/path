@@ -14,6 +14,7 @@ import {
 import { assertRoomForBoth, circleIds, mutualCount } from "@/lib/circle";
 import { canInteract, canSeeMoment } from "@/lib/visibility";
 import { reverseGeocode } from "@/lib/places";
+import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
 import { deliverTo, openConversation } from "@/lib/dm";
 import { storeDataUrl } from "@/lib/media";
 import { isSupportedMusicUrl, resolveTrack } from "@/lib/music-link";
@@ -505,15 +506,49 @@ export async function clearCover(): Promise<void> {
 
 // ───────────────────────────── لوحة المشرف ─────────────────────────────
 
-/** كل إجراء مشرف يتحقق من الدور بنفسه — إخفاء الرابط ليس حماية. */
-async function requireAdmin() {
+/**
+ * كل إجراء مشرف يتحقق من الصلاحية بنفسه — إخفاء الرابط ليس حماية.
+ *
+ * المالك (`role = ADMIN`) يملك كل شيء. وغيره يُمنح مدىً: «المتجر» يفتح
+ * أصناف المتجر وتصنيفاته وحدها، و«اللوحة» يفتحها كاملةً — عدا منح
+ * الصلاحيات نفسها، فتلك للمالك وحده وإلا منح المشرفُ نفسَه ما شاء.
+ */
+async function requireAdmin(area: "store" | "panel" = "panel") {
+  const user = await requireUser();
+  const row = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { role: true, adminScope: true },
+  });
+  if (!row) throw new Error("هذه الصفحة للمشرفين");
+  const allowed =
+    row.role === "ADMIN" ||
+    row.adminScope === "ALL" ||
+    (area === "store" && row.adminScope === "STORE");
+  if (!allowed) throw new Error("هذه الصفحة للمشرفين");
+  return user;
+}
+
+/** منح الصلاحيات وسحبها: للمالك وحده. */
+async function requireOwner() {
   const user = await requireUser();
   const row = await prisma.user.findUnique({
     where: { id: user.id },
     select: { role: true },
   });
-  if (row?.role !== "ADMIN") throw new Error("هذه الصفحة للمشرفين");
+  if (row?.role !== "ADMIN") throw new Error("هذا للمالك وحده");
   return user;
+}
+
+/** يقرأ ألوان الثيم من النموذج، ويردّ `null` إن لم تُطلب أو نقصت. */
+function readPalette(formData: FormData): string | null {
+  if (formData.get("hasPalette") !== "on") return null;
+  const out: Record<string, string> = {};
+  for (const key of PALETTE_KEYS) {
+    const value = String(formData.get(`palette.${key}`) ?? "").trim();
+    if (!HEX_COLOR.test(value)) return null;
+    out[key] = value.toLowerCase();
+  }
+  return JSON.stringify(out);
 }
 
 /** نتيجة نموذج في اللوحة: رسالة تُعرض في الشاشة بدل استثناء يكسرها. */
@@ -544,7 +579,7 @@ const categoryInput = z.object({
 });
 
 export async function createStoreItem(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
-  await requireAdmin();
+  await requireAdmin("store");
 
   const parsed = storeItemInput.safeParse({
     kind: formData.get("kind"),
@@ -577,6 +612,7 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
       earnedAfterDays: earnedAfterDays && earnedAfterDays > 0 ? earnedAfterDays : null,
       categoryId: categoryId || null,
       limited,
+      palette: readPalette(formData),
       sortOrder: (last?.sortOrder ?? 0) + 1,
     },
   });
@@ -591,7 +627,7 @@ export async function updateStoreItem(
   _prev: AdminResult,
   formData: FormData,
 ): Promise<AdminResult> {
-  await requireAdmin();
+  await requireAdmin("store");
 
   const parsed = storeItemInput.safeParse({
     kind: formData.get("kind"),
@@ -628,6 +664,7 @@ export async function updateStoreItem(
       earnedAfterDays: earnedAfterDays && earnedAfterDays > 0 ? earnedAfterDays : null,
       categoryId: categoryId || null,
       limited,
+      palette: readPalette(formData),
       sortOrder: sortOrder ?? undefined,
     },
   });
@@ -640,7 +677,7 @@ export async function updateStoreItem(
 // ───────────────────────── تصنيفات المتجر (اللوحة) ─────────────────────────
 
 export async function createCategory(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
-  await requireAdmin();
+  await requireAdmin("store");
 
   const parsed = categoryInput.safeParse({
     name: formData.get("name"),
@@ -672,7 +709,7 @@ export async function updateCategory(
   _prev: AdminResult,
   formData: FormData,
 ): Promise<AdminResult> {
-  await requireAdmin();
+  await requireAdmin("store");
 
   const parsed = categoryInput.safeParse({
     name: formData.get("name"),
@@ -702,7 +739,7 @@ export async function updateCategory(
 
 /** حذف تصنيف لا يحذف أصنافه: تعود بلا تصنيف، ولا يضيع ما اشتراه أحد. */
 export async function deleteCategory(categoryId: string): Promise<void> {
-  await requireAdmin();
+  await requireAdmin("store");
   await prisma.storeCategory.delete({ where: { id: categoryId } });
   revalidatePath("/admin");
   revalidatePath("/store");
@@ -710,12 +747,11 @@ export async function deleteCategory(categoryId: string): Promise<void> {
 
 // ───────────────────────────── الوسوم ─────────────────────────────
 
-const HEX = /^#[0-9a-fA-F]{6}$/;
 
 const tagInput = z.object({
   name: z.string().trim().min(1, "اكتب اسم الوسم").max(20),
-  bg: z.string().trim().regex(HEX, "لون الخلفية بصيغة #rrggbb"),
-  fg: z.string().trim().regex(HEX, "لون النص بصيغة #rrggbb"),
+  bg: z.string().trim().regex(HEX_COLOR, "لون الخلفية بصيغة #rrggbb"),
+  fg: z.string().trim().regex(HEX_COLOR, "لون النص بصيغة #rrggbb"),
   autoForPlus: z.coerce.boolean(),
 });
 
@@ -795,7 +831,7 @@ function revalidateTags() {
 }
 
 export async function deleteStoreItem(itemId: string): Promise<void> {
-  await requireAdmin();
+  await requireAdmin("store");
   await prisma.storeItem.delete({ where: { id: itemId } });
   revalidatePath("/admin");
   revalidatePath("/store");
@@ -808,6 +844,71 @@ export async function grantCredit(userId: string, riyals: number): Promise<void>
     data: { storeCredit: { increment: Math.round(riyals * 100) } },
   });
   revalidatePath("/admin");
+}
+
+/**
+ * منح صلاحية اللوحة وسحبها — للمالك وحده.
+ *
+ * لا يُمنح دور `ADMIN` لأحد: المالك واحد، وما يُمنح مدىً يُسحب بضغطة،
+ * ولا يستطيع الممنوح أن يرفع نفسه ولا أن يمنح غيره.
+ */
+export async function setAdminScope(userId: string, formData: FormData): Promise<void> {
+  const owner = await requireOwner();
+  const raw = String(formData.get("scope") ?? "NONE");
+  const scope = raw === "ALL" || raw === "STORE" ? raw : "NONE";
+  // المالك لا يُنقص نفسه من حيث لا يدري.
+  if (userId === owner.id) return;
+  await prisma.user.update({ where: { id: userId }, data: { adminScope: scope } });
+  revalidatePath("/admin");
+}
+
+// ───────────────────────────── الدعم الفني ─────────────────────────────
+
+/**
+ * الدعم داخل التطبيق لا بريدٌ خارجه.
+ *
+ * الرسالة تُحفظ في القاعدة ويقرؤها المشرف في اللوحة ويردّ عليها، ويقرأ
+ * صاحبها الردّ في مكانه — بريدٌ في صفحة «تواصل معنا» يعني رسالةً تخرج من
+ * التطبيق فلا يعرف أحد أوصلت أم لا.
+ */
+export async function openTicket(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  const user = await requireUser();
+  const body = String(formData.get("body") ?? "").trim().slice(0, 1200);
+  if (body.length < 5) return { error: "اكتب رسالتك" };
+
+  // رسالةٌ مفتوحة واحدة تكفي: تكرارها يُغرق اللوحة ولا يُسرّع الردّ.
+  const open = await prisma.supportTicket.count({ where: { userId: user.id, closed: false } });
+  if (open >= 3) return { error: "عندك رسائل مفتوحة — انتظر الردّ عليها" };
+
+  await prisma.supportTicket.create({ data: { userId: user.id, body } });
+  revalidatePath("/settings/support");
+  revalidatePath("/admin");
+  return { ok: "وصلتنا رسالتك — نردّ عليك هنا" };
+}
+
+export async function replyTicket(
+  ticketId: string,
+  _prev: AdminResult,
+  formData: FormData,
+): Promise<AdminResult> {
+  await requireAdmin();
+  const reply = String(formData.get("reply") ?? "").trim().slice(0, 1200);
+  if (reply.length < 2) return { error: "اكتب الردّ" };
+
+  await prisma.supportTicket.update({
+    where: { id: ticketId },
+    data: { reply, repliedAt: new Date() },
+  });
+  revalidatePath("/admin");
+  revalidatePath("/settings/support");
+  return { ok: "أُرسل الردّ" };
+}
+
+export async function closeTicket(ticketId: string): Promise<void> {
+  await requireAdmin();
+  await prisma.supportTicket.update({ where: { id: ticketId }, data: { closed: true } });
+  revalidatePath("/admin");
+  revalidatePath("/settings/support");
 }
 
 // ───────────────────────────── الدائرة ─────────────────────────────
@@ -1413,7 +1514,7 @@ export async function setItemImage(
   width: number,
   height: number,
 ): Promise<void> {
-  const admin = await requireAdmin();
+  const admin = await requireAdmin("store");
   const media = await storeDataUrl(admin.id, dataUrl, width, height);
   await prisma.storeItem.update({ where: { id: itemId }, data: { mediaId: media.id } });
   revalidatePath("/admin");
@@ -1422,7 +1523,7 @@ export async function setItemImage(
 }
 
 export async function clearItemImage(itemId: string): Promise<void> {
-  await requireAdmin();
+  await requireAdmin("store");
   await prisma.storeItem.update({ where: { id: itemId }, data: { mediaId: null } });
   revalidatePath("/admin");
   revalidatePath("/store");

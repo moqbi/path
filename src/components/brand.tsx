@@ -65,7 +65,8 @@ export function AthrHeaderMark() {
  */
 export function AthrPageMark({ label }: { label: string }) {
   return (
-    <span className="flex items-center gap-3">
+    // ٤٠ ارتفاعاً دائماً: رأسٌ بلا زرٍّ بجانب العلامة كان يقصر عن غيره.
+    <span className="flex items-center gap-3" style={{ minHeight: 40 }}>
       <AthrMark size={34} />
       <span
         aria-hidden="true"

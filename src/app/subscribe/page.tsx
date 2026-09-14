@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { cancelPlus, subscribe } from "@/app/actions";
-import { BookIcon, CloseIcon, SparkIcon, StoreIcon } from "@/components/icons";
+import { BookIcon, SparkIcon, StoreIcon } from "@/components/icons";
+import { ScreenHeader } from "@/components/ui";
 
 const PERKS = [
   {
@@ -35,21 +35,14 @@ export default async function SubscribePage() {
   const yearly = subscribe.bind(null, "YEARLY");
 
   return (
-    <div
-      className="screen text-ink"
-      style={{ background: "var(--color-night)" }}
-    >
-      <div className="flex justify-start px-5 pt-4">
-        <Link
-          href="/me"
-          aria-label="إغلاق"
-          className="flex h-10 w-10 items-center justify-center text-faint"
-        >
-          <CloseIcon size={19} />
-        </Link>
-      </div>
+    /*
+      الوضع الفاتح كبقية التطبيق: كانت الأرضية داكنة والحبر حبرَ الوضع
+      الفاتح، فتُقرأ الصفحة شاشةً غريبة عن التطبيق الذي جاءت منه.
+    */
+    <div className="screen">
+      <ScreenHeader title="أثر+" back="/" mark />
 
-      <div className="px-6 pt-1.5">
+      <div className="shrink-0 px-6 pt-4">
         <span
           className="mb-4 inline-flex items-center gap-2 rounded-full px-3.5 py-2"
           style={{ background: "var(--color-gold-soft)" }}
@@ -63,7 +56,7 @@ export default async function SubscribePage() {
           <br />
           <span className="brand-text">وكل شي غيرها يكبر</span>
         </h1>
-        <p className="mb-6 text-[13px] leading-loose text-muted">
+        <p className="mb-5 text-[13px] leading-loose text-muted">
           لا نبيع أصدقاء إضافيين. نبيع ذاكرة أطول وتعبيراً أوسع.
         </p>
       </div>

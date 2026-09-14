@@ -110,6 +110,8 @@ export type SessionUser = {
   storeCredit: number;
   createdAt: Date;
   role: "USER" | "ADMIN";
+  /// مدى صلاحية اللوحة الممنوح لغير المالك.
+  adminScope: "NONE" | "STORE" | "ALL";
   avatarMediaId: string | null;
   coverMediaId: string | null;
   coverY: number;
@@ -119,7 +121,7 @@ export type SessionUser = {
   charmId: string | null;
   frame: { spec: string } | null;
   /** الثيم الملبوس: صورته إن رُفعت، وتدرّجه إن لم تُرفع. */
-  background: { spec: string; mediaId: string | null } | null;
+  background: { spec: string; mediaId: string | null; palette: string | null } | null;
   charm: { spec: string; mediaId: string | null } | null;
   tag: { name: string; bg: string; fg: string } | null;
 };
@@ -147,6 +149,7 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
       storeCredit: true,
       createdAt: true,
       role: true,
+      adminScope: true,
       avatarMediaId: true,
       coverMediaId: true,
       coverY: true,
@@ -155,7 +158,7 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
       backgroundId: true,
       charmId: true,
       frame: { select: { spec: true } },
-      background: { select: { spec: true, mediaId: true } },
+      background: { select: { spec: true, mediaId: true, palette: true } },
       charm: { select: { spec: true, mediaId: true } },
       tag: { select: { name: true, bg: true, fg: true } },
     },
@@ -179,6 +182,7 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
     storeCredit: user.storeCredit,
     createdAt: user.createdAt,
     role: user.role,
+    adminScope: user.adminScope,
     avatarMediaId: user.avatarMediaId,
     coverMediaId: user.coverMediaId,
     coverY: user.coverY,

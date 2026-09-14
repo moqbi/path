@@ -14,7 +14,7 @@ import { TabBar } from "@/components/tab-bar";
 import { TimelineHead } from "@/components/timeline-head";
 import { AthrHeaderMark } from "@/components/brand";
 import { MessageIcon, SparkIcon } from "@/components/icons";
-import { ar, dayLabel } from "@/lib/format";
+import { ar, dayLabel, membership } from "@/lib/format";
 
 const MONTHS = [
   "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
@@ -138,6 +138,7 @@ export default async function TimelinePage({
         coverSpec={user.background?.spec ?? null}
         coverY={user.coverY}
         name={user.name}
+        since={membership(user.createdAt)}
         tag={<NameTag isPlus={user.isPlus} tag={user.tag} size={10} />}
         avatar={
           <Avatar

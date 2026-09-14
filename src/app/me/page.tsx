@@ -13,7 +13,7 @@ import { Accessories } from "./accessories";
 import { DeleteAccount } from "./delete";
 import { Avatar, coverStyle, NameTag } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
-import { BookIcon, ExitIcon, GearIcon, SparkIcon } from "@/components/icons";
+import { BookIcon, ExitIcon, GearIcon, GiftIcon, SparkIcon, WithIcon } from "@/components/icons";
 import { AthrPageMark } from "@/components/brand";
 import { ar, dayLabel } from "@/lib/format";
 
@@ -26,7 +26,7 @@ export default async function ProfilePage() {
   const user = await currentUser();
   if (!user) redirect("/login");
 
-  const [ids, moments, mine, places, purchases] = await Promise.all([
+  const [ids, moments, mine, places, purchases, sentGifts] = await Promise.all([
     circleIds(user.id),
     archive(user.id),
     myMoments(user.id),
@@ -44,17 +44,12 @@ export default async function ProfilePage() {
       },
       orderBy: { createdAt: "desc" },
     }),
+    // الهدايا تُعدّ من `Purchase.giftedById` — لا عمودَ عدادٍ يُكتب ويُنسى.
+    prisma.purchase.count({ where: { giftedById: user.id } }),
   ]);
 
   const joined = `${MONTHS[user.createdAt.getMonth()]} ${ar(user.createdAt.getFullYear())}`;
   const tiles = moments.filter((m) => m.imageSpec).slice(0, 5);
-
-  // «سنتان معنا» أصدق من تاريخ انضمام لا يقول شيئاً.
-  const years = Math.floor((Date.now() - user.createdAt.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
-  const months = Math.max(
-    1,
-    Math.round((Date.now() - user.createdAt.getTime()) / (30.44 * 24 * 60 * 60 * 1000)),
-  );
 
   const days: { label: string; items: typeof mine }[] = [];
   for (const moment of mine) {
@@ -64,27 +59,24 @@ export default async function ProfilePage() {
     else days.push({ label, items: [moment] });
   }
 
+  // ما وصلك هديةً: شراءٌ باسمك دفع ثمنه غيرك.
+  const gotGifts = purchases.filter((row) => row.giftedBy).length;
+
+  /* أربعة أرقام بأيقوناتها: ما نشرت، ومن معك، وما أهديت، وما أُهدي إليك.
+     و«شهر معنا» انتقل إلى رأس اللحظات تحت الاسم، فمكانه هناك لا هنا. */
   const stats = [
-    { value: ar(moments.length), label: "لحظة" },
-    { value: ar(ids.length), label: "صديق" },
-    years >= 1
-      ? { value: ar(years), label: years === 1 ? "سنة معنا" : "سنة معنا" }
-      : { value: ar(months), label: "شهر معنا" },
+    { value: ar(moments.length), label: "لحظة", icon: <BookIcon size={14} /> },
+    { value: ar(ids.length), label: "صديق", icon: <WithIcon size={14} /> },
+    { value: ar(sentGifts), label: "أهديت", icon: <GiftIcon size={14} /> },
+    { value: ar(gotGifts), label: "أُهدي لك", icon: <GiftIcon size={14} /> },
   ];
 
   return (
     <div className="screen">
       {/* رأسٌ كبقية التبويبات: العلامة ثم فاصل ثم اسم الشاشة. */}
-      <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
+      {/* بلا ترسٍ في الرأس: الخصوصية زرٌّ بجانب الإكسسوارات تحت. */}
+      <header className="chrome flex items-center px-5 pb-3 pt-4">
         <AthrPageMark label="أنا" />
-        <Link
-          href="/settings/privacy"
-          aria-label="الخصوصية والإعدادات"
-          className="flex h-10 w-10 items-center justify-center rounded-full"
-          style={{ background: "var(--color-chrome-2)", color: "var(--color-chrome-ink)" }}
-        >
-          <GearIcon size={18} />
-        </Link>
       </header>
 
       {/*
@@ -137,16 +129,22 @@ export default async function ProfilePage() {
               {user.city ? ` · ${user.city}` : ""} · انضم {joined}
             </p>
 
-            {/* عدد اللحظات وعدد السنوات تحت الاسم مباشرة. */}
-            <div className="mx-auto mb-1 mt-3 flex max-w-[300px] items-stretch">
+            {/* الأرقام تحت الاسم: أيقونةٌ ثم رقمٌ ثم اسمه. */}
+            <div className="mx-auto mb-1 mt-3 flex max-w-[320px] items-stretch">
               {stats.map((stat, index) => (
                 <div
                   key={stat.label}
-                  className="flex-1 text-center"
+                  className="flex-1 px-1 text-center"
                   style={{ borderRight: index === 0 ? "none" : "1px solid var(--color-line)" }}
                 >
-                  <p className="text-[16px] font-bold leading-none">{stat.value}</p>
-                  <p className="mt-0.5 text-[10.5px] text-muted">{stat.label}</p>
+                  <span
+                    className="mx-auto mb-1 flex h-7 w-7 items-center justify-center rounded-full"
+                    style={{ background: "var(--color-chip)", color: "var(--color-ink-2)" }}
+                  >
+                    {stat.icon}
+                  </span>
+                  <p className="text-[15px] font-bold leading-none">{stat.value}</p>
+                  <p className="mt-0.5 text-[10px] text-muted">{stat.label}</p>
                 </div>
               ))}
             </div>

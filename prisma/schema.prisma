@@ -36,6 +36,14 @@ enum UserRole {
   ADMIN
 }
 
+/// مدى صلاحية المشرف: لا شيء، أو المتجر وحده، أو اللوحة كاملةً.
+/// المالك `ADMIN` فوق هذا كله، وهو وحده من يمنح غيره.
+enum AdminScope {
+  NONE
+  STORE
+  ALL
+}
+
 enum ReactionKind {
   SMILE
   LAUGH
@@ -86,6 +94,8 @@ model User {
 
   /// اشتراك «أثر+». الصلاحية تُقرأ من plusUntil، وisPlus مشتقة منها عند الكتابة.
   role      UserRole  @default(USER)
+  /// صلاحية اللوحة الممنوحة لغير المالك — يمنحها المالك ويسحبها.
+  adminScope AdminScope @default(NONE)
   isPlus    Boolean   @default(false)
   plusUntil DateTime?
 
@@ -133,6 +143,7 @@ model User {
 
   createdAt DateTime @default(now())
 
+  tickets   SupportTicket[]
   moments   Moment[]
   reactions Reaction[]
   views     View[]
@@ -404,6 +415,9 @@ model StoreItem {
   /// صورة الصنف — الثيم خلفيةٌ للتطبيق، والتميمة شعارٌ تحت صورة العرض.
   mediaId String? @unique
   media   Media?  @relation("StoreItemMedia", fields: [mediaId], references: [id], onDelete: SetNull)
+  /// ألوان الثيم كاملةً (JSON): الأرضية والبطاقة والحبر واللمسة والشريط.
+  /// الثيم ليس خلفيةً فقط — التطبيق كلّه يلبس ألوانه.
+  palette String?
   /// أصناف حصرية لمشتركي أثر+.
   plusOnly Boolean @default(false)
   /// أصناف تُكتسب بالبقاء لا بالدفع (مثل إطار «سنة كاملة»).
@@ -505,4 +519,23 @@ model Media {
   storeItem StoreItem? @relation("StoreItemMedia")
 
   @@index([ownerId, createdAt])
+}
+
+/// رسالة دعمٍ من مستخدم، وردُّ المشرف عليها.
+/// الدعم داخل التطبيق لا بريدٌ خارجه: الرسالة تُحفظ، والردّ يُقرأ في مكانه.
+model SupportTicket {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  body String
+  /// ردّ المشرف — فارغٌ حتى يُردّ.
+  reply     String?
+  repliedAt DateTime?
+  closed    Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([closed, createdAt])
 }

@@ -81,6 +81,45 @@ const CATEGORIES = [
   { name: "التمائم", slug: "charms", sortOrder: 3 },
 ] as const;
 
+/**
+ * ثوبُ كل ثيم: التطبيق كلّه يلبس ألوانه، لا خلفيتُه وحدها.
+ * سبعة ألوان، وما عداها يُشتقّ منها في `themeVars`.
+ */
+const PALETTES: Record<string, Record<string, string>> = {
+  Sunset: {
+    paper: "#f7e7dd", card: "#fffaf6", ink: "#3b1f1a", accent: "#ff6f4d",
+    onAccent: "#fffaf6", chrome: "#40211c", chromeInk: "#ffeee6",
+  },
+  Film: {
+    paper: "#e4e8ea", card: "#fbfcfc", ink: "#1d272d", accent: "#6d8391",
+    onAccent: "#ffffff", chrome: "#202b33", chromeInk: "#eef2f4",
+  },
+  Midnight: {
+    paper: "#e6ecf2", card: "#fbfdff", ink: "#0e1a24", accent: "#2f6d9e",
+    onAccent: "#ffffff", chrome: "#0b141c", chromeInk: "#e9f1f8",
+  },
+  Sand: {
+    paper: "#efe4cf", card: "#fdf9f1", ink: "#3a2f1c", accent: "#c9a227",
+    onAccent: "#2b2412", chrome: "#4a3d24", chromeInk: "#f6efdf",
+  },
+  Paper: {
+    paper: "#f1efe9", card: "#ffffff", ink: "#1f2429", accent: "#7a8a99",
+    onAccent: "#ffffff", chrome: "#2a3038", chromeInk: "#f4f5f7",
+  },
+  "رمضان": {
+    paper: "#e3ece7", card: "#fafdfb", ink: "#12281f", accent: "#1f6f5c",
+    onAccent: "#f3fbf7", chrome: "#10241d", chromeInk: "#e8f5ef",
+  },
+  "سفر": {
+    paper: "#e2edf7", card: "#fbfdff", ink: "#13283c", accent: "#2b6cb0",
+    onAccent: "#ffffff", chrome: "#12304c", chromeInk: "#e8f2fb",
+  },
+  Winter: {
+    paper: "#e8f1f7", card: "#ffffff", ink: "#17313f", accent: "#4e94bf",
+    onAccent: "#ffffff", chrome: "#1c3a4b", chromeInk: "#eef7fc",
+  },
+};
+
 const STARTERS = [
   // وصل حديثاً
   { name: "Sunset", slug: "themes", kind: "THEME", price: 1500, spec: "linear-gradient(135deg,#ff9a4d,#ff5f6d)" },
@@ -126,6 +165,7 @@ async function store() {
         plusOnly: "plusOnly" in item ? item.plusOnly : false,
         limited: "limited" in item ? item.limited : false,
         categoryId: idOf.get(item.slug) ?? null,
+        palette: PALETTES[item.name] ? JSON.stringify(PALETTES[item.name]) : null,
         sortOrder: order++,
         createdAt: new Date(Date.now() - minutes++ * 60_000),
       },
@@ -143,6 +183,18 @@ async function store() {
   });
 
   console.log("أُنشئت تصنيفات المتجر وأصنافها الأولى");
+}
+
+/** الثيمات المبذورة قبل الألوان تُكسى ثوبها — وإلا بقيت خلفيةً فقط. */
+async function palettes() {
+  let dressed = 0;
+  for (const [name, palette] of Object.entries(PALETTES)) {
+    const item = await prisma.storeItem.findFirst({ where: { name }, select: { id: true, palette: true } });
+    if (!item || item.palette) continue;
+    await prisma.storeItem.update({ where: { id: item.id }, data: { palette: JSON.stringify(palette) } });
+    dressed++;
+  }
+  if (dressed > 0) console.log(`أُلبست ${dressed} ثيمات ألوانها`);
 }
 
 
@@ -197,6 +249,7 @@ async function main() {
   await admins();
   await tags();
   await store();
+  await palettes();
   await charms();
 }
 

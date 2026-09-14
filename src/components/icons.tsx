@@ -118,9 +118,23 @@ export const BackIcon = ({ size = 20, className }: IconProps) => (
   </svg>
 );
 
+/**
+ * علامة أثر+: نجمة خماسية مملوءة.
+ *
+ * كانت تاجاً، والتاج يُقرأ رتبةً على الناس. والنجمة تُقرأ في كل لغة
+ * ولا تحتاج ترجمةً بجانب اسمٍ لاتيني.
+ */
 export const SparkIcon = ({ size = 20, className }: IconProps) => (
-  <svg {...base(size)} className={className}>
-    <path d="M4 8.5 8 12l4-6 4 6 4-3.5-1.8 9.5H5.8L4 8.5Z" />
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    stroke="none"
+    className={className}
+    aria-hidden="true"
+  >
+    <path d="M12 2.6l2.76 5.92 6.24.78-4.6 4.33 1.2 6.37L12 16.86l-5.6 3.14 1.2-6.37-4.6-4.33 6.24-.78L12 2.6Z" />
   </svg>
 );
 
@@ -226,5 +240,22 @@ export const SunIcon = ({ size = 20, className }: IconProps) => (
   <svg {...base(size)} className={className}>
     <circle cx="12" cy="12" r="4.4" />
     <path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4 17 7M7 17l-1.6 1.6" />
+  </svg>
+);
+
+export const GiftIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M4 11h16v9H4z" />
+    <path d="M3 7.5h18V11H3zM12 7.5V20" />
+    <path d="M12 7.5S10.6 4 8.8 4a2.1 2.1 0 0 0 0 3.5zM12 7.5s1.4-3.5 3.2-3.5a2.1 2.1 0 0 1 0 3.5z" />
+  </svg>
+);
+
+/** طوق النجاة: باب الدعم. */
+export const LifeIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <circle cx="12" cy="12" r="9" />
+    <circle cx="12" cy="12" r="3.6" />
+    <path d="m5.6 5.6 3.9 3.9M14.5 14.5l3.9 3.9M18.4 5.6l-3.9 3.9M9.5 14.5l-3.9 3.9" />
   </svg>
 );
