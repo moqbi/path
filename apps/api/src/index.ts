@@ -7,8 +7,9 @@ import { corsOrigins, env, isProd } from "./env";
 import { secureHeaders } from "./middleware/secure";
 import { authRoutes } from "./routes/v1/auth";
 import { circleRoutes, userRoutes } from "./routes/v1/circle";
-import { feedRoutes, momentRoutes } from "./routes/v1/feed";
+import { commentRoutes, feedRoutes, momentRoutes } from "./routes/v1/feed";
 import { mediaRoutes } from "./routes/v1/media";
+import { profileRoutes } from "./routes/v1/profile";
 import { storeRoutes } from "./routes/v1/store";
 
 /**
@@ -44,8 +45,10 @@ app.get("/health", (c) => c.json({ ok: true, at: new Date().toISOString() }));
 app.route("/v1/auth", authRoutes);
 app.route("/v1/feed", feedRoutes);
 app.route("/v1/moments", momentRoutes);
+app.route("/v1/comments", commentRoutes);
 app.route("/v1/circle", circleRoutes);
 app.route("/v1/users", userRoutes);
+app.route("/v1/me", profileRoutes);
 app.route("/v1/store", storeRoutes);
 app.route("/v1/media", mediaRoutes);
 

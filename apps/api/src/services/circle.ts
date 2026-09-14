@@ -1,6 +1,6 @@
 import { prisma } from "@athar/db";
 import { CIRCLE_CAP } from "@athar/shared";
-import { notFound } from "../lib/errors";
+import { badRequest, forbidden, notFound } from "../lib/errors";
 import { blockedWith, circleIds } from "./visibility";
 
 /** ما يُعرض عن شخصٍ في قائمة أو بطاقة. */
@@ -145,4 +145,213 @@ export async function userProfile(viewerId: string, id: string) {
   if (mutual === 0 && !pending) throw notFound("لا يوجد هذا الحساب");
 
   return { person, friend: false as const, mutual, pending };
+}
+
+// ───────────────────────────── الكتابة ─────────────────────────────
+
+/** عدد من في دائرة شخص. */
+async function circleSize(userId: string): Promise<number> {
+  return (await circleIds(userId)).length;
+}
+
+/**
+ * السقف يُفحص للطرفين لا للطالب وحده.
+ *
+ * فحصُ جانبٍ واحد يجعل الدائرة تتجاوز مئةً وخمسين من الجهة الأخرى: من
+ * امتلأت دائرته لا يُقبل فيها أحد ولو كان هو المدعوّ.
+ */
+async function assertRoomForBoth(a: string, b: string) {
+  const [sizeA, sizeB] = await Promise.all([circleSize(a), circleSize(b)]);
+  if (sizeA >= CIRCLE_CAP || sizeB >= CIRCLE_CAP) {
+    throw badRequest(`الدائرة مكتملة — ${CIRCLE_CAP} صديقاً هو السقف`);
+  }
+}
+
+/** عدد الأصدقاء المشتركين بين اثنين. */
+async function mutualCount(a: string, b: string): Promise<number> {
+  const [circleA, circleB] = await Promise.all([circleIds(a), circleIds(b)]);
+  const set = new Set(circleB);
+  return circleA.filter((id) => set.has(id)).length;
+}
+
+/**
+ * طلب صداقة — من المقترحين وحدهم.
+ *
+ * لا بحث بالبريد ولا اكتشاف عام: من لا يجمعك به صديقٌ مشترك لا يظهر لك
+ * ولا يصلك منه طلب. والفحص هنا لا في الشاشة.
+ */
+export async function requestFriend(userId: string, targetId: string) {
+  if (targetId === userId) throw badRequest("لا يمكنك إضافة نفسك");
+
+  const blocked = await blockedWith(userId);
+  if (blocked.includes(targetId)) throw notFound("لا يوجد هذا الحساب");
+
+  const target = await prisma.user.findUnique({ where: { id: targetId }, select: { id: true } });
+  if (!target) throw notFound("لا يوجد هذا الحساب");
+
+  if ((await mutualCount(userId, targetId)) === 0) throw forbidden("ما بينكما صديق مشترك");
+  await assertRoomForBoth(userId, targetId);
+
+  // طلبٌ قادمٌ من الطرف الآخر يُقبل بالطلب المقابل: لا يُنشأ طلبان.
+  const incoming = await prisma.friendship.findUnique({
+    where: { requesterId_addresseeId: { requesterId: targetId, addresseeId: userId } },
+    select: { id: true, status: true },
+  });
+  if (incoming) {
+    if (incoming.status === "PENDING") return acceptFriend(userId, incoming.id);
+    return { status: "ACCEPTED" as const };
+  }
+
+  await prisma.friendship.upsert({
+    where: { requesterId_addresseeId: { requesterId: userId, addresseeId: targetId } },
+    create: { requesterId: userId, addresseeId: targetId },
+    update: {},
+  });
+  return { status: "PENDING" as const };
+}
+
+/**
+ * قبول طلب.
+ *
+ * ويُكتب سطرٌ في خطّ كلٍّ منهما: «صار صديقاً لفلان» حدثٌ في حياة
+ * الدائرة، ويراه كلٌّ في صفحته لا في صفحة الآخر.
+ */
+export async function acceptFriend(userId: string, friendshipId: string) {
+  const friendship = await prisma.friendship.findUnique({
+    where: { id: friendshipId },
+    select: { id: true, requesterId: true, addresseeId: true, status: true },
+  });
+  if (!friendship || friendship.addresseeId !== userId) throw notFound("لا يوجد هذا الطلب");
+  if (friendship.status === "ACCEPTED") return { status: "ACCEPTED" as const };
+
+  await assertRoomForBoth(friendship.requesterId, friendship.addresseeId);
+
+  const [me, other] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { name: true } }),
+    prisma.user.findUnique({ where: { id: friendship.requesterId }, select: { name: true } }),
+  ]);
+
+  await prisma.$transaction([
+    prisma.friendship.update({ where: { id: friendshipId }, data: { status: "ACCEPTED" } }),
+    prisma.moment.create({
+      data: { authorId: userId, kind: "FRIEND_ADDED", text: other?.name ?? null },
+    }),
+    prisma.moment.create({
+      data: { authorId: friendship.requesterId, kind: "FRIEND_ADDED", text: me?.name ?? null },
+    }),
+  ]);
+
+  return { status: "ACCEPTED" as const };
+}
+
+/** تُرفض الطلبات بالحذف: لا حالة «مرفوض» تُبقي أثراً لمن رفض من. */
+export async function ignoreFriend(userId: string, friendshipId: string) {
+  const friendship = await prisma.friendship.findUnique({
+    where: { id: friendshipId },
+    select: { addresseeId: true, status: true },
+  });
+  if (!friendship || friendship.addresseeId !== userId) throw notFound("لا يوجد هذا الطلب");
+  if (friendship.status === "ACCEPTED") throw badRequest("الصداقة مقبولة");
+
+  await prisma.friendship.delete({ where: { id: friendshipId } });
+  return { ok: true };
+}
+
+/**
+ * إخراج صديق من الدائرة.
+ * حذفٌ للصفّ لا حالة «سابق»: الدائرة سجلّ من فيها الآن، لا أرشيف من مرّ.
+ */
+export async function removeFriend(userId: string, friendId: string) {
+  await prisma.friendship.deleteMany({
+    where: {
+      OR: [
+        { requesterId: userId, addresseeId: friendId },
+        { requesterId: friendId, addresseeId: userId },
+      ],
+    },
+  });
+  return { ok: true };
+}
+
+/**
+ * التصنيف يملكه صاحبه وحده: تصنيفك لشخصٍ «عائلة» لا يراه هو ولا غيره،
+ * وهو الفرق بين تنظيمٍ لنفسك وتسميةٍ تُلصق بالناس.
+ */
+export async function createGroup(userId: string, name: string) {
+  const clean = name.trim().slice(0, 20);
+  if (!clean) throw badRequest("اكتب اسم التصنيف");
+
+  const last = await prisma.friendGroup.findFirst({
+    where: { ownerId: userId },
+    orderBy: { sortOrder: "desc" },
+    select: { sortOrder: true },
+  });
+
+  const group = await prisma.friendGroup.upsert({
+    where: { ownerId_name: { ownerId: userId, name: clean } },
+    create: { ownerId: userId, name: clean, sortOrder: (last?.sortOrder ?? 0) + 1 },
+    update: {},
+    select: { id: true, name: true },
+  });
+  return group;
+}
+
+export async function deleteGroup(userId: string, groupId: string) {
+  await prisma.friendGroup.deleteMany({ where: { id: groupId, ownerId: userId } });
+  return { ok: true };
+}
+
+/** نقل صديق إلى تصنيف، أو إخراجه منها كلها بقيمة فارغة. */
+export async function setFriendGroup(userId: string, friendId: string, groupId: string | null) {
+  const circle = await circleIds(userId);
+  if (!circle.includes(friendId)) throw forbidden("ليس من أصدقائك");
+
+  const mine = await prisma.friendGroup.findMany({
+    where: { ownerId: userId },
+    select: { id: true },
+  });
+  const ids = mine.map((group) => group.id);
+
+  await prisma.groupMember.deleteMany({ where: { userId: friendId, groupId: { in: ids } } });
+  if (groupId && ids.includes(groupId)) {
+    await prisma.groupMember.create({ data: { groupId, userId: friendId } });
+  }
+  return { ok: true };
+}
+
+/** الحظر: لا يرى أحدهما الآخر ولا يتفاعل معه، والصداقة تُفكّ إن وُجدت. */
+export async function blockUser(userId: string, targetId: string) {
+  if (targetId === userId) throw badRequest("لا يمكنك حظر نفسك");
+
+  await prisma.$transaction([
+    prisma.block.upsert({
+      where: { blockerId_blockedId: { blockerId: userId, blockedId: targetId } },
+      create: { blockerId: userId, blockedId: targetId },
+      update: {},
+    }),
+    prisma.friendship.deleteMany({
+      where: {
+        OR: [
+          { requesterId: userId, addresseeId: targetId },
+          { requesterId: targetId, addresseeId: userId },
+        ],
+      },
+    }),
+  ]);
+  return { ok: true };
+}
+
+export async function unblockUser(userId: string, targetId: string) {
+  await prisma.block.deleteMany({ where: { blockerId: userId, blockedId: targetId } });
+  return { ok: true };
+}
+
+/** المحظورون — لقائمة «المحظورون» في الخصوصية. */
+export async function blockedList(userId: string) {
+  const rows = await prisma.block.findMany({
+    where: { blockerId: userId },
+    orderBy: { createdAt: "desc" },
+    select: { createdAt: true, blocked: { select: PERSON } },
+  });
+  return rows.map((row) => ({ ...row.blocked, blockedAt: row.createdAt }));
 }

@@ -75,3 +75,28 @@ export type RegisterInput = z.infer<typeof registerInput>;
 export type LoginInput = z.infer<typeof loginInput>;
 export type MomentInput = z.infer<typeof momentInput>;
 export type PresignInput = z.infer<typeof presignInput>;
+
+export const markInput = z.object({ kind: z.enum(["SLEEP", "WAKE"]) });
+
+export const profileInput = z.object({
+  name: z.string().trim().min(1, "الاسم مطلوب").max(40),
+  handle: z.string().trim().max(21).optional(),
+  bio: z.string().trim().max(160).optional(),
+  city: z.string().trim().max(40).optional(),
+});
+
+export const privacyInput = z.object({
+  viewGroupId: cuid.nullish(),
+  interactGroupId: cuid.nullish(),
+  shareLocation: z.boolean(),
+  notifyOnTag: z.boolean(),
+});
+
+export const coverInput = z.object({ y: z.coerce.number().min(0).max(100) });
+
+export const groupInput = z.object({ name: z.string().trim().min(1, "اكتب اسم التصنيف").max(20) });
+
+export const friendGroupInput = z.object({ groupId: cuid.nullish() });
+
+export type ProfileInput = z.infer<typeof profileInput>;
+export type PrivacyInput = z.infer<typeof privacyInput>;
