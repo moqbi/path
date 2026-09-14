@@ -1,8 +1,9 @@
 import { Hono } from "hono";
-import { coverInput, emailChangeInput, privacyInput, profileInput } from "@athar/shared";
+import { coverInput, emailChangeInput, pageQuery, privacyInput, profileInput } from "@athar/shared";
 import { zValidator } from "../../lib/validate";
 import { requireAuth, me } from "../../middleware/auth";
 import * as profile from "../../services/profile";
+import * as feed from "../../services/feed";
 
 /**
  * حسابي.
@@ -14,6 +15,14 @@ export const profileRoutes = new Hono()
   .use("*", requireAuth)
 
   .get("/", async (c) => c.json({ user: await profile.me(me(c)) }))
+
+  /** أرقام «أنا» — تُقرأ مرّةً مع الشاشة لا مع كل لحظة. */
+  .get("/stats", async (c) => c.json(await profile.stats(me(c))))
+
+  /** لحظاتي أنا — بلا شرط رؤية: صاحبها يراها كلها. */
+  .get("/moments", zValidator("query", pageQuery), async (c) =>
+    c.json(await feed.momentsOf(me(c), me(c), c.req.valid("query"))),
+  )
 
   .patch("/", zValidator("json", profileInput), async (c) =>
     c.json({ user: await profile.saveProfile(me(c), c.req.valid("json")) }),

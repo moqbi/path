@@ -69,12 +69,18 @@ const shape = {
  * `tags` تأتي `{user:{…}}` و`reactions` تحمل `user` داخلها، والشاشة تقرأ
  * شخصاً لا غلافاً حوله. التسطيح هنا مرّةً أوفر من تكراره في كل شاشة.
  */
-function flatten<T extends Row>(row: T) {
+function flatten<T extends Row>(row: T, viewerId: string) {
   const { tags, reactions, ...rest } = row;
   return {
     ...rest,
     tags: tags.map((t) => t.user),
-    reactions: reactions.map(({ user, ...r }) => ({ ...r, ...user })),
+    // `mine` تُحسب هنا: الشاشة لا تعرف من القارئ إلا بسؤالٍ آخر، وزرُّ
+    // التفاعل يحتاجها في كل لحظةٍ يرسمها.
+    reactions: reactions.map(({ user, ...r }) => ({
+      ...r,
+      ...user,
+      mine: r.userId === viewerId,
+    })),
   };
 }
 
@@ -84,9 +90,9 @@ type Row = {
 };
 
 /** صفحةٌ بمؤشّر: نقرأ واحدةً زائدة لنعرف أثمّة تالٍ، ولا نعدّ الكلّ. */
-function page<T extends Row & { id: string }>(rows: T[], limit: number) {
+function page<T extends Row & { id: string }>(rows: T[], limit: number, viewerId: string) {
   const more = rows.length > limit;
-  const moments = (more ? rows.slice(0, limit) : rows).map(flatten);
+  const moments = (more ? rows.slice(0, limit) : rows).map((row) => flatten(row, viewerId));
   return { moments, nextCursor: more ? moments.at(-1)?.id : undefined };
 }
 
@@ -115,7 +121,7 @@ export async function timeline(userId: string, options: { cursor?: string; limit
     ...cursorOf(options.cursor),
   });
 
-  return page(rows, options.limit);
+  return page(rows, options.limit, userId);
 }
 
 /** اللحظات الخاصة: ما لم يُنشر للدائرة كلها. */
@@ -130,7 +136,7 @@ export async function privateTimeline(userId: string, options: { cursor?: string
     ...cursorOf(options.cursor),
   });
 
-  return page(rows, options.limit);
+  return page(rows, options.limit, userId);
 }
 
 /**
@@ -154,7 +160,7 @@ export async function momentById(userId: string, momentId: string) {
     },
   });
   if (!moment) throw notFound("اللحظة غير موجودة");
-  return flatten(moment);
+  return flatten(moment, userId);
 }
 
 /** لحظات شخصٍ بعينه — بنفس شرط الرؤية. */
@@ -173,5 +179,5 @@ export async function momentsOf(
     ...cursorOf(options.cursor),
   });
 
-  return page(rows, options.limit);
+  return page(rows, options.limit, userId);
 }

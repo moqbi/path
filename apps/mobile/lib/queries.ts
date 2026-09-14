@@ -47,7 +47,7 @@ export type Moment = {
   createdAt: string;
   author: Person;
   tags: { id: string; name: string }[];
-  reactions: { userId: string; kind: string; emoji: string | null; name: string }[];
+  reactions: { userId: string; kind: string; emoji: string | null; name: string; mine: boolean }[];
   comments: {
     id: string;
     body: string;

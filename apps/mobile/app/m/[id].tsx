@@ -7,6 +7,7 @@ import { MomentCard } from "../../components/moment-card";
 import { ScreenHeader } from "../../components/screen-header";
 import { useComment, useMoment, useReact } from "../../lib/queries";
 import { relative } from "../../lib/format";
+import { useSession } from "../../lib/session";
 import { colors } from "../../theme/tokens";
 
 /** الوجوه الخمسة مفتوحةٌ للجميع؛ والحرّ لمشتركي أثر+ ويُفحص على الخادم. */
@@ -23,6 +24,7 @@ const FACES = [
  * التعليقات — بهذا الترتيب لا بغيره، فالتعليق جوابٌ على شيءٍ يُرى.
  */
 export default function MomentPage() {
+  const me = useSession((state) => state.me);
   const { id } = useLocalSearchParams<{ id: string }>();
   const moment = useMoment(id);
   const react = useReact(id);
@@ -57,7 +59,7 @@ export default function MomentPage() {
       <ScreenHeader title="لحظة" back="/" />
 
       <ScrollView contentContainerStyle={{ paddingTop: 12, paddingBottom: 24 }}>
-        <MomentCard moment={data} />
+        <MomentCard moment={data} viewerId={me?.id ?? ""} isPlus={me?.isPlus ?? false} />
 
         <View style={line} />
 

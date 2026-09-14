@@ -35,6 +35,41 @@ export function relative(date: Date): string {
 
 export const initial = (name: string): string => name.trim().charAt(0) || "؟";
 
+const WEEKDAYS = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+export const MONTHS = [
+  "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+  "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر",
+];
+
+/** فاصل اليوم في الخط الزمني: «اليوم» أو «الخميس ١٤ سبتمبر». */
+export function dayLabel(date: Date): string {
+  const today = new Date();
+  const sameDay =
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate();
+  if (sameDay) return "اليوم";
+  return `${WEEKDAYS[date.getDay()]} ${ar(date.getDate())} ${MONTHS[date.getMonth()]}`;
+}
+
+/** العدد وتمييزه: «يوم» و«يومان» و«٥ أيام» و«١٥ يوماً». */
+function count(n: number, one: string, two: string, few: string, many: string): string {
+  if (n <= 1) return one;
+  if (n === 2) return two;
+  if (n <= 10) return `${ar(n)} ${few}`;
+  return `${ar(n)} ${many}`;
+}
+
+/** «لك معانا ٦ أشهر» — نفس الحساب الذي في الويب حرفاً بحرف. */
+export function membership(from: string): string {
+  const days = Math.max(0, Math.floor((Date.now() - new Date(from).getTime()) / 86_400_000));
+  if (days < 1) return "أول يوم";
+  if (days < 30) return count(days, "يوم", "يومان", "أيام", "يوماً");
+  const months = Math.floor(days / 30.44);
+  if (months < 12) return count(months, "شهر", "شهران", "أشهر", "شهراً");
+  return count(Math.floor(days / 365.25), "سنة", "سنتان", "سنوات", "سنة");
+}
+
 export function presence(lastSeenAt: string | null | undefined): string {
   if (!lastSeenAt) return "";
   const minutes = Math.floor((Date.now() - new Date(lastSeenAt).getTime()) / 60000);
@@ -43,13 +78,4 @@ export function presence(lastSeenAt: string | null | undefined): string {
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `قبل ${ar(hours)} ساعة`;
   return `قبل ${ar(Math.floor(hours / 24))} يوم`;
-}
-
-/** «لك معانا» — المدّة منذ الانضمام، بأكبر وحدةٍ تصدُق. */
-export function withUs(since: string): string {
-  const days = Math.floor((Date.now() - new Date(since).getTime()) / 86_400_000);
-  if (days < 30) return `${ar(Math.max(1, days))} يوم`;
-  const months = Math.floor(days / 30);
-  if (months < 12) return `${ar(months)} شهر`;
-  return `${ar(Math.floor(months / 12))} سنة`;
 }

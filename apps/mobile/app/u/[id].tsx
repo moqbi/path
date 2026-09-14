@@ -9,7 +9,8 @@ import { ScreenHeader } from "../../components/screen-header";
 import { StarIcon } from "../../components/icons";
 import { api } from "../../lib/api";
 import { keys, type Moment } from "../../lib/queries";
-import { ar, withUs } from "../../lib/format";
+import { ar, membership } from "../../lib/format";
+import { useSession } from "../../lib/session";
 import { colors } from "../../theme/tokens";
 
 type Person = {
@@ -35,6 +36,7 @@ type Person = {
  * كل صفحةٍ تطبيقاً آخر.
  */
 export default function Profile() {
+  const me = useSession((state) => state.me);
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const person = useQuery({
@@ -63,7 +65,7 @@ export default function Profile() {
         <FlatList
           data={moments.data?.moments ?? []}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <MomentCard moment={item} />}
+          renderItem={({ item }) => <MomentCard moment={item} viewerId={me?.id ?? ""} isPlus={me?.isPlus ?? false} />}
           contentContainerStyle={{ paddingBottom: 24 }}
           ListHeaderComponent={
             <>
@@ -86,7 +88,7 @@ export default function Profile() {
                   {who.isPlus ? <StarIcon size={14} color={colors.clay} /> : null}
                 </View>
                 <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 2 }}>
-                  لك معانا {withUs(who.createdAt)} · عضو {ar(who.memberNo)}
+                  لك معانا {membership(who.createdAt)} · عضو {ar(who.memberNo)}
                 </Text>
                 {who.bio ? (
                   <Text style={{ color: colors.ink2, fontSize: 13, textAlign: "center", marginTop: 7, lineHeight: 22 }}>
