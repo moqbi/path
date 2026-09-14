@@ -2,7 +2,7 @@ import { View, Text, FlatList, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { Avatar } from "../../components/avatar";
+import { AvatarMenu } from "../../components/avatar-menu";
 import { MediaImage } from "../../components/media-image";
 import { MomentCard } from "../../components/moment-card";
 import { ScreenHeader } from "../../components/screen-header";
@@ -24,8 +24,25 @@ type Person = {
   createdAt: string;
   avatarMediaId: string | null;
   coverMediaId: string | null;
-  frame: { spec: string; mediaId: string | null } | null;
-  charm: { spec: string; mediaId: string | null } | null;
+  /* الصنف الملبوس كاملاً: نافذةُ الصورة تعرض اسمه وسعره وتبيعه. */
+  frame: {
+    id: string;
+    name: string;
+    kind: string;
+    spec: string;
+    mediaId: string | null;
+    priceHalalas: number;
+    plusOnly: boolean;
+  } | null;
+  charm: {
+    id: string;
+    name: string;
+    kind: string;
+    spec: string;
+    mediaId: string | null;
+    priceHalalas: number;
+    plusOnly: boolean;
+  } | null;
   tag: { name: string; bg: string; fg: string } | null;
 };
 
@@ -76,12 +93,14 @@ export default function Profile() {
               </View>
 
               <View style={{ alignItems: "center", marginTop: -32, paddingHorizontal: 16, marginBottom: 14 }}>
-                <Avatar
+                <AvatarMenu
                   name={who.name}
                   size={78}
                   mediaId={who.avatarMediaId}
                   frameSpec={who.frame?.spec}
                   charm={who.charm}
+                  frame={who.frame}
+                  charmItem={who.charm}
                 />
                 <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6, marginTop: 8 }}>
                   <Text style={{ color: colors.ink, fontSize: 17, fontWeight: "700" }}>{who.name}</Text>

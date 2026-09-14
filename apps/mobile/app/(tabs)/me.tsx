@@ -3,7 +3,7 @@ import { View, Text, SectionList, Pressable, ActivityIndicator, Alert, Share } f
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { Avatar } from "../../components/avatar";
+import { AvatarMenu } from "../../components/avatar-menu";
 import { CoverLayer } from "../../components/cover";
 import { MomentCard, SPINE_W } from "../../components/moment-card";
 import { AthrMark } from "../../components/brand";
@@ -174,12 +174,14 @@ export default function Me() {
             </View>
 
             <View style={{ alignItems: "center", marginTop: -52, paddingHorizontal: 20 }}>
-              <Avatar
+              <AvatarMenu
                 name={me.name}
                 size={104}
                 mediaId={me.avatarMediaId}
                 frameSpec={me.frame?.spec}
                 charm={me.charm}
+                frame={me.frame}
+                charmItem={me.charm}
               />
 
               <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8, marginTop: 10 }}>

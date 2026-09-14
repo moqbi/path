@@ -38,23 +38,22 @@
 | `src/components/story-composer.tsx` | `app/stories/new.tsx` |
 | `src/app/subscribe/page.tsx` | `app/subscribe.tsx` |
 | `src/app/login/form.tsx` | `app/login.tsx` |
+| `src/components/avatar-menu.tsx` | `components/avatar-menu.tsx` |
 
 ### لم يُنقل بعد — بالترتيب
-1. **`src/components/avatar-menu.tsx`** ← نافذة الضغط على صورة العرض
-   (عرض الصورة / معلومات التميمة / معلومات الإطار + شراءٌ مباشر).
-2. **`src/app/me/edit/`** و`src/app/me/edit-sheet.tsx` و`accessories.tsx`
+1. **`src/app/me/edit/`** و`src/app/me/edit-sheet.tsx` و`accessories.tsx`
    و`cover.tsx` و`images.tsx` و`share.tsx` ← `app/me/edit.tsx` و
    `app/me/accessories.tsx` (كلاهما الآن شاشتا «قريباً»).
-3. **`src/app/settings/privacy/page.tsx`** ← `app/settings/privacy.tsx`
+2. **`src/app/settings/privacy/page.tsx`** ← `app/settings/privacy.tsx`
    (الآن «قريباً»)، ومعها `src/app/settings/email.tsx` و
    `src/app/me/delete.tsx`.
-4. **`src/app/settings/blocked/page.tsx`** و**`support/`** ← غير موجودتين.
-5. **`src/app/together/`** و`/private` ← العدستان، ومعهما الضغطة
+3. **`src/app/settings/blocked/page.tsx`** و**`support/`** ← غير موجودتين.
+4. **`src/app/together/`** و`/private` ← العدستان، ومعهما الضغطة
    المطوّلة على تبويب «اللحظات» في `src/components/tabbar.tsx`.
-6. **`src/app/music/page.tsx`** ← غير موجودة.
-7. **`src/components/swipe-row.tsx`** ← السحب لحذف صفٍّ.
-8. **`src/components/tour.tsx`** ← جولة التعريف.
-9. **`src/app/admin/`** ← **لا يُنقل للموبايل**: مكانه `apps/web` حسب
+5. **`src/app/music/page.tsx`** ← غير موجودة.
+6. **`src/components/swipe-row.tsx`** ← السحب لحذف صفٍّ.
+7. **`src/components/tour.tsx`** ← جولة التعريف.
+8. **`src/app/admin/`** ← **لا يُنقل للموبايل**: مكانه `apps/web` حسب
     `MIGRATION.md`. أكّد مع صاحب المشروع قبل أيّ عمل عليه.
 
 ## الخادم

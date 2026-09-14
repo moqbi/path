@@ -11,6 +11,17 @@ import { api, clearTokens, saveTokens } from "./api";
  * والتوكن ليس هنا: مكانه المخزن الآمن وحده، وهذا المتجر يحمل مَن لا سرّ
  * في معرفته — الاسم والصورة وحالة الاشتراك.
  */
+/** الصنف الملبوس كما يردّه الخادم: يكفي لبطاقته في نافذة الصورة. */
+export type Worn = {
+  id: string;
+  name: string;
+  kind: string;
+  spec: string;
+  mediaId: string | null;
+  priceHalalas: number;
+  plusOnly: boolean;
+} | null;
+
 export type Me = {
   id: string;
   memberNo: number;
@@ -26,8 +37,8 @@ export type Me = {
   avatarMediaId: string | null;
   coverMediaId: string | null;
   coverY: number;
-  frame: { id: string; spec: string; mediaId: string | null } | null;
-  charm: { id: string; spec: string; mediaId: string | null } | null;
+  frame: Worn;
+  charm: Worn;
   background: { id: string; spec: string; mediaId: string | null; palette: string | null } | null;
   tag: { name: string; bg: string; fg: string } | null;
 };

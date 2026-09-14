@@ -13,8 +13,10 @@ const PERSON = {
   isPlus: true,
   lastSeenAt: true,
   avatarMediaId: true,
-  frame: { select: { spec: true, mediaId: true } },
-  charm: { select: { spec: true, mediaId: true } },
+  // الصنف الملبوس يُقرأ كاملاً: من ضغط صورةً وأعجبه إطارُها يرى اسمه
+  // وسعره من مكانه، فلا يبحث عنه في المتجر.
+  frame: { select: { id: true, name: true, kind: true, spec: true, mediaId: true, priceHalalas: true, plusOnly: true } },
+  charm: { select: { id: true, name: true, kind: true, spec: true, mediaId: true, priceHalalas: true, plusOnly: true } },
   tag: { select: { name: true, bg: true, fg: true } },
 } as const;
 
