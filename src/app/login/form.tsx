@@ -1,5 +1,18 @@
 "use client";
 
+/*
+  حسابُ تجربةٍ يُملأ في التطوير وحده.
+
+  كان مكتوباً في `defaultValue` بلا شرط، فكانت صفحةُ الدخول في الإنتاج
+  تعرض بريد المالك وكلمةَ مروره جاهزين: من فتح الصفحة يضغط «دخول» فيصير
+  مالكاً. والشرط على `NODE_ENV` يُطوى في البناء، فلا يخرج النصّ في حزمة
+  الإنتاج أصلاً — لا يُخفى بل لا يوجد.
+*/
+const TRIAL =
+  process.env.NODE_ENV === "development"
+    ? { email: "mohammed@athar.test", password: "athar1234" }
+    : { email: "", password: "" };
+
 import { useActionState, useEffect, useState } from "react";
 import { signIn } from "@/app/actions";
 import { AthrMark, TAGLINE_AR, TAGLINE_EN } from "@/components/brand";
@@ -174,7 +187,7 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
                 type="email"
                 autoComplete="email"
                 required
-                defaultValue="mohammed@athar.test"
+                defaultValue={TRIAL.email}
                 placeholder="البريد"
                 className="rounded-xl px-4 text-[14.5px] outline-none"
                 style={{
@@ -189,7 +202,7 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
                 type="password"
                 autoComplete="current-password"
                 required
-                defaultValue="athar1234"
+                defaultValue={TRIAL.password}
                 placeholder="كلمة المرور"
                 className="rounded-xl px-4 text-[14.5px] outline-none"
                 style={{
@@ -261,12 +274,15 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
             </div>
           )}
 
-          <p
-            className="mt-6 text-center text-[10.5px] leading-relaxed"
-            style={{ color: "#9a948b" }}
-          >
-            حسابان تجريبيان: mohammed@athar.test و noura@athar.test — كلمة المرور athar1234
-          </p>
+          {/* وسطرُ الحسابين التجريبيين كان يطبع كلمة المرور للعالم. */}
+          {process.env.NODE_ENV === "development" ? (
+            <p
+              className="mt-6 text-center text-[10.5px] leading-relaxed"
+              style={{ color: "#9a948b" }}
+            >
+              حسابان تجريبيان: mohammed@athar.test و noura@athar.test — كلمة المرور athar1234
+            </p>
+          ) : null}
         </div>
       </div>
     </div>
