@@ -3,6 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Avatar } from "../../components/avatar";
+import { SwipeRow } from "../../components/swipe-row";
 import { ScreenHeader } from "../../components/screen-header";
 import { StoryStrip } from "../../components/stories";
 import { api } from "../../lib/api";
@@ -30,6 +31,24 @@ export default function Circle() {
       api(`/v1/circle/requests/${id}/${accept ? "accept" : "ignore"}`, { method: "POST" }),
     onSettled: () => {
       void client.invalidateQueries({ queryKey: keys.circle });
+      void client.invalidateQueries({ queryKey: ["feed"] });
+    },
+  });
+
+  /** الإخراج من الدائرة، والحظر — كلاهما يذهب بالصداقة. */
+  const cut = useMutation({
+    mutationFn: (id: string) => api(`/v1/circle/${id}`, { method: "DELETE" }),
+    onSettled: () => {
+      void client.invalidateQueries({ queryKey: keys.circle });
+      void client.invalidateQueries({ queryKey: ["feed"] });
+    },
+  });
+
+  const ban = useMutation({
+    mutationFn: (id: string) => api(`/v1/circle/${id}/block`, { method: "POST" }),
+    onSettled: () => {
+      void client.invalidateQueries({ queryKey: keys.circle });
+      void client.invalidateQueries({ queryKey: ["circle", "blocked"] });
       void client.invalidateQueries({ queryKey: ["feed"] });
     },
   });
@@ -114,6 +133,16 @@ export default function Circle() {
           </>
         }
         renderItem={({ item }) => (
+          /*
+            أدوات القطع تُجمع في الصفّ لا في الملف: الملف يُقرأ، والسحب
+            يكشف «حظر» و«إزالة» معاً. وشرط آبل محفوظ: الحظر موجود.
+          */
+          <SwipeRow
+            onDelete={() => void cut.mutate(item.id)}
+            confirmLabel="إزالة"
+            onSecond={() => void ban.mutate(item.id)}
+            secondLabel="حظر"
+          >
           <Pressable
             onPress={() => router.push(`/u/${item.id}` as never)}
             style={{ flexDirection: "row-reverse", alignItems: "center", gap: 11, paddingHorizontal: 16, paddingVertical: 10 }}
@@ -132,6 +161,7 @@ export default function Circle() {
               </Text>
             </View>
           </Pressable>
+          </SwipeRow>
         )}
         ListEmptyComponent={
           circle.isLoading ? (

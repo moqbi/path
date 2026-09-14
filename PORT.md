@@ -45,12 +45,12 @@
 | `src/app/settings/blocked/page.tsx` | `app/settings/blocked.tsx` |
 | `src/app/settings/support/` | `app/settings/support.tsx` |
 | `src/app/page.tsx` العدستان + `components/tabbar.tsx` | `app/(tabs)/index.tsx` + `app/(tabs)/_layout.tsx` |
+| `src/components/swipe-row.tsx` | `components/swipe-row.tsx` |
 
 ### لم يُنقل بعد — بالترتيب
 1. **`src/app/music/page.tsx`** ← غير موجودة.
-2. **`src/components/swipe-row.tsx`** ← السحب لحذف صفٍّ.
-3. **`src/components/tour.tsx`** ← جولة التعريف.
-4. **`src/app/admin/`** ← **لا يُنقل للموبايل**: مكانه `apps/web` حسب
+2. **`src/components/tour.tsx`** ← جولة التعريف.
+3. **`src/app/admin/`** ← **لا يُنقل للموبايل**: مكانه `apps/web` حسب
     `MIGRATION.md`. أكّد مع صاحب المشروع قبل أيّ عمل عليه.
 
 ## الخادم

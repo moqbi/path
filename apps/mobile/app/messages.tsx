@@ -1,8 +1,9 @@
 import { View, Text, FlatList, Pressable, ActivityIndicator, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Avatar } from "../components/avatar";
+import { SwipeRow } from "../components/swipe-row";
 import { ScreenHeader } from "../components/screen-header";
 import { Ticks, receiptOf } from "../components/receipt";
 import { CameraIcon, MicIcon } from "../components/icons";
@@ -67,10 +68,18 @@ export default function Messages() {
   const me = useSession((s) => s.me);
   const router = useRouter();
 
+  const client = useQueryClient();
+
   const list = useQuery({
     queryKey: keys.dm,
     queryFn: () => api<{ conversations: Row[] }>("/v1/dm"),
     refetchInterval: 20_000,
+  });
+
+  /** حذف المحادثة: تُكشف بالسحب كما في الويب، لا بزرٍّ دائمٍ في الصفّ. */
+  const drop = useMutation({
+    mutationFn: (id: string) => api(`/v1/dm/${id}`, { method: "DELETE" }),
+    onSuccess: async () => client.invalidateQueries({ queryKey: keys.dm }),
   });
 
   return (
@@ -85,6 +94,7 @@ export default function Messages() {
           <RefreshControl refreshing={list.isRefetching} onRefresh={() => void list.refetch()} tintColor={colors.clay} />
         }
         renderItem={({ item }) => (
+          <SwipeRow onDelete={() => void drop.mutate(item.id)}>
           <Pressable
             onPress={() => router.push(`/dm/${item.id}` as never)}
             style={{ flexDirection: "row-reverse", alignItems: "center", gap: 11, paddingHorizontal: 20, paddingVertical: 11 }}
@@ -116,6 +126,7 @@ export default function Messages() {
               </View>
             ) : null}
           </Pressable>
+          </SwipeRow>
         )}
         ListEmptyComponent={
           list.isLoading ? (
