@@ -149,7 +149,7 @@ export const useStore = () =>
     queryKey: keys.store,
     queryFn: () =>
       api<{
-        categories: { id: string; name: string }[];
+        categories: { id: string; name: string; slug: string }[];
         items: StoreItem[];
         owned: string[];
         rows: { fresh: StoreItem[]; themes: StoreItem[]; limited: StoreItem[] };

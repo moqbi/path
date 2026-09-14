@@ -31,7 +31,8 @@
     "expo-linking": "~8.0.12",
     "@expo/metro-runtime": "~6.1.2",
     "expo-image-picker": "~17.0.9",
-    "expo-location": "~19.0.8"
+    "expo-location": "~19.0.8",
+    "expo-av": "~16.0.7"
   },
   "devDependencies": {
     "typescript": "^5",

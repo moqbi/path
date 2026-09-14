@@ -154,6 +154,34 @@ export const SparkIcon = ({ size = 20, color = "currentColor" }: Props) => (
   </Svg>
 );
 
+export const MicIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M12 3.5a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0v-5a3 3 0 0 1 3-3Z" />
+    <Path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" />
+  </Svg>
+);
+
+export const CameraIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M3 9.5A2.5 2.5 0 0 1 5.5 7h1.8l1.2-2h6.8l1.2 2h1.8A2.5 2.5 0 0 1 21 9.5v8A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5Z" />
+    <Circle cx={12} cy={13} r={3.6} />
+  </Svg>
+);
+
+export const FlameIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M12 3s5 4.2 5 8.5a5 5 0 0 1-10 0C7 9 9 7 9 7s.5 2.5 2 2.5S12 3 12 3Z" />
+    <Path d="M12 21a4.5 4.5 0 0 0 4.5-4.5c0-2-1.5-3.5-1.5-3.5s-.3 1.6-1.4 1.6S12 21 12 21Z" />
+  </Svg>
+);
+
+export const InfoIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Circle cx={12} cy={12} r={9} />
+    <Path d="M12 11v5M12 7.6v.6" />
+  </Svg>
+);
+
 export const CheckIcon = ({ size = 20, color = "currentColor" }: Props) => (
   <Svg {...stroke(size, color)}>
     <Path d="m5 12.5 4.5 4.5L19 7.5" strokeWidth={2} />

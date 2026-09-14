@@ -1,117 +1,141 @@
+import { useState } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { firstColor } from "../../components/avatar";
-import { MediaImage } from "../../components/media-image";
-import { ScreenHeader } from "../../components/screen-header";
+import { AthrMark } from "../../components/brand";
+import { StoreGrid } from "../../components/store-grid";
+import { FlameIcon, InfoIcon, SparkIcon } from "../../components/icons";
 import { useStore, type StoreItem } from "../../lib/queries";
 import { riyals } from "../../lib/format";
 import { colors } from "../../theme/tokens";
 
-const KIND_LABEL: Record<string, string> = {
-  FRAME: "إطار",
-  THEME: "ثيم",
-  CHARM: "تميمة",
-  BACKGROUND: "خلفية",
-};
+/** عنوان صفٍّ في «المميز» — واللهب رسمٌ لا إيموجي، كبقية أيقونات التطبيق. */
+function Row({ title, flame = false, children }: { title: string; flame?: boolean; children: React.ReactNode }) {
+  return (
+    <View>
+      <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6, marginBottom: 10 }}>
+        {flame ? <FlameIcon size={16} color={colors.live} /> : null}
+        <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "700" }}>{title}</Text>
+      </View>
+      {children}
+    </View>
+  );
+}
 
 /**
- * بطاقة صنف.
+ * المتجر: شريط تصنيفات، ثم صفوف.
  *
- * السعر يُكتب دائماً ولو كان صفراً: «مجاني» خبرٌ كالسعر. والمملوك يُقال
- * «عندك» لا يُخفى — إخفاؤه يجعل صاحبه يبحث عنه ظنّاً أنّه ذهب.
+ * «المميز» ليس تصنيفاً بل واجهة: ما وصل حديثاً، ثم ثيمات أثر، ثم الحزم
+ * المحدودة — صفوفٌ تُشتقّ من الأصناف لا تُرصف يدوياً.
  */
-function Card({ item, owned }: { item: StoreItem; owned: boolean }) {
-  return (
-    <View
-      style={{
-        width: 128,
-        marginEnd: 10,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: colors.line,
-        backgroundColor: colors.card,
-        overflow: "hidden",
-      }}
-    >
-      <View
-        style={{
-          height: 84,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: firstColor(item.spec, colors.chip),
-        }}
-      >
-        {item.mediaId ? (
-          <MediaImage mediaId={item.mediaId} resizeMode="contain" style={{ width: 62, height: 62 }} />
-        ) : null}
-      </View>
-
-      <View style={{ padding: 9, gap: 3 }}>
-        <Text style={{ color: colors.ink, fontSize: 12.5, fontWeight: "700" }} numberOfLines={1}>
-          {item.name}
-        </Text>
-        <Text style={{ color: colors.faint, fontSize: 10.5 }}>
-          {KIND_LABEL[item.kind] ?? item.kind}
-        </Text>
-        <Text style={{ color: owned ? colors.clayInk : colors.ink2, fontSize: 11.5, fontWeight: "600" }}>
-          {owned ? "عندك" : item.priceHalalas === 0 ? "مجاني" : riyals(item.priceHalalas)}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-function Row({ title, items, owned }: { title: string; items: StoreItem[]; owned: Set<string> }) {
-  if (items.length === 0) return null;
-  return (
-    <View style={{ marginBottom: 20 }}>
-      <Text style={{ color: colors.ink, fontSize: 14.5, fontWeight: "700", paddingHorizontal: 16, marginBottom: 9 }}>
-        {title}
-      </Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
-        {items.map((item) => (
-          <Card key={item.id} item={item} owned={owned.has(item.id)} />
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
-
 export default function Store() {
   const store = useStore();
+  const [slug, setSlug] = useState("");
   const data = store.data;
-  const owned = new Set(data?.owned ?? []);
+
+  const grid = (items: StoreItem[]) =>
+    data ? (
+      <StoreGrid
+        items={items}
+        owned={data.owned}
+        isPlus={data.isPlus}
+        credit={data.credit}
+        daysHere={data.daysHere}
+        equipped={data.equipped}
+      />
+    ) : null;
+
+  const category = data?.categories.find((row) => row.slug === slug) ?? null;
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
-      <ScreenHeader
-        title="المتجر"
-        right={
-          data ? (
-            <Text style={{ color: colors.chromeMuted, fontSize: 11.5 }}>{riyals(data.credit)}</Text>
-          ) : null
-        }
-      />
+      <View
+        style={{
+          flexDirection: "row-reverse",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingHorizontal: 20,
+          paddingTop: 6,
+          paddingBottom: 10,
+          backgroundColor: colors.chrome,
+        }}
+      >
+        <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 10 }}>
+          <AthrMark size={24} />
+          <View style={{ width: 1, height: 18, backgroundColor: colors.chromeLine }} />
+          <Text style={{ color: colors.chromeInk, fontSize: 16, fontWeight: "700" }}>المتجر</Text>
+        </View>
+
+        <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: colors.goldSoft, borderWidth: 1, borderColor: colors.goldLine }}>
+          <SparkIcon size={14} color={colors.gold} />
+          <Text style={{ color: colors.goldInk, fontSize: 12.5, fontWeight: "600" }}>
+            رصيدك {riyals(data?.credit ?? 0)}
+          </Text>
+        </View>
+      </View>
+
+      {/* شريط التصنيفات: «المميز» أولاً، ثم ما يضيفه المشرف. */}
+      <View style={{ paddingTop: 12, paddingBottom: 4 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: "row-reverse", paddingHorizontal: 20, gap: 8 }}>
+          {[{ slug: "", name: "المميز" }, ...(data?.categories ?? [])].map((chip) => {
+            const on = slug === chip.slug;
+            return (
+              <Pressable
+                key={chip.slug || "featured"}
+                onPress={() => setSlug(chip.slug)}
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  borderRadius: 999,
+                  backgroundColor: on ? colors.clay : colors.card,
+                  borderWidth: 1,
+                  borderColor: on ? colors.clay : colors.line,
+                }}
+              >
+                <Text style={{ fontSize: 12.5, fontWeight: "600", color: on ? colors.onBrand : colors.ink2 }}>
+                  {chip.name}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
 
       {store.isLoading ? (
-        <View style={{ paddingTop: 60, alignItems: "center" }}>
-          <ActivityIndicator color={colors.clay} />
-        </View>
+        <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
       ) : (
         <ScrollView
-          contentContainerStyle={{ paddingTop: 16, paddingBottom: 28 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 28 }}
           refreshControl={
-            <RefreshControl
-              refreshing={store.isRefetching}
-              onRefresh={() => void store.refetch()}
-              tintColor={colors.clay}
-            />
+            <RefreshControl refreshing={store.isRefetching} onRefresh={() => void store.refetch()} tintColor={colors.clay} />
           }
         >
-          <Row title="جديد" items={data?.rows.fresh ?? []} owned={owned} />
-          <Row title="ثيمات" items={data?.rows.themes ?? []} owned={owned} />
-          <Row title="محدود" items={data?.rows.limited ?? []} owned={owned} />
-          <Row title="كل الأصناف" items={data?.items ?? []} owned={owned} />
+          {category ? (
+            grid((data?.items ?? []).filter((item) => item.categoryId === category.id))
+          ) : (
+            <>
+              <Row title="وصل حديثاً" flame>{grid(data?.rows.fresh ?? [])}</Row>
+              <Row title="ثيمات أثر">{grid(data?.rows.themes ?? [])}</Row>
+              <Row title="حزم محدودة">{grid(data?.rows.limited ?? [])}</Row>
+            </>
+          )}
+
+          {data && !data.isPlus ? (
+            <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 12, marginBottom: 20, borderRadius: 16, borderWidth: 1, borderColor: colors.goldLine, backgroundColor: colors.goldSoft, padding: 16 }}>
+              <View style={{ width: 36, height: 36, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: "#f0e4c8" }}>
+                <SparkIcon size={19} color={colors.gold} />
+              </View>
+              <Text style={{ flex: 1, color: colors.ink2, fontSize: 12, lineHeight: 21 }}>
+                مشتركو <Text style={{ fontWeight: "600", color: colors.goldInk }}>أثر+</Text> يحصلون على ٣٠ ر.س شهرياً وخصم ٢٠٪
+              </Text>
+            </View>
+          ) : null}
+
+          <View style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 8, paddingBottom: 24 }}>
+            <InfoIcon size={13} color={colors.faint} />
+            <Text style={{ color: colors.faint, fontSize: 11, textAlign: "center" }}>
+              لا صناديق عشوائية · كل صنف بسعره الواضح
+            </Text>
+          </View>
         </ScrollView>
       )}
     </SafeAreaView>
