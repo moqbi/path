@@ -48,7 +48,9 @@ app.use(
       // الموبايل يرسل بلا أصل، والويب يرسل أصله — والقائمة محدّدة في الإنتاج.
       return corsOrigins.includes(origin) ? origin : undefined;
     },
-    allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    // وPUT معها: البريد والخصوصية والغلاف وصورة العرض كلّها `PUT`،
+    // فكان المتصفّح يردّ طلبها في الفحص المبدئي قبل أن يصل الخادم.
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowHeaders: ["Authorization", "Content-Type"],
     maxAge: 600,
     credentials: false,

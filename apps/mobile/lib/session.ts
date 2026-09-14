@@ -37,6 +37,10 @@ export type Me = {
   avatarMediaId: string | null;
   coverMediaId: string | null;
   coverY: number;
+  shareLocation: boolean;
+  notifyOnTag: boolean;
+  viewGroupId: string | null;
+  interactGroupId: string | null;
   frame: Worn;
   charm: Worn;
   background: { id: string; spec: string; mediaId: string | null; palette: string | null } | null;
