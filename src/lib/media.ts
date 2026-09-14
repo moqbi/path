@@ -15,7 +15,7 @@ const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
  * إن حملت كتلة `ANIM`. والفحص على الخادم لأن الميزة مدفوعة: امتدادٌ
  * يُكتب في العميل ليس قيداً.
  */
-export function isAnimated(mime: string, bytes: Buffer): boolean {
+export function isAnimated(mime: string, bytes: Uint8Array<ArrayBuffer>): boolean {
   if (mime === "image/gif") {
     // كتلة «التحكّم بالرسم» (21 F9 04) تسبق كل إطار: اثنتان تعني حركة.
     let frames = 0;
@@ -24,31 +24,43 @@ export function isAnimated(mime: string, bytes: Buffer): boolean {
     }
     return frames >= 2;
   }
-  if (mime === "image/webp") return bytes.subarray(0, 64).includes(Buffer.from("ANIM"));
+  if (mime === "image/webp") return Buffer.from(bytes.subarray(0, 64)).includes("ANIM");
   return false;
 }
 
 /**
- * يخزّن صورة قادمة كـ data URL من المتصفح.
+ * يخزّن صورةً وصلت ملفاً في نموذج.
  *
- * التحقق يعاد هنا ولا يُكتفى بتصغير العميل: إجراءات الخادم تُستدعى مباشرة
+ * الملف لا النصّ: الصورة كانت تُرسل data URL في وسيط الإجراء، فيكبر حجمها
+ * الثلث بترميز base64 ويقطعها حدّان — حدُّ جسد الطلب، وحدُّ «الفتحات» في
+ * وسائط الإجراءات (مليون، وهو أقلّ من طول نصّ صورةٍ متوسطة). أمّا ملفٌ في
+ * `FormData` فيمرّ جزءاً مستقلاً بلا ترميز ولا عدٍّ.
+ *
+ * والتحقق يعاد هنا ولا يُكتفى بتصغير العميل: إجراءات الخادم تُستدعى مباشرة
  * بـPOST، فما يحدّه المتصفح ليس قيداً.
  */
-export async function storeDataUrl(
+export async function storeUpload(
   ownerId: string,
-  dataUrl: string,
+  file: File | Blob,
   width: number,
   height: number,
-  /** يُسمح بصورةٍ متحركة (وبحدِّ حجمها الأعلى) — لمشتركي أثر+. */
   allowAnimated = false,
 ) {
-  const match = /^data:(image\/[a-z+]+);base64,(.+)$/i.exec(dataUrl);
-  if (!match) throw new Error("صيغة الصورة غير مدعومة");
-
-  const [, mime, base64] = match;
+  const mime = file.type;
   if (!ALLOWED.has(mime)) throw new Error("يُقبل JPEG أو PNG أو WebP فقط");
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  return keep(ownerId, mime, bytes, width, height, allowAnimated);
+}
 
-  const bytes = Buffer.from(base64, "base64");
+/** الفحص والحفظ في مكان واحد. */
+async function keep(
+  ownerId: string,
+  mime: string,
+  bytes: Uint8Array<ArrayBuffer>,
+  width: number,
+  height: number,
+  allowAnimated: boolean,
+) {
   if (bytes.length === 0) throw new Error("الملف فارغ");
 
   const moving = isAnimated(mime, bytes);

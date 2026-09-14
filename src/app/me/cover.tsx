@@ -116,7 +116,13 @@ export function ProfileCover({
             <ImagePicker
               label="غيّر الغلاف"
               maxSize={1600}
-              onPicked={(dataUrl, width, height) => setCover(dataUrl, width, height)}
+              onPicked={(file, width, height) => {
+            const data = new FormData();
+            data.set("image", file);
+            data.set("width", String(width));
+            data.set("height", String(height));
+            return setCover(data);
+          }}
               className="flex items-center rounded-full text-[11px] font-semibold"
             >
               <span className={chip} style={dark}>

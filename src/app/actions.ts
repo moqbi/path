@@ -16,7 +16,7 @@ import { canInteract, canSeeMoment } from "@/lib/visibility";
 import { reverseGeocode } from "@/lib/places";
 import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
 import { deliverTo, openConversation } from "@/lib/dm";
-import { storeDataUrl } from "@/lib/media";
+import { storeUpload } from "@/lib/media";
 import { isSupportedMusicUrl, resolveTrack } from "@/lib/music-link";
 import type { MomentKind, ReactionKind } from "@/generated/prisma/client";
 
@@ -216,9 +216,9 @@ export async function postSimple(formData: FormData): Promise<void> {
 
   // الصورة المرفوعة تسبق التدرّج؛ التدرّج بديل حين لا توجد صورة.
   let mediaId: string | null = null;
-  const picture = String(formData.get("image") ?? "");
-  if (kind === "PHOTO" && picture.startsWith("data:")) {
-    const stored = await storeDataUrl(
+  const picture = formData.get("image");
+  if (kind === "PHOTO" && picture instanceof File && picture.size > 0) {
+    const stored = await storeUpload(
       user.id,
       picture,
       Number(formData.get("imageWidth") ?? 0),
@@ -445,15 +445,23 @@ export async function disconnectMusic(): Promise<void> {
  * تردّ نصَّ الخطأ ولا ترميه: رميُه في إجراءٍ يُستدعى من زرٍّ يُسقط الشاشة
  * كلها، فيرى صاحبها «فشل» بلا سبب — أو لا يرى شيئاً أصلاً.
  */
-export async function setAvatar(
-  dataUrl: string,
-  width: number,
-  height: number,
-): Promise<string | void> {
+/** الصورة ومقاسها من النموذج — وسائط الإجراء لا تحمل ملفاً بنفسها. */
+function picture(formData: FormData): { file: File; width: number; height: number } {
+  const file = formData.get("image");
+  if (!(file instanceof File) || file.size === 0) throw new Error("ما وصلت الصورة");
+  return {
+    file,
+    width: Number(formData.get("width") ?? 0),
+    height: Number(formData.get("height") ?? 0),
+  };
+}
+
+export async function setAvatar(formData: FormData): Promise<string | void> {
   const user = await requireUser();
   try {
+    const { file, width, height } = picture(formData);
     // صورة العرض المتحركة من مزايا أثر+ — والفحص هنا، فالعميل ليس قيداً.
-    const media = await storeDataUrl(user.id, dataUrl, width, height, user.isPlus);
+    const media = await storeUpload(user.id, file, width, height, user.isPlus);
     await prisma.user.update({ where: { id: user.id }, data: { avatarMediaId: media.id } });
   } catch (problem) {
     return problem instanceof Error ? problem.message : "تعذّر حفظ الصورة";
@@ -462,19 +470,25 @@ export async function setAvatar(
   revalidatePath("/");
 }
 
-export async function setCover(dataUrl: string, width: number, height: number): Promise<void> {
+export async function setCover(formData: FormData): Promise<string | void> {
   const user = await requireUser();
-  const media = await storeDataUrl(user.id, dataUrl, width, height);
-  await prisma.user.update({ where: { id: user.id }, data: { coverMediaId: media.id } });
+  try {
+    const { file, width, height } = picture(formData);
+    const media = await storeUpload(user.id, file, width, height);
+    await prisma.user.update({ where: { id: user.id }, data: { coverMediaId: media.id } });
+  } catch (problem) {
+    return problem instanceof Error ? problem.message : "تعذّر حفظ الصورة";
+  }
   revalidatePath("/me");
   revalidatePath("/");
 }
 
 /** ضبط الغلاف: نسبة الموضع العمودي التي وقف عندها السحب. */
 /** نشر قصة: صورة تُعرض لأصدقائك يوماً ثم تذهب. */
-export async function postStory(dataUrl: string, width: number, height: number): Promise<void> {
+export async function postStory(formData: FormData): Promise<void> {
   const user = await requireUser();
-  const media = await storeDataUrl(user.id, dataUrl, width, height);
+  const { file, width, height } = picture(formData);
+  const media = await storeUpload(user.id, file, width, height);
 
   await prisma.story.create({
     data: {
@@ -1567,14 +1581,10 @@ export async function unequip(kind: "FRAME" | "BACKGROUND" | "CHARM"): Promise<v
  * ترفعها اللوحة كما تُرفع صورة الغلاف — تُخزَّن في القاعدة وتُقدَّم من
  * `/api/media`، فلا استضافة خارجية ولا رابطٌ ينكسر.
  */
-export async function setItemImage(
-  itemId: string,
-  dataUrl: string,
-  width: number,
-  height: number,
-): Promise<void> {
+export async function setItemImage(itemId: string, formData: FormData): Promise<void> {
   const admin = await requireAdmin("store");
-  const media = await storeDataUrl(admin.id, dataUrl, width, height);
+  const { file, width, height } = picture(formData);
+  const media = await storeUpload(admin.id, file, width, height);
   await prisma.storeItem.update({ where: { id: itemId }, data: { mediaId: media.id } });
   revalidatePath("/admin");
   revalidatePath("/store");

@@ -14,7 +14,7 @@ async function shrink(
   file: File,
   max: number,
   keepAlpha: boolean,
-): Promise<{ dataUrl: string; width: number; height: number }> {
+): Promise<Picked> {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
   const width = Math.round(bitmap.width * scale);
@@ -30,12 +30,17 @@ async function shrink(
   bitmap.close();
 
   // JPEG يمحو الشفافية بخلفيةٍ سوداء — والتميمة شعارٌ شفّاف، فتبقى PNG.
-  return {
-    dataUrl: keepAlpha ? canvas.toDataURL("image/png") : canvas.toDataURL("image/jpeg", 0.82),
-    width,
-    height,
-  };
+  const type = keepAlpha ? "image/png" : "image/jpeg";
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, type, 0.82),
+  );
+  if (!blob) throw new Error("تعذّر تجهيز الصورة");
+
+  return { file: blob, width, height };
 }
+
+/** ما يُسلَّم للمستدعي: الملف نفسه ومقاسه — لا نصّاً مرمّزاً. */
+type Picked = { file: Blob; width: number; height: number };
 
 /** شروط الصورة المتحركة — تُعرض للمستخدم ويُفحص بها الملف. */
 export const ANIMATED = {
@@ -73,7 +78,7 @@ function measure(file: File): Promise<{ width: number; height: number }> {
  * `canvas` يرسم الإطار الأول وحده، فأيّ تصغيرٍ يقتل الحركة. ولذلك يُرفع
  * الملف كما هو، ويُقاس مقاسه ليُحفظ معه.
  */
-async function asIs(file: File): Promise<{ dataUrl: string; width: number; height: number }> {
+async function asIs(file: File): Promise<Picked> {
   if (file.size > ANIMATED.maxBytes) {
     throw new Error(`حجم الصورة ${(file.size / 1_000_000).toFixed(1)} ميغا — الحدّ ٣ ميغابايت.`);
   }
@@ -87,14 +92,8 @@ async function asIs(file: File): Promise<{ dataUrl: string; width: number; heigh
     throw new Error(`مقاس الصورة ${width}×${height} — الأقل ١٢٠×١٢٠.`);
   }
 
-  const dataUrl = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error("تعذّر قراءة الملف"));
-    reader.readAsDataURL(file);
-  });
-
-  return { dataUrl, width, height };
+  // الملف كما هو: أيّ إعادة ترميزٍ تقتل الحركة.
+  return { file, width, height };
 }
 
 export function ImagePicker({
@@ -108,9 +107,12 @@ export function ImagePicker({
   className,
   children,
 }: {
-  /** يردّ نصّاً حين يفشل الحفظ على الخادم، فيُعرض تحت الزرّ. */
+  /**
+   * يتسلّم الملف ومقاسه. ويردّ نصّاً حين يفشل الحفظ على الخادم فيُعرض.
+   * ملفٌ لا نصّ: الصورة تُرسل جزءاً في `FormData` لا وسيطاً مرمّزاً.
+   */
   onPicked: (
-    dataUrl: string,
+    file: Blob,
     width: number,
     height: number,
   ) => void | string | Promise<void | string>;
@@ -150,7 +152,7 @@ export function ImagePicker({
           try {
             const image = moving ? await asIs(file) : await shrink(file, maxSize, keepAlpha);
             // الخطأ الذي يردّه الخادم يُعرض كما هو: «فشل صامت» أسوأ من رسالة.
-            const said = await onPicked(image.dataUrl, image.width, image.height);
+            const said = await onPicked(image.file, image.width, image.height);
             if (typeof said === "string") setError(said);
           } catch (problem) {
             // السبب يُقال كما هو: «كبيرة» عن صورةٍ ليست كبيرة تُضيّع وقت صاحبها.

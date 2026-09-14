@@ -51,7 +51,13 @@ export function ItemImage({
         maxSize={charm ? 320 : 1600}
         keepAlpha={charm}
         accept={charm ? "image/png,image/webp" : "image/jpeg,image/png,image/webp"}
-        onPicked={(dataUrl, width, height) => setItemImage(itemId, dataUrl, width, height)}
+        onPicked={(file, width, height) => {
+            const data = new FormData();
+            data.set("image", file);
+            data.set("width", String(width));
+            data.set("height", String(height));
+            return setItemImage(itemId, data);
+          }}
         className="grow"
       >
         <span

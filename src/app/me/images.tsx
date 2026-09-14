@@ -40,7 +40,13 @@ export function ProfileImages({
           maxSize={512}
           animated={isPlus}
           onError={setError}
-          onPicked={(dataUrl, width, height) => setAvatar(dataUrl, width, height)}
+          onPicked={(file, width, height) => {
+            const data = new FormData();
+            data.set("image", file);
+            data.set("width", String(width));
+            data.set("height", String(height));
+            return setAvatar(data);
+          }}
           className="flex h-9 w-9 items-center justify-center rounded-full border-2 shadow-sm"
         >
           <span

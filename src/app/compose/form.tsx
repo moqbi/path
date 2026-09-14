@@ -53,7 +53,7 @@ export function ComposeForm({
   const [sheet, setSheet] = useState<"with" | "viewers" | null>(null);
   const [wantPlace, setWantPlace] = useState(kind === "PLACE");
   const [fix, setFix] = useState<Fix | null>(null);
-  const [picture, setPicture] = useState<{ dataUrl: string; width: number; height: number } | null>(null);
+  const [picture, setPicture] = useState<{ file: Blob; url: string; width: number; height: number } | null>(null);
   const [musicUrl, setMusicUrl] = useState("");
   const [text, setText] = useState("");
   const [geoError, setGeoError] = useState<string | null>(null);
@@ -142,7 +142,7 @@ export function ComposeForm({
         }
 
         if (picture) {
-          data.set("image", picture.dataUrl);
+          data.set("image", picture.file);
           data.set("imageWidth", String(picture.width));
           data.set("imageHeight", String(picture.height));
         }
@@ -161,7 +161,7 @@ export function ComposeForm({
               className="mb-2.5 flex items-center justify-center overflow-hidden rounded-2xl border border-line"
               style={{
                 height: 200,
-                backgroundImage: picture ? `url(${picture.dataUrl})` : undefined,
+                backgroundImage: picture ? `url(${picture.url})` : undefined,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
                 background: picture ? undefined : "var(--color-chip)",
@@ -174,7 +174,10 @@ export function ComposeForm({
             <ImagePicker
               label={picture ? "غيّر الصورة" : "اختر صورة"}
               maxSize={1600}
-              onPicked={(dataUrl, width, height) => setPicture({ dataUrl, width, height })}
+              onPicked={(file, width, height) =>
+                // الملف يُرسل، والرابط المؤقّت للمعاينة وحدها.
+                setPicture({ file, url: URL.createObjectURL(file), width, height })
+              }
             />
           </div>
         ) : null}

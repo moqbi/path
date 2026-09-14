@@ -31,9 +31,13 @@ export function StoryStrip({
         <ImagePicker
           label="قصة جديدة"
           maxSize={1400}
-          onPicked={(dataUrl, width, height) =>
-            start(() => void postStory(dataUrl, width, height))
-          }
+          onPicked={(file, width, height) => {
+            const data = new FormData();
+            data.set("image", file);
+            data.set("width", String(width));
+            data.set("height", String(height));
+            start(() => void postStory(data));
+          }}
           className="flex h-[62px] w-[62px] items-center justify-center rounded-full border border-dashed"
         >
           <span
