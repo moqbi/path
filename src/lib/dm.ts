@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { circleIds } from "@/lib/circle";
 import { sweepStories } from "@/lib/stories";
+import { migrateToCloud } from "@/lib/media";
 
 /** الطرفان مرتّبان دائماً، فيكون للزوج صفٌّ واحد مهما بدأ المحادثة. */
 export function pairKey(x: string, y: string): { aId: string; bId: string } {
@@ -141,6 +142,11 @@ export async function sweepOld(): Promise<void> {
     await prisma.conversation.deleteMany({
       where: { messages: { none: {} }, createdAt: { lt: cutoff } },
     });
+  } catch {}
+
+  // ومع الكنس تُنقل دفعةٌ مما بقي في القاعدة إلى السحابة.
+  try {
+    await migrateToCloud();
   } catch {}
 }
 

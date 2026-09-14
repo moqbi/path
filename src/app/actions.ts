@@ -17,7 +17,8 @@ import { canInteract, canSeeMoment } from "@/lib/visibility";
 import { reverseGeocode } from "@/lib/places";
 import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
 import { deliverTo, openConversation, VOICE_SECONDS } from "@/lib/dm";
-import { dropMedia, storeClip, storeUpload } from "@/lib/media";
+import { dropMedia, migrateToCloud, storeClip, storeUpload } from "@/lib/media";
+import { cloudReady } from "@/lib/storage";
 import { isSupportedMusicUrl, resolveTrack } from "@/lib/music-link";
 import type { MomentKind, ReactionKind } from "@/generated/prisma/client";
 
@@ -1757,4 +1758,58 @@ export async function cancelPlus(): Promise<void> {
   });
   revalidatePath("/me");
   revalidatePath("/subscribe");
+}
+
+/**
+ * حالة تخزين الملفات — للمالك وحده.
+ *
+ * رقمان لا رأي: كم ملفاً في السحابة وكم بقي في القاعدة. ومن لا يرى
+ * الأرقام لا يعرف أنّ النقل جرى أصلاً.
+ */
+export async function storageState(): Promise<{
+  cloud: boolean;
+  bucket: string | null;
+  inCloud: number;
+  inDb: number;
+  dbBytes: number;
+}> {
+  await requireOwner();
+
+  const [inCloud, inDb, sum] = await Promise.all([
+    prisma.media.count({ where: { key: { not: null } } }),
+    prisma.media.count({ where: { key: null, bytes: { not: null } } }),
+    prisma.$queryRaw<{ total: bigint | null }[]>`
+      SELECT SUM(OCTET_LENGTH("bytes"))::bigint AS total FROM "Media" WHERE "bytes" IS NOT NULL
+    `,
+  ]);
+
+  return {
+    cloud: cloudReady(),
+    bucket: process.env.R2_BUCKET ?? null,
+    inCloud,
+    inDb,
+    dbBytes: Number(sum[0]?.total ?? 0),
+  };
+}
+
+/**
+ * ينقل دفعةً من الملفات إلى السحابة بطلب المالك.
+ *
+ * النقل يجري وحده مع الكنس، وهذا الزرّ للمن لا يريد الانتظار. والدفعة
+ * محدودة كي لا يتجاوز الطلب مهلته على خادمٍ مجانيّ.
+ */
+export async function moveMediaToCloud(
+  _prev: AdminResult,
+  _formData: FormData,
+): Promise<AdminResult> {
+  await requireOwner();
+  if (!cloudReady()) return { error: "مفاتيح R2 غير مضبوطة" };
+
+  try {
+    const moved = await migrateToCloud(60);
+    revalidatePath("/admin");
+    return { ok: moved > 0 ? `نُقل ${moved}` : "لا شيء ينتظر النقل" };
+  } catch (problem) {
+    return { error: problem instanceof Error ? problem.message : "تعذّر النقل" };
+  }
 }

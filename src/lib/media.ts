@@ -182,3 +182,42 @@ export async function dropMedia(ids: string[]): Promise<void> {
 }
 
 export const mediaUrl = (id: string | null | undefined) => (id ? `/api/media/${id}` : null);
+
+/**
+ * نقل ما بقي في القاعدة إلى السحابة.
+ *
+ * الملفات القديمة رُفعت قبل ربط R2 فبايتاتها في `Media.bytes`. ونقلها
+ * لا يحتاج سكربتاً يُشغَّل بيدٍ على خادمٍ لا نصل إليه: يجري وحده،
+ * دفعةً صغيرة مع كل كنسة — فالقاعدة تخفّ من نفسها.
+ *
+ * والترتيب لا يخسر شيئاً: يُكتب الكائن أولاً، فإن سقط الاتصال بعده بقي
+ * الصفّ ببايتاته كما كان ويُعاد في الدورة التالية. ولا تُمسح البايتات
+ * إلا بعد أن يصير للصفّ مفتاحٌ يدلّ على نسخةٍ موجودة.
+ */
+export async function migrateToCloud(limit = 20): Promise<number> {
+  if (!cloudReady()) return 0;
+
+  const rows = await prisma.media.findMany({
+    where: { key: null, bytes: { not: null } },
+    select: { id: true, ownerId: true, mime: true, bytes: true },
+    orderBy: { createdAt: "asc" },
+    take: limit,
+  });
+
+  let moved = 0;
+  for (const row of rows) {
+    if (!row.bytes) continue;
+    try {
+      const key = `${row.ownerId}/${randomUUID()}.${EXT[row.mime] ?? "bin"}`;
+      await putObject(key, new Uint8Array(row.bytes), row.mime);
+      await prisma.media.update({ where: { id: row.id }, data: { key, bytes: null } });
+      moved++;
+    } catch (problem) {
+      // ملفٌّ واحدٌ يتعثّر لا يوقف البقية، ويُعاد في الدورة التالية.
+      console.error("✗ نقل ملف إلى السحابة", row.id, problem);
+    }
+  }
+
+  if (moved > 0) console.log(`↑ نُقل ${moved} ملفاً إلى السحابة`);
+  return moved;
+}

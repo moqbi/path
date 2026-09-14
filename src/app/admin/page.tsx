@@ -16,6 +16,8 @@ import {
   setUserTag,
   updateStoreItem,
   updateTag,
+  moveMediaToCloud,
+  storageState,
 } from "@/app/actions";
 import { itemPaint, ScreenHeader, TagPill } from "@/components/ui";
 import { Saver } from "./saver";
@@ -186,6 +188,7 @@ const SECTIONS = [
   { key: "users", label: "الحسابات", store: false },
   { key: "store", label: "المتجر", store: true },
   { key: "team", label: "الصلاحيات", store: false, owner: true },
+  { key: "files", label: "الملفات", store: false, owner: true },
   { key: "support", label: "الدعم", store: false },
 ] as const;
 
@@ -961,6 +964,8 @@ export default async function AdminPage({
           </>
         ) : null}
 
+        {section === "files" ? <Files /> : null}
+
         {section === "support" ? (
           <>
             <h2 className="mb-1 text-[15px] font-bold">الدعم</h2>
@@ -1043,5 +1048,73 @@ export default async function AdminPage({
         ) : null}
       </main>
     </div>
+  );
+}
+
+/** حجمٌ بالميغابايت بالأرقام العربية — الرقم وحده لا يقول شيئاً. */
+function megabytes(bytes: number): string {
+  if (bytes <= 0) return "٠";
+  return ar((bytes / 1_048_576).toFixed(bytes < 1_048_576 ? 2 : 1));
+}
+
+/**
+ * الملفات: أين تُخزَّن، وكم بقي منها في القاعدة.
+ *
+ * الرقمان يقولان حالَ النقل بلا تخمين، والزرّ لمن لا يريد انتظار
+ * الكنسة — والنقل يجري وحده معها على كل حال.
+ */
+async function Files() {
+  const state = await storageState();
+
+  return (
+    <>
+      <h2 className="mb-1 text-[15px] font-bold">الملفات</h2>
+      <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
+        الصور والأصوات ومقاطع الفيديو تُخزَّن في Cloudflare R2. وما رُفع قبل
+        الربط بقي في القاعدة، ويُنقل دفعةً دفعة — والقاعدة تخفّ من نفسها.
+      </p>
+
+      <div className="mb-4 rounded-2xl border border-line bg-card p-4">
+        <p className="mb-3 flex items-center gap-2 text-[13.5px] font-semibold">
+          {state.cloud ? (
+            <>
+              <Chip gold>مربوطة</Chip>
+              <span dir="ltr" className="text-[12px] text-faint">
+                {state.bucket}
+              </span>
+            </>
+          ) : (
+            <Chip>غير مربوطة — المفاتيح ناقصة</Chip>
+          )}
+        </p>
+
+        <dl className="flex flex-wrap gap-x-6 gap-y-2 text-[12.5px]">
+          <div>
+            <dt className="text-[11px] text-faint">في السحابة</dt>
+            <dd className="font-bold">{ar(state.inCloud)}</dd>
+          </div>
+          <div>
+            <dt className="text-[11px] text-faint">باقٍ في القاعدة</dt>
+            <dd className="font-bold">{ar(state.inDb)}</dd>
+          </div>
+          <div>
+            <dt className="text-[11px] text-faint">حجمها</dt>
+            <dd className="font-bold">{megabytes(state.dbBytes)} م.ب</dd>
+          </div>
+        </dl>
+      </div>
+
+      {state.cloud && state.inDb > 0 ? (
+        <Saver action={moveMediaToCloud} className="mb-7 flex flex-col gap-2">
+          <button
+            type="submit"
+            className="h-11 rounded-xl px-4 text-[13px] font-bold"
+            style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+          >
+            انقل دفعةً الآن
+          </button>
+        </Saver>
+      ) : null}
+    </>
   );
 }
