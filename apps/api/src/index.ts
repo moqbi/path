@@ -1,4 +1,5 @@
 import { serve } from "@hono/node-server";
+import { createNodeWebSocket } from "@hono/node-ws";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
@@ -10,7 +11,10 @@ import { circleRoutes, userRoutes } from "./routes/v1/circle";
 import { commentRoutes, feedRoutes, momentRoutes } from "./routes/v1/feed";
 import { mediaRoutes } from "./routes/v1/media";
 import { profileRoutes } from "./routes/v1/profile";
+import { dmRoutes, messageRoutes } from "./routes/v1/dm";
+import { mountWs } from "./routes/v1/ws";
 import { sweepPending } from "./services/upload";
+import { sweepOld } from "./services/dm";
 import { storeRoutes } from "./routes/v1/store";
 
 /**
@@ -23,6 +27,14 @@ import { storeRoutes } from "./routes/v1/store";
  * ثم المسارات. ومعالج الخطأ في الآخر يمنع تسرّب الأثر إلى المستخدم.
  */
 const app = new Hono();
+
+/**
+ * الخطّ الحيّ يشارك الخادم نفسه ومنفذه.
+ *
+ * خادمٌ ثانٍ للـWebSocket يعني منفذاً ثانياً في الجدار وشهادةً ثانية —
+ * والترقية تجري على الاتصال نفسه، فلا داعي لأيّهما.
+ */
+const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
 
 app.use("*", secureHeaders);
 app.use(
@@ -54,6 +66,7 @@ const SWEEP_MINUTES = 30;
 setInterval(
   () => {
     void sweepPending().catch((error) => console.error("✗ كنس المعلّقة", error));
+    void sweepOld().catch((error) => console.error("✗ كنس المحادثات", error));
   },
   SWEEP_MINUTES * 60_000,
 ).unref();
@@ -67,6 +80,10 @@ app.route("/v1/users", userRoutes);
 app.route("/v1/me", profileRoutes);
 app.route("/v1/store", storeRoutes);
 app.route("/v1/media", mediaRoutes);
+app.route("/v1/dm", dmRoutes);
+app.route("/v1/messages", messageRoutes);
+
+mountWs(app, upgradeWebSocket);
 
 app.notFound((c) => c.json({ error: "المسار غير موجود" }, 404));
 
@@ -79,8 +96,9 @@ app.onError((error, c) => {
   return c.json({ error: "حدث خطأ غير متوقّع" }, 500);
 });
 
-serve({ fetch: app.fetch, port: env.PORT }, (info) => {
+const server = serve({ fetch: app.fetch, port: env.PORT }, (info) => {
   console.log(`أثر · الخادم على ${info.port} · ${env.NODE_ENV}`);
 });
+injectWebSocket(server);
 
 export type AppType = typeof app;
