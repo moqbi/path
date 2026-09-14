@@ -524,7 +524,10 @@ model Media {
   id        String   @id @default(cuid())
   ownerId   String
   mime      String
-  bytes     Bytes
+  /// مفتاح الكائن في Cloudflare R2 — هو المكان منذ ربطها.
+  key       String?
+  /// بايتات الملف: ما رُفع قبل الربط يبقى هنا حتى يُنقل.
+  bytes     Bytes?
   width     Int
   height    Int
   createdAt DateTime @default(now())

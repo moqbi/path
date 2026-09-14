@@ -35,6 +35,18 @@ if (!process.env.AUTH_SECRET) {
   problems.push("AUTH_SECRET غير موجود — الجلسات لن تُوقَّع.");
 }
 
+/*
+ * تخزين الملفات: السحابة إن ضُبطت مفاتيحها، وإلا القاعدة.
+ * يُطبع ليُعرف أين تذهب الصور والأصوات قبل أن يُسأل عنها بعد شهر.
+ */
+const cloud = ["R2_ACCOUNT_ID", "R2_BUCKET", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"];
+const missing = cloud.filter((name) => !process.env[name]);
+console.log(
+  missing.length === 0
+    ? "تخزين الملفات: Cloudflare R2"
+    : `تخزين الملفات: القاعدة (ينقص ${missing.join("، ")})`,
+);
+
 if (problems.length > 0) {
   console.error("\n✗ الإقلاع متوقف. السبب:\n");
   for (const problem of problems) console.error(`  ــ ${problem}\n`);

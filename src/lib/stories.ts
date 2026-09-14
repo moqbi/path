@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { visibleAuthors } from "@/lib/visibility";
+import { dropMedia } from "@/lib/media";
 
 /** عمر القصة: يوم كامل ثم تذهب. */
 export const STORY_HOURS = 24;
@@ -29,7 +30,8 @@ export async function sweepStories(): Promise<void> {
     });
     if (dead.length === 0) return;
     await prisma.story.deleteMany({ where: { id: { in: dead.map((row) => row.id) } } });
-    await prisma.media.deleteMany({ where: { id: { in: dead.map((row) => row.mediaId) } } });
+    // ومعها ملفاتها من السحابة: «لا يُحتفظ بها» تعني هناك أيضاً.
+    await dropMedia(dead.map((row) => row.mediaId));
   } catch {}
 }
 

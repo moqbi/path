@@ -17,7 +17,7 @@ import { canInteract, canSeeMoment } from "@/lib/visibility";
 import { reverseGeocode } from "@/lib/places";
 import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
 import { deliverTo, openConversation, VOICE_SECONDS } from "@/lib/dm";
-import { storeClip, storeUpload } from "@/lib/media";
+import { dropMedia, storeClip, storeUpload } from "@/lib/media";
 import { isSupportedMusicUrl, resolveTrack } from "@/lib/music-link";
 import type { MomentKind, ReactionKind } from "@/generated/prisma/client";
 
@@ -79,6 +79,16 @@ export async function deleteAccount(
   if (!row || !(await verifyPassword(password, row.passwordHash))) {
     return "كلمة المرور غير صحيحة";
   }
+
+  /*
+    ملفاته تُجمَع قبل حذفه: الصفوف تذهب بـ`Cascade`، وكائنات السحابة لا
+    تذهب معها — فتبقى بكسلاته بعد ذهاب حسابه.
+  */
+  const files = await prisma.media.findMany({
+    where: { ownerId: user.id },
+    select: { id: true },
+  });
+  await dropMedia(files.map((row) => row.id));
 
   await prisma.user.delete({ where: { id: user.id } });
   await destroySession();
@@ -1284,9 +1294,7 @@ export async function deleteMoment(momentId: string): Promise<void> {
     يترك بكسلاتها في القاعدة إلى الأبد. «تُحذف» تعني ألّا يبقى منها شيء
     لا عند الخادم ولا في القاعدة.
   */
-  if (moment.mediaId) {
-    await prisma.media.delete({ where: { id: moment.mediaId } }).catch(() => {});
-  }
+  if (moment.mediaId) await dropMedia([moment.mediaId]);
 
   revalidatePath("/");
   revalidatePath("/me");

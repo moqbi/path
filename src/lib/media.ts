@@ -1,5 +1,7 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db";
+import { cloudReady, deleteObjects, putObject } from "@/lib/storage";
 
 /** أقصى حجم مقبول بعد تصغير المتصفح — حارس ضد رفع ملف ضخم يدوياً. */
 const MAX_BYTES = 1_500_000;
@@ -93,10 +95,7 @@ export async function storeClip(
     );
   }
 
-  return prisma.media.create({
-    data: { ownerId, mime, bytes, width: Math.max(0, Math.round(width)), height: Math.max(0, Math.round(height)) },
-    select: { id: true },
-  });
+  return write(ownerId, mime, bytes, Math.max(0, Math.round(width)), Math.max(0, Math.round(height)));
 }
 
 /** الفحص والحفظ في مكان واحد. */
@@ -119,16 +118,67 @@ async function keep(
     throw new Error("مقاس الصورة المتحركة أكبر من ١٠٢٤×١٠٢٤");
   }
 
+  return write(ownerId, mime, bytes, Math.max(1, Math.round(width)), Math.max(1, Math.round(height)));
+}
+
+/** امتدادٌ يُشتقّ من النوع — ليُقرأ المفتاح في لوحة السحابة. */
+const EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "audio/webm": "weba",
+  "audio/mp4": "m4a",
+  "audio/ogg": "ogg",
+  "audio/mpeg": "mp3",
+  "audio/aac": "aac",
+  "video/webm": "webm",
+  "video/mp4": "mp4",
+  "video/quicktime": "mov",
+};
+
+/**
+ * يكتب الملف حيث يجب: في السحابة إن رُبطت، وإلا في القاعدة.
+ *
+ * صفُّ `Media` يبقى في الحالتين — هو سجلّ الملكية والنوع والمقاس —
+ * ويتبدّل مكان البايتات وحده.
+ */
+async function write(
+  ownerId: string,
+  mime: string,
+  bytes: Uint8Array<ArrayBuffer>,
+  width: number,
+  height: number,
+) {
+  if (!cloudReady()) {
+    return prisma.media.create({
+      data: { ownerId, mime, bytes, width, height },
+      select: { id: true },
+    });
+  }
+
+  const key = `${ownerId}/${randomUUID()}.${EXT[mime] ?? "bin"}`;
+  await putObject(key, bytes, mime);
   return prisma.media.create({
-    data: {
-      ownerId,
-      mime,
-      bytes,
-      width: Math.max(1, Math.round(width)),
-      height: Math.max(1, Math.round(height)),
-    },
+    data: { ownerId, mime, key, width, height },
     select: { id: true },
   });
+}
+
+/**
+ * حذفٌ نهائيّ: الصفّ والكائن معاً.
+ *
+ * «لا نحتفظ بها» تعني ألّا تبقى في السحابة أيضاً — فالصفّ وحده لو ذهب
+ * بقيت البكسلات في R2 إلى الأبد بلا شيء يدلّ عليها.
+ */
+export async function dropMedia(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const rows = await prisma.media.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, key: true },
+  });
+  await prisma.media.deleteMany({ where: { id: { in: rows.map((row) => row.id) } } });
+  await deleteObjects(rows.map((row) => row.key).filter((key): key is string => !!key));
 }
 
 export const mediaUrl = (id: string | null | undefined) => (id ? `/api/media/${id}` : null);
