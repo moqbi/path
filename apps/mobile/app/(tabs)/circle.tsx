@@ -4,9 +4,11 @@ import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Avatar } from "../../components/avatar";
 import { ScreenHeader } from "../../components/screen-header";
+import { StoryStrip } from "../../components/stories";
 import { api } from "../../lib/api";
-import { keys, useCircle } from "../../lib/queries";
+import { keys, useCircle, useRings } from "../../lib/queries";
 import { ar, presence } from "../../lib/format";
+import { useSession } from "../../lib/session";
 import { colors } from "../../theme/tokens";
 
 /**
@@ -18,8 +20,10 @@ import { colors } from "../../theme/tokens";
  */
 export default function Circle() {
   const circle = useCircle();
+  const rings = useRings();
   const router = useRouter();
   const client = useQueryClient();
+  const me = useSession((state) => state.me);
 
   const answer = useMutation({
     mutationFn: ({ id, accept }: { id: string; accept: boolean }) =>
@@ -57,7 +61,11 @@ export default function Circle() {
           />
         }
         ListHeaderComponent={
-          data && data.requests.length > 0 ? (
+          <>
+            {/* شريط القصص فوق الدائرة — مكانه في الويب نفسه. */}
+            <StoryStrip rings={rings.data?.rings ?? []} meId={me?.id ?? ""} />
+
+            {data && data.requests.length > 0 ? (
             <View style={{ paddingHorizontal: 16, paddingTop: 14 }}>
               <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "700", marginBottom: 8 }}>
                 طلبات ({ar(data.requests.length)})
@@ -101,8 +109,9 @@ export default function Circle() {
                   </Pressable>
                 </View>
               ))}
-            </View>
-          ) : null
+              </View>
+            ) : null}
+          </>
         }
         renderItem={({ item }) => (
           <Pressable

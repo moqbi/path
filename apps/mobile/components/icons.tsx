@@ -154,6 +154,13 @@ export const SparkIcon = ({ size = 20, color = "currentColor" }: Props) => (
   </Svg>
 );
 
+export const EyeIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z" />
+    <Circle cx={12} cy={12} r={3.2} />
+  </Svg>
+);
+
 export const MicIcon = ({ size = 20, color = "currentColor" }: Props) => (
   <Svg {...stroke(size, color)}>
     <Path d="M12 3.5a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0v-5a3 3 0 0 1 3-3Z" />

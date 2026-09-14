@@ -1,0 +1,96 @@
+# نقل الويب إلى التطبيقات — ورقة العمل
+
+## القاعدة
+
+**كل ما في `src/` (الويب) يُنقل إلى `apps/mobile` بحذافيره. لا ارتجال،
+ولا تبسيط، ولا «نسخةٌ مختصرة».**
+
+كل شاشة، وكل مكوّن، وكل حركة، وكل خلفية، وكل نصٍّ يراه المستخدم — يُقرأ
+من ملف الويب ويُنقل كما هو. إن تعذّر شيءٌ تقنياً في React Native (مثل
+`mask-image` أو فلاتر CSS) فيُحاكى بأقرب وسيلةٍ **مكافئة عددياً** لا
+بتقريبٍ بالنظر، ويُكتب سبب ذلك في تعليقٍ فوقه.
+
+قبل كتابة أيّ شاشة: **افتح ملف الويب المقابل واقرأه كاملاً.**
+
+## الحالة
+
+### منقول ويعمل
+| الويب | التطبيق |
+| --- | --- |
+| `src/components/moment-card.tsx` | `components/moment-card.tsx` |
+| `src/components/moment-bar.tsx` | `components/moment-bar.tsx` |
+| `src/components/reactions.tsx` | `components/reactions.tsx` + `components/reactors.tsx` |
+| `src/components/composer-fan.tsx` | `components/composer-fan.tsx` |
+| `src/components/timeline-head.tsx` | داخل `app/(tabs)/index.tsx` |
+| `src/components/stories.tsx` | `components/stories.tsx` |
+| `src/components/receipt.tsx` | `components/receipt.tsx` |
+| `src/app/page.tsx` | `app/(tabs)/index.tsx` |
+| `src/app/circle/page.tsx` | `app/(tabs)/circle.tsx` — **ناقص**: المقترحون، التصنيفات، الإخراج، الحظر |
+| `src/app/notifications/page.tsx` | `app/(tabs)/notifications.tsx` |
+| `src/app/store/page.tsx` + `grid.tsx` | `app/(tabs)/store.tsx` + `components/store-grid.tsx` |
+| `src/app/me/page.tsx` | `app/(tabs)/me.tsx` — **ناقص**: نافذة الصورة، الإكسسوارات، ضبط الغلاف |
+| `src/app/compose/form.tsx` | `app/compose.tsx` |
+| `src/app/m/[id]/page.tsx` | `app/m/[id].tsx` |
+| `src/app/u/[id]/page.tsx` | `app/u/[id].tsx` — **ناقص**: الإهداء، المحادثة، الحظر |
+| `src/app/messages/page.tsx` | `app/messages.tsx` |
+| `src/app/messages/[id]/` | `app/dm/[id].tsx` |
+| `src/app/stories/[id]/viewer.tsx` | `app/stories/[id].tsx` |
+| `src/components/story-composer.tsx` | `app/stories/new.tsx` |
+| `src/app/subscribe/page.tsx` | `app/subscribe.tsx` |
+
+### لم يُنقل بعد — بالترتيب
+1. **`src/app/login/form.tsx`** ← `app/login.tsx`
+   الموجود الآن نموذجٌ عارٍ، والويب فيه:
+   - خلفية: `/login-bg.jpg` إن وُجدت، وإلا تدرّجٌ شعاعيّ + طبقيّ
+     **وجبلان** بـ`clipPath` (السطور ٨٢–١١٦).
+   - مقدّمةٌ بثلاث مراحل (`usePhases`): الشعار يدخل من الأعلى ثم يغادر
+     إلى الأعلى، ثم يصعد النموذج. المدد والمنحنيات مكتوبةٌ في الملف.
+   - أزرار المزوّدين الأربعة (Apple، Google، Facebook، X) برسومها.
+   - زرّ «المتابعة بالبريد» يكشف الحقلين.
+2. **`src/components/avatar-menu.tsx`** ← نافذة الضغط على صورة العرض
+   (عرض الصورة / معلومات التميمة / معلومات الإطار + شراءٌ مباشر).
+3. **`src/app/me/edit/`** و`src/app/me/edit-sheet.tsx` و`accessories.tsx`
+   و`cover.tsx` و`images.tsx` و`share.tsx` ← `app/me/edit.tsx` و
+   `app/me/accessories.tsx` (كلاهما الآن شاشتا «قريباً»).
+4. **`src/app/settings/privacy/page.tsx`** ← `app/settings/privacy.tsx`
+   (الآن «قريباً»)، ومعها `src/app/settings/email.tsx` و
+   `src/app/me/delete.tsx`.
+5. **`src/app/settings/blocked/page.tsx`** و**`support/`** ← غير موجودتين.
+6. **`src/app/together/`** و`/private` ← العدستان، ومعهما الضغطة
+   المطوّلة على تبويب «اللحظات» في `src/components/tabbar.tsx`.
+7. **`src/app/music/page.tsx`** ← غير موجودة.
+8. **`src/components/swipe-row.tsx`** ← السحب لحذف صفٍّ.
+9. **`src/components/tour.tsx`** ← جولة التعريف.
+10. **`src/app/admin/`** ← **لا يُنقل للموبايل**: مكانه `apps/web` حسب
+    `MIGRATION.md`. أكّد مع صاحب المشروع قبل أيّ عمل عليه.
+
+## الخادم
+
+`apps/api` مكتملٌ لكل ما سبق. المسارات تحت `/v1`. إن احتجت مساراً
+جديداً: `route → Zod → service → Prisma`، ولا منطق في المسارات.
+
+## التشغيل
+
+```bash
+# قاعدة محلّية
+/usr/lib/postgresql/16/bin/pg_ctl -D /var/tmp/atharpg -o '-p 55432 -k /tmp' start   # كـpostgres
+
+# الخادم (يقتل من يملك المنفذ أولاً — المطابقة بالاسم تخطئ)
+lsof -tiTCP:4000 -sTCP:LISTEN | xargs -r kill; sleep 2
+cd apps/api && DATABASE_URL=... JWT_ACCESS_SECRET=... JWT_REFRESH_SECRET=... PORT=4000 npx tsx src/index.ts
+
+# الموبايل — معاينةٌ في المتصفّح
+cd apps/mobile && EXPO_PUBLIC_API_URL=http://127.0.0.1:4000 CI=1 npx expo start --web --port 8081
+```
+
+## ما يجب أن تعرفه قبل أن تبدأ
+
+- **الصور تبقى فارغةً في معاينة الويب وحدها**: `react-native-web` يترجم
+  `<Image>` إلى `<img>` فيُسقط ترويسة التوكن. على الجهاز تعمل. لا تطارد
+  هذا الخطأ.
+- **الشريط السفلي**: `flexDirection: "row-reverse"` في `tabBarStyle`
+  إلزاميّ — React Navigation لا يتبع `I18nManager`، فبدونه ينعكس
+  الترتيب عن الويب.
+- **حساب التجربة**: صاحب المشروع غيّر البريد. اطلبه منه قبل أي فحص.
+- **بعد كل شاشة**: `npx tsc --noEmit` في `apps/mobile`، ثم افتحها في
+  المتصفّح وقارنها بلقطةٍ من الويب قبل أن تقول إنها تمّت.

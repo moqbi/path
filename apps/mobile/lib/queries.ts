@@ -195,3 +195,15 @@ export function useComment(momentId: string) {
     },
   });
 }
+
+export type StoryRing = {
+  userId: string;
+  name: string;
+  avatarMediaId: string | null;
+  frame: { spec: string } | null;
+  fresh: boolean;
+  count: number;
+};
+
+export const useRings = () =>
+  useQuery({ queryKey: ["stories"], queryFn: () => api<{ rings: StoryRing[] }>("/v1/stories") });
