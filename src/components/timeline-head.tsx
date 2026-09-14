@@ -155,16 +155,10 @@ export function TimelineHead({
             transition: dragging ? "none" : "height 260ms cubic-bezier(.2,.9,.3,1)",
           }}
         >
-          {/* الغلاف يذوب في أرضية الصفحة فلا يلتقي بصورة الثيم بحدٍّ حادّ. */}
+          {/* الغلاف ودرعه يذوبان معاً في أرضية الصفحة — طبقةٌ واحدة لكل الشاشات. */}
           <CoverLayer mediaId={coverMediaId} spec={coverSpec} y={coverY} />
 
-          {/* درع خفيف يضمن قراءة الاسم والساعة فوق أي غلاف. */}
-          <div
-            className="pointer-events-none absolute inset-x-0 bottom-0"
-            style={{ height: 72, background: "linear-gradient(180deg,rgba(14,26,36,0),rgba(14,26,36,.46))" }}
-          />
-
-          <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 px-5 pb-2.5">
+          <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 px-5 pb-4">
             <div className="flex w-14 shrink-0 justify-center">{avatar}</div>
             <div className="min-w-0 grow pb-1.5">
               <p

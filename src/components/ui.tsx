@@ -152,10 +152,23 @@ export const DEFAULT_COVER = "linear-gradient(140deg,#f2e6d5,#e8cdb4 45%,#c9a68f
  * كان يترك شريطاً رمادياً يُرى فوق الصورة — لأن الورق لونٌ مصمت والثيم
  * تحته صورة. أمّا القناع فيُذيب بكسلات الغلاف نفسها، فيظهر ما تحته
  * أيّاً كان.
+ *
+ * والدرع الذي يُقرأ فوقه الاسم يدخل تحت القناع نفسه، فيذوب معه: درعٌ
+ * خارج القناع ينتهي بكامل قتامته عند الحافة، فيرسم الخطَّ الحادَّ الذي
+ * جاء القناع ليمحوه.
  */
-const FADE = "linear-gradient(180deg,#000 0%,#000 68%,rgba(0,0,0,.55) 86%,transparent 100%)";
+const FADE = "linear-gradient(180deg,#000 0%,#000 84%,rgba(0,0,0,.58) 94%,transparent 100%)";
 
-/** طبقة الغلاف: صورته مقنَّعة بالذوبان، وتحتها المحتوى يعلوها. */
+/** قتامةٌ خفيفة أسفل الغلاف يُقرأ فوقها الاسم والساعة مهما كانت الصورة. */
+const SHIELD =
+  "linear-gradient(180deg,rgba(14,26,36,0) 40%,rgba(14,26,36,.46) 100%)";
+
+/**
+ * طبقة الغلاف: صورته ودرعه معاً تحت قناع ذوبانٍ واحد.
+ *
+ * تُستعمل في الخط الزمني والملف الشخصي وملف الصديق بلا اختلاف — فالغلاف
+ * يُرى واحداً في كل مكان، لا أثراً في شاشة وأثراً آخر في شاشة.
+ */
 export function CoverLayer({
   mediaId,
   spec,
@@ -170,12 +183,12 @@ export function CoverLayer({
   return (
     <span
       aria-hidden="true"
-      className="absolute inset-0 block"
-      style={{
-        ...coverStyle(mediaId, spec, y),
-        ...(fade ? { maskImage: FADE, WebkitMaskImage: FADE } : null),
-      }}
-    />
+      className="pointer-events-none absolute inset-0 block"
+      style={fade ? { maskImage: FADE, WebkitMaskImage: FADE } : undefined}
+    >
+      <span className="absolute inset-0 block" style={coverStyle(mediaId, spec, y)} />
+      <span className="absolute inset-0 block" style={{ background: SHIELD }} />
+    </span>
   );
 }
 
