@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { initial } from "@/lib/format";
-import { BackIcon, SparkIcon } from "@/components/icons";
+import { SparkIcon } from "@/components/icons";
 import { AthrPageMark } from "@/components/brand";
+import { BackButton, BackSwipe } from "@/components/nav";
 
 /**
  * خلفية الحرف تُشتق من الاسم لا تُخزَّن، فتبقى ثابتة لكل شخص بلا عمود إضافي
@@ -47,14 +48,12 @@ export function Avatar({
   frameSpec,
   mediaId,
   charm,
-  ring = "var(--color-paper)",
 }: {
   name: string;
   size?: number;
   frameSpec?: string | null;
   mediaId?: string | null;
   charm?: Charm;
-  ring?: string;
 }) {
   const inner = (
     <div
@@ -70,7 +69,6 @@ export function Avatar({
         // في الليل كان `--color-ink` أبيض على قرصٍ فاتح فاختفى الحرف.
         color: "#14212b",
         fontSize: size * 0.36,
-        border: frameSpec ? `2px solid ${ring}` : "none",
       }}
     >
       {mediaId ? "" : initial(name)}
@@ -89,7 +87,11 @@ export function Avatar({
     );
   }
 
-  // الإطار المشترى يُرسم كحلقة تدرّج حول الصورة بحشوة تتناسب مع الحجم.
+  /*
+     الإطار المشترى يُرسم كحلقة تدرّج حول الصورة مباشرة — بلا حلقةٍ بيضاء
+     بينهما: الحلقة البيضاء كانت تفصل الإطار عن الوجه فيُقرآن قرصين لا
+     إطاراً على صورة.
+  */
   return (
     <div
       className="relative shrink-0 rounded-full"
@@ -236,18 +238,13 @@ export function ScreenHeader({
 }) {
   return (
     <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
+      {/*
+        السحب من الحافة يرجع في كل شاشةٍ لها رجوع — والزرّ يرجع إلى ما
+        جاء منه المستخدم فعلاً لا إلى وجهةٍ مكتوبة هنا.
+      */}
+      <BackSwipe href={back} />
       <div className="flex items-center gap-1">
-        {back ? (
-          <Link
-            href={back}
-            aria-label="رجوع"
-            // ٤٠ لا ٤٤: القرص الأكبر كان يرفع الرأس ٤ بكسلات عن بقية التبويبات.
-            className="-mr-2 flex h-10 w-10 items-center justify-center"
-            style={{ color: "var(--color-chrome-muted)" }}
-          >
-            <BackIcon size={19} />
-          </Link>
-        ) : null}
+        {back ? <BackButton href={back} /> : null}
         {mark ? (
           <AthrPageMark label={title} />
         ) : (

@@ -11,7 +11,8 @@ import { ProfileCover } from "./cover";
 import { ProfileShell } from "./shell";
 import { Accessories } from "./accessories";
 import { DeleteAccount } from "./delete";
-import { Avatar, coverStyle, NameTag } from "@/components/ui";
+import { coverStyle, NameTag } from "@/components/ui";
+import { AvatarMenu } from "@/components/avatar-menu";
 import { TabBar } from "@/components/tab-bar";
 import { BookIcon, ExitIcon, GearIcon, GiftIcon, SparkIcon, WithIcon } from "@/components/icons";
 import { AthrPageMark } from "@/components/brand";
@@ -39,7 +40,17 @@ export default async function ProfilePage() {
     prisma.purchase.findMany({
       where: { userId: user.id },
       select: {
-        item: { select: { id: true, name: true, spec: true, kind: true, mediaId: true } },
+        item: {
+          select: {
+            id: true,
+            name: true,
+            spec: true,
+            kind: true,
+            mediaId: true,
+            priceHalalas: true,
+            plusOnly: true,
+          },
+        },
         giftedBy: { select: { name: true } },
       },
       orderBy: { createdAt: "desc" },
@@ -58,6 +69,10 @@ export default async function ProfilePage() {
     if (last && last.label === label) last.items.push(moment);
     else days.push({ label, items: [moment] });
   }
+
+  // ما تلبسه أنت: يُقرأ من مشترياتك بمعرّفه الملبوس.
+  const worn = (id: string | null) =>
+    purchases.find((row) => row.item.id === id)?.item ?? null;
 
   // ما وصلك هديةً: شراءٌ باسمك دفع ثمنه غيرك.
   const gotGifts = purchases.filter((row) => row.giftedBy).length;
@@ -94,13 +109,14 @@ export default async function ProfilePage() {
           />
         }
         avatar={
-          <Avatar
+          <AvatarMenu
             name={user.name}
             size={104}
             frameSpec={user.frame?.spec ?? null}
             charm={user.charm}
             mediaId={user.avatarMediaId}
-            ring="var(--color-paper)"
+            frame={worn(user.frameId)}
+            charmItem={worn(user.charmId)}
           />
         }
         identity={
@@ -154,6 +170,7 @@ export default async function ProfilePage() {
           <div className="mb-4 flex gap-2.5">
             <EditProfileSheet
               name={user.name}
+              isPlus={user.isPlus}
               handle={user.handle}
               bio={user.bio}
               city={user.city}

@@ -34,7 +34,22 @@ export function facesFor(momentKind?: string): readonly string[] {
 }
 
 export const FACES = OPEN_FACES;
-export const CUSTOM = ["🫶", "🔥", "🙏", "👏", "🥹", "☕️"];
+/**
+ * الإيموجي الحرّ لمشتركي أثر+.
+ *
+ * كان اثنين، والاشتراك يَعِد بـ«كل كيبوردك» — فصارت لوحةً تُفتح بضغطة:
+ * الاثنان الأولان في الصفّ لأنهما الأكثر استعمالاً، والبقية خلف «＋».
+ */
+export const CUSTOM = [
+  "🫶", "🔥", "🙏", "👏", "🥹", "☕️",
+  "❤️", "😍", "🤍", "✨", "🌙", "⭐️",
+  "😂", "🤣", "😅", "😭", "🥲", "🙃",
+  "😮", "🤯", "🫣", "👀", "🤔", "🤷",
+  "💪", "🤝", "🫂", "👑", "🎉", "🎁",
+  "🌹", "🌿", "🕊️", "☀️", "🌧️", "❄️",
+  "🍵", "🍰", "🍉", "🌶️", "🥇", "⚽️",
+  "📚", "🎧", "🎬", "✈️", "🚗", "🏠",
+];
 
 type Mine = { kind: string; emoji: string | null } | null;
 
@@ -74,6 +89,8 @@ export function Reactions({
 }) {
   const faces = facesFor(momentKind);
   const [open, setOpen] = useState(false);
+  // لوحة الإيموجي الكاملة: تُفتح من «＋» ولا تزاحم الوجوه في الصفّ.
+  const [board, setBoard] = useState(false);
   const [popped, setPopped] = useState(false);
   const [pending, start] = useTransition();
   const root = useRef<HTMLDivElement>(null);
@@ -91,6 +108,7 @@ export function Reactions({
     setPopped(true);
     setTimeout(() => setPopped(false), 420);
     setOpen(false);
+    setBoard(false);
     start(() => void react(momentId, kind, emoji));
   }
 
@@ -109,6 +127,7 @@ export function Reactions({
         disabled={pending}
         onClick={(e) => {
           stop(e);
+          setBoard(false);
           setOpen((v) => !v);
         }}
         className="flex h-9 items-center gap-1.5 rounded-full border px-2.5 disabled:opacity-60"
@@ -164,23 +183,38 @@ export function Reactions({
             <span className="mx-0.5 h-6 w-px bg-line" />
 
             {isPlus ? (
-              CUSTOM.slice(0, 2).map((emoji, index) => (
+              <>
+                {CUSTOM.slice(0, 2).map((emoji, index) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={(e) => {
+                      stop(e);
+                      choose("CUSTOM", emoji);
+                    }}
+                    className="flex h-11 w-9 items-center justify-center rounded-xl text-[22px] leading-none hover:bg-chip"
+                    style={{
+                      animation: "athr-pop 320ms cubic-bezier(.18,1.4,.4,1) both",
+                      animationDelay: `${(faces.length + index) * 34}ms`,
+                    }}
+                  >
+                    {emoji}
+                  </button>
+                ))}
                 <button
-                  key={emoji}
                   type="button"
+                  aria-label="كل الإيموجي"
+                  aria-expanded={board}
                   onClick={(e) => {
                     stop(e);
-                    choose("CUSTOM", emoji);
+                    setBoard((v) => !v);
                   }}
-                  className="flex h-11 w-9 items-center justify-center rounded-xl text-[22px] leading-none hover:bg-chip"
-                  style={{
-                    animation: "athr-pop 320ms cubic-bezier(.18,1.4,.4,1) both",
-                    animationDelay: `${(faces.length + index) * 34}ms`,
-                  }}
+                  className="flex h-11 w-9 items-center justify-center rounded-xl text-[19px] font-bold leading-none hover:bg-chip"
+                  style={{ color: "var(--color-clay-ink)" }}
                 >
-                  {emoji}
+                  {board ? "×" : "＋"}
                 </button>
-              ))
+              </>
             ) : (
               <a
                 href="/subscribe"
@@ -193,6 +227,27 @@ export function Reactions({
               </a>
             )}
           </div>
+
+          {board ? (
+            <div
+              className="no-bar mt-1 grid grid-cols-6 gap-0.5 overflow-y-auto border-t border-line pt-1.5"
+              style={{ maxHeight: 172, width: 246 }}
+            >
+              {CUSTOM.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={(e) => {
+                    stop(e);
+                    choose("CUSTOM", emoji);
+                  }}
+                  className="flex h-10 items-center justify-center rounded-lg text-[21px] leading-none hover:bg-chip"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

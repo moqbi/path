@@ -441,7 +441,8 @@ export async function disconnectMusic(): Promise<void> {
 
 export async function setAvatar(dataUrl: string, width: number, height: number): Promise<void> {
   const user = await requireUser();
-  const media = await storeDataUrl(user.id, dataUrl, width, height);
+  // صورة العرض المتحركة من مزايا أثر+ — والفحص هنا، فالعميل ليس قيداً.
+  const media = await storeDataUrl(user.id, dataUrl, width, height, user.isPlus);
   await prisma.user.update({ where: { id: user.id }, data: { avatarMediaId: media.id } });
   revalidatePath("/me");
   revalidatePath("/");
@@ -1214,12 +1215,22 @@ export async function deleteMoment(momentId: string): Promise<void> {
 
   const moment = await prisma.moment.findUnique({
     where: { id: momentId },
-    select: { authorId: true },
+    select: { authorId: true, mediaId: true },
   });
   if (!moment) return;
   if (moment.authorId !== user.id) throw new Error("لا تُحذف لحظة غيرك");
 
+  // التفاعلات والتعليقات والمشاهدات والإشارات تذهب بـ`Cascade`.
   await prisma.moment.delete({ where: { id: momentId } });
+
+  /*
+    وصورتها تذهب بيدنا: علاقة الصورة `SetNull`، فحذف اللحظة وحده كان
+    يترك بكسلاتها في القاعدة إلى الأبد. «تُحذف» تعني ألّا يبقى منها شيء
+    لا عند الخادم ولا في القاعدة.
+  */
+  if (moment.mediaId) {
+    await prisma.media.delete({ where: { id: moment.mediaId } }).catch(() => {});
+  }
 
   revalidatePath("/");
   revalidatePath("/me");

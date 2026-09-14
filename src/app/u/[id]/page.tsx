@@ -14,6 +14,7 @@ import {
 import { MomentCard } from "@/components/moment-card";
 import { GiftButton } from "./gift";
 import { Avatar, CoverLayer, Empty, ScreenHeader, NameTag } from "@/components/ui";
+import { AvatarMenu } from "@/components/avatar-menu";
 import { TabBar } from "@/components/tab-bar";
 import {
   CheckIcon,
@@ -23,6 +24,17 @@ import {
   WithIcon,
 } from "@/components/icons";
 import { ar, dayLabel } from "@/lib/format";
+
+/** ما يُعرض عن صنفٍ ملبوس حين تُضغط صورة العرض. */
+const WORN = {
+  id: true,
+  name: true,
+  kind: true,
+  spec: true,
+  mediaId: true,
+  priceHalalas: true,
+  plusOnly: true,
+} as const;
 
 const MONTHS = [
   "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
@@ -55,8 +67,8 @@ export default async function FriendProfilePage({
       createdAt: true,
       avatarMediaId: true,
       coverMediaId: true,
-      frame: { select: { spec: true } },
-      charm: { select: { spec: true, mediaId: true } },
+      frame: { select: WORN },
+      charm: { select: WORN },
       background: { select: { spec: true } },
       tag: { select: { name: true, bg: true, fg: true } },
     },
@@ -127,12 +139,15 @@ export default async function FriendProfilePage({
 
         <div className="relative px-5" style={{ marginTop: -34 }}>
           <div className="mb-3 flex items-end justify-between">
-            <Avatar
+            {/* الصورة تُضغط: عرضها، أو معلومات ما يلبسه صاحبها. */}
+            <AvatarMenu
               name={person.name}
               size={96}
               frameSpec={person.frame?.spec}
               charm={person.charm}
               mediaId={person.avatarMediaId}
+              frame={person.frame}
+              charmItem={person.charm}
             />
             <div className="flex items-center gap-2 pb-1.5">
               <GiftButton

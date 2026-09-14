@@ -126,7 +126,7 @@ export function StoryViewer({
           </div>
 
           <div className="flex items-center gap-2.5">
-            <Avatar name={author.name} size={34} mediaId={author.avatarMediaId} ring="transparent" />
+            <Avatar name={author.name} size={34} mediaId={author.avatarMediaId} />
             <span className="grow">
               <span className="block text-[13.5px] font-semibold" style={{ color: "#fff" }}>
                 {author.name}

@@ -71,9 +71,6 @@ export function SwipeRow({
         draggable={false}
         onDragStart={(event) => event.preventDefault()}
         onPointerDown={(event) => {
-          // بلا التقاط المؤشر يبتلع سحبُ الرابط الأصلي بقيةَ الأحداث،
-          // فلا تصل حركة الإصبع ولا ينزلق الصف.
-          event.currentTarget.setPointerCapture(event.pointerId);
           origin.current = { x: event.clientX, y: event.clientY };
           axis.current = "none";
         }}
@@ -85,6 +82,13 @@ export function SwipeRow({
           if (axis.current === "none") {
             if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
             axis.current = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+            /*
+              الالتقاط عند ثبوت السحب أفقياً، لا عند أول لمسة.
+              التقاطُه في `pointerdown` كان يحوّل الضغطة كلها إلى هذا
+              الصفّ، فلا يصل النقر إلى الرابط ولا إلى الزرّ داخله —
+              فكانت صفوف الأصدقاء والمحادثات لا تُفتح بالضغط أصلاً.
+            */
+            if (axis.current === "x") event.currentTarget.setPointerCapture(event.pointerId);
           }
           if (axis.current !== "x") return;
 
@@ -92,11 +96,14 @@ export function SwipeRow({
           const base = open ? reveal : 0;
           setOffset(Math.max(0, Math.min(reveal, base + dx)));
         }}
-        onPointerUp={() => {
+        onPointerUp={(event) => {
           if (axis.current === "x") {
             const settled = offset > reveal / 2;
             setOpen(settled);
             setOffset(settled ? reveal : 0);
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+              event.currentTarget.releasePointerCapture(event.pointerId);
+            }
           }
           origin.current = null;
           axis.current = "none";

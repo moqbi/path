@@ -42,6 +42,7 @@ export function MomentBar({
   panelFirst?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [board, setBoard] = useState(false);
   const [asking, setAsking] = useState(false);
   const [popped, setPopped] = useState(false);
   const [body, setBody] = useState("");
@@ -80,6 +81,7 @@ export function MomentBar({
     // الوجه فعلٌ كامل بنفسه: يُختار فيُطوى الشريط، ويُفتح ثانيةً لمن أراد
     // أن يكتب بعده.
     setOpen(false);
+    setBoard(false);
     setAsking(false);
     start(() => void react(momentId, kind, emoji));
   }
@@ -99,6 +101,7 @@ export function MomentBar({
           aria-expanded={open}
           onClick={(event) => {
             stop(event);
+            setBoard(false);
             setOpen((v) => !v);
           }}
           // دائرة بحجم الوجه لا أكبر: الإطار الواسع كان يبدو زرّاً غريباً
@@ -153,23 +156,39 @@ export function MomentBar({
             <span className="mx-0.5 h-6 w-px bg-line" />
 
             {isPlus ? (
-              CUSTOM.slice(0, 2).map((emoji, index) => (
+              <>
+                {CUSTOM.slice(0, 2).map((emoji, index) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={(event) => {
+                      stop(event);
+                      choose("CUSTOM", emoji);
+                    }}
+                    className="flex h-10 w-9 items-center justify-center rounded-xl text-[21px] leading-none hover:bg-chip"
+                    style={{
+                      animation: "athr-pop 320ms cubic-bezier(.18,1.4,.4,1) both",
+                      animationDelay: `${(faces.length + index) * 34}ms`,
+                    }}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+                {/* «＋» يفتح الكيبورد كاملاً — الاشتراك يَعِد بكل الإيموجي لا باثنين. */}
                 <button
-                  key={emoji}
                   type="button"
+                  aria-label="كل الإيموجي"
+                  aria-expanded={board}
                   onClick={(event) => {
                     stop(event);
-                    choose("CUSTOM", emoji);
+                    setBoard((v) => !v);
                   }}
-                  className="flex h-10 w-9 items-center justify-center rounded-xl text-[21px] leading-none hover:bg-chip"
-                  style={{
-                    animation: "athr-pop 320ms cubic-bezier(.18,1.4,.4,1) both",
-                    animationDelay: `${(faces.length + index) * 34}ms`,
-                  }}
+                  className="flex h-10 w-9 items-center justify-center rounded-xl text-[18px] font-bold leading-none hover:bg-chip"
+                  style={{ color: "var(--color-clay-ink)" }}
                 >
-                  {emoji}
+                  {board ? "×" : "＋"}
                 </button>
-              ))
+              </>
             ) : (
               <a
                 href="/subscribe"
@@ -181,6 +200,27 @@ export function MomentBar({
               </a>
             )}
           </div>
+
+          {board ? (
+            <div
+              className="no-bar grid grid-cols-8 gap-0.5 overflow-y-auto rounded-2xl border border-line bg-card p-1.5"
+              style={{ maxHeight: 168 }}
+            >
+              {CUSTOM.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={(event) => {
+                    stop(event);
+                    choose("CUSTOM", emoji);
+                  }}
+                  className="flex h-9 items-center justify-center rounded-lg text-[20px] leading-none hover:bg-chip"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
           {author ? (
             <div className="flex items-center justify-end">

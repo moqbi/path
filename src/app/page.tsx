@@ -147,7 +147,6 @@ export default async function TimelinePage({
             frameSpec={user.frame?.spec}
             charm={user.charm}
             mediaId={user.avatarMediaId}
-            ring="#ffffff"
           />
         }
       >
@@ -160,7 +159,7 @@ export default async function TimelinePage({
         {view === "together" && friend ? (
           <section className="mb-3 rounded-2xl border border-line bg-card p-4 text-center">
             <div className="mb-2 flex items-center justify-center">
-              <Avatar name={user.name} size={44} mediaId={user.avatarMediaId} ring="var(--color-card)" />
+              <Avatar name={user.name} size={44} mediaId={user.avatarMediaId} />
               <div style={{ marginRight: -12 }}>
                 <Avatar
                   name={friend.name}
@@ -168,7 +167,6 @@ export default async function TimelinePage({
                   frameSpec={friend.frame?.spec}
                   charm={friend.charm}
                   mediaId={friend.avatarMediaId}
-                  ring="var(--color-card)"
                 />
               </div>
             </div>

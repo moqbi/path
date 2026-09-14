@@ -15,6 +15,7 @@ import { EditProfileForm } from "./edit/form";
  */
 export function EditProfileSheet({
   name,
+  isPlus = false,
   handle,
   bio,
   city,
@@ -26,6 +27,8 @@ export function EditProfileSheet({
   coverY,
 }: {
   name: string;
+  /** المشترك يرفع صورة عرضٍ متحركة. */
+  isPlus?: boolean;
   handle: string | null;
   bio: string | null;
   city: string | null;
@@ -108,6 +111,7 @@ export function EditProfileSheet({
                 frameSpec={frameSpec}
                 avatarMediaId={avatarMediaId}
                 charm={charm}
+                isPlus={isPlus}
                 size={72}
               />
               <div className="min-w-0 grow">

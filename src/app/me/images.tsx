@@ -15,12 +15,15 @@ export function ProfileImages({
   frameSpec,
   avatarMediaId,
   charm,
+  isPlus = false,
   size = 84,
 }: {
   name: string;
   frameSpec: string | null;
   avatarMediaId: string | null;
   charm?: { spec: string; mediaId: string | null } | null;
+  /** المشترك يرفع صورةً متحركة كما هي. */
+  isPlus?: boolean;
   size?: number;
 }) {
   return (
@@ -32,6 +35,7 @@ export function ProfileImages({
         <ImagePicker
           label="غيّر صورتك"
           maxSize={512}
+          animated={isPlus}
           onPicked={(dataUrl, width, height) => setAvatar(dataUrl, width, height)}
           className="flex h-9 w-9 items-center justify-center rounded-full border-2 shadow-sm"
         >

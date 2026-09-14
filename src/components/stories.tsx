@@ -80,7 +80,7 @@ function Ring({ ring, label }: { ring: StoryRing; label: string }) {
           className="flex h-full w-full items-center justify-center rounded-full"
           style={{ background: "var(--color-paper)", padding: 2 }}
         >
-          <Avatar name={ring.name} size={52} mediaId={ring.avatarMediaId} ring="transparent" />
+          <Avatar name={ring.name} size={52} mediaId={ring.avatarMediaId} />
         </span>
       </span>
       <span className="w-full truncate text-center text-[10.5px] text-ink-2">{label}</span>

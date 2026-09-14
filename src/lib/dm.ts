@@ -108,11 +108,39 @@ export async function conversationFor(userId: string, conversationId: string) {
   };
 }
 
+/** المحادثات تُحفظ ثلاثين يوماً ثم تذهب — من القاعدة نفسها لا من العرض. */
+export const KEEP_DAYS = 30;
+
+/** آخر كنسٍ في هذه العملية: الكنس مرّةً في الساعة يكفي، وتكراره حملٌ بلا فائدة. */
+let sweptAt = 0;
+
+/**
+ * كنسُ ما تجاوز ثلاثين يوماً.
+ *
+ * حذفٌ فعليّ من القاعدة لا إخفاءٌ في الاستعلام: «لا نحتفظ بها» تعني ألّا
+ * تبقى صفوفُها. والمحادثة التي لم يبقَ فيها شيء تذهب معها — صفٌّ فارغ
+ * يبقي اسم من حادثتَ وتاريخَه بلا سبب.
+ *
+ * ويجري مع نبض الحضور، فلا يحتاج مهمّةً مجدولة على خادمٍ لا نملكه.
+ */
+export async function sweepOld(): Promise<void> {
+  if (Date.now() - sweptAt < 3_600_000) return;
+  sweptAt = Date.now();
+  const cutoff = new Date(Date.now() - KEEP_DAYS * 86_400_000);
+  try {
+    await prisma.message.deleteMany({ where: { createdAt: { lt: cutoff } } });
+    await prisma.conversation.deleteMany({
+      where: { messages: { none: {} }, createdAt: { lt: cutoff } },
+    });
+  } catch {}
+}
+
 /**
  * التسليم: حضورُ المستلم على الشاشة هو دليل الوصول — لا خادم دائم بيننا
  * يخبرنا أنّ الرسالة نزلت جهازه. تُستدعى مع ختم الحضور ومع فتح المحادثات.
  */
 export async function deliverTo(userId: string): Promise<void> {
+  await sweepOld();
   try {
     await prisma.message.updateMany({
       where: {

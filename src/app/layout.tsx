@@ -3,6 +3,7 @@ import "./globals.css";
 import { TAGLINE_AR, TAGLINE_EN } from "@/components/brand";
 import { currentUser } from "@/lib/auth";
 import { parsePalette, themeVars, veilOf } from "@/lib/theme";
+import { NavProbe } from "@/components/nav";
 
 export const metadata: Metadata = {
   title: "أثر · ATHR",
@@ -55,6 +56,7 @@ export default async function RootLayout({
                 : null),
           }}
         >
+          <NavProbe />
           {children}
         </div>
       </body>

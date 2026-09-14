@@ -37,10 +37,37 @@ async function shrink(
   };
 }
 
+/** أقصى حجمٍ لصورةٍ متحركة تُرفع كما هي — لا لوحةَ رسمٍ تصغّرها. */
+const MAX_ANIMATED = 2_500_000;
+
+/**
+ * الصورة المتحركة تُرفع بملفها لا برسمها.
+ *
+ * `canvas` يرسم الإطار الأول وحده، فأيّ تصغيرٍ يقتل الحركة. ولذلك تُقرأ
+ * الـGIF والـWebP كما هي، ويُقاس مقاسها بـ`createImageBitmap` فقط.
+ */
+async function asIs(file: File): Promise<{ dataUrl: string; width: number; height: number }> {
+  if (file.size > MAX_ANIMATED) throw new Error("الصورة كبيرة");
+  const bitmap = await createImageBitmap(file);
+  const width = bitmap.width;
+  const height = bitmap.height;
+  bitmap.close();
+
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("تعذّر قراءة الملف"));
+    reader.readAsDataURL(file);
+  });
+
+  return { dataUrl, width, height };
+}
+
 export function ImagePicker({
   onPicked,
   maxSize = 1600,
   keepAlpha = false,
+  animated = false,
   accept = "image/jpeg,image/png,image/webp",
   label,
   className,
@@ -50,6 +77,8 @@ export function ImagePicker({
   maxSize?: number;
   /** يُبقي الشفافية (PNG): للشعارات التي تُعلَّق على صورةٍ تحتها. */
   keepAlpha?: boolean;
+  /** يقبل صورةً متحركة ويرفعها بملفها — لمشتركي أثر+. */
+  animated?: boolean;
   /** الصيغ المقبولة — الشعار الشفّاف لا يأتي من JPEG أصلاً. */
   accept?: string;
   label: string;
@@ -65,7 +94,7 @@ export function ImagePicker({
       <input
         ref={input}
         type="file"
-        accept={accept}
+        accept={animated ? `${accept},image/gif` : accept}
         hidden
         onChange={async (event) => {
           const file = event.target.files?.[0];
@@ -73,11 +102,16 @@ export function ImagePicker({
           if (!file) return;
 
           setError(null);
+          const moving = animated && (file.type === "image/gif" || file.type === "image/webp");
           try {
-            const image = await shrink(file, maxSize, keepAlpha);
+            const image = moving ? await asIs(file) : await shrink(file, maxSize, keepAlpha);
             start(() => void onPicked(image.dataUrl, image.width, image.height));
           } catch {
-            setError("تعذّر قراءة الصورة. جرّب صورة ثانية.");
+            setError(
+              moving
+                ? "الصورة المتحركة كبيرة — جرّب واحدة أخفّ (٢٫٥ ميغا)."
+                : "تعذّر قراءة الصورة. جرّب صورة ثانية.",
+            );
           }
         }}
       />

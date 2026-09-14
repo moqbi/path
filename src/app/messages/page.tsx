@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
-import { conversationsFor } from "@/lib/dm";
+import { conversationsFor, KEEP_DAYS } from "@/lib/dm";
 import { Avatar, Empty, NameTag } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import { AthrHeaderMark } from "@/components/brand";
-import { SearchIcon } from "@/components/icons";
+import { ClockIcon, SearchIcon } from "@/components/icons";
 import { ar, timeOfDay } from "@/lib/format";
 import { SwipeRow } from "@/components/swipe-row";
 import { deleteConversation, markDelivered } from "@/app/actions";
@@ -197,6 +197,12 @@ export default async function MessagesPage({
           </div>
         ) : null}
 
+        {threads.length > 0 ? (
+          <p className="flex items-center justify-center gap-2 pb-6 pt-2 text-center text-[11px] text-faint">
+            <ClockIcon size={13} />
+            المحادثات تُحذف بعد {ar(KEEP_DAYS)} يوماً — لا نحتفظ بها
+          </p>
+        ) : null}
       </main>
 
       <TabBar active="/messages" />
