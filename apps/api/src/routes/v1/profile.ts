@@ -1,5 +1,6 @@
 import { Hono } from "hono";
-import { coverInput, emailChangeInput, pageQuery, privacyInput, profileInput } from "@athar/shared";
+import { z } from "zod";
+import { coverInput, cuid, emailChangeInput, pageQuery, privacyInput, profileInput } from "@athar/shared";
 import { zValidator } from "../../lib/validate";
 import { requireAuth, me } from "../../middleware/auth";
 import * as profile from "../../services/profile";
@@ -41,4 +42,33 @@ export const profileRoutes = new Hono()
     c.json(await profile.setCoverPosition(me(c), c.req.valid("json").y)),
   )
 
-  .delete("/cover", async (c) => c.json(await profile.clearCover(me(c))));
+  .delete("/cover", async (c) => c.json(await profile.clearCover(me(c))))
+
+  /** صورة العرض والغلاف — الملف مُعتمَدٌ قبل أن يصل هنا. */
+  .put(
+    "/avatar",
+    zValidator("json", z.object({ mediaId: cuid })),
+    async (c) => c.json(await profile.setPicture(me(c), "avatar", c.req.valid("json").mediaId)),
+  )
+
+  .put(
+    "/cover/image",
+    zValidator("json", z.object({ mediaId: cuid })),
+    async (c) => c.json(await profile.setPicture(me(c), "cover", c.req.valid("json").mediaId)),
+  )
+
+  /** الدعم داخل التطبيق: الرسالة تُحفظ والردّ يُقرأ في مكانه. */
+  .get("/support", async (c) => c.json(await profile.tickets(me(c))))
+
+  .post(
+    "/support",
+    zValidator("json", z.object({ body: z.string().trim().min(5).max(1200) })),
+    async (c) => c.json(await profile.openTicket(me(c), c.req.valid("json").body), 201),
+  )
+
+  /** حذف الحساب — بكلمة المرور، وآخر ما في الملف. */
+  .post(
+    "/delete",
+    zValidator("json", z.object({ password: z.string().min(1).max(200) })),
+    async (c) => c.json(await profile.deleteAccount(me(c), c.req.valid("json").password)),
+  );

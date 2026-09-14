@@ -195,3 +195,88 @@ export async function changeEmail(
     throw badRequest("هذا البريد مستعمل في حسابٍ آخر");
   }
 }
+
+/**
+ * صورة العرض والغلاف.
+ *
+ * الملف يُرفع بالرابط المؤقّت ويُعتمد قبل هذا، فما يصل هنا مفحوصُ
+ * البايتات. والقديم يذهب حين يحلّ الجديد: صورةٌ لا يشير إليها شيء تبقى
+ * في الدلو إلى الأبد.
+ */
+export async function setPicture(
+  userId: string,
+  which: "avatar" | "cover",
+  mediaId: string,
+) {
+  const media = await prisma.media.findFirst({
+    where: { id: mediaId, ownerId: userId, ready: true },
+    select: { id: true, mime: true },
+  });
+  if (!media) throw notFound("الملف غير موجود");
+  if (!media.mime.startsWith("image/")) throw badRequest("يُقبل ملفُّ صورة");
+
+  const before = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { avatarMediaId: true, coverMediaId: true },
+  });
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: which === "avatar" ? { avatarMediaId: media.id } : { coverMediaId: media.id },
+  });
+
+  const old = which === "avatar" ? before?.avatarMediaId : before?.coverMediaId;
+  if (old && old !== media.id) await dropMedia([old]);
+
+  return { mediaId: media.id };
+}
+
+/**
+ * حذف الحساب.
+ *
+ * كلمة المرور شرط: هذه آخر خطوة قبل فقد كل شيء. وملفاته تُجمَع قبل
+ * حذفه — الصفوف تذهب بـ`Cascade` وكائنات السحابة لا تذهب معها، فتبقى
+ * بكسلاته بعد ذهاب حسابه.
+ */
+export async function deleteAccount(userId: string, password: string) {
+  const { verifyPassword } = await import("./auth");
+
+  const row = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { passwordHash: true },
+  });
+  if (!row || !(await verifyPassword(password, row.passwordHash))) {
+    throw forbidden("كلمة المرور غير صحيحة");
+  }
+
+  const files = await prisma.media.findMany({ where: { ownerId: userId }, select: { id: true } });
+  await dropMedia(files.map((file) => file.id));
+  await prisma.user.delete({ where: { id: userId } });
+
+  return { ok: true };
+}
+
+// ───────────────────────────── الدعم ─────────────────────────────
+
+/** رسائلي إلى الدعم وردودها. */
+export async function tickets(userId: string) {
+  const rows = await prisma.supportTicket.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: 30,
+    select: { id: true, body: true, reply: true, repliedAt: true, closed: true, createdAt: true },
+  });
+  return { tickets: rows };
+}
+
+/** فتح رسالة — وثلاثٌ مفتوحة تكفي: تكرارها يُغرق اللوحة ولا يُسرّع الردّ. */
+export async function openTicket(userId: string, body: string) {
+  const text = body.trim().slice(0, 1200);
+  if (text.length < 5) throw badRequest("اكتب رسالتك");
+
+  const open = await prisma.supportTicket.count({ where: { userId, closed: false } });
+  if (open >= 3) throw badRequest("عندك رسائل مفتوحة — انتظر الردّ عليها");
+
+  await prisma.supportTicket.create({ data: { userId, body: text } });
+  return { ok: "وصلتنا رسالتك — نردّ عليك هنا" };
+}

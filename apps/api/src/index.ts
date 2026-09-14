@@ -16,7 +16,9 @@ import { dmRoutes, messageRoutes } from "./routes/v1/dm";
 import { mountWs } from "./routes/v1/ws";
 import { sweepPending } from "./services/upload";
 import { sweepOld } from "./services/dm";
-import { storeRoutes } from "./routes/v1/store";
+import { plusRoutes, storeRoutes } from "./routes/v1/store";
+import { storyRoutes } from "./routes/v1/stories";
+import { sweep as sweepStories } from "./services/stories";
 
 /**
  * خادم أثر.
@@ -68,6 +70,7 @@ setInterval(
   () => {
     void sweepPending().catch((error) => console.error("✗ كنس المعلّقة", error));
     void sweepOld().catch((error) => console.error("✗ كنس المحادثات", error));
+    void sweepStories().catch((error) => console.error("✗ كنس القصص", error));
   },
   SWEEP_MINUTES * 60_000,
 ).unref();
@@ -80,6 +83,8 @@ app.route("/v1/circle", circleRoutes);
 app.route("/v1/users", userRoutes);
 app.route("/v1/me", profileRoutes);
 app.route("/v1/store", storeRoutes);
+app.route("/v1/plus", plusRoutes);
+app.route("/v1/stories", storyRoutes);
 app.route("/v1/media", mediaRoutes);
 app.route("/v1/notifications", notificationRoutes);
 app.route("/v1/dm", dmRoutes);
