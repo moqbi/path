@@ -147,6 +147,7 @@ model User {
   createdAt DateTime @default(now())
 
   tickets   SupportTicket[]
+  sessions  RefreshToken[]
   moments   Moment[]
   reactions Reaction[]
   views     View[]
@@ -561,4 +562,24 @@ model SupportTicket {
 
   @@index([userId, createdAt])
   @@index([closed, createdAt])
+}
+
+/// جلسةُ تجديد. يُخزَّن ملخّص التوكن لا التوكن: قاعدةٌ تُسرَّق لا تعطي
+/// سارقها جلسات الناس. والعائلة تُدوَّر مع كل تجديد، فإعادةُ استعمال
+/// توكنٍ قديم دليلُ سرقةٍ تُسقط العائلة كلها.
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// SHA-256 للتوكن.
+  hash      String   @unique
+  family    String
+  /// الجهاز كما وصفه العميل — ليعرف صاحبه أين جلساته.
+  device    String?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, expiresAt])
+  @@index([family])
 }

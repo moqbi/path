@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "أثر",
+    "slug": "athar",
+    "scheme": "athar",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "app.athar.mobile",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "لتسجيل الرسائل الصوتية في محادثاتك.",
+        "NSCameraUsageDescription": "لالتقاط صورة أو فيديو لقصتك ولحظاتك.",
+        "NSPhotoLibraryUsageDescription": "لاختيار صورة من ألبومك.",
+        "NSLocationWhenInUseUsageDescription": "لتحديد المكان الذي تنشر منه لحظتك."
+      }
+    },
+    "android": {
+      "package": "app.athar.mobile",
+      "googleServicesFile": "./google-services.json",
+      "permissions": ["RECORD_AUDIO", "CAMERA", "ACCESS_FINE_LOCATION"]
+    },
+    "plugins": ["expo-router", "expo-secure-store"],
+    "extra": { "eas": { "projectId": "" } }
+  }
+}
