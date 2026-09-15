@@ -9,3 +9,6 @@ src/generated
 
 # typescript
 next-env.d.ts
+
+# ملفّات Expo المحلّية: حالةُ جهازٍ بعينه لا تخصّ المستودع.
+.expo
