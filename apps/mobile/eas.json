@@ -1,19 +1,32 @@
 {
-  "cli": { "version": ">= 12.0.0", "appVersionSource": "remote" },
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "remote"
+  },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "env": { "EXPO_PUBLIC_API_URL": "http://10.0.2.2:4000" }
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://10.0.2.2:4000",
+        "EXPO_PUBLIC_RC_TEST_KEY": "test_bPkuVnVXLCekZPeJHkZQtHucNQi"
+      }
     },
     "preview": {
       "distribution": "internal",
-      "env": { "EXPO_PUBLIC_API_URL": "https://api.athar.app" }
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.athar.app",
+        "EXPO_PUBLIC_RC_TEST_KEY": "test_bPkuVnVXLCekZPeJHkZQtHucNQi"
+      }
     },
     "production": {
       "autoIncrement": true,
-      "env": { "EXPO_PUBLIC_API_URL": "https://api.athar.app" }
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.athar.app"
+      }
     }
   },
-  "submit": { "production": {} }
+  "submit": {
+    "production": {}
+  }
 }
