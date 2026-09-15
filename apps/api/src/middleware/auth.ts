@@ -1,4 +1,5 @@
 import type { Context, MiddlewareHandler } from "hono";
+import { prisma } from "@athar/db";
 import { readAccess, type Claims } from "../lib/tokens";
 import { forbidden, unauthorized } from "../lib/errors";
 
@@ -27,8 +28,22 @@ export const requireAuth: MiddlewareHandler = async (c, next) => {
   await next();
 };
 
+/**
+ * المشرف يُقرأ من صفّه لا من توكنه.
+ *
+ * الدور في التوكن ختمٌ عمره خمس عشرة دقيقة: من سُحبت صلاحيته يبقى
+ * مشرفاً حتى ينتهي توكنه، وهذه الأبواب تحذف لحظات الناس وتحسم بلاغاتهم.
+ * وقراءةُ صفٍّ واحد لكل طلب مشرفٍ لا تُحسّ — حركةُ اللوحة قطرة.
+ */
 export const requireAdmin: MiddlewareHandler = async (c, next) => {
-  if (c.get("user")?.role !== "ADMIN") throw forbidden("هذه الصفحة للمشرفين");
+  const claims = c.get("user");
+  if (!claims) throw forbidden("هذه الصفحة للمشرفين");
+
+  const row = await prisma.user.findUnique({
+    where: { id: claims.sub },
+    select: { role: true },
+  });
+  if (row?.role !== "ADMIN") throw forbidden("هذه الصفحة للمشرفين");
   await next();
 };
 

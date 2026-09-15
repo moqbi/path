@@ -69,3 +69,54 @@ export async function canInteract(userId: string, authorId: string): Promise<boo
   });
   return Boolean(member);
 }
+
+
+/**
+ * من يرى هذا الملف.
+ *
+ * منقولةٌ حرفاً من `apps/api/src/services/visibility.ts`: معرّف الملف
+ * ليس صلاحية، ومن يحصل عليه كان يقرأ به أيّ صورةٍ في القاعدة — صورةَ
+ * لحظةٍ خاصة أو رسالةً بين اثنين — بلا حساب أصلاً.
+ *
+ * والفحص من جهة ما عُلِّق عليه الملف: صاحبه يراه دائماً، وصنف المتجر
+ * للجميع، والصورة والغلاف لمن لا يحجبه حظر، واللحظة بقواعد جمهورها،
+ * والقصة لدائرة صاحبها ما لم تنتهِ، والرسالة لطرفَي محادثتها.
+ */
+export async function canSeeMedia(userId: string, mediaId: string): Promise<boolean> {
+  const media = await prisma.media.findUnique({
+    where: { id: mediaId },
+    select: {
+      ownerId: true,
+      storeItem: { select: { id: true } },
+      avatarOf: { select: { id: true } },
+      coverOf: { select: { id: true } },
+      moment: { select: { id: true } },
+      storyOf: { select: { authorId: true, expiresAt: true } },
+      messageOf: { select: { conversation: { select: { aId: true, bId: true } } } },
+    },
+  });
+  if (!media) return false;
+  if (media.ownerId === userId) return true;
+  if (media.storeItem) return true;
+
+  if (media.messageOf) {
+    const { aId, bId } = media.messageOf.conversation;
+    return aId === userId || bId === userId;
+  }
+
+  if (media.moment) return canSeeMoment(userId, media.moment.id);
+
+  if (media.storyOf) {
+    if (media.storyOf.expiresAt <= new Date()) return false;
+    const circle = await circleIds(userId);
+    return circle.includes(media.storyOf.authorId);
+  }
+
+  const profileOf = media.avatarOf?.id ?? media.coverOf?.id;
+  if (profileOf) {
+    const blocked = await blockedWith(userId);
+    return !blocked.includes(profileOf);
+  }
+
+  return false;
+}

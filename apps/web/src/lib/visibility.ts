@@ -1,31 +1,27 @@
-import { prisma } from "@athar/db";
-
-/**
- * من يرى ماذا.
- *
- * هذه القواعد هي قلب أثر، وهي منسوخةٌ حرفاً عن `src/lib/visibility.ts`
- * في الويب الحالي عمداً: تشغيلان لقاعدةٍ واحدة في وقتٍ واحد، فاختلاف
- * قاعدة رؤيةٍ بينهما يعني أن لحظةً خاصة تظهر في أحدهما ولا تظهر في الآخر.
- * تُحذف النسخة القديمة يوم يُطفأ `src/`، لا قبله.
- */
-
-/** الحظر في الاتجاهين: من حظرتَه ومن حظرك كلاهما يختفي عنك. */
-export async function blockedWith(userId: string): Promise<string[]> {
-  const rows = await prisma.block.findMany({
-    where: { OR: [{ blockerId: userId }, { blockedId: userId }] },
-    select: { blockerId: true, blockedId: true },
-  });
-  return rows.map((row) => (row.blockerId === userId ? row.blockedId : row.blockerId));
-}
-
-/** معرّفات الدائرة (المقبولون)، بلا صاحبها. */
-export async function circleIds(userId: string): Promise<string[]> {
+import "server-only";
+import { cache } from "react";
+import { prisma } from "@/lib/db";
+/** معرّفات الدائرة (المقبولون) بلا صاحبها — نسخةٌ هنا حتى لا تُجرّ
+ * دائرةُ الويب كاملةً إلى اللوحة لأجل سطرين. */
+async function circleIds(userId: string): Promise<string[]> {
   const rows = await prisma.friendship.findMany({
     where: { status: "ACCEPTED", OR: [{ requesterId: userId }, { addresseeId: userId }] },
     select: { requesterId: true, addresseeId: true },
   });
   return rows.map((row) => (row.requesterId === userId ? row.addresseeId : row.requesterId));
 }
+
+/**
+ * الحظر يعمل في الاتجاهين: من حظرتَه ومن حظرك كلاهما يختفي عنك.
+ * حظرٌ من طرف واحد يترك المحظور يقرأ ويعلّق، وهذا ليس حظراً.
+ */
+export const blockedWith = cache(async (userId: string): Promise<string[]> => {
+  const rows = await prisma.block.findMany({
+    where: { OR: [{ blockerId: userId }, { blockedId: userId }] },
+    select: { blockerId: true, blockedId: true },
+  });
+  return rows.map((row) => (row.blockerId === userId ? row.blockedId : row.blockerId));
+});
 
 /** من تراه لحظاتُهم: دائرتك ناقص المحظورين، ومعك أنت. */
 export async function visibleAuthors(userId: string): Promise<string[]> {
@@ -35,10 +31,8 @@ export async function visibleAuthors(userId: string): Promise<string[]> {
 }
 
 /**
- * شرط رؤية اللحظة: كاتبها ممّن ترى، وجمهورها يشملك.
- *
- * ويُدمج في **كل** استعلام لحظات — لا في الأول وحده. استعلامٌ ينسى هذا
- * الشرط يسرّب لحظةً خاصة بلا رسالة خطأ تُنبّه.
+ * شرط رؤية اللحظة: كاتبها في دائرتك، وجمهورها يشملك.
+ * لحظاتك أنت تُرى كلها مهما كان جمهورها — أنت من اختاره.
  */
 export async function visibleWhere(userId: string) {
   const authors = await visibleAuthors(userId);
@@ -48,21 +42,26 @@ export async function visibleWhere(userId: string) {
     OR: [
       { authorId: userId },
       { audience: "CIRCLE" as const },
-      { audience: "GROUP" as const, audienceGroup: { members: { some: { userId } } } },
+      {
+        audience: "GROUP" as const,
+        audienceGroup: { members: { some: { userId } } },
+      },
       { audience: "PICKED" as const, viewers: { some: { userId } } },
     ],
   };
 }
 
+/** هل يرى فلانٌ هذه اللحظة؟ نفس الشرط أعلاه لصفٍّ واحد. */
 export async function canSeeMoment(userId: string, momentId: string): Promise<boolean> {
-  const found = await prisma.moment.findFirst({
-    where: { id: momentId, ...(await visibleWhere(userId)) },
-    select: { id: true },
-  });
+  const where = await visibleWhere(userId);
+  const found = await prisma.moment.findFirst({ where: { id: momentId, ...where }, select: { id: true } });
   return Boolean(found);
 }
 
-/** التفاعل قد يُحصر في تصنيفٍ من الدائرة — «من يمكنه التفاعل معك». */
+/**
+ * هل يستطيع فلانٌ التفاعل مع لحظة صاحبها؟
+ * صاحب اللحظة قد يحصر التفاعل في تصنيف من دائرته — «من يمكنه التفاعل معك».
+ */
 export async function canInteract(userId: string, authorId: string): Promise<boolean> {
   if (userId === authorId) return true;
 
@@ -79,14 +78,13 @@ export async function canInteract(userId: string, authorId: string): Promise<boo
   return Boolean(member);
 }
 
+
 /**
  * من يرى هذا الملف.
  *
- * معرّف الملف ليس سرّاً: من يحصل عليه — من لقطة شاشة، أو من سجلّ وسيط،
- * أو بتخمينٍ في فضاءٍ ليس عشوائياً تماماً — كان يقرأ به أيّ صورةٍ في
- * القاعدة ما دام مسجّلاً دخوله، ولو كانت صورةَ لحظةٍ خاصة أو رسالةً بين
- * اثنين. فالصلاحية تُفحص هنا كما تُفحص في كل استعلام لحظات (القاعدة ٢٣)،
- * لا يُكتفى بأن الرابط طويل.
+ * منقولةٌ حرفاً من `apps/api/src/services/visibility.ts`: معرّف الملف
+ * ليس صلاحية، ومن يحصل عليه كان يقرأ به أيّ صورةٍ في القاعدة — صورةَ
+ * لحظةٍ خاصة أو رسالةً بين اثنين — بلا حساب أصلاً.
  *
  * والفحص من جهة ما عُلِّق عليه الملف: صاحبه يراه دائماً، وصنف المتجر
  * للجميع، والصورة والغلاف لمن لا يحجبه حظر، واللحظة بقواعد جمهورها،
@@ -122,13 +120,11 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
     return circle.includes(media.storyOf.authorId);
   }
 
-  // صورة العرض والغلاف يراهما كل من يرى بطاقة صاحبهما — والحظر يحجبهما.
   const profileOf = media.avatarOf?.id ?? media.coverOf?.id;
   if (profileOf) {
     const blocked = await blockedWith(userId);
     return !blocked.includes(profileOf);
   }
 
-  // ملفٌّ لم يُعلَّق بعد على شيء: لصاحبه وحده.
   return false;
 }

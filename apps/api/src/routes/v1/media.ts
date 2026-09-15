@@ -5,6 +5,7 @@ import { getObject } from "@athar/storage";
 import { cuid, presignInput } from "@athar/shared";
 import { zValidator } from "../../lib/validate";
 import { requireAuth, me } from "../../middleware/auth";
+import { canSeeMedia } from "../../services/visibility";
 import { rateLimit } from "../../middleware/rate-limit";
 import { notFound } from "../../lib/errors";
 import * as upload from "../../services/upload";
@@ -47,6 +48,13 @@ export const mediaRoutes = new Hono()
     });
     // غير المعتمد لا يُقدَّم: بايتاته لم تُفحص بعد.
     if (!media || !media.ready) throw notFound("الملف غير موجود");
+
+    /*
+      ومعرّفُ الملف ليس صلاحية: يُفحص من يرى ما عُلِّق عليه
+      (`canSeeMedia`). و«غير موجود» لا «ممنوع» — الثانية تؤكّد للسائل
+      أنّ الملفّ قائم.
+    */
+    if (!(await canSeeMedia(me(c), id))) throw notFound("الملف غير موجود");
 
     const headers = new Headers({
       "Content-Type": media.mime,

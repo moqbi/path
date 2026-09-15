@@ -1,13 +1,19 @@
 import { NextResponse } from "next/server";
+import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { canSeeMedia } from "@/lib/visibility";
 import { getObject } from "@/lib/storage";
 
 /**
- * يقدّم الصور المرفوعة من القاعدة.
+ * يقدّم الملفات المرفوعة — لمن يراها وحده.
  *
- * الصور والأصوات ومقاطع الفيديو محتوى داخل دوائر مغلقة، لكن معرّفها cuid غير قابل للتخمين ولا
- * يُنشر إلا لمن يرى اللحظة أو الملف. تُخزَّن مؤقتاً في المتصفح طويلاً لأن
- * المعرّف يتغيّر مع كل رفع جديد، فلا يوجد ما يُبطَل.
+ * ومعرّف الملف ليس صلاحية: كان هذا الباب يفتح أيّ صورةٍ في القاعدة لأي
+ * طلب، بلا حساب أصلاً، وبترويسة `public` تسمح لوسيطٍ مشترك أن يحتفظ
+ * بصورة أحدهم ويقدّمها لغيره. الآن: جلسةٌ أولاً، ثم `canSeeMedia` —
+ * القواعد نفسها التي تحكم قراءة اللحظات (القاعدة ٢٣) — ثم `private`
+ * في الخبيئة.
+ *
+ * والمدّة تبقى طويلة: المعرّف يتغيّر مع كل رفع، فلا يوجد ما يُبطَل.
  */
 export async function GET(
   request: Request,
@@ -15,11 +21,16 @@ export async function GET(
 ) {
   const { id } = await params;
 
+  const viewer = await currentUser();
+  if (!viewer) return new NextResponse("غير موجود", { status: 404 });
+
   const media = await prisma.media.findUnique({
     where: { id },
     select: { bytes: true, key: true, mime: true },
   });
+  // «غير موجود» لا «ممنوع»: الثانية تؤكّد للسائل أنّ الملفّ قائم.
   if (!media) return new NextResponse("غير موجود", { status: 404 });
+  if (!(await canSeeMedia(viewer.id, id))) return new NextResponse("غير موجود", { status: 404 });
 
   /*
     الملف في السحابة: يُمرَّر بثّه كما هو ومعه طلب المدى.
@@ -33,7 +44,7 @@ export async function GET(
     }
     const pass = new Headers();
     pass.set("Content-Type", media.mime);
-    pass.set("Cache-Control", "public, max-age=31536000, immutable");
+    pass.set("Cache-Control", "private, max-age=31536000, immutable");
     pass.set("Accept-Ranges", "bytes");
     for (const name of ["content-length", "content-range", "etag"]) {
       const value = upstream.headers.get(name);
@@ -46,7 +57,7 @@ export async function GET(
   const bytes = new Uint8Array(media.bytes);
   const headers = {
     "Content-Type": media.mime,
-    "Cache-Control": "public, max-age=31536000, immutable",
+    "Cache-Control": "private, max-age=31536000, immutable",
     "Accept-Ranges": "bytes",
   };
 
