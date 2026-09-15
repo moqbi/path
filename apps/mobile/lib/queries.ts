@@ -108,18 +108,18 @@ export const useCircle = () =>
     queryKey: keys.circle,
     queryFn: () =>
       api<{
-        members: (Person & { memberNo: number; city: string | null; lastSeenAt: string | null })[];
+        members: (Person & {
+          memberNo: number;
+          city: string | null;
+          lastSeenAt: string | null;
+          /** تصنيفُ هذا الصديق عندك — يراه صاحبه وحده. */
+          groupId: string | null;
+        })[];
         requests: { id: string; createdAt: string; requester: Person & { memberNo: number } }[];
         groups: { id: string; name: string; count: number }[];
         cap: number;
         left: number;
       }>("/v1/circle"),
-  });
-
-export const useSuggestions = () =>
-  useQuery({
-    queryKey: keys.suggestions,
-    queryFn: () => api<{ people: (Person & { mutual: number })[] }>("/v1/circle/suggestions"),
   });
 
 export type Note = {
@@ -172,6 +172,13 @@ export const useStore = () =>
         daysHere: number;
         equipped: { frame: string | null; theme: string | null; charm: string | null };
       }>("/v1/store"),
+  });
+
+/** المقترحون: من يجمعك بهم صديقٌ مشترك — لا بحث بالاسم ولا بالبريد. */
+export const useSuggestions = () =>
+  useQuery({
+    queryKey: keys.suggestions,
+    queryFn: () => api<{ people: (Person & { mutual: number })[] }>("/v1/circle/suggestions"),
   });
 
 export const useProfile = (id: string) =>

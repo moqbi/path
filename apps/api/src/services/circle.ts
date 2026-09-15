@@ -24,7 +24,7 @@ const PERSON = {
 export async function circle(userId: string) {
   const ids = await circleIds(userId);
 
-  const [members, requests, groups] = await Promise.all([
+  const [members, requests, groups, placed] = await Promise.all([
     prisma.user.findMany({ where: { id: { in: ids } }, select: PERSON, orderBy: { name: "asc" } }),
     prisma.friendship.findMany({
       where: { addresseeId: userId, status: "PENDING" },
@@ -36,10 +36,22 @@ export async function circle(userId: string) {
       orderBy: { sortOrder: "asc" },
       select: { id: true, name: true, _count: { select: { members: true } } },
     }),
+    /*
+      تصنيفُ كل صديق مع الدائرة نفسها.
+
+      الشاشة تعرض لكل صفٍّ تصنيفه الحالي، فسؤالٌ لكلّ صديقٍ على حدة
+      يعني مئةً وخمسين طلباً لشاشةٍ واحدة.
+    */
+    prisma.groupMember.findMany({
+      where: { group: { ownerId: userId } },
+      select: { userId: true, groupId: true },
+    }),
   ]);
 
+  const groupOf = new Map(placed.map((row) => [row.userId, row.groupId]));
+
   return {
-    members,
+    members: members.map((member) => ({ ...member, groupId: groupOf.get(member.id) ?? null })),
     requests,
     groups: groups.map((g) => ({ id: g.id, name: g.name, count: g._count.members })),
     cap: CIRCLE_CAP,
@@ -125,7 +137,23 @@ export async function userProfile(viewerId: string, id: string) {
 
   const friend = ids.includes(id) || id === viewerId;
   if (friend) {
-    return { person, friend: true as const, mutual: 0, pending: null };
+    /*
+      ما يملكه من أصناف — لشاشة الإهداء وحدها.
+
+      «لا يُهدى ما يملكه أصلاً»، فلا بدّ أن تعرف الشاشة ما عنده قبل أن
+      تعرضه. ومعرّفات الأصناف لا أكثر: لا سعرَ ولا تاريخَ شراء.
+    */
+    const owns = await prisma.purchase.findMany({
+      where: { userId: id },
+      select: { itemId: true },
+    });
+    return {
+      person,
+      friend: true as const,
+      mutual: 0,
+      pending: null,
+      owned: owns.map((row) => row.itemId),
+    };
   }
 
   const [theirs, pending] = await Promise.all([
@@ -146,7 +174,7 @@ export async function userProfile(viewerId: string, id: string) {
   const mutual = ids.filter((one) => set.has(one)).length;
   if (mutual === 0 && !pending) throw notFound("لا يوجد هذا الحساب");
 
-  return { person, friend: false as const, mutual, pending };
+  return { person, friend: false as const, mutual, pending, owned: [] as string[] };
 }
 
 // ───────────────────────────── الكتابة ─────────────────────────────

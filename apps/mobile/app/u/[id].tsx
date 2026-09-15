@@ -1,12 +1,13 @@
-import { View, Text, FlatList, ActivityIndicator } from "react-native";
+import { View, Text, FlatList, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { AvatarMenu } from "../../components/avatar-menu";
 import { MediaImage } from "../../components/media-image";
 import { MomentCard } from "../../components/moment-card";
 import { ScreenHeader } from "../../components/screen-header";
-import { StarIcon } from "../../components/icons";
+import { GiftButton } from "../../components/gift-sheet";
+import { MessageIcon, StarIcon, WithIcon } from "../../components/icons";
 import { api } from "../../lib/api";
 import { keys, type Moment } from "../../lib/queries";
 import { ar, membership } from "../../lib/format";
@@ -54,11 +55,18 @@ type Person = {
  */
 export default function Profile() {
   const me = useSession((state) => state.me);
+  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const person = useQuery({
     queryKey: keys.user(id),
-    queryFn: () => api<{ person: Person }>(`/v1/users/${id}`),
+    queryFn: () => api<{ person: Person; friend: boolean; owned: string[] }>(`/v1/users/${id}`),
+  });
+
+  /** المحادثة تُفتح من هنا: تُنشأ إن لم تكن، ثم نذهب إليها. */
+  const talk = useMutation({
+    mutationFn: () => api<{ id: string }>(`/v1/dm/with/${id}`, { method: "POST" }),
+    onSuccess: (row) => router.push(`/dm/${row.id}` as never),
   });
   const moments = useQuery({
     queryKey: keys.userMoments(id),
@@ -109,6 +117,37 @@ export default function Profile() {
                 <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 2 }}>
                   لك معانا {membership(who.createdAt)} · عضو {ar(who.memberNo)}
                 </Text>
+
+                {/*
+                  ثلاثة أفعال: إهداءٌ من مكانه، وأثرنا، ومحادثة. والحظر
+                  ليس هنا — مكانه صفّ الصديق في الدائرة (القاعدة ٣٨).
+                */}
+                {person.data?.friend ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12 }}>
+                    <GiftButton
+                      friendId={who.id}
+                      friendName={who.name}
+                      friendIsPlus={who.isPlus}
+                      friendOwned={person.data.owned ?? []}
+                    />
+
+                    <Pressable
+                      onPress={() => router.push({ pathname: "/", params: { view: "together", with: who.id } } as never)}
+                      style={{ flexDirection: "row", alignItems: "center", gap: 6, height: 42, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
+                    >
+                      <WithIcon size={16} color={colors.ink2} />
+                      <Text style={{ color: colors.ink2, fontSize: 13, fontWeight: "600" }}>أثرنا</Text>
+                    </Pressable>
+
+                    <Pressable
+                      accessibilityLabel="محادثة"
+                      onPress={() => talk.mutate()}
+                      style={{ width: 44, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
+                    >
+                      <MessageIcon size={17} color={colors.ink2} />
+                    </Pressable>
+                  </View>
+                ) : null}
                 {who.bio ? (
                   <Text style={{ color: colors.ink2, fontSize: 13, textAlign: "center", marginTop: 7, lineHeight: 22 }}>
                     {who.bio}

@@ -25,13 +25,13 @@
 | `src/components/stories.tsx` | `components/stories.tsx` |
 | `src/components/receipt.tsx` | `components/receipt.tsx` |
 | `src/app/page.tsx` | `app/(tabs)/index.tsx` |
-| `src/app/circle/page.tsx` | `app/(tabs)/circle.tsx` — **ناقص**: المقترحون، التصنيفات، الإخراج، الحظر |
+| `src/app/circle/page.tsx` | `app/(tabs)/circle.tsx` |
 | `src/app/notifications/page.tsx` | `app/(tabs)/notifications.tsx` |
 | `src/app/store/page.tsx` + `grid.tsx` | `app/(tabs)/store.tsx` + `components/store-grid.tsx` |
-| `src/app/me/page.tsx` | `app/(tabs)/me.tsx` — **ناقص**: نافذة الصورة، الإكسسوارات، ضبط الغلاف |
+| `src/app/me/page.tsx` | `app/(tabs)/me.tsx` |
 | `src/app/compose/form.tsx` | `app/compose.tsx` |
 | `src/app/m/[id]/page.tsx` | `app/m/[id].tsx` |
-| `src/app/u/[id]/page.tsx` | `app/u/[id].tsx` — **ناقص**: الإهداء، المحادثة، الحظر |
+| `src/app/u/[id]/page.tsx` + `gift.tsx` | `app/u/[id].tsx` + `components/gift-sheet.tsx` — والحظر في صفّ الدائرة لا في الملف (القاعدة ٣٨) |
 | `src/app/messages/page.tsx` | `app/messages.tsx` |
 | `src/app/messages/[id]/` | `app/dm/[id].tsx` |
 | `src/app/stories/[id]/viewer.tsx` | `app/stories/[id].tsx` |
