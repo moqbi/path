@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { View, Text, Pressable, ScrollView, Image, ActivityIndicator, Dimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import * as Picker from "expo-image-picker";
 import { useQueryClient } from "@tanstack/react-query";
 import { ScreenHeader } from "../../components/screen-header";
@@ -10,10 +10,12 @@ import { FILTERS } from "../../lib/filters";
 import { api } from "../../lib/api";
 import { uploadFile } from "../../lib/upload";
 import { ar } from "../../lib/format";
+import { STORY_SECONDS } from "@athar/shared";
+import { SourceSheet } from "../../components/source-sheet";
+import { takeShot } from "../../lib/capture";
 import { colors } from "../../theme/tokens";
 
 /** أقصى مدّة لفيديو القصة — نفس حدّ الخادم. */
-const STORY_SECONDS = 20;
 
 type Draft = {
   uri: string;
@@ -38,11 +40,27 @@ export default function NewStory() {
   const [filter, setFilter] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [asking, setAsking] = useState(false);
 
   const screen = Dimensions.get("window");
   const previewHeight = Math.min(420, screen.height * 0.46);
 
+  /* العودة من الكاميرا — صورةً كانت أو مقطعاً. */
+  useFocusEffect(() => {
+    const shot = takeShot();
+    if (!shot) return;
+    setDraft({
+      uri: shot.uri,
+      mime: shot.mime,
+      width: shot.width,
+      height: shot.height,
+      video: shot.video,
+      seconds: shot.seconds,
+    });
+  });
+
   async function pick() {
+    setAsking(false);
     setError(null);
     const granted = await Picker.requestMediaLibraryPermissionsAsync();
     if (!granted.granted) {
@@ -131,11 +149,11 @@ export default function NewStory() {
         </View>
 
         <Pressable
-          onPress={pick}
+          onPress={() => setAsking(true)}
           style={{ height: 46, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, marginBottom: 14 }}
         >
           <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600" }}>
-            {draft ? "غيّر" : "اختر صورة أو فيديو"}
+            {draft ? "غيّر" : "صورة أو فيديو"}
           </Text>
         </Pressable>
 
@@ -207,6 +225,26 @@ export default function NewStory() {
           )}
         </Pressable>
       </View>
+
+      {/*
+        القصة تقبل الاثنين، فبابا الكاميرا اثنان: صورةٌ ومقطع. وسؤالٌ
+        واحد بثلاثة خيارات أوضح من شاشةِ كاميرا تُبدّل وضعها في داخلها —
+        من فتحها ليصوّر مقطعاً لا يبحث عن مفتاحٍ يحوّلها.
+      */}
+      <SourceSheet
+        open={asking}
+        title="قصّتك من أين؟"
+        onClose={() => setAsking(false)}
+        onCamera={() => {
+          setAsking(false);
+          router.push("/camera?mode=picture" as never);
+        }}
+        onVideo={() => {
+          setAsking(false);
+          router.push(`/camera?mode=video&seconds=${STORY_SECONDS}` as never);
+        }}
+        onLibrary={() => void pick()}
+      />
     </SafeAreaView>
   );
 }

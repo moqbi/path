@@ -1,0 +1,316 @@
+import { useEffect, useRef, useState } from "react";
+import { View, Text, Pressable, Image, ActivityIndicator, Dimensions } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { CameraView, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
+import Svg, { Circle, Path } from "react-native-svg";
+import { STORY_SECONDS } from "@athar/shared";
+import { CloseIcon } from "../components/icons";
+import { keepShot } from "../lib/capture";
+import { tap } from "../lib/sound";
+import { ar } from "../lib/format";
+import { colors } from "../theme/tokens";
+
+/**
+ * الكاميرا داخل التطبيق لا كاميرا النظام.
+ *
+ * كاميرا النظام تخرج بالمستخدم من التطبيق وترجعه بصورةٍ جاهزة: لا معاينة
+ * ولا فلاتر ولا قرار «أعيدها». وتطبيقُ لحظاتٍ يصوّر من الألبوم وحده ناقصٌ
+ * في جوهره — اللحظة تُلتقط حين تقع لا حين تُستخرج من الأرشيف.
+ *
+ * وهي شاشةٌ واحدة تخدم الثلاثة: لحظة صورة، وقصة صورة، وقصة فيديو.
+ * تفتحها الشاشةُ الطالبة بـ`mode`، وتضع اللقطة في `lib/capture` وترجع —
+ * فالشاشة الطالبة تحتفظ بحالتها ولا تُستبدَل.
+ */
+type Mode = "picture" | "video";
+
+export default function Camera() {
+  const router = useRouter();
+  const params = useLocalSearchParams<{ mode?: string; seconds?: string }>();
+  const mode: Mode = params.mode === "video" ? "video" : "picture";
+  const limit = Number(params.seconds) > 0 ? Number(params.seconds) : STORY_SECONDS;
+
+  const [permission, askCamera] = useCameraPermissions();
+  const [mic, askMic] = useMicrophonePermissions();
+
+  const camera = useRef<CameraView | null>(null);
+  const [facing, setFacing] = useState<"back" | "front">("back");
+  const [flash, setFlash] = useState<"auto" | "on" | "off">("auto");
+  const [busy, setBusy] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const [shot, setShot] = useState<null | {
+    uri: string;
+    mime: string;
+    width: number;
+    height: number;
+    video: boolean;
+    seconds: number;
+  }>(null);
+
+  /*
+    المؤقّت يعدّ ما دام التسجيل جارياً، ويقف بنفسه عند الحدّ.
+    و`recordAsync` يقف وحده بـ`maxDuration`، لكن الرقم على الشاشة لا
+    يعرف ذلك — فيُحسب هنا ليرى المصوّر كم بقي له.
+  */
+  useEffect(() => {
+    if (!recording) return;
+    const tick = setInterval(() => setElapsed((n) => n + 1), 1000);
+    return () => clearInterval(tick);
+  }, [recording]);
+
+  const screen = Dimensions.get("window");
+
+  if (!permission) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#000", alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator color="#fff" />
+      </View>
+    );
+  }
+
+  if (!permission.granted) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#000", padding: 28, justifyContent: "center" }}>
+        <Text style={{ color: "#fff", fontSize: 17, fontWeight: "700", textAlign: "center", marginBottom: 10 }}>
+          الكاميرا مقفلة
+        </Text>
+        <Text style={{ color: "rgba(255,255,255,.75)", fontSize: 13, lineHeight: 24, textAlign: "center", marginBottom: 22 }}>
+          نحتاج إذن الكاميرا لتصوير لحظتك. ولا نفتحها إلا وأنت في هذه الشاشة.
+        </Text>
+        <Pressable
+          onPress={() => void askCamera()}
+          style={{ height: 50, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
+        >
+          <Text style={{ color: colors.onBrand, fontSize: 15, fontWeight: "700" }}>اسمح بالكاميرا</Text>
+        </Pressable>
+        <Pressable onPress={() => router.back()} style={{ height: 46, alignItems: "center", justifyContent: "center", marginTop: 6 }}>
+          <Text style={{ color: "rgba(255,255,255,.7)", fontSize: 13 }}>رجوع</Text>
+        </Pressable>
+      </SafeAreaView>
+    );
+  }
+
+  async function shoot() {
+    if (busy || !camera.current) return;
+    setBusy(true);
+    try {
+      const picture = await camera.current.takePictureAsync({ quality: 0.85 });
+      if (picture) {
+        setShot({
+          uri: picture.uri,
+          mime: "image/jpeg",
+          width: picture.width,
+          height: picture.height,
+          video: false,
+          seconds: 0,
+        });
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function roll() {
+    if (!camera.current) return;
+
+    if (recording) {
+      camera.current.stopRecording();
+      return;
+    }
+
+    // الصوت جزءٌ من الفيديو: بلا إذن الميكروفون يخرج صامتاً.
+    if (!mic?.granted) {
+      const asked = await askMic();
+      if (!asked.granted) return;
+    }
+
+    setRecording(true);
+    setElapsed(0);
+    try {
+      const clip = await camera.current.recordAsync({ maxDuration: limit });
+      if (clip?.uri) {
+        setShot({
+          uri: clip.uri,
+          mime: "video/mp4",
+          width: 0,
+          height: 0,
+          video: true,
+          seconds: Math.min(elapsed, limit),
+        });
+      }
+    } finally {
+      setRecording(false);
+    }
+  }
+
+  /* المعاينة: لا تُرسَل لقطةٌ لم يرها صاحبها (كقاعدة القصة ٩٦). */
+  if (shot) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#000" }}>
+        {shot.video ? (
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+            <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>
+              مقطعٌ من {ar(shot.seconds)} ثانية
+            </Text>
+          </View>
+        ) : (
+          <Image source={{ uri: shot.uri }} style={{ flex: 1 }} resizeMode="contain" />
+        )}
+
+        <SafeAreaView edges={["bottom"]}>
+          <View style={{ flexDirection: "row", gap: 12, padding: 20 }}>
+            <Pressable
+              onPress={() => setShot(null)}
+              style={{ flex: 1, height: 52, borderRadius: 14, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,255,255,.35)" }}
+            >
+              <Text style={{ color: "#fff", fontSize: 14.5, fontWeight: "600" }}>أعِدها</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                keepShot(shot);
+                router.back();
+              }}
+              style={{ flex: 1, height: 52, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
+            >
+              <Text style={{ color: colors.onBrand, fontSize: 14.5, fontWeight: "700" }}>استخدمها</Text>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  const left = Math.max(0, limit - elapsed);
+
+  return (
+    <View style={{ flex: 1, backgroundColor: "#000" }}>
+      <CameraView
+        ref={camera}
+        style={{ flex: 1 }}
+        facing={facing}
+        flash={flash}
+        mode={mode}
+        // الفيديو يحتاج الصوت، والصورة لا — فلا يُطلب إذنٌ بلا سبب.
+        videoQuality="720p"
+      />
+
+      {/* الإغلاق والفلاش في الأعلى، والتصوير والتبديل في الأسفل. */}
+      <SafeAreaView edges={["top"]} style={{ position: "absolute", top: 0, left: 0, right: 0 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 8 }}>
+          <Pressable accessibilityLabel="إغلاق" onPress={() => router.back()} hitSlop={12} style={disc}>
+            <CloseIcon size={20} color="#fff" />
+          </Pressable>
+
+          {mode === "video" && recording ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: colors.live }}>
+              <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: "#fff" }} />
+              <Text style={{ color: "#fff", fontSize: 12.5, fontWeight: "700" }}>{ar(left)}</Text>
+            </View>
+          ) : null}
+
+          <Pressable
+            accessibilityLabel="الفلاش"
+            onPress={() => setFlash((one) => (one === "auto" ? "on" : one === "on" ? "off" : "auto"))}
+            hitSlop={12}
+            style={disc}
+          >
+            <FlashMark mode={flash} />
+          </Pressable>
+        </View>
+      </SafeAreaView>
+
+      <SafeAreaView edges={["bottom"]} style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 36, paddingBottom: 26 }}>
+          <View style={{ width: 46 }} />
+
+          {/*
+            زرّ التصوير قرصٌ أبيض بحلقةٍ حوله — يُعرف بلا تعليم. وفي
+            الفيديو يصير مربّعاً أحمر وهو يسجّل: الشكل يقول «اضغط لتقف».
+          */}
+          <Pressable
+            accessibilityLabel={mode === "video" ? (recording ? "أوقف التسجيل" : "سجّل") : "صوّر"}
+            disabled={busy}
+            onPress={() => {
+              tap();
+              void (mode === "video" ? roll() : shoot());
+            }}
+            style={{ width: 78, height: 78, borderRadius: 39, borderWidth: 3, borderColor: "rgba(255,255,255,.9)", alignItems: "center", justifyContent: "center" }}
+          >
+            <View
+              style={{
+                width: recording ? 30 : 62,
+                height: recording ? 30 : 62,
+                borderRadius: recording ? 7 : 31,
+                backgroundColor: recording ? colors.live : "#fff",
+                opacity: busy ? 0.5 : 1,
+              }}
+            />
+          </Pressable>
+
+          <Pressable
+            accessibilityLabel="بدّل الكاميرا"
+            disabled={recording}
+            onPress={() => setFacing((one) => (one === "back" ? "front" : "back"))}
+            style={[disc, { opacity: recording ? 0.4 : 1 }]}
+          >
+            <FlipMark />
+          </Pressable>
+        </View>
+
+        {mode === "video" ? (
+          <Text style={{ color: "rgba(255,255,255,.7)", fontSize: 11.5, textAlign: "center", paddingBottom: 14 }}>
+            حتى {ar(limit)} ثانية
+          </Text>
+        ) : null}
+      </SafeAreaView>
+
+      {screen.width < 1 ? null : null}
+    </View>
+  );
+}
+
+const disc = {
+  width: 46,
+  height: 46,
+  borderRadius: 23,
+  alignItems: "center",
+  justifyContent: "center",
+  backgroundColor: "rgba(0,0,0,.42)",
+} as const;
+
+/** الفلاش ثلاث حالات، وشكلُه يقول أيّها: تلقائيّ بحرف A، ومطفأٌ بشرطة. */
+function FlashMark({ mode }: { mode: "auto" | "on" | "off" }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12l1-8.5Z"
+        stroke="#fff"
+        strokeWidth={1.8}
+        strokeLinejoin="round"
+        fill={mode === "on" ? "#fff" : "none"}
+      />
+      {mode === "off" ? (
+        <Path d="M4 4l16 16" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" />
+      ) : null}
+      {mode === "auto" ? (
+        <Path d="M17.4 3.2h.2l1.9 4.6h-1.2l-.35-.95h-1.9l-.35.95h-1.2l1.9-4.6Zm.1 1.6-.5 1.35h1l-.5-1.35Z" fill="#fff" />
+      ) : null}
+    </Svg>
+  );
+}
+
+function FlipMark() {
+  return (
+    <Svg width={21} height={21} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.8l1-1.6h5.4l1 1.6h1.8A2.5 2.5 0 0 1 20 8.5v8A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-8Z"
+        stroke="#fff"
+        strokeWidth={1.7}
+        strokeLinejoin="round"
+      />
+      <Circle cx={12} cy={12.5} r={3.2} stroke="#fff" strokeWidth={1.7} />
+      <Path d="M9.6 11.2l1.3-1.3M14.4 13.8l-1.3 1.3" stroke="#fff" strokeWidth={1.7} strokeLinecap="round" />
+    </Svg>
+  );
+}

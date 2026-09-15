@@ -16,7 +16,7 @@ export const VOICE_SECONDS = { free: 20, plus: 120 } as const;
 
 /** القصة: عمرها بالساعات، وأقصى مدّة لفيديوها بالثواني. */
 export const STORY_HOURS = 24;
-export const STORY_SECONDS = 20;
+export const STORY_SECONDS = 30;
 
 /** المحادثات تُكنس بعد هذه المدّة — من القاعدة والسحابة معاً. */
 export const MESSAGE_KEEP_DAYS = 30;

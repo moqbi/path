@@ -4,7 +4,7 @@ import {
   ActivityIndicator, KeyboardAvoidingView, Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import * as Picker from "expo-image-picker";
 import * as Location from "expo-location";
 import { useQueryClient } from "@tanstack/react-query";
@@ -15,6 +15,8 @@ import { api } from "../lib/api";
 import { uploadFile } from "../lib/upload";
 import { useCircle } from "../lib/queries";
 import { ar } from "../lib/format";
+import { SourceSheet } from "../components/source-sheet";
+import { takeShot } from "../lib/capture";
 import { colors } from "../theme/tokens";
 
 type Kind = "PHOTO" | "THOUGHT" | "PLACE" | "MUSIC";
@@ -45,6 +47,7 @@ export default function Compose() {
   const [text, setText] = useState("");
   const [musicUrl, setMusicUrl] = useState("");
   const [picture, setPicture] = useState<{ uri: string; width: number; height: number; mime: string } | null>(null);
+  const [asking, setAsking] = useState(false);
   const [withIds, setWithIds] = useState<string[]>([]);
   const [audience, setAudience] = useState("CIRCLE");
   const [viewers, setViewers] = useState<string[]>([]);
@@ -97,7 +100,20 @@ export default function Compose() {
     };
   }, [wantPlace, fix]);
 
+  /*
+    العودة من الكاميرا: اللقطة تنتظر في `lib/capture`، وتُقرأ مرّةً
+    وتُمحى. و`useFocusEffect` لأنّ هذه الشاشة لم تُبنَ من جديد — هي
+    قائمةٌ تحت الكاميرا بحالتها كلّها، فلا `useEffect` يُنبّهها.
+  */
+  useFocusEffect(() => {
+    const shot = takeShot();
+    if (shot && !shot.video) {
+      setPicture({ uri: shot.uri, width: shot.width, height: shot.height, mime: shot.mime });
+    }
+  });
+
   async function pickImage() {
+    setAsking(false);
     const { status } = await Picker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       setError("لازم تسمح بالوصول لألبومك.");
@@ -215,11 +231,11 @@ export default function Compose() {
                 )}
               </View>
               <Pressable
-                onPress={pickImage}
+                onPress={() => setAsking(true)}
                 style={{ height: 46, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
               >
                 <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600" }}>
-                  {picture ? "غيّر الصورة" : "اختر صورة"}
+                  {picture ? "غيّر الصورة" : "صورة اللحظة"}
                 </Text>
               </Pressable>
             </View>
@@ -443,6 +459,16 @@ export default function Compose() {
           onClose={() => setSheet(null)}
         />
       ) : null}
+
+      <SourceSheet
+        open={asking}
+        onClose={() => setAsking(false)}
+        onCamera={() => {
+          setAsking(false);
+          router.push("/camera?mode=picture" as never);
+        }}
+        onLibrary={() => void pickImage()}
+      />
     </SafeAreaView>
   );
 }

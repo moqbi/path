@@ -7,7 +7,7 @@ import { dropMedia } from "@/lib/media";
 export const STORY_HOURS = 24;
 
 /** أقصى مدّة لفيديو القصة بالثواني. */
-export const STORY_SECONDS = 20;
+export const STORY_SECONDS = 30;
 
 /** آخر كنسٍ في هذه العملية — مرّةً في الساعة تكفي. */
 let sweptAt = 0;

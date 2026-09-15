@@ -146,9 +146,14 @@ export default function Me() {
 
         <Pressable
           accessibilityLabel="مشاركة الملف"
+          /*
+            الرابط برقم العضوية لا بمعرّف الحساب (القاعدة ٨٧): الرقم
+            قصيرٌ يُقرأ ويُقال، والمعرّف سلسلةٌ لا تُحفظ. وكان يُشارَك
+            بالمعرّف، فالرابط لا يُقرأ ولا يُملى على أحد.
+          */
           onPress={() =>
             void Share.share({
-              message: `ملف ${me.name} في آثار · عضوية رقم ${ar(me.memberNo)}\n${SITE_URL}/u/${me.id}`,
+              message: `ملف ${me.name} في آثار · عضوية رقم ${ar(me.memberNo)}\n${SITE_URL}/u/${me.memberNo}`,
             })
           }
           style={{
