@@ -1,5 +1,6 @@
 import { prisma } from "@athar/db";
 import { PLUS_CREDIT_HALALAS, PLUS_ENTITLEMENT } from "@athar/shared";
+import { env } from "../env";
 
 /**
  * أثر+ من المتجرين عبر RevenueCat.
@@ -72,6 +73,22 @@ export async function applyEvent(event: RevenueCatEvent): Promise<{ ok: string }
   }
 
   if (type === "TEST") return { ok: "تجربة" };
+
+  /*
+    شراءٌ تجريبيّ لا يفتح اشتراكاً في الإنتاج.
+
+    المشروع الواحد في RevenueCat يجمع المتجر التجريبي والمتجرين
+    الحقيقيين، فحدثٌ من `TEST_STORE` أو بيئةِ `SANDBOX` يصل بنفس الترويسة
+    إلى نفس الباب. وقبولُه في الإنتاج يعني أنّ نسخةً تجريبية تفتح أثر+
+    لحسابٍ حقيقيّ بضغطةٍ في نافذةٍ وهمية.
+
+    وفي التطوير يُقبل — وإلا لم يُختبر المسار أصلاً قبل أن يوجد حساب آبل.
+  */
+  const sandbox = event.environment === "SANDBOX" || event.store === "TEST_STORE";
+  if (sandbox && !env.ALLOW_SANDBOX_BILLING) {
+    console.log(`↷ حدث فوترةٍ تجريبيّ مُهمَل (${type})`);
+    return { ok: "حدثٌ تجريبيّ — مُهمَل في الإنتاج" };
+  }
 
   const userId = await resolveUser(event);
   if (!userId) return { ok: "لا حساب لهذا المعرّف" };

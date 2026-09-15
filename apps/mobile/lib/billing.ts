@@ -12,14 +12,33 @@ import { PLUS_ENTITLEMENT } from "@athar/shared";
  * ولا في Expo Go — ولهذا تُستورد عند الطلب لا في أعلى الملف: استيرادٌ
  * ثابت يُسقط المعاينة كلها على شاشةٍ بيضاء.
  */
-const KEY = Platform.select({
+const STORE_KEY = Platform.select({
   ios: process.env.EXPO_PUBLIC_RC_IOS_KEY,
   android: process.env.EXPO_PUBLIC_RC_ANDROID_KEY,
   default: undefined,
 });
 
+/**
+ * متجر RevenueCat التجريبي — بديلٌ مؤقّت حتى يُفتح حساب آبل للمطوّرين.
+ *
+ * فآبل تطلب ملف `.p8` من App Store Connect لربط متجرها، وهو لا يوجد قبل
+ * الاشتراك ($99). والمتجر التجريبي يشتري بنافذةٍ وهمية ويُصدر أحداثاً
+ * حقيقية إلى خادمنا (`store: "TEST_STORE"`, `environment: "SANDBOX"`)،
+ * فيُختبر المسار كلّه: الشراء، والحدث، والتفعيل.
+ *
+ * ومفتاح المتجر الحقيقي يسبقه دائماً: يوم يوجد `appl_`/`goog_` يُستعمل
+ * هو، ويبقى هذا للتطوير. **ولا تُبنى نسخةُ متجرٍ بمفتاحٍ تجريبي** —
+ * RevenueCat تحذّر منه صراحةً، ولذلك لا يُوضع في ملفّ بناء الإنتاج.
+ */
+const TEST_KEY = process.env.EXPO_PUBLIC_RC_TEST_KEY;
+
+const KEY = STORE_KEY || TEST_KEY;
+
 /** أمضبوطٌ الدفع في هذه النسخة؟ عليه يتوقّف شكل شاشة الاشتراك. */
 export const billingReady = (): boolean => Platform.OS !== "web" && Boolean(KEY);
+
+/** أهو المتجر التجريبي؟ تقوله الشاشة صراحةً فلا يُحسب شراءٌ حقيقياً. */
+export const testStore = (): boolean => billingReady() && !STORE_KEY;
 
 type Purchases = typeof import("react-native-purchases").default;
 

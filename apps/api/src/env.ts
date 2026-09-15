@@ -34,6 +34,15 @@ const schema = z.object({
   REVENUECAT_WEBHOOK_SECRET: z.string().optional(),
 
   /**
+   * يقبل أحداث الفوترة التجريبية (`TEST_STORE` و`SANDBOX`).
+   *
+   * مطفأةٌ في الإنتاج افتراضاً: المشروع الواحد في RevenueCat يجمع
+   * المتجر التجريبي والحقيقيَّين، فقبولُ التجريبيّ هناك يفتح أثر+
+   * بنافذةٍ وهمية. ومفتوحةٌ في التطوير وإلا لم يُختبر المسار.
+   */
+  ALLOW_SANDBOX_BILLING: z.coerce.boolean().optional(),
+
+  /**
    * يفتح تفعيل «أثر+» بضغطةٍ بلا دفع — للتجربة وحدها.
    * في الإنتاج يبقى مطفأً: الدفع يمرّ بالمتجرين ولا شيء غيره.
    */
@@ -55,6 +64,11 @@ if (!parsed.success) {
 export const env = parsed.data;
 
 export const isProd = env.NODE_ENV === "production";
+
+/* التجريبيّ مقبولٌ في التطوير، مرفوضٌ في الإنتاج ما لم يُفتح صراحةً. */
+if (env.ALLOW_SANDBOX_BILLING === undefined) {
+  env.ALLOW_SANDBOX_BILLING = !isProd;
+}
 
 /** الدومينات المسموح بها قائمةً مشذّبة — لا فراغات ولا نجمة في الإنتاج. */
 export const corsOrigins = env.CORS_ORIGINS.split(",")

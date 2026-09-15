@@ -6,7 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ScreenHeader } from "../components/screen-header";
 import { BookIcon, CameraIcon, MicIcon, SparkIcon, StoreIcon } from "../components/icons";
 import { api } from "../lib/api";
-import { billingReady, buy, openManage, plans, restore, type Plan } from "../lib/billing";
+import { billingReady, buy, openManage, plans, restore, testStore, type Plan } from "../lib/billing";
 import { useSession } from "../lib/session";
 import { colors } from "../theme/tokens";
 
@@ -196,6 +196,13 @@ export default function Subscribe() {
                 </Pressable>
               ))}
             </View>
+
+            {/* المتجر التجريبي يُقال صراحةً: شراءٌ وهميّ لا يُحسب. */}
+            {testStore() ? (
+              <Text style={{ color: colors.clayInk, fontSize: 11, textAlign: "center" }}>
+                متجرٌ تجريبيّ — الشراء هنا وهميّ ولا يُخصم منه شيء
+              </Text>
+            ) : null}
 
             <Pressable
               onPress={() => recover.mutate()}
