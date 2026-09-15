@@ -10,9 +10,9 @@ import { coinText, riyals } from "../lib/format";
 import { colors } from "../theme/tokens";
 
 /**
- * شحن الكوينز.
+ * شحن النقاط.
  *
- * الكوينز عملة المتجر: كل ما فيه يُشترى بها، ومن نفد رصيدُه يشحن من
+ * النقاط عملة المتجر: كل ما فيه يُشترى بها، ومن نفد رصيدُه يشحن من
  * هنا. والشراء يمرّ بالمتجرين وحدهما — السلع الرقمية لا تُباع بغير
  * IAP، وبطاقةٌ في التطبيق تعني إزالته.
  *
@@ -63,7 +63,7 @@ export default function Coins() {
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
-      <ScreenHeader title="شحن الكوينز" back="/store" />
+      <ScreenHeader title="شحن النقاط" back="/store" />
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}>
         <View
@@ -156,7 +156,7 @@ export default function Coins() {
         ) : null}
 
         <Text style={{ color: colors.faint, fontSize: 10.5, lineHeight: 20, textAlign: "center", paddingTop: 22 }}>
-          تُخصم القيمة من حساب متجرك · الكوينز لا تُستردّ ولا تُحوَّل
+          تُخصم القيمة من حساب متجرك · النقاط لا تُستردّ ولا تُحوَّل
         </Text>
       </ScrollView>
     </SafeAreaView>

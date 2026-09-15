@@ -25,7 +25,7 @@ export type RevenueCatEvent = {
   event_timestamp_ms?: number;
   environment?: string;
   store?: string;
-  /// للشراء غير المتجدّد (باقة كوينز): معرّف المنتج في المتجر وثمنه.
+  /// للشراء غير المتجدّد (باقة نقاط): معرّف المنتج في المتجر وثمنه.
   product_id?: string;
   price_in_purchased_currency?: number | null;
   price?: number | null;
@@ -98,11 +98,11 @@ export async function applyEvent(event: RevenueCatEvent): Promise<{ ok: string }
   if (!userId) return { ok: "لا حساب لهذا المعرّف" };
 
   /*
-    باقة كوينز: شراءٌ لا يتجدّد، فلا استحقاق فيه ولا تاريخ انتهاء.
+    باقة نقاط: شراءٌ لا يتجدّد، فلا استحقاق فيه ولا تاريخ انتهاء.
 
     ويُفصل هنا قبل منطق الاشتراك لأنّ حمولته تصل بلا `entitlement_ids`
     وبلا `expiration_at_ms` — فلو مرّت على ما تحت لقُرئت «اشتراكٌ منتهٍ»
-    فأُوقف آثار+ لمن اشترى كوينز.
+    فأُوقف آثار+ لمن اشترى نقاط.
   */
   if (type === "NON_RENEWING_PURCHASE") return topUp(event, userId);
 
@@ -140,7 +140,7 @@ export async function applyEvent(event: RevenueCatEvent): Promise<{ ok: string }
 
     /*
       أوّل إيداعٍ يجري هنا، وما بعده يجري مع الكنس الدوريّ
-      (`dripPlusCredit`): الوعد «١٠٠٠ كوينز شهرياً» لا «مع كل فاتورة» —
+      (`dripPlusCredit`): الوعد «١٠٠٠ نقطة شهرياً» لا «مع كل فاتورة» —
       ومن اشترك سنوياً يفوتر مرّةً واحدة، فربطُ الرصيد بالفاتورة كان
       يعطيه دفعةً واحدة بدل اثنتي عشرة.
     */
@@ -167,7 +167,7 @@ export async function applyEvent(event: RevenueCatEvent): Promise<{ ok: string }
 
 
 /**
- * يودع كوينز باقةٍ اشتُريت من المتجر.
+ * يودع نقاط باقةٍ اشتُريت من المتجر.
  *
  * الباقة تُعرف بـ`sku` — معرّف المنتج في المتجرين — لا بما يقوله
  * التطبيق عن عددها: من يملك أن يكتب الطلب يملك أن يكتب «مليون».
@@ -215,11 +215,11 @@ async function topUp(event: RevenueCatEvent, userId: string): Promise<{ ok: stri
     return { ok: "مكرّر" };
   }
 
-  return { ok: `أُودع ${pack.coins} كوينز` };
+  return { ok: `أُودع ${pack.coins} نقاط` };
 }
 
 /**
- * منحةُ كوينز من اللوحة — تمرّ بنفس السجلّ فلا رصيدَ بلا أثرٍ يدلّ عليه.
+ * منحةُ نقاط من اللوحة — تمرّ بنفس السجلّ فلا رصيدَ بلا أثرٍ يدلّ عليه.
  */
 export async function grantCoins(
   userId: string,

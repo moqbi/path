@@ -107,9 +107,19 @@ export default function Timeline() {
 
   const grip = useRef(
     PanResponder.create({
-      // لا نلتقط إلا والقائمة في أعلاها والسحبة نازلةٌ رأسية: ما عدا ذلك
-      // تمريرٌ يخصّ القائمة تحتنا.
-      onMoveShouldSetPanResponder: (_event, gesture) =>
+      /*
+        الالتقاط في طور **الهبوط** لا الصعود.
+
+        `onMoveShouldSetPanResponder` يُسأل بعد أن تُسأل القائمة تحتنا،
+        والقائمة تأخذ الإيماءة لنفسها فلا يصلنا شيء — فكان السحب لا
+        يحرّك الغلاف على الجهاز وإن عمل باللمس المُصطنع في المتصفّح.
+        و`…Capture` يُسأل قبلها، فنأخذها نحن.
+
+        والشرط يبقى ضيّقاً: القائمة في أعلاها، والإصبع نازلٌ رأسياً —
+        وما عدا ذلك يمرّ إلى القائمة كما كان.
+      */
+      onStartShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponderCapture: (_event, gesture) =>
         atTop.current && gesture.dy > 8 && Math.abs(gesture.dy) > Math.abs(gesture.dx) * 1.6,
       onPanResponderMove: (_event, gesture) => {
         if (gesture.dy <= 0) return pull.setValue(0);

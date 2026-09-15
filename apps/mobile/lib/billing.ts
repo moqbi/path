@@ -132,7 +132,7 @@ export async function buy(planId: string): Promise<{ active: boolean; cancelled:
 }
 
 /**
- * باقة كوينز: شراءٌ يُستهلك، لا اشتراكٌ يتجدّد.
+ * باقة نقاط: شراءٌ يُستهلك، لا اشتراكٌ يتجدّد.
  *
  * ويُشترى بمعرّف المنتج مباشرةً (`purchaseStoreProduct`) لا بحزمةٍ من
  * عرضٍ: العروض في RevenueCat مبنيّةٌ للاشتراك، والباقات تُضاف وتُحذف من

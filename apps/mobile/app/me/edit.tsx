@@ -88,7 +88,7 @@ export default function EditProfile() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={{ paddingBottom: 40, direction: "rtl" }} keyboardShouldPersistTaps="handled">
           <Text style={{ color: colors.muted, fontSize: 11.5, paddingHorizontal: 20, paddingTop: 14, textAlign: "right" }}>
             الغلاف والصورة وبياناتك في مكانٍ واحد
           </Text>

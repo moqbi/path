@@ -113,7 +113,7 @@ export const TagIcon = ({ size = 20, color = "currentColor" }: Props) => (
   </Svg>
 );
 
-/** الكوينز: قرصٌ بحرفٍ في وسطه — عملة المتجر. */
+/** النقاط: قرصٌ بحرفٍ في وسطه — عملة المتجر. */
 export const CoinIcon = ({ size = 20, color = "currentColor" }: Props) => (
   <Svg {...stroke(size, color)}>
     <Circle cx={12} cy={12} r={8.4} />

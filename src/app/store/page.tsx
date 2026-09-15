@@ -140,7 +140,7 @@ export default async function StorePage({
             </span>
             <p className="grow text-[12px] leading-relaxed text-ink-2">
               مشتركو <span className="font-semibold text-gold">آثار+</span> يحصلون على ١٠٠٠
-              كوينز شهرياً وخصم ٢٠٪
+              نقاط شهرياً وخصم ٢٠٪
             </p>
           </div>
         ) : null}

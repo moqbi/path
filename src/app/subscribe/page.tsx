@@ -31,7 +31,7 @@ const PERKS = [
     icon: <CameraIcon size={18} />,
   },
   {
-    title: "١٠٠٠ كوينز شهرياً في المتجر",
+    title: "١٠٠٠ نقطة شهرياً في المتجر",
     body: "وخصم ٢٠٪ على كل شي · إطارات حصرية",
     icon: <StoreIcon size={18} />,
   },

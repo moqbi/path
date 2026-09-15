@@ -98,7 +98,15 @@ function Gate() {
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: colors.paper },
+        /*
+          الاتجاه يُعاد فرضُه على حاوية كل شاشة.
+
+          الجذر يحمله، لكنّ الوراثة لم تصل إلى كل شجرةٍ على الجهاز: صفوف
+          `flexWrap` في «إكسسواراتي» كانت ترتصّ من اليسار، ونصوصٌ معها —
+          والمعاينة على الويب تعرضها صحيحة، فلا يُكشف إلا على جهاز.
+          وتكراره هنا لا يضرّ حيث وصلت الوراثة، ويحسمها حيث لم تصل.
+        */
+        contentStyle: { backgroundColor: colors.paper, direction: "rtl" },
       }}
     />
   );

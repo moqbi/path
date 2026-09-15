@@ -90,7 +90,7 @@ export default function Privacy() {
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
       <ScreenHeader title="الخصوصية" back="/me" />
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40, direction: "rtl" }} keyboardShouldPersistTaps="handled">
         <Card
           title="من يمكنه رؤية لحظاتي؟"
           note="الافتراضي لكل لحظة جديدة. تقدر تغيّره لكل لحظة عند نشرها."

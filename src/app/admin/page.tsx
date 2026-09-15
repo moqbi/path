@@ -532,7 +532,7 @@ export default async function AdminPage({
                 </Field>
 
                 <div className="flex gap-2.5">
-                  <Field label="السعر (كوينز)">
+                  <Field label="السعر (نقاط)">
                     <input
                       name="priceCoins"
                       type="number"
@@ -678,7 +678,7 @@ export default async function AdminPage({
                           </div>
 
                           <div className="flex gap-2.5">
-                            <Field label="السعر (كوينز)">
+                            <Field label="السعر (نقاط)">
                               <input
                                 name="priceCoins"
                                 type="number"

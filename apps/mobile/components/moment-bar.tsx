@@ -119,7 +119,16 @@ export function MomentBar({
 
       {open ? (
         <View style={{ marginTop: 8, gap: 8, paddingHorizontal: inset ? 12 : 0 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+          {/*
+            الصفّ ينزل سطراً ثانياً ولا يُقصّ.
+
+            خمسة وجوه، ففاصل، فإيموجيان، فـ«＋» — مجموعها أعرض من شاشةٍ
+            ضيّقة، فكان آخرها يخرج عن الحافة. وآخرها هو «＋» الذي يفتح
+            لوحة الإيموجي كاملة، فكان المشترك لا يرى ما دفع ثمنه.
+            والالتفاف لا التمرير: ما يُمرَّر إليه يحتاج أن يُكتشف، وهذا
+            بابُ ميزةٍ مدفوعة لا يُخبّأ.
+          */}
+          <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 2 }}>
             {faces.map((kind) => (
               <Pressable
                 key={kind}

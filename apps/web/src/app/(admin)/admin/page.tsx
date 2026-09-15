@@ -76,7 +76,7 @@ const KIND_LABEL: Record<string, string> = {
 const STORE_VIEWS = [
   { key: "items", label: "الأصناف" },
   { key: "cats", label: "التصنيفات" },
-  { key: "packs", label: "باقات الكوينز" },
+  { key: "packs", label: "باقات النقاط" },
 ] as const;
 
 /** حقلٌ باسمه: الصفّ العاري من الحقول لا يقول ما يُكتب فيه. */
@@ -586,10 +586,10 @@ export default async function AdminPage({
         {view === "packs" ? (
           <>
             <p className="mb-3 px-1 text-[11.5px] leading-relaxed text-muted">
-              الكوينز عملة المتجر: كل ما فيه يُشترى بها. والباقة تُشترى بمالٍ
+              النقاط عملة المتجر: كل ما فيه يُشترى بها. والباقة تُشترى بمالٍ
               حقيقي من App Store أو Google Play — لا نقبض نحن شيئاً، فالسلع
               الرقمية تُباع عبر المتجرين وحدهما. و«معرّف المنتج» هو الرابط
-              بينهما وبيننا: به يصل حدث الشراء فنعرف كم كوينز نودع، وباقةٌ بلا
+              بينهما وبيننا: به يصل حدث الشراء فنعرف كم نقاط نودع، وباقةٌ بلا
               معرّف تبقى مسوّدةً لا تُعرض.
             </p>
 
@@ -605,14 +605,14 @@ export default async function AdminPage({
                     name="name"
                     required
                     maxLength={40}
-                    placeholder="١٠٠٠ كوينز"
+                    placeholder="١٠٠٠ نقطة"
                     className={FIELD}
                     style={{ height: 46 }}
                   />
                 </Field>
 
                 <div className="flex gap-2.5">
-                  <Field label="الكوينز">
+                  <Field label="النقاط">
                     <input
                       name="coins"
                       type="number"
@@ -698,7 +698,7 @@ export default async function AdminPage({
                     </Field>
 
                     <div className="flex gap-2.5">
-                      <Field label="الكوينز">
+                      <Field label="النقاط">
                         <input
                           name="coins"
                           type="number"
@@ -804,7 +804,7 @@ export default async function AdminPage({
                 </Field>
 
                 <div className="flex gap-2.5">
-                  <Field label="السعر (كوينز)">
+                  <Field label="السعر (نقاط)">
                     <input
                       name="priceCoins"
                       type="number"
@@ -950,7 +950,7 @@ export default async function AdminPage({
                           </div>
 
                           <div className="flex gap-2.5">
-                            <Field label="السعر (كوينز)">
+                            <Field label="السعر (نقاط)">
                               <input
                                 name="priceCoins"
                                 type="number"

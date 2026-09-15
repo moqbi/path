@@ -76,7 +76,7 @@ export default function Accessories() {
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
       <ScreenHeader title="إكسسواراتي" back="/me" />
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40, direction: "rtl" }}>
         <Text style={{ color: colors.muted, fontSize: 11.5, marginBottom: 14, textAlign: "right" }}>
           ما اشتريته وما أُهدي إليك — اضغط لتلبسه
         </Text>

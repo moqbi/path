@@ -9,7 +9,18 @@ const ARABIC_DIGITS = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩
 export const ar = (value: number | string): string =>
   String(value).replace(/\d/g, (d) => ARABIC_DIGITS[Number(d)]);
 
-export const coinText = (coins: number): string => `${ar(String(coins))} كوينز`;
+/**
+ * النقاط إلى نصّ: 500 → «٥٠٠ نقطة».
+ *
+ * الصيغة عربية: الجمع من ثلاثةٍ إلى عشرة والمفرد فيما فوقها — «٥ نقاط»
+ * و«٥٠٠ نقطة»، لا «٥٠٠ نقاط».
+ */
+export const coinText = (coins: number): string => {
+  if (coins === 1) return "نقطة";
+  if (coins === 2) return "نقطتان";
+  const unit = coins >= 3 && coins <= 10 ? "نقاط" : "نقطة";
+  return `${ar(String(coins))} ${unit}`;
+};
 
 /** الهللات إلى نصّ بالريال: 3000 → «٣٠ ر.س». لسعر الباقة والاشتراك. */
 export const riyals = (halalas: number): string => {

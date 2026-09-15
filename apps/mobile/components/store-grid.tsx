@@ -126,7 +126,7 @@ export function StoreGrid({
         `يُكتسب بعد ${ar(item.earnedAfterDays)} يوم — باقي ${ar(item.earnedAfterDays - daysHere)}`,
       );
     }
-    if (coins < price(item)) return setError("رصيدك لا يكفي — اشحن كوينز من رصيدك في الأعلى");
+    if (coins < price(item)) return setError("رصيدك لا يكفي — اشحن نقاط من رصيدك في الأعلى");
     buy.mutate(item.id);
   }
 

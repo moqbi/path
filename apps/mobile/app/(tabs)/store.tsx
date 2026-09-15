@@ -72,7 +72,7 @@ export default function Store() {
           إلى الشحن من مكان السؤال لا من قائمةٍ أخرى.
         */}
         <Pressable
-          accessibilityLabel="شحن الكوينز"
+          accessibilityLabel="شحن النقاط"
           onPress={() => router.push("/coins" as never)}
           style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: colors.goldSoft, borderWidth: 1, borderColor: colors.goldLine }}
         >
@@ -136,7 +136,7 @@ export default function Store() {
                 <SparkIcon size={19} color={colors.gold} />
               </View>
               <Text style={{ flex: 1, color: colors.ink2, fontSize: 12, lineHeight: 21 }}>
-                مشتركو <Text style={{ fontWeight: "600", color: colors.goldInk }}>آثار+</Text> يحصلون على ١٠٠٠ كوينز شهرياً وخصم ٢٠٪
+                مشتركو <Text style={{ fontWeight: "600", color: colors.goldInk }}>آثار+</Text> يحصلون على ١٠٠٠ نقطة شهرياً وخصم ٢٠٪
               </Text>
             </View>
           ) : null}
