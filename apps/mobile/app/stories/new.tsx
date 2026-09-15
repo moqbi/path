@@ -144,7 +144,7 @@ export default function NewStory() {
             <Text style={{ color: colors.faint, fontSize: 11.5, fontWeight: "600", marginBottom: 10 }}>
               فلتر
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: "row-reverse", gap: 8, paddingBottom: 6 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: "row", gap: 8, paddingBottom: 6 }}>
               {FILTERS.map((item) => {
                 const on = filter === item.key;
                 return (

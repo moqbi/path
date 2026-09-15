@@ -89,15 +89,6 @@ export default function TabsLayout() {
           tabBarActiveTintColor: colors.clayInk,
           tabBarInactiveTintColor: colors.muted,
           tabBarStyle: {
-            /*
-              الاتجاه يُفرض هنا لا يُترك لـ`I18nManager`.
-
-              شريط React Navigation يرصف تبويباته بترتيب التصريح في اتجاه
-              LTR مهما كانت لغة الواجهة، فكان «اللحظات» يجلس يساراً و«أنا»
-              يميناً — معكوساً عن الويب تماماً. و`row-reverse` تُعيده:
-              الأوّل يميناً كما يُقرأ العربي.
-            */
-            flexDirection: "row-reverse",
             backgroundColor: colors.card,
             borderTopColor: colors.line,
             height: 62,

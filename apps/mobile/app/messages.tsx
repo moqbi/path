@@ -53,7 +53,7 @@ function Last({ row, meId }: { row: Row; meId: string }) {
         : last.body;
 
   return (
-    <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 5 }}>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
       {mine ? <Ticks state={receiptOf(last)} size={14} /> : null}
       {last.kind === "VOICE" ? <MicIcon size={12} color={colors.muted} /> : null}
       {last.kind === "PHOTO" ? <CameraIcon size={12} color={colors.muted} /> : null}
@@ -97,7 +97,7 @@ export default function Messages() {
           <SwipeRow onDelete={() => void drop.mutate(item.id)}>
           <Pressable
             onPress={() => router.push(`/dm/${item.id}` as never)}
-            style={{ flexDirection: "row-reverse", alignItems: "center", gap: 11, paddingHorizontal: 20, paddingVertical: 11 }}
+            style={{ flexDirection: "row", alignItems: "center", gap: 11, paddingHorizontal: 20, paddingVertical: 11 }}
           >
             <Avatar
               name={item.other.name}
@@ -107,7 +107,7 @@ export default function Messages() {
               charm={item.other.charm}
             />
             <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "600" }}>
                   {item.other.name}
                 </Text>

@@ -150,7 +150,7 @@ export function StoreGrid({
         </View>
       ) : null}
 
-      <View style={{ flexDirection: "row-reverse", flexWrap: "wrap", gap: 12, marginBottom: 24 }}>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 24 }}>
         {items.map((item) => {
           const have = ownedSet.has(item.id);
           const worn = have && wornId(item) === item.id;
@@ -194,14 +194,14 @@ export function StoreGrid({
               </Text>
 
               {worn ? (
-                <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 4 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   <CheckIcon size={12} color={colors.clay} />
                   <Text style={{ color: colors.clayInk, fontSize: 10.5, fontWeight: "600" }}>ملبوس</Text>
                 </View>
               ) : have ? (
                 <Text style={{ color: colors.clayInk, fontSize: 10.5, fontWeight: "600" }}>ألبسه</Text>
               ) : locked ? (
-                <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 4 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   <LockIcon size={11} color={colors.faint} />
                   <Text style={{ color: colors.faint, fontSize: 10.5 }}>
                     {item.earnedAfterDays !== null ? `${ar(item.earnedAfterDays)} يوم` : "أثر+"}

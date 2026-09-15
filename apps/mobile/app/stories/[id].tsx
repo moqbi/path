@@ -145,7 +145,7 @@ export default function StoryViewer() {
 
       <SafeAreaView edges={["top"]} pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, top: 0 }}>
         <View pointerEvents="box-none" style={{ padding: 12 }}>
-          <View style={{ flexDirection: "row-reverse", gap: 4, marginBottom: 12 }}>
+          <View style={{ flexDirection: "row", gap: 4, marginBottom: 12 }}>
             {stories.map((item, position) => (
               <View key={item.id} style={{ flex: 1, height: 3, borderRadius: 2, backgroundColor: "rgba(255,255,255,.28)", overflow: "hidden" }}>
                 <View
@@ -160,7 +160,7 @@ export default function StoryViewer() {
             ))}
           </View>
 
-          <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 10 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
             <Avatar name={story.author.name} size={34} mediaId={story.author.avatarMediaId} />
             <View style={{ flex: 1 }}>
               <Text style={{ color: "#fff", fontSize: 13.5, fontWeight: "600" }}>
@@ -184,8 +184,8 @@ export default function StoryViewer() {
 
       {mine ? (
         <SafeAreaView edges={["bottom"]} pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}>
-          <View style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", padding: 16 }}>
-            <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <EyeIcon size={15} color="rgba(255,255,255,.85)" />
               <Text style={{ color: "rgba(255,255,255,.85)", fontSize: 12 }}>
                 {ar(story._count.views)}

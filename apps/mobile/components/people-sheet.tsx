@@ -53,21 +53,21 @@ export function PeopleSheet({
       >
         <View style={{ width: 44, height: 4, borderRadius: 2, backgroundColor: colors.line, alignSelf: "center", marginBottom: 12 }} />
 
-        <View style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 10 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 10 }}>
           <Text style={{ color: colors.ink, fontSize: 15.5, fontWeight: "700" }}>{title}</Text>
           <Pressable onPress={onClose}>
             <Text style={{ color: colors.clayInk, fontSize: 13, fontWeight: "600" }}>تم</Text>
           </Pressable>
         </View>
 
-        <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8, marginHorizontal: 20, marginBottom: 10, paddingHorizontal: 12, height: 42, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 20, marginBottom: 10, paddingHorizontal: 12, height: 42, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}>
           <SearchIcon size={15} color={colors.faint} />
           <TextInput
             value={term}
             onChangeText={setTerm}
             placeholder="ابحث في أصدقائك"
             placeholderTextColor={colors.faint}
-            style={{ flex: 1, fontSize: 13, color: colors.ink }}
+            style={{ flex: 1, minWidth: 0, fontSize: 13, color: colors.ink, textAlign: "right" }}
           />
         </View>
 
@@ -81,7 +81,7 @@ export function PeopleSheet({
               <Pressable
                 onPress={() => onToggle(item.id)}
                 style={{
-                  flexDirection: "row-reverse",
+                  flexDirection: "row",
                   alignItems: "center",
                   gap: 11,
                   paddingVertical: 9,
@@ -132,7 +132,7 @@ export function PickerButton({
     <Pressable
       onPress={onOpen}
       style={{
-        flexDirection: "row-reverse",
+        flexDirection: "row",
         alignItems: "center",
         gap: 8,
         minHeight: 48,

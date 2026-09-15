@@ -141,7 +141,7 @@ function Group({
           </Pressable>
         </View>
       ) : (
-        <View style={{ flexDirection: "row-reverse", flexWrap: "wrap", gap: 12 }}>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
           {items.map((item) => {
             const on = worn === item.id;
 
@@ -174,7 +174,7 @@ function Group({
                   </Text>
                 ) : null}
 
-                <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 4 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   {on ? <CheckIcon size={12} color={colors.clay} /> : null}
                   <Text style={{ color: on ? colors.clay : colors.muted, fontSize: 10.5, fontWeight: "600" }}>
                     {on ? "ملبوس — انزعه" : "ألبسه"}

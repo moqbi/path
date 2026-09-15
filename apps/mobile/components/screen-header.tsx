@@ -25,7 +25,7 @@ export function ScreenHeader({
   return (
     <View
       style={{
-        flexDirection: "row-reverse",
+        flexDirection: "row",
         alignItems: "center",
         gap: 10,
         minHeight: 56,

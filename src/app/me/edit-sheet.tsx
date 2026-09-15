@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CloseIcon } from "@/components/icons";
+import { ANIMATED } from "@/components/image-picker";
 import { ProfileCover } from "./cover";
 import { ProfileImages } from "./images";
 import { EditProfileForm } from "./edit/form";
@@ -40,6 +41,7 @@ export function EditProfileSheet({
   coverY: number;
 }) {
   const [open, setOpen] = useState(false);
+  const [pictureError, setPictureError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -113,12 +115,23 @@ export function EditProfileSheet({
                 charm={charm}
                 isPlus={isPlus}
                 size={72}
+                onError={setPictureError}
               />
               <div className="min-w-0 grow">
                 <p className="text-[12.5px] font-semibold">صورة العرض</p>
                 <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted">
                   اضغط الكاميرا على حافة صورتك لتغييرها.
                 </p>
+                {/* الشرط والخطأ هنا لا تحت الصورة: تحتها يركبان على النموذج. */}
+                {pictureError ? (
+                  <p role="alert" className="mt-1 text-[11px] leading-relaxed" style={{ color: "var(--color-live)" }}>
+                    {pictureError}
+                  </p>
+                ) : isPlus ? (
+                  <p className="mt-1 text-[11px] leading-relaxed text-faint">
+                    صورة متحركة؟ {ANIMATED.rule}
+                  </p>
+                ) : null}
               </div>
             </div>
 

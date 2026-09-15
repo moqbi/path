@@ -93,7 +93,7 @@ export default function Circle() {
                 <View
                   key={request.id}
                   style={{
-                    flexDirection: "row-reverse",
+                    flexDirection: "row",
                     alignItems: "center",
                     gap: 10,
                     padding: 12,
@@ -145,7 +145,7 @@ export default function Circle() {
           >
           <Pressable
             onPress={() => router.push(`/u/${item.id}` as never)}
-            style={{ flexDirection: "row-reverse", alignItems: "center", gap: 11, paddingHorizontal: 16, paddingVertical: 10 }}
+            style={{ flexDirection: "row", alignItems: "center", gap: 11, paddingHorizontal: 16, paddingVertical: 10 }}
           >
             <Avatar
               name={item.name}

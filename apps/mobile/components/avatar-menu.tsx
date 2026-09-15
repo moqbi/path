@@ -168,7 +168,7 @@ function ItemSheet({ item, onClose }: { item: NonNullable<WornItem>; onClose: ()
 
   return (
     <Sheet onClose={onClose} title={KIND_LABEL[item.kind] ?? "صنف"}>
-      <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 16, paddingHorizontal: 4, paddingVertical: 8 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 16, paddingHorizontal: 4, paddingVertical: 8 }}>
         <ItemArt item={item} size={80} radius={16} />
 
         <View style={{ flex: 1, minWidth: 0 }}>
@@ -321,7 +321,7 @@ function Row({
       onPress={onPress}
       style={{
         marginTop: 8,
-        flexDirection: "row-reverse",
+        flexDirection: "row",
         alignItems: "center",
         gap: 12,
         borderRadius: 16,

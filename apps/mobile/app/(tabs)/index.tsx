@@ -71,7 +71,7 @@ export default function Timeline() {
       {/* الرأس: العلامة ثم ATHR، و«أثر+» قبل الرسائل. */}
       <View
         style={{
-          flexDirection: "row-reverse",
+          flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
           paddingHorizontal: 20,
@@ -80,18 +80,18 @@ export default function Timeline() {
           backgroundColor: colors.chrome,
         }}
       >
-        <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 9 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 9 }}>
           <AthrMark size={26} />
           <Text style={{ color: colors.chromeInk, fontSize: 19, fontWeight: "700", letterSpacing: 2 }}>
             ATHR
           </Text>
         </View>
 
-        <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Pressable
             onPress={() => router.push("/subscribe" as never)}
             style={{
-              flexDirection: "row-reverse",
+              flexDirection: "row",
               alignItems: "center",
               gap: 4,
               height: 32,
@@ -125,7 +125,7 @@ export default function Timeline() {
             position: "absolute",
             insetInline: 0,
             bottom: 0,
-            flexDirection: "row-reverse",
+            flexDirection: "row",
             alignItems: "flex-end",
             gap: 12,
             paddingHorizontal: 20,
@@ -143,7 +143,7 @@ export default function Timeline() {
           </View>
 
           <View style={{ flex: 1, paddingBottom: 6 }}>
-            <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <Text style={{ color: "#fff", fontSize: 14, fontWeight: "600" }}>{me.name}</Text>
               {me.isPlus ? <StarIcon size={12} color={colors.clay} /> : null}
               {me.tag ? (
@@ -178,7 +178,7 @@ export default function Timeline() {
         <View
           style={{
             position: "absolute",
-            insetInlineEnd: SPINE_X,
+            insetInlineStart: SPINE_X,
             bottom: 0,
             width: 1,
             height: 10,
@@ -210,7 +210,7 @@ export default function Timeline() {
           if (feed.hasNextPage && !feed.isFetchingNextPage) void feed.fetchNextPage();
         }}
         renderSectionHeader={({ section }) => (
-          <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 12, paddingVertical: 16 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 16 }}>
             <View style={{ width: SPINE_W, alignItems: "center" }}>
               <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.line }} />
             </View>
@@ -307,7 +307,7 @@ function LensHead({
   if (friend) {
     return (
       <View style={{ marginTop: 14, borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, padding: 16, alignItems: "center" }}>
-        <View style={{ flexDirection: "row-reverse", alignItems: "center", marginBottom: 8 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
           <Avatar name={me.name} size={44} mediaId={me.avatarMediaId} />
           <View style={{ marginRight: -12 }}>
             <Avatar
@@ -361,7 +361,7 @@ function LensHead({
             key={person.id}
             onPress={() => onPick(person.id)}
             style={{
-              flexDirection: "row-reverse",
+              flexDirection: "row",
               alignItems: "center",
               gap: 12,
               padding: 12,

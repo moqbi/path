@@ -49,6 +49,7 @@ export default function EditProfile() {
   const [city, setCity] = useState(me?.city ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [pictureError, setPictureError] = useState<string | null>(null);
 
   if (!me) return null;
 
@@ -106,14 +107,14 @@ export default function EditProfile() {
             }}
           />
 
-          <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 16, paddingHorizontal: 20, paddingTop: 16 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 16, paddingHorizontal: 20, paddingTop: 16 }}>
             <AvatarEditor
               name={me.name}
               size={72}
               mediaId={me.avatarMediaId}
               frameSpec={me.frame?.spec ?? null}
               charm={me.charm}
-              isPlus={me.isPlus}
+              onError={setPictureError}
               onChanged={async () => {
                 await refresh();
                 await client.invalidateQueries({ queryKey: keys.me });
@@ -121,12 +122,23 @@ export default function EditProfile() {
             />
 
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={{ color: colors.ink, fontSize: 12.5, fontWeight: "600", textAlign: "right" }}>
+              <Text style={{ color: colors.ink, fontSize: 12.5, fontWeight: "600" }}>
                 صورة العرض
               </Text>
-              <Text style={{ color: colors.muted, fontSize: 11.5, lineHeight: 19, marginTop: 2, textAlign: "right" }}>
+              <Text style={{ color: colors.muted, fontSize: 11.5, lineHeight: 19, marginTop: 2 }}>
                 اضغط الكاميرا على حافة صورتك لتغييرها.
               </Text>
+
+              {/* الشرط والخطأ هنا لا تحت الصورة: تحتها يركبان على النموذج. */}
+              {pictureError ? (
+                <Text accessibilityRole="alert" style={{ color: colors.live, fontSize: 11, lineHeight: 18, marginTop: 4 }}>
+                  {pictureError}
+                </Text>
+              ) : me.isPlus ? (
+                <Text style={{ color: colors.faint, fontSize: 11, lineHeight: 18, marginTop: 4 }}>
+                  صورة متحركة؟ {ANIMATED_RULE}
+                </Text>
+              ) : null}
             </View>
           </View>
 
@@ -136,7 +148,7 @@ export default function EditProfile() {
             </Field>
 
             <Field label="المعرّف">
-              <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                 <Text style={{ color: colors.muted, fontSize: 15 }}>@</Text>
                 <TextInput
                   value={handle}
@@ -146,7 +158,7 @@ export default function EditProfile() {
                   autoCorrect={false}
                   placeholder="mohammed"
                   placeholderTextColor={colors.faint}
-                  style={[INPUT, { flex: 1, textAlign: "left" }]}
+                  style={[INPUT, { flex: 1, minWidth: 0, textAlign: "left" }]}
                 />
               </View>
               <Text style={{ color: colors.muted, fontSize: 11, marginTop: 4, textAlign: "right" }}>
@@ -331,7 +343,7 @@ function CoverEditor({
             </Text>
 
             {/* أسفل اليسار: الوسط تحجبه صورة العرض فلا يُضغط. */}
-            <View style={{ position: "absolute", bottom: 12, left: 12, flexDirection: "row-reverse", gap: 8 }}>
+            <View style={{ position: "absolute", bottom: 12, left: 12, flexDirection: "row", gap: 8 }}>
               <Chip onPress={savePosition} bright icon={<CheckIcon size={14} color={colors.onBrand} />}>
                 احفظ الموضع
               </Chip>
@@ -347,7 +359,7 @@ function CoverEditor({
             </View>
           </>
         ) : (
-          <View style={{ position: "absolute", top: 14, right: 14, flexDirection: "row-reverse", gap: 8 }}>
+          <View style={{ position: "absolute", top: 14, right: 14, flexDirection: "row", gap: 8 }}>
             <Chip onPress={pick} icon={<CameraIcon size={14} color="#f7f5ef" />}>
               الغلاف
             </Chip>
@@ -400,7 +412,7 @@ function Chip({
       accessibilityRole="button"
       accessibilityLabel={label}
       style={{
-        flexDirection: "row-reverse",
+        flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
         gap: 6,
@@ -436,7 +448,7 @@ function AvatarEditor({
   mediaId,
   frameSpec,
   charm,
-  isPlus,
+  onError,
   onChanged,
 }: {
   name: string;
@@ -444,11 +456,12 @@ function AvatarEditor({
   mediaId: string | null;
   frameSpec: string | null;
   charm?: { spec: string; mediaId: string | null } | null;
-  isPlus: boolean;
+  /** الخطأ يُرفع إلى عمود الوصف — تحت الصورة يركب على النموذج. */
+  onError: (message: string | null) => void;
   onChanged: () => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const setError = onError;
 
   async function pick() {
     setError(null);
@@ -505,23 +518,6 @@ function AvatarEditor({
         </Pressable>
       </View>
 
-      {isPlus || error ? (
-        <Text
-          accessibilityRole={error ? "alert" : undefined}
-          style={{
-            position: "absolute",
-            top: size + 10,
-            left: -((190 - size) / 2),
-            width: 190,
-            textAlign: "center",
-            fontSize: 10.5,
-            lineHeight: 17,
-            color: error ? colors.live : colors.faint,
-          }}
-        >
-          {error ?? `صورة متحركة؟ ${ANIMATED_RULE}`}
-        </Text>
-      ) : null}
     </View>
   );
 }

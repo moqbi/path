@@ -20,7 +20,7 @@ export function StoryStrip({ rings, meId }: { rings: StoryRing[]; meId: string }
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ flexDirection: "row-reverse", gap: 14, paddingHorizontal: 20, paddingVertical: 12 }}
+      contentContainerStyle={{ flexDirection: "row", gap: 14, paddingHorizontal: 20, paddingVertical: 12 }}
     >
       <View style={{ width: 68, alignItems: "center", gap: 6 }}>
         <Pressable

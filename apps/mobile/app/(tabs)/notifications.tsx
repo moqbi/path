@@ -47,7 +47,7 @@ export default function Notifications() {
           return (
             <Pressable
               onPress={() => target && router.push(target as never)}
-              style={{ flexDirection: "row-reverse", alignItems: "center", gap: 11, paddingHorizontal: 16, paddingVertical: 11 }}
+              style={{ flexDirection: "row", alignItems: "center", gap: 11, paddingHorizontal: 16, paddingVertical: 11 }}
             >
               <Avatar name={item.person.name} size={38} mediaId={item.person.avatarMediaId} />
               <View style={{ flex: 1 }}>

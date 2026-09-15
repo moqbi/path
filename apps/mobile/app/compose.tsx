@@ -267,6 +267,9 @@ export default function Compose() {
                   lineHeight: 23,
                   color: colors.ink,
                   textAlignVertical: "top",
+                  // النصّ عربيّ فيبدأ من اليمين: `textarea` على الويب لا
+                  // يتبع اتجاه المستند وحده.
+                  textAlign: "right",
                 }}
               />
               {/* العدّاد يظهر حين يقترب الحدّ: قبل ذلك رقمٌ لا يفيد. */}
@@ -292,14 +295,14 @@ export default function Compose() {
           {kind === "MUSIC" ? null : !wantPlace ? (
             <Pressable
               onPress={() => setWantPlace(true)}
-              style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8, alignSelf: "flex-start", minHeight: 44, paddingHorizontal: 16, marginTop: 16, borderRadius: 999, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
+              style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start", minHeight: 44, paddingHorizontal: 16, marginTop: 16, borderRadius: 999, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
             >
               <PinIcon size={15} color={colors.ink2} />
               <Text style={{ color: colors.ink2, fontSize: 13, fontWeight: "600" }}>أضف موقعك</Text>
             </Pressable>
           ) : (
             <View style={{ marginTop: 16, borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, overflow: "hidden" }}>
-              <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 12, padding: 16 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 16 }}>
                 <View style={{ width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.liveSoft }}>
                   <PinIcon size={20} color={colors.live} />
                 </View>
@@ -338,7 +341,7 @@ export default function Compose() {
           {/* «مع مين؟» زرٌّ يفتح القائمة، لا جدارُ أسماء. */}
           {friends.length > 0 && kind !== "MUSIC" ? (
             <View style={{ marginTop: 20 }}>
-              <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
                 <WithIcon size={14} color={colors.faint} />
                 <Text style={{ color: colors.faint, fontSize: 11.5, fontWeight: "600" }}>مع مين؟</Text>
               </View>
@@ -352,12 +355,12 @@ export default function Compose() {
 
           {/* من يراها: الاختيار هنا يسبق النشر لأن الخصوصية لا تُصلَّح بعده. */}
           <View style={{ marginTop: 20 }}>
-            <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
               <LockIcon size={14} color={colors.faint} />
               <Text style={{ color: colors.faint, fontSize: 11.5, fontWeight: "600" }}>مين يشوفها؟</Text>
             </View>
 
-            <View style={{ flexDirection: "row-reverse", flexWrap: "wrap", gap: 8 }}>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               {[
                 { id: "CIRCLE", label: "كل أصدقائي" },
                 ...groups.map((g) => ({ id: g.id, label: g.name })),
@@ -400,7 +403,7 @@ export default function Compose() {
         </ScrollView>
 
         <View style={{ paddingHorizontal: 20, paddingBottom: 26, paddingTop: 6 }}>
-          <View style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 }}>
             <LockIcon size={14} color={colors.faint} />
             <Text style={{ color: colors.faint, fontSize: 11.5 }}>
               {audience === "CIRCLE"

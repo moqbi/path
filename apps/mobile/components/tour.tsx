@@ -141,7 +141,7 @@ export function Tour() {
             </Text>
           </Animated.View>
 
-          <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6, marginBottom: 20 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 20 }}>
             {STEPS.map((_, index) => (
               <Pressable
                 key={index}
@@ -157,7 +157,14 @@ export function Tour() {
             ))}
           </View>
 
-          <View style={{ flexDirection: "row-reverse", gap: 10, alignSelf: "stretch" }}>
+          <View style={{ flexDirection: "row", gap: 10, alignSelf: "stretch" }}>
+            <Pressable
+              onPress={() => void close()}
+              style={{ height: 50, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: colors.line, alignItems: "center", justifyContent: "center" }}
+            >
+              <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "600" }}>تخطّى</Text>
+            </Pressable>
+
             <Pressable
               onPress={() => (last ? void close() : go(step + 1, step))}
               style={{ flex: 1 }}
@@ -172,13 +179,6 @@ export function Tour() {
                   {last ? "ابدأ" : "التالي"}
                 </Text>
               </LinearGradient>
-            </Pressable>
-
-            <Pressable
-              onPress={() => void close()}
-              style={{ height: 50, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: colors.line, alignItems: "center", justifyContent: "center" }}
-            >
-              <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "600" }}>تخطّى</Text>
             </Pressable>
           </View>
         </View>

@@ -25,7 +25,7 @@ export function Reactors({
   if (reactions.length === 0) return null;
 
   return (
-    <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 10, paddingTop: 4 }}>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingTop: 4 }}>
       {reactions.slice(0, 6).map((reaction) => (
         <Pressable
           key={reaction.userId}
@@ -82,7 +82,7 @@ export function CommentList({
   return (
     <View style={{ gap: 8 }}>
       {comments.map((comment) => (
-        <View key={comment.id} style={{ flexDirection: "row-reverse", alignItems: "flex-start", gap: 8 }}>
+        <View key={comment.id} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
           <Pressable
             onPress={() =>
               router.push((comment.user.id === viewerId ? "/me" : `/u/${comment.user.id}`) as never)
@@ -92,7 +92,7 @@ export function CommentList({
           </Pressable>
 
           <View style={{ flex: 1, paddingTop: 1 }}>
-            <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6, marginBottom: 2 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 }}>
               <Text style={{ color: colors.ink, fontSize: 12, fontWeight: "600" }}>
                 {comment.user.name}
               </Text>

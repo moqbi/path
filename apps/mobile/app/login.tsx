@@ -230,7 +230,8 @@ export default function Login() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
       >
-        <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 64, paddingBottom: 40 }}>
+        {/* المقدّمة مرفوعةٌ من السياق، والخيارات في الأسفل فوق حشوة ٤٠. */}
+        <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 64, paddingBottom: 40, justifyContent: "flex-end" }}>
           {/* المقدّمة: تدخل من الأعلى ثم تغادر إلى الأعلى. */}
           <Animated.View
             pointerEvents="none"
@@ -286,11 +287,10 @@ export default function Login() {
                   onPress={() => setShowEmail(false)}
                   style={{
                     marginBottom: 4,
-                    // «البداية» في واجهةٍ عربية هي اليمين. والاتجاه يُكتب
-                    // صريحاً هنا كما في بقية الشاشات: `I18nManager` لا
-                    // يُقلب الصفوف في هذا التطبيق.
-                    alignSelf: "flex-end",
-                    flexDirection: "row-reverse",
+                    // «البداية» في واجهةٍ عربية هي اليمين، والشجرة كلها
+                    // `rtl` فتكفي `flex-start`.
+                    alignSelf: "flex-start",
+                    flexDirection: "row",
                     alignItems: "center",
                     gap: 6,
                   }}
@@ -340,7 +340,7 @@ export default function Login() {
               </View>
             ) : (
               <View style={{ gap: 10 }}>
-                <View style={{ flexDirection: "row-reverse", gap: 10 }}>
+                <View style={{ flexDirection: "row", gap: 10 }}>
                   {PROVIDERS.map((provider) => (
                     <Pressable
                       key={provider.key}

@@ -110,7 +110,7 @@ function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }
         position: "absolute",
         width: badge,
         height: badge,
-        insetInlineStart: -badge * 0.22,
+        left: -badge * 0.22,
         bottom: -badge * 0.18,
         alignItems: "center",
         justifyContent: "center",

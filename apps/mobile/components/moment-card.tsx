@@ -134,7 +134,7 @@ export function MomentCard({
     const { title, subtitle } = eventText(moment, withNames);
 
     const line = (
-      <Pressable onPress={open} style={{ flexDirection: "row-reverse", gap: 10 }}>
+      <Pressable onPress={open} style={{ flexDirection: "row", gap: 10 }}>
         <EventIcon kind={moment.kind} />
         <View style={{ flex: 1, paddingTop: 2 }}>
           <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600", lineHeight: 21 }}>
@@ -146,7 +146,7 @@ export function MomentCard({
             </Text>
           ) : null}
           {withNames.length > 0 && moment.kind !== "GIFT_SENT" && moment.kind !== "GIFT_GOT" ? (
-            <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 5, marginTop: 2 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 }}>
               <WithIcon size={12} color={colors.ink2} />
               <Text style={{ color: colors.ink2, fontSize: 11.5, fontWeight: "500" }}>
                 مع {withNames.join(" و")}
@@ -158,7 +158,7 @@ export function MomentCard({
     );
 
     return (
-      <View style={{ flexDirection: "row-reverse", alignItems: "flex-start", gap: 8, paddingBottom: 20 }}>
+      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, paddingBottom: 20 }}>
         {spine}
         <View style={{ flex: 1 }}>
           <MomentBar
@@ -202,14 +202,14 @@ export function MomentCard({
 
         {/* الموقع على لحظةٍ أو صورة: سطرٌ صغير، لا حدثُ مكانٍ مستقل. */}
         {moment.placeName ? (
-          <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 5, marginBottom: 8 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 8 }}>
             <PinIcon size={12} color={colors.muted} />
             <Text style={{ color: colors.muted, fontSize: 12 }}>{moment.placeName}</Text>
           </View>
         ) : null}
 
         {withNames.length > 0 ? (
-          <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 5 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
             <WithIcon size={13} color={colors.muted} />
             <Text style={{ color: colors.muted, fontSize: 12 }}>مع {withNames.join(" و")}</Text>
           </View>
@@ -219,7 +219,7 @@ export function MomentCard({
   );
 
   return (
-    <View style={{ flexDirection: "row-reverse", alignItems: "flex-start", gap: 8, paddingBottom: 20 }}>
+    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, paddingBottom: 20 }}>
       {spine}
 
       <View

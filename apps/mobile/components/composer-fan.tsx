@@ -87,14 +87,16 @@ export function ComposerFan() {
       </Animated.View>
 
       <View
-        style={{ position: "absolute", insetInlineStart: 20, bottom: 86, width: SIZE, height: SIZE }}
+        // الزرّ على اليمين كما في الويب، والأصناف تطير يساراً — وزواياه
+        // محسوبةٌ على ذلك (القاعدة ٨).
+        style={{ position: "absolute", right: 20, bottom: 86, width: SIZE, height: SIZE }}
         pointerEvents="box-none"
       >
         {items.map((item, index) => {
           // الأوّل في الأعلى والأخير في الأسفل، وما بينهما بالتساوي.
           const angle = TOP - ((TOP - BOTTOM) * index) / (items.length - 1);
           const radians = (angle * Math.PI) / 180;
-          const x = Math.cos(radians) * RADIUS;
+          const x = -Math.cos(radians) * RADIUS;
           const y = -Math.sin(radians) * RADIUS;
 
           return (

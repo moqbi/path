@@ -102,7 +102,7 @@ export default function Profile() {
                   frame={who.frame}
                   charmItem={who.charm}
                 />
-                <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6, marginTop: 8 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 }}>
                   <Text style={{ color: colors.ink, fontSize: 17, fontWeight: "700" }}>{who.name}</Text>
                   {who.isPlus ? <StarIcon size={14} color={colors.clay} /> : null}
                 </View>

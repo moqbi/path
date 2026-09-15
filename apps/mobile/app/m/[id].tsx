@@ -63,7 +63,7 @@ export default function MomentPage() {
 
         <View style={line} />
 
-        <View style={{ flexDirection: "row-reverse", gap: 8, padding: 14 }}>
+        <View style={{ flexDirection: "row", gap: 8, padding: 14 }}>
           {FACES.map((face) => (
             <Pressable
               key={face.kind}
@@ -94,7 +94,7 @@ export default function MomentPage() {
 
         <View style={{ padding: 14, gap: 12 }}>
           {data.comments.map((item) => (
-            <View key={item.id} style={{ flexDirection: "row-reverse", gap: 9 }}>
+            <View key={item.id} style={{ flexDirection: "row", gap: 9 }}>
               <Avatar name={item.user.name} size={32} mediaId={item.user.avatarMediaId} />
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.ink, fontSize: 13, fontWeight: "600" }}>
@@ -113,7 +113,7 @@ export default function MomentPage() {
           ) : null}
         </View>
 
-        <View style={{ flexDirection: "row-reverse", gap: 8, paddingHorizontal: 14 }}>
+        <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 14 }}>
           <TextInput
             value={body}
             onChangeText={setBody}
@@ -121,10 +121,12 @@ export default function MomentPage() {
             placeholderTextColor={colors.faint}
             style={{
               flex: 1,
+              minWidth: 0,
               height: 46,
               borderRadius: 12,
               paddingHorizontal: 14,
               fontSize: 13.5,
+              textAlign: "right",
               color: colors.ink,
               backgroundColor: colors.card,
               borderWidth: 1,

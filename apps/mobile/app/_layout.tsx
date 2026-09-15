@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { I18nManager, View, ActivityIndicator } from "react-native";
+import { I18nManager, Platform, View, ActivityIndicator } from "react-native";
 import { Slot, useRouter, useSegments } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -8,13 +8,31 @@ import { primeAccess } from "../lib/api";
 import { colors } from "../theme/tokens";
 
 /**
- * العربية من اليمين — قراراً لا إعداداً.
+ * العربية من اليمين — قراراً لا إعداداً، وفي البيئات الثلاث معاً.
  *
  * أثر عربيّ الواجهة كلها، فالاتجاه يُفرض ولا يُترك للغة الجهاز: من
  * جهازُه بالإنجليزية يفتح تطبيقاً عربياً، لا تطبيقاً عربياً مقلوباً.
+ *
+ * وثلاثة أبواب لا باب واحد:
+ * - `I18nManager` للجهاز، ويحتاج إعادة تشغيلٍ أولى لتُقلب الشاشة.
+ * - `direction: "rtl"` على جذر الشجرة: يقلبها فوراً بلا انتظار إعادة
+ *   التشغيل، وهو ما يقرؤه Yoga في الترتيب.
+ * - `dir="rtl"` على المستند في معاينة الويب: `I18nManager` هناك قشرةٌ
+ *   فارغة (`isRTL` ثابتٌ على false في react-native-web)، فبدونها تُرسم
+ *   المعاينة يساراً-يميناً بينما الجهاز يمينٌ-يسار — وهذا ما كان يجعل
+ *   كل صفٍّ يُكتب معكوساً (`row-reverse`) ليبدو صحيحاً في المعاينة
+ *   وينقلب على الجهاز.
+ * وشريط التبويبات يتبع هذه الأبواب نفسها: أصنافه في حاويةٍ داخلية
+ * (`flexDirection: row`) لا نملك نمطها، فلا يُقلب بنمطٍ نمرّره — يُقلب
+ * باتجاه المستند على الويب وبـ`I18nManager` على الجهاز.
  */
 I18nManager.allowRTL(true);
 I18nManager.forceRTL(true);
+
+if (Platform.OS === "web" && typeof document !== "undefined") {
+  document.documentElement.dir = "rtl";
+  document.documentElement.lang = "ar";
+}
 
 const client = new QueryClient({
   defaultOptions: {
@@ -60,7 +78,9 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={client}>
-        <Gate />
+        <View style={{ flex: 1, direction: "rtl" }}>
+          <Gate />
+        </View>
       </QueryClientProvider>
     </SafeAreaProvider>
   );

@@ -100,7 +100,7 @@ export function SwipeRow({
         <Pressable
           disabled={busy}
           onPress={() => fire(onDelete)}
-          style={{ flex: 1, flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 8, backgroundColor: colors.live, opacity: busy ? 0.6 : 1 }}
+          style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 8, backgroundColor: colors.live, opacity: busy ? 0.6 : 1 }}
         >
           <CloseIcon size={16} color="#fff" />
           <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>{confirmLabel}</Text>

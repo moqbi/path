@@ -125,7 +125,7 @@ export default function Me() {
       {/* الرأس: العلامة، ففاصل، فاسم الشاشة — والمشاركة في الطرف المقابل. */}
       <View
         style={{
-          flexDirection: "row-reverse",
+          flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
           paddingHorizontal: 20,
@@ -134,7 +134,7 @@ export default function Me() {
           backgroundColor: colors.chrome,
         }}
       >
-        <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 10 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           <AthrMark size={24} />
           <View style={{ width: 1, height: 18, backgroundColor: colors.chromeLine }} />
           <Text style={{ color: colors.chromeInk, fontSize: 16, fontWeight: "700" }}>
@@ -184,7 +184,7 @@ export default function Me() {
                 charmItem={me.charm}
               />
 
-              <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8, marginTop: 10 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 }}>
                 <Text style={{ color: colors.ink, fontSize: 20, fontWeight: "600" }}>{me.name}</Text>
                 {me.isPlus ? <StarIcon size={14} color={colors.clay} /> : null}
                 {me.tag ? (
@@ -210,7 +210,7 @@ export default function Me() {
               </Text>
 
               {/* أربعة أرقام بأيقوناتها. */}
-              <View style={{ flexDirection: "row-reverse", alignItems: "stretch", maxWidth: 330, width: "100%", marginTop: 14, marginBottom: 6 }}>
+              <View style={{ flexDirection: "row", alignItems: "stretch", maxWidth: 330, width: "100%", marginTop: 14, marginBottom: 6 }}>
                 <Stat first icon={<BookIcon size={14} color={colors.ink2} />} value={ar(s?.moments ?? 0)} label="لحظة" />
                 <Stat first={false} icon={<WithIcon size={14} color={colors.ink2} />} value={ar(s?.friends ?? 0)} label="صديق" />
                 <Stat first={false} icon={<GiftIcon size={14} color={colors.ink2} />} value={ar(s?.sent ?? 0)} label="أهديت" />
@@ -218,7 +218,7 @@ export default function Me() {
               </View>
             </View>
 
-            <View style={{ flexDirection: "row-reverse", gap: 10, paddingHorizontal: 20, marginTop: 10, marginBottom: 18 }}>
+            <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: 20, marginTop: 10, marginBottom: 18 }}>
               <Action grow label="تعديل الملف" onPress={() => router.push("/me/edit" as never)} />
               <Action grow label="إكسسواراتي" onPress={() => router.push("/me/accessories" as never)} />
               <Action label="الخصوصية" icon={<GearIcon size={18} color={colors.ink2} />} onPress={() => router.push("/settings/privacy" as never)} />
@@ -238,14 +238,14 @@ export default function Me() {
               />
             </View>
 
-            <View style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 4 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 4 }}>
               <Text style={{ color: colors.ink, fontSize: 15, fontWeight: "700" }}>لحظاتي</Text>
               <Text style={{ color: colors.muted, fontSize: 12 }}>{ar(s?.moments ?? 0)}</Text>
             </View>
           </>
         }
         renderSectionHeader={({ section }) => (
-          <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 12, paddingHorizontal: 20, paddingVertical: 16 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20, paddingVertical: 16 }}>
             <View style={{ width: SPINE_W, alignItems: "center" }}>
               <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.line }} />
             </View>

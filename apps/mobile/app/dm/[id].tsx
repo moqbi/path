@@ -66,7 +66,7 @@ function Voice({ mediaId, seconds, mine }: { mediaId: string; seconds: number; m
     <Pressable
       onPress={toggle}
       style={{
-        flexDirection: "row-reverse",
+        flexDirection: "row",
         alignItems: "center",
         gap: 10,
         maxWidth: "78%",
@@ -253,13 +253,13 @@ export default function Conversation() {
             return (
               <View style={{ alignItems: mine ? "flex-start" : "flex-end" }}>
                 {open ? (
-                  <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8, width: "86%" }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, width: "86%" }}>
                     <TextInput
                       value={draft}
                       onChangeText={setDraft}
                       maxLength={2000}
                       accessibilityLabel="تعديل الرسالة"
-                      style={{ flex: 1, height: 40, borderRadius: 16, borderWidth: 1, borderColor: colors.clay, backgroundColor: colors.card, paddingHorizontal: 14, fontSize: 13.5, color: colors.ink }}
+                      style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 16, borderWidth: 1, borderColor: colors.clay, backgroundColor: colors.card, paddingHorizontal: 14, fontSize: 13.5, color: colors.ink }}
                     />
                     <Pressable
                       onPress={() => edit.mutate({ messageId: item.id, body: draft })}
@@ -294,7 +294,7 @@ export default function Conversation() {
                   </Pressable>
                 )}
 
-                <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 5, marginTop: 3 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 }}>
                   <Text style={{ color: colors.faint, fontSize: 10 }}>
                     {timeOfDay(new Date(item.createdAt))}
                   </Text>
@@ -329,7 +329,7 @@ export default function Conversation() {
           ) : null}
 
           {taping ? (
-            <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 12, height: 48, borderRadius: 999, borderWidth: 1, borderColor: colors.live, backgroundColor: colors.liveSoft, paddingHorizontal: 16 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12, height: 48, borderRadius: 999, borderWidth: 1, borderColor: colors.live, backgroundColor: colors.liveSoft, paddingHorizontal: 16 }}>
               <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.live }} />
               <Text style={{ flex: 1, color: colors.live, fontSize: 13, fontWeight: "600" }}>
                 {clock(seconds)} / {clock(maxSeconds)}
@@ -349,14 +349,14 @@ export default function Conversation() {
               </Pressable>
             </View>
           ) : (
-            <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <TextInput
                 value={body}
                 onChangeText={setBody}
                 placeholder="اكتب رسالة…"
                 placeholderTextColor={colors.faint}
                 maxLength={2000}
-                style={{ flex: 1, height: 48, borderRadius: 999, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, paddingHorizontal: 20, fontSize: 13.5, color: colors.ink }}
+                style={{ flex: 1, minWidth: 0, height: 48, borderRadius: 999, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, paddingHorizontal: 20, fontSize: 13.5, textAlign: "right", color: colors.ink }}
               />
 
               <Pressable

@@ -70,7 +70,7 @@ export default function Subscribe() {
       <ScreenHeader title="أثر+" back="/" />
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 30 }}>
-        <View style={{ alignSelf: "flex-start", flexDirection: "row-reverse", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: colors.goldSoft, marginBottom: 16 }}>
+        <View style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: colors.goldSoft, marginBottom: 16 }}>
           <SparkIcon size={14} color={colors.gold} />
           <Text style={{ color: colors.goldInk, fontSize: 12, fontWeight: "700" }}>ATHR+</Text>
         </View>
@@ -84,7 +84,7 @@ export default function Subscribe() {
         </Text>
 
         {PERKS.map((perk) => (
-          <View key={perk.title} style={{ flexDirection: "row-reverse", gap: 14, marginBottom: 18 }}>
+          <View key={perk.title} style={{ flexDirection: "row", gap: 14, marginBottom: 18 }}>
             <View style={{ width: 36, height: 36, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.goldSoft }}>
               {perk.icon}
             </View>
@@ -115,7 +115,7 @@ export default function Subscribe() {
             </Pressable>
           </View>
         ) : (
-          <View style={{ flexDirection: "row-reverse", gap: 10, paddingTop: 8 }}>
+          <View style={{ flexDirection: "row", gap: 10, paddingTop: 8 }}>
             <Pressable
               onPress={() => act.mutate("MONTHLY")}
               disabled={act.isPending}

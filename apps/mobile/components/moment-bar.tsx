@@ -101,7 +101,7 @@ export function MomentBar({
       {/* الزرّ في الطرف الأيسر من المنشور — كما في الويب. */}
       <View
         style={{
-          flexDirection: "row-reverse",
+          flexDirection: "row",
           alignItems: head ? "flex-start" : "center",
           justifyContent: head ? "flex-start" : "flex-end",
           gap: head ? 8 : 0,
@@ -118,7 +118,7 @@ export function MomentBar({
 
       {open ? (
         <View style={{ marginTop: 8, gap: 8, paddingHorizontal: inset ? 12 : 0 }}>
-          <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 2 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
             {faces.map((kind) => (
               <Pressable
                 key={kind}
@@ -168,7 +168,7 @@ export function MomentBar({
           {board ? (
             <ScrollView
               style={{ maxHeight: 168, borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
-              contentContainerStyle={{ flexDirection: "row-reverse", flexWrap: "wrap", padding: 6 }}
+              contentContainerStyle={{ flexDirection: "row", flexWrap: "wrap", padding: 6 }}
             >
               {CUSTOM.map((emoji) => (
                 <Pressable
@@ -183,7 +183,7 @@ export function MomentBar({
           ) : null}
 
           {author ? (
-            <View style={{ flexDirection: "row-reverse", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
               {asking ? (
                 <>
                   <Pressable
@@ -209,7 +209,7 @@ export function MomentBar({
             </View>
           ) : null}
 
-          <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <TextInput
               value={body}
               onChangeText={setBody}

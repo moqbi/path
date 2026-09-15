@@ -110,7 +110,7 @@ export default function Support() {
             <View style={{ gap: 10 }}>
               {rows.map((ticket) => (
                 <View key={ticket.id} style={{ borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, padding: 16 }}>
-                  <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
                     <View
                       style={{
                         borderRadius: 999,
@@ -148,7 +148,7 @@ export default function Support() {
           </>
         ) : null}
 
-        <View style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 24 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 24 }}>
           <InfoIcon size={13} color={colors.faint} />
           <Text style={{ color: colors.faint, fontSize: 11 }}>
             نقرأ كل رسالة · الردّ خلال يوم عمل

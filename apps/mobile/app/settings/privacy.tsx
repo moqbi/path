@@ -149,14 +149,14 @@ export default function Privacy() {
           التصنيف لك وحدك: من صنّفته «عائلة» لا يرى تصنيفك ولا يراه غيرك.
         </Text>
 
-        <View style={{ flexDirection: "row-reverse", gap: 8, marginBottom: 12 }}>
+        <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
           <TextInput
             value={name}
             onChangeText={setName}
             maxLength={20}
             placeholder="اسم التصنيف (العائلة، الزملاء…)"
             placeholderTextColor={colors.faint}
-            style={{ flex: 1, height: 44, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, paddingHorizontal: 14, fontSize: 13, color: colors.ink, textAlign: "right" }}
+            style={{ flex: 1, minWidth: 0, height: 44, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, paddingHorizontal: 14, fontSize: 13, color: colors.ink, textAlign: "right" }}
           />
           <Pressable
             onPress={() => name.trim() && add.mutate(name.trim())}
@@ -177,7 +177,7 @@ export default function Privacy() {
             {groups.map((group) => (
               <View
                 key={group.id}
-                style={{ flexDirection: "row-reverse", alignItems: "center", gap: 12, borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, padding: 12 }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, padding: 12 }}
               >
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600", textAlign: "right" }}>
@@ -224,7 +224,7 @@ export default function Privacy() {
         {/* حذف الحساب في الخصوصية: هنا يُبحث عنه، لا في أسفل الملف. */}
         <DeleteAccount />
 
-        <View style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16 }}>
           <ShieldIcon size={15} color={colors.muted} />
           <Text style={{ color: colors.muted, fontSize: 11.5 }}>
             ما يُنشر لأصدقائك لا يخرج عنهم.
@@ -278,7 +278,7 @@ function Choices({
             key={row.id ?? "all"}
             onPress={() => onPick(row.id)}
             style={{
-              flexDirection: "row-reverse",
+              flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
               height: 44,
@@ -310,7 +310,7 @@ function Toggle({
   onChange: (next: boolean) => void;
 }) {
   return (
-    <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 12, padding: 16 }}>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 16 }}>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600", textAlign: "right" }}>
           {title}
@@ -343,7 +343,7 @@ function Link({
   return (
     <Pressable
       onPress={onPress}
-      style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", gap: 12, borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, padding: 16, marginBottom: 12 }}
+      style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, padding: 16, marginBottom: 12 }}
     >
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600", textAlign: "right" }}>
@@ -387,7 +387,7 @@ function ChangeEmail({ current }: { current: string }) {
     <View style={{ borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, marginBottom: 12, overflow: "hidden" }}>
       <Pressable
         onPress={() => setOpen((was) => !was)}
-        style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", padding: 16 }}
+        style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16 }}
       >
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600", textAlign: "right" }}>
@@ -482,7 +482,7 @@ function DeleteAccount() {
     <View style={{ borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, marginBottom: 20, overflow: "hidden" }}>
       <Pressable
         onPress={() => setOpen((was) => !was)}
-        style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", padding: 16 }}
+        style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16 }}
       >
         <Text style={{ color: colors.live, fontSize: 13.5, fontWeight: "600" }}>حذف الحساب</Text>
         <Text style={{ color: colors.muted, fontSize: 11.5 }}>نهائي</Text>

@@ -115,8 +115,14 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
                 : "translateY(-40px)",
             transition: "opacity 800ms ease, transform 900ms cubic-bezier(.3,0,.2,1)",
             pointerEvents: "none",
-            position: formVisible ? "absolute" : "relative",
-            insetInline: formVisible ? 0 : undefined,
+            /*
+              المقدّمة مرفوعةٌ من السياق دائماً لا عند ظهور النموذج وحده:
+              رفعُها حينئذٍ كان يترك النموذج وحيداً في حاوية
+              `justify-between` فيقفز إلى أعلى الشاشة — وموضعه أسفلها،
+              فوق حشوة `pb-10`.
+            */
+            position: "absolute",
+            insetInline: 0,
           }}
         >
           <AthrMark size={76} />
@@ -140,6 +146,7 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
 
         {/* خيارات الدخول: تدخل من الأسفل بعد مغادرة المقدّمة. */}
         <div
+          className="mt-auto"
           style={{
             opacity: formVisible ? 1 : 0,
             transform: formVisible ? "translateY(0)" : "translateY(26px)",

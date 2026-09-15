@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { setAvatar } from "@/app/actions";
-import { ANIMATED, ImagePicker } from "@/components/image-picker";
+import { ImagePicker } from "@/components/image-picker";
 import { Avatar } from "@/components/ui";
 import { CameraIcon } from "@/components/icons";
 
@@ -18,6 +17,7 @@ export function ProfileImages({
   charm,
   isPlus = false,
   size = 84,
+  onError,
 }: {
   name: string;
   frameSpec: string | null;
@@ -26,9 +26,14 @@ export function ProfileImages({
   /** المشترك يرفع صورةً متحركة كما هي. */
   isPlus?: boolean;
   size?: number;
-}) {
-  const [error, setError] = useState<string | null>(null);
+  /*
+    الخطأ يُرفع إلى من يعرف أين يضعه.
 
+    كان يُرسم تحت الصورة بعرض ١٩٠ بكسلاً مرفوعاً من السياق، فيركب على
+    عنوان أوّل حقلٍ في النموذج. ومكانه الطبيعي عمود الوصف بجانب الصورة.
+  */
+  onError?: (message: string | null) => void;
+}) {
   return (
     <div className="relative shrink-0">
       <Avatar name={name} size={size} frameSpec={frameSpec} mediaId={avatarMediaId} charm={charm} />
@@ -39,7 +44,7 @@ export function ProfileImages({
           label="غيّر صورتك"
           maxSize={512}
           animated={isPlus}
-          onError={setError}
+          onError={(message) => onError?.(message)}
           onPicked={(file, width, height) => {
             const data = new FormData();
             data.set("image", file);
@@ -58,19 +63,7 @@ export function ProfileImages({
         </ImagePicker>
       </div>
 
-      {/*
-        الشرط والخطأ تحت الصورة لا تحت الزرّ: الزرّ قرصٌ بحجم ٣٦ بكسلاً
-        ملتصقٌ بحافتها، ورسالةٌ تحته لا تُرى.
-      */}
-      {isPlus || error ? (
-        <p
-          className="absolute right-1/2 top-full w-[190px] translate-x-1/2 pt-2 text-center text-[10.5px] leading-relaxed"
-          style={{ color: error ? "var(--color-live)" : "var(--color-faint)" }}
-          role={error ? "alert" : undefined}
-        >
-          {error ?? `صورة متحركة؟ ${ANIMATED.rule}`}
-        </p>
-      ) : null}
+
     </div>
   );
 }

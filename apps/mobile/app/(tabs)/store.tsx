@@ -12,7 +12,7 @@ import { colors } from "../../theme/tokens";
 function Row({ title, flame = false, children }: { title: string; flame?: boolean; children: React.ReactNode }) {
   return (
     <View>
-      <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6, marginBottom: 10 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 }}>
         {flame ? <FlameIcon size={16} color={colors.live} /> : null}
         <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "700" }}>{title}</Text>
       </View>
@@ -50,7 +50,7 @@ export default function Store() {
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
       <View
         style={{
-          flexDirection: "row-reverse",
+          flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
           paddingHorizontal: 20,
@@ -59,13 +59,13 @@ export default function Store() {
           backgroundColor: colors.chrome,
         }}
       >
-        <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 10 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           <AthrMark size={24} />
           <View style={{ width: 1, height: 18, backgroundColor: colors.chromeLine }} />
           <Text style={{ color: colors.chromeInk, fontSize: 16, fontWeight: "700" }}>المتجر</Text>
         </View>
 
-        <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: colors.goldSoft, borderWidth: 1, borderColor: colors.goldLine }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: colors.goldSoft, borderWidth: 1, borderColor: colors.goldLine }}>
           <SparkIcon size={14} color={colors.gold} />
           <Text style={{ color: colors.goldInk, fontSize: 12.5, fontWeight: "600" }}>
             رصيدك {riyals(data?.credit ?? 0)}
@@ -75,7 +75,7 @@ export default function Store() {
 
       {/* شريط التصنيفات: «المميز» أولاً، ثم ما يضيفه المشرف. */}
       <View style={{ paddingTop: 12, paddingBottom: 4 }}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: "row-reverse", paddingHorizontal: 20, gap: 8 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: "row", paddingHorizontal: 20, gap: 8 }}>
           {[{ slug: "", name: "المميز" }, ...(data?.categories ?? [])].map((chip) => {
             const on = slug === chip.slug;
             return (
@@ -120,7 +120,7 @@ export default function Store() {
           )}
 
           {data && !data.isPlus ? (
-            <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 12, marginBottom: 20, borderRadius: 16, borderWidth: 1, borderColor: colors.goldLine, backgroundColor: colors.goldSoft, padding: 16 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 20, borderRadius: 16, borderWidth: 1, borderColor: colors.goldLine, backgroundColor: colors.goldSoft, padding: 16 }}>
               <View style={{ width: 36, height: 36, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: "#f0e4c8" }}>
                 <SparkIcon size={19} color={colors.gold} />
               </View>
@@ -130,7 +130,7 @@ export default function Store() {
             </View>
           ) : null}
 
-          <View style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 8, paddingBottom: 24 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingBottom: 24 }}>
             <InfoIcon size={13} color={colors.faint} />
             <Text style={{ color: colors.faint, fontSize: 11, textAlign: "center" }}>
               لا صناديق عشوائية · كل صنف بسعره الواضح

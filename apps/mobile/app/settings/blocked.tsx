@@ -61,7 +61,7 @@ export default function BlockedScreen() {
         renderItem={({ item, index }) => (
           <View
             style={{
-              flexDirection: "row-reverse",
+              flexDirection: "row",
               alignItems: "center",
               gap: 12,
               padding: 12,
