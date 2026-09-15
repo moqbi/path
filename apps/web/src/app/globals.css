@@ -351,3 +351,91 @@ h3 {
 .prose li {
   margin-bottom: 6px;
 }
+
+/* رأس الموقع وذيله داكنان كشريطَي التطبيق — العلامة تسكن الداكن. */
+.site-head {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--color-chrome);
+  color: var(--color-chrome-ink);
+  border-bottom: 1px solid var(--color-chrome-line);
+}
+
+.site-foot {
+  background: var(--color-chrome);
+  color: var(--color-chrome-ink);
+}
+
+/*
+ * الرأس لوحةٌ لا صورةَ خلفية: الرسم SVG تحته مباشرةً (`.hero > svg`)،
+ * والنصّ فوقه بطبقةٍ واحدة. وأدنى ارتفاعٍ بالـ`svh` لا `vh` حتى لا
+ * يقصّه شريط المتصفّح على الجوّال.
+ */
+.hero {
+  position: relative;
+  overflow: hidden;
+  min-height: 86svh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: var(--color-night);
+}
+
+.hero-inner {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 880px;
+  margin-inline: auto;
+  /* حشوةٌ سفلية تكفي ليعلو الزرّان حافّة الجبل ولا يجلسا على الجالسين. */
+  padding: 76px 20px 172px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.section-sub {
+  margin-top: 6px;
+  font-size: 13.5px;
+  color: var(--color-muted);
+}
+
+.feature-card {
+  border: 1px solid var(--color-line);
+  background: var(--color-card);
+  border-radius: 18px;
+  padding: 22px;
+}
+
+/* شريطٌ داكن يقطع الورق: ما فيه يُقرأ وحده لا مع ما حوله. */
+.band {
+  background: var(--color-chrome);
+}
+
+/*
+ * إطار الهاتف: نسبة ٩:١٩٫٥ كالجهاز، وحدٌّ داكنٌ سميك يفصل الشاشة عمّا
+ * تحتها. والمحتوى داخله مرسومٌ بعناصر الصفحة نفسها لا صورةً مرفوعة.
+ */
+.phone {
+  width: 190px;
+  aspect-ratio: 9 / 19.5;
+  border-radius: 26px;
+  padding: 6px;
+  background: #0e1a24;
+  box-shadow: 0 18px 40px rgba(14, 26, 36, 0.16);
+  overflow: hidden;
+}
+
+.phone > * {
+  height: 100%;
+  border-radius: 20px;
+  overflow: hidden;
+}

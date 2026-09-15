@@ -1,52 +1,109 @@
 import Link from "next/link";
 import { AthrMark } from "@/components/brand";
 
-const LINKS = [
-  { href: "/about", label: "عن أثر" },
-  { href: "/privacy", label: "الخصوصية" },
-  { href: "/terms", label: "الشروط" },
-  { href: "/contact", label: "تواصل معنا" },
-  { href: "/careers", label: "الوظائف" },
+const COLUMNS = [
+  {
+    title: "المنتج",
+    links: [
+      { href: "/#download", label: "حمّل التطبيق" },
+      { href: "/about", label: "عن أثر" },
+      { href: "/careers", label: "الوظائف" },
+    ],
+  },
+  {
+    title: "القانوني",
+    links: [
+      { href: "/privacy", label: "سياسة الخصوصية" },
+      { href: "/terms", label: "شروط الاستخدام" },
+      { href: "/delete-account", label: "حذف الحساب" },
+    ],
+  },
+  {
+    title: "التواصل",
+    links: [{ href: "/contact", label: "اتصل بنا" }],
+  },
 ];
 
 /**
- * إطار الصفحات العامة: رأسٌ بالعلامة، ثم الصفحة، ثم ذيلٌ بروابطها.
+ * إطار الصفحات العامة: رأسٌ بالعلامة وفعلٍ واحد، ثم الصفحة، ثم ذيلٌ
+ * بأعمدته.
  *
- * والروابط في الذيل كاملةً لأنّ المتجرين يطلبان الوصول إلى الخصوصية
- * والشروط ووسيلة التواصل من أيّ صفحة — لا من الرئيسة وحدها.
+ * والفعل واحد في الرأس («حمّل التطبيق») لا ثلاثة تتنافس — وما عداه
+ * يُبحث عنه في الذيل. والقانونيّ والتواصلُ وحذفُ الحساب في كل صفحة
+ * لأنّ المتجرين يطلبان الوصول إليها من أيّ مكان لا من الرئيسة وحدها.
  */
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="site">
-      <header className="chrome">
-        <div className="wrap flex items-center justify-between py-3.5">
-          <Link href="/" className="flex items-center gap-2.5">
-            <AthrMark size={34} />
-            <span className="latin text-[19px] font-bold">ATHR</span>
+      <header className="site-head">
+        <div className="wrap flex items-center justify-between py-3">
+          <Link href="/" className="flex items-center gap-2.5" aria-label="أثر">
+            <AthrMark size={32} />
+            <span className="flex flex-col leading-none">
+              <span className="latin text-[15px] font-bold">ATHR</span>
+              <span className="mt-1 text-[10px] opacity-75" style={{ letterSpacing: "0.3em" }}>
+                أثر
+              </span>
+            </span>
           </Link>
-          <nav className="no-bar flex items-center gap-4 overflow-x-auto text-[12.5px]">
-            {LINKS.map((link) => (
-              <Link key={link.href} href={link.href} className="shrink-0 opacity-85">
-                {link.label}
-              </Link>
-            ))}
-          </nav>
+
+          <Link
+            href="/#download"
+            className="flex h-9 items-center gap-1.5 rounded-full px-4 text-[12.5px] font-bold"
+            style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+          >
+            حمّل التطبيق
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M19 12H5M11 6l-6 6 6 6" />
+            </svg>
+          </Link>
         </div>
       </header>
 
-      <main className="wrap grow py-10">{children}</main>
+      <main className="grow">{children}</main>
 
-      <footer className="border-t border-line">
-        <div className="wrap flex flex-wrap items-center justify-between gap-3 py-6 text-[11.5px] text-muted">
-          <p>أثر · لحظاتك، مع ناسك.</p>
-          <div className="flex flex-wrap gap-4">
-            {LINKS.map((link) => (
-              <Link key={link.href} href={link.href}>
-                {link.label}
-              </Link>
-            ))}
-            <Link href="/delete-account">حذف الحساب</Link>
+      <footer className="site-foot">
+        <div className="wrap py-12">
+          <div className="flex flex-wrap justify-between gap-10">
+            <div className="flex items-start gap-3">
+              <AthrMark size={40} />
+              <div className="flex flex-col leading-none">
+                <span className="latin text-[17px] font-bold">ATHR</span>
+                <span className="mt-1.5 text-[11px] opacity-75" style={{ letterSpacing: "0.3em" }}>
+                  أثر
+                </span>
+                <span className="mt-3 text-[11.5px]" style={{ color: "var(--color-chrome-muted)" }}>
+                  لحظاتك، مع ناسك.
+                </span>
+              </div>
+            </div>
+
+            <nav className="flex flex-wrap gap-x-14 gap-y-8">
+              {COLUMNS.map((column) => (
+                <div key={column.title} className="flex flex-col gap-2.5">
+                  <h2 className="text-[12px] font-bold" style={{ color: "var(--color-gold-bright)" }}>
+                    {column.title}
+                  </h2>
+                  {column.links.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className="text-[12.5px]"
+                      style={{ color: "#cdd6dd" }}
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+              ))}
+            </nav>
           </div>
+
+          <hr className="my-8" style={{ borderColor: "var(--color-chrome-line)" }} />
+
+          <p className="text-[11.5px]" style={{ color: "var(--color-chrome-muted)" }}>
+            © ٢٠٢٦ أثر. جميع الحقوق محفوظة.
+          </p>
         </div>
       </footer>
     </div>
