@@ -1,3 +1,4 @@
+import { env } from "../env";
 import { prisma } from "@athar/db";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { circleIds } from "./visibility";
@@ -213,12 +214,18 @@ export async function unequip(userId: string, kind: "FRAME" | "BACKGROUND" | "CH
 }
 
 /**
- * اشتراك تجريبي: يفعّل «أثر+» ويودع رصيد المتجر الشهري.
+ * تفعيلٌ بلا دفع — للتجربة وحدها.
  *
- * الدفع الحقيقي يمرّ بـIAP لآبل وGoogle Play — يُوصَل في خطوة الدفع،
- * وهذا الباب يبقى للتجربة وللويب حيث لا متجرَ تطبيقات.
+ * كان هذا الباب مفتوحاً: طلبٌ واحد يمنح صاحبه «أثر+» ورصيدَ متجرٍ
+ * مجّاناً، وإجراءُ الخادم يُنادى مباشرةً فلا يحميه إخفاء الزرّ. الآن
+ * يُغلق ما لم تُضبط `ALLOW_FAKE_PLUS`، والدفعُ الحقيقي يأتي من
+ * المتجرين عبر حدث RevenueCat وحده (`services/billing.ts`).
  */
 export async function subscribe(userId: string, plan: "MONTHLY" | "YEARLY") {
+  if (!env.ALLOW_FAKE_PLUS) {
+    throw forbidden("الاشتراك يتمّ من داخل التطبيق عبر App Store أو Google Play");
+  }
+
   const days = plan === "YEARLY" ? 365 : 30;
   await prisma.user.update({
     where: { id: userId },

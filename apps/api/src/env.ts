@@ -27,6 +27,18 @@ const schema = z.object({
   R2_ACCESS_KEY_ID: z.string().optional(),
   R2_SECRET_ACCESS_KEY: z.string().optional(),
 
+  /**
+   * سرُّ ترويسة RevenueCat. بلا ضبطه يُغلق باب الفوترة لا يُفتح —
+   * ومن يعرف العنوان بلا حارسٍ يمنح نفسه اشتراكاً.
+   */
+  REVENUECAT_WEBHOOK_SECRET: z.string().optional(),
+
+  /**
+   * يفتح تفعيل «أثر+» بضغطةٍ بلا دفع — للتجربة وحدها.
+   * في الإنتاج يبقى مطفأً: الدفع يمرّ بالمتجرين ولا شيء غيره.
+   */
+  ALLOW_FAKE_PLUS: z.coerce.boolean().default(false),
+
   SENTRY_DSN: z.string().optional(),
   POSTHOG_KEY: z.string().optional(),
   POSTHOG_HOST: z.string().default("https://us.i.posthog.com"),

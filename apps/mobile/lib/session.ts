@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { getItem } from "./store";
 import { api, clearTokens, saveTokens } from "./api";
+import { startBilling, stopBilling } from "./billing";
 
 /**
  * من أنت — في مكانٍ واحد.
@@ -74,6 +75,7 @@ export const useSession = create<State>((set) => ({
 
     try {
       const { user } = await api<{ user: Me }>("/v1/me");
+      void startBilling(user.id).catch(() => {});
       set({ me: user, ready: true });
     } catch {
       await clearTokens();
@@ -88,6 +90,8 @@ export const useSession = create<State>((set) => ({
     );
     await saveTokens(data.accessToken, data.refreshToken);
     const { user } = await api<{ user: Me }>("/v1/me");
+    // المشتري يُربط بحسابه هنا: بلا ذلك يشتري لمعرّفٍ مجهول فلا نعرف لمن نفعّل.
+    void startBilling(user.id).catch(() => {});
     set({ me: user, ready: true });
   },
 
@@ -102,6 +106,7 @@ export const useSession = create<State>((set) => ({
       }).catch(() => {});
     }
     await clearTokens();
+    await stopBilling();
     set({ me: null, ready: true });
   },
 

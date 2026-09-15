@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -5,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ScreenHeader } from "../components/screen-header";
 import { BookIcon, CameraIcon, MicIcon, SparkIcon, StoreIcon } from "../components/icons";
 import { api } from "../lib/api";
+import { billingReady, buy, openManage, plans, restore, type Plan } from "../lib/billing";
 import { useSession } from "../lib/session";
 import { colors } from "../theme/tokens";
 
@@ -47,22 +49,76 @@ const PERKS = [
  * الوضع الفاتح كبقية التطبيق: صفحةٌ داكنة وحدها تُقرأ شاشةً غريبة عن
  * التطبيق الذي جاءت منه.
  */
+/**
+ * الشراء يمرّ بالمتجر، والتفعيل يأتي من الخادم.
+ *
+ * فبعد أن يقول المتجر «تمّ» ننتظر حدث RevenueCat يصل إلى خادمنا —
+ * ثوانٍ في العادة. ولذلك نسأل عن الحساب بضع مرّاتٍ متباعدة بدل أن
+ * نُصدّق الجهاز ونفتح المزايا بأنفسنا.
+ */
+async function waitForPlus(ask: () => Promise<void>, isPlus: () => boolean) {
+  for (const wait of [0, 1500, 3000, 5000]) {
+    if (wait) await new Promise((done) => setTimeout(done, wait));
+    await ask();
+    if (isPlus()) return true;
+  }
+  return false;
+}
+
 export default function Subscribe() {
   const { me, refresh } = useSession();
   const router = useRouter();
   const client = useQueryClient();
 
+  const [offers, setOffers] = useState<Plan[] | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+
+  // باقاتُ المتجر بأسعاره — تُقرأ مرّةً عند فتح الشاشة.
+  useEffect(() => {
+    if (!billingReady()) return;
+    plans()
+      .then(setOffers)
+      .catch(() => setNote("تعذّر جلب الباقات من المتجر"));
+  }, []);
+
+  const done = async () => {
+    await refresh();
+    void client.invalidateQueries({ queryKey: ["store"] });
+    void client.invalidateQueries({ queryKey: ["me"] });
+  };
+
   const act = useMutation({
-    mutationFn: (plan: "MONTHLY" | "YEARLY" | null) =>
-      plan
-        ? api("/v1/plus", { method: "POST", body: JSON.stringify({ plan }) })
-        : api("/v1/plus", { method: "DELETE" }),
-    onSuccess: async () => {
-      await refresh();
-      void client.invalidateQueries({ queryKey: ["store"] });
-      void client.invalidateQueries({ queryKey: ["me"] });
+    mutationFn: async (planId: string) => {
+      const result = await buy(planId);
+      if (result.cancelled) return;
+      if (!result.active) throw new Error("لم يكتمل الشراء");
+      const live = await waitForPlus(done, () => Boolean(useSession.getState().me?.isPlus));
+      if (!live) {
+        setNote("تمّ الشراء — التفعيل خلال دقيقة. اسحب للتحديث إن تأخّر.");
+        return;
+      }
       router.back();
     },
+    onError: (problem) => setNote(problem instanceof Error ? problem.message : "تعذّر الشراء"),
+  });
+
+  const recover = useMutation({
+    mutationFn: async () => {
+      const active = await restore();
+      await done();
+      setNote(active ? "استُعيد اشتراكك" : "لا مشترياتٍ لهذا الحساب");
+    },
+  });
+
+  /* تفعيلٌ بلا دفع — للتجربة وحدها، ومغلقٌ على الخادم ما لم يُفتح هناك. */
+  const fake = useMutation({
+    mutationFn: (plan: "MONTHLY" | "YEARLY") =>
+      api("/v1/plus", { method: "POST", body: JSON.stringify({ plan }) }),
+    onSuccess: async () => {
+      await done();
+      router.back();
+    },
+    onError: (problem) => setNote(problem instanceof Error ? problem.message : "تعذّر التفعيل"),
   });
 
   return (
@@ -98,52 +154,106 @@ export default function Subscribe() {
         ))}
 
         {me?.isPlus ? (
-          <View style={{ paddingTop: 16 }}>
-            <Text style={{ color: colors.muted, fontSize: 13, marginBottom: 12 }}>
-              أنت مشترك في أثر+ حالياً.
-            </Text>
+          <View style={{ paddingTop: 16, gap: 10 }}>
+            <Text style={{ color: colors.muted, fontSize: 13 }}>أنت مشترك في أثر+ حالياً.</Text>
+            {/* الإلغاء يجري في المتجر — لا آبل ولا جوجل تسمح به من داخل التطبيق. */}
             <Pressable
-              onPress={() => act.mutate(null)}
-              disabled={act.isPending}
+              onPress={() => void openManage()}
               style={{ height: 50, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line }}
             >
-              {act.isPending ? (
+              <Text style={{ color: colors.muted, fontSize: 14, fontWeight: "600" }}>
+                إدارة الاشتراك في المتجر
+              </Text>
+            </Pressable>
+          </View>
+        ) : offers && offers.length > 0 ? (
+          <View style={{ gap: 12, paddingTop: 8 }}>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              {offers.map((offer) => (
+                <Pressable
+                  key={offer.id}
+                  onPress={() => act.mutate(offer.id)}
+                  disabled={act.isPending}
+                  style={{
+                    flex: 1,
+                    borderRadius: 16,
+                    borderWidth: offer.yearly ? 1.5 : 1,
+                    borderColor: offer.yearly ? colors.gold : colors.line,
+                    backgroundColor: offer.yearly ? colors.goldSoft : "transparent",
+                    paddingVertical: 16,
+                    paddingHorizontal: 12,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ color: offer.yearly ? colors.goldInk : colors.muted, fontSize: 11.5, marginBottom: 6 }}>
+                    {offer.yearly ? "سنوي" : "شهري"}
+                  </Text>
+                  {/* السعر كما يقوله المتجر: بعملة المشتري وبضريبة بلده. */}
+                  {/* `writingDirection` بدل `dir`: النصّ سعرٌ قد يبدأ برمز عملة لاتيني. */}
+                  <Text style={{ color: colors.ink, fontSize: 22, fontWeight: "700", writingDirection: "auto" }}>
+                    {offer.price}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Pressable
+              onPress={() => recover.mutate()}
+              disabled={recover.isPending}
+              style={{ height: 44, alignItems: "center", justifyContent: "center" }}
+            >
+              {recover.isPending ? (
                 <ActivityIndicator color={colors.muted} />
               ) : (
-                <Text style={{ color: colors.muted, fontSize: 14, fontWeight: "600" }}>إلغاء الاشتراك</Text>
+                <Text style={{ color: colors.clayInk, fontSize: 12.5, fontWeight: "600" }}>
+                  استعادة المشتريات
+                </Text>
               )}
             </Pressable>
           </View>
+        ) : billingReady() ? (
+          <View style={{ paddingTop: 16, alignItems: "center" }}>
+            <ActivityIndicator color={colors.gold} />
+          </View>
         ) : (
-          <View style={{ flexDirection: "row", gap: 10, paddingTop: 8 }}>
-            <Pressable
-              onPress={() => act.mutate("MONTHLY")}
-              disabled={act.isPending}
-              style={{ flex: 1, borderRadius: 16, borderWidth: 1, borderColor: colors.line, paddingVertical: 16, paddingHorizontal: 12, alignItems: "center" }}
-            >
-              <Text style={{ color: colors.muted, fontSize: 11.5, marginBottom: 6 }}>شهري</Text>
-              <Text style={{ color: colors.ink, fontSize: 26, fontWeight: "700" }}>٢٥</Text>
-              <Text style={{ color: colors.faint, fontSize: 11 }}>ريال / شهر</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => act.mutate("YEARLY")}
-              disabled={act.isPending}
-              style={{ flex: 1, borderRadius: 16, borderWidth: 1.5, borderColor: colors.gold, backgroundColor: colors.goldSoft, paddingVertical: 16, paddingHorizontal: 12, alignItems: "center" }}
-            >
-              <View style={{ position: "absolute", top: -10, alignSelf: "center", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: colors.gold }}>
-                <Text style={{ color: colors.onBrand, fontSize: 9.5, fontWeight: "700" }}>وفّر ٣٣٪</Text>
-              </View>
-              <Text style={{ color: colors.goldInk, fontSize: 11.5, marginBottom: 6 }}>سنوي</Text>
-              <Text style={{ color: colors.ink, fontSize: 26, fontWeight: "700" }}>١٩٩</Text>
-              <Text style={{ color: colors.faint, fontSize: 11 }}>ريال / سنة</Text>
-            </Pressable>
+          /*
+            بلا مفاتيح المتجر (معاينة الويب، أو نسخةٌ لم تُربط بعد):
+            لا نرسم أسعاراً كاذبة — وزرّ التجربة يبقى، والخادم يردّه ما
+            لم يُفتح هناك صراحةً.
+          */
+          <View style={{ paddingTop: 12, gap: 10 }}>
+            <Text style={{ color: colors.muted, fontSize: 12.5, lineHeight: 24 }}>
+              الاشتراك يتمّ من داخل التطبيق على الجوّال عبر App Store أو Google Play.
+            </Text>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <Pressable
+                onPress={() => fake.mutate("MONTHLY")}
+                disabled={fake.isPending}
+                style={{ flex: 1, borderRadius: 16, borderWidth: 1, borderColor: colors.line, paddingVertical: 14, alignItems: "center" }}
+              >
+                <Text style={{ color: colors.muted, fontSize: 12.5, fontWeight: "600" }}>تجربة: شهري</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => fake.mutate("YEARLY")}
+                disabled={fake.isPending}
+                style={{ flex: 1, borderRadius: 16, borderWidth: 1, borderColor: colors.line, paddingVertical: 14, alignItems: "center" }}
+              >
+                <Text style={{ color: colors.muted, fontSize: 12.5, fontWeight: "600" }}>تجربة: سنوي</Text>
+              </Pressable>
+            </View>
           </View>
         )}
 
+        {note ? (
+          <Text style={{ color: colors.clayInk, fontSize: 12, lineHeight: 24, textAlign: "center", paddingTop: 14 }}>
+            {note}
+          </Text>
+        ) : null}
+
         <Text style={{ color: colors.faint, fontSize: 10.5, lineHeight: 22, textAlign: "center", paddingTop: 20 }}>
-          في النسخة الحقيقية يمر الدفع عبر متجر آبل أو جوجل إلزامياً · هنا تفعيل تجريبي فقط
+          يتجدّد تلقائياً حتى تُلغيه من متجرك · تُخصم القيمة من حساب المتجر
         </Text>
+
       </ScrollView>
     </SafeAreaView>
   );

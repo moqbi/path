@@ -656,3 +656,20 @@ model BannedWord {
 
   @@index([hard])
 }
+
+/// حدثُ فوترةٍ وصل من RevenueCat.
+///
+/// يُحفظ معرّفه وحده — لا حمولته: التسليم «مرّةً على الأقل»، فقد يصل
+/// الحدث نفسه مرّتين، وإيداعُ رصيد الاشتراك مرّتين هدية. وجودُ الصفّ
+/// يعني «عولج».
+model BillingEvent {
+  /// معرّف الحدث من RevenueCat — هو المفتاح، فالتكرار يصطدم بالقيد.
+  id        String   @id
+  type      String
+  appUserId String
+  /// تاريخ الحدث عند المصدر، لا وقت وصوله إلينا.
+  at        DateTime
+  createdAt DateTime @default(now())
+
+  @@index([appUserId, at])
+}

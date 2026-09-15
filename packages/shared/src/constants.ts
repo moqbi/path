@@ -49,3 +49,15 @@ export const STORY_FILTERS = [
   { key: "vivid", name: "زاهي", css: "saturate(1.5) contrast(1.1)" },
   { key: "fade", name: "باهت", css: "saturate(.75) brightness(1.08) contrast(.92)" },
 ] as const;
+
+/**
+ * أثر+ عبر RevenueCat.
+ *
+ * الاستحقاق (`entitlement`) اسمٌ واحد يتّفق عليه المتجران والخادم: كل
+ * ما يهمّ التطبيقَ هو «أهو مستحقّ أثر+ الآن»، لا أيّ منتجٍ اشترى ولا من
+ * أيّ متجر. وتغيير هذا الاسم يعني تغييره في لوحة RevenueCat معه.
+ */
+export const PLUS_ENTITLEMENT = "plus";
+
+/** رصيد المتجر الذي يُودَع مع كل دورة اشتراك — بالهللات. */
+export const PLUS_CREDIT_HALALAS = 3000;
