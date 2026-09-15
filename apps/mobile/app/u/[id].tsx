@@ -3,6 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { AvatarMenu } from "../../components/avatar-menu";
+import { CoverLayer } from "../../components/cover";
 import { MediaImage } from "../../components/media-image";
 import { MomentCard } from "../../components/moment-card";
 import { ScreenHeader } from "../../components/screen-header";
@@ -91,13 +92,20 @@ export default function Profile() {
           data={moments.data?.moments ?? []}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <MomentCard moment={item} viewerId={me?.id ?? ""} isPlus={me?.isPlus ?? false} />}
-          contentContainerStyle={{ paddingBottom: 24 }}
+          /*
+            اللحظات تحتاج حشوة الخطّ الزمني نفسها: بدونها تلتصق البطاقات
+            بالحافتين ويمشي عمود الصور خارج الخيط، فتُقرأ الصفحة مكسورة.
+          */
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
           ListHeaderComponent={
             <>
-              <View style={{ height: 120, backgroundColor: colors.chip }}>
-                {who.coverMediaId ? (
-                  <MediaImage mediaId={who.coverMediaId} style={{ width: "100%", height: "100%" }} />
-                ) : null}
+              {/*
+                الغلاف طبقةٌ واحدة في كل الشاشات (القاعدة ٧١): صورةٌ ودرعٌ
+                تحت قناع الذوبان نفسه. وصورةٌ عاريةٌ في مربّعٍ رماديّ تنتهي
+                بحدٍّ حادّ، فيبدو الملف صفحةً من تطبيقٍ آخر.
+              */}
+              <View style={{ height: 120, marginHorizontal: -20, overflow: "hidden" }}>
+                <CoverLayer mediaId={who.coverMediaId} spec={null} height={120} />
               </View>
 
               <View style={{ alignItems: "center", marginTop: -32, paddingHorizontal: 16, marginBottom: 14 }}>

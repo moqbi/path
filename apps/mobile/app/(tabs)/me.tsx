@@ -1,3 +1,4 @@
+import { SITE_URL } from "@athar/shared";
 import { useMemo } from "react";
 import { View, Text, SectionList, Pressable, ActivityIndicator, Alert, Share } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -146,7 +147,7 @@ export default function Me() {
           accessibilityLabel="مشاركة الملف"
           onPress={() =>
             void Share.share({
-              message: `ملف ${me.name} في آثار · عضوية رقم ${ar(me.memberNo)}\nhttps://athr.app/u/${me.id}`,
+              message: `ملف ${me.name} في آثار · عضوية رقم ${ar(me.memberNo)}\n${SITE_URL}/u/${me.id}`,
             })
           }
           style={{

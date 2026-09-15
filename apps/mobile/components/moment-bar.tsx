@@ -177,6 +177,13 @@ export function MomentBar({
 
           {board ? (
             <ScrollView
+              /*
+                لوحةٌ تنزل داخل قائمةٍ تنزل: أندرويد يعطي الإيماءة للأعلى
+                ما لم يُؤذن للداخل صراحةً، فكانت اللوحة لا تتحرّك تحت
+                الإصبع ويبقى نصفُها مخفيّاً.
+              */
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
               style={{ maxHeight: 168, borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
               contentContainerStyle={{ flexDirection: "row", flexWrap: "wrap", padding: 6 }}
             >

@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 import { api } from "../lib/api";
+import { tap } from "../lib/sound";
 import { colors } from "../theme/tokens";
 
 /**
@@ -83,7 +84,13 @@ export function ComposerFan() {
           opacity: progress,
         }}
       >
-        <Pressable style={{ flex: 1 }} onPress={() => setOpen(false)} />
+        <Pressable
+          style={{ flex: 1 }}
+          onPress={() => {
+            tap();
+            setOpen(false);
+          }}
+        />
       </Animated.View>
 
       <View
@@ -146,7 +153,10 @@ export function ComposerFan() {
 
         <Pressable
           accessibilityLabel={open ? "إغلاق" : "لحظة جديدة"}
-          onPress={() => setOpen((v) => !v)}
+          onPress={() => {
+            tap();
+            setOpen((v) => !v);
+          }}
           style={{
             width: SIZE,
             height: SIZE,

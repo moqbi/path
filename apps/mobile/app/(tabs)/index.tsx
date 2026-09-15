@@ -22,6 +22,7 @@ import { Tour } from "../../components/tour";
 import { useCircle, useFeed, useTogether, type Moment } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { ar, dayLabel, membership, MONTHS } from "../../lib/format";
+import { tap } from "../../lib/sound";
 import { colors } from "../../theme/tokens";
 
 const COVER = 176;
@@ -129,6 +130,7 @@ export default function Timeline() {
         if (gesture.dy * 0.5 < PULL_TRIP) return settle();
 
         setPulling(true);
+        tap();
         // دورةٌ كاملة تدور ما دام الجلب جارياً، ثم يعود كلُّ شيء مكانه.
         spin.setValue(0);
         const turn = Animated.loop(
@@ -265,7 +267,31 @@ export default function Timeline() {
             </View>
 
             <Pressable
-              onPress={() => void reload()}
+              onPress={() => {
+              /*
+                الضغطة كانت تجلب بلا أثرٍ يُرى: الجلب أسرع من العين، فبدا
+                الزرّ معطّلاً. الآن يدور السهم ما دام الجلب جارياً — ولو
+                لمحةً — وتُسمع النغمة، فيُعرف أنّه عمل.
+              */
+              if (pulling) return;
+              tap();
+              setPulling(true);
+              spin.setValue(0);
+              const turn = Animated.loop(
+                Animated.timing(spin, {
+                  toValue: 1,
+                  duration: 750,
+                  easing: Easing.linear,
+                  useNativeDriver: true,
+                }),
+              );
+              turn.start();
+              void Promise.resolve(latest.current()).finally(() => {
+                turn.stop();
+                spin.setValue(0);
+                setPulling(false);
+              });
+            }}
               accessibilityLabel="تحديث الخط الزمني"
               style={{
                 width: 36,

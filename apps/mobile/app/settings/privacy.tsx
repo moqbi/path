@@ -7,6 +7,7 @@ import {
   Switch,
   ScrollView,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -17,6 +18,7 @@ import { CheckIcon, InfoIcon, ShieldIcon } from "../../components/icons";
 import { api } from "../../lib/api";
 import { keys } from "../../lib/queries";
 import { useSession } from "../../lib/session";
+import { SITE_URL } from "@athar/shared";
 import { ar } from "../../lib/format";
 import { brandGradient, colors } from "../../theme/tokens";
 
@@ -202,6 +204,21 @@ export default function Privacy() {
         <View style={{ marginTop: 24 }}>
           <ChangeEmail current={me.email} />
         </View>
+
+        {/*
+          لوحة التحكم للمشرف وحده، وبابُها هنا: الخصوصية هي درج الإعدادات
+          في هذا التطبيق، ولا تستحق اللوحةُ تبويباً دائماً يراه الجميع
+          ولا يفتحه أحد. والدرجة تُفحص في اللوحة نفسها لا هنا — إخفاء
+          الرابط ليس حماية (القاعدة ١٣).
+        */}
+        {me?.role === "ADMIN" ? (
+          <Link
+            title="لوحة التحكم"
+            note="تُفتح في المتصفّح — الأصناف والباقات والبلاغات والحسابات"
+            right={<ShieldIcon size={18} color={colors.clayInk} />}
+            onPress={() => void Linking.openURL(`${SITE_URL}/admin`)}
+          />
+        ) : null}
 
         {/* الدعم داخل الخصوصية: هنا يبحث الناس عمّن يكلّمونه. */}
         <Link
