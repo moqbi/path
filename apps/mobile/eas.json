@@ -10,19 +10,25 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "http://10.0.2.2:4000",
         "EXPO_PUBLIC_RC_TEST_KEY": "test_bPkuVnVXLCekZPeJHkZQtHucNQi"
+      },
+      "android": {
+        "buildType": "apk"
       }
     },
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.athar.app",
+        "EXPO_PUBLIC_API_URL": "https://athar-api-87iu.onrender.com",
         "EXPO_PUBLIC_RC_TEST_KEY": "test_bPkuVnVXLCekZPeJHkZQtHucNQi"
+      },
+      "android": {
+        "buildType": "apk"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.athar.app"
+        "EXPO_PUBLIC_API_URL": "https://athar-api-87iu.onrender.com"
       }
     }
   },
