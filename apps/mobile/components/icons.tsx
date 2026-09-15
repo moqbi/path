@@ -105,6 +105,14 @@ export const WithIcon = ({ size = 20, color = "currentColor" }: Props) => (
   </Svg>
 );
 
+/** الإشارة «مع فلان» — بطاقةُ وسمٍ بثقبها، كما في الويب. */
+export const TagIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M3.5 11.5 11 4h7.5V11L11 18.5l-7.5-7Z" />
+    <Circle cx={15} cy={8} r={1.3} />
+  </Svg>
+);
+
 export const GiftIcon = ({ size = 20, color = "currentColor" }: Props) => (
   <Svg {...stroke(size, color)}>
     <Path d="M4 11h16v9H4z" />

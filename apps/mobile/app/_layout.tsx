@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { I18nManager, Platform, View, ActivityIndicator } from "react-native";
-import { Slot, useRouter, useSegments } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useSession } from "../lib/session";
@@ -39,7 +39,10 @@ import { colors } from "../theme/tokens";
  */
 I18nManager.allowRTL(true);
 I18nManager.forceRTL(true);
-I18nManager.swapLeftAndRightInRTL(false);
+// `react-native-web` قشرةٌ ناقصة: لا `swapLeftAndRightInRTL` فيها أصلاً،
+// ونداؤُها هناك يرمي قبل أن يُضبط اتجاه المستند في السطر التالي — فتسقط
+// المعاينة كلّها. والقلب لا يوجد على الويب فلا شيء يُطفأ.
+I18nManager.swapLeftAndRightInRTL?.(false);
 
 if (Platform.OS === "web" && typeof document !== "undefined") {
   document.documentElement.dir = "rtl";
@@ -83,7 +86,22 @@ function Gate() {
     );
   }
 
-  return <Slot />;
+  /*
+    مكدّسٌ لا `Slot`.
+
+    `Slot` يعرض الشاشة الحاليّة بلا تاريخ: `canGoBack()` يردّ «لا» دائماً،
+    فكلُّ رجوعٍ كان يسقط على الوجهة المكتوبة في الرأس — ومعظمها «/» —
+    فيرجع من أيّ شاشةٍ إلى اللحظات لا إلى ما قبلها. والمكدّس يحفظ الطريق،
+    ومعه تعمل إيماءةُ الرجوع من الحافة وزرُّ الرجوع في أندرويد.
+  */
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: colors.paper },
+      }}
+    />
+  );
 }
 
 export default function RootLayout() {

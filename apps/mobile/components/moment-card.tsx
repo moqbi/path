@@ -157,8 +157,8 @@ export function MomentCard({
 
         {/*
           صورة الأغنية هي زرّ تشغيلها: زرٌّ ثالثٌ بجانبها كان يزاحم زرّ
-          التفاعل في الطرف نفسه. والمثلّث فوقها لا في وسطها — الوسط يحجب
-          وجهها.
+          التفاعل في الطرف نفسه. والمثلّث في وسطها: هناك يُقرأ «شغّل»
+          بلا تفكير، وفي الركن يُقرأ شارةً على الصورة.
         */}
         {moment.kind === "MUSIC" && moment.musicThumb ? (
           <Pressable
@@ -172,17 +172,26 @@ export function MomentCard({
               <View
                 style={{
                   position: "absolute",
-                  top: 3,
-                  insetInlineStart: 3,
-                  width: 20,
-                  height: 20,
-                  borderRadius: 10,
+                  top: 0,
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
                   alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: "rgba(14,26,36,.68)",
                 }}
               >
-                <PlayIcon size={11} color="#fff" />
+                <View
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 11,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "rgba(14,26,36,.68)",
+                  }}
+                >
+                  <PlayIcon size={11} color="#fff" />
+                </View>
               </View>
             ) : null}
           </Pressable>
