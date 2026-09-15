@@ -3,6 +3,7 @@ import type { MomentInput } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { reverseGeocode } from "../lib/places";
 import { isSupportedMusicUrl, resolveTrack } from "../lib/music-link";
+import { guard } from "../lib/moderation";
 import { canInteract, canSeeMoment, circleIds } from "./visibility";
 import { dropMedia } from "./media";
 
@@ -144,9 +145,26 @@ export async function createMoment(userId: string, input: MomentInput) {
 
   const text = input.text?.trim() || null;
   if (!text && input.kind === "THOUGHT") throw badRequest("اكتب شيئاً");
+  // الفلترة قبل الكتابة: ما يُمنع يقف عند صاحبه لا بعد أن يراه الناس.
+  await guard(text);
   if (input.kind === "PLACE" && (input.lat === undefined || input.lng === undefined)) {
     throw badRequest("تعذّر تحديد موقعك");
   }
+
+  /*
+    الأغنية رابطٌ يُلصق لا حسابٌ يُربط.
+
+    العنوان والفنان والصورة تُقرأ من oEmbed — واجهةٌ عامّة بلا مفاتيح ولا
+    OAuth — والفشل لا يمنع النشر: يبقى الرابط وحده قابلاً للفتح.
+  */
+  const musicUrl = input.kind === "MUSIC" ? (input.musicUrl?.trim() ?? "") : "";
+  if (input.kind === "MUSIC") {
+    if (!musicUrl) throw badRequest("الصق رابط الأغنية");
+    if (!isSupportedMusicUrl(musicUrl)) {
+      throw badRequest("الرابط من يوتيوب أو ساوندكلاود أو سبوتيفاي");
+    }
+  }
+  const track = musicUrl ? await resolveTrack(musicUrl) : null;
 
   const mediaId = input.mediaId ? await ownMedia(userId, input.mediaId) : null;
   const seen = await readAudience(userId, input);
@@ -169,6 +187,10 @@ export async function createMoment(userId: string, input: MomentInput) {
       placeCity: where.placeCity,
       audience: seen.audience,
       audienceGroupId: seen.audienceGroupId,
+      musicUrl: musicUrl || null,
+      musicTitle: track?.title ?? null,
+      musicArtist: track?.artist ?? null,
+      musicThumb: track?.thumb ?? null,
     },
     select: { id: true },
   });
@@ -183,31 +205,6 @@ export async function createMoment(userId: string, input: MomentInput) {
     ]);
   }
 
-  return { id: moment.id };
-}
-
-/**
- * نشر أغنية برابطها.
- *
- * العنوان يُقرأ تلقائياً من oEmbed — واجهةٌ عامّة بلا مفاتيح — والفشل لا
- * يمنع النشر: يُحفظ الرابط وحده ويبقى قابلاً للفتح والسماع.
- */
-export async function postMusic(userId: string, url: string) {
-  const clean = url.trim();
-  if (!isSupportedMusicUrl(clean)) throw badRequest("الرابط غير صالح");
-
-  const track = await resolveTrack(clean);
-  const moment = await prisma.moment.create({
-    data: {
-      authorId: userId,
-      kind: "MUSIC",
-      musicUrl: clean,
-      musicTitle: track.title,
-      musicArtist: track.artist,
-      musicThumb: track.thumb,
-    },
-    select: { id: true },
-  });
   return { id: moment.id };
 }
 
@@ -315,6 +312,7 @@ export async function react(
 
 /** تعليق. */
 export async function addComment(userId: string, momentId: string, body: string) {
+  await guard(body);
   await assertCanInteract(userId, momentId);
 
   const comment = await prisma.comment.create({

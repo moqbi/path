@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ReportButton } from "../../components/report-sheet";
 import {
   View, Text, FlatList, TextInput, Pressable, ActivityIndicator,
   KeyboardAvoidingView, Platform,
@@ -277,7 +278,8 @@ export default function Conversation() {
                   <Voice mediaId={item.mediaId} seconds={item.seconds ?? 0} mine={mine} />
                 ) : (
                   <Pressable
-                    onPress={mine ? () => setShown((v) => (v === item.id ? null : item.id)) : undefined}
+                    // ضغطةٌ على رسالتي تكشف «تعديل»، وعلى رسالته «إبلاغ».
+                    onPress={() => setShown((v) => (v === item.id ? null : item.id))}
                     style={{
                       maxWidth: "78%",
                       borderRadius: 16,
@@ -304,16 +306,26 @@ export default function Conversation() {
                   {mine ? <Ticks state={receiptOf(item)} size={14} /> : null}
                 </View>
 
-                {shown === item.id && item.kind === "TEXT" ? (
-                  <Pressable
-                    onPress={() => {
-                      setDraft(item.body);
-                      setEditing(item.id);
-                    }}
-                    style={{ marginTop: 4 }}
-                  >
-                    <Text style={{ color: colors.clayInk, fontSize: 11.5, fontWeight: "600" }}>تعديل</Text>
-                  </Pressable>
+                {shown === item.id ? (
+                  mine ? (
+                    item.kind === "TEXT" ? (
+                      <Pressable
+                        onPress={() => {
+                          setDraft(item.body);
+                          setEditing(item.id);
+                        }}
+                        style={{ marginTop: 4 }}
+                      >
+                        <Text style={{ color: colors.clayInk, fontSize: 11.5, fontWeight: "600" }}>
+                          تعديل
+                        </Text>
+                      </Pressable>
+                    ) : null
+                  ) : (
+                    <View style={{ marginTop: 2 }}>
+                      <ReportButton target="MESSAGE" targetId={item.id} />
+                    </View>
+                  )
                 ) : null}
               </View>
             );

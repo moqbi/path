@@ -32,11 +32,17 @@ const ENDPOINTS: { test: RegExp; build: (url: string) => string }[] = [
   },
 ];
 
+/**
+ * ثلاث خدماتٍ لا أكثر: يوتيوب وساوندكلاود وسبوتيفاي.
+ *
+ * كانت تقبل أيّ رابطٍ http، فكان أيّ عنوانٍ يُنشر «أغنية» بلا عنوانٍ ولا
+ * فنان — لأن oEmbed لا يعرفه. والقبول هنا يساوي القدرة على القراءة.
+ */
 export function isSupportedMusicUrl(raw: string): boolean {
   try {
     const url = new URL(raw);
     if (url.protocol !== "https:" && url.protocol !== "http:") return false;
-    return true;
+    return ENDPOINTS.some((one) => one.test.test(url.hostname));
   } catch {
     return false;
   }

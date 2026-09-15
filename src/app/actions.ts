@@ -20,6 +20,7 @@ import { deliverTo, openConversation, VOICE_SECONDS } from "@/lib/dm";
 import { dropMedia, migrateToCloud, storeClip, storeUpload } from "@/lib/media";
 import { cloudReady } from "@/lib/storage";
 import { isSupportedMusicUrl, resolveTrack } from "@/lib/music-link";
+import { guard } from "@/lib/moderation";
 import type { MomentKind, ReactionKind } from "@/generated/prisma/client";
 
 // ───────────────────────────── الدخول والخروج ─────────────────────────────
@@ -225,6 +226,8 @@ export async function postSimple(formData: FormData): Promise<void> {
 
   const text = String(formData.get("text") ?? "").trim().slice(0, TEXT_MAX);
   if (!text && kind === "THOUGHT") throw new Error("اكتب شيئاً");
+  // الفلترة قبل الكتابة: ما يُمنع يقف عند صاحبه لا بعد أن يراه الناس.
+  await guard(text);
 
   // الصورة المرفوعة تسبق التدرّج؛ التدرّج بديل حين لا توجد صورة.
   let mediaId: string | null = null;
@@ -345,72 +348,6 @@ export async function postPlace(formData: FormData): Promise<void> {
   redirect("/");
 }
 
-/**
- * الأغنية تُنشر من الحساب المربوط، لا بكتابة الاسم والفنان.
- * بلا ربط لا يوجد ما يُنشر، فيُوجَّه المستخدم إلى شاشة الربط.
- */
-export async function postNowPlaying(): Promise<void> {
-  const user = await requireUser();
-
-  const account = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { musicProvider: true, musicAccessToken: true },
-  });
-  if (!account?.musicProvider) redirect("/music");
-
-  const track = await currentTrack(user.id);
-  if (!track) redirect("/music?empty=1");
-
-  await prisma.moment.create({
-    data: {
-      authorId: user.id,
-      kind: "MUSIC",
-      musicTitle: track.title,
-      musicArtist: track.artist,
-    },
-  });
-
-  revalidatePath("/");
-  redirect("/");
-}
-
-/**
- * ما يُسمع الآن من المزوّد المربوط.
- *
- * سبوتيفاي تتطلب SPOTIFY_CLIENT_ID و SPOTIFY_CLIENT_SECRET؛ بدونهما الربط
- * معطّل ولا يُدّعى خلافه. وأنغامي لا تفتح واجهتها إلا لشركاء معتمدين، فلا
- * تُنفَّذ هنا حتى يتوفر اعتماد حقيقي.
- */
-async function currentTrack(
-  userId: string,
-): Promise<{ title: string; artist: string } | null> {
-  const account = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { musicProvider: true, musicAccessToken: true },
-  });
-  if (account?.musicProvider !== "SPOTIFY" || !account.musicAccessToken) return null;
-
-  try {
-    const response = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {
-      headers: { Authorization: `Bearer ${account.musicAccessToken}` },
-      signal: AbortSignal.timeout(6000),
-      cache: "no-store",
-    });
-    if (response.status === 204 || !response.ok) return null;
-
-    const data = (await response.json()) as {
-      item?: { name?: string; artists?: { name?: string }[] };
-    };
-    const title = data.item?.name;
-    const artist = data.item?.artists?.map((a) => a.name).filter(Boolean).join("، ");
-    if (!title) return null;
-
-    return { title, artist: artist || "" };
-  } catch {
-    return null;
-  }
-}
-
 /** نشر أغنية برابطها: يُقرأ عنوانها تلقائياً، ويبقى الرابط ليُفتح ويُسمع. */
 export async function postMusicLink(formData: FormData): Promise<void> {
   const user = await requireUser();
@@ -432,21 +369,6 @@ export async function postMusicLink(formData: FormData): Promise<void> {
 
   revalidatePath("/");
   redirect("/");
-}
-
-export async function disconnectMusic(): Promise<void> {
-  const user = await requireUser();
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      musicProvider: null,
-      musicAccountName: null,
-      musicAccessToken: null,
-      musicRefreshToken: null,
-      musicTokenExpires: null,
-    },
-  });
-  revalidatePath("/music");
 }
 
 // ───────────────────────────── الصورة والغلاف ─────────────────────────────
@@ -1319,6 +1241,7 @@ export async function addComment(momentId: string, formData: FormData): Promise<
 
   const body = String(formData.get("body") ?? "").trim();
   if (!body) return;
+  await guard(body);
 
   await prisma.comment.create({ data: { momentId, userId: user.id, body: body.slice(0, 500) } });
   revalidatePath("/");
@@ -1462,6 +1385,7 @@ export async function sendMessage(conversationId: string, formData: FormData): P
 
   const body = String(formData.get("body") ?? "").trim();
   if (!body) return;
+  await guard(body);
 
   await prisma.$transaction([
     prisma.message.create({

@@ -29,11 +29,6 @@ enum MomentKind {
   GIFT_GOT
 }
 
-enum MusicProvider {
-  SPOTIFY
-  ANGHAMI
-}
-
 enum UserRole {
   USER
   ADMIN
@@ -106,11 +101,6 @@ model User {
   storeCredit Int @default(0)
 
   /// ربط حساب الموسيقى — النشر التلقائي لما يُسمع، بدل إدخال الاسم يدوياً.
-  musicProvider      MusicProvider?
-  musicAccountName   String?
-  musicAccessToken   String?
-  musicRefreshToken  String?
-  musicTokenExpires  DateTime?
 
   /// صورة العرض والغلاف — ملفات مرفوعة يملكها المستخدم.
   avatarMediaId String? @unique
@@ -147,6 +137,8 @@ model User {
   createdAt DateTime @default(now())
 
   tickets   SupportTicket[]
+  reports        Report[] @relation("Reporter")
+  reportsAgainst Report[] @relation("Reported")
   sessions  RefreshToken[]
   moments   Moment[]
   reactions Reaction[]
@@ -587,4 +579,70 @@ model RefreshToken {
 
   @@index([userId, expiresAt])
   @@index([family])
+}
+
+
+/// ما يُبلَّغ عنه: لحظة، أو قصة، أو رسالة، أو شخص.
+enum ReportTarget {
+  MOMENT
+  STORY
+  MESSAGE
+  USER
+}
+
+enum ReportState {
+  OPEN
+  KEPT
+  REMOVED
+}
+
+/// بلاغٌ من مستخدم — شرط متجر آبل: إبلاغٌ عن كل منشور.
+///
+/// المراجعة يدويّة: البلاغ يُفتح ويقرؤه المشرف في اللوحة فيُبقي المحتوى
+/// أو يحذفه. ولا حذفَ تلقائيّ ببلاغٍ واحد — وإلا صار الإبلاغ سلاحاً.
+model Report {
+  id     String       @id @default(cuid())
+  target ReportTarget
+  /// معرّف اللحظة أو القصة أو الرسالة أو الشخص — بلا مفتاحٍ أجنبيّ:
+  /// المُبلَّغ عنه قد يُحذف، والبلاغ يبقى سجلّاً لما جرى.
+  targetId String
+
+  reporterId String
+  reporter   User   @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  /// صاحب المحتوى وقت البلاغ — ليُرى سجلّ من يتكرّر البلاغ عليه.
+  reportedId String?
+  reported   User?   @relation("Reported", fields: [reportedId], references: [id], onDelete: SetNull)
+
+  /// سببٌ من قائمةٍ قصيرة، ونصٌّ اختياريّ يشرحه.
+  reason String
+  note   String?
+
+  /// نسخةٌ من المتن وقت البلاغ: المحتوى قد يُحذف قبل أن يُقرأ البلاغ.
+  snippet String?
+
+  state    ReportState @default(OPEN)
+  handledAt DateTime?
+  handledBy String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([reporterId, target, targetId])
+  @@index([state, createdAt])
+  @@index([reportedId])
+}
+
+/// كلمةٌ ممنوعة — الفلترة قائمةٌ يكتبها المشرف لا نموذجٌ يتعلّم.
+///
+/// `hard` تمنع النشر، وما دونها يُعلّم المحتوى للمراجعة: لا نمنع كلمةً
+/// قد تُقال في سياقٍ بريء، ولا نترك ما لا يُقال أصلاً.
+model BannedWord {
+  id   String  @id @default(cuid())
+  word String  @unique
+  hard Boolean @default(true)
+  note String?
+
+  createdAt DateTime @default(now())
+
+  @@index([hard])
 }

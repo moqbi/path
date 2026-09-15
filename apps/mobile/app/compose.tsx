@@ -134,31 +134,26 @@ export default function Compose() {
     setError(null);
 
     try {
-      if (kind === "MUSIC") {
-        await api("/v1/moments/music", {
-          method: "POST",
-          body: JSON.stringify({ url: musicUrl.trim() }),
-        });
-      } else {
-        const mediaId = picture
-          ? await uploadFile(picture.uri, picture.mime, "MOMENT", picture)
-          : undefined;
+      const mediaId = picture
+        ? await uploadFile(picture.uri, picture.mime, "MOMENT", picture)
+        : undefined;
 
-        await api("/v1/moments", {
-          method: "POST",
-          body: JSON.stringify({
-            kind,
-            text: text.trim() || undefined,
-            mediaId,
-            with: withIds.length ? withIds : undefined,
-            audience: audience === "CIRCLE" || audience === "PICKED" ? audience : "GROUP",
-            audienceGroupId: audience !== "CIRCLE" && audience !== "PICKED" ? audience : undefined,
-            viewers: audience === "PICKED" ? viewers : undefined,
-            lat: fix?.lat,
-            lng: fix?.lng,
-          }),
-        });
-      }
+      // بابٌ واحد لكل الأنواع، والأغنية رابطٌ فيه لا مساراً على حدة.
+      await api("/v1/moments", {
+        method: "POST",
+        body: JSON.stringify({
+          kind,
+          text: text.trim() || undefined,
+          mediaId,
+          musicUrl: kind === "MUSIC" ? musicUrl.trim() : undefined,
+          with: withIds.length ? withIds : undefined,
+          audience: audience === "CIRCLE" || audience === "PICKED" ? audience : "GROUP",
+          audienceGroupId: audience !== "CIRCLE" && audience !== "PICKED" ? audience : undefined,
+          viewers: audience === "PICKED" ? viewers : undefined,
+          lat: fix?.lat,
+          lng: fix?.lng,
+        }),
+      });
 
       await client.invalidateQueries({ queryKey: ["feed"] });
       await client.invalidateQueries({ queryKey: ["me"] });

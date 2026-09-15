@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ReactionGlyph, facesFor, CUSTOM } from "./reactions";
 import { LockIcon } from "./icons";
+import { ReportButton } from "./report-sheet";
 import { api } from "../lib/api";
 import { keys, useComment, useReact } from "../lib/queries";
 import { colors } from "../theme/tokens";
@@ -255,6 +256,12 @@ export function MomentBar({
                 )}
               </Pressable>
             ) : null}
+
+            {/*
+              الإبلاغ بجانب «إرسال»: المكان الذي يُفتح قصداً على اللحظة.
+              ولا يُبلّغ أحدٌ عن لحظته، فلا يُعرض لصاحبها.
+            */}
+            {author ? null : <ReportButton target="MOMENT" targetId={momentId} />}
           </View>
         </View>
       ) : null}

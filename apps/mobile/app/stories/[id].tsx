@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Avatar } from "../../components/avatar";
+import { ReportButton } from "../../components/report-sheet";
 import { Filtered } from "../../components/filtered";
 import { CloseIcon, EyeIcon } from "../../components/icons";
 import { api } from "../../lib/api";
@@ -170,6 +171,9 @@ export default function StoryViewer() {
                 {relative(new Date(story.createdAt))}
               </Text>
             </View>
+
+            {/* الإبلاغ على القصة نفسها لا على صاحبها وحده — شرط آبل. */}
+            {mine ? null : <ReportButton target="STORY" targetId={story.id} tone="loud" />}
 
             <Pressable
               accessibilityLabel="إغلاق"

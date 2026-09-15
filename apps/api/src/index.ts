@@ -17,6 +17,7 @@ import { mountWs } from "./routes/v1/ws";
 import { sweepPending } from "./services/upload";
 import { sweepOld } from "./services/dm";
 import { plusRoutes, storeRoutes } from "./routes/v1/store";
+import { moderationRoutes, reportRoutes } from "./routes/v1/reports";
 import { storyRoutes } from "./routes/v1/stories";
 import { sweep as sweepStories } from "./services/stories";
 
@@ -91,6 +92,9 @@ app.route("/v1/media", mediaRoutes);
 app.route("/v1/notifications", notificationRoutes);
 app.route("/v1/dm", dmRoutes);
 app.route("/v1/messages", messageRoutes);
+app.route("/v1/reports", reportRoutes);
+/** بابُ اللوحة — الدور يُفحص فيه لا في العرض. */
+app.route("/v1/admin", moderationRoutes);
 
 mountWs(app, upgradeWebSocket);
 

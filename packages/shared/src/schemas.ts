@@ -35,6 +35,8 @@ export const momentInput = z.object({
   lat: z.coerce.number().min(-90).max(90).optional(),
   lng: z.coerce.number().min(-180).max(180).optional(),
   place: z.string().trim().max(80).optional(),
+  /* لحظة الأغنية: رابطٌ يُلصق من يوتيوب أو ساوندكلاود أو سبوتيفاي. */
+  musicUrl: z.string().trim().url().max(500).optional(),
 });
 
 export const commentInput = z.object({ body: z.string().trim().min(1).max(500) });

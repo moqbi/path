@@ -1,0 +1,165 @@
+import { prisma } from "@athar/db";
+import { badRequest, notFound } from "../lib/errors";
+import { forgetWords } from "../lib/moderation";
+
+/**
+ * البلاغات: بابٌ للمستخدم، وبابٌ للمشرف.
+ *
+ * شرط متجر آبل أن يكون الإبلاغ على **كل** منشور لا على الحساب وحده،
+ * ولذلك الهدف أربعةٌ: لحظة، وقصة، ورسالة، وشخص.
+ *
+ * والمراجعة يدويّة: لا يُحذف محتوى ببلاغٍ واحد — وإلا صار الإبلاغ
+ * سلاحاً يُسكت به الناس بعضهم. المشرف يقرأ ويقرّر.
+ */
+export type Target = "MOMENT" | "STORY" | "MESSAGE" | "USER";
+
+const REASONS = ["SPAM", "HATE", "SEXUAL", "VIOLENCE", "SELF_HARM", "OTHER"] as const;
+export type Reason = (typeof REASONS)[number];
+
+/** صاحب المحتوى ومتنه وقت البلاغ — المحتوى قد يُحذف قبل أن يُقرأ. */
+async function subject(target: Target, targetId: string) {
+  if (target === "MOMENT") {
+    const row = await prisma.moment.findUnique({
+      where: { id: targetId },
+      select: { authorId: true, text: true, placeName: true, musicTitle: true },
+    });
+    if (!row) return null;
+    return { ownerId: row.authorId, snippet: row.text ?? row.placeName ?? row.musicTitle ?? null };
+  }
+
+  if (target === "STORY") {
+    const row = await prisma.story.findUnique({
+      where: { id: targetId },
+      select: { authorId: true },
+    });
+    return row ? { ownerId: row.authorId, snippet: null } : null;
+  }
+
+  if (target === "MESSAGE") {
+    const row = await prisma.message.findUnique({
+      where: { id: targetId },
+      select: { senderId: true, body: true },
+    });
+    return row ? { ownerId: row.senderId, snippet: row.body || null } : null;
+  }
+
+  const row = await prisma.user.findUnique({ where: { id: targetId }, select: { id: true } });
+  return row ? { ownerId: row.id, snippet: null } : null;
+}
+
+export async function open(
+  reporterId: string,
+  input: { target: Target; targetId: string; reason: Reason; note?: string },
+) {
+  const found = await subject(input.target, input.targetId);
+  if (!found) throw notFound("ما عاد موجوداً");
+  if (found.ownerId === reporterId) throw badRequest("هذا منك أنت");
+
+  /*
+    بلاغٌ واحد لكل شيء من كل شخص.
+
+    تكرارُه لا يُسرّع المراجعة ويُغرق اللوحة، والقيد في القاعدة لا في
+    الشاشة — فالتكرار يُبتلع ويُردّ «وصلنا بلاغك».
+  */
+  await prisma.report.upsert({
+    where: {
+      reporterId_target_targetId: {
+        reporterId,
+        target: input.target,
+        targetId: input.targetId,
+      },
+    },
+    update: { reason: input.reason, note: input.note?.trim() || null },
+    create: {
+      target: input.target,
+      targetId: input.targetId,
+      reporterId,
+      reportedId: found.ownerId,
+      reason: input.reason,
+      note: input.note?.trim() || null,
+      snippet: found.snippet?.slice(0, 500) ?? null,
+    },
+  });
+
+  return { ok: "وصلنا بلاغك. نقرأه ونتصرّف." };
+}
+
+// ───────────────────────────── اللوحة ─────────────────────────────
+
+export async function list(state: "OPEN" | "KEPT" | "REMOVED" = "OPEN") {
+  const rows = await prisma.report.findMany({
+    where: { state },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+    select: {
+      id: true,
+      target: true,
+      targetId: true,
+      reason: true,
+      note: true,
+      snippet: true,
+      state: true,
+      createdAt: true,
+      reporter: { select: { id: true, name: true, memberNo: true } },
+      reported: { select: { id: true, name: true, memberNo: true } },
+    },
+  });
+  return { reports: rows };
+}
+
+/**
+ * قرار المشرف: يُبقي أو يحذف.
+ *
+ * والحذف يحذف المحتوى نفسه لا البلاغ: البلاغ سجلٌّ يبقى ليُعرف من
+ * يتكرّر عليه، والمحتوى يذهب بتفاعلاته وتعليقاته كما يذهب حين يحذفه
+ * صاحبه.
+ */
+export async function decide(
+  adminId: string,
+  reportId: string,
+  verdict: "KEPT" | "REMOVED",
+) {
+  const report = await prisma.report.findUnique({ where: { id: reportId } });
+  if (!report) throw notFound("البلاغ غير موجود");
+
+  if (verdict === "REMOVED") {
+    if (report.target === "MOMENT") {
+      await prisma.moment.deleteMany({ where: { id: report.targetId } });
+    } else if (report.target === "STORY") {
+      await prisma.story.deleteMany({ where: { id: report.targetId } });
+    } else if (report.target === "MESSAGE") {
+      await prisma.message.deleteMany({ where: { id: report.targetId } });
+    }
+  }
+
+  await prisma.report.update({
+    where: { id: reportId },
+    data: { state: verdict, handledAt: new Date(), handledBy: adminId },
+  });
+
+  return { ok: verdict === "REMOVED" ? "حُذف المحتوى" : "أُبقي المحتوى" };
+}
+
+export async function words() {
+  const rows = await prisma.bannedWord.findMany({ orderBy: { createdAt: "desc" } });
+  return { words: rows };
+}
+
+export async function addWord(word: string, hard: boolean, note?: string) {
+  const clean = word.trim();
+  if (clean.length < 2) throw badRequest("اكتب الكلمة");
+
+  const row = await prisma.bannedWord.upsert({
+    where: { word: clean },
+    update: { hard, note: note?.trim() || null },
+    create: { word: clean, hard, note: note?.trim() || null },
+  });
+  forgetWords();
+  return { word: row };
+}
+
+export async function dropWord(id: string) {
+  await prisma.bannedWord.deleteMany({ where: { id } });
+  forgetWords();
+  return { ok: true };
+}

@@ -1,4 +1,4 @@
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, Image, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import { Avatar, firstColor } from "./avatar";
 import { MediaImage } from "./media-image";
@@ -154,6 +154,39 @@ export function MomentCard({
             </View>
           ) : null}
         </View>
+
+        {/*
+          صورة الأغنية هي زرّ تشغيلها: زرٌّ ثالثٌ بجانبها كان يزاحم زرّ
+          التفاعل في الطرف نفسه. والمثلّث فوقها لا في وسطها — الوسط يحجب
+          وجهها.
+        */}
+        {moment.kind === "MUSIC" && moment.musicThumb ? (
+          <Pressable
+            accessibilityLabel="استمع"
+            disabled={!moment.musicUrl}
+            onPress={() => moment.musicUrl && void Linking.openURL(moment.musicUrl)}
+            style={{ width: 44, height: 44, borderRadius: 12, overflow: "hidden", backgroundColor: colors.chip }}
+          >
+            <Image source={{ uri: moment.musicThumb }} style={{ width: 44, height: 44 }} resizeMode="cover" />
+            {moment.musicUrl ? (
+              <View
+                style={{
+                  position: "absolute",
+                  top: 3,
+                  insetInlineStart: 3,
+                  width: 20,
+                  height: 20,
+                  borderRadius: 10,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: "rgba(14,26,36,.68)",
+                }}
+              >
+                <PlayIcon size={11} color="#fff" />
+              </View>
+            ) : null}
+          </Pressable>
+        ) : null}
       </Pressable>
     );
 

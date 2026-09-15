@@ -46,10 +46,6 @@ export const momentRoutes = new Hono()
   )
 
   /** أغنيةٌ برابطها — العنوان يُقرأ من الرابط لا يُكتب. */
-  .post("/music", zValidator("json", z.object({ url: z.string().url().max(500) })), async (c) =>
-    c.json(await moments.postMusic(me(c), c.req.valid("json").url), 201),
-  )
-
   /** «نمت» و«صحيت»: بلا متنٍ وبلا جمهورٍ يُختار. */
   .post("/mark", zValidator("json", markInput), async (c) =>
     c.json(await moments.postMark(me(c), c.req.valid("json").kind), 201),

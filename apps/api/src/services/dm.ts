@@ -1,4 +1,5 @@
 import { prisma } from "@athar/db";
+import { guard } from "../lib/moderation";
 import { MESSAGE_KEEP_DAYS, VOICE_SECONDS } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { circleIds } from "./visibility";
@@ -172,6 +173,7 @@ export async function send(
   if (input.kind === "TEXT") {
     body = (input.body ?? "").trim().slice(0, 2000);
     if (!body) throw badRequest("اكتب شيئاً");
+    await guard(body);
   } else if (input.kind === "VOICE") {
     if (!input.mediaId) throw badRequest("ما وصل التسجيل");
     mediaId = await ownMedia(userId, input.mediaId, "audio");
@@ -211,6 +213,7 @@ export async function send(
 
 /** تعديل رسالة: لصاحبها وحده، ويبقى أثر التعديل ظاهراً للطرفين. */
 export async function edit(userId: string, messageId: string, body: string) {
+  await guard(body);
   const message = await prisma.message.findUnique({
     where: { id: messageId },
     select: { senderId: true, conversationId: true, body: true, kind: true },
