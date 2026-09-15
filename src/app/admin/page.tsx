@@ -18,6 +18,7 @@ import {
   updateTag,
   moveMediaToCloud,
   storageState,
+  testStorage,
 } from "@/app/actions";
 import { itemPaint, ScreenHeader, TagPill } from "@/components/ui";
 import { Saver } from "./saver";
@@ -1109,6 +1110,15 @@ async function Files() {
           </div>
         </dl>
       </div>
+
+      <Saver action={testStorage} className="mb-3 flex flex-col gap-2">
+        <button
+          type="submit"
+          className="h-11 rounded-xl border border-line text-[13px] font-semibold"
+        >
+          افحص الاتصال بالدلو
+        </button>
+      </Saver>
 
       {state.cloud && state.inDb > 0 ? (
         <Saver action={moveMediaToCloud} className="mb-7 flex flex-col gap-2">

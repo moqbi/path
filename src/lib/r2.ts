@@ -148,6 +148,49 @@ async function signed(
   return fetch(`${url.protocol}//${host}${path}`, init);
 }
 
+/**
+ * فحصٌ حقيقيّ للدلو: كتابةٌ ثم قراءةٌ ثم حذف.
+ *
+ * وجودُ المفاتيح في البيئة لا يعني أنّها تعمل — «مربوطة» في اللوحة
+ * تقرأ المتغيّرات لا الدلو. وأوّل ما كُشف به هذا: الرفع كان يسقط على
+ * الخادم بـ`TLS alert 40`، ولا شيء في الشاشة يقوله. فالفحص يُجرى
+ * بطلبٍ واحدٍ صغير ويُردّ نصّ الخطأ كما جاء — عنوانٌ خاطئ ومفتاحٌ
+ * مرفوض لا يُقرآن سواءً.
+ *
+ * والكائن يُمسح بعده: الفحص لا يترك أثراً في الدلو.
+ */
+export async function probeBucket(): Promise<{ ok: boolean; detail: string }> {
+  const store = config();
+  if (!store) return { ok: false, detail: "المفاتيح غير مضبوطة" };
+
+  const objectKey = `_probe/${Date.now()}.txt`;
+  const body = new TextEncoder().encode("athr");
+
+  try {
+    const put = await signed("PUT", objectKey, body, {
+      "content-type": "text/plain",
+      "content-length": String(body.length),
+    });
+    if (!put.ok) {
+      return { ok: false, detail: `الكتابة ردّت ${put.status} — ${(await put.text()).slice(0, 200)}` };
+    }
+
+    const get = await signed("GET", objectKey);
+    const read = get.ok ? await get.text() : "";
+    await signed("DELETE", objectKey).catch(() => {});
+
+    if (!get.ok) return { ok: false, detail: `القراءة ردّت ${get.status}` };
+    if (read !== "athr") return { ok: false, detail: "ما قُرئ غير ما كُتب" };
+
+    return { ok: true, detail: `${store.bucket} على ${new URL(store.endpoint).host}` };
+  } catch (problem) {
+    // الشبكة لا ترجع حالةً: عنوانٌ لا يُحلّ أو مصافحةٌ مرفوضة ترمي.
+    const message = problem instanceof Error ? problem.message : String(problem);
+    const cause = problem instanceof Error && problem.cause ? ` · ${String(problem.cause)}` : "";
+    return { ok: false, detail: `${message}${cause}`.slice(0, 300) };
+  }
+}
+
 /** يرفع كائناً ويردّ مفتاحه. */
 export async function putObject(
   objectKey: string,

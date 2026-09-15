@@ -7,7 +7,7 @@ import { prisma } from "@/lib/db";
 import { createSession, destroySession, requireUser, verifyPassword } from "@/lib/auth";
 import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
 import { migrateToCloud, storeUpload } from "@/lib/media";
-import { cloudReady } from "@/lib/storage";
+import { cloudReady, probeBucket } from "@/lib/storage";
 import { forgetWords } from "@/lib/moderation";
 
 /*
@@ -542,6 +542,18 @@ export async function moveMediaToCloud(
   } catch (problem) {
     return { error: problem instanceof Error ? problem.message : "تعذّر النقل" };
   }
+}
+
+/**
+ * يفحص الدلو فعلاً — كتابةٌ وقراءةٌ وحذف — ويردّ ما قاله.
+ *
+ * «مربوطة» في الشاشة تقرأ المتغيّرات لا الدلو، فقد تكون المفاتيح
+ * مكتوبةً والرفع يسقط. وهذا الزرّ يقول أيّهما.
+ */
+export async function testStorage(_prev: AdminResult, _formData: FormData): Promise<AdminResult> {
+  await requireOwner();
+  const verdict = await probeBucket();
+  return verdict.ok ? { ok: `الدلو يعمل · ${verdict.detail}` } : { error: verdict.detail };
 }
 
 // ───────────────────────────── تغيير البريد ─────────────────────────────

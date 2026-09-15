@@ -7,4 +7,4 @@ import "server-only";
  * لدلوٍ واحد، فلا تفترق نسختان في ترويسةٍ فيقبل الخادمُ ما ترفضه اللوحة.
  * وهذا البابُ عليه الحارس: لا تُستورد من مكوّن عميل بالغلط.
  */
-export { cloudReady, deleteObjects, getObject, putObject, signRequest } from "@athar/storage";
+export { cloudReady, deleteObjects, getObject, probeBucket, putObject, signRequest } from "@athar/storage";
