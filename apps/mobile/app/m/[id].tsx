@@ -59,7 +59,14 @@ export default function MomentPage() {
       <ScreenHeader title="لحظة" back="/" />
 
       <ScrollView contentContainerStyle={{ paddingTop: 12, paddingBottom: 24 }}>
-        <MomentCard moment={data} viewerId={me?.id ?? ""} isPlus={me?.isPlus ?? false} />
+        {/*
+          حشوة الخطّ الزمني نفسها: البطاقة مرسومةٌ على ورقٍ بعمود صورٍ
+          وخيط، وبلا حشوةٍ جانبية تلتصق بالحافتين ويمشي العمود خارج
+          الخيط — كما كان في ملف الصديق.
+        */}
+        <View style={{ paddingHorizontal: 20 }}>
+          <MomentCard moment={data} viewerId={me?.id ?? ""} isPlus={me?.isPlus ?? false} />
+        </View>
 
         <View style={line} />
 

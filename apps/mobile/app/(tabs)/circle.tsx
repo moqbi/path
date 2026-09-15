@@ -11,6 +11,7 @@ import { api } from "../../lib/api";
 import { keys, useCircle, useRings, useSuggestions } from "../../lib/queries";
 import { ar, presence } from "../../lib/format";
 import { useSession } from "../../lib/session";
+import { NameTag } from "../../components/name-tag";
 import { colors } from "../../theme/tokens";
 
 /**
@@ -258,9 +259,15 @@ export default function Circle() {
                 </Pressable>
 
                 <Pressable style={{ flex: 1, minWidth: 0 }} onPress={() => router.push(`/u/${person.id}` as never)}>
-                  <Text numberOfLines={1} style={{ color: colors.ink, fontSize: 14, fontWeight: "600" }}>
-                    {person.name}
-                  </Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Text
+                      numberOfLines={1}
+                      style={{ color: colors.ink, fontSize: 14, fontWeight: "600", flexShrink: 1, writingDirection: "auto" }}
+                    >
+                      {person.name}
+                    </Text>
+                    <NameTag isPlus={person.isPlus} tag={person.tag} size={10} />
+                  </View>
                   <Text numberOfLines={1} style={{ color: colors.faint, fontSize: 11.5 }}>
                     {person.mutual === 1
                       ? "صديق مشترك واحد"
@@ -291,9 +298,13 @@ export default function Circle() {
                     frameSpec={member.frame?.spec}
                     charm={member.charm}
                   />
-                  <Text numberOfLines={1} style={{ flex: 1, minWidth: 0, color: colors.ink, fontSize: 14, fontWeight: "600" }}>
+                  <Text
+                    numberOfLines={1}
+                    style={{ flexShrink: 1, minWidth: 0, color: colors.ink, fontSize: 14, fontWeight: "600", writingDirection: "auto" }}
+                  >
                     {member.name}
                   </Text>
+                  <NameTag isPlus={member.isPlus} tag={member.tag} size={10} />
                 </View>
 
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -348,8 +359,16 @@ export default function Circle() {
               frameSpec={friend.frame?.spec}
               charm={friend.charm}
             />
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "600" }}>{friend.name}</Text>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Text
+                  numberOfLines={1}
+                  style={{ color: colors.ink, fontSize: 14, fontWeight: "600", flexShrink: 1, writingDirection: "auto" }}
+                >
+                  {friend.name}
+                </Text>
+                <NameTag isPlus={friend.isPlus} tag={friend.tag} size={10} />
+              </View>
               <Text style={{ color: colors.faint, fontSize: 11.5 }}>
                 {[friend.city, presence(friend.lastSeenAt)].filter(Boolean).join(" · ")}
               </Text>

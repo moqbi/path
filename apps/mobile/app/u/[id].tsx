@@ -13,6 +13,7 @@ import { api } from "../../lib/api";
 import { keys, type Moment } from "../../lib/queries";
 import { ar, membership } from "../../lib/format";
 import { useSession } from "../../lib/session";
+import { NameTag } from "../../components/name-tag";
 import { colors } from "../../theme/tokens";
 
 type Person = {
@@ -119,8 +120,10 @@ export default function Profile() {
                   charmItem={who.charm}
                 />
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 }}>
-                  <Text style={{ color: colors.ink, fontSize: 17, fontWeight: "700" }}>{who.name}</Text>
-                  {who.isPlus ? <StarIcon size={14} color={colors.clay} /> : null}
+                  <Text style={{ color: colors.ink, fontSize: 17, fontWeight: "700", writingDirection: "auto" }}>
+                    {who.name}
+                  </Text>
+                  <NameTag isPlus={who.isPlus} tag={who.tag} size={11} />
                 </View>
                 <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 2 }}>
                   لك معانا {membership(who.createdAt)} · عضو {ar(who.memberNo)}

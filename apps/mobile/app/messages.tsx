@@ -11,6 +11,7 @@ import { api } from "../lib/api";
 import { keys } from "../lib/queries";
 import { useSession } from "../lib/session";
 import { ar, presence, relative } from "../lib/format";
+import { NameTag } from "../components/name-tag";
 import { colors } from "../theme/tokens";
 
 type Row = {
@@ -108,9 +109,13 @@ export default function Messages() {
             />
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "600" }}>
+                <Text
+                  numberOfLines={1}
+                  style={{ color: colors.ink, fontSize: 14, fontWeight: "600", flexShrink: 1, writingDirection: "auto" }}
+                >
                   {item.other.name}
                 </Text>
+                <NameTag isPlus={item.other.isPlus} tag={item.other.tag} size={10} />
                 <Text style={{ color: colors.faint, fontSize: 10.5 }}>
                   {item.last ? relative(new Date(item.last.createdAt)) : presence(item.other.lastSeenAt)}
                 </Text>

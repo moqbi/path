@@ -60,7 +60,17 @@ export type Moment = {
     id: string;
     body: string;
     createdAt: string;
-    user: { id: string; name: string; avatarMediaId: string | null };
+    /*
+      الخادم يرسل الاشتراك والوسم مع كل تعليق منذ بُني، والجوّال كان
+      يُسقطهما من النوع فلا يُرسمان — والويب يرسمهما (القاعدة ٥٨).
+    */
+    user: {
+      id: string;
+      name: string;
+      avatarMediaId: string | null;
+      isPlus?: boolean;
+      tag?: { name: string; bg: string; fg: string } | null;
+    };
   }[];
   _count: { views: number; comments: number };
 };

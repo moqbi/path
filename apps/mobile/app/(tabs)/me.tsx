@@ -15,6 +15,7 @@ import { api } from "../../lib/api";
 import { keys, type Moment } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { ar, dayLabel, MONTHS } from "../../lib/format";
+import { NameTag } from "../../components/name-tag";
 import { colors } from "../../theme/tokens";
 
 const COVER = 176;
@@ -186,13 +187,10 @@ export default function Me() {
               />
 
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 }}>
-                <Text style={{ color: colors.ink, fontSize: 20, fontWeight: "600" }}>{me.name}</Text>
-                {me.isPlus ? <StarIcon size={14} color={colors.clay} /> : null}
-                {me.tag ? (
-                  <View style={{ backgroundColor: me.tag.bg, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 }}>
-                    <Text style={{ color: me.tag.fg, fontSize: 11, fontWeight: "700" }}>{me.tag.name}</Text>
-                  </View>
-                ) : null}
+                <Text style={{ color: colors.ink, fontSize: 20, fontWeight: "600", writingDirection: "auto" }}>
+                  {me.name}
+                </Text>
+                <NameTag isPlus={me.isPlus} tag={me.tag} size={12} />
               </View>
 
               {me.handle ? (

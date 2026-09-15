@@ -23,6 +23,7 @@ import { useCircle, useFeed, useTogether, type Moment } from "../../lib/queries"
 import { useSession } from "../../lib/session";
 import { ar, dayLabel, membership, MONTHS } from "../../lib/format";
 import { tap } from "../../lib/sound";
+import { NameTag } from "../../components/name-tag";
 import { colors } from "../../theme/tokens";
 
 const COVER = 176;
@@ -253,13 +254,10 @@ export default function Timeline() {
 
             <View style={{ flex: 1, paddingBottom: 6 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Text style={{ color: "#fff", fontSize: 14, fontWeight: "600" }}>{me.name}</Text>
-                {me.isPlus ? <StarIcon size={12} color={colors.clay} /> : null}
-                {me.tag ? (
-                  <View style={{ backgroundColor: me.tag.bg, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 }}>
-                    <Text style={{ color: me.tag.fg, fontSize: 10, fontWeight: "700" }}>{me.tag.name}</Text>
-                  </View>
-                ) : null}
+                <Text style={{ color: "#fff", fontSize: 14, fontWeight: "600", writingDirection: "auto" }}>
+                  {me.name}
+                </Text>
+                <NameTag isPlus={me.isPlus} tag={me.tag} size={10} />
               </View>
               <Text style={{ color: "rgba(255,255,255,.92)", fontSize: 11.5 }}>
                 لك معانا {membership(me.createdAt)}

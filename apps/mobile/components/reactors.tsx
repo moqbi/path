@@ -2,6 +2,7 @@ import { View, Text, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { Avatar } from "./avatar";
 import { ReactionGlyph } from "./reactions";
+import { NameTag } from "./name-tag";
 import { colors } from "../theme/tokens";
 import { relative } from "../lib/format";
 import type { Moment } from "../lib/queries";
@@ -93,9 +94,22 @@ export function CommentList({
 
           <View style={{ flex: 1, paddingTop: 1 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 }}>
-              <Text style={{ color: colors.ink, fontSize: 12, fontWeight: "600" }}>
+              {/* `writingDirection: auto` مكافئُ `dir="auto"` في الويب:
+                  يبقى ترتيب الصفّ عربياً ويُقرأ الاسم اللاتيني باتجاهه
+                  هو (القاعدة ٥٨). و`dir` خاصّيةُ ويب لا تعرفها `Text`. */}
+              <Text
+                numberOfLines={1}
+                style={{
+                  color: colors.ink,
+                  fontSize: 12,
+                  fontWeight: "600",
+                  flexShrink: 1,
+                  writingDirection: "auto",
+                }}
+              >
                 {comment.user.name}
               </Text>
+              <NameTag isPlus={comment.user.isPlus} tag={comment.user.tag} size={9.5} />
               <Text style={{ color: colors.faint, fontSize: 10 }}>
                 {relative(new Date(comment.createdAt))}
               </Text>
