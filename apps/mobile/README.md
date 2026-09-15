@@ -1,4 +1,4 @@
-# تطبيق أثر — React Native + Expo
+# تطبيق آثار — React Native + Expo
 
 تطبيقٌ أصليّ لا غلافٌ لموقع: `expo-router` للتنقّل، و`NativeWind` للهوية
 نفسها، و`TanStack Query` لحالة الخادم، و`Zustand` لحالة الشاشة.

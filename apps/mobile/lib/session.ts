@@ -19,7 +19,7 @@ export type Worn = {
   kind: string;
   spec: string;
   mediaId: string | null;
-  priceHalalas: number;
+  priceCoins: number;
   plusOnly: boolean;
 } | null;
 
@@ -33,7 +33,7 @@ export type Me = {
   city: string | null;
   role: "USER" | "ADMIN";
   isPlus: boolean;
-  storeCredit: number;
+  coins: number;
   createdAt: string;
   avatarMediaId: string | null;
   coverMediaId: string | null;

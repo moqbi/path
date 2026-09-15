@@ -9,6 +9,9 @@ const ARABIC_DIGITS = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩
 export const ar = (value: number | string): string =>
   String(value).replace(/\d/g, (d) => ARABIC_DIGITS[Number(d)]);
 
+export const coinText = (coins: number): string => `${ar(String(coins))} كوينز`;
+
+/** الهللات إلى نصّ بالريال: 3000 → «٣٠ ر.س». لسعر الباقة والاشتراك. */
 export const riyals = (halalas: number): string => {
   const whole = halalas / 100;
   return `${ar(Number.isInteger(whole) ? String(whole) : whole.toFixed(2))} ر.س`;

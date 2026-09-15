@@ -98,7 +98,7 @@ export default async function TimelinePage({
       <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
         <AthrHeaderMark />
         <div className="flex items-center gap-1.5">
-          {/* «أثر+» قبل الرسائل: بابُ الاشتراك ومزاياه، لا زرّ دفعٍ مباشر. */}
+          {/* «آثار+» قبل الرسائل: بابُ الاشتراك ومزاياه، لا زرّ دفعٍ مباشر. */}
           <Link
             href="/subscribe"
             className="flex items-center gap-1 rounded-full px-3 text-[12px] font-bold"
@@ -110,7 +110,7 @@ export default async function TimelinePage({
             }}
           >
             <SparkIcon size={13} />
-            أثر+
+            آثار+
           </Link>
 
           <Link
@@ -170,7 +170,7 @@ export default async function TimelinePage({
                 />
               </div>
             </div>
-            <p className="text-[12.5px] font-semibold text-clay-ink">أثركما المشترك</p>
+            <p className="text-[12.5px] font-semibold text-clay-ink">آثاركما المشتركة</p>
             <p className="my-0.5 text-[28px] leading-none" style={{ fontFamily: "var(--font-display)" }}>
               {ar(moments.length)}
             </p>
@@ -213,7 +213,7 @@ export default async function TimelinePage({
                     <span className="min-w-0 grow truncate text-[14px] font-semibold">
                       {person.name}
                     </span>
-                    <span className="shrink-0 text-[12px] font-semibold text-clay-ink">أثرنا</span>
+                    <span className="shrink-0 text-[12px] font-semibold text-clay-ink">آثارنا</span>
                   </Link>
                 ))}
               </div>
@@ -225,7 +225,7 @@ export default async function TimelinePage({
               view === "private"
                 ? "ما فيه لحظات خاصة"
                 : view === "together"
-                  ? "ما فيه أثر بعد"
+                  ? "ما فيه آثار بعد"
                   : "خطك الزمني فارغ"
             }
             hint={

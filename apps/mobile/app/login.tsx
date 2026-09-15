@@ -286,7 +286,7 @@ export default function Login() {
         >
           <AthrMark size={76} />
           <Text style={{ marginTop: 20, fontSize: 32, fontWeight: "700", color: "#f7f5ef" }}>
-            ATHR
+            ATHAR
           </Text>
           <Text style={{ marginTop: 20, fontSize: 15, fontWeight: "500", color: "#f0ece4" }}>
             {TAGLINE_AR}
@@ -325,7 +325,7 @@ export default function Login() {
         >
           <AthrMark size={96} />
           <Text style={{ marginTop: 12, fontSize: 26, fontWeight: "700", color: "#f7f5ef" }}>
-            ATHR
+            ATHAR
           </Text>
           <Text style={{ marginTop: 8, fontSize: 13, color: "#cbc5bb" }}>{TAGLINE_AR}</Text>
         </Animated.View>

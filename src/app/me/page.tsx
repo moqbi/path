@@ -47,7 +47,7 @@ export default async function ProfilePage() {
             spec: true,
             kind: true,
             mediaId: true,
-            priceHalalas: true,
+            priceCoins: true,
             plusOnly: true,
           },
         },
@@ -317,12 +317,12 @@ export default async function ProfilePage() {
             style={{ height: 52, color: "var(--color-on-brand)" }}
           >
             <SparkIcon size={17} />
-            اشترك في أثر+
+            اشترك في آثار+
           </Link>
         ) : (
           <div className="mb-8 rounded-2xl border border-line bg-card p-4 text-center">
             <p className="text-[13px] text-ink-2">
-              رصيد المتجر: <span className="font-semibold">{ar(user.storeCredit / 100)} ر.س</span>
+              رصيد المتجر: <span className="font-semibold">{ar(user.coins / 100)} ر.س</span>
             </p>
           </div>
         )}

@@ -113,6 +113,14 @@ export const TagIcon = ({ size = 20, color = "currentColor" }: Props) => (
   </Svg>
 );
 
+/** الكوينز: قرصٌ بحرفٍ في وسطه — عملة المتجر. */
+export const CoinIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Circle cx={12} cy={12} r={8.4} />
+    <Circle cx={12} cy={12} r={4.6} />
+  </Svg>
+);
+
 export const GiftIcon = ({ size = 20, color = "currentColor" }: Props) => (
   <Svg {...stroke(size, color)}>
     <Path d="M4 11h16v9H4z" />
@@ -155,7 +163,7 @@ export const ShareIcon = ({ size = 20, color = "currentColor" }: Props) => (
   </Svg>
 );
 
-/** «أثر+»: نجمةٌ ممتلئة — علامة الاشتراك أينما ظهرت. */
+/** «آثار+»: نجمةٌ ممتلئة — علامة الاشتراك أينما ظهرت. */
 export const SparkIcon = ({ size = 20, color = "currentColor" }: Props) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
     <Path d="M12 2.6l2.76 5.92 6.24.78-4.6 4.33 1.2 6.37L12 16.86l-5.6 3.14 1.2-6.37-4.6-4.33 6.24-.78L12 2.6Z" />

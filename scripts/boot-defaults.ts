@@ -50,7 +50,7 @@ async function admins() {
 }
 
 /**
- * وسم واحد جاهز لأول إقلاع فقط: «داعم» لمشتركي أثر+.
+ * وسم واحد جاهز لأول إقلاع فقط: «داعم» لمشتركي آثار+.
  * لا يُنشأ إن وُجد أي وسم — المشرف يملك وسومه بعد ذلك، ولا يعيد سكربت
  * الإقلاع كتابة ما حذفه أو غيّره.
  */
@@ -64,7 +64,7 @@ async function tags() {
   await prisma.tag.create({
     data: { name: "داعم", bg: "#f6b93b", fg: "#3b2a05", autoForPlus: true, sortOrder: 1 },
   });
-  console.log("أُنشئ وسم «داعم» لمشتركي أثر+");
+  console.log("أُنشئ وسم «داعم» لمشتركي آثار+");
 }
 
 
@@ -122,17 +122,17 @@ const PALETTES: Record<string, Record<string, string>> = {
 
 const STARTERS = [
   // وصل حديثاً
-  { name: "Sunset", slug: "themes", kind: "THEME", price: 1500, spec: "linear-gradient(135deg,#ff9a4d,#ff5f6d)" },
-  { name: "Film", slug: "themes", kind: "THEME", price: 1500, spec: "linear-gradient(135deg,#3a4a58,#8fa3b0)" },
-  { name: "Premium", slug: "frames", kind: "FRAME", price: 2500, spec: "linear-gradient(135deg,#f6b93b,#d99b1f)", plusOnly: true },
-  // ثيمات أثر
-  { name: "Midnight", slug: "themes", kind: "THEME", price: 1200, spec: "linear-gradient(135deg,#0e1a24,#2b3f4f)" },
-  { name: "Sand", slug: "themes", kind: "THEME", price: 1200, spec: "linear-gradient(135deg,#e9dcc3,#cbb28a)" },
-  { name: "Paper", slug: "themes", kind: "THEME", price: 1200, spec: "linear-gradient(135deg,#f7f5ef,#e0dbd0)" },
+  { name: "Sunset", slug: "themes", kind: "THEME", price: 500, spec: "linear-gradient(135deg,#ff9a4d,#ff5f6d)" },
+  { name: "Film", slug: "themes", kind: "THEME", price: 500, spec: "linear-gradient(135deg,#3a4a58,#8fa3b0)" },
+  { name: "Premium", slug: "frames", kind: "FRAME", price: 830, spec: "linear-gradient(135deg,#f6b93b,#d99b1f)", plusOnly: true },
+  // ثيمات آثار
+  { name: "Midnight", slug: "themes", kind: "THEME", price: 400, spec: "linear-gradient(135deg,#0e1a24,#2b3f4f)" },
+  { name: "Sand", slug: "themes", kind: "THEME", price: 400, spec: "linear-gradient(135deg,#e9dcc3,#cbb28a)" },
+  { name: "Paper", slug: "themes", kind: "THEME", price: 400, spec: "linear-gradient(135deg,#f7f5ef,#e0dbd0)" },
   // حزم محدودة
-  { name: "رمضان", slug: "frames", kind: "FRAME", price: 2000, spec: "linear-gradient(135deg,#1f6f5c,#c9a227)", limited: true },
-  { name: "سفر", slug: "themes", kind: "THEME", price: 1800, spec: "linear-gradient(135deg,#2b6cb0,#63b3ed)", limited: true },
-  { name: "Winter", slug: "themes", kind: "THEME", price: 1800, spec: "linear-gradient(135deg,#8ec5e6,#e8f4fb)", limited: true },
+  { name: "رمضان", slug: "frames", kind: "FRAME", price: 670, spec: "linear-gradient(135deg,#1f6f5c,#c9a227)", limited: true },
+  { name: "سفر", slug: "themes", kind: "THEME", price: 600, spec: "linear-gradient(135deg,#2b6cb0,#63b3ed)", limited: true },
+  { name: "Winter", slug: "themes", kind: "THEME", price: 600, spec: "linear-gradient(135deg,#8ec5e6,#e8f4fb)", limited: true },
 ] as const;
 
 async function store() {
@@ -160,7 +160,7 @@ async function store() {
       data: {
         kind: item.kind,
         name: item.name,
-        priceHalalas: item.price,
+        priceCoins: item.price,
         spec: item.spec,
         plusOnly: "plusOnly" in item ? item.plusOnly : false,
         limited: "limited" in item ? item.limited : false,
@@ -208,12 +208,12 @@ async function palettes() {
 const CHARMS = [
   {
     name: "نجمة",
-    price: 800,
+    price: 267,
     spec: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="%230e1a24"/><path d="M12 5l2.1 4.3 4.7.7-3.4 3.3.8 4.7L12 15.8 7.8 18l.8-4.7L5.2 10l4.7-.7z" fill="%23f6b93b"/></svg>') center/cover no-repeat`,
   },
   {
     name: "هلال",
-    price: 800,
+    price: 267,
     spec: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="%231f6f5c"/><path d="M15.6 5.4a7 7 0 1 0 3 8.9 5.6 5.6 0 0 1-3-8.9z" fill="%23f7f5ef"/></svg>') center/cover no-repeat`,
   },
 ] as const;
@@ -233,7 +233,7 @@ async function charms() {
       data: {
         kind: "CHARM",
         name: charm.name,
-        priceHalalas: charm.price,
+        priceCoins: charm.price,
         spec: charm.spec,
         categoryId: category?.id ?? null,
         sortOrder: order++,

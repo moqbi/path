@@ -79,7 +79,7 @@ export type Clip = { seconds: number; width: number; height: number };
  * يقرأ المقطع بـffprobe.
  *
  * المدّة تُفحص على الخادم لأن الحدّ منتَج لا تجميل: عشرون ثانية للقصّة،
- * وعشرون للرسالة الصوتية ومئةٌ وعشرون لمشتركي أثر+. ورقمٌ يُرسله العميل
+ * وعشرون للرسالة الصوتية ومئةٌ وعشرون لمشتركي آثار+. ورقمٌ يُرسله العميل
  * ليس حدّاً.
  */
 export async function probeClip(input: Uint8Array, extension: string): Promise<Clip> {

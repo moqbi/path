@@ -110,7 +110,7 @@ async function keep(
   if (bytes.length === 0) throw new Error("الملف فارغ");
 
   const moving = isAnimated(mime, bytes);
-  if (moving && !allowAnimated) throw new Error("الصورة المتحركة لمشتركي أثر+");
+  if (moving && !allowAnimated) throw new Error("الصورة المتحركة لمشتركي آثار+");
   if (!moving && mime === "image/gif") throw new Error("يُقبل JPEG أو PNG أو WebP فقط");
   const cap = moving ? MAX_ANIMATED_BYTES : MAX_BYTES;
   if (bytes.length > cap) throw new Error("الصورة كبيرة — صغّرها وأعد المحاولة");

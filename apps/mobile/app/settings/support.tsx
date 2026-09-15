@@ -135,7 +135,7 @@ export default function Support() {
                   {ticket.reply ? (
                     <View style={{ marginTop: 12, borderRadius: 12, backgroundColor: colors.chip, padding: 12 }}>
                       <Text style={{ color: colors.clayInk, fontSize: 10.5, fontWeight: "700", marginBottom: 4, textAlign: "right" }}>
-                        ردّ أثر
+                        ردّ آثار
                       </Text>
                       <Text style={{ color: colors.ink2, fontSize: 12.5, lineHeight: 21, textAlign: "right" }}>
                         {ticket.reply}

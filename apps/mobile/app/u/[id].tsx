@@ -32,7 +32,7 @@ type Person = {
     kind: string;
     spec: string;
     mediaId: string | null;
-    priceHalalas: number;
+    priceCoins: number;
     plusOnly: boolean;
   } | null;
   charm: {
@@ -41,7 +41,7 @@ type Person = {
     kind: string;
     spec: string;
     mediaId: string | null;
-    priceHalalas: number;
+    priceCoins: number;
     plusOnly: boolean;
   } | null;
   tag: { name: string; bg: string; fg: string } | null;
@@ -119,7 +119,7 @@ export default function Profile() {
                 </Text>
 
                 {/*
-                  ثلاثة أفعال: إهداءٌ من مكانه، وأثرنا، ومحادثة. والحظر
+                  ثلاثة أفعال: إهداءٌ من مكانه، وآثارنا، ومحادثة. والحظر
                   ليس هنا — مكانه صفّ الصديق في الدائرة (القاعدة ٣٨).
                 */}
                 {person.data?.friend ? (
@@ -136,7 +136,7 @@ export default function Profile() {
                       style={{ flexDirection: "row", alignItems: "center", gap: 6, height: 42, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
                     >
                       <WithIcon size={16} color={colors.ink2} />
-                      <Text style={{ color: colors.ink2, fontSize: 13, fontWeight: "600" }}>أثرنا</Text>
+                      <Text style={{ color: colors.ink2, fontSize: 13, fontWeight: "600" }}>آثارنا</Text>
                     </Pressable>
 
                     <Pressable

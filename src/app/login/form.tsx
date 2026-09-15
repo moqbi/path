@@ -130,7 +130,7 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
             className="latin mt-5"
             style={{ fontSize: 32, fontWeight: 700, color: "#f7f5ef" }}
           >
-            ATHR
+            ATHAR
           </span>
           <span className="mt-5 text-[15px] font-medium" style={{ color: "#f0ece4" }}>
             {TAGLINE_AR}
@@ -158,7 +158,7 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
         >
           <AthrMark size={96} />
           <span className="latin mt-3 text-[26px] font-bold" style={{ color: "#f7f5ef" }}>
-            ATHR
+            ATHAR
           </span>
           <span className="mt-2 text-[13px]" style={{ color: "#cbc5bb" }}>
             {TAGLINE_AR}

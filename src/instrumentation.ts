@@ -12,7 +12,7 @@ export async function register() {
   const bucket = process.env.R2_BUCKET;
   console.log(
     cloudReady()
-      ? `أثر · التخزين: Cloudflare R2 · الدلو ${bucket}`
-      : "أثر · التخزين: القاعدة — مفاتيح R2 غير مضبوطة",
+      ? `آثار · التخزين: Cloudflare R2 · الدلو ${bucket}`
+      : "آثار · التخزين: القاعدة — مفاتيح R2 غير مضبوطة",
   );
 }

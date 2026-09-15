@@ -403,7 +403,7 @@ export default function Conversation() {
 
           {!me?.isPlus ? (
             <Text style={{ color: colors.faint, fontSize: 10.5, textAlign: "center", marginTop: 8 }}>
-              الصوت حتى {ar(maxSeconds)} ثانية · ومع أثر+ ١٢٠
+              الصوت حتى {ar(maxSeconds)} ثانية · ومع آثار+ ١٢٠
             </Text>
           ) : null}
         </View>

@@ -6,7 +6,7 @@ import { firstColor } from "./avatar";
 import { CheckIcon, LockIcon } from "./icons";
 import { api } from "../lib/api";
 import { keys, type StoreItem } from "../lib/queries";
-import { ar, riyals } from "../lib/format";
+import { ar, coinText } from "../lib/format";
 import { colors } from "../theme/tokens";
 
 /**
@@ -61,14 +61,14 @@ export function StoreGrid({
   items,
   owned,
   isPlus,
-  credit,
+  coins,
   daysHere,
   equipped,
 }: {
   items: StoreItem[];
   owned: string[];
   isPlus: boolean;
-  credit: number;
+  coins: number;
   daysHere: number;
   equipped: { frame: string | null; theme: string | null; charm: string | null };
 }) {
@@ -101,7 +101,7 @@ export function StoreGrid({
 
   const ownedSet = new Set(owned);
   const price = (item: StoreItem) =>
-    isPlus ? Math.round(item.priceHalalas * 0.8) : item.priceHalalas;
+    isPlus ? Math.round(item.priceCoins * 0.8) : item.priceCoins;
 
   const wornId = (item: StoreItem) =>
     item.kind === "FRAME" ? equipped.frame : item.kind === "CHARM" ? equipped.charm : equipped.theme;
@@ -120,13 +120,13 @@ export function StoreGrid({
       return;
     }
 
-    if (item.plusOnly && !isPlus) return setError("هذا الصنف لمشتركي أثر+");
+    if (item.plusOnly && !isPlus) return setError("هذا الصنف لمشتركي آثار+");
     if (item.earnedAfterDays !== null && daysHere < item.earnedAfterDays) {
       return setError(
         `يُكتسب بعد ${ar(item.earnedAfterDays)} يوم — باقي ${ar(item.earnedAfterDays - daysHere)}`,
       );
     }
-    if (credit < price(item)) return setError("رصيدك لا يكفي");
+    if (coins < price(item)) return setError("رصيدك لا يكفي — اشحن كوينز من رصيدك في الأعلى");
     buy.mutate(item.id);
   }
 
@@ -204,12 +204,12 @@ export function StoreGrid({
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   <LockIcon size={11} color={colors.faint} />
                   <Text style={{ color: colors.faint, fontSize: 10.5 }}>
-                    {item.earnedAfterDays !== null ? `${ar(item.earnedAfterDays)} يوم` : "أثر+"}
+                    {item.earnedAfterDays !== null ? `${ar(item.earnedAfterDays)} يوم` : "آثار+"}
                   </Text>
                 </View>
               ) : (
                 <Text style={{ color: colors.clayInk, fontSize: 11, fontWeight: "600" }}>
-                  {riyals(price(item))}
+                  {coinText(price(item))}
                 </Text>
               )}
             </Pressable>

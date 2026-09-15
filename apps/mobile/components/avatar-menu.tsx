@@ -6,7 +6,7 @@ import { MediaImage } from "./media-image";
 import { CloseIcon } from "./icons";
 import { api } from "../lib/api";
 import { keys, useStore } from "../lib/queries";
-import { riyals } from "../lib/format";
+import { coinText } from "../lib/format";
 import { colors } from "../theme/tokens";
 
 /** صنفٌ يلبسه صاحب الملف — إطارٌ أو تميمة — كما يُعرض في المتجر. */
@@ -16,7 +16,7 @@ export type WornItem = {
   kind: string;
   spec: string;
   mediaId: string | null;
-  priceHalalas: number;
+  priceCoins: number;
   plusOnly: boolean;
 } | null;
 
@@ -164,7 +164,7 @@ function ItemSheet({ item, onClose }: { item: NonNullable<WornItem>; onClose: ()
   });
 
   const owned = store.data?.owned.includes(item.id) ?? false;
-  const free = item.priceHalalas === 0;
+  const free = item.priceCoins === 0;
 
   return (
     <Sheet onClose={onClose} title={KIND_LABEL[item.kind] ?? "صنف"}>
@@ -177,10 +177,10 @@ function ItemSheet({ item, onClose }: { item: NonNullable<WornItem>; onClose: ()
           </Text>
           <Text style={{ color: colors.muted, fontSize: 12.5, marginTop: 2, textAlign: "right" }}>
             {KIND_LABEL[item.kind] ?? "صنف"}
-            {item.plusOnly ? " · لمشتركي أثر+" : ""}
+            {item.plusOnly ? " · لمشتركي آثار+" : ""}
           </Text>
           <Text style={{ color: colors.clayInk, fontSize: 14, fontWeight: "600", marginTop: 4, textAlign: "right" }}>
-            {item.priceHalalas > 0 ? riyals(item.priceHalalas) : "يُكتسب بالوقت"}
+            {item.priceCoins > 0 ? coinText(item.priceCoins) : "يُكتسب بالوقت"}
           </Text>
         </View>
       </View>
@@ -216,7 +216,7 @@ function ItemSheet({ item, onClose }: { item: NonNullable<WornItem>; onClose: ()
             <ActivityIndicator color={colors.onBrand} />
           ) : (
             <Text style={{ color: colors.onBrand, fontSize: 14, fontWeight: "700" }}>
-              {`اشترِ بـ${riyals(item.priceHalalas)}`}
+              {`اشترِ بـ${coinText(item.priceCoins)}`}
             </Text>
           )}
         </Pressable>

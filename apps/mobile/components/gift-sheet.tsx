@@ -6,7 +6,7 @@ import { firstColor } from "./avatar";
 import { CloseIcon, GiftIcon, SparkIcon } from "./icons";
 import { api } from "../lib/api";
 import { keys, useStore, type StoreItem } from "../lib/queries";
-import { ar, riyals } from "../lib/format";
+import { ar, coinText } from "../lib/format";
 import { colors } from "../theme/tokens";
 
 /**
@@ -89,11 +89,11 @@ function Sheet({
   });
 
   const isPlus = store.data?.isPlus ?? false;
-  const credit = store.data?.credit ?? 0;
+  const coins = store.data?.coins ?? 0;
   const items = (store.data?.items ?? []).filter((item) => item.kind === "FRAME");
   const has = new Set([...friendOwned, ...sent]);
   const price = (item: StoreItem) =>
-    isPlus ? Math.round(item.priceHalalas * 0.8) : item.priceHalalas;
+    isPlus ? Math.round(item.priceCoins * 0.8) : item.priceCoins;
 
   return (
     <Modal transparent animationType="slide" onRequestClose={onClose}>
@@ -122,7 +122,7 @@ function Sheet({
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: colors.goldLine, backgroundColor: colors.goldSoft, marginBottom: 12 }}>
           <SparkIcon size={14} color={colors.goldInk} />
           <Text style={{ color: colors.goldInk, fontSize: 12, fontWeight: "600" }}>
-            رصيدك {riyals(credit)}
+            رصيدك {coinText(coins)}
           </Text>
         </View>
 
@@ -142,7 +142,7 @@ function Sheet({
         <ScrollView contentContainerStyle={{ flexDirection: "row", flexWrap: "wrap", gap: 12, paddingBottom: 8 }}>
           {items.map((item) => {
             const already = has.has(item.id);
-            // ما يُكتسب بالوقت لا يُهدى، ولا صنفُ «أثر+» لمن ليس مشتركاً.
+            // ما يُكتسب بالوقت لا يُهدى، ولا صنفُ «آثار+» لمن ليس مشتركاً.
             const locked = item.earnedAfterDays !== null || (item.plusOnly && !friendIsPlus);
 
             return (
@@ -185,10 +185,10 @@ function Sheet({
                     : item.earnedAfterDays !== null
                       ? `يُكتسب بـ${ar(item.earnedAfterDays)} يوم`
                       : item.plusOnly && !friendIsPlus
-                        ? "لمشتركي أثر+"
+                        ? "لمشتركي آثار+"
                         : busy === item.id
                           ? "…"
-                          : riyals(price(item))}
+                          : coinText(price(item))}
                 </Text>
               </Pressable>
             );

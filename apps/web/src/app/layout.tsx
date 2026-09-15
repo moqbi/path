@@ -3,7 +3,7 @@ import "./globals.css";
 import { TAGLINE_AR, TAGLINE_EN } from "@/components/brand";
 
 export const metadata: Metadata = {
-  title: "أثر · لوحة التحكم",
+  title: "آثار · لوحة التحكم",
   description: `${TAGLINE_AR} ${TAGLINE_EN}`,
   icons: { icon: "/icon.png", apple: "/apple-icon.png" },
   /* لوحةٌ لا صفحةَ هبوط: لا تُفهرس. */

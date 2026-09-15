@@ -2,7 +2,7 @@
   "name": "athar-app",
   "version": "0.1.0",
   "private": true,
-  "description": "أثر — شبكة اجتماعية حميمية بدائرة محدودة",
+  "description": "آثار — شبكة اجتماعية حميمية بدائرة محدودة",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",

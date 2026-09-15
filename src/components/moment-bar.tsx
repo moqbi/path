@@ -192,7 +192,7 @@ export function MomentBar({
             ) : (
               <a
                 href="/subscribe"
-                aria-label="الإيموجي الحر لمشتركي أثر+"
+                aria-label="الإيموجي الحر لمشتركي آثار+"
                 className="flex h-10 w-9 items-center justify-center rounded-xl"
                 style={{ color: "var(--color-gold-ink)" }}
               >

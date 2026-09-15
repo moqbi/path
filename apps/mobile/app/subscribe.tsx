@@ -37,14 +37,14 @@ const PERKS = [
     icon: <CameraIcon size={18} color={colors.gold} />,
   },
   {
-    title: "٣٠ ر.س رصيد شهري في المتجر",
+    title: "١٠٠٠ كوينز شهرياً في المتجر",
     body: "وخصم ٢٠٪ على كل شي · إطارات حصرية",
     icon: <StoreIcon size={18} color={colors.gold} />,
   },
 ];
 
 /**
- * أثر+.
+ * آثار+.
  *
  * الوضع الفاتح كبقية التطبيق: صفحةٌ داكنة وحدها تُقرأ شاشةً غريبة عن
  * التطبيق الذي جاءت منه.
@@ -123,12 +123,12 @@ export default function Subscribe() {
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
-      <ScreenHeader title="أثر+" back="/" />
+      <ScreenHeader title="آثار+" back="/" />
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 30 }}>
         <View style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: colors.goldSoft, marginBottom: 16 }}>
           <SparkIcon size={14} color={colors.gold} />
-          <Text style={{ color: colors.goldInk, fontSize: 12, fontWeight: "700" }}>ATHR+</Text>
+          <Text style={{ color: colors.goldInk, fontSize: 12, fontWeight: "700" }}>ATHAR+</Text>
         </View>
 
         <Text style={{ color: colors.ink, fontSize: 30, fontWeight: "700", lineHeight: 42, marginBottom: 10 }}>
@@ -155,7 +155,7 @@ export default function Subscribe() {
 
         {me?.isPlus ? (
           <View style={{ paddingTop: 16, gap: 10 }}>
-            <Text style={{ color: colors.muted, fontSize: 13 }}>أنت مشترك في أثر+ حالياً.</Text>
+            <Text style={{ color: colors.muted, fontSize: 13 }}>أنت مشترك في آثار+ حالياً.</Text>
             {/* الإلغاء يجري في المتجر — لا آبل ولا جوجل تسمح به من داخل التطبيق. */}
             <Pressable
               onPress={() => void openManage()}

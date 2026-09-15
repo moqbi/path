@@ -23,12 +23,15 @@ import {
   addBannedWord,
   dropBannedWord,
   signOut,
+  createCoinPack,
+  updateCoinPack,
+  deleteCoinPack,
 } from "@/app/actions";
 import { itemPaint, ScreenHeader, TagPill } from "@/components/ui";
 import { Saver } from "./saver";
 import { AdminEmail } from "./email";
 import { ItemImage } from "./item-image";
-import { riyals, ar, relative } from "@/lib/format";
+import { coinText, ar, relative, riyals } from "@/lib/format";
 import { parsePalette } from "@/lib/theme";
 
 const FIELD =
@@ -73,6 +76,7 @@ const KIND_LABEL: Record<string, string> = {
 const STORE_VIEWS = [
   { key: "items", label: "الأصناف" },
   { key: "cats", label: "التصنيفات" },
+  { key: "packs", label: "باقات الكوينز" },
 ] as const;
 
 /** حقلٌ باسمه: الصفّ العاري من الحقول لا يقول ما يُكتب فيه. */
@@ -229,7 +233,7 @@ export default async function AdminPage({
   searchParams: Promise<{ s?: string; v?: string }>;
 }) {
   const { s: raw, v } = await searchParams;
-  const view = v === "cats" ? "cats" : "items";
+  const view = v === "cats" || v === "packs" ? v : "items";
   const user = await currentUser();
   if (!user) redirect("/login");
 
@@ -267,7 +271,7 @@ export default async function AdminPage({
   );
   const section = sections.some((item) => item.key === raw) ? raw! : sections[0].key;
 
-  const [items, tags, people, categories, tickets, reports, bannedWords] = await Promise.all([
+  const [items, tags, people, categories, tickets, reports, bannedWords, packs] = await Promise.all([
     prisma.storeItem.findMany({
       orderBy: { sortOrder: "asc" },
       include: {
@@ -319,6 +323,10 @@ export default async function AdminPage({
     scope === "ALL"
       ? prisma.bannedWord.findMany({ orderBy: { createdAt: "desc" } })
       : Promise.resolve([]),
+    prisma.coinPack.findMany({
+      orderBy: [{ sortOrder: "asc" }, { coins: "asc" }],
+      include: { _count: { select: { topUps: true } } },
+    }),
   ]);
 
   // الأصناف مرصوفة تحت تصنيفاتها كما تُرى في المتجر، وما بلا تصنيف في آخرها.
@@ -389,7 +397,7 @@ export default async function AdminPage({
         <h2 className="mb-1 text-[15px] font-bold">الوسوم</h2>
         <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
           الوسم كلمة تظهر بجانب الاسم بلونين تختارهما. وسمٌ واحد يمكن أن يُمنح
-          تلقائياً لكل مشترك في أثر+ — يُقرأ من الاشتراك ولا يُكتب على الحساب،
+          تلقائياً لكل مشترك في آثار+ — يُقرأ من الاشتراك ولا يُكتب على الحساب،
           فينتهي بانتهائه.
         </p>
 
@@ -410,7 +418,7 @@ export default async function AdminPage({
           </div>
           <label className="flex items-center gap-2.5 px-1 text-[13px]">
             <input name="autoForPlus" type="checkbox" className="h-4 w-4 accent-[#f6b93b]" />
-            يُمنح تلقائياً لمشتركي أثر+
+            يُمنح تلقائياً لمشتركي آثار+
           </label>
           <button
             type="submit"
@@ -432,7 +440,7 @@ export default async function AdminPage({
               <summary className="flex cursor-pointer list-none items-center gap-3 p-3">
                 <TagPill tag={tag} size={12} />
                 <span className="grow text-[11.5px] text-muted">
-                  {tag.autoForPlus ? "تلقائي لمشتركي أثر+ · " : null}
+                  {tag.autoForPlus ? "تلقائي لمشتركي آثار+ · " : null}
                   {ar(tag._count.users)} حساب
                 </span>
                 <span className="text-[12px] font-semibold text-clay-ink">تعديل</span>
@@ -461,7 +469,7 @@ export default async function AdminPage({
                     defaultChecked={tag.autoForPlus}
                     className="h-4 w-4 accent-[#f6b93b]"
                   />
-                  يُمنح تلقائياً لمشتركي أثر+
+                  يُمنح تلقائياً لمشتركي آثار+
                 </label>
                 <div className="flex gap-2.5">
                   <button
@@ -568,14 +576,204 @@ export default async function AdminPage({
               >
                 {tab.label}
                 <span className="mr-1.5 text-[11px] opacity-70">
-                  {ar(tab.key === "items" ? items.length : categories.length)}
+                  {ar(tab.key === "items" ? items.length : tab.key === "cats" ? categories.length : packs.length)}
                 </span>
               </Link>
             );
           })}
         </div>
 
-        {view === "items" ? (
+        {view === "packs" ? (
+          <>
+            <p className="mb-3 px-1 text-[11.5px] leading-relaxed text-muted">
+              الكوينز عملة المتجر: كل ما فيه يُشترى بها. والباقة تُشترى بمالٍ
+              حقيقي من App Store أو Google Play — لا نقبض نحن شيئاً، فالسلع
+              الرقمية تُباع عبر المتجرين وحدهما. و«معرّف المنتج» هو الرابط
+              بينهما وبيننا: به يصل حدث الشراء فنعرف كم كوينز نودع، وباقةٌ بلا
+              معرّف تبقى مسوّدةً لا تُعرض.
+            </p>
+
+            <details className="mb-4 rounded-2xl border border-line bg-card">
+              <summary className="flex cursor-pointer list-none items-center justify-between p-3.5">
+                <span className="text-[13.5px] font-bold">أضف باقة</span>
+                <span className="text-[12px] font-semibold text-clay-ink">افتح</span>
+              </summary>
+
+              <Saver action={createCoinPack} className="flex flex-col gap-3 border-t border-line p-3.5">
+                <Field label="الاسم">
+                  <input
+                    name="name"
+                    required
+                    maxLength={40}
+                    placeholder="١٠٠٠ كوينز"
+                    className={FIELD}
+                    style={{ height: 46 }}
+                  />
+                </Field>
+
+                <div className="flex gap-2.5">
+                  <Field label="الكوينز">
+                    <input
+                      name="coins"
+                      type="number"
+                      min={1}
+                      required
+                      placeholder="1000"
+                      className={FIELD}
+                      style={{ height: 46 }}
+                    />
+                  </Field>
+                  <Field label="السعر (ر.س)" hint="للعرض — المتجر يقبض بعملة المشتري">
+                    <input
+                      name="priceHalalasRiyals"
+                      type="number"
+                      min={0}
+                      step="1"
+                      required
+                      placeholder="30"
+                      className={FIELD}
+                      style={{ height: 46 }}
+                    />
+                  </Field>
+                </div>
+
+                <Field label="معرّف المنتج" hint="نفسه في App Store وGoogle Play">
+                  <input
+                    name="sku"
+                    dir="ltr"
+                    maxLength={120}
+                    placeholder="coins_1000"
+                    className={FIELD}
+                    style={{ height: 46 }}
+                  />
+                </Field>
+
+                <button
+                  type="submit"
+                  className="brand-gradient rounded-xl text-[14px] font-bold"
+                  style={{ height: 48, color: "var(--color-on-brand)" }}
+                >
+                  أضف الباقة
+                </button>
+              </Saver>
+            </details>
+
+            <div className="flex flex-col gap-2 pb-4">
+              {packs.length === 0 ? (
+                <p className="rounded-2xl border border-line bg-card p-5 text-center text-[12.5px] text-muted">
+                  لا باقات بعد.
+                </p>
+              ) : null}
+
+              {packs.map((row) => (
+                <details key={row.id} className="rounded-2xl border border-line bg-card">
+                  <summary className="flex cursor-pointer list-none items-center gap-3 p-3">
+                    <div className="min-w-0 grow">
+                      <p className="flex items-center gap-1.5 truncate text-[13.5px] font-semibold">
+                        {row.name}
+                        {row.hidden ? <Chip>مخفية</Chip> : null}
+                        {row.sku ? null : <Chip live>بلا معرّف منتج</Chip>}
+                      </p>
+                      <p className="truncate text-[11.5px] text-muted">
+                        {coinText(row.coins)} · {riyals(row.priceHalalas)}
+                        {row._count.topUps > 0 ? ` · ${ar(row._count.topUps)} شحنة` : ""}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-[12px] font-semibold text-clay-ink">تعديل</span>
+                  </summary>
+
+                  <Saver
+                    action={updateCoinPack.bind(null, row.id)}
+                    className="flex flex-col gap-3 border-t border-line p-3.5"
+                  >
+                    <Field label="الاسم">
+                      <input
+                        name="name"
+                        required
+                        maxLength={40}
+                        defaultValue={row.name}
+                        className={FIELD}
+                        style={{ height: 46 }}
+                      />
+                    </Field>
+
+                    <div className="flex gap-2.5">
+                      <Field label="الكوينز">
+                        <input
+                          name="coins"
+                          type="number"
+                          min={1}
+                          required
+                          defaultValue={row.coins}
+                          className={FIELD}
+                          style={{ height: 46 }}
+                        />
+                      </Field>
+                      <Field label="السعر (ر.س)">
+                        <input
+                          name="priceHalalasRiyals"
+                          type="number"
+                          min={0}
+                          step="1"
+                          required
+                          defaultValue={row.priceHalalas / 100}
+                          className={FIELD}
+                          style={{ height: 46 }}
+                        />
+                      </Field>
+                      <Field label="الترتيب">
+                        <input
+                          name="sortOrder"
+                          type="number"
+                          min={0}
+                          max={999}
+                          defaultValue={row.sortOrder}
+                          className={FIELD}
+                          style={{ height: 46, width: 82 }}
+                        />
+                      </Field>
+                    </div>
+
+                    <Field label="معرّف المنتج">
+                      <input
+                        name="sku"
+                        dir="ltr"
+                        maxLength={120}
+                        defaultValue={row.sku}
+                        className={FIELD}
+                        style={{ height: 46 }}
+                      />
+                    </Field>
+
+                    <Check name="hidden" label="مخفية عن المتجر" on={row.hidden} />
+
+                    <button
+                      type="submit"
+                      className="rounded-xl text-[13.5px] font-bold"
+                      style={{
+                        height: 46,
+                        background: "var(--color-clay)",
+                        color: "var(--color-on-brand)",
+                      }}
+                    >
+                      احفظ
+                    </button>
+                  </Saver>
+
+                  <form action={deleteCoinPack.bind(null, row.id)} className="px-3.5 pb-3.5">
+                    <button
+                      type="submit"
+                      className="w-full rounded-xl border border-line text-[12.5px] font-semibold"
+                      style={{ height: 42, color: "var(--color-live)" }}
+                    >
+                      احذف الباقة — يبقى ما شُحن بها
+                    </button>
+                  </form>
+                </details>
+              ))}
+            </div>
+          </>
+        ) : view === "items" ? (
           <>
             <details className="mb-4 rounded-2xl border border-line bg-card">
               <summary className="flex cursor-pointer list-none items-center justify-between p-3.5">
@@ -606,9 +804,9 @@ export default async function AdminPage({
                 </Field>
 
                 <div className="flex gap-2.5">
-                  <Field label="السعر (ر.س)">
+                  <Field label="السعر (كوينز)">
                     <input
-                      name="priceRiyals"
+                      name="priceCoins"
                       type="number"
                       min={0}
                       step="1"
@@ -652,7 +850,7 @@ export default async function AdminPage({
                 </Field>
 
                 <div className="flex flex-col gap-2">
-                  <Check name="plusOnly" label="حصري لمشتركي أثر+" />
+                  <Check name="plusOnly" label="حصري لمشتركي آثار+" />
                   <Check name="limited" label="حزمة محدودة — تظهر في صفّ «حزم محدودة»" />
                 </div>
 
@@ -690,13 +888,13 @@ export default async function AdminPage({
                             <p className="flex items-center gap-1.5 truncate text-[13.5px] font-semibold">
                               {item.name}
                               <Chip>{KIND_LABEL[item.kind]}</Chip>
-                              {item.plusOnly ? <Chip gold>أثر+</Chip> : null}
+                              {item.plusOnly ? <Chip gold>آثار+</Chip> : null}
                               {item.limited ? <Chip live>محدودة</Chip> : null}
                             </p>
                             <p className="truncate text-[11.5px] text-muted">
                               {item.earnedAfterDays
                                 ? `يُكتسب بعد ${ar(item.earnedAfterDays)} يوم`
-                                : riyals(item.priceHalalas)}
+                                : coinText(item.priceCoins)}
                               {item.mediaId ? " · بصورة" : ""}
                               {item._count.purchases > 0
                                 ? ` · ${ar(item._count.purchases)} شراء`
@@ -752,13 +950,13 @@ export default async function AdminPage({
                           </div>
 
                           <div className="flex gap-2.5">
-                            <Field label="السعر (ر.س)">
+                            <Field label="السعر (كوينز)">
                               <input
-                                name="priceRiyals"
+                                name="priceCoins"
                                 type="number"
                                 min={0}
                                 step="1"
-                                defaultValue={item.priceHalalas / 100}
+                                defaultValue={item.priceCoins}
                                 className={FIELD}
                                 style={{ height: 46 }}
                               />
@@ -817,7 +1015,7 @@ export default async function AdminPage({
                           </Field>
 
                           <div className="flex flex-col gap-2">
-                            <Check name="plusOnly" label="حصري لمشتركي أثر+" on={item.plusOnly} />
+                            <Check name="plusOnly" label="حصري لمشتركي آثار+" on={item.plusOnly} />
                             <Check name="limited" label="حزمة محدودة" on={item.limited} />
                           </div>
 

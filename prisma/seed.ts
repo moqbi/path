@@ -23,7 +23,7 @@ const PASSWORD = "athar1234";
 const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000);
 
 async function main() {
-  // على الخادم يُستدعى هذا الملف عند كل إقلاع، فـ--if-empty يجعله بلا أثر
+  // على الخادم يُستدعى هذا الملف عند كل إقلاع، فـ--if-empty يجعله بلا آثار
   // بعد أول مرة. بدونه كان كل نشر يمسح بيانات التجربة ويعيد بناءها.
   if (process.argv.includes("--if-empty")) {
     const existing = await prisma.user.count();
@@ -54,21 +54,21 @@ async function main() {
       {
         kind: "FRAME" as const,
         name: "كهرمان",
-        priceHalalas: 1500,
+        priceCoins: 500,
         spec: "linear-gradient(135deg,#f6b93b,#ffd27a 40%,#d99a1f)",
         sortOrder: 1,
       },
       {
         kind: "FRAME" as const,
         name: "مرجان",
-        priceHalalas: 1200,
+        priceCoins: 400,
         spec: "linear-gradient(135deg,#ff7a5a,#ffb2a0 40%,#c05a54)",
         sortOrder: 2,
       },
       {
         kind: "FRAME" as const,
         name: "سنة كاملة",
-        priceHalalas: 0,
+        priceCoins: 0,
         spec: "repeating-conic-gradient(#f6b93b 0deg 18deg,#ff7a5a 18deg 36deg)",
         earnedAfterDays: 365,
         sortOrder: 3,
@@ -76,14 +76,14 @@ async function main() {
       {
         kind: "BACKGROUND" as const,
         name: "ليل الرياض",
-        priceHalalas: 2500,
+        priceCoins: 830,
         spec: "linear-gradient(140deg,#16242f,#0e1a24)",
         sortOrder: 4,
       },
       {
         kind: "BACKGROUND" as const,
         name: "غبار الظهيرة",
-        priceHalalas: 2500,
+        priceCoins: 830,
         spec: "linear-gradient(140deg,#f6b93b,#8c3f4a)",
         sortOrder: 5,
       },
@@ -99,7 +99,7 @@ async function main() {
       name: "محمد",
       city: "الرياض",
       role: "ADMIN",
-      storeCredit: 5000,
+      coins: 1670,
       createdAt: new Date(Date.now() - 190 * 86_400_000),
     },
   });
@@ -110,7 +110,7 @@ async function main() {
       passwordHash,
       name: "نورة",
       city: "الرياض",
-      storeCredit: 3000,
+      coins: 1000,
       isPlus: true,
       plusUntil: new Date(Date.now() + 30 * 86_400_000),
       createdAt: new Date(Date.now() - 120 * 86_400_000),
@@ -139,7 +139,7 @@ async function main() {
 
   // نورة تملك إطاراً ملبوساً حتى تظهر الإطارات في الخط الزمني من أول تشغيل.
   await prisma.purchase.create({
-    data: { userId: noura.id, itemId: items[0].id, paidHalalas: 1200 },
+    data: { userId: noura.id, itemId: items[0].id, paidCoins: 1200 },
   });
   await prisma.user.update({
     where: { id: noura.id },
@@ -274,7 +274,7 @@ async function main() {
 
   console.log("تمت التهيئة:");
   console.log("  mohammed@athar.test / athar1234  (مشرف، وعنده محادثة مع نورة)");
-  console.log("  noura@athar.test    / athar1234  (مشتركة في أثر+، تلبس إطار كهرمان)");
+  console.log("  noura@athar.test    / athar1234  (مشتركة في آثار+، تلبس إطار كهرمان)");
   console.log("  naif@athar.test     / athar1234  (نشر مكاناً بإحداثيات)");
   console.log("  sultan@athar.test   / athar1234");
 }

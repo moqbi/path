@@ -16,7 +16,7 @@ import { dmRoutes, messageRoutes } from "./routes/v1/dm";
 import { mountWs } from "./routes/v1/ws";
 import { sweepPending } from "./services/upload";
 import { sweepOld } from "./services/dm";
-import { plusRoutes, storeRoutes } from "./routes/v1/store";
+import { coinRoutes, plusRoutes, storeRoutes } from "./routes/v1/store";
 import { moderationRoutes, reportRoutes } from "./routes/v1/reports";
 import { webhookRoutes } from "./routes/v1/webhooks";
 import { dripPlusCredit } from "./services/billing";
@@ -24,7 +24,7 @@ import { storyRoutes } from "./routes/v1/stories";
 import { sweep as sweepStories } from "./services/stories";
 
 /**
- * خادم أثر.
+ * خادم آثار.
  *
  * Hono على Node: صغيرٌ وسريع ويعمل داخل حاوية بلا تخصيصٍ لمزوّد — وهو
  * المقصود، فالوجهة VPS لا منصّةٌ بعينها.
@@ -76,7 +76,7 @@ setInterval(
     void sweepPending().catch((error) => console.error("✗ كنس المعلّقة", error));
     void sweepOld().catch((error) => console.error("✗ كنس المحادثات", error));
     void sweepStories().catch((error) => console.error("✗ كنس القصص", error));
-    void dripPlusCredit().catch((error) => console.error("✗ رصيد أثر+", error));
+    void dripPlusCredit().catch((error) => console.error("✗ رصيد آثار+", error));
   },
   SWEEP_MINUTES * 60_000,
 ).unref();
@@ -90,6 +90,7 @@ app.route("/v1/users", userRoutes);
 app.route("/v1/me", profileRoutes);
 app.route("/v1/store", storeRoutes);
 app.route("/v1/plus", plusRoutes);
+app.route("/v1/coins", coinRoutes);
 app.route("/v1/stories", storyRoutes);
 app.route("/v1/media", mediaRoutes);
 app.route("/v1/notifications", notificationRoutes);
@@ -114,7 +115,7 @@ app.onError((error, c) => {
 });
 
 const server = serve({ fetch: app.fetch, port: env.PORT }, (info) => {
-  console.log(`أثر · الخادم على ${info.port} · ${env.NODE_ENV}`);
+  console.log(`آثار · الخادم على ${info.port} · ${env.NODE_ENV}`);
 });
 injectWebSocket(server);
 

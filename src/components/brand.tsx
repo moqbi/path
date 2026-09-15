@@ -1,5 +1,5 @@
 /**
- * علامة أثر.
+ * علامة آثار.
  *
  * الرمز صورةٌ لا رسمٌ في الكود (`public/athr-mark.png`): قمّةٌ بشريطٍ
  * مطويّ ونقطةٌ أعلى اليمين، بتدرّجها وظلالها كما رسمها المالك — ولا
@@ -22,20 +22,20 @@ export function AthrMark({ size = 32 }: { size?: number }) {
   );
 }
 
-/** العلامة كاملة: الرمز ثم ATHR باللاتيني وأثر بالعربي تحته. */
+/** العلامة كاملة: الرمز ثم ATHAR باللاتيني وأثر بالعربي تحته. */
 export function AthrLockup({ size = 44 }: { size?: number }) {
   return (
     <div className="flex flex-col items-center gap-3">
       <AthrMark size={size * 1.5} />
       <div className="flex flex-col items-center gap-1">
         <span className="latin text-ink" style={{ fontSize: size * 0.62, fontWeight: 700 }}>
-          ATHR
+          ATHAR
         </span>
         <span
           className="text-ink-2"
           style={{ fontSize: size * 0.4, letterSpacing: "0.32em", fontWeight: 300 }}
         >
-          أثر
+          آثار
         </span>
       </div>
     </div>
@@ -48,7 +48,7 @@ export function AthrHeaderMark() {
     <span className="flex items-center gap-3">
       <AthrMark size={44} />
       <span className="latin" style={{ fontSize: 23, fontWeight: 700, letterSpacing: ".06em", color: "var(--color-chrome-ink)" }}>
-        ATHR
+        ATHAR
       </span>
     </span>
   );

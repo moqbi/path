@@ -65,7 +65,7 @@ export default async function SupportPage() {
                       className="mt-3 rounded-xl p-3"
                       style={{ background: "var(--color-chip)" }}
                     >
-                      <p className="mb-1 text-[10.5px] font-bold text-clay-ink">ردّ أثر</p>
+                      <p className="mb-1 text-[10.5px] font-bold text-clay-ink">ردّ آثار</p>
                       <p dir="auto" className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-ink-2">
                         {ticket.reply}
                       </p>

@@ -15,8 +15,8 @@ const PERSON = {
   avatarMediaId: true,
   // الصنف الملبوس يُقرأ كاملاً: من ضغط صورةً وأعجبه إطارُها يرى اسمه
   // وسعره من مكانه، فلا يبحث عنه في المتجر.
-  frame: { select: { id: true, name: true, kind: true, spec: true, mediaId: true, priceHalalas: true, plusOnly: true } },
-  charm: { select: { id: true, name: true, kind: true, spec: true, mediaId: true, priceHalalas: true, plusOnly: true } },
+  frame: { select: { id: true, name: true, kind: true, spec: true, mediaId: true, priceCoins: true, plusOnly: true } },
+  charm: { select: { id: true, name: true, kind: true, spec: true, mediaId: true, priceCoins: true, plusOnly: true } },
   tag: { select: { name: true, bg: true, fg: true } },
 } as const;
 
@@ -62,7 +62,7 @@ export async function circle(userId: string) {
 /**
  * المقترحون: من يجمعك بهم صديقٌ مشترك — لا بحث بالاسم ولا بالبريد.
  *
- * وهذا قرار منتَج لا تبسيط: لا اكتشاف عام في أثر، فمن لا يعرفك لا يجدك.
+ * وهذا قرار منتَج لا تبسيط: لا اكتشاف عام في آثار، فمن لا يعرفك لا يجدك.
  */
 export async function suggestions(userId: string) {
   const [ids, blocked] = await Promise.all([circleIds(userId), blockedWith(userId)]);
@@ -116,7 +116,7 @@ export async function suggestions(userId: string) {
  * ملفّ شخص.
  *
  * خارج الدائرة لا يُعرض إلا من يجمعك به صديقٌ مشترك أو طلبٌ معلّق —
- * والغريب تماماً «غير موجود»، فلا يُتصفَّح الناس في أثر.
+ * والغريب تماماً «غير موجود»، فلا يُتصفَّح الناس في آثار.
  */
 export async function userProfile(viewerId: string, id: string) {
   const person = await prisma.user.findUnique({

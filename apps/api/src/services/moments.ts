@@ -268,7 +268,7 @@ async function assertCanInteract(userId: string, momentId: string) {
 /**
  * تفاعلٌ واحد لكل شخصٍ لكل لحظة، والضغط على نفسه يلغيه.
  *
- * الإيموجي الحر لمشتركي أثر+، ووجه النوم للحظات النوم وحدها — والفحصان
+ * الإيموجي الحر لمشتركي آثار+، ووجه النوم للحظات النوم وحدها — والفحصان
  * هنا لا في إخفاء الزر: ما لا يُفحص على الخادم ليس ممنوعاً.
  */
 export async function react(
@@ -283,7 +283,7 @@ export async function react(
       where: { id: userId },
       select: { isPlus: true },
     });
-    if (!me?.isPlus) throw forbidden("الإيموجي الحر لمشتركي أثر+");
+    if (!me?.isPlus) throw forbidden("الإيموجي الحر لمشتركي آثار+");
     if (!input.emoji) throw badRequest("اختر رمزاً");
   }
 

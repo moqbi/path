@@ -10,7 +10,7 @@ import { relative } from "../../lib/format";
 import { useSession } from "../../lib/session";
 import { colors } from "../../theme/tokens";
 
-/** الوجوه الخمسة مفتوحةٌ للجميع؛ والحرّ لمشتركي أثر+ ويُفحص على الخادم. */
+/** الوجوه الخمسة مفتوحةٌ للجميع؛ والحرّ لمشتركي آثار+ ويُفحص على الخادم. */
 const FACES = [
   { kind: "SMILE", glyph: "🙂" },
   { kind: "LAUGH", glyph: "😄" },

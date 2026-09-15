@@ -394,7 +394,7 @@ export async function setAvatar(formData: FormData): Promise<string | void> {
   const user = await requireUser();
   try {
     const { file, width, height } = picture(formData);
-    // صورة العرض المتحركة من مزايا أثر+ — والفحص هنا، فالعميل ليس قيداً.
+    // صورة العرض المتحركة من مزايا آثار+ — والفحص هنا، فالعميل ليس قيداً.
     const media = await storeUpload(user.id, file, width, height, user.isPlus);
     await prisma.user.update({ where: { id: user.id }, data: { avatarMediaId: media.id } });
   } catch (problem) {
@@ -547,7 +547,7 @@ export type AdminResult = { ok?: string; error?: string } | null;
 const storeItemInput = z.object({
   kind: z.enum(["FRAME", "BACKGROUND", "THEME", "CHARM"]),
   name: z.string().trim().min(1, "اكتب الاسم").max(40),
-  priceRiyals: z.coerce.number().min(0).max(9999),
+  priceCoins: z.coerce.number().int().min(0).max(1_000_000),
   spec: z.string().trim().min(1, "اكتب تدرّج CSS").max(1000),
   plusOnly: z.coerce.boolean(),
   earnedAfterDays: z.coerce.number().int().min(0).max(3650).optional(),
@@ -575,7 +575,7 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
     kind: formData.get("kind"),
     name: formData.get("name"),
     // الحقل الفارغ يعني صفراً لا `NaN` — وإلا انكسر الحفظ بلا سبب مفهوم.
-    priceRiyals: formData.get("priceRiyals") || 0,
+    priceCoins: formData.get("priceCoins") || 0,
     spec: formData.get("spec"),
     plusOnly: formData.get("plusOnly") === "on",
     earnedAfterDays: formData.get("earnedAfterDays") || undefined,
@@ -584,7 +584,7 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
 
-  const { kind, name, priceRiyals, spec, plusOnly, earnedAfterDays, categoryId, limited } =
+  const { kind, name, priceCoins, spec, plusOnly, earnedAfterDays, categoryId, limited } =
     parsed.data;
   const last = await prisma.storeItem.findFirst({
     orderBy: { sortOrder: "desc" },
@@ -596,7 +596,7 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
       kind,
       name,
       // الأسعار تُدخَل بالريال وتُخزَّن بالهللات، فلا تدخل كسور عشرية القاعدة.
-      priceHalalas: Math.round(priceRiyals * 100),
+      priceCoins,
       spec,
       plusOnly,
       earnedAfterDays: earnedAfterDays && earnedAfterDays > 0 ? earnedAfterDays : null,
@@ -622,7 +622,7 @@ export async function updateStoreItem(
   const parsed = storeItemInput.safeParse({
     kind: formData.get("kind"),
     name: formData.get("name"),
-    priceRiyals: formData.get("priceRiyals") || 0,
+    priceCoins: formData.get("priceCoins") || 0,
     spec: formData.get("spec"),
     plusOnly: formData.get("plusOnly") === "on",
     earnedAfterDays: formData.get("earnedAfterDays") || undefined,
@@ -635,7 +635,7 @@ export async function updateStoreItem(
   const {
     kind,
     name,
-    priceRiyals,
+    priceCoins,
     spec,
     plusOnly,
     earnedAfterDays,
@@ -648,7 +648,7 @@ export async function updateStoreItem(
     data: {
       kind,
       name,
-      priceHalalas: Math.round(priceRiyals * 100),
+      priceCoins,
       spec,
       plusOnly,
       earnedAfterDays: earnedAfterDays && earnedAfterDays > 0 ? earnedAfterDays : null,
@@ -831,7 +831,7 @@ export async function grantCredit(userId: string, riyals: number): Promise<void>
   await requireAdmin();
   await prisma.user.update({
     where: { id: userId },
-    data: { storeCredit: { increment: Math.round(riyals * 100) } },
+    data: { coins: { increment: Math.round(riyals * 100) } },
   });
   revalidatePath("/admin");
 }
@@ -1155,7 +1155,7 @@ export async function react(momentId: string, kind: string, emoji?: string): Pro
   await assertCanInteract(user.id, momentId);
 
   // الإيموجي الحر ميزة اشتراك؛ الوجوه الخمسة مفتوحة للجميع دائماً.
-  if (kind === "CUSTOM" && !user.isPlus) throw new Error("الإيموجي الحر لمشتركي أثر+");
+  if (kind === "CUSTOM" && !user.isPlus) throw new Error("الإيموجي الحر لمشتركي آثار+");
 
   // وجه النوم للحظات النوم وحدها — والفحص هنا لا في إخفاء الزر.
   if (kind === "SLEEPY") {
@@ -1320,7 +1320,7 @@ export async function sendVoice(
       return {
         error: user.isPlus
           ? `الحدّ ${cap} ثانية`
-          : `الحدّ ${cap} ثانية — ومع أثر+ ${VOICE_SECONDS.plus}`,
+          : `الحدّ ${cap} ثانية — ومع آثار+ ${VOICE_SECONDS.plus}`,
       };
     }
 
@@ -1469,7 +1469,7 @@ export async function buyItem(itemId: string): Promise<void> {
 
   const item = await prisma.storeItem.findUnique({ where: { id: itemId } });
   if (!item) throw new Error("الصنف غير موجود");
-  if (item.plusOnly && !user.isPlus) throw new Error("هذا الصنف لمشتركي أثر+");
+  if (item.plusOnly && !user.isPlus) throw new Error("هذا الصنف لمشتركي آثار+");
 
   if (item.earnedAfterDays !== null) {
     const days = Math.floor((Date.now() - user.createdAt.getTime()) / 86_400_000);
@@ -1477,23 +1477,23 @@ export async function buyItem(itemId: string): Promise<void> {
   }
 
   const price = user.isPlus
-    ? Math.round(item.priceHalalas * (1 - PLUS_DISCOUNT))
-    : item.priceHalalas;
+    ? Math.round(item.priceCoins * (1 - PLUS_DISCOUNT))
+    : item.priceCoins;
 
   const owned = await prisma.purchase.findUnique({
     where: { userId_itemId: { userId: user.id, itemId } },
   });
   if (owned) return;
 
-  if (user.storeCredit < price) throw new Error("رصيدك لا يكفي");
+  if (user.coins < price) throw new Error("رصيدك لا يكفي");
 
   // الخصم والشراء في معاملة واحدة حتى لا ينقص الرصيد بلا صنف والعكس.
   await prisma.$transaction([
     prisma.user.update({
       where: { id: user.id },
-      data: { storeCredit: { decrement: price } },
+      data: { coins: { decrement: price } },
     }),
-    prisma.purchase.create({ data: { userId: user.id, itemId, paidHalalas: price } }),
+    prisma.purchase.create({ data: { userId: user.id, itemId, paidCoins: price } }),
   ]);
 
   revalidatePath("/store");
@@ -1505,7 +1505,7 @@ export async function buyItem(itemId: string): Promise<void> {
  *
  * الشرط أن يكون في دائرتك — لا هدايا من غريب، فالهدية بابُ إزعاجٍ إن
  * فُتح للجميع. ولا يُهدى ما يُكتسب بالوقت (يُنال بالبقاء لا بالمال)، ولا
- * ما يملكه أصلاً، ولا صنفُ «أثر+» لمن ليس مشتركاً — يبقى في صندوقه لا
+ * ما يملكه أصلاً، ولا صنفُ «آثار+» لمن ليس مشتركاً — يبقى في صندوقه لا
  * يلبسه. والخصم والتمليك في معاملة واحدة.
  */
 export async function giftItem(
@@ -1527,7 +1527,7 @@ export async function giftItem(
   ]);
   if (!item || !friend) return { error: "الصنف غير موجود" };
   if (item.earnedAfterDays !== null) return { error: "هذا الصنف يُكتسب بالوقت، لا يُهدى" };
-  if (item.plusOnly && !friend.isPlus) return { error: `${friend.name} ليس مشتركاً في أثر+` };
+  if (item.plusOnly && !friend.isPlus) return { error: `${friend.name} ليس مشتركاً في آثار+` };
 
   const owned = await prisma.purchase.findUnique({
     where: { userId_itemId: { userId: toUserId, itemId } },
@@ -1536,17 +1536,17 @@ export async function giftItem(
 
   // الخصم خصمُ المُهدي: هو الدافع، فله سعره هو.
   const price = user.isPlus
-    ? Math.round(item.priceHalalas * (1 - PLUS_DISCOUNT))
-    : item.priceHalalas;
-  if (user.storeCredit < price) return { error: "رصيدك لا يكفي" };
+    ? Math.round(item.priceCoins * (1 - PLUS_DISCOUNT))
+    : item.priceCoins;
+  if (user.coins < price) return { error: "رصيدك لا يكفي" };
 
   await prisma.$transaction([
     prisma.user.update({
       where: { id: user.id },
-      data: { storeCredit: { decrement: price } },
+      data: { coins: { decrement: price } },
     }),
     prisma.purchase.create({
-      data: { userId: toUserId, itemId, paidHalalas: price, giftedById: user.id },
+      data: { userId: toUserId, itemId, paidCoins: price, giftedById: user.id },
     }),
   ]);
 
@@ -1652,7 +1652,7 @@ export async function clearItemImage(itemId: string): Promise<void> {
 }
 
 /**
- * اشتراك تجريبي: يفعّل «أثر+» ويودع رصيد المتجر الشهري مباشرة.
+ * اشتراك تجريبي: يفعّل «آثار+» ويودع رصيد المتجر الشهري مباشرة.
  * الدفع الحقيقي يمر عبر IAP لآبل وGoogle Play — لا يمكن تنفيذه على الويب.
  */
 export async function subscribe(plan: "MONTHLY" | "YEARLY"): Promise<void> {
@@ -1664,7 +1664,7 @@ export async function subscribe(plan: "MONTHLY" | "YEARLY"): Promise<void> {
     data: {
       isPlus: true,
       plusUntil: new Date(Date.now() + days * 86_400_000),
-      storeCredit: { increment: 3000 },
+      coins: { increment: 3000 },
     },
   });
 

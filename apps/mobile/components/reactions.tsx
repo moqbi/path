@@ -21,7 +21,7 @@ const OPEN_FACES = ["SMILE", "LAUGH", "GASP", "SAD", "LOVE"] as const;
 export const facesFor = (kind?: string): readonly string[] =>
   kind === "SLEEP" ? [...OPEN_FACES, "SLEEPY"] : OPEN_FACES;
 
-/** الإيموجي الحرّ لمشتركي أثر+ — نفس القائمة وبنفس ترتيبها. */
+/** الإيموجي الحرّ لمشتركي آثار+ — نفس القائمة وبنفس ترتيبها. */
 export const CUSTOM = [
   "🫶", "🔥", "🙏", "👏", "🥹", "☕️",
   "❤️", "😍", "🤍", "✨", "🌙", "⭐️",

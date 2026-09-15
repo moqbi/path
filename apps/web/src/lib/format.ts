@@ -5,7 +5,16 @@ export function ar(value: number | string): string {
   return String(value).replace(/\d/g, (d) => ARABIC_DIGITS[Number(d)]);
 }
 
-/** الهللات إلى نص بالريال: 1500 → «١٥ ر.س». */
+/**
+ * الكوينز إلى نصّ: 500 → «٥٠٠ كوينز».
+ *
+ * عملة المتجر الوحيدة، فلا كسور فيها ولا هللات — رقمٌ صحيحٌ واسمُه معه.
+ */
+export function coinText(coins: number): string {
+  return `${ar(String(coins))} كوينز`;
+}
+
+/** الهللات إلى نصّ بالريال: 3000 → «٣٠ ر.س». لسعر الباقة والاشتراك. */
 export function riyals(halalas: number): string {
   const whole = halalas / 100;
   const text = Number.isInteger(whole) ? String(whole) : whole.toFixed(2);

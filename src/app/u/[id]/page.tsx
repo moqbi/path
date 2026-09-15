@@ -32,7 +32,7 @@ const WORN = {
   kind: true,
   spec: true,
   mediaId: true,
-  priceHalalas: true,
+  priceCoins: true,
   plusOnly: true,
 } as const;
 
@@ -157,7 +157,7 @@ export default async function FriendProfilePage({
                   id: item.id,
                   name: item.name,
                   spec: item.spec,
-                  priceHalalas: item.priceHalalas,
+                  priceCoins: item.priceCoins,
                   plusOnly: item.plusOnly,
                   earnedAfterDays: item.earnedAfterDays,
                   mediaId: item.mediaId,
@@ -166,7 +166,7 @@ export default async function FriendProfilePage({
                 friendId={person.id}
                 friendName={person.name}
                 friendIsPlus={person.isPlus}
-                credit={viewer.storeCredit}
+                credit={viewer.coins}
                 isPlus={viewer.isPlus}
               />
               <Link
@@ -175,7 +175,7 @@ export default async function FriendProfilePage({
                 style={{ height: 42 }}
               >
                 <WithIcon size={16} />
-                أثرنا
+                آثارنا
               </Link>
               <form action={startConversation.bind(null, person.id)}>
                 <button

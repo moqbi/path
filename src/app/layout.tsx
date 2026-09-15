@@ -6,7 +6,7 @@ import { parsePalette, themeVars, veilOf } from "@/lib/theme";
 import { NavProbe } from "@/components/nav";
 
 export const metadata: Metadata = {
-  title: "أثر · ATHR",
+  title: "آثار · ATHAR Moments",
   description: `${TAGLINE_AR} ${TAGLINE_EN}`,
   /* أيقونة التبويب والاختصار على الشاشة الرئيسة: العلامة نفسها. */
   icons: {

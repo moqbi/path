@@ -19,7 +19,7 @@ type Mine = { kind: string; emoji: string | null } | null;
  * إليه ضغطةٌ واحدة.
  *
  * منقولٌ من `src/components/moment-bar.tsx`: الوجوه، فالفاصل، فالإيموجي
- * الحرّ (اثنان ثم «＋» يفتح الكيبورد كاملاً لمشتركي أثر+، وقفلٌ يقود إلى
+ * الحرّ (اثنان ثم «＋» يفتح الكيبورد كاملاً لمشتركي آثار+، وقفلٌ يقود إلى
  * الاشتراك لغيرهم)، ثم «احذف اللحظة» لصاحبها، ثم حقل التعليق.
  */
 export function MomentBar({
@@ -157,7 +157,7 @@ export function MomentBar({
               </>
             ) : (
               <Pressable
-                accessibilityLabel="الإيموجي الحر لمشتركي أثر+"
+                accessibilityLabel="الإيموجي الحر لمشتركي آثار+"
                 onPress={() => router.push("/subscribe" as never)}
                 style={{ width: 36, height: 40, alignItems: "center", justifyContent: "center" }}
               >

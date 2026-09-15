@@ -31,7 +31,7 @@ const PERKS = [
     icon: <CameraIcon size={18} />,
   },
   {
-    title: "٣٠ ر.س رصيد شهري في المتجر",
+    title: "١٠٠٠ كوينز شهرياً في المتجر",
     body: "وخصم ٢٠٪ على كل شي · إطارات حصرية",
     icon: <StoreIcon size={18} />,
   },
@@ -50,7 +50,7 @@ export default async function SubscribePage() {
       الفاتح، فتُقرأ الصفحة شاشةً غريبة عن التطبيق الذي جاءت منه.
     */
     <div className="screen">
-      <ScreenHeader title="أثر+" back="/" mark />
+      <ScreenHeader title="آثار+" back="/" mark />
 
       <div className="shrink-0 px-6 pt-4">
         <span
@@ -58,7 +58,7 @@ export default async function SubscribePage() {
           style={{ background: "var(--color-gold-soft)" }}
         >
           <SparkIcon size={14} className="text-gold" />
-          <span className="latin text-[12px] font-bold text-gold">ATHR+</span>
+          <span className="latin text-[12px] font-bold text-gold">ATHAR+</span>
         </span>
 
         <h1 className="mb-2.5 text-[30px] font-bold leading-snug">
@@ -89,7 +89,7 @@ export default async function SubscribePage() {
 
         {user.isPlus ? (
           <form action={cancelPlus} className="pt-4">
-            <p className="mb-3 text-[13px] text-muted">أنت مشترك في أثر+ حالياً.</p>
+            <p className="mb-3 text-[13px] text-muted">أنت مشترك في آثار+ حالياً.</p>
             <button
               type="submit"
               className="w-full rounded-xl border border-line text-[14px] font-semibold text-muted"

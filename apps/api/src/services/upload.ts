@@ -206,7 +206,7 @@ export async function commit(userId: string, mediaId: string) {
     if (!owner?.isPlus) {
       await prisma.media.deleteMany({ where: { id: media.id } });
       await deleteObjects([media.key]);
-      throw forbidden("الصورة المتحركة لمشتركي أثر+");
+      throw forbidden("الصورة المتحركة لمشتركي آثار+");
     }
   } else if (actual === "image/gif") {
     throw await reject(media.id, media.key, "يُقبل JPEG أو PNG أو WebP فقط");
@@ -262,7 +262,7 @@ async function shape(
   if (!clip || clip.seconds <= 0) throw await reject(mediaId, key, "تعذّرت قراءة المقطع");
 
   // القصّة عشرون ثانية، والرسالة الصوتية عشرون — ومئةٌ وعشرون لمشتركي
-  // أثر+. الحدّ الأعلى هنا، والتمييز بينهما عند الإرسال حيث يُعرف المشترك.
+  // آثار+. الحدّ الأعلى هنا، والتمييز بينهما عند الإرسال حيث يُعرف المشترك.
   const cap = purpose === "STORY" ? STORY_SECONDS : VOICE_SECONDS.plus;
   if (clip.seconds > cap) {
     throw await reject(mediaId, key, purpose === "STORY" ? "المقطع أطول من ٢٠ ثانية" : "التسجيل طويل");

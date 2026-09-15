@@ -119,7 +119,7 @@ export type AdminResult = { ok?: string; error?: string } | null;
 const storeItemInput = z.object({
   kind: z.enum(["FRAME", "BACKGROUND", "THEME", "CHARM"]),
   name: z.string().trim().min(1, "اكتب الاسم").max(40),
-  priceRiyals: z.coerce.number().min(0).max(9999),
+  priceCoins: z.coerce.number().int().min(0).max(1_000_000),
   spec: z.string().trim().min(1, "اكتب تدرّج CSS").max(1000),
   plusOnly: z.coerce.boolean(),
   earnedAfterDays: z.coerce.number().int().min(0).max(3650).optional(),
@@ -147,7 +147,7 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
     kind: formData.get("kind"),
     name: formData.get("name"),
     // الحقل الفارغ يعني صفراً لا `NaN` — وإلا انكسر الحفظ بلا سبب مفهوم.
-    priceRiyals: formData.get("priceRiyals") || 0,
+    priceCoins: formData.get("priceCoins") || 0,
     spec: formData.get("spec"),
     plusOnly: formData.get("plusOnly") === "on",
     earnedAfterDays: formData.get("earnedAfterDays") || undefined,
@@ -156,7 +156,7 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
 
-  const { kind, name, priceRiyals, spec, plusOnly, earnedAfterDays, categoryId, limited } =
+  const { kind, name, priceCoins, spec, plusOnly, earnedAfterDays, categoryId, limited } =
     parsed.data;
   const last = await prisma.storeItem.findFirst({
     orderBy: { sortOrder: "desc" },
@@ -168,7 +168,7 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
       kind,
       name,
       // الأسعار تُدخَل بالريال وتُخزَّن بالهللات، فلا تدخل كسور عشرية القاعدة.
-      priceHalalas: Math.round(priceRiyals * 100),
+      priceCoins,
       spec,
       plusOnly,
       earnedAfterDays: earnedAfterDays && earnedAfterDays > 0 ? earnedAfterDays : null,
@@ -194,7 +194,7 @@ export async function updateStoreItem(
   const parsed = storeItemInput.safeParse({
     kind: formData.get("kind"),
     name: formData.get("name"),
-    priceRiyals: formData.get("priceRiyals") || 0,
+    priceCoins: formData.get("priceCoins") || 0,
     spec: formData.get("spec"),
     plusOnly: formData.get("plusOnly") === "on",
     earnedAfterDays: formData.get("earnedAfterDays") || undefined,
@@ -207,7 +207,7 @@ export async function updateStoreItem(
   const {
     kind,
     name,
-    priceRiyals,
+    priceCoins,
     spec,
     plusOnly,
     earnedAfterDays,
@@ -220,7 +220,7 @@ export async function updateStoreItem(
     data: {
       kind,
       name,
-      priceHalalas: Math.round(priceRiyals * 100),
+      priceCoins,
       spec,
       plusOnly,
       earnedAfterDays: earnedAfterDays && earnedAfterDays > 0 ? earnedAfterDays : null,
@@ -305,6 +305,108 @@ export async function deleteCategory(categoryId: string): Promise<void> {
   await prisma.storeCategory.delete({ where: { id: categoryId } });
   revalidatePath("/admin");
   revalidatePath("/store");
+}
+
+// ───────────────────────── باقات الكوينز (اللوحة) ─────────────────────────
+
+/**
+ * الكوينز عملة المتجر، والباقات تُشترى بمالٍ حقيقي.
+ *
+ * و`sku` معرّف المنتج في App Store وGoogle Play: هو الرابط بين باقتنا
+ * وما يشتريه الجهاز، وبه يصل حدثُ RevenueCat فنعرف كم كوينز نودع.
+ * وباقةٌ بلا `sku` تبقى مسوّدةً لا تُعرض — فلا يُضغط زرٌّ لا يفتح شيئاً.
+ */
+const packInput = z.object({
+  name: z.string().trim().min(1, "اكتب اسم الباقة").max(40),
+  coins: z.coerce.number().int().min(1, "عدد الكوينز أكبر من صفر").max(1_000_000),
+  /// السعر يُكتب بالريال في اللوحة ويُخزَّن بالهللات: المشرف يفكّر
+  /// بالريال، والقاعدة لا تحتمل كسراً عشرياً في المال.
+  priceRiyals: z.coerce.number().min(0).max(100_000),
+  sku: z.string().trim().max(120).optional(),
+  sortOrder: z.coerce.number().int().min(0).max(999).optional(),
+});
+
+function readPack(formData: FormData) {
+  return packInput.safeParse({
+    name: formData.get("name"),
+    coins: formData.get("coins"),
+    priceRiyals: formData.get("priceHalalasRiyals"),
+    sku: formData.get("sku") ?? undefined,
+    sortOrder: formData.get("sortOrder") || undefined,
+  });
+}
+
+export async function createCoinPack(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  await requireAdmin("store");
+
+  const parsed = readPack(formData);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
+
+  const { name, coins, priceRiyals, sku, sortOrder } = parsed.data;
+  if (sku) {
+    const taken = await prisma.coinPack.findFirst({ where: { sku }, select: { id: true } });
+    if (taken) return { error: "معرّف المنتج مستعمل في باقةٍ أخرى" };
+  }
+
+  const last = await prisma.coinPack.findFirst({
+    orderBy: { sortOrder: "desc" },
+    select: { sortOrder: true },
+  });
+
+  await prisma.coinPack.create({
+    data: {
+      name,
+      coins,
+      priceHalalas: Math.round(priceRiyals * 100),
+      sku: sku ?? "",
+      sortOrder: sortOrder ?? (last?.sortOrder ?? 0) + 1,
+    },
+  });
+
+  revalidatePath("/admin");
+  return { ok: `أُضيفت باقة «${name}»` };
+}
+
+export async function updateCoinPack(
+  packId: string,
+  _prev: AdminResult,
+  formData: FormData,
+): Promise<AdminResult> {
+  await requireAdmin("store");
+
+  const parsed = readPack(formData);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
+
+  const { name, coins, priceRiyals, sku, sortOrder } = parsed.data;
+  if (sku) {
+    const taken = await prisma.coinPack.findFirst({ where: { sku }, select: { id: true } });
+    if (taken && taken.id !== packId) return { error: "معرّف المنتج مستعمل في باقةٍ أخرى" };
+  }
+
+  await prisma.coinPack.update({
+    where: { id: packId },
+    data: {
+      name,
+      coins,
+      priceHalalas: Math.round(priceRiyals * 100),
+      sku: sku ?? "",
+      sortOrder: sortOrder ?? undefined,
+      hidden: formData.get("hidden") === "on",
+    },
+  });
+
+  revalidatePath("/admin");
+  return { ok: "حُفظ" };
+}
+
+/**
+ * حذف الباقة لا يمسّ ما شُحن بها: صفوف `CoinTopUp` تبقى وتُفرَّغ علاقتها
+ * (`SetNull`) — فالرصيد المشحون لا يُسحب من أحدٍ بحذف باقةٍ من العرض.
+ */
+export async function deleteCoinPack(packId: string): Promise<void> {
+  await requireAdmin("store");
+  await prisma.coinPack.delete({ where: { id: packId } });
+  revalidatePath("/admin");
 }
 
 // ───────────────────────────── الوسوم ─────────────────────────────
@@ -403,7 +505,7 @@ export async function grantCredit(userId: string, riyals: number): Promise<void>
   await requireAdmin();
   await prisma.user.update({
     where: { id: userId },
-    data: { storeCredit: { increment: Math.round(riyals * 100) } },
+    data: { coins: { increment: Math.round(riyals * 100) } },
   });
   revalidatePath("/admin");
 }

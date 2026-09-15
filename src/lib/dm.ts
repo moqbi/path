@@ -115,7 +115,7 @@ export async function conversationFor(userId: string, conversationId: string) {
   };
 }
 
-/** حدّ الرسالة الصوتية بالثواني: للجميع، ولمشتركي أثر+. */
+/** حدّ الرسالة الصوتية بالثواني: للجميع، ولمشتركي آثار+. */
 export const VOICE_SECONDS = { free: 20, plus: 120 };
 
 /** المحادثات تُحفظ ثلاثين يوماً ثم تذهب — من القاعدة نفسها لا من العرض. */

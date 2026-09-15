@@ -24,7 +24,7 @@ import { itemPaint, ScreenHeader, TagPill } from "@/components/ui";
 import { Saver } from "./saver";
 import { AdminEmail } from "./email";
 import { ItemImage } from "./item-image";
-import { riyals, ar, relative } from "@/lib/format";
+import { coinText, ar, relative } from "@/lib/format";
 import { parsePalette } from "@/lib/theme";
 
 const FIELD =
@@ -315,7 +315,7 @@ export default async function AdminPage({
         <h2 className="mb-1 text-[15px] font-bold">الوسوم</h2>
         <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
           الوسم كلمة تظهر بجانب الاسم بلونين تختارهما. وسمٌ واحد يمكن أن يُمنح
-          تلقائياً لكل مشترك في أثر+ — يُقرأ من الاشتراك ولا يُكتب على الحساب،
+          تلقائياً لكل مشترك في آثار+ — يُقرأ من الاشتراك ولا يُكتب على الحساب،
           فينتهي بانتهائه.
         </p>
 
@@ -336,7 +336,7 @@ export default async function AdminPage({
           </div>
           <label className="flex items-center gap-2.5 px-1 text-[13px]">
             <input name="autoForPlus" type="checkbox" className="h-4 w-4 accent-[#f6b93b]" />
-            يُمنح تلقائياً لمشتركي أثر+
+            يُمنح تلقائياً لمشتركي آثار+
           </label>
           <button
             type="submit"
@@ -358,7 +358,7 @@ export default async function AdminPage({
               <summary className="flex cursor-pointer list-none items-center gap-3 p-3">
                 <TagPill tag={tag} size={12} />
                 <span className="grow text-[11.5px] text-muted">
-                  {tag.autoForPlus ? "تلقائي لمشتركي أثر+ · " : null}
+                  {tag.autoForPlus ? "تلقائي لمشتركي آثار+ · " : null}
                   {ar(tag._count.users)} حساب
                 </span>
                 <span className="text-[12px] font-semibold text-clay-ink">تعديل</span>
@@ -387,7 +387,7 @@ export default async function AdminPage({
                     defaultChecked={tag.autoForPlus}
                     className="h-4 w-4 accent-[#f6b93b]"
                   />
-                  يُمنح تلقائياً لمشتركي أثر+
+                  يُمنح تلقائياً لمشتركي آثار+
                 </label>
                 <div className="flex gap-2.5">
                   <button
@@ -532,9 +532,9 @@ export default async function AdminPage({
                 </Field>
 
                 <div className="flex gap-2.5">
-                  <Field label="السعر (ر.س)">
+                  <Field label="السعر (كوينز)">
                     <input
-                      name="priceRiyals"
+                      name="priceCoins"
                       type="number"
                       min={0}
                       step="1"
@@ -578,7 +578,7 @@ export default async function AdminPage({
                 </Field>
 
                 <div className="flex flex-col gap-2">
-                  <Check name="plusOnly" label="حصري لمشتركي أثر+" />
+                  <Check name="plusOnly" label="حصري لمشتركي آثار+" />
                   <Check name="limited" label="حزمة محدودة — تظهر في صفّ «حزم محدودة»" />
                 </div>
 
@@ -616,13 +616,13 @@ export default async function AdminPage({
                             <p className="flex items-center gap-1.5 truncate text-[13.5px] font-semibold">
                               {item.name}
                               <Chip>{KIND_LABEL[item.kind]}</Chip>
-                              {item.plusOnly ? <Chip gold>أثر+</Chip> : null}
+                              {item.plusOnly ? <Chip gold>آثار+</Chip> : null}
                               {item.limited ? <Chip live>محدودة</Chip> : null}
                             </p>
                             <p className="truncate text-[11.5px] text-muted">
                               {item.earnedAfterDays
                                 ? `يُكتسب بعد ${ar(item.earnedAfterDays)} يوم`
-                                : riyals(item.priceHalalas)}
+                                : coinText(item.priceCoins)}
                               {item.mediaId ? " · بصورة" : ""}
                               {item._count.purchases > 0
                                 ? ` · ${ar(item._count.purchases)} شراء`
@@ -678,13 +678,13 @@ export default async function AdminPage({
                           </div>
 
                           <div className="flex gap-2.5">
-                            <Field label="السعر (ر.س)">
+                            <Field label="السعر (كوينز)">
                               <input
-                                name="priceRiyals"
+                                name="priceCoins"
                                 type="number"
                                 min={0}
                                 step="1"
-                                defaultValue={item.priceHalalas / 100}
+                                defaultValue={item.priceCoins}
                                 className={FIELD}
                                 style={{ height: 46 }}
                               />
@@ -743,7 +743,7 @@ export default async function AdminPage({
                           </Field>
 
                           <div className="flex flex-col gap-2">
-                            <Check name="plusOnly" label="حصري لمشتركي أثر+" on={item.plusOnly} />
+                            <Check name="plusOnly" label="حصري لمشتركي آثار+" on={item.plusOnly} />
                             <Check name="limited" label="حزمة محدودة" on={item.limited} />
                           </div>
 

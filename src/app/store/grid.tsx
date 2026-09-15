@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { buyItem, equip, unequip } from "@/app/actions";
-import { riyals, ar } from "@/lib/format";
+import { coinText, ar } from "@/lib/format";
 import { LockIcon, CheckIcon } from "@/components/icons";
 import { itemPaint } from "@/components/ui";
 
@@ -16,7 +16,7 @@ export type Item = {
   id: string;
   kind: "FRAME" | "BACKGROUND" | "THEME" | "CHARM";
   name: string;
-  priceHalalas: number;
+  priceCoins: number;
   spec: string;
   plusOnly: boolean;
   earnedAfterDays: number | null;
@@ -71,7 +71,7 @@ export function StoreGrid({
 
   const ownedSet = new Set(owned);
   const price = (item: Item) =>
-    isPlus ? Math.round(item.priceHalalas * 0.8) : item.priceHalalas;
+    isPlus ? Math.round(item.priceCoins * 0.8) : item.priceCoins;
 
   const wornId = (item: Item) =>
     item.kind === "FRAME" ? equipped.frame : item.kind === "CHARM" ? equipped.charm : equipped.theme;
@@ -92,7 +92,7 @@ export function StoreGrid({
       return;
     }
 
-    if (item.plusOnly && !isPlus) return setError("هذا الصنف لمشتركي أثر+");
+    if (item.plusOnly && !isPlus) return setError("هذا الصنف لمشتركي آثار+");
     if (item.earnedAfterDays !== null && daysHere < item.earnedAfterDays) {
       return setError(
         `يُكتسب بعد ${ar(item.earnedAfterDays)} يوم — باقي ${ar(item.earnedAfterDays - daysHere)}`,
@@ -169,10 +169,10 @@ export function StoreGrid({
               ) : locked ? (
                 <span className="flex items-center gap-1 text-[10.5px] text-faint">
                   <LockIcon size={11} />
-                  {item.earnedAfterDays !== null ? `${ar(item.earnedAfterDays)} يوم` : "أثر+"}
+                  {item.earnedAfterDays !== null ? `${ar(item.earnedAfterDays)} يوم` : "آثار+"}
                 </span>
               ) : (
-                <span className="text-[11px] font-semibold text-clay">{riyals(price(item))}</span>
+                <span className="text-[11px] font-semibold text-clay">{coinText(price(item))}</span>
               )}
             </button>
           );

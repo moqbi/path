@@ -170,13 +170,13 @@ export default function LandingPage() {
 
           <div className="mt-5 flex flex-col items-center gap-1">
             <span className="latin text-[34px] font-bold leading-none" style={{ color: "var(--color-chrome-ink)" }}>
-              ATHR
+              ATHAR
             </span>
             <span
               className="text-[15px] font-medium"
               style={{ color: "var(--color-chrome-ink)", letterSpacing: "0.34em" }}
             >
-              أثر
+              آثار
             </span>
           </div>
 
@@ -203,7 +203,7 @@ export default function LandingPage() {
 
       {/* ───────────── المزايا ───────────── */}
       <section className="wrap py-16">
-        <h2 className="section-title">ما الذي في أثر</h2>
+        <h2 className="section-title">ما الذي في آثار</h2>
         <p className="section-sub">أربعة أشياء تُفعل كل يوم — ولا خامس يزاحمها.</p>
 
         <div className="mt-8 grid gap-3.5 sm:grid-cols-2">
@@ -288,7 +288,7 @@ export default function LandingPage() {
           جاهزٌ للانطلاق؟
         </h2>
         <p className="mx-auto mt-2 max-w-md text-[14px] leading-[1.95] text-muted">
-          أثر يصل المتجرين قريباً. وحتى ذلك الحين، اكتب لنا إن أردت أن تكون من
+          آثار يصل المتجرين قريباً. وحتى ذلك الحين، اكتب لنا إن أردت أن تكون من
           أوّل من يجرّبه.
         </p>
 

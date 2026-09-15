@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "شروط الاستخدام · أثر" };
+export const metadata: Metadata = { title: "شروط الاستخدام · آثار" };
 
 export default function TermsPage() {
   return (
@@ -44,7 +44,7 @@ export default function TermsPage() {
           لا سلعةٌ تُسترجع قيمتها ولا تُحوَّل إلى مال.
         </li>
         <li>
-          «أثر+» اشتراكٌ يتجدّد بمدّته، ويُلغى من إعدادات المتجر الذي اشتُري
+          «آثار+» اشتراكٌ يتجدّد بمدّته، ويُلغى من إعدادات المتجر الذي اشتُري
           منه (App Store أو Google Play). والاسترجاع يخضع لسياسة ذلك المتجر
           لا لسياستنا.
         </li>

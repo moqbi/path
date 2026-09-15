@@ -7,7 +7,7 @@ import { ar } from "@/lib/format";
 /**
  * مشاركة الملف.
  *
- * لا اكتشاف عام في أثر، فرابط الملف ليس دعوةً لغريب — هو ما تعطيه من
+ * لا اكتشاف عام في آثار، فرابط الملف ليس دعوةً لغريب — هو ما تعطيه من
  * تعرفه ليجدك بلا بحثٍ بالاسم. ومعه رقم العضوية: هو اسمك الثابت هنا.
  *
  * تُستعمل مشاركة النظام حين توجد (فتظهر برامج التواصل كما هي على الجهاز)،
@@ -31,10 +31,10 @@ export function ShareProfile({
 
   async function share() {
     const url = `${window.location.origin}/u/${id}`;
-    const text = `${name} · عضوية رقم ${ar(memberNo)} في أثر`;
+    const text = `${name} · عضوية رقم ${ar(memberNo)} في آثار`;
     try {
       if (navigator.share) {
-        await navigator.share({ title: "أثر", text, url });
+        await navigator.share({ title: "آثار", text, url });
         return;
       }
       await navigator.clipboard.writeText(`${text}\n${url}`);

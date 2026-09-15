@@ -189,7 +189,7 @@ export async function send(
     if (seconds < 1) throw badRequest("التسجيل قصير جداً");
     if (seconds > cap) {
       throw badRequest(
-        me?.isPlus ? `الحدّ ${cap} ثانية` : `الحدّ ${cap} ثانية — ومع أثر+ ${VOICE_SECONDS.plus}`,
+        me?.isPlus ? `الحدّ ${cap} ثانية` : `الحدّ ${cap} ثانية — ومع آثار+ ${VOICE_SECONDS.plus}`,
       );
     }
   } else {

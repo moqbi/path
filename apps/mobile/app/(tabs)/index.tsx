@@ -33,7 +33,7 @@ const PULL_TRIP = 62;
 /**
  * الخط الزمني.
  *
- * الرأس ثابت — العلامة و«أثر+» والرسائل — ثم الغلاف وفيه صورتك جالسةٌ
+ * الرأس ثابت — العلامة و«آثار+» والرسائل — ثم الغلاف وفيه صورتك جالسةٌ
  * على محور الخيط، ومن أسفلها ينزل الخيط إلى لحظات اليوم. واللحظات
  * وحدها تمرّ تحته.
  */
@@ -152,7 +152,7 @@ export default function Timeline() {
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
       {/*
-        الرأس: العلامة ثم ATHR، و«أثر+» قبل الرسائل.
+        الرأس: العلامة ثم ATHAR، و«آثار+» قبل الرسائل.
 
         ومقاسه مقاس `ScreenHeader` بعينه — ٥٦ ارتفاعاً، وحشوةٌ ١٦، وعلامةٌ
         ٣٢: رأسٌ أكبر في شاشةٍ واحدة يُقرأ «تطبيقاً آخر» حين ينتقل إليها.
@@ -171,7 +171,7 @@ export default function Timeline() {
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           <AthrMark size={32} />
           <Text style={{ color: colors.chromeInk, fontSize: 16, fontWeight: "700", letterSpacing: 2 }}>
-            ATHR
+            ATHAR
           </Text>
         </View>
 
@@ -191,7 +191,7 @@ export default function Timeline() {
             }}
           >
             <SparkIcon size={13} color={colors.goldInk} />
-            <Text style={{ color: colors.goldInk, fontSize: 12, fontWeight: "700" }}>أثر+</Text>
+            <Text style={{ color: colors.goldInk, fontSize: 12, fontWeight: "700" }}>آثار+</Text>
           </Pressable>
 
           <Pressable
@@ -353,7 +353,7 @@ export default function Timeline() {
                   {view === "private"
                     ? "ما فيه لحظات خاصة"
                     : view === "together"
-                      ? "ما فيه أثر بعد"
+                      ? "ما فيه آثار بعد"
                       : "خطك الزمني فارغ"}
                 </Text>
                 <Text style={{ color: colors.muted, fontSize: 12.5, textAlign: "center", lineHeight: 22 }}>
@@ -435,7 +435,7 @@ function LensHead({
         </View>
 
         <Text style={{ color: colors.clayInk, fontSize: 12.5, fontWeight: "600" }}>
-          أثركما المشترك
+          آثاركما المشتركة
         </Text>
         <Text style={{ color: colors.ink, fontSize: 28, marginVertical: 2 }}>{ar(count)}</Text>
         <Text style={{ color: colors.muted, fontSize: 12, textAlign: "center" }}>
@@ -493,7 +493,7 @@ function LensHead({
             <Text numberOfLines={1} style={{ flex: 1, color: colors.ink, fontSize: 14, fontWeight: "600", textAlign: "right" }}>
               {person.name}
             </Text>
-            <Text style={{ color: colors.clayInk, fontSize: 12, fontWeight: "600" }}>أثرنا</Text>
+            <Text style={{ color: colors.clayInk, fontSize: 12, fontWeight: "600" }}>آثارنا</Text>
           </Pressable>
         ))}
       </View>

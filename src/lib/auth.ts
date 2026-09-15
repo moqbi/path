@@ -107,7 +107,7 @@ export type SessionUser = {
   city: string | null;
   bio: string | null;
   isPlus: boolean;
-  storeCredit: number;
+  coins: number;
   createdAt: Date;
   role: "USER" | "ADMIN";
   /// مدى صلاحية اللوحة الممنوح لغير المالك.
@@ -146,7 +146,7 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
       bio: true,
       isPlus: true,
       plusUntil: true,
-      storeCredit: true,
+      coins: true,
       createdAt: true,
       role: true,
       adminScope: true,
@@ -179,7 +179,7 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
     city: user.city,
     bio: user.bio,
     isPlus: active,
-    storeCredit: user.storeCredit,
+    coins: user.coins,
     createdAt: user.createdAt,
     role: user.role,
     adminScope: user.adminScope,

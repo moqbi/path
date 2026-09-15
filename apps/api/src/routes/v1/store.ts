@@ -40,7 +40,19 @@ export const storeRoutes = new Hono()
     async (c) => c.json(await store.unequip(me(c), c.req.valid("json").kind)),
   );
 
-/** الاشتراك — بابُه منفصلٌ عن المتجر: «أثر+» ليس صنفاً يُشترى. */
+/**
+ * باقات الكوينز.
+ *
+ * قراءةٌ فقط: الشراء نفسه لا يمرّ بنا — السلع الرقمية تُباع عبر متجر
+ * المنصّة وحده، والإيداع يجري حين يصل حدثُ RevenueCat إلى
+ * `/v1/webhooks/revenuecat`. فلا باب «اشترِ كوينز» هنا، ولو وُجد لكان
+ * بابَ منحٍ مجّانيّ لمن يعرف كيف يرسل طلباً.
+ */
+export const coinRoutes = new Hono()
+  .use("*", requireAuth)
+  .get("/packs", async (c) => c.json(await store.coinPacks()));
+
+/** الاشتراك — بابُه منفصلٌ عن المتجر: «آثار+» ليس صنفاً يُشترى. */
 export const plusRoutes = new Hono()
   .use("*", requireAuth)
 

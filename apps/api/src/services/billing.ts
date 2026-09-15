@@ -1,9 +1,9 @@
 import { prisma } from "@athar/db";
-import { PLUS_CREDIT_HALALAS, PLUS_ENTITLEMENT } from "@athar/shared";
+import { PLUS_COINS, PLUS_ENTITLEMENT } from "@athar/shared";
 import { env } from "../env";
 
 /**
- * أثر+ من المتجرين عبر RevenueCat.
+ * آثار+ من المتجرين عبر RevenueCat.
  *
  * الدفع لا يمرّ بخادمنا: يشتري المستخدم من App Store أو Google Play،
  * وRevenueCat يجمع الإيصالين ويرسل لنا حدثاً. ونحن لا نثق بما يقوله
@@ -25,6 +25,10 @@ export type RevenueCatEvent = {
   event_timestamp_ms?: number;
   environment?: string;
   store?: string;
+  /// للشراء غير المتجدّد (باقة كوينز): معرّف المنتج في المتجر وثمنه.
+  product_id?: string;
+  price_in_purchased_currency?: number | null;
+  price?: number | null;
   transferred_from?: string[];
   transferred_to?: string[];
 };
@@ -32,7 +36,7 @@ export type RevenueCatEvent = {
 /** أنواعٌ تُسقط الاشتراك فوراً مهما قال تاريخ الانتهاء. */
 const ENDS_NOW = new Set(["EXPIRATION", "SUBSCRIPTION_PAUSED"]);
 
-/** الدورة التي يُودَع فيها رصيد أثر+ — شهرٌ، مهما كانت مدّة الفاتورة. */
+/** الدورة التي يُودَع فيها رصيد آثار+ — شهرٌ، مهما كانت مدّة الفاتورة. */
 const CREDIT_DAYS = 30;
 
 /**
@@ -79,7 +83,7 @@ export async function applyEvent(event: RevenueCatEvent): Promise<{ ok: string }
 
     المشروع الواحد في RevenueCat يجمع المتجر التجريبي والمتجرين
     الحقيقيين، فحدثٌ من `TEST_STORE` أو بيئةِ `SANDBOX` يصل بنفس الترويسة
-    إلى نفس الباب. وقبولُه في الإنتاج يعني أنّ نسخةً تجريبية تفتح أثر+
+    إلى نفس الباب. وقبولُه في الإنتاج يعني أنّ نسخةً تجريبية تفتح آثار+
     لحسابٍ حقيقيّ بضغطةٍ في نافذةٍ وهمية.
 
     وفي التطوير يُقبل — وإلا لم يُختبر المسار أصلاً قبل أن يوجد حساب آبل.
@@ -92,6 +96,15 @@ export async function applyEvent(event: RevenueCatEvent): Promise<{ ok: string }
 
   const userId = await resolveUser(event);
   if (!userId) return { ok: "لا حساب لهذا المعرّف" };
+
+  /*
+    باقة كوينز: شراءٌ لا يتجدّد، فلا استحقاق فيه ولا تاريخ انتهاء.
+
+    ويُفصل هنا قبل منطق الاشتراك لأنّ حمولته تصل بلا `entitlement_ids`
+    وبلا `expiration_at_ms` — فلو مرّت على ما تحت لقُرئت «اشتراكٌ منتهٍ»
+    فأُوقف آثار+ لمن اشترى كوينز.
+  */
+  if (type === "NON_RENEWING_PURCHASE") return topUp(event, userId);
 
   // استحقاقٌ آخر لا يعنينا (لو أُضيف غير «plus» يوماً).
   const ids = event.entitlement_ids ?? [];
@@ -127,7 +140,7 @@ export async function applyEvent(event: RevenueCatEvent): Promise<{ ok: string }
 
     /*
       أوّل إيداعٍ يجري هنا، وما بعده يجري مع الكنس الدوريّ
-      (`dripPlusCredit`): الوعد «٣٠ ر.س شهرياً» لا «مع كل فاتورة» —
+      (`dripPlusCredit`): الوعد «١٠٠٠ كوينز شهرياً» لا «مع كل فاتورة» —
       ومن اشترك سنوياً يفوتر مرّةً واحدة، فربطُ الرصيد بالفاتورة كان
       يعطيه دفعةً واحدة بدل اثنتي عشرة.
     */
@@ -142,16 +155,90 @@ export async function applyEvent(event: RevenueCatEvent): Promise<{ ok: string }
       data: {
         isPlus: active,
         plusUntil: active ? until : null,
-        ...(first ? { storeCredit: { increment: PLUS_CREDIT_HALALAS }, plusCreditAt: new Date() } : null),
+        ...(first ? { coins: { increment: PLUS_COINS }, plusCreditAt: new Date() } : null),
         // ومن أُوقف يُنسى ختمُه، فيبدأ عند عودته دورةً جديدة لا يكملها.
         ...(active ? null : { plusCreditAt: null }),
       },
     });
   });
 
-  return { ok: active ? "فُعّل أثر+" : "أُوقف أثر+" };
+  return { ok: active ? "فُعّل آثار+" : "أُوقف آثار+" };
 }
 
+
+/**
+ * يودع كوينز باقةٍ اشتُريت من المتجر.
+ *
+ * الباقة تُعرف بـ`sku` — معرّف المنتج في المتجرين — لا بما يقوله
+ * التطبيق عن عددها: من يملك أن يكتب الطلب يملك أن يكتب «مليون».
+ * وباقةٌ لا نعرف معرّفها تُردّ بلا إيداع ويبقى الحدث مكتوباً، فيظهر
+ * في السجلّ أنّ منتجاً بيع بلا مقابلٍ عندنا.
+ *
+ * و`eventId` مفتاحٌ فريد على صفّ الشحن: التسليم «مرّةً على الأقل»،
+ * فإعادةُ إرسال الحدث نفسه تصطدم بالقيد ولا تودع مرّتين.
+ */
+async function topUp(event: RevenueCatEvent, userId: string): Promise<{ ok: string }> {
+  const eventId = event.id;
+  if (!eventId) return { ok: "شحنٌ بلا معرّف حدث — مُهمَل" };
+
+  const sku = event.product_id ?? "";
+  const pack = sku
+    ? await prisma.coinPack.findFirst({ where: { sku }, select: { id: true, coins: true, priceHalalas: true } })
+    : null;
+
+  if (!pack) {
+    console.log(`↷ شراءٌ غير متجدّد بمنتجٍ لا باقةَ له: ${sku || "بلا معرّف"}`);
+    return { ok: "لا باقةَ بهذا المعرّف" };
+  }
+
+  const paid = Math.round(
+    (event.price_in_purchased_currency ?? event.price ?? pack.priceHalalas / 100) * 100,
+  );
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.coinTopUp.create({
+        data: { userId, packId: pack.id, coins: pack.coins, paidHalalas: paid, eventId },
+      });
+      await tx.billingEvent.create({
+        data: {
+          id: eventId,
+          type: "NON_RENEWING_PURCHASE",
+          appUserId: event.app_user_id ?? userId,
+          at: new Date(event.event_timestamp_ms ?? Date.now()),
+        },
+      });
+      await tx.user.update({ where: { id: userId }, data: { coins: { increment: pack.coins } } });
+    });
+  } catch {
+    // اصطدام القيد الفريد = حدثٌ وصل مرّتين، وهذا متوقّع لا خطأ.
+    return { ok: "مكرّر" };
+  }
+
+  return { ok: `أُودع ${pack.coins} كوينز` };
+}
+
+/**
+ * منحةُ كوينز من اللوحة — تمرّ بنفس السجلّ فلا رصيدَ بلا أثرٍ يدلّ عليه.
+ */
+export async function grantCoins(
+  userId: string,
+  coins: number,
+  by: string,
+): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    await tx.coinTopUp.create({
+      data: {
+        userId,
+        coins,
+        paidHalalas: 0,
+        eventId: `admin:${by}:${Date.now()}:${userId}`,
+        source: "ADMIN",
+      },
+    });
+    await tx.user.update({ where: { id: userId }, data: { coins: { increment: coins } } });
+  });
+}
 
 /**
  * يودع دورة الرصيد لمن استحقّها.
@@ -177,11 +264,11 @@ export async function dripPlusCredit(limit = 200): Promise<number> {
     const next = new Date((row.plusCreditAt?.getTime() ?? Date.now()) + CREDIT_DAYS * 86_400_000);
     await prisma.user.update({
       where: { id: row.id },
-      data: { storeCredit: { increment: PLUS_CREDIT_HALALAS }, plusCreditAt: next },
+      data: { coins: { increment: PLUS_COINS }, plusCreditAt: next },
     });
   }
 
-  if (rows.length > 0) console.log(`↑ أُودع رصيد أثر+ لـ${rows.length}`);
+  if (rows.length > 0) console.log(`↑ أُودع رصيد آثار+ لـ${rows.length}`);
   return rows.length;
 }
 

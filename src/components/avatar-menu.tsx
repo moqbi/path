@@ -6,7 +6,7 @@ import { buyNow } from "@/app/actions";
 import { Avatar, itemPaint, type Charm } from "@/components/ui";
 import { CloseIcon } from "@/components/icons";
 import { useSwipeDown } from "@/components/nav";
-import { riyals } from "@/lib/format";
+import { coinText } from "@/lib/format";
 
 /** صنفٌ يلبسه صاحب الملف — إطارٌ أو تميمة — كما يُعرض في المتجر. */
 export type WornItem = {
@@ -15,7 +15,7 @@ export type WornItem = {
   kind: string;
   spec: string;
   mediaId: string | null;
-  priceHalalas: number;
+  priceCoins: number;
   plusOnly: boolean;
 } | null;
 
@@ -146,7 +146,7 @@ function ItemSheet({
 }) {
   const [said, setSaid] = useState<{ ok?: string; error?: string } | null>(null);
   const [pending, start] = useTransition();
-  const free = item.priceHalalas === 0;
+  const free = item.priceCoins === 0;
 
   return (
     <Sheet onClose={onClose} title={KIND_LABEL[item.kind] ?? "صنف"}>
@@ -161,10 +161,10 @@ function ItemSheet({
           </p>
           <p className="mt-0.5 text-[12.5px] text-muted">
             {KIND_LABEL[item.kind] ?? "صنف"}
-            {item.plusOnly ? " · لمشتركي أثر+" : ""}
+            {item.plusOnly ? " · لمشتركي آثار+" : ""}
           </p>
           <p className="mt-1 text-[14px] font-semibold text-clay-ink">
-            {item.priceHalalas > 0 ? riyals(item.priceHalalas) : "يُكتسب بالوقت"}
+            {item.priceCoins > 0 ? coinText(item.priceCoins) : "يُكتسب بالوقت"}
           </p>
         </div>
       </div>
@@ -190,7 +190,7 @@ function ItemSheet({
           className="mt-3 flex w-full items-center justify-center rounded-xl text-[14px] font-bold disabled:opacity-60"
           style={{ height: 48, background: "var(--color-clay)", color: "var(--color-on-brand)" }}
         >
-          {pending ? "نشتري…" : `اشترِ بـ${riyals(item.priceHalalas)}`}
+          {pending ? "نشتري…" : `اشترِ بـ${coinText(item.priceCoins)}`}
         </button>
       )}
 

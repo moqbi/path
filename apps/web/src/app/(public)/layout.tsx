@@ -6,7 +6,7 @@ const COLUMNS = [
     title: "المنتج",
     links: [
       { href: "/#download", label: "حمّل التطبيق" },
-      { href: "/about", label: "عن أثر" },
+      { href: "/about", label: "عن آثار" },
       { href: "/careers", label: "الوظائف" },
     ],
   },
@@ -37,12 +37,12 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
     <div className="site">
       <header className="site-head">
         <div className="wrap flex items-center justify-between py-3">
-          <Link href="/" className="flex items-center gap-2.5" aria-label="أثر">
+          <Link href="/" className="flex items-center gap-2.5" aria-label="آثار">
             <AthrMark size={32} />
             <span className="flex flex-col leading-none">
-              <span className="latin text-[15px] font-bold">ATHR</span>
+              <span className="latin text-[15px] font-bold">ATHAR</span>
               <span className="mt-1 text-[10px] opacity-75" style={{ letterSpacing: "0.3em" }}>
-                أثر
+                آثار
               </span>
             </span>
           </Link>
@@ -68,9 +68,9 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             <div className="flex items-start gap-3">
               <AthrMark size={40} />
               <div className="flex flex-col leading-none">
-                <span className="latin text-[17px] font-bold">ATHR</span>
+                <span className="latin text-[17px] font-bold">ATHAR</span>
                 <span className="mt-1.5 text-[11px] opacity-75" style={{ letterSpacing: "0.3em" }}>
-                  أثر
+                  آثار
                 </span>
                 <span className="mt-3 text-[11.5px]" style={{ color: "var(--color-chrome-muted)" }}>
                   لحظاتك، مع ناسك.
@@ -102,7 +102,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           <hr className="my-8" style={{ borderColor: "var(--color-chrome-line)" }} />
 
           <p className="text-[11.5px]" style={{ color: "var(--color-chrome-muted)" }}>
-            © ٢٠٢٦ أثر. جميع الحقوق محفوظة.
+            © ٢٠٢٦ آثار. جميع الحقوق محفوظة.
           </p>
         </div>
       </footer>

@@ -90,16 +90,17 @@ model User {
   city         String?
   bio          String?
 
-  /// اشتراك «أثر+». الصلاحية تُقرأ من plusUntil، وisPlus مشتقة منها عند الكتابة.
+  /// اشتراك «آثار+». الصلاحية تُقرأ من plusUntil، وisPlus مشتقة منها عند الكتابة.
   role      UserRole  @default(USER)
   /// صلاحية اللوحة الممنوحة لغير المالك — يمنحها المالك ويسحبها.
   adminScope AdminScope @default(NONE)
   isPlus    Boolean   @default(false)
   plusUntil DateTime?
 
-  /// رصيد المتجر بالهللات (٣٠ ر.س = 3000).
-  storeCredit Int @default(0)
-  /// آخر إيداعٍ لرصيد أثر+ الشهري — به تُقاس الدورة التالية.
+  /// رصيد الكوينز. عملة المتجر الوحيدة: كل ما فيه يُشترى بها، ولا
+  /// يُشترى شيءٌ بالريال مباشرةً. و١٠٠٠ كوينز = ٣٠ ر.س.
+  coins Int @default(0)
+  /// آخر إيداعٍ لكوينز آثار+ الشهرية — به تُقاس الدورة التالية.
   /// والوعد «شهريّ» لا «مع كل فاتورة»: من اشترك سنوياً يفوتر مرّةً
   /// ويستحقّ اثنتي عشرة دفعة.
   plusCreditAt DateTime?
@@ -151,6 +152,7 @@ model User {
   tags      MomentTag[]
   purchases Purchase[]
   giftsGiven Purchase[] @relation("GiftGiver")
+  topUps    CoinTopUp[]
 
   media          Media[]        @relation("MediaOwner")
   conversationsA Conversation[] @relation("ConversationA")
@@ -412,8 +414,8 @@ model StoreItem {
   id    String        @id @default(cuid())
   kind  StoreItemKind
   name  String
-  /// السعر بالهللات. صفر يعني أن الصنف يُكتسب ولا يُشترى.
-  priceHalalas Int
+  /// السعر بالكوينز. صفر يعني أن الصنف يُكتسب ولا يُشترى.
+  priceCoins Int
   /// تدرّج CSS يرسم الإطار. وللثيم والتميمة صورةٌ تُرفع، والتدرّج بديلها.
   spec String
   /// صورة الصنف — الثيم خلفيةٌ للتطبيق، والتميمة شعارٌ تحت صورة العرض.
@@ -422,7 +424,7 @@ model StoreItem {
   /// ألوان الثيم كاملةً (JSON): الأرضية والبطاقة والحبر واللمسة والشريط.
   /// الثيم ليس خلفيةً فقط — التطبيق كلّه يلبس ألوانه.
   palette String?
-  /// أصناف حصرية لمشتركي أثر+.
+  /// أصناف حصرية لمشتركي آثار+.
   plusOnly Boolean @default(false)
   /// أصناف تُكتسب بالبقاء لا بالدفع (مثل إطار «سنة كاملة»).
   earnedAfterDays Int?
@@ -446,8 +448,8 @@ model Purchase {
   id        String   @id @default(cuid())
   userId    String
   itemId    String
-  /// ما دُفع فعلياً بالهللات (قد يقل عن السعر بسبب خصم المشتركين).
-  paidHalalas Int
+  /// ما دُفع فعلياً بالكوينز (قد يقل عن السعر بسبب خصم المشتركين).
+  paidCoins Int
   /// من أهداه إن كان هدية — والدافع هو المُهدي لا المالك.
   giftedById  String?
   createdAt   DateTime @default(now())
@@ -458,6 +460,51 @@ model Purchase {
 
   @@unique([userId, itemId])
   @@index([giftedById, createdAt])
+}
+
+/// باقة كوينز تُشترى بمالٍ حقيقي.
+///
+/// تُضاف وتُعدَّل وتُحذف من لوحة التحكم بلا نشر نسخة — كتصنيفات المتجر.
+/// والشراء نفسه لا يمرّ بنا: السلع الرقمية تُباع عبر متجر المنصّة وحده
+/// (IAP لآبل وGoogle Play Billing)، فـ`sku` هو معرّف المنتج هناك، وبه
+/// يصل حدث RevenueCat فنعرف كم كوينز نودع.
+model CoinPack {
+  id    String @id @default(cuid())
+  name  String
+  coins Int
+  /// سعر الباقة بالهللات — للعرض وحده. ما يُخصم فعلاً يقرّره المتجر.
+  priceHalalas Int
+  /// معرّف المنتج في المتجرين. فارغٌ يعني باقةً لم تُربط بعد فلا تُباع.
+  sku String @default("")
+
+  sortOrder Int     @default(0)
+  hidden    Boolean @default(false)
+  createdAt DateTime @default(now())
+
+  topUps CoinTopUp[]
+}
+
+/// سجلّ شحنٍ واحد. يُكتب ولا يُعدَّل.
+///
+/// الرصيد رقمٌ في صفّ المستخدم، ولو بقي وحده لما عرف أحدٌ من أين جاء —
+/// ولا أجاب الدعمُ «أين ذهبت كوينزي». وحدثُ المتجر يصل مرّةً واحدة
+/// بمعرّفٍ فريد، و`eventId` يمنع إيداعه مرّتين إن أُعيد إرساله.
+model CoinTopUp {
+  id      String @id @default(cuid())
+  userId  String
+  packId  String?
+  coins   Int
+  paidHalalas Int
+  /// معرّف حدث RevenueCat — فريدٌ فلا يُودَع الشحن مرّتين.
+  eventId String  @unique
+  /// من أين: شراءٌ من متجر، أو منحةٌ من اللوحة، أو رصيد آثار+.
+  source  String  @default("STORE")
+  createdAt DateTime @default(now())
+
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pack CoinPack? @relation(fields: [packId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
 }
 
 // ───────────────────────────── المحادثات الخاصة ─────────────────────────────

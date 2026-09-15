@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { DeleteForm } from "./form";
 
-export const metadata: Metadata = { title: "حذف الحساب · أثر" };
+export const metadata: Metadata = { title: "حذف الحساب · آثار" };
 
 /**
  * حذف الحساب من الموقع.

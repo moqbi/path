@@ -4,7 +4,7 @@ import { PLUS_ENTITLEMENT } from "@athar/shared";
 /**
  * الدفع عبر المتجرين — RevenueCat بينهما وبيننا.
  *
- * ولا يُصدَّق العميل: شراؤُه يُفعّل أثر+ حين يصل حدثُ RevenueCat إلى
+ * ولا يُصدَّق العميل: شراؤُه يُفعّل آثار+ حين يصل حدثُ RevenueCat إلى
  * الخادم (`/v1/webhooks/revenuecat`)، لا حين تعود الشاشة بنتيجة. فما
  * هنا واجهةُ شراءٍ لا منحُ صلاحية.
  *
@@ -127,6 +127,34 @@ export async function buy(planId: string): Promise<{ active: boolean; cancelled:
     // إلغاءُ المشتري لنافذة الدفع ليس خطأً يُعرض له.
     const cancelled = Boolean((problem as { userCancelled?: boolean }).userCancelled);
     if (cancelled) return { active: false, cancelled: true };
+    throw problem;
+  }
+}
+
+/**
+ * باقة كوينز: شراءٌ يُستهلك، لا اشتراكٌ يتجدّد.
+ *
+ * ويُشترى بمعرّف المنتج مباشرةً (`purchaseStoreProduct`) لا بحزمةٍ من
+ * عرضٍ: العروض في RevenueCat مبنيّةٌ للاشتراك، والباقات تُضاف وتُحذف من
+ * لوحتنا — فربطُها بعرضٍ هناك يعني تعديلين لكل تغيير.
+ *
+ * ولا يُفتح الرصيد هنا: الجهاز يشتري، والخادم يودع حين يصله حدثُ
+ * RevenueCat. فما يردّه هذا هو «تمّ الشراء» لا «وصل الرصيد».
+ */
+export async function buyCoins(sku: string): Promise<{ bought: boolean; cancelled: boolean }> {
+  const purchases = await load();
+  if (!purchases) return { bought: false, cancelled: false };
+
+  const products = await purchases.getProducts([sku]);
+  const product = products.find((one) => one.identifier === sku) ?? products[0];
+  if (!product) return { bought: false, cancelled: false };
+
+  try {
+    await purchases.purchaseStoreProduct(product);
+    return { bought: true, cancelled: false };
+  } catch (problem) {
+    const cancelled = Boolean((problem as { userCancelled?: boolean }).userCancelled);
+    if (cancelled) return { bought: false, cancelled: true };
     throw problem;
   }
 }

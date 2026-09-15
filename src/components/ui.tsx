@@ -319,7 +319,7 @@ export function NameTag({
   return (
     <>
       {isPlus ? (
-        <span className="shrink-0 text-gold" aria-label="مشترك في أثر+" title="مشترك في أثر+">
+        <span className="shrink-0 text-gold" aria-label="مشترك في آثار+" title="مشترك في آثار+">
           <SparkIcon size={Math.round(size * 1.25)} />
         </span>
       ) : null}

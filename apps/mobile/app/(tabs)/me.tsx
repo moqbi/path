@@ -146,7 +146,7 @@ export default function Me() {
           accessibilityLabel="مشاركة الملف"
           onPress={() =>
             void Share.share({
-              message: `ملف ${me.name} في أثر · عضوية رقم ${ar(me.memberNo)}\nhttps://athr.app/u/${me.id}`,
+              message: `ملف ${me.name} في آثار · عضوية رقم ${ar(me.memberNo)}\nhttps://athr.app/u/${me.id}`,
             })
           }
           style={{

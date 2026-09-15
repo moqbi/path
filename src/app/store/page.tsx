@@ -6,7 +6,7 @@ import { TabBar } from "@/components/tab-bar";
 import { AthrPageMark } from "@/components/brand";
 import { FlameIcon, InfoIcon, SparkIcon } from "@/components/icons";
 import { StoreGrid, type Item } from "./grid";
-import { riyals } from "@/lib/format";
+import { coinText } from "@/lib/format";
 
 /** كم صنفاً يظهر في صفّ «وصل حديثاً» — صفٌّ واحد من ثلاثة. */
 const FRESH = 3;
@@ -15,7 +15,7 @@ const FRESH = 3;
  * المتجر: شريط تصنيفات، ثم صفوف.
  *
  * التصنيفات تأتي من القاعدة فيضيفها المشرف من اللوحة بلا نشر نسخة.
- * و«المميز» ليس تصنيفاً بل واجهة: ما وصل حديثاً، ثم ثيمات أثر، ثم الحزم
+ * و«المميز» ليس تصنيفاً بل واجهة: ما وصل حديثاً، ثم ثيمات آثار، ثم الحزم
  * المحدودة — صفوفٌ مشتقّة من الأصناف نفسها لا مرصوفة يدوياً.
  */
 export default async function StorePage({
@@ -42,7 +42,7 @@ export default async function StorePage({
     id: item.id,
     kind: item.kind,
     name: item.name,
-    priceHalalas: item.priceHalalas,
+    priceCoins: item.priceCoins,
     spec: item.spec,
     plusOnly: item.plusOnly,
     earnedAfterDays: item.earnedAfterDays,
@@ -55,7 +55,7 @@ export default async function StorePage({
       items={items.map(shape)}
       owned={owned}
       isPlus={user.isPlus}
-      credit={user.storeCredit}
+      credit={user.coins}
       daysHere={daysHere}
       equipped={{ frame: user.frameId, theme: user.backgroundId, charm: user.charmId }}
     />
@@ -74,13 +74,17 @@ export default async function StorePage({
     <div className="screen">
       <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
         <AthrPageMark label="المتجر" />
+        {/*
+          الرصيد لافتةٌ هنا لا زرّ: الشحن يمرّ بمتجر الجهاز، ولا متجرَ
+          في المتصفّح — فزرٌّ يفتح ما لا يوجد أسوأ من لا زرّ.
+        */}
         <span
           className="flex items-center gap-2 rounded-full border px-3.5 py-2"
           style={{ background: "var(--color-gold-soft)", borderColor: "var(--color-gold-line)" }}
         >
           <SparkIcon size={14} className="text-gold" />
           <span className="text-[12.5px] font-semibold text-gold">
-            رصيدك {riyals(user.storeCredit)}
+            رصيدك {coinText(user.coins)}
           </span>
         </span>
       </header>
@@ -117,7 +121,7 @@ export default async function StorePage({
               {grid(fresh)}
             </Row>
 
-            <Row title="ثيمات أثر">{grid(themes)}</Row>
+            <Row title="ثيمات آثار">{grid(themes)}</Row>
 
             <Row title="حزم محدودة">{grid(limited)}</Row>
           </>
@@ -135,8 +139,8 @@ export default async function StorePage({
               <SparkIcon size={19} />
             </span>
             <p className="grow text-[12px] leading-relaxed text-ink-2">
-              مشتركو <span className="font-semibold text-gold">أثر+</span> يحصلون على ٣٠ ر.س
-              شهرياً وخصم ٢٠٪
+              مشتركو <span className="font-semibold text-gold">آثار+</span> يحصلون على ١٠٠٠
+              كوينز شهرياً وخصم ٢٠٪
             </p>
           </div>
         ) : null}

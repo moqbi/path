@@ -13,6 +13,7 @@ export const keys = {
   circle: ["circle"] as const,
   suggestions: ["circle", "suggestions"] as const,
   notes: ["notes"] as const,
+  coinPacks: ["coinPacks"] as const,
   noteCount: ["notes", "count"] as const,
   store: ["store"] as const,
   me: ["me"] as const,
@@ -148,7 +149,7 @@ export type StoreItem = {
   id: string;
   kind: "FRAME" | "BACKGROUND" | "THEME" | "CHARM";
   name: string;
-  priceHalalas: number;
+  priceCoins: number;
   spec: string;
   mediaId: string | null;
   plusOnly: boolean;
@@ -167,11 +168,31 @@ export const useStore = () =>
         items: StoreItem[];
         owned: string[];
         rows: { fresh: StoreItem[]; themes: StoreItem[]; limited: StoreItem[] };
-        credit: number;
+        coins: number;
         isPlus: boolean;
         daysHere: number;
         equipped: { frame: string | null; theme: string | null; charm: string | null };
       }>("/v1/store"),
+  });
+
+/**
+ * باقات الكوينز المعروضة.
+ *
+ * السعر يأتي من الخادم للعرض، لكنّ ما يُخصم فعلاً يقرّره المتجر بعملة
+ * المشتري — ولذلك تُقرأ الأسعار من المتجر نفسه في شاشة الشحن حين تتوفّر.
+ */
+export type CoinPack = {
+  id: string;
+  name: string;
+  coins: number;
+  priceHalalas: number;
+  sku: string;
+};
+
+export const useCoinPacks = () =>
+  useQuery({
+    queryKey: keys.coinPacks,
+    queryFn: () => api<{ packs: CoinPack[] }>("/v1/coins/packs"),
   });
 
 /** المقترحون: من يجمعك بهم صديقٌ مشترك — لا بحث بالاسم ولا بالبريد. */

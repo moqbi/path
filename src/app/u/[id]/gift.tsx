@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { giftItem } from "@/app/actions";
 import { CloseIcon, SparkIcon, GiftIcon } from "@/components/icons";
 import { itemPaint } from "@/components/ui";
-import { ar, riyals } from "@/lib/format";
+import { ar, coinText } from "@/lib/format";
 
 /**
  * الإهداء: المتجر يُفتح في نافذة فوق ملف صاحبك، لا في صفحة تُغادر مكانك.
@@ -16,7 +16,7 @@ type Item = {
   id: string;
   name: string;
   spec: string;
-  priceHalalas: number;
+  priceCoins: number;
   plusOnly: boolean;
   earnedAfterDays: number | null;
   mediaId: string | null;
@@ -58,7 +58,7 @@ export function GiftButton({
 
   const has = new Set([...owned, ...sent]);
   const price = (item: Item) =>
-    isPlus ? Math.round(item.priceHalalas * 0.8) : item.priceHalalas;
+    isPlus ? Math.round(item.priceCoins * 0.8) : item.priceCoins;
 
   function send(item: Item) {
     setNote(null);
@@ -119,7 +119,7 @@ export function GiftButton({
               style={{ background: "var(--color-gold-soft)", borderColor: "var(--color-gold-line)", color: "var(--color-gold-ink)" }}
             >
               <SparkIcon size={14} />
-              رصيدك {riyals(credit)}
+              رصيدك {coinText(credit)}
             </p>
 
             {note?.error ? (
@@ -171,10 +171,10 @@ export function GiftButton({
                         : item.earnedAfterDays !== null
                           ? `يُكتسب بـ${ar(item.earnedAfterDays)} يوم`
                           : item.plusOnly && !friendIsPlus
-                            ? "لمشتركي أثر+"
+                            ? "لمشتركي آثار+"
                             : busy === item.id
                               ? "…"
-                              : riyals(price(item))}
+                              : coinText(price(item))}
                     </span>
                   </button>
                 );

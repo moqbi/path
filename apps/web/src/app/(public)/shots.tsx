@@ -20,7 +20,7 @@ function Frame({ title, children }: { title: string; children: React.ReactNode }
         style={{ background: CHROME, color: "var(--color-chrome-ink)" }}
       >
         <span className="text-[9px] font-semibold opacity-90">{title}</span>
-        <span className="latin text-[9px] font-bold opacity-90">ATHR</span>
+        <span className="latin text-[9px] font-bold opacity-90">ATHAR</span>
       </div>
       <div className="grow overflow-hidden">{children}</div>
       <div

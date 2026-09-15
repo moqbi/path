@@ -35,7 +35,7 @@ export function facesFor(momentKind?: string): readonly string[] {
 
 export const FACES = OPEN_FACES;
 /**
- * الإيموجي الحرّ لمشتركي أثر+.
+ * الإيموجي الحرّ لمشتركي آثار+.
  *
  * كان اثنين، والاشتراك يَعِد بـ«كل كيبوردك» — فصارت لوحةً تُفتح بضغطة:
  * الاثنان الأولان في الصفّ لأنهما الأكثر استعمالاً، والبقية خلف «＋».
@@ -218,7 +218,7 @@ export function Reactions({
             ) : (
               <a
                 href="/subscribe"
-                aria-label="الإيموجي الحر لمشتركي أثر+"
+                aria-label="الإيموجي الحر لمشتركي آثار+"
                 onClick={(e) => e.stopPropagation()}
                 className="flex h-11 w-9 items-center justify-center rounded-xl"
                 style={{ color: "var(--color-gold-ink)" }}

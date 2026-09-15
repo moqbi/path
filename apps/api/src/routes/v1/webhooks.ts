@@ -31,7 +31,7 @@ export const webhookRoutes = new Hono().post("/revenuecat", async (c) => {
   if (!body?.event) return c.json({ ok: "لا حدث" });
 
   /*
-    ويُردّ ٢٠٠ لكل حمولةٍ فُهمت — حتى لو لم يكن لها أثر عندنا: كل ردٍّ
+    ويُردّ ٢٠٠ لكل حمولةٍ فُهمت — حتى لو لم يكن لها أثرٌ عندنا: كل ردٍّ
     آخر يُعدّ فشلاً فيعيد RevenueCat إرسالها خمس مرات ثم يتوقّف.
   */
   const result = await applyEvent(body.event);

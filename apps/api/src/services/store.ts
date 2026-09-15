@@ -1,5 +1,6 @@
 import { env } from "../env";
 import { prisma } from "@athar/db";
+import { PLUS_COINS } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { circleIds } from "./visibility";
 
@@ -13,7 +14,7 @@ const ITEM = {
   id: true,
   kind: true,
   name: true,
-  priceHalalas: true,
+  priceCoins: true,
   spec: true,
   mediaId: true,
   plusOnly: true,
@@ -34,7 +35,7 @@ export async function storefront(userId: string) {
     prisma.user.findUnique({
       where: { id: userId },
       select: {
-        storeCredit: true,
+        coins: true,
         isPlus: true,
         createdAt: true,
         frameId: true,
@@ -56,7 +57,7 @@ export async function storefront(userId: string) {
     items,
     owned,
     rows: { fresh, themes, limited },
-    credit: user?.storeCredit ?? 0,
+    coins: user?.coins ?? 0,
     isPlus: user?.isPlus ?? false,
     daysHere: user ? Math.floor((Date.now() - +user.createdAt) / 86_400_000) : 0,
     equipped: { frame: user?.frameId, theme: user?.backgroundId, charm: user?.charmId },
@@ -82,8 +83,8 @@ export async function myItems(userId: string) {
 /** خصمُ المشترك على كل صنف. */
 const PLUS_DISCOUNT = 0.2;
 
-const priceFor = (item: { priceHalalas: number }, isPlus: boolean) =>
-  isPlus ? Math.round(item.priceHalalas * (1 - PLUS_DISCOUNT)) : item.priceHalalas;
+const priceFor = (item: { priceCoins: number }, isPlus: boolean) =>
+  isPlus ? Math.round(item.priceCoins * (1 - PLUS_DISCOUNT)) : item.priceCoins;
 
 /**
  * الشراء.
@@ -95,13 +96,13 @@ export async function buy(userId: string, itemId: string) {
   const [me, item] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
-      select: { isPlus: true, storeCredit: true, createdAt: true },
+      select: { isPlus: true, coins: true, createdAt: true },
     }),
     prisma.storeItem.findUnique({ where: { id: itemId } }),
   ]);
   if (!me) throw notFound("لا يوجد هذا الحساب");
   if (!item) throw notFound("الصنف غير موجود");
-  if (item.plusOnly && !me.isPlus) throw forbidden("هذا الصنف لمشتركي أثر+");
+  if (item.plusOnly && !me.isPlus) throw forbidden("هذا الصنف لمشتركي آثار+");
 
   if (item.earnedAfterDays !== null) {
     const days = Math.floor((Date.now() - me.createdAt.getTime()) / 86_400_000);
@@ -115,11 +116,11 @@ export async function buy(userId: string, itemId: string) {
   if (owned) return { ok: "عندك هذا الصنف" };
 
   const price = priceFor(item, me.isPlus);
-  if (me.storeCredit < price) throw badRequest("رصيدك لا يكفي");
+  if (me.coins < price) throw badRequest("رصيدك لا يكفي");
 
   await prisma.$transaction([
-    prisma.user.update({ where: { id: userId }, data: { storeCredit: { decrement: price } } }),
-    prisma.purchase.create({ data: { userId, itemId, paidHalalas: price } }),
+    prisma.user.update({ where: { id: userId }, data: { coins: { decrement: price } } }),
+    prisma.purchase.create({ data: { userId, itemId, paidCoins: price } }),
   ]);
 
   return { ok: `اشتريت ${item.name}` };
@@ -142,13 +143,13 @@ export async function gift(userId: string, itemId: string, toUserId: string) {
   if (!circle.includes(toUserId)) throw forbidden("الإهداء للأصدقاء فقط");
 
   const [me, item, friend] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { isPlus: true, storeCredit: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { isPlus: true, coins: true } }),
     prisma.storeItem.findUnique({ where: { id: itemId } }),
     prisma.user.findUnique({ where: { id: toUserId }, select: { name: true, isPlus: true } }),
   ]);
   if (!me || !item || !friend) throw notFound("الصنف غير موجود");
   if (item.earnedAfterDays !== null) throw badRequest("هذا الصنف يُكتسب بالوقت، لا يُهدى");
-  if (item.plusOnly && !friend.isPlus) throw badRequest(`${friend.name} ليس مشتركاً في أثر+`);
+  if (item.plusOnly && !friend.isPlus) throw badRequest(`${friend.name} ليس مشتركاً في آثار+`);
 
   const owned = await prisma.purchase.findUnique({
     where: { userId_itemId: { userId: toUserId, itemId } },
@@ -157,12 +158,12 @@ export async function gift(userId: string, itemId: string, toUserId: string) {
   if (owned) throw badRequest(`${friend.name} يملكه أصلاً`);
 
   const price = priceFor(item, me.isPlus);
-  if (me.storeCredit < price) throw badRequest("رصيدك لا يكفي");
+  if (me.coins < price) throw badRequest("رصيدك لا يكفي");
 
   await prisma.$transaction([
-    prisma.user.update({ where: { id: userId }, data: { storeCredit: { decrement: price } } }),
+    prisma.user.update({ where: { id: userId }, data: { coins: { decrement: price } } }),
     prisma.purchase.create({
-      data: { userId: toUserId, itemId, paidHalalas: price, giftedById: userId },
+      data: { userId: toUserId, itemId, paidCoins: price, giftedById: userId },
     }),
   ]);
 
@@ -216,7 +217,7 @@ export async function unequip(userId: string, kind: "FRAME" | "BACKGROUND" | "CH
 /**
  * تفعيلٌ بلا دفع — للتجربة وحدها.
  *
- * كان هذا الباب مفتوحاً: طلبٌ واحد يمنح صاحبه «أثر+» ورصيدَ متجرٍ
+ * كان هذا الباب مفتوحاً: طلبٌ واحد يمنح صاحبه «آثار+» ورصيدَ متجرٍ
  * مجّاناً، وإجراءُ الخادم يُنادى مباشرةً فلا يحميه إخفاء الزرّ. الآن
  * يُغلق ما لم تُضبط `ALLOW_FAKE_PLUS`، والدفعُ الحقيقي يأتي من
  * المتجرين عبر حدث RevenueCat وحده (`services/billing.ts`).
@@ -232,10 +233,10 @@ export async function subscribe(userId: string, plan: "MONTHLY" | "YEARLY") {
     data: {
       isPlus: true,
       plusUntil: new Date(Date.now() + days * 86_400_000),
-      storeCredit: { increment: 3000 },
+      coins: { increment: PLUS_COINS },
     },
   });
-  return { ok: "اشتركت في أثر+" };
+  return { ok: "اشتركت في آثار+" };
 }
 
 export async function cancelPlus(userId: string) {
@@ -244,4 +245,21 @@ export async function cancelPlus(userId: string) {
     data: { isPlus: false, plusUntil: null },
   });
   return { ok: true };
+}
+
+
+/**
+ * باقات الكوينز المعروضة.
+ *
+ * ما لم يُربط بمنتجٍ في المتجرين (`sku` فارغ) لا يُعرض: باقةٌ تُضغط ولا
+ * تفتح نافذة شراء تُقرأ عطلاً. والسعر بالهللات للعرض وحده — ما يُخصم
+ * فعلاً يقرّره المتجر بعملة المشتري.
+ */
+export async function coinPacks() {
+  const packs = await prisma.coinPack.findMany({
+    where: { hidden: false, NOT: { sku: "" } },
+    orderBy: [{ sortOrder: "asc" }, { coins: "asc" }],
+    select: { id: true, name: true, coins: true, priceHalalas: true, sku: true },
+  });
+  return { packs };
 }
