@@ -1,0 +1,304 @@
+@import "tailwindcss";
+
+/*
+ * هوية أثر.
+ *
+ * داكنة أولاً: خلفية الفحم، وأسطح الأزرق العميق، ونص كريمي.
+ * التدرّج (كهرماني ← مرجاني) هو توقيع العلامة ولا يُستعمل إلا حيث يستحق:
+ * الشعار، والفعل الأساسي، وحلقة الدائرة. تبديده على كل عنصر يقتله.
+ */
+@theme {
+  /*
+   * الأرضية أغمق من البطاقات عمداً: حين تتساوى الاثنتان يذوب المنشور في
+   * الخلفية ولا تُقرأ حدوده. الفرق هنا ~٥٪ إضاءة، يكفي للتمييز ولا يُتعب.
+   */
+  --color-paper: #eae5d9; /* أرضية المخطط الزمني */
+  --color-card: #fdfcf8; /* المنشورات */
+  --color-chip: #ded8c9;
+
+  /* الأشرطة العلوية والسفلية تبقى داكنة — لم تكن جزءاً من تغيير الأرضية. */
+  --color-chrome: #0e1a24;
+  --color-chrome-2: #17242f;
+  --color-chrome-ink: #f7f5ef;
+  --color-chrome-muted: #8c9aa5;
+  --color-chrome-line: #223140;
+
+  --color-night: #0e1a24;
+  --color-night-2: #16242f;
+
+  --color-ink: #14212b;
+  --color-ink-2: #3d4a55;
+  --color-muted: #667380;
+  --color-faint: #8b96a1;
+  --color-line: #d8d2c2;
+
+  --color-clay: #f6b93b;
+  --color-clay-ink: #a8730f;
+  --color-clay-soft: #faedd6;
+  --color-brand-2: #ff7a5a;
+  --color-on-brand: #0e1a24;
+
+  --color-live: #d4502f;
+  --color-live-soft: #fae2da;
+
+  --color-gold: #f6b93b;
+  --color-gold-ink: #a8730f;
+  --color-gold-bright: #ffd27a;
+  --color-gold-soft: #faedd6;
+  --color-gold-line: #ecdcb6;
+
+  /*
+   * IBM Plex Sans Arabic للمتن: أوضح من Tajawal في الأحجام الصغيرة،
+   * وارتفاع سطره أريح للقراءة الطويلة. Tajawal يبقى للعناوين والعلامة.
+   */
+  --font-body: "IBM Plex Sans Arabic", "Tajawal", "Geeza Pro", system-ui, sans-serif;
+  --font-display: "Tajawal", "IBM Plex Sans Arabic", "Geeza Pro", system-ui, sans-serif;
+  --font-latin: "Montserrat", "IBM Plex Sans Arabic", system-ui, sans-serif;
+}
+
+/* توقيع العلامة — يُستدعى بالاسم لا يُعاد كتابته. */
+.brand-gradient {
+  background-image: linear-gradient(135deg, #f6b93b 0%, #ff7a5a 100%);
+}
+
+.brand-text {
+  background-image: linear-gradient(135deg, #f6b93b 0%, #ff7a5a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.latin {
+  font-family: var(--font-latin);
+  letter-spacing: 0.22em;
+}
+
+html {
+  background: var(--color-paper);
+  color-scheme: light;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.75;
+  letter-spacing: 0;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* العربية تحتاج ارتفاع سطر أكبر من اللاتينية عند نفس الحجم. */
+p,
+li {
+  line-height: 1.85;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  line-height: 1.5;
+}
+
+.chrome {
+  background: var(--color-chrome);
+  color: var(--color-chrome-ink);
+}
+
+/*
+ * الشريط السفلي فاتح كسطح البطاقات لا داكناً كالرأس: التبويبات جزء من
+ * الصفحة يُلمس كثيراً، والرأس هو الذي يحمل العلامة ويستحق الحبر الداكن.
+ * وفي الليل يتبع الرمز نفسه فيصير أغمق من الورقة قليلاً.
+ */
+.tabbar {
+  background: var(--color-card);
+  border-top: 1px solid var(--color-line);
+  box-shadow: 0 -8px 24px rgba(14, 26, 36, 0.06);
+}
+
+/*
+ * الشريط السفلي فاتح كسطح البطاقات لا داكناً كالرأس: التبويبات جزء من
+ * الصفحة يُلمس كثيراً، والرأس هو الذي يحمل العلامة ويستحق الحبر الداكن.
+ * وفي الليل يتبع الرمز نفسه فيصير أغمق من الورقة قليلاً.
+ */
+.tabbar {
+  background: var(--color-card);
+  border-top: 1px solid var(--color-line);
+  box-shadow: 0 -8px 24px rgba(14, 26, 36, 0.06);
+}
+
+
+/*
+ * موبايل أولاً: كل الشاشات مصمّمة على عرض ٣٩٠ بكسل، فيُثبَّت العرض ويُتوسَّط
+ * بدل تمديد تخطيط الهاتف على الشاشات الكبيرة.
+ */
+/*
+ * الهيكل بارتفاع الشاشة تماماً، والتمرير داخل منطقة المحتوى وحدها.
+ * مع `sticky` كان الشريط السفلي يختفي حتى ينزل المستخدم — لأن اللاصق لا
+ * يلتصق إلا داخل صندوق أطول منه.
+ */
+.screen {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.scroll-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.shell {
+  /*
+   * حارس أخير: عنصر واحد يتجاوز العرض كان يوسّع الصفحة أفقياً، وفي RTL
+   * ينزلق العرض إلى الحافة اليمنى فيبدو التطبيق كله منزاحاً.
+   */
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 430px;
+  margin-inline: auto;
+  height: 100dvh;
+  background: var(--color-paper);
+  position: relative;
+}
+
+@media (min-width: 640px) {
+  body {
+    background: #e6e2d7;
+  }
+  /*
+ * الهيكل بارتفاع الشاشة تماماً، والتمرير داخل منطقة المحتوى وحدها.
+ * مع `sticky` كان الشريط السفلي يختفي حتى ينزل المستخدم — لأن اللاصق لا
+ * يلتصق إلا داخل صندوق أطول منه.
+ */
+.screen {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.scroll-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.shell {
+    box-shadow: 0 0 0 1px var(--color-line), 0 24px 70px rgba(14, 26, 36, 0.14);
+  }
+}
+
+/*
+ * الأزرار العائمة تُثبَّت داخل هيكل الهاتف لا داخل النافذة: مع `fixed`
+ * وحدها كانت تطير إلى حافة الشاشة اليسرى على المتصفح العريض وتخرج من
+ * الهيكل تماماً، فيبدو زر النشر مفقوداً.
+ */
+.shell-fixed {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 430px;
+  pointer-events: none;
+}
+
+.no-bar {
+  scrollbar-width: none;
+}
+.no-bar::-webkit-scrollbar {
+  display: none;
+}
+
+/* الخط العمودي الذي يربط لحظات اليوم في الخط الزمني.
+   الإزاحة = منتصف عمود الصور (w-14) داخل حاوية بحشوة px-5. */
+.spine::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 27px;
+  width: 1px;
+  background: var(--color-line);
+}
+
+/* ظهور الوجوه في شريط التفاعل — نبضة قصيرة من الأسفل. */
+@keyframes athr-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(.55);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* الورقة السفلية تطير من أسفل الشاشة، والعتمة تسبقها. */
+@keyframes athr-sheet {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes athr-veil {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .athr-sheet,
+  .athr-veil {
+    animation: none !important;
+  }
+}
+
+/* شرائح الجولة: تدخل من جهتها مع تلاشٍ. */
+@keyframes athr-slide {
+  from {
+    opacity: 0;
+    transform: translateX(var(--athr-from, 40px));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* دوران زر التحديث أثناء الجلب. */
+@keyframes athr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* نبضةُ التسجيل: نقطةٌ حمراء تقول إنّ الميكروفون يعمل الآن. */
+@keyframes athr-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+}
