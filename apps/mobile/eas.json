@@ -18,8 +18,7 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://athar-api-87iu.onrender.com",
-        "EXPO_PUBLIC_RC_TEST_KEY": "test_bPkuVnVXLCekZPeJHkZQtHucNQi"
+        "EXPO_PUBLIC_API_URL": "https://athar-api-87iu.onrender.com"
       },
       "android": {
         "buildType": "apk"

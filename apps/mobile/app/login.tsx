@@ -6,7 +6,7 @@ import {
   Pressable,
   Animated,
   Easing,
-  KeyboardAvoidingView,
+  Keyboard,
   Platform,
   useWindowDimensions,
 } from "react-native";
@@ -58,6 +58,36 @@ function usePhases(): Phase {
   }, []);
 
   return phase;
+}
+
+/**
+ * ارتفاع لوحة المفاتيح.
+ *
+ * الشاشة ممتدّة إلى الحوافّ (edge-to-edge في SDK 54)، ومعها لا يقلّص
+ * أندرويد النافذة عند ظهور اللوحة مهما كان `adjustResize` — فالحقول
+ * تبقى تحتها. فتُقاس اللوحة بنفسها وتُرفع بها الحشوة السفلى، وهذا يعمل
+ * على النظامين سواء. و`will` على iOS تسبق الحركة فترتفع الحقول معها،
+ * و`did` وحدها على أندرويد.
+ */
+function useKeyboardHeight(): number {
+  const [height, setHeight] = useState(0);
+
+  useEffect(() => {
+    const ios = Platform.OS === "ios";
+    const show = Keyboard.addListener(ios ? "keyboardWillShow" : "keyboardDidShow", (event) =>
+      setHeight(event.endCoordinates.height),
+    );
+    const hide = Keyboard.addListener(ios ? "keyboardWillHide" : "keyboardDidHide", () =>
+      setHeight(0),
+    );
+
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
+  return height;
 }
 
 /* منحنيات الويب نفسها: `ease` هو cubic-bezier(.25,.1,.25,1). */
@@ -156,6 +186,7 @@ export default function Login() {
   const router = useRouter();
   const { deleted } = useLocalSearchParams<{ deleted?: string }>();
   const phase = usePhases();
+  const keyboard = useKeyboardHeight();
   const signIn = useSession((s) => s.signIn);
 
   const [showEmail, setShowEmail] = useState(false);
@@ -226,183 +257,198 @@ export default function Login() {
     <View style={{ flex: 1, backgroundColor: "#171d24" }}>
       <Sky />
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={{ flex: 1 }}
+      {/*
+        المقدّمة مرفوعةٌ من السياق، والخيارات في الأسفل فوق حشوة ٤٠ —
+        وترتفع باللوحة حين تظهر.
+      */}
+      <View
+        style={{
+          flex: 1,
+          paddingHorizontal: 24,
+          paddingTop: 64,
+          paddingBottom: keyboard > 0 ? keyboard + 16 : 40,
+          justifyContent: "flex-end",
+        }}
       >
-        {/* المقدّمة مرفوعةٌ من السياق، والخيارات في الأسفل فوق حشوة ٤٠. */}
-        <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 64, paddingBottom: 40, justifyContent: "flex-end" }}>
-          {/* المقدّمة: تدخل من الأعلى ثم تغادر إلى الأعلى. */}
-          <Animated.View
-            pointerEvents="none"
+        {/* المقدّمة: تدخل من الأعلى ثم تغادر إلى الأعلى. */}
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            top: 64,
+            left: 24,
+            right: 24,
+            paddingTop: 24,
+            alignItems: "center",
+            opacity: introFade,
+            transform: [{ translateY: introLift }],
+          }}
+        >
+          <AthrMark size={76} />
+          <Text style={{ marginTop: 20, fontSize: 32, fontWeight: "700", color: "#f7f5ef" }}>
+            ATHR
+          </Text>
+          <Text style={{ marginTop: 20, fontSize: 15, fontWeight: "500", color: "#f0ece4" }}>
+            {TAGLINE_AR}
+          </Text>
+          <Text
             style={{
-              position: "absolute",
-              top: 64,
-              left: 24,
-              right: 24,
-              paddingTop: 24,
-              alignItems: "center",
-              opacity: introFade,
-              transform: [{ translateY: introLift }],
+              marginTop: 6,
+              fontSize: 10.5,
+              lineHeight: 17,
+              textAlign: "center",
+              color: "#b9b2a8",
+              letterSpacing: 1.05,
+              writingDirection: "ltr",
             }}
           >
-            <AthrMark size={76} />
-            <Text style={{ marginTop: 20, fontSize: 32, fontWeight: "700", color: "#f7f5ef" }}>
-              ATHR
-            </Text>
-            <Text style={{ marginTop: 20, fontSize: 15, fontWeight: "500", color: "#f0ece4" }}>
-              {TAGLINE_AR}
-            </Text>
-            <Text
-              style={{
-                marginTop: 6,
-                fontSize: 10.5,
-                lineHeight: 17,
-                textAlign: "center",
-                color: "#b9b2a8",
-                letterSpacing: 1.05,
-                writingDirection: "ltr",
-              }}
-            >
-              {TAGLINE_EN}
-            </Text>
-          </Animated.View>
+            {TAGLINE_EN}
+          </Text>
+        </Animated.View>
 
-          {/*
-            العلامة في أعلى الشاشة: الشعار أوّل ما يُرى، والخيارات في
-            أسفلها حيث يصل الإبهام. وتظهر مع الخيارات بالحركة نفسها.
-          */}
-          <Animated.View
-            pointerEvents="none"
-            style={{ position: "absolute", top: 64, left: 24, right: 24, alignItems: "center", opacity: formFade }}
-          >
-            <AthrMark size={96} />
-            <Text style={{ marginTop: 12, fontSize: 26, fontWeight: "700", color: "#f7f5ef" }}>
-              ATHR
-            </Text>
-            <Text style={{ marginTop: 8, fontSize: 13, color: "#cbc5bb" }}>{TAGLINE_AR}</Text>
-          </Animated.View>
+        {/*
+          العلامة في أعلى الشاشة: الشعار أوّل ما يُرى، والخيارات في
+          أسفلها حيث يصل الإبهام. وتظهر مع الخيارات بالحركة نفسها.
+          وتغيب ما دامت اللوحة مفتوحة: هي مرفوعةٌ من السياق فلا تنزاح
+          بارتفاع الحقول، وبقاؤها يعني حقلاً تحت شعار.
+        */}
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            top: 64,
+            left: 24,
+            right: 24,
+            alignItems: "center",
+            opacity: keyboard > 0 ? 0 : formFade,
+          }}
+        >
+          <AthrMark size={96} />
+          <Text style={{ marginTop: 12, fontSize: 26, fontWeight: "700", color: "#f7f5ef" }}>
+            ATHR
+          </Text>
+          <Text style={{ marginTop: 8, fontSize: 13, color: "#cbc5bb" }}>{TAGLINE_AR}</Text>
+        </Animated.View>
 
-          {/* خيارات الدخول: تدخل من الأسفل بعد مغادرة المقدّمة. */}
-          <Animated.View
-            pointerEvents={formVisible ? "auto" : "none"}
-            style={{ opacity: formFade, transform: [{ translateY: formRise }] }}
-          >
-            {showEmail ? (
-              <View style={{ gap: 10 }}>
-                <Pressable
-                  onPress={() => setShowEmail(false)}
-                  style={{
-                    marginBottom: 4,
-                    // «البداية» في واجهةٍ عربية هي اليمين، والشجرة كلها
-                    // `rtl` فتكفي `flex-start`.
-                    alignSelf: "flex-start",
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
+        {/* خيارات الدخول: تدخل من الأسفل بعد مغادرة المقدّمة. */}
+        <Animated.View
+          pointerEvents={formVisible ? "auto" : "none"}
+          style={{ opacity: formFade, transform: [{ translateY: formRise }] }}
+        >
+          {showEmail ? (
+            <View style={{ gap: 10 }}>
+              <Pressable
+                onPress={() => setShowEmail(false)}
+                style={{
+                  marginBottom: 4,
+                  // «البداية» في واجهةٍ عربية هي اليمين، والشجرة كلها
+                  // `rtl` فتكفي `flex-start`.
+                  alignSelf: "flex-start",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <BackIcon size={15} color="#b9b2a8" />
+                <Text style={{ fontSize: 12.5, color: "#b9b2a8" }}>كل الخيارات</Text>
+              </Pressable>
+
+              <TextInput
+                style={FIELD}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="البريد"
+                // لون المُلمِّح في الويب لون المتصفح الافتراضي: حبرٌ باهت
+                // على الأرضية نفسها.
+                placeholderTextColor="rgba(247,245,239,.5)"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="emailAddress"
+              />
+              <TextInput
+                style={FIELD}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="كلمة المرور"
+                placeholderTextColor="rgba(247,245,239,.5)"
+                secureTextEntry
+                textContentType="password"
+                onSubmitEditing={submit}
+              />
+
+              {error ? (
+                <Text
+                  accessibilityRole="alert"
+                  style={{ fontSize: 12.5, fontWeight: "500", color: "#ff9d84", textAlign: "right" }}
                 >
-                  <BackIcon size={15} color="#b9b2a8" />
-                  <Text style={{ fontSize: 12.5, color: "#b9b2a8" }}>كل الخيارات</Text>
-                </Pressable>
+                  {error}
+                </Text>
+              ) : null}
 
-                <TextInput
-                  style={FIELD}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="البريد"
-                  // لون المُلمِّح في الويب لون المتصفح الافتراضي: حبرٌ باهت
-                  // على الأرضية نفسها.
-                  placeholderTextColor="rgba(247,245,239,.5)"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  textContentType="emailAddress"
-                />
-                <TextInput
-                  style={FIELD}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="كلمة المرور"
-                  placeholderTextColor="rgba(247,245,239,.5)"
-                  secureTextEntry
-                  textContentType="password"
-                  onSubmitEditing={submit}
-                />
-
-                {error ? (
-                  <Text
-                    accessibilityRole="alert"
-                    style={{ fontSize: 12.5, fontWeight: "500", color: "#ff9d84", textAlign: "right" }}
-                  >
-                    {error}
-                  </Text>
-                ) : null}
-
-                <BrandButton onPress={submit} disabled={pending} style={{ marginTop: 8 }}>
-                  <Text style={{ fontSize: 15.5, fontWeight: "700", color: colors.onBrand }}>
-                    {pending ? "لحظة…" : "دخول"}
-                  </Text>
-                </BrandButton>
-              </View>
-            ) : (
-              <View style={{ gap: 10 }}>
-                <View style={{ flexDirection: "row", gap: 10 }}>
-                  {PROVIDERS.map((provider) => (
-                    <Pressable
-                      key={provider.key}
-                      accessibilityRole="button"
-                      accessibilityLabel={`المتابعة بحساب ${provider.label}`}
-                      onPress={() =>
-                        setNotice(
-                          "الدخول عبر المزوّدين يحتاج تسجيل التطبيق عندهم وإضافة مفاتيحه. استخدم البريد الآن.",
-                        )
-                      }
-                      style={{
-                        flex: 1,
-                        height: 54,
-                        borderRadius: 12,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: "rgba(247,245,239,.94)",
-                        borderWidth: 1,
-                        borderColor: "rgba(247,245,239,.3)",
-                      }}
-                    >
-                      {provider.mark}
-                    </Pressable>
-                  ))}
-                </View>
-
-                <BrandButton onPress={() => setShowEmail(true)} style={{ marginTop: 4 }}>
-                  <Text style={{ fontSize: 15, fontWeight: "700", color: colors.onBrand }}>
-                    المتابعة بالبريد
-                  </Text>
-                </BrandButton>
-
-                {notice ? (
-                  <Text
-                    accessibilityRole="text"
+              <BrandButton onPress={submit} disabled={pending} style={{ marginTop: 8 }}>
+                <Text style={{ fontSize: 15.5, fontWeight: "700", color: colors.onBrand }}>
+                  {pending ? "لحظة…" : "دخول"}
+                </Text>
+              </BrandButton>
+            </View>
+          ) : (
+            <View style={{ gap: 10 }}>
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                {PROVIDERS.map((provider) => (
+                  <Pressable
+                    key={provider.key}
+                    accessibilityRole="button"
+                    accessibilityLabel={`المتابعة بحساب ${provider.label}`}
+                    onPress={() =>
+                      setNotice(
+                        "الدخول عبر المزوّدين يحتاج تسجيل التطبيق عندهم وإضافة مفاتيحه. استخدم البريد الآن.",
+                      )
+                    }
                     style={{
-                      marginTop: 4,
+                      flex: 1,
+                      height: 54,
                       borderRadius: 12,
-                      paddingHorizontal: 16,
-                      paddingVertical: 12,
-                      fontSize: 12,
-                      lineHeight: 19.5,
-                      textAlign: "right",
-                      backgroundColor: "rgba(14,26,36,.6)",
-                      color: "#e8e2d8",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: "rgba(247,245,239,.94)",
+                      borderWidth: 1,
+                      borderColor: "rgba(247,245,239,.3)",
                     }}
                   >
-                    {notice}
-                  </Text>
-                ) : null}
+                    {provider.mark}
+                  </Pressable>
+                ))}
               </View>
-            )}
-          </Animated.View>
-        </View>
-      </KeyboardAvoidingView>
+
+              <BrandButton onPress={() => setShowEmail(true)} style={{ marginTop: 4 }}>
+                <Text style={{ fontSize: 15, fontWeight: "700", color: colors.onBrand }}>
+                  المتابعة بالبريد
+                </Text>
+              </BrandButton>
+
+              {notice ? (
+                <Text
+                  accessibilityRole="text"
+                  style={{
+                    marginTop: 4,
+                    borderRadius: 12,
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                    fontSize: 12,
+                    lineHeight: 19.5,
+                    textAlign: "right",
+                    backgroundColor: "rgba(14,26,36,.6)",
+                    color: "#e8e2d8",
+                  }}
+                >
+                  {notice}
+                </Text>
+              ) : null}
+            </View>
+          )}
+        </Animated.View>
+      </View>
     </View>
   );
 }
