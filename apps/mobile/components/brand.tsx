@@ -1,31 +1,21 @@
-import { View, Text } from "react-native";
-import Svg, { Circle, Defs, LinearGradient, Path, Stop } from "react-native-svg";
+import { View, Text, Image } from "react-native";
 import { colors } from "../theme/tokens";
 
 /**
- * علامة أثر — نفس المسار والتدرّج اللذين في الويب حرفاً بحرف.
+ * علامة أثر — الصورة نفسها التي في الويب (`assets/athr-mark.png`).
  *
- * الرمز قمّةٌ مدوّرة بحدٍّ سميك ونقطةٌ منفصلة أعلى اليمين: تُقرأ جبلاً أو
- * شخصاً رافعاً يده.
+ * الرمز رسمٌ للمالك بتدرّجه وظلاله وشريطه المطويّ، لا `stroke` في SVG
+ * يُقلّده. واستبدال الملف يغيّره في التطبيق كله بلا لمس الكود — كرسوم
+ * التفاعلات وقوس النشر. وخلفيته شفّافة فيُقرأ على الورق وعلى الشريط
+ * الداكن سواء.
  */
 export function AthrMark({ size = 32 }: { size?: number }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 48 48" fill="none">
-      <Defs>
-        <LinearGradient id="athrMark" x1="6" y1="42" x2="42" y2="8" gradientUnits="userSpaceOnUse">
-          <Stop stopColor="#F6B93B" />
-          <Stop offset="1" stopColor="#FF7A5A" />
-        </LinearGradient>
-      </Defs>
-      <Path
-        d="M9 40 L21.2 15.4a3.2 3.2 0 0 1 5.7 0L33 27.6"
-        stroke="url(#athrMark)"
-        strokeWidth={7}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Circle cx={36.4} cy={12.6} r={4.8} fill="url(#athrMark)" />
-    </Svg>
+    <Image
+      source={require("../assets/athr-mark.png")}
+      style={{ width: size, height: size }}
+      resizeMode="contain"
+    />
   );
 }
 

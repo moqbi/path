@@ -81,7 +81,7 @@ export default function Timeline() {
         }}
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 9 }}>
-          <AthrMark size={26} />
+          <AthrMark size={34} />
           <Text style={{ color: colors.chromeInk, fontSize: 19, fontWeight: "700", letterSpacing: 2 }}>
             ATHR
           </Text>

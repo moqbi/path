@@ -34,7 +34,7 @@ export function ScreenHeader({
         backgroundColor: colors.chrome,
       }}
     >
-      <AthrMark size={24} />
+      <AthrMark size={32} />
       <Text style={{ flex: 1, color: colors.chromeInk, fontSize: 16, fontWeight: "700" }}>
         {title}
       </Text>

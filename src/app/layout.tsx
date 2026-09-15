@@ -8,6 +8,11 @@ import { NavProbe } from "@/components/nav";
 export const metadata: Metadata = {
   title: "أثر · ATHR",
   description: `${TAGLINE_AR} ${TAGLINE_EN}`,
+  /* أيقونة التبويب والاختصار على الشاشة الرئيسة: العلامة نفسها. */
+  icons: {
+    icon: "/icon.png",
+    apple: "/apple-icon.png",
+  },
 };
 
 export const viewport: Viewport = {

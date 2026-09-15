@@ -268,19 +268,26 @@ export default function Login() {
             </Text>
           </Animated.View>
 
+          {/*
+            العلامة في أعلى الشاشة: الشعار أوّل ما يُرى، والخيارات في
+            أسفلها حيث يصل الإبهام. وتظهر مع الخيارات بالحركة نفسها.
+          */}
+          <Animated.View
+            pointerEvents="none"
+            style={{ position: "absolute", top: 64, left: 24, right: 24, alignItems: "center", opacity: formFade }}
+          >
+            <AthrMark size={96} />
+            <Text style={{ marginTop: 12, fontSize: 26, fontWeight: "700", color: "#f7f5ef" }}>
+              ATHR
+            </Text>
+            <Text style={{ marginTop: 8, fontSize: 13, color: "#cbc5bb" }}>{TAGLINE_AR}</Text>
+          </Animated.View>
+
           {/* خيارات الدخول: تدخل من الأسفل بعد مغادرة المقدّمة. */}
           <Animated.View
             pointerEvents={formVisible ? "auto" : "none"}
             style={{ opacity: formFade, transform: [{ translateY: formRise }] }}
           >
-            <View style={{ alignItems: "center", marginBottom: 28 }}>
-              <AthrMark size={44} />
-              <Text style={{ marginTop: 10, fontSize: 20, fontWeight: "700", color: "#f7f5ef" }}>
-                ATHR
-              </Text>
-              <Text style={{ marginTop: 8, fontSize: 13, color: "#cbc5bb" }}>{TAGLINE_AR}</Text>
-            </View>
-
             {showEmail ? (
               <View style={{ gap: 10 }}>
                 <Pressable

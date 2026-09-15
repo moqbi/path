@@ -135,7 +135,7 @@ export default function Me() {
         }}
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <AthrMark size={24} />
+          <AthrMark size={32} />
           <View style={{ width: 1, height: 18, backgroundColor: colors.chromeLine }} />
           <Text style={{ color: colors.chromeInk, fontSize: 16, fontWeight: "700" }}>
             الملف الشخصي

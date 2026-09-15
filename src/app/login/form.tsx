@@ -144,6 +144,27 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
           </span>
         </div>
 
+        {/*
+          العلامة في أعلى الشاشة: الشعار أوّل ما يُرى، والخيارات في
+          أسفلها حيث يصل الإبهام. وهي تظهر مع الخيارات بالحركة نفسها.
+        */}
+        <div
+          className="flex flex-col items-center pt-2"
+          style={{
+            opacity: formVisible ? 1 : 0,
+            transition: "opacity 700ms ease 120ms",
+            pointerEvents: "none",
+          }}
+        >
+          <AthrMark size={96} />
+          <span className="latin mt-3 text-[26px] font-bold" style={{ color: "#f7f5ef" }}>
+            ATHR
+          </span>
+          <span className="mt-2 text-[13px]" style={{ color: "#cbc5bb" }}>
+            {TAGLINE_AR}
+          </span>
+        </div>
+
         {/* خيارات الدخول: تدخل من الأسفل بعد مغادرة المقدّمة. */}
         <div
           className="mt-auto"
@@ -154,16 +175,6 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
             pointerEvents: formVisible ? "auto" : "none",
           }}
         >
-          <div className="mb-7 flex flex-col items-center">
-            <AthrMark size={44} />
-            <span className="latin mt-2.5 text-[20px] font-bold" style={{ color: "#f7f5ef" }}>
-              ATHR
-            </span>
-            <span className="mt-2 text-[13px]" style={{ color: "#cbc5bb" }}>
-              {TAGLINE_AR}
-            </span>
-          </div>
-
           {showEmail ? (
             <form action={action} className="flex flex-col gap-2.5">
               <button
