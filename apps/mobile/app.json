@@ -19,7 +19,6 @@
     },
     "android": {
       "package": "app.athar.mobile",
-      "googleServicesFile": "./google-services.json",
       "permissions": [
         "RECORD_AUDIO",
         "CAMERA",
@@ -36,8 +35,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": ""
-      }
+        "projectId": "a6564f39-9220-4bb7-917a-f31cf9d967d6"
+      },
+      "router": {}
     },
     "icon": "./assets/icon.png",
     "web": {
@@ -47,6 +47,7 @@
       "image": "./assets/adaptive-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#0E1A24"
-    }
+    },
+    "owner": "i.moh57"
   }
 }
