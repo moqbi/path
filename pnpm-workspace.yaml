@@ -3,3 +3,16 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# حزمٌ يُسمح لها بتشغيل سكربتات التثبيت.
+#
+# pnpm 10 لا يشغّلها إلا بإذن، ويسقط البناء بـ`ERR_PNPM_IGNORED_BUILDS`
+# على خادمٍ لا أحد فيه ليضغط «وافق». وهذه الخمس تحتاجها فعلاً: محرّكات
+# Prisma تُنزَّل في التثبيت، وsharp ثنائيّه الأصليّ، وesbuild كذلك.
+onlyBuiltDependencies:
+  - "@prisma/engines"
+  - prisma
+  - esbuild
+  - sharp
+  - "@sentry/cli"
+  - unrs-resolver
