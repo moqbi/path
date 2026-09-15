@@ -19,6 +19,7 @@ import { sweepOld } from "./services/dm";
 import { plusRoutes, storeRoutes } from "./routes/v1/store";
 import { moderationRoutes, reportRoutes } from "./routes/v1/reports";
 import { webhookRoutes } from "./routes/v1/webhooks";
+import { dripPlusCredit } from "./services/billing";
 import { storyRoutes } from "./routes/v1/stories";
 import { sweep as sweepStories } from "./services/stories";
 
@@ -75,6 +76,7 @@ setInterval(
     void sweepPending().catch((error) => console.error("✗ كنس المعلّقة", error));
     void sweepOld().catch((error) => console.error("✗ كنس المحادثات", error));
     void sweepStories().catch((error) => console.error("✗ كنس القصص", error));
+    void dripPlusCredit().catch((error) => console.error("✗ رصيد أثر+", error));
   },
   SWEEP_MINUTES * 60_000,
 ).unref();

@@ -57,7 +57,7 @@ export const STORY_FILTERS = [
  * ما يهمّ التطبيقَ هو «أهو مستحقّ أثر+ الآن»، لا أيّ منتجٍ اشترى ولا من
  * أيّ متجر. وتغيير هذا الاسم يعني تغييره في لوحة RevenueCat معه.
  */
-export const PLUS_ENTITLEMENT = "plus";
+export const PLUS_ENTITLEMENT = "athr_pro";
 
 /** رصيد المتجر الذي يُودَع مع كل دورة اشتراك — بالهللات. */
 export const PLUS_CREDIT_HALALAS = 3000;

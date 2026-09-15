@@ -31,8 +31,8 @@ export type RevenueCatEvent = {
 /** أنواعٌ تُسقط الاشتراك فوراً مهما قال تاريخ الانتهاء. */
 const ENDS_NOW = new Set(["EXPIRATION", "SUBSCRIPTION_PAUSED"]);
 
-/** أنواعٌ تُودَع معها دورةُ رصيدٍ جديدة. */
-const PAYS = new Set(["INITIAL_PURCHASE", "RENEWAL", "PRODUCT_CHANGE", "UNCANCELLATION"]);
+/** الدورة التي يُودَع فيها رصيد أثر+ — شهرٌ، مهما كانت مدّة الفاتورة. */
+const CREDIT_DAYS = 30;
 
 /**
  * `app_user_id` هو معرّف المستخدم عندنا — يُضبط بـ`Purchases.logIn` في
@@ -108,15 +108,67 @@ export async function applyEvent(event: RevenueCatEvent): Promise<{ ok: string }
       });
     }
 
+    /*
+      أوّل إيداعٍ يجري هنا، وما بعده يجري مع الكنس الدوريّ
+      (`dripPlusCredit`): الوعد «٣٠ ر.س شهرياً» لا «مع كل فاتورة» —
+      ومن اشترك سنوياً يفوتر مرّةً واحدة، فربطُ الرصيد بالفاتورة كان
+      يعطيه دفعةً واحدة بدل اثنتي عشرة.
+    */
+    const row = await tx.user.findUnique({
+      where: { id: userId },
+      select: { plusCreditAt: true },
+    });
+    const first = active && !row?.plusCreditAt;
+
     await tx.user.update({
       where: { id: userId },
       data: {
         isPlus: active,
         plusUntil: active ? until : null,
-        ...(active && PAYS.has(type) ? { storeCredit: { increment: PLUS_CREDIT_HALALAS } } : null),
+        ...(first ? { storeCredit: { increment: PLUS_CREDIT_HALALAS }, plusCreditAt: new Date() } : null),
+        // ومن أُوقف يُنسى ختمُه، فيبدأ عند عودته دورةً جديدة لا يكملها.
+        ...(active ? null : { plusCreditAt: null }),
       },
     });
   });
 
   return { ok: active ? "فُعّل أثر+" : "أُوقف أثر+" };
+}
+
+
+/**
+ * يودع دورة الرصيد لمن استحقّها.
+ *
+ * يجري مع الكنس الدوريّ لا بمهمّةٍ مجدولة على خادمٍ لا نملكه، وبدفعاتٍ
+ * محدودة كي لا يطول الطلب. والختم يتقدّم شهراً لا يُضبط على اللحظة:
+ * خادمٌ نام يومين يُعطي صاحبه ما فاته لا يبتلعه.
+ */
+export async function dripPlusCredit(limit = 200): Promise<number> {
+  const due = new Date(Date.now() - CREDIT_DAYS * 86_400_000);
+
+  const rows = await prisma.user.findMany({
+    where: {
+      isPlus: true,
+      plusUntil: { gt: new Date() },
+      plusCreditAt: { lt: due },
+    },
+    select: { id: true, plusCreditAt: true },
+    take: limit,
+  });
+
+  for (const row of rows) {
+    const next = new Date((row.plusCreditAt?.getTime() ?? Date.now()) + CREDIT_DAYS * 86_400_000);
+    await prisma.user.update({
+      where: { id: row.id },
+      data: { storeCredit: { increment: PLUS_CREDIT_HALALAS }, plusCreditAt: next },
+    });
+  }
+
+  if (rows.length > 0) console.log(`↑ أُودع رصيد أثر+ لـ${rows.length}`);
+  return rows.length;
+}
+
+/** ومن انتهى اشتراكه يُنسى ختمُه، فيبدأ عند عودته دورةً جديدة. */
+export async function forgetCycle(userId: string): Promise<void> {
+  await prisma.user.update({ where: { id: userId }, data: { plusCreditAt: null } });
 }
