@@ -302,3 +302,52 @@ h3 {
     transform: scale(0.8);
   }
 }
+
+/*
+ * الصفحات العامة: عرض الصفحة كاملاً لا هيكل الهاتف.
+ *
+ * `.shell` يحبس كل شيء في ٤٣٠ بكسلاً لأنه هيكل التطبيق، وصفحةُ هبوطٍ
+ * أو سياسةُ خصوصيةٍ محشورةٌ فيه تبدو تطبيقاً معطوباً لا موقعاً. والقراءة
+ * تُقاس بالسطر لا بالشاشة: ٧٢ محرفاً حدٌّ يريح العين.
+ */
+.site {
+  min-height: 100dvh;
+  background: var(--color-paper);
+  display: flex;
+  flex-direction: column;
+}
+
+.wrap {
+  width: 100%;
+  max-width: 880px;
+  margin-inline: auto;
+  padding-inline: 20px;
+}
+
+.prose {
+  max-width: 68ch;
+}
+
+.prose h2 {
+  font-size: 17px;
+  font-weight: 700;
+  margin-top: 28px;
+  margin-bottom: 8px;
+}
+
+.prose p,
+.prose li {
+  font-size: 14.5px;
+  line-height: 1.95;
+  color: var(--color-ink-2);
+}
+
+.prose ul {
+  margin-top: 8px;
+  padding-inline-start: 20px;
+  list-style: disc;
+}
+
+.prose li {
+  margin-bottom: 6px;
+}

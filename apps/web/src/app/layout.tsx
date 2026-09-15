@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { TAGLINE_AR, TAGLINE_EN } from "@/components/brand";
-import { NavProbe } from "@/components/nav";
 
 export const metadata: Metadata = {
   title: "أثر · لوحة التحكم",
@@ -18,11 +17,12 @@ export const viewport: Viewport = {
 };
 
 /**
- * تخطيط الويب الموحّد.
+ * تخطيط الويب الموحّد: المستند وخطوطه وحدها.
  *
- * وليس فيه ثيمُ المشتري كما في التطبيق: الثيم ثوبٌ يلبسه صاحبه ليرى
- * لحظاته به، واللوحة أداةُ عمل — ألوانها ثابتة حتى يُقرأ ما فيها كما
- * هو في كل حساب.
+ * والهيكل يُختار تحته: اللوحة في `(admin)` تلبس هيكل الهاتف، والصفحات
+ * العامة في `(public)` تأخذ عرض الصفحة كاملاً. ولا ثيمَ مشترٍ هنا —
+ * الثيم ثوبٌ يلبسه صاحبه ليرى لحظاته به، وهذا موقعٌ يُقرأ كما هو في كل
+ * حساب.
  */
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
@@ -35,12 +35,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Tajawal:wght@500;700;800&family=Montserrat:wght@500;600;700&display=swap"
         />
       </head>
-      <body>
-        <div className="shell">
-          <NavProbe />
-          {children}
-        </div>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

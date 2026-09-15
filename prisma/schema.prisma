@@ -545,9 +545,18 @@ model Media {
 /// رسالة دعمٍ من مستخدم، وردُّ المشرف عليها.
 /// الدعم داخل التطبيق لا بريدٌ خارجه: الرسالة تُحفظ، والردّ يُقرأ في مكانه.
 model SupportTicket {
-  id     String @id @default(cuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id String @id @default(cuid())
+
+  /// صاحب الرسالة إن كانت من داخل التطبيق. ورسالةُ الموقع بلا حساب:
+  /// شرط المتجرين وسيلةَ تواصلٍ منشورة يصل بها من لا يملك حساباً — أو
+  /// من حُذف حسابه فلم يبقَ له باب.
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// اسمٌ وبريدٌ لرسالة الموقع وحدها: لا يُردّ عليها في التطبيق، فلا
+  /// مكان يقرأ فيه صاحبها الردّ إلا بريده.
+  name  String?
+  email String?
 
   body String
   /// ردّ المشرف — فارغٌ حتى يُردّ.
@@ -559,6 +568,7 @@ model SupportTicket {
 
   @@index([userId, createdAt])
   @@index([closed, createdAt])
+  @@index([email, createdAt])
 }
 
 /// جلسةُ تجديد. يُخزَّن ملخّص التوكن لا التوكن: قاعدةٌ تُسرَّق لا تعطي

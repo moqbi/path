@@ -1070,7 +1070,8 @@ export default async function AdminPage({
                     <summary className="flex cursor-pointer list-none items-center gap-2 p-3.5">
                       <span className="min-w-0 grow">
                         <span dir="auto" className="flex items-center gap-1.5 truncate text-[13px] font-semibold">
-                          {ticket.user.name}
+                          {ticket.user?.name ?? ticket.name ?? "زائر"}
+                          {ticket.user ? null : <Chip gold>من الموقع</Chip>}
                           {ticket.closed ? <Chip>مغلقة</Chip> : ticket.reply ? <Chip>رُدّ</Chip> : <Chip live>جديدة</Chip>}
                         </span>
                         <span className="mt-0.5 block truncate text-[11.5px] text-muted">
@@ -1083,6 +1084,16 @@ export default async function AdminPage({
                     </summary>
 
                     <div className="border-t border-line p-3.5">
+                      {/*
+                        رسالةُ الموقع بلا حساب، فلا مكان يقرأ فيه صاحبها
+                        الردّ — بريده هو الطريق الوحيد إليه، فيُعرض هنا.
+                      */}
+                      {ticket.user ? null : (
+                        <p dir="ltr" className="mb-2 text-[11.5px] font-semibold text-clay-ink">
+                          {ticket.email}
+                        </p>
+                      )}
+
                       <p dir="auto" className="mb-3 whitespace-pre-wrap text-[12.5px] leading-relaxed text-ink">
                         {ticket.body}
                       </p>

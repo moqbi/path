@@ -6,7 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { createSession, destroySession, requireUser, verifyPassword } from "@/lib/auth";
 import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
-import { migrateToCloud, storeUpload } from "@/lib/media";
+import { dropMedia, migrateToCloud, storeUpload } from "@/lib/media";
 import { cloudReady, probeBucket } from "@/lib/storage";
 import { forgetWords } from "@/lib/moderation";
 
@@ -744,4 +744,80 @@ export async function dropBannedWord(wordId: string): Promise<void> {
   await prisma.bannedWord.deleteMany({ where: { id: wordId } });
   forgetWords();
   revalidatePath("/admin");
+}
+
+// ───────────────────────── الصفحات العامة ─────────────────────────
+
+const publicMessage = z.object({
+  name: z.string().trim().min(2, "اكتب اسمك").max(60),
+  email: z.string().trim().toLowerCase().email("بريد غير صالح").max(120),
+  body: z.string().trim().min(10, "اكتب رسالتك").max(1200),
+});
+
+/**
+ * رسالةٌ من الموقع بلا حساب — وسيلةُ التواصل المنشورة التي يطلبها
+ * المتجران.
+ *
+ * وتُحفظ في القاعدة كرسائل الدعم لا تُرسل بريداً: رسالةٌ تخرج من النظام
+ * لا يعرف أحدٌ أوصلت أم لا. والردّ يذهب إلى بريد صاحبها لأنّه بلا حساب
+ * يقرأ فيه.
+ */
+export async function openPublicTicket(
+  _prev: AdminResult,
+  formData: FormData,
+): Promise<AdminResult> {
+  const parsed = publicMessage.safeParse({
+    name: formData.get("name"),
+    email: formData.get("email"),
+    body: formData.get("body"),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات ناقصة" };
+
+  // ثلاثُ رسائل مفتوحة من بريدٍ واحد تكفي: تكرارها يُغرق اللوحة ولا يُسرّع الردّ.
+  const open = await prisma.supportTicket.count({
+    where: { email: parsed.data.email, closed: false },
+  });
+  if (open >= 3) return { error: "عندك رسائل لم يُردّ عليها بعد — انتظر الردّ" };
+
+  await prisma.supportTicket.create({
+    data: { name: parsed.data.name, email: parsed.data.email, body: parsed.data.body },
+  });
+  revalidatePath("/admin");
+  return { ok: "وصلتنا رسالتك — نردّ على بريدك" };
+}
+
+/**
+ * حذف الحساب من الموقع — شرط جوجل بلاي: طريقٌ إلى الحذف من خارج التطبيق
+ * أيضاً، يبلغه من حذف التطبيق من جهازه.
+ *
+ * والبريد وكلمة المرور شرطٌ هنا كما في التطبيق: هذه آخر خطوة قبل فقد كل
+ * شيء، فلا تُفتح بضغطةٍ من جهازٍ مفتوح. والخطأ يُردّ رسالةً في الشاشة لا
+ * استثناءً يكسرها.
+ */
+export async function deleteAccountFromWeb(
+  _prev: AdminResult,
+  formData: FormData,
+): Promise<AdminResult> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+  if (formData.get("sure") !== "on") return { error: "أكّد أنّك تريد الحذف" };
+
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, passwordHash: true },
+  });
+  // رسالةٌ واحدة للحالتين حتى لا يكشف النموذج أيّ البُرد مسجَّلة.
+  const ok = user ? await verifyPassword(password, user.passwordHash) : false;
+  if (!user || !ok) return { error: "البريد أو كلمة المرور غير صحيحة" };
+
+  // ملفاته تُجمَع قبل حذفه: الصفوف تذهب بـ`Cascade`، وكائنات السحابة لا
+  // تذهب معها — فتبقى بكسلاته بعد ذهاب حسابه.
+  const files = await prisma.media.findMany({
+    where: { ownerId: user.id },
+    select: { id: true },
+  });
+  await dropMedia(files.map((row) => row.id));
+  await prisma.user.delete({ where: { id: user.id } });
+
+  return { ok: "حُذف حسابك وكل ما فيه." };
 }
