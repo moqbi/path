@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { View, Text, Pressable, ActivityIndicator, Dimensions } from "react-native";
+import { View, Pressable, ActivityIndicator, Dimensions } from "react-native";
+import { Text } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";

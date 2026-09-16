@@ -74,7 +74,17 @@ export const PLUS_COINS = 1000;
 /**
  * عنوان الموقع — يُشارَك به رابط الملف، ومنه تُفتح لوحة التحكم.
  *
- * مكتوبٌ هنا لا في كل شاشة: كان في شاشة «أنا» وحدها، فلو تبدّل النطاق
- * يوماً بقي في غيرها قديماً.
+ * **لا يُكتب نطاقٌ في الكود**: النطاق لم يُحسم بعد، والمكتوب اليوم يبقى
+ * في ملفٍّ منسيٍّ بعد أن يُحسم. فيُقرأ من البيئة باسمه في كل مضيف —
+ * `SITE_URL` على الخادم، و`NEXT_PUBLIC_SITE_URL` في الويب، و
+ * `EXPO_PUBLIC_SITE_URL` على الجوّال — وفراغُه ليس عطلاً: ما يحتاجه
+ * يختفي (زرّ اللوحة، ورابط المشاركة) وما لا يحتاجه يعمل.
  */
-export const SITE_URL = "https://athr.app";
+export const SITE_URL: string =
+  process.env.SITE_URL ??
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  process.env.EXPO_PUBLIC_SITE_URL ??
+  "";
+
+/** هل يوجد عنوانٌ صالح؟ أقصرُ من `SITE_URL !== ""` في كل موضع. */
+export const hasSite = (): boolean => SITE_URL.startsWith("http");

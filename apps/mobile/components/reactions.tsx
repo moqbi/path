@@ -1,4 +1,5 @@
-import { Image, Text } from "react-native";
+import { Image } from "react-native";
+import { Text } from "./type";
 
 /**
  * الوجوه — نفس صور الويب بأعيانها، منسوخةً إلى أصول التطبيق.

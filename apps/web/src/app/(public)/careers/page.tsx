@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "الوظائف · آثار" };
+export const metadata: Metadata = { title: "الوظائف · ATHAR Moments" };
 
 export default function CareersPage() {
   return (

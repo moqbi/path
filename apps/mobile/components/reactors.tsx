@@ -1,4 +1,5 @@
-import { View, Text, Pressable } from "react-native";
+import { View, Pressable } from "react-native";
+import { Text } from "./type";
 import { useRouter } from "expo-router";
 import { Avatar } from "./avatar";
 import { ReactionGlyph } from "./reactions";

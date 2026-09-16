@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import { View, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import { Text } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -128,7 +129,7 @@ export default function Subscribe() {
       <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 30 }}>
         <View style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: colors.goldSoft, marginBottom: 16 }}>
           <SparkIcon size={14} color={colors.gold} />
-          <Text style={{ color: colors.goldInk, fontSize: 12, fontWeight: "700" }}>ATHAR+</Text>
+          <Text face="latin" style={{ color: colors.goldInk, fontSize: 12, fontWeight: "700" }}>ATHAR+</Text>
         </View>
 
         <Text style={{ color: colors.ink, fontSize: 30, fontWeight: "700", lineHeight: 42, marginBottom: 10 }}>

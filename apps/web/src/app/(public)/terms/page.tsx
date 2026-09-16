@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "شروط الاستخدام · آثار" };
+export const metadata: Metadata = { title: "شروط الاستخدام · ATHAR Moments" };
 
 export default function TermsPage() {
   return (

@@ -1,14 +1,6 @@
 import { useMemo, useRef, useState } from "react";
-import {
-  View,
-  Text,
-  SectionList,
-  ActivityIndicator,
-  Pressable,
-  Animated,
-  Easing,
-  PanResponder,
-} from "react-native";
+import { View, SectionList, ActivityIndicator, Pressable, Animated, Easing, PanResponder } from "react-native";
+import { Text } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MomentCard, SPINE_W } from "../../components/moment-card";
@@ -183,7 +175,7 @@ export default function Timeline() {
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           <AthrMark size={32} />
-          <Text style={{ color: colors.chromeInk, fontSize: 16, fontWeight: "700", letterSpacing: 2 }}>
+          <Text face="latin" style={{ color: colors.chromeInk, fontSize: 16, fontWeight: "700", letterSpacing: 2 }}>
             ATHAR
           </Text>
         </View>

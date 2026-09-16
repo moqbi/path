@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { View, Text, Pressable, FlatList, Modal, TextInput } from "react-native";
+import { View, Pressable, FlatList, Modal } from "react-native";
+import { Text, TextInput } from "./type";
 import { Avatar } from "./avatar";
 import { CheckIcon, SearchIcon } from "./icons";
 import { colors } from "../theme/tokens";

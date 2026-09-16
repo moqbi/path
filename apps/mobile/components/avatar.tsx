@@ -1,4 +1,5 @@
-import { View, Text, type StyleProp, type ViewStyle } from "react-native";
+import { View, type StyleProp, type ViewStyle } from "react-native";
+import { Text } from "./type";
 import { MediaImage } from "./media-image";
 import { initial } from "../lib/format";
 import { colors } from "../theme/tokens";

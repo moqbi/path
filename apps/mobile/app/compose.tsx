@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
-import {
-  View, Text, TextInput, Pressable, ScrollView, Image,
-  ActivityIndicator, KeyboardAvoidingView, Platform,
-} from "react-native";
+import { View, Pressable, ScrollView, Image, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
+import { Text, TextInput } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import * as Picker from "expo-image-picker";

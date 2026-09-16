@@ -1,15 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  Animated,
-  Easing,
-  Keyboard,
-  Platform,
-  useWindowDimensions,
-} from "react-native";
+import { View, Pressable, Animated, Easing, Keyboard, Platform, useWindowDimensions } from "react-native";
+import { Text, TextInput } from "../components/type";
 import Svg, {
   Defs,
   Ellipse,
@@ -285,7 +276,7 @@ export default function Login() {
           }}
         >
           <AthrMark size={76} />
-          <Text style={{ marginTop: 20, fontSize: 32, fontWeight: "700", color: "#f7f5ef" }}>
+          <Text face="latin" style={{ marginTop: 20, fontSize: 32, fontWeight: "700", color: "#f7f5ef" }}>
             ATHAR
           </Text>
           <Text style={{ marginTop: 20, fontSize: 15, fontWeight: "500", color: "#f0ece4" }}>
@@ -324,7 +315,7 @@ export default function Login() {
           }}
         >
           <AthrMark size={96} />
-          <Text style={{ marginTop: 12, fontSize: 26, fontWeight: "700", color: "#f7f5ef" }}>
+          <Text face="latin" style={{ marginTop: 12, fontSize: 26, fontWeight: "700", color: "#f7f5ef" }}>
             ATHAR
           </Text>
           <Text style={{ marginTop: 8, fontSize: 13, color: "#cbc5bb" }}>{TAGLINE_AR}</Text>

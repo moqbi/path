@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { View, Text, Pressable, TextInput, ScrollView, ActivityIndicator } from "react-native";
+import { View, Pressable, ScrollView, ActivityIndicator } from "react-native";
+import { Text, TextInput } from "./type";
 import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ReactionGlyph, facesFor, CUSTOM } from "./reactions";

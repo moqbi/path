@@ -3,6 +3,15 @@ import { I18nManager, Platform, View, ActivityIndicator } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useFonts } from "expo-font";
+import {
+  IBMPlexSansArabic_400Regular,
+  IBMPlexSansArabic_500Medium,
+  IBMPlexSansArabic_600SemiBold,
+  IBMPlexSansArabic_700Bold,
+} from "@expo-google-fonts/ibm-plex-sans-arabic";
+import { Tajawal_400Regular, Tajawal_700Bold } from "@expo-google-fonts/tajawal";
+import { Montserrat_500Medium, Montserrat_700Bold } from "@expo-google-fonts/montserrat";
 import { useSession } from "../lib/session";
 import { primeAccess } from "../lib/api";
 import { colors } from "../theme/tokens";
@@ -113,6 +122,32 @@ function Gate() {
 }
 
 export default function RootLayout() {
+  /*
+    خطوط العلامة قبل أوّل حرف.
+
+    بلا هذا يرسم أندرويد بـRoboto وآبل بـSF Pro، فيخرج التطبيق بثلاثة
+    وجوهٍ على ثلاث شاشات — والعلامةُ لا تُترك لخطٍّ يختاره الجهاز.
+    والأوزان مذكورةٌ بأعيانها: كلُّ وزنٍ ملفٌّ وعائلةٌ مستقلّة، وما لا
+    يُحمَّل هنا يسقط نصّه إلى خطّ النظام (`theme/fonts.ts`).
+
+    والفشل (`error`) لا يحبس الشاشة: خطٌّ لم يُفكّ خيرٌ منه تطبيقٌ لا
+    يُفتح — يُرسم بخطّ النظام ويُقرأ.
+  */
+  const [fontsReady, fontsError] = useFonts({
+    IBMPlexSansArabic_400Regular,
+    IBMPlexSansArabic_500Medium,
+    IBMPlexSansArabic_600SemiBold,
+    IBMPlexSansArabic_700Bold,
+    Tajawal_400Regular,
+    Tajawal_700Bold,
+    Montserrat_500Medium,
+    Montserrat_700Bold,
+  });
+
+  if (!fontsReady && !fontsError) {
+    return <View style={{ flex: 1, backgroundColor: colors.paper }} />;
+  }
+
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={client}>

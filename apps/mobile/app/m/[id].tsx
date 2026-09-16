@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { View, Text, ScrollView, TextInput, Pressable, ActivityIndicator } from "react-native";
+import { View, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import { Text, TextInput } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
 import { Avatar } from "../../components/avatar";

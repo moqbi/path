@@ -1,9 +1,16 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { TAGLINE_AR, TAGLINE_EN } from "@/components/brand";
+import { SITE_URL, hasSite } from "@athar/shared";
 
 export const metadata: Metadata = {
-  title: "آثار · لوحة التحكم",
+  /*
+    النطاق من البيئة لا من الكود: منه يكمّل Next كل رابطٍ نسبيّ في
+    بطاقات المشاركة. وبلا نطاقٍ تبقى الروابط نسبيةً — تعمل الصفحة،
+    ويبقى معاينُها بلا صورة حتى يُضبط `NEXT_PUBLIC_SITE_URL`.
+  */
+  metadataBase: hasSite() ? new URL(SITE_URL) : undefined,
+  title: "آثار · ATHAR Moments",
   description: `${TAGLINE_AR} ${TAGLINE_EN}`,
   icons: { icon: "/icon.png", apple: "/apple-icon.png" },
   /* لوحةٌ لا صفحةَ هبوط: لا تُفهرس. */

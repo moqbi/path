@@ -1,15 +1,6 @@
 import { useRef, useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  ScrollView,
-  ActivityIndicator,
-  PanResponder,
-  KeyboardAvoidingView,
-  Platform,
-} from "react-native";
+import { View, Pressable, ScrollView, ActivityIndicator, PanResponder, KeyboardAvoidingView, Platform } from "react-native";
+import { Text, TextInput } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";

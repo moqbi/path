@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { View, Text, Pressable, Modal, TextInput, ActivityIndicator } from "react-native";
+import { View, Pressable, Modal, ActivityIndicator } from "react-native";
+import { Text, TextInput } from "./type";
 import { useMutation } from "@tanstack/react-query";
 import { CloseIcon, ShieldIcon } from "./icons";
 import { api } from "../lib/api";

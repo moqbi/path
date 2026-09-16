@@ -1,4 +1,5 @@
-import { View, Text, Pressable } from "react-native";
+import { View, Pressable } from "react-native";
+import { Text } from "./type";
 import { useRouter } from "expo-router";
 import Svg, { Path } from "react-native-svg";
 import { AthrMark } from "./brand";
@@ -35,7 +36,7 @@ export function ScreenHeader({
       }}
     >
       <AthrMark size={32} />
-      <Text style={{ flex: 1, color: colors.chromeInk, fontSize: 16, fontWeight: "700" }}>
+      <Text face="display" style={{ flex: 1, color: colors.chromeInk, fontSize: 16, fontWeight: "700" }}>
         {title}
       </Text>
 

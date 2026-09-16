@@ -1,4 +1,5 @@
-import { View, Text, Pressable, Image, Linking } from "react-native";
+import { View, Pressable, Image, Linking } from "react-native";
+import { Text } from "./type";
 import { useRouter } from "expo-router";
 import { Avatar, firstColor } from "./avatar";
 import { MediaImage } from "./media-image";

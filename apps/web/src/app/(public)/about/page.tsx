@@ -15,6 +15,20 @@ export default function AboutPage() {
         كيف يُستعمل الهاتف في الخليج فعلاً — لا على ترجمةِ تطبيقٍ أجنبي.
       </p>
 
+      <h2>لماذا هذا الاسم</h2>
+      <p>
+        <strong>الأثر</strong> ما يبقى بعد مرور الشيء: علامةُ قدمٍ على رمل،
+        وخبرٌ يُروى عمّن سبق. و<strong>آثار</strong> جمعُه — فما تنشره هنا
+        ليس منشوراً يُستهلك في ثانية، بل أثرٌ يبقى في خطٍّ زمنيٍّ تعود إليه
+        بعد سنة فتقرأ سنتك.
+      </p>
+      <p className="latin" dir="ltr">
+        <strong>ATHAR Moments</strong> — the Arabic word <em>athar</em> means
+        a trace: the mark a thing leaves behind. Not a feed. A record of the
+        moments you lived, kept for the hundred and fifty people who were
+        there for them.
+      </p>
+
       <h2>لماذا سقفٌ للدائرة</h2>
       <p>
         لأنّ ما فوق المئة والخمسين ليس دائرةً بل جمهور. والجمهورُ يغيّر ما

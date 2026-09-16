@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { View, Text, FlatList, Pressable, ScrollView, ActivityIndicator, RefreshControl } from "react-native";
+import { View, FlatList, Pressable, ScrollView, ActivityIndicator, RefreshControl } from "react-native";
+import { Text } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";

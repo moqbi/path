@@ -1,6 +1,7 @@
-import { SITE_URL } from "@athar/shared";
+import { SITE_URL, hasSite } from "@athar/shared";
 import { useMemo } from "react";
-import { View, Text, SectionList, Pressable, ActivityIndicator, Alert, Share } from "react-native";
+import { View, SectionList, Pressable, ActivityIndicator, Alert, Share } from "react-native";
+import { Text } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -151,9 +152,15 @@ export default function Me() {
             قصيرٌ يُقرأ ويُقال، والمعرّف سلسلةٌ لا تُحفظ. وكان يُشارَك
             بالمعرّف، فالرابط لا يُقرأ ولا يُملى على أحد.
           */
+          /*
+            والنطاق من البيئة لا من الكود: ما دام لم يُحسم بعد، تُشارَك
+            العضويةُ وحدها — رسالةٌ بلا رابط خيرٌ من رابطٍ إلى لا شيء.
+          */
           onPress={() =>
             void Share.share({
-              message: `ملف ${me.name} في آثار · عضوية رقم ${ar(me.memberNo)}\n${SITE_URL}/u/${me.memberNo}`,
+              message: hasSite()
+                ? `ملف ${me.name} في آثار · عضوية رقم ${ar(me.memberNo)}\n${SITE_URL}/u/${me.memberNo}`
+                : `ملف ${me.name} في آثار · عضوية رقم ${ar(me.memberNo)}`,
             })
           }
           style={{

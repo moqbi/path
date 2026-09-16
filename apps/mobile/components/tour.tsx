@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { View, Text, Pressable, Modal, Animated, Easing, PanResponder } from "react-native";
+import { View, Pressable, Modal, Animated, Easing, PanResponder } from "react-native";
+import { Text } from "./type";
 import { LinearGradient } from "expo-linear-gradient";
 import { CircleIcon, HomeIcon, LockIcon, PlusIcon, WithIcon } from "./icons";
 import { getItem, setItem } from "../lib/store";

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { SITE_URL } from "@athar/shared";
 import { AthrMark } from "@/components/brand";
 import { SparkIcon } from "@/components/icons";
 import { ar, membership } from "@/lib/format";
@@ -43,12 +42,16 @@ async function findPerson(raw: string) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const person = await findPerson(id);
-  if (!person) return { title: "غير موجود · آثار" };
+  if (!person) return { title: "غير موجود · ATHAR Moments" };
 
-  const title = `${person.name} · آثار`;
+  const title = `${person.name} · آثار ATHAR Moments`;
   const description = `عضو رقم ${ar(person.memberNo)} في آثار. أضِفه لترى لحظاته.`;
+  /*
+    روابط نسبية لا مطلقة: النطاق يُقرأ من البيئة في `metadataBase`
+    بالتخطيط الجذر، فيكمّله Next عند الرسم. ولا نطاقَ مكتوبٌ في الكود.
+  */
   const image = person.avatarMediaId
-    ? `${SITE_URL}/api/public/avatar/${person.memberNo}`
+    ? `/api/public/avatar/${person.memberNo}`
     : undefined;
 
   return {
@@ -58,7 +61,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title,
       description,
       type: "profile",
-      url: `${SITE_URL}/u/${person.memberNo}`,
+      url: `/u/${person.memberNo}`,
       images: image ? [{ url: image }] : undefined,
     },
     twitter: { card: image ? "summary" : "summary", title, description, images: image ? [image] : undefined },

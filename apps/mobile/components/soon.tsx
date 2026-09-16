@@ -1,4 +1,5 @@
-import { View, Text } from "react-native";
+import { View } from "react-native";
+import { Text } from "./type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ScreenHeader } from "./screen-header";
 import { colors } from "../theme/tokens";

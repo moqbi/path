@@ -1,4 +1,5 @@
-import { View, Text, FlatList, Pressable, ActivityIndicator } from "react-native";
+import { View, FlatList, Pressable, ActivityIndicator } from "react-native";
+import { Text } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";

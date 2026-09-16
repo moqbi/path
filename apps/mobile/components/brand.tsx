@@ -1,4 +1,5 @@
-import { View, Text, Image } from "react-native";
+import { View, Image } from "react-native";
+import { Text } from "./type";
 import { colors } from "../theme/tokens";
 
 /**
@@ -25,7 +26,9 @@ export function AthrLockup({ size = 44 }: { size?: number }) {
     <View style={{ alignItems: "center", gap: 12 }}>
       <AthrMark size={size * 1.5} />
       <View style={{ alignItems: "center", gap: 4 }}>
-        <Text style={{ color: colors.ink, fontSize: size * 0.62, fontWeight: "700" }}>ATHAR</Text>
+        <Text face="latin" style={{ color: colors.ink, fontSize: size * 0.62, fontWeight: "700" }}>
+          ATHAR
+        </Text>
         <Text style={{ color: colors.ink2, fontSize: size * 0.4, letterSpacing: size * 0.13 }}>
           آثار
         </Text>

@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { View, Text, Pressable, Animated, PanResponder } from "react-native";
+import { View, Pressable, Animated, PanResponder } from "react-native";
+import { Text } from "./type";
 import { CloseIcon } from "./icons";
 import { colors } from "../theme/tokens";
 

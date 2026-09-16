@@ -19,7 +19,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<Resolved
 
   try {
     const response = await fetch(url, {
-      headers: { "User-Agent": "AthrApp/0.1 (https://athr.app)" },
+      headers: { "User-Agent": "ATHAR-Moments/0.1" },
       signal: AbortSignal.timeout(6000),
     });
     if (!response.ok) return { name: null, city: null };
@@ -142,7 +142,7 @@ export async function nearbyPlaces(
 
   try {
     const response = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; AthrApp/0.1; +https://athr.app)" },
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; ATHAR-Moments/0.1)" },
       signal: AbortSignal.timeout(9000),
     });
     if (!response.ok) return [];

@@ -1,14 +1,6 @@
 import { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  Switch,
-  ScrollView,
-  ActivityIndicator,
-  Linking,
-} from "react-native";
+import { View, Pressable, Switch, ScrollView, ActivityIndicator, Linking } from "react-native";
+import { Text, TextInput } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -18,7 +10,7 @@ import { CheckIcon, InfoIcon, ShieldIcon } from "../../components/icons";
 import { api } from "../../lib/api";
 import { keys } from "../../lib/queries";
 import { useSession } from "../../lib/session";
-import { SITE_URL } from "@athar/shared";
+import { SITE_URL, hasSite } from "@athar/shared";
 import { ar } from "../../lib/format";
 import { brandGradient, colors } from "../../theme/tokens";
 
@@ -211,7 +203,7 @@ export default function Privacy() {
           ولا يفتحه أحد. والدرجة تُفحص في اللوحة نفسها لا هنا — إخفاء
           الرابط ليس حماية (القاعدة ١٣).
         */}
-        {me?.role === "ADMIN" ? (
+        {me?.role === "ADMIN" && hasSite() ? (
           <Link
             title="لوحة التحكم"
             note="تُفتح في المتصفّح — الأصناف والباقات والبلاغات والحسابات"

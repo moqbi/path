@@ -1,4 +1,5 @@
-import { View, Text, Pressable, Modal } from "react-native";
+import { View, Pressable, Modal } from "react-native";
+import { Text } from "./type";
 import { CameraIcon } from "./icons";
 import { colors } from "../theme/tokens";
 

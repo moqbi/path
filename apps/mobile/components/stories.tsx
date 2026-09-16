@@ -1,4 +1,5 @@
-import { View, Text, Pressable, ScrollView } from "react-native";
+import { View, Pressable, ScrollView } from "react-native";
+import { Text } from "./type";
 import { useRouter } from "expo-router";
 import { Avatar } from "./avatar";
 import { PlusIcon } from "./icons";

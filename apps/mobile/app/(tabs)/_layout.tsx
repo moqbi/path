@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { View, Text, Pressable, Animated, Easing } from "react-native";
+import { View, Pressable, Animated, Easing } from "react-native";
+import { Text } from "../../components/type";
 import { Tabs, useGlobalSearchParams, useRouter } from "expo-router";
 import {
   BellIcon,
@@ -12,6 +13,7 @@ import {
 } from "../../components/icons";
 import { useNoteCount } from "../../lib/queries";
 import { colors } from "../../theme/tokens";
+import { familyOf } from "../../theme/fonts";
 
 /**
  * الشريط السفلي — نفس التبويبات الخمسة وبنفس ترتيبها في الويب.
@@ -88,14 +90,34 @@ export default function TabsLayout() {
           headerShown: false,
           tabBarActiveTintColor: colors.clayInk,
           tabBarInactiveTintColor: colors.muted,
+          /*
+            الظلّ فوق الشريط السفلي، وبابان لا باب: `elevation` لأندرويد
+            وحده لا يرسم شيئاً على آبل، و`shadow*` لآبل وحدها لا تعني
+            شيئاً لأندرويد. وكان هنا `elevation` بلا `shadow*`، فالخطّ
+            العلوي وحده يفصل الشريط عن الصفحة على آيفون — ومع ثيمٍ فاتح
+            تحته لا يكاد يُرى.
+
+            والظلّ إلى **أعلى** (`height: -2`): الشريط في أسفل الشاشة،
+            فظلٌّ نازلٌ منه يقع خارجها.
+          */
           tabBarStyle: {
             backgroundColor: colors.card,
             borderTopColor: colors.line,
             height: 62,
             paddingTop: 4,
             paddingBottom: 6,
+            shadowColor: "#0E1A24",
+            shadowOpacity: 0.08,
+            shadowRadius: 10,
+            shadowOffset: { width: 0, height: -2 },
+            elevation: 12,
           },
-          tabBarLabelStyle: { fontSize: 9.5, fontWeight: "500" },
+          /*
+            وعنوان التبويب لا يمرّ بـ`components/type.tsx`: الشريط يرسم
+            نصّه بنفسه، فالعائلة تُكتب هنا بيدها وإلا بقيت التبويبات
+            الخمسة وحدها بخطّ النظام في تطبيقٍ كلُّه بخطّ العلامة.
+          */
+          tabBarLabelStyle: { fontSize: 9.5, fontFamily: familyOf("body", 500) },
         }}
       >
         <Tabs.Screen

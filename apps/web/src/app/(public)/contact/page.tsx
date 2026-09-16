@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ContactForm } from "./form";
 
-export const metadata: Metadata = { title: "تواصل معنا · آثار" };
+export const metadata: Metadata = { title: "تواصل معنا · ATHAR Moments" };
 
 export default function ContactPage() {
   return (

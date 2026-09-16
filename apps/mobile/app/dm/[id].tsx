@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ReportButton } from "../../components/report-sheet";
-import {
-  View, Text, FlatList, TextInput, Pressable, ActivityIndicator,
-  KeyboardAvoidingView, Platform,
-} from "react-native";
+import { View, FlatList, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
+import { Text, TextInput } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";

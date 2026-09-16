@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { View, Text, Pressable, Image, Animated, Easing, Dimensions } from "react-native";
+import { View, Pressable, Image, Animated, Easing, Dimensions } from "react-native";
+import { Text } from "./type";
 import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";

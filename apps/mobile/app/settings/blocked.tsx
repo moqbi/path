@@ -1,4 +1,5 @@
-import { View, Text, Pressable, FlatList, ActivityIndicator } from "react-native";
+import { View, Pressable, FlatList, ActivityIndicator } from "react-native";
+import { Text } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ScreenHeader } from "../../components/screen-header";
