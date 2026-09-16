@@ -22,20 +22,30 @@ export function AthrMark({ size = 32 }: { size?: number }) {
   );
 }
 
-/** العلامة كاملة: الرمز ثم ATHAR باللاتيني وأثر بالعربي تحته. */
+/**
+ * العلامة كاملة: الرمز، ثم الاسم الكامل باللاتيني، ثم بالعربي تحته.
+ *
+ * الاسم الكامل «ATHAR Moments» / «آثار مومنتس» هو ما يُكتب في المتجرين
+ * وفي كل موضعٍ يعرّف المنتج. و«ATHAR» وحدها تبقى في الرؤوس الضيّقة
+ * (`AthrHeaderMark`): شريطٌ علويّ لا يتّسع لاسمٍ من كلمتين، والرمز
+ * بجانبها يقول البقيّة.
+ */
 export function AthrLockup({ size = 44 }: { size?: number }) {
   return (
     <div className="flex flex-col items-center gap-3">
       <AthrMark size={size * 1.5} />
       <div className="flex flex-col items-center gap-1">
-        <span className="latin text-ink" style={{ fontSize: size * 0.62, fontWeight: 700 }}>
-          ATHAR
+        <span
+          className="latin whitespace-nowrap text-ink"
+          style={{ fontSize: size * 0.46, fontWeight: 700 }}
+        >
+          ATHAR Moments
         </span>
         <span
           className="text-ink-2"
-          style={{ fontSize: size * 0.4, letterSpacing: "0.32em", fontWeight: 300 }}
+          style={{ fontSize: size * 0.34, letterSpacing: "0.22em", fontWeight: 300 }}
         >
-          آثار
+          آثار مومنتس
         </span>
       </div>
     </div>

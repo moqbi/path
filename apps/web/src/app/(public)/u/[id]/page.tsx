@@ -42,10 +42,10 @@ async function findPerson(raw: string) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const person = await findPerson(id);
-  if (!person) return { title: "غير موجود · ATHAR Moments" };
+  if (!person) return { title: "غير موجود · آثار مومنتس" };
 
-  const title = `${person.name} · آثار ATHAR Moments`;
-  const description = `عضو رقم ${ar(person.memberNo)} في آثار. أضِفه لترى لحظاته.`;
+  const title = `${person.name} · آثار مومنتس`;
+  const description = `عضو رقم ${ar(person.memberNo)} في آثار مومنتس. أضِفه لترى لحظاته.`;
   /*
     روابط نسبية لا مطلقة: النطاق يُقرأ من البيئة في `metadataBase`
     بالتخطيط الجذر، فيكمّله Next عند الرسم. ولا نطاقَ مكتوبٌ في الكود.
@@ -152,14 +152,14 @@ export default async function SharedProfile({ params }: Props) {
         <div className="mt-8 w-full rounded-2xl border border-line bg-card p-6">
           <span className="mx-auto mb-3 flex w-fit items-center gap-2">
             <AthrMark size={34} />
-            <span className="latin text-[15px] font-bold">ATHAR</span>
+            <span className="latin whitespace-nowrap text-[14px] font-bold">ATHAR Moments</span>
           </span>
 
           <p className="text-[14px] font-semibold">
             أضِف <span dir="auto">{person.name}</span> لترى لحظاته
           </p>
           <p className="mt-1.5 text-[12px] leading-relaxed text-muted">
-            آثار شبكةٌ بدائرةٍ محدودة — مئةٌ وخمسون شخصاً لا أكثر، ولا استكشاف عام.
+            آثار مومنتس شبكةٌ بدائرةٍ محدودة — مئةٌ وخمسون شخصاً لا أكثر، ولا استكشاف عام.
           </p>
 
           <div className="mt-5 flex flex-col gap-2 sm:flex-row">

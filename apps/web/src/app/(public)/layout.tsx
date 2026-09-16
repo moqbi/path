@@ -37,12 +37,25 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
     <div className="site">
       <header className="site-head">
         <div className="wrap flex items-center justify-between py-3">
-          <Link href="/" className="flex items-center gap-2.5" aria-label="آثار">
+          {/*
+            الاسم كاملاً حيث يتّسع، ومختصراً حيث لا يتّسع.
+
+            الرأس يحمل زرّ التحميل بجانبه، فعلى شاشةٍ ٣٢٠ لا يبقى للاسم
+            إلا نحو مئةٍ وعشرين بكسلاً — «ATHAR Moments» فيها تُقصّ من
+            أوّلها فتُقرأ «HAR Moments». قيس فعلاً. فالكامل من `sm` فما
+            فوق، والمختصر تحتها، والذيلُ والبطلُ يحملان الكامل دائماً.
+          */}
+          <Link href="/" className="flex items-center gap-2.5" aria-label="آثار مومنتس">
             <AthrMark size={32} />
-            <span className="flex flex-col leading-none">
-              <span className="latin text-[15px] font-bold">ATHAR</span>
-              <span className="mt-1 text-[10px] opacity-75" style={{ letterSpacing: "0.3em" }}>
-                آثار
+            <span className="flex min-w-0 flex-col leading-none">
+              <span className="latin whitespace-nowrap text-[14px] font-bold">
+                ATHAR<span className="hidden sm:inline"> Moments</span>
+              </span>
+              <span
+                className="mt-1 whitespace-nowrap text-[10px] opacity-75"
+                style={{ letterSpacing: "0.2em" }}
+              >
+                آثار<span className="hidden sm:inline"> مومنتس</span>
               </span>
             </span>
           </Link>
@@ -68,9 +81,9 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             <div className="flex items-start gap-3">
               <AthrMark size={40} />
               <div className="flex flex-col leading-none">
-                <span className="latin text-[17px] font-bold">ATHAR</span>
-                <span className="mt-1.5 text-[11px] opacity-75" style={{ letterSpacing: "0.3em" }}>
-                  آثار
+                <span className="latin whitespace-nowrap text-[16px] font-bold">ATHAR Moments</span>
+                <span className="mt-1.5 text-[11px] opacity-75" style={{ letterSpacing: "0.2em" }}>
+                  آثار مومنتس
                 </span>
                 <span className="mt-3 text-[11.5px]" style={{ color: "var(--color-chrome-muted)" }}>
                   لحظاتك، مع ناسك.
@@ -102,7 +115,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           <hr className="my-8" style={{ borderColor: "var(--color-chrome-line)" }} />
 
           <p className="text-[11.5px]" style={{ color: "var(--color-chrome-muted)" }}>
-            © ٢٠٢٦ آثار. جميع الحقوق محفوظة.
+            © ٢٠٢٦ آثار مومنتس. جميع الحقوق محفوظة.
           </p>
         </div>
       </footer>

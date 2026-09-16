@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "عن آثار · ATHAR Moments" };
+export const metadata: Metadata = { title: "عن آثار مومنتس · ATHAR Moments" };
 
 export default function AboutPage() {
   return (
     <article className="prose">
       <h1 className="text-[24px] font-bold" style={{ fontFamily: "var(--font-display)" }}>
-        عن آثار
+        عن آثار مومنتس
       </h1>
 
       <p>
@@ -17,7 +17,11 @@ export default function AboutPage() {
 
       <h2>لماذا هذا الاسم</h2>
       <p>
-        <strong>الأثر</strong> ما يبقى بعد مرور الشيء: علامةُ قدمٍ على رمل،
+        الاسم الكامل <strong>آثار مومنتس</strong> —{" "}
+        <span className="latin" dir="ltr">
+          ATHAR Moments
+        </span>
+        . و<strong>الأثر</strong> ما يبقى بعد مرور الشيء: علامةُ قدمٍ على رمل،
         وخبرٌ يُروى عمّن سبق. و<strong>آثار</strong> جمعُه — فما تنشره هنا
         ليس منشوراً يُستهلك في ثانية، بل أثرٌ يبقى في خطٍّ زمنيٍّ تعود إليه
         بعد سنة فتقرأ سنتك.

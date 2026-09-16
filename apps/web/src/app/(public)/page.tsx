@@ -169,14 +169,17 @@ export default function LandingPage() {
           <AthrMark size={96} />
 
           <div className="mt-5 flex flex-col items-center gap-1">
-            <span className="latin text-[34px] font-bold leading-none" style={{ color: "var(--color-chrome-ink)" }}>
-              ATHAR
+            <span
+              className="latin whitespace-nowrap text-[24px] font-bold leading-none sm:text-[38px]"
+              style={{ color: "var(--color-chrome-ink)" }}
+            >
+              ATHAR Moments
             </span>
             <span
-              className="text-[15px] font-medium"
-              style={{ color: "var(--color-chrome-ink)", letterSpacing: "0.34em" }}
+              className="text-[14px] font-medium sm:text-[15px]"
+              style={{ color: "var(--color-chrome-ink)", letterSpacing: "0.22em" }}
             >
-              آثار
+              آثار مومنتس
             </span>
           </div>
 

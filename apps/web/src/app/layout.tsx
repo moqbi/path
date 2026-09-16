@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     ويبقى معاينُها بلا صورة حتى يُضبط `NEXT_PUBLIC_SITE_URL`.
   */
   metadataBase: hasSite() ? new URL(SITE_URL) : undefined,
-  title: "آثار · ATHAR Moments",
+  title: "آثار مومنتس · ATHAR Moments",
   description: `${TAGLINE_AR} ${TAGLINE_EN}`,
   icons: { icon: "/icon.png", apple: "/apple-icon.png" },
   /* لوحةٌ لا صفحةَ هبوط: لا تُفهرس. */

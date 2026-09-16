@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "سياسة الخصوصية · ATHAR Moments" };
+export const metadata: Metadata = { title: "سياسة الخصوصية · آثار مومنتس" };
 
 /**
  * سياسة الخصوصية — شرط المتجرين، ومطلبُ نظام حماية البيانات الشخصية

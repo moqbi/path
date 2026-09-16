@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { NavProbe } from "@/components/nav";
 
 /* اللوحة وحدها تحمل اسمها؛ الجذر يحمل اسم المنتج للصفحات العامة. */
-export const metadata: Metadata = { title: "آثار · لوحة التحكم" };
+export const metadata: Metadata = { title: "آثار مومنتس · لوحة التحكم" };
 
 /**
  * اللوحة داخل هيكل الهاتف (`.shell`) كما هي في التطبيق — نُقلت كما هي،
