@@ -66,7 +66,12 @@ export default function MomentPage() {
           الخيط — كما كان في ملف الصديق.
         */}
         <View style={{ paddingHorizontal: 20 }}>
-          <MomentCard moment={data} viewerId={me?.id ?? ""} isPlus={me?.isPlus ?? false} />
+          <MomentCard
+            moment={data}
+            viewerId={me?.id ?? ""}
+            isPlus={me?.isPlus ?? false}
+            moderate={me?.canModerate ?? false}
+          />
         </View>
 
         <View style={line} />

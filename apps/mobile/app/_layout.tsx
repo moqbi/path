@@ -14,6 +14,7 @@ import { Tajawal_400Regular, Tajawal_700Bold } from "@expo-google-fonts/tajawal"
 import { Montserrat_500Medium, Montserrat_700Bold } from "@expo-google-fonts/montserrat";
 import { useSession } from "../lib/session";
 import { primeAccess } from "../lib/api";
+import { Suspended } from "../components/suspended";
 import { colors } from "../theme/tokens";
 
 /**
@@ -85,6 +86,17 @@ function Gate() {
     if (!me && inApp) router.replace("/login");
     if (me && segments[0] === "login") router.replace("/");
   }, [me, ready, segments, router]);
+
+  /*
+    الموقوف مؤقّتاً يرى سبب وقفه لا تطبيقاً يردّ خطأً مع كل ضغطة.
+
+    والفحص هنا لا في كل شاشة: الحقل يأتي مع `/v1/me` أصلاً، فلا
+    استعلامَ زائد — وشرطٌ واحد في الجذر أوثق من ثلاثين شرطاً موزّعة
+    يُنسى أحدها.
+  */
+  const held =
+    me?.suspendedUntil && new Date(me.suspendedUntil) > new Date() ? me.suspendedUntil : null;
+  if (held) return <Suspended until={held} reason={me?.suspendedReason ?? null} />;
 
   // قبل أن نعرف: لا شاشةَ دخولٍ تومض لمن هو داخلٌ أصلاً.
   if (!ready) {

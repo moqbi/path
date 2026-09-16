@@ -313,10 +313,13 @@ export function MomentCard({
   moment,
   viewerId,
   isPlus,
+  /** صلاحية الإشراف: تُضاف «احذفها» إلى لوحة التفاعل على لحظة غيره. */
+  moderate = false,
 }: {
   moment: FeedMoment;
   viewerId: string;
   isPlus: boolean;
+  moderate?: boolean;
 }) {
   const { author, kind } = moment;
   const withNames = moment.tags.map((t) => t.user.name);
@@ -341,6 +344,7 @@ export function MomentCard({
           mine={mine}
           isPlus={isPlus}
           author={moment.author.id === viewerId}
+          moderate={moderate && moment.author.id !== viewerId}
           head={line}
           extra={
             <>
@@ -399,6 +403,7 @@ export function MomentCard({
           mine={mine}
           isPlus={isPlus}
           author={moment.author.id === viewerId}
+          moderate={moderate && moment.author.id !== viewerId}
           inset
           panelFirst
           head={<span className="block" style={{ height: 2 }} />}

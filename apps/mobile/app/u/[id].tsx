@@ -1,4 +1,4 @@
-import { View, FlatList, Pressable, ActivityIndicator, Alert } from "react-native";
+import { View, FlatList, Pressable, ActivityIndicator } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -93,20 +93,6 @@ export default function Profile() {
     enabled: !!person.data,
   });
 
-  /* الحذف: سؤالٌ ثم حذف (القاعدة ٦١)، والسجلّ يُكتب في الخادم. */
-  const remove = useMutation({
-    mutationFn: (momentId: string) =>
-      api<{ ok: string }>(`/v1/moderation/moments/${momentId}`, { method: "DELETE" }),
-    onSuccess: () => void moments.refetch(),
-    onError: (error: Error) => Alert.alert("تعذّر الحذف", error.message),
-  });
-
-  const askRemove = (momentId: string) =>
-    Alert.alert("حذف اللحظة", "تُحذف بتفاعلاتها وتعليقاتها، ويُسجَّل الحذف باسمك.", [
-      { text: "تراجع", style: "cancel" },
-      { text: "احذف", style: "destructive", onPress: () => remove.mutate(momentId) },
-    ]);
-
   const who = person.data?.person;
 
   return (
@@ -123,29 +109,18 @@ export default function Profile() {
         <FlatList
           data={moments.data?.moments ?? []}
           keyExtractor={(item) => item.id}
+          /*
+            والحذف داخل لوحة التفاعل لا زرّاً تحت البطاقة: البلاغ يصل على
+            منشور، فيفتحه المشرف حيث يقرؤه الناس ويحكم في مكانه — ومعه
+            زرُّ البلاغ في اللوحة نفسها.
+          */
           renderItem={({ item }) => (
-            <View>
-              <MomentCard moment={item} viewerId={me?.id ?? ""} isPlus={me?.isPlus ?? false} />
-              {moderating ? (
-                <Pressable
-                  onPress={() => askRemove(item.id)}
-                  style={{
-                    alignSelf: "flex-start",
-                    marginBottom: 12,
-                    paddingHorizontal: 12,
-                    height: 32,
-                    borderRadius: 10,
-                    borderWidth: 1,
-                    borderColor: colors.live,
-                    justifyContent: "center",
-                  }}
-                >
-                  <Text style={{ color: colors.live, fontSize: 12, fontWeight: "700" }}>
-                    احذف هذه اللحظة
-                  </Text>
-                </Pressable>
-              ) : null}
-            </View>
+            <MomentCard
+              moment={item}
+              viewerId={me?.id ?? ""}
+              isPlus={me?.isPlus ?? false}
+              moderate={moderating}
+            />
           )}
           /*
             اللحظات تحتاج حشوة الخطّ الزمني نفسها: بدونها تلتصق البطاقات

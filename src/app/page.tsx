@@ -252,6 +252,7 @@ export default async function TimelinePage({
                     moment={moment}
                     viewerId={user.id}
                     isPlus={user.isPlus}
+                    moderate={user.canModerate}
                   />
                 ))}
               </section>

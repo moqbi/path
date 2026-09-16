@@ -115,6 +115,9 @@ export type SessionUser = {
   adminScope: "NONE" | "STORE" | "ALL";
   /// صلاحية الإشراف على المحتوى — مستقلّةٌ عن اللوحة، والمالك يملكها دائماً.
   canModerate: boolean;
+  /// إيقافٌ مؤقّت قائم — `null` يشمل إيقافاً انقضى.
+  suspendedUntil: Date | null;
+  suspendedReason: string | null;
   avatarMediaId: string | null;
   coverMediaId: string | null;
   coverY: number;
@@ -154,6 +157,8 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
       role: true,
       adminScope: true,
       canModerate: true,
+      suspendedUntil: true,
+      suspendedReason: true,
       avatarMediaId: true,
       coverMediaId: true,
       coverY: true,
@@ -188,6 +193,10 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
     role: user.role,
     adminScope: user.adminScope,
     canModerate: user.role === "ADMIN" || user.canModerate,
+    // انقضى = غير موقوف: التاريخ يبقى في الصفّ ولا يُقرأ حظراً.
+    suspendedUntil:
+      user.suspendedUntil && user.suspendedUntil > new Date() ? user.suspendedUntil : null,
+    suspendedReason: user.suspendedReason,
     avatarMediaId: user.avatarMediaId,
     coverMediaId: user.coverMediaId,
     coverY: user.coverY,
@@ -205,5 +214,18 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
 export async function requireUser(): Promise<SessionUser> {
   const user = await currentUser();
   if (!user) throw new Error("غير مصرح");
+  /*
+    والموقوف مؤقّتاً يُمنع من الكتابة: `requireUser` بوّابةُ كل إجراءٍ
+    يكتب، فشرطٌ واحد هنا أوثق من شرطٍ في كل إجراء يُنسى في واحد.
+    والقراءة تبقى — `currentUser()` لا تمنع أحداً.
+  */
+  if (user.suspendedUntil) {
+    throw new Error(
+      `حسابك موقوف حتى ${new Intl.DateTimeFormat("ar-SA-u-ca-gregory", {
+        dateStyle: "full",
+        timeStyle: "short",
+      }).format(user.suspendedUntil)}${user.suspendedReason ? ` — ${user.suspendedReason}` : ""}`,
+    );
+  }
   return user;
 }

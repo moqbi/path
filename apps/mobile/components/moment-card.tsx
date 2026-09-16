@@ -98,10 +98,19 @@ export function MomentCard({
   moment,
   viewerId,
   isPlus,
+  /**
+   * صلاحية الإشراف: يُضاف «احذفها» إلى لوحة التفاعل على لحظة غيره.
+   *
+   * تُمرَّر من الشاشة لا تُقرأ هنا: البطاقة تُرسم في الخط الزمني وفي
+   * ملف الصديق وفي صفحة اللحظة، وقراءةُ الجلسة في كلٍّ منها تعني
+   * ثلاثة استعلامات لسؤالٍ واحد.
+   */
+  moderate = false,
 }: {
   moment: Moment;
   viewerId: string;
   isPlus: boolean;
+  moderate?: boolean;
 }) {
   const router = useRouter();
   const withNames = moment.tags.map((t) => t.name);
@@ -210,6 +219,7 @@ export function MomentCard({
             mine={mineReaction}
             isPlus={isPlus}
             author={moment.author.id === viewerId}
+            moderate={moderate && moment.author.id !== viewerId}
             head={line}
             extra={
               <>
@@ -282,6 +292,7 @@ export function MomentCard({
           mine={mineReaction}
           isPlus={isPlus}
           author={moment.author.id === viewerId}
+          moderate={moderate && moment.author.id !== viewerId}
           inset
           panelFirst
           extra={

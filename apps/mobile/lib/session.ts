@@ -34,6 +34,9 @@ export type Me = {
   role: "USER" | "ADMIN";
   /** صلاحية الإشراف على المحتوى: قراءةُ لحظات أيّ حساب بلا صداقة وحذفُها. */
   canModerate: boolean;
+  /** إيقافٌ مؤقّت — `null` أو تاريخٌ مضى يعني «غير موقوف». */
+  suspendedUntil: string | null;
+  suspendedReason: string | null;
   isPlus: boolean;
   coins: number;
   createdAt: string;

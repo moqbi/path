@@ -69,6 +69,21 @@ export function until(expiresAt: Date): string {
   return `لين ${timeOfDay(expiresAt)}`;
 }
 
+/**
+ * متى ينتهي إيقافٌ مؤقّت — بتاريخه كاملاً لا بمدّةٍ نسبيّة.
+ *
+ * و`relative()` لا تصلح: هي لما مضى، فتردّ «الآن» لكل تاريخٍ في
+ * المستقبل — فيُقرأ إيقافُ ثلاثة أيام «ينتهي الآن». وهذا ما ظهر فعلاً
+ * في اللوحة.
+ *
+ * والتقويم ميلاديّ بالعربية كبقية التطبيق (`dayLabel`): `ar-SA` وحدها
+ * تُخرجه هجرياً («٨ ربيع الآخر ١٤٤٨») — وشاشةٌ تخلط التقويمين تُقرأ
+ * تاريخين لا واحداً. و`-u-ca-gregory` تحسمه.
+ */
+export function untilDay(date: Date): string {
+  return `${dayLabel(date)} ${timeOfDay(date)}`;
+}
+
 export function initial(name: string): string {
   return name.trim().charAt(0) || "؟";
 }

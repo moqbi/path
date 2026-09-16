@@ -3,7 +3,8 @@ import { promisify } from "node:util";
 import { prisma } from "@athar/db";
 import { TOKEN } from "@athar/shared";
 import { hashToken, newFamily, readRefresh, signAccess, signRefresh } from "../lib/tokens";
-import { badRequest, unauthorized } from "../lib/errors";
+import { badRequest, forbidden, unauthorized } from "../lib/errors";
+import { suspensionOf, untilText } from "../middleware/auth";
 
 const scrypt = promisify(scryptCb) as (
   password: string,
@@ -112,6 +113,20 @@ export async function login(input: { email: string; password: string; device?: s
   // رسالةٌ واحدة للحالتين: «لا يوجد حساب» تقول للمهاجم أيّ بريدٍ مسجّل.
   if (!row || !(await verifyPassword(input.password, row.passwordHash))) {
     throw unauthorized("البريد أو كلمة المرور غير صحيحة");
+  }
+
+  /*
+    والموقوف مؤقّتاً لا تُصدَر له جلسة.
+
+    ولا يُقال «البريد أو كلمة المرور غير صحيحة»: هو أدخلهما صحيحين،
+    وإخفاءُ السبب يجعله يظنّ حسابه سُرق فيغيّر كلمته مراراً بلا فائدة.
+    وقد عرفنا أنّه هو بعد فحص كلمته، فلا شيء يُسرَّب بإخباره.
+  */
+  const held = await suspensionOf(row.id);
+  if (held) {
+    throw forbidden(
+      `حسابك موقوف حتى ${untilText(held.until)}${held.reason ? ` — ${held.reason}` : ""}`,
+    );
   }
 
   const { passwordHash: _ignored, ...user } = row;

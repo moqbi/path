@@ -17,6 +17,8 @@ export async function me(userId: string) {
       role: true,
       adminScope: true,
       canModerate: true,
+      suspendedUntil: true,
+      suspendedReason: true,
       isPlus: true,
       plusUntil: true,
       coins: true,

@@ -219,6 +219,7 @@ export default async function FriendProfilePage({
                       moment={moment}
                       viewerId={viewer.id}
                       isPlus={viewer.isPlus}
+                      moderate={viewer.canModerate}
                     />
                   ))}
                 </section>

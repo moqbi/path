@@ -9,7 +9,7 @@ import {
 } from "@athar/shared";
 import { z } from "zod";
 import { zValidator } from "../../lib/validate";
-import { requireAuth, me } from "../../middleware/auth";
+import { requireActive, requireAuth, me } from "../../middleware/auth";
 import * as feed from "../../services/feed";
 import * as moments from "../../services/moments";
 
@@ -39,7 +39,12 @@ export const feedRoutes = new Hono()
  * معرّفَ لحظة.
  */
 export const momentRoutes = new Hono()
-  .use("*", requireAuth)
+  /*
+    والكتابة تُغلق في وجه الموقوف مؤقّتاً (`requireActive`) — والقراءة
+    تبقى: من مُنع من النشر لا يُمنع من رؤية ما قاله له الناس، ولا من
+    قراءة سبب وقفه.
+  */
+  .use("*", requireAuth, requireActive)
 
   .post("/", zValidator("json", momentInput), async (c) =>
     c.json(await moments.createMoment(me(c), c.req.valid("json")), 201),
@@ -83,7 +88,7 @@ export const momentRoutes = new Hono()
 
 /** التعليق يُحذف بمعرّفه لا بمعرّف لحظته: كاتبه أو صاحب اللحظة. */
 export const commentRoutes = new Hono()
-  .use("*", requireAuth)
+  .use("*", requireAuth, requireActive)
 
   .delete("/:id", zValidator("param", byId), async (c) =>
     c.json(await moments.deleteComment(me(c), c.req.valid("param").id)),

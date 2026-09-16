@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { addComment, deleteMoment, react } from "@/app/actions";
+import { addComment, deleteMoment, react, removeMomentAsAdmin } from "@/app/actions";
 import { LockIcon } from "@/components/icons";
 import { CUSTOM, facesFor, ReactionGlyph } from "@/components/reactions";
 
@@ -20,6 +20,7 @@ export function MomentBar({
   mine,
   isPlus,
   author = false,
+  moderate = false,
   head,
   extra,
   inset = false,
@@ -31,6 +32,15 @@ export function MomentBar({
   mine: Mine;
   /** صاحب اللحظة يرى «احذف اللحظة» في اللوحة نفسها. */
   author?: boolean;
+  /**
+   * صلاحية الإشراف: يرى الزرّ نفسه على لحظة غيره.
+   *
+   * البلاغ يصل على منشور، فيفتحه المشرف حيث يقرؤه الناس ويحكم في
+   * مكانه — لا يحفظ معرّفاً ويبحث عنه في لوحة تحكّم. والبابان مختلفان
+   * وإن تشابه الزرّان: صاحبُها `deleteMoment`، والمشرف
+   * `removeMomentAsAdmin` خلف فحصِ صلاحيةٍ ومعه سجلّ.
+   */
+  moderate?: boolean;
   isPlus: boolean;
   /** سطر الحدث — يجلس الزرّ في طرفه الأيسر بدل أن يطفو تحته. */
   head?: React.ReactNode;
@@ -222,7 +232,7 @@ export function MomentBar({
             </div>
           ) : null}
 
-          {author ? (
+          {author || moderate ? (
             <div className="flex items-center justify-end">
               {asking ? (
                 <span className="flex items-center gap-2">
@@ -233,7 +243,11 @@ export function MomentBar({
                       stop(event);
                       setOpen(false);
                       setAsking(false);
-                      start(() => void deleteMoment(momentId));
+                      start(() =>
+                        void (author
+                          ? deleteMoment(momentId)
+                          : removeMomentAsAdmin(momentId, null)),
+                      );
                     }}
                     className="h-8 rounded-full px-3 text-[11.5px] font-bold disabled:opacity-60"
                     style={{ background: "var(--color-live)", color: "#fff" }}
@@ -261,7 +275,7 @@ export function MomentBar({
                   className="h-8 rounded-full px-2.5 text-[11.5px] font-semibold"
                   style={{ color: "var(--color-live)" }}
                 >
-                  احذف اللحظة
+                  {author ? "احذف اللحظة" : "احذفها بصلاحية الإشراف"}
                 </button>
               )}
             </div>

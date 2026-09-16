@@ -2,13 +2,13 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { cuid, storyInput } from "@athar/shared";
 import { zValidator } from "../../lib/validate";
-import { requireAuth, me } from "../../middleware/auth";
+import { requireActive, requireAuth, me } from "../../middleware/auth";
 import * as stories from "../../services/stories";
 
 const byId = z.object({ id: cuid });
 
 export const storyRoutes = new Hono()
-  .use("*", requireAuth)
+  .use("*", requireAuth, requireActive)
 
   /** الحلقات: أنت أولاً، ثم من لم تُشاهد قصصهم. */
   .get("/", async (c) => c.json({ rings: await stories.rings(me(c)) }))

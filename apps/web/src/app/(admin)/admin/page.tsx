@@ -31,6 +31,7 @@ import { itemPaint, ScreenHeader, TagPill } from "@/components/ui";
 import { Saver } from "./saver";
 import { AdminEmail } from "./email";
 import { SitePanel } from "./site";
+import { Suspend } from "./suspend";
 import { SITE_TEXT, siteText, siteImage, type SiteKey } from "@/lib/site";
 import { ItemImage } from "./item-image";
 import { coinText, ar, relative, riyals } from "@/lib/format";
@@ -218,6 +219,34 @@ const REPORT_STATE: Record<string, string> = {
   REMOVED: "حُذف",
 };
 
+/**
+ * شرطُ البحث في الحسابات.
+ *
+ * رقمُ العضوية أوّلاً وبالمطابقة التامّة: هو ما يُكتب في البلاغ ويُقال،
+ * و«١٢» بالتضمين تجلب ١٢٠ و٣١٢ فيضيع المقصود بينهما. وما ليس رقماً
+ * يُبحث به في الاسم والبريد.
+ *
+ * والأرقام العربية-الهندية تُحوَّل: من يقرأ رقمه «٤٢» في اللوحة ينسخه
+ * كما رآه، ولو لم يُحوَّل لما طابق شيئاً.
+ */
+function search(q?: string) {
+  const text = (q ?? "").trim();
+  if (!text) return undefined;
+
+  const latin = text.replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
+  const number = Number(latin);
+  if (Number.isInteger(number) && number > 0 && /^\d+$/.test(latin)) {
+    return { memberNo: number };
+  }
+
+  return {
+    OR: [
+      { name: { contains: text, mode: "insensitive" as const } },
+      { email: { contains: text, mode: "insensitive" as const } },
+    ],
+  };
+}
+
 const SECTIONS = [
   { key: "tags", label: "الوسوم", store: false },
   { key: "users", label: "الحسابات", store: false },
@@ -233,9 +262,9 @@ const SECTIONS = [
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ s?: string; v?: string }>;
+  searchParams: Promise<{ s?: string; v?: string; q?: string }>;
 }) {
-  const { s: raw, v } = await searchParams;
+  const { s: raw, v, q } = await searchParams;
   const view = v === "cats" || v === "packs" ? v : "items";
   const user = await currentUser();
   if (!user) redirect("/login");
@@ -276,7 +305,7 @@ export default async function AdminPage({
 
   const [
     items, tags, people, categories, tickets, reports, bannedWords, packs,
-    site, heroMediaId, socials, logs,
+    userCount, staff, site, heroMediaId, socials, logs,
   ] = await Promise.all([
     prisma.storeItem.findMany({
       orderBy: { sortOrder: "asc" },
@@ -289,8 +318,19 @@ export default async function AdminPage({
       orderBy: { sortOrder: "asc" },
       include: { _count: { select: { users: true } } },
     }),
+    /*
+      الحسابات: بحثٌ أوّلاً، لا قائمةٌ كاملة.
+
+      عند ألفٍ من المستخدمين لا تُتصفَّح القائمة بالعين، ويصير البلاغ
+      بلا اسمٍ يُطابَق. فالبحث برقم العضوية — وهو ما يُقال ويُكتب
+      (القاعدة ١٥) — أو بجزءٍ من الاسم أو البريد. وبلا بحثٍ تُعرض
+      الأحدث خمسون: صفحةٌ تجلب عشرة آلاف صفٍّ لتعرضها كلّها تُسقط
+      المتصفّح قبل أن تُقرأ.
+    */
     prisma.user.findMany({
-      orderBy: { memberNo: "asc" },
+      where: search(q),
+      orderBy: search(q) ? { memberNo: "asc" } : { memberNo: "desc" },
+      take: 50,
       select: {
         id: true,
         memberNo: true,
@@ -300,6 +340,8 @@ export default async function AdminPage({
         role: true,
         adminScope: true,
         canModerate: true,
+        suspendedUntil: true,
+        suspendedReason: true,
         tag: { select: { name: true, bg: true, fg: true } },
         tagId: true,
       },
@@ -334,6 +376,28 @@ export default async function AdminPage({
       orderBy: [{ sortOrder: "asc" }, { coins: "asc" }],
       include: { _count: { select: { topUps: true } } },
     }),
+    // عددُ المستخدمين كلّهم: قائمةُ الحسابات مقصوصةٌ بالبحث، وطولُها
+    // ليس عددَهم.
+    prisma.user.count(),
+    /*
+      أصحابُ الصلاحيات: قسمُ «الصلاحيات» يُدير من مُنح لا من سُجّل.
+
+      ولا يُقرأ من قائمة الحسابات: تلك مقصوصةٌ بالبحث وبخمسين، فمشرفٌ
+      رقمُه ٣ يختفي من صفحته الخاصّة بمجرّد أن يُسجَّل بعده خمسون.
+      ومنحُ صلاحيةٍ لمن ليس فيها يجري من صفّه في «الحسابات».
+    */
+    scope === "ALL"
+      ? prisma.user.findMany({
+          where: {
+            OR: [{ role: "ADMIN" }, { adminScope: { not: "NONE" } }, { canModerate: true }],
+          },
+          orderBy: { memberNo: "asc" },
+          select: {
+            id: true, memberNo: true, name: true, email: true,
+            role: true, adminScope: true, canModerate: true,
+          },
+        })
+      : Promise.resolve([]),
     // محتوى الموقع: نصوصُه وصورةُ رأسه وروابطُ تواصله.
     scope === "ALL" ? siteText() : Promise.resolve({} as Record<SiteKey, string>),
     scope === "ALL" ? siteImage("hero") : Promise.resolve(null),
@@ -380,7 +444,7 @@ export default async function AdminPage({
       <main className="scroll-area px-5 py-5">
         <div className="mb-6 grid grid-cols-4 gap-2">
           {[
-            { value: people.length, label: "مستخدم" },
+            { value: userCount, label: "مستخدم" },
             { value: items.length, label: "صنف" },
             { value: tags.length, label: "وسم" },
             { value: items.reduce((sum, i) => sum + i._count.purchases, 0), label: "شراء" },
@@ -525,10 +589,50 @@ export default async function AdminPage({
         {section === "users" ? (
         <>
         <h2 className="mb-1 text-[15px] font-bold">الحسابات</h2>
+
+        {/*
+          البحث نموذج `GET` لا حقلٌ بجافاسكربت: نتيجتُه في العنوان، فتُحفظ
+          وتُشارَك ويُرجَع إليها بزرّ الرجوع. و`s=users` مخفيٌّ معه وإلا
+          عاد البحثُ إلى أوّل قسم.
+        */}
+        <form method="get" className="mb-3 flex gap-2">
+          <input type="hidden" name="s" value="users" />
+          <input
+            name="q"
+            defaultValue={q ?? ""}
+            placeholder="رقم العضوية، أو اسم، أو بريد"
+            className="h-11 grow rounded-xl border border-line bg-paper px-3 text-[13px] text-ink outline-none placeholder:text-faint"
+          />
+          <button
+            type="submit"
+            className="h-11 shrink-0 rounded-xl px-4 text-[12.5px] font-bold"
+            style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+          >
+            ابحث
+          </button>
+          {q ? (
+            <Link
+              href="/admin?s=users"
+              className="flex h-11 shrink-0 items-center px-2 text-[12.5px] font-semibold text-muted"
+            >
+              امسح
+            </Link>
+          ) : null}
+        </form>
+
         <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
-          امنح وسماً لحساب أو انزعه. الرقم على اليمين رقم العضوية.
+          {q
+            ? `نتائج البحث عن «${q}» — ${ar(people.length)} حساب.`
+            : "أحدث خمسين حساباً. ابحث برقم العضوية للوصول إلى غيرهم."}
+          {" "}امنح وسماً لحساب أو انزعه. الرقم على اليمين رقم العضوية.
           {owner ? " وتغييرُ البريد لك وحدك: من يبدّل بريد حسابٍ ينقله إلى عنوانه." : ""}
         </p>
+        {people.length === 0 ? (
+          <p className="mb-7 rounded-2xl border border-line bg-card p-5 text-center text-[12.5px] text-muted">
+            لا حساب بهذا البحث.
+          </p>
+        ) : null}
+
         <div className="mb-7 flex flex-col gap-2">
           {people.map((person) => (
             /* البطاقة تحوي نموذجين: الوسم وطيّةُ البريد — ولا يتداخلان. */
@@ -589,6 +693,18 @@ export default async function AdminPage({
               ) : null}
 
               {owner ? <AdminEmail userId={person.id} current={person.email} /> : null}
+
+              {/*
+                والإيقاف المؤقّت لمن يملك صلاحية الإشراف: من يقرأ البلاغ
+                هو من يتصرّف فيه، فلا يُحوّله إلى المالك ليضغط زرّاً.
+              */}
+              {user.canModerate ? (
+                <Suspend
+                  userId={person.id}
+                  until={person.suspendedUntil}
+                  reason={person.suspendedReason}
+                />
+              ) : null}
             </div>
           ))}
         </div>
@@ -1247,7 +1363,7 @@ export default async function AdminPage({
             </p>
 
             <div className="mb-7 flex flex-col gap-2">
-              {people
+              {staff
                 .filter((person) => person.id !== user.id)
                 .map((person) => (
                   <form

@@ -22,6 +22,15 @@ type Mine = { kind: string; emoji: string | null } | null;
  * منقولٌ من `src/components/moment-bar.tsx`: الوجوه، فالفاصل، فالإيموجي
  * الحرّ (اثنان ثم «＋» يفتح الكيبورد كاملاً لمشتركي آثار+، وقفلٌ يقود إلى
  * الاشتراك لغيرهم)، ثم «احذف اللحظة» لصاحبها، ثم حقل التعليق.
+ *
+ * **وحذفُ المشرف هنا لا في شاشةٍ أخرى** (`moderate`): البلاغ يصل على
+ * منشور، فيفتحه المشرف حيث يقرؤه الناس ويحكم في مكانه. وزرُّ البلاغ
+ * وزرُّ الحذف في اللوحة نفسها، فيرى المشرفُ ما بُلّغ عنه ويتصرّف بضغطة —
+ * لا يحفظ معرّفاً ويبحث عنه في لوحة تحكّم.
+ *
+ * والبابان مختلفان وإن تشابه الزرّان: صاحبُها يحذف بـ`/v1/moments/:id`،
+ * والمشرف بـ`/v1/moderation/moments/:id` خلف `requireModerator` ومعه
+ * سجلّ. فلا يُوسَّع بابُ الصاحب ليقبل غيره.
  */
 export function MomentBar({
   momentId,
@@ -29,6 +38,8 @@ export function MomentBar({
   mine,
   isPlus,
   author = false,
+  /** صلاحية الإشراف: يحذف لحظةَ غيره من هنا، ويُكتب حذفُه في السجلّ. */
+  moderate = false,
   head,
   extra,
   inset = false,
@@ -39,6 +50,7 @@ export function MomentBar({
   mine: Mine;
   isPlus: boolean;
   author?: boolean;
+  moderate?: boolean;
   head?: React.ReactNode;
   extra?: React.ReactNode;
   inset?: boolean;
@@ -55,11 +67,16 @@ export function MomentBar({
   const comment = useComment(momentId);
   const faces = facesFor(momentKind);
 
+  /* صاحبُها من بابه، والمشرفُ من بابه — لا بابَ واحد يقبل الاثنين. */
   const remove = useMutation({
-    mutationFn: () => api(`/v1/moments/${momentId}`, { method: "DELETE" }),
+    mutationFn: () =>
+      api(author ? `/v1/moments/${momentId}` : `/v1/moderation/moments/${momentId}`, {
+        method: "DELETE",
+      }),
     onSettled: () => {
       void client.invalidateQueries({ queryKey: ["feed"] });
       void client.invalidateQueries({ queryKey: ["me", "moments"] });
+      void client.invalidateQueries({ queryKey: ["user"] });
     },
   });
 
@@ -200,7 +217,7 @@ export function MomentBar({
             </ScrollView>
           ) : null}
 
-          {author ? (
+          {author || moderate ? (
             <View style={{ flexDirection: "row", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
               {asking ? (
                 <>
@@ -221,7 +238,13 @@ export function MomentBar({
                 </>
               ) : (
                 <Pressable onPress={() => setAsking(true)} style={{ height: 32, paddingHorizontal: 10, justifyContent: "center" }}>
-                  <Text style={{ color: colors.live, fontSize: 11.5, fontWeight: "600" }}>احذف اللحظة</Text>
+                  {/*
+                    ويُقال للمشرف إنّه يحذف بصلاحية لا بملكية: زرٌّ بنصِّ
+                    صاحبِها يُنسيه أنّ الحذف يُسجَّل باسمه.
+                  */}
+                  <Text style={{ color: colors.live, fontSize: 11.5, fontWeight: "600" }}>
+                    {author ? "احذف اللحظة" : "احذفها بصلاحية الإشراف"}
+                  </Text>
                 </Pressable>
               )}
             </View>

@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { cuid, messageInput, pageQuery } from "@athar/shared";
 import { zValidator } from "../../lib/validate";
-import { requireAuth, me } from "../../middleware/auth";
+import { requireActive, requireAuth, me } from "../../middleware/auth";
 import { pushBoth } from "../../lib/hub";
 import * as dm from "../../services/dm";
 
@@ -66,7 +66,12 @@ export const dmRoutes = new Hono()
 
 /** الرسالة تُعدَّل بمعرّفها لا بمعرّف محادثتها. */
 export const messageRoutes = new Hono()
-  .use("*", requireAuth)
+  /*
+    والكتابة تُغلق في وجه الموقوف مؤقّتاً (`requireActive`) — والقراءة
+    تبقى: من مُنع من النشر لا يُمنع من رؤية ما قاله له الناس، ولا من
+    قراءة سبب وقفه.
+  */
+  .use("*", requireAuth, requireActive)
 
   .patch("/:id", zValidator("param", byId), zValidator("json", messageInput), async (c) => {
     const edited = await dm.edit(me(c), c.req.valid("param").id, c.req.valid("json").body);

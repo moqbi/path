@@ -9,6 +9,7 @@ import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
 import { dropMedia, migrateToCloud, storeUpload } from "@/lib/media";
 import { cloudReady, probeBucket } from "@/lib/storage";
 import { forgetWords } from "@/lib/moderation";
+import { SUSPEND_HOURS } from "@/lib/suspend";
 import { SITE_TEXT, type SiteKey } from "@/lib/site";
 
 /*
@@ -1140,5 +1141,80 @@ export async function deleteSocialLink(id: string): Promise<void> {
   await requireAdmin();
   await prisma.socialLink.deleteMany({ where: { id } });
   revalidatePath("/", "layout");
+  revalidatePath("/admin");
+}
+
+// ───────────────────────── الإيقاف المؤقّت ─────────────────────────
+
+
+/**
+ * إيقافٌ مؤقّت — للمشرف على المحتوى.
+ *
+ * والحساب يبقى كما هو: لحظاته وأصدقاؤه ورصيده. يُمنع من **الكتابة**
+ * وحدها ومن إصدار جلسةٍ جديدة، وتبقى له القراءة — حظرٌ يمحو التطبيق من
+ * يد صاحبه يُقرأ عطلاً لا عقوبة، ومن مُنع من النشر لا يُمنع من قراءة
+ * سبب وقفه.
+ *
+ * وجلساتُه القائمة تُبطَل: توكنُ التجديد عمرُه ثلاثون يوماً، ولولا
+ * إبطالُه لبقي الموقوف داخلاً بجلسةٍ صدرت قبل القرار.
+ *
+ * ولا يُوقِف المشرفُ مشرفاً ولا نفسه: الأولى تجعل الإيقاف سلاحاً بين
+ * المشرفين، والثانية تُغلق اللوحة على صاحبها بزلّة.
+ */
+export async function suspendUser(
+  userId: string,
+  _prev: AdminResult,
+  formData: FormData,
+): Promise<AdminResult> {
+  const admin = await requireModerator();
+  if (userId === admin.id) return { error: "لا تُوقف نفسك" };
+
+  const target = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, canModerate: true, memberNo: true },
+  });
+  if (!target) return { error: "لا يوجد هذا الحساب" };
+  if (target.role === "ADMIN" || target.canModerate) return { error: "هذا مشرف" };
+
+  const pick = SUSPEND_HOURS.find((one) => one.key === String(formData.get("hours")));
+  if (!pick) return { error: "اختر المدّة" };
+
+  const reason = String(formData.get("reason") ?? "").trim().slice(0, 200);
+  const until = new Date(Date.now() + pick.hours * 3_600_000);
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { suspendedUntil: until, suspendedReason: reason || null },
+  });
+  // الجلسات القائمة تُبطَل، وإلا بقي داخلاً بتوكنٍ صدر قبل القرار.
+  await prisma.refreshToken.updateMany({
+    where: { userId, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
+
+  await prisma.moderationLog.create({
+    data: {
+      adminId: admin.id,
+      action: "USER_SUSPENDED",
+      targetId: userId,
+      ownerId: userId,
+      snippet: `${pick.label}${reason ? ` — ${reason}` : ""}`,
+    },
+  });
+
+  revalidatePath("/admin");
+  return { ok: `أُوقف ${pick.label}` };
+}
+
+/** رفعُ الإيقاف قبل انقضائه — ويُسجَّل كما سُجّل فرضُه. */
+export async function liftSuspension(userId: string): Promise<void> {
+  const admin = await requireModerator();
+  await prisma.user.update({
+    where: { id: userId },
+    data: { suspendedUntil: null, suspendedReason: null },
+  });
+  await prisma.moderationLog.create({
+    data: { adminId: admin.id, action: "USER_RESTORED", targetId: userId, ownerId: userId },
+  });
   revalidatePath("/admin");
 }

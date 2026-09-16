@@ -356,7 +356,7 @@ export default function Timeline() {
             </View>
           )}
           renderItem={({ item }) => (
-            <MomentCard moment={item} viewerId={me.id} isPlus={me.isPlus} />
+            <MomentCard moment={item} viewerId={me.id} isPlus={me.isPlus} moderate={me.canModerate} />
           )}
           ListHeaderComponent={
             <LensHead

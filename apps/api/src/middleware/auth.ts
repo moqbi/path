@@ -72,5 +72,60 @@ export async function isModerator(userId: string): Promise<boolean> {
   return row?.role === "ADMIN" || row?.canModerate === true;
 }
 
+/**
+ * الحظر المؤقّت: يُقرأ من الصفّ، ويُردّ نصّاً يُقال لصاحبه.
+ *
+ * `null` يعني «غير محظور» — ويشمل حظراً انقضى: التاريخ يبقى في الصفّ
+ * ليُقرأ عند البلاغ التالي، ولا يُمحى فيضيع أنّه حُظر يوماً.
+ */
+export async function suspensionOf(
+  userId: string,
+): Promise<{ until: Date; reason: string | null } | null> {
+  const row = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { suspendedUntil: true, suspendedReason: true },
+  });
+  if (!row?.suspendedUntil || row.suspendedUntil <= new Date()) return null;
+  return { until: row.suspendedUntil, reason: row.suspendedReason };
+}
+
+/**
+ * «الأحد ٢١ سبتمبر ٢٠٢٦، ١٠:٣٠ م» — تاريخٌ يُقرأ لا طابعُ ISO.
+ *
+ * والتقويم ميلاديّ بالعربية كبقية التطبيق: `ar-SA` وحدها تُخرجه هجرياً
+ * فتختلف الرسالةُ عن كل تاريخٍ آخر يراه المستخدم. و`Asia/Riyadh` لأنّ
+ * الخادم بتوقيت UTC والقارئ ليس كذلك.
+ */
+export function untilText(until: Date): string {
+  return new Intl.DateTimeFormat("ar-SA-u-ca-gregory", {
+    dateStyle: "full",
+    timeStyle: "short",
+    timeZone: "Asia/Riyadh",
+  }).format(until);
+}
+
+/**
+ * الأبواب التي **تكتب** تُغلق في وجه المحظور مؤقّتاً.
+ *
+ * والقراءة تبقى مفتوحة: من مُنع من النشر لا يُمنع من رؤية ما قاله له
+ * الناس، ولا من قراءة سبب حظره. ومنعُ الكتابة وحده يكفي — حظرٌ يمحو
+ * التطبيق من يد صاحبه يُقرأ عطلاً لا عقوبة.
+ *
+ * وصفٌّ واحد يُقرأ في مسارات الكتابة وحدها: فحصُه في `requireAuth` يعني
+ * استعلاماً زائداً مع كل تمريرة خطٍّ زمنيّ، وهو أكثر ما يجري.
+ */
+export const requireActive: MiddlewareHandler = async (c, next) => {
+  const claims = c.get("user");
+  if (!claims) throw unauthorized();
+
+  const held = await suspensionOf(claims.sub);
+  if (held) {
+    throw forbidden(
+      `حسابك موقوف حتى ${untilText(held.until)}${held.reason ? ` — ${held.reason}` : ""}`,
+    );
+  }
+  await next();
+};
+
 /** المعرّف من التوكن — الدالّة الوحيدة التي يُقرأ منها. */
 export const me = (c: Context): string => c.get("user").sub;

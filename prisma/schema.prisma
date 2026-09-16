@@ -91,16 +91,23 @@ model User {
   bio          String?
 
   /// اشتراك «آثار+». الصلاحية تُقرأ من plusUntil، وisPlus مشتقة منها عند الكتابة.
-  role        UserRole   @default(USER)
+  role            UserRole   @default(USER)
   /// صلاحية اللوحة الممنوحة لغير المالك — يمنحها المالك ويسحبها.
-  adminScope  AdminScope @default(NONE)
+  adminScope      AdminScope @default(NONE)
+  /// حظرٌ مؤقّت بيد المشرف: الحساب قائمٌ وبياناته كما هي، ويُمنع الدخول
+  /// حتى هذا الوقت. و`null` يعني «غير محظور» — ولا يُمحى بعد انقضائه:
+  /// تاريخٌ مضى يقول إنّه حُظر يوماً، وذلك يُقرأ عند البلاغ التالي.
+  suspendedUntil  DateTime?
+  /// سببٌ يُقال لصاحبه — حظرٌ بلا سببٍ يُقرأ عطلاً لا عقوبة.
+  suspendedReason String?
+
   /// صلاحية الإشراف على المحتوى: قراءةُ لحظات أيّ حساب بلا صداقة،
   /// وحذفُ ما يخالف منها. تُمنح لمشرفٍ بعينه وتُسحب منه، فمشرفٌ يملكها
   /// وآخر لا — وهي **زائدةٌ** على صلاحية اللوحة لا لازمةٌ عنها: من
   /// يدير المتجر لا يحتاج أن يقرأ لحظات الناس.
   /// والمالك (`role = ADMIN`) يملكها دائماً بلا منح.
-  canModerate Boolean    @default(false)
-  isPlus      Boolean    @default(false)
+  canModerate Boolean   @default(false)
+  isPlus      Boolean   @default(false)
   plusUntil   DateTime?
 
   /// رصيد الكوينز. عملة المتجر الوحيدة: كل ما فيه يُشترى بها، ولا
