@@ -21,6 +21,7 @@ import { contentRoutes, moderationRoutes, reportRoutes } from "./routes/v1/repor
 import { webhookRoutes } from "./routes/v1/webhooks";
 import { dripPlusCredit } from "./services/billing";
 import { storyRoutes } from "./routes/v1/stories";
+import { siteRoutes } from "./routes/v1/site";
 import { sweep as sweepStories } from "./services/stories";
 
 /**
@@ -97,6 +98,7 @@ app.route("/v1/notifications", notificationRoutes);
 app.route("/v1/dm", dmRoutes);
 app.route("/v1/messages", messageRoutes);
 app.route("/v1/reports", reportRoutes);
+app.route("/v1/site", siteRoutes);
 app.route("/v1/webhooks", webhookRoutes);
 /** بابُ اللوحة — الدور يُفحص فيه لا في العرض. */
 app.route("/v1/admin", moderationRoutes);

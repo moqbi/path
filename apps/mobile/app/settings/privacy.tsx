@@ -13,6 +13,7 @@ import { useSession } from "../../lib/session";
 import { SITE_URL, hasSite } from "@athar/shared";
 import { ar } from "../../lib/format";
 import { brandGradient, colors } from "../../theme/tokens";
+import { FollowRow } from "../../components/social";
 
 type Group = { id: string; name: string; count: number };
 
@@ -239,6 +240,15 @@ export default function Privacy() {
             ما يُنشر لأصدقائك لا يخرج عنهم.
           </Text>
         </View>
+
+        {/*
+          «تابعنا» في أسفل الخصوصية: آخرُ ما في درج الإعدادات، ومكانُ
+          حسابات المنصّات لا الخط الزمني — لا استكشاف عام في آثار
+          (القاعدة ٢)، وحساباتنا خارجه لا يجرّها إليه.
+
+          وروابطُها من اللوحة، هي نفسها التي يعرضها ذيلُ الموقع.
+        */}
+        <FollowRow />
       </ScrollView>
     </SafeAreaView>
   );

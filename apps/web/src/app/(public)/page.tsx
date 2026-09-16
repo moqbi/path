@@ -1,14 +1,18 @@
 import Link from "next/link";
-import { AthrMark, AthrWordmark, TAGLINE_AR, TAGLINE_EN } from "@/components/brand";
+import { AthrMark, AthrWordmark } from "@/components/brand";
 import { HeroArt } from "./hero-art";
+import { lines, siteImage, siteText } from "@/lib/site";
 import { MomentsShot, CircleShot, StoriesShot, ChatShot } from "./shots";
 
-/** أربع مزايا لا أكثر: ما يفعله المستخدم في التطبيق كل يوم. */
+/*
+  أربع مزايا لا أكثر: ما يفعله المستخدم في التطبيق كل يوم.
+
+  والأيقونة وحدها تبقى هنا — عنوانُها ومتنُها من اللوحة (`lib/site.ts`):
+  رسمٌ في حقلِ نصٍّ لا يُحرَّر، والنصُّ في الكود لا يُصلَح إلا بنشر نسخة.
+*/
 const FEATURES = [
   {
     key: "moments",
-    title: "اللحظات",
-    body: "صورة، فكرة، مكان، أغنية — سطرٌ صغير يقول أين أنت اليوم.",
     icon: (
       <>
         <rect x="3" y="5" width="18" height="14" rx="3" />
@@ -19,8 +23,6 @@ const FEATURES = [
   },
   {
     key: "stories",
-    title: "القصص",
-    body: "صورة أو فيديو يراه أصدقاؤك يوماً ثم يذهب — لا يدخل الخط الزمني.",
     icon: (
       <>
         <path d="M5 4h10l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" />
@@ -31,8 +33,6 @@ const FEATURES = [
   },
   {
     key: "circle",
-    title: "الدائرة",
-    body: "مئةٌ وخمسون صديقاً سقفاً لا يُباع. بلا متابعين، وبلا غرباء.",
     icon: (
       <>
         <circle cx="9" cy="9" r="3.2" />
@@ -43,8 +43,6 @@ const FEATURES = [
   },
   {
     key: "chat",
-    title: "المحادثات",
-    body: "نصّ وصورة وصوت، بإيصالٍ يقول وصلت وقُرئت — وتُكنس بعد شهر.",
     icon: (
       <>
         <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7A2.5 2.5 0 0 1 17.5 16H9l-5 4Z" />
@@ -60,18 +58,6 @@ const SHOTS = [
   { key: "stories", label: "القصص", node: <StoriesShot /> },
   { key: "chat", label: "المحادثات", node: <ChatShot /> },
 ] as const;
-
-const PRIVACY_NO = [
-  "لا نبيع بياناتك",
-  "لا نتبعك خارج التطبيق",
-  "لا نعرض إعلانات",
-];
-
-const PRIVACY_YES = [
-  "دائرة محدودة — ١٥٠ صديقاً",
-  "أنت من يقرّر من يرى ماذا",
-  "لا متابعين، ولا عدّاد إعجابات",
-];
 
 /**
  * أزرار المتجرين.
@@ -158,17 +144,43 @@ function FeatureIcon({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const text = await siteText();
+  const hero = await siteImage("hero");
+
   return (
     <>
       {/* ───────────── الرأس ───────────── */}
       <section className="hero">
-        <HeroArt />
+        {/*
+          صورةُ الرأس من اللوحة، وتحتها اللوحةُ المرسومة حين لا صورة:
+          موقعٌ بلا رأسٍ أسوأ من رأسٍ مرسوم، ونشرٌ على قاعدةٍ جديدة يجب
+          أن يعرض صفحةً كاملة بلا أن يرفع أحدٌ شيئاً أوّلاً.
+        */}
+        {hero ? (
+          <>
+            <div
+              aria-hidden
+              className="hero-photo"
+              style={{ backgroundImage: `url(/api/media/${hero})` }}
+            />
+            <div aria-hidden className="hero-veil" />
+          </>
+        ) : (
+          <HeroArt />
+        )}
 
         <div className="hero-inner">
-          <AthrMark size={96} />
+          {/*
+            الدخول: الشعار أوّلاً، ثم الاسم، ثم العبارة، ثم المتن،
+            ثم الزرّان — بتأخّرٍ متدرّج يجعلها تتتابع لا تظهر دفعةً
+            واحدة، كقوس النشر في التطبيق.
+          */}
+          <div className="rise rise-1">
+            <AthrMark size={96} />
+          </div>
 
-          <div className="mt-5 flex flex-col items-center gap-1">
+          <div className="rise rise-2 mt-5 flex flex-col items-center gap-1">
             <span className="sm:hidden">
               <AthrWordmark size={28} color="var(--color-chrome-ink)" />
             </span>
@@ -184,21 +196,25 @@ export default function LandingPage() {
           </div>
 
           <h1
-            className="mt-8 text-[40px] leading-[1.25] sm:text-[52px]"
+            className="rise rise-3 mt-8 text-[34px] leading-[1.3] sm:text-[52px] sm:leading-[1.25]"
             style={{ fontFamily: "var(--font-display)", fontWeight: 800, color: "var(--color-chrome-ink)" }}
           >
-            {TAGLINE_AR}
+            {text["hero.line"]}
           </h1>
-          <p dir="ltr" className="latin mt-3 text-[13px]" style={{ color: "#c2b6a6" }}>
-            {TAGLINE_EN}
+          {text["hero.latin"] ? (
+            <p dir="ltr" className="latin rise rise-3 mt-3 text-[13px]" style={{ color: "#c2b6a6" }}>
+              {text["hero.latin"]}
+            </p>
+          ) : null}
+
+          <p
+            className="rise rise-4 mt-6 max-w-xl text-[15.5px] leading-[1.95]"
+            style={{ color: "#dfe5ea" }}
+          >
+            {text["hero.body"]}
           </p>
 
-          <p className="mt-6 max-w-lg text-[15.5px] leading-[1.95]" style={{ color: "#cbd3da" }}>
-            شبكةٌ اجتماعية عربية حميمية. دائرةٌ محدودة، وخصوصيةٌ كاملة —
-            لحظاتك مع ناسك، لا للعالم.
-          </p>
-
-          <div className="mt-8">
+          <div className="rise rise-5 mt-8">
             <StoreButtons tone="dark" />
           </div>
         </div>
@@ -206,15 +222,19 @@ export default function LandingPage() {
 
       {/* ───────────── المزايا ───────────── */}
       <section className="wrap py-16">
-        <h2 className="section-title">ما الذي في آثار</h2>
-        <p className="section-sub">أربعة أشياء تُفعل كل يوم — ولا خامس يزاحمها.</p>
+        <h2 className="section-title">{text["features.title"]}</h2>
+        <p className="section-sub">{text["features.sub"]}</p>
 
         <div className="mt-8 grid gap-3.5 sm:grid-cols-2">
           {FEATURES.map((feature) => (
             <article key={feature.key} className="feature-card">
               <FeatureIcon>{feature.icon}</FeatureIcon>
-              <h3 className="mt-4 text-[16px] font-bold">{feature.title}</h3>
-              <p className="mt-1.5 text-[13.5px] leading-[1.95] text-ink-2">{feature.body}</p>
+              <h3 className="mt-4 text-[16px] font-bold">
+                {text[`feature.${feature.key}.title` as const]}
+              </h3>
+              <p className="mt-1.5 text-[13.5px] leading-[1.95] text-ink-2">
+                {text[`feature.${feature.key}.body` as const]}
+              </p>
             </article>
           ))}
         </div>
@@ -222,8 +242,8 @@ export default function LandingPage() {
 
       {/* ───────────── من داخل التطبيق ───────────── */}
       <section className="wrap pb-16">
-        <h2 className="section-title">من داخل التطبيق</h2>
-        <p className="section-sub">الشاشات كما هي — بلا تجميلٍ لا تراه حين تفتحه.</p>
+        <h2 className="section-title">{text["shots.title"]}</h2>
+        <p className="section-sub">{text["shots.sub"]}</p>
 
         <div className="no-bar mt-8 flex justify-start gap-4 overflow-x-auto pb-2 lg:justify-center">
           {SHOTS.map((shot) => (
@@ -242,16 +262,15 @@ export default function LandingPage() {
             className="text-[30px] font-bold"
             style={{ fontFamily: "var(--font-display)", color: "var(--color-chrome-ink)" }}
           >
-            خصوصيةٌ أولاً.
+            {text["privacy.title"]}
           </h2>
           <p className="mt-2 max-w-xl text-[14px] leading-[1.95]" style={{ color: "var(--color-chrome-muted)" }}>
-            ليست وعداً في صفحة، بل قرارٌ في البناء: لا استكشاف، ولا بحثَ يصل
-            إليك، ولا طرفٍ ثالثٍ يقرأ ما تنشره.
+            {text["privacy.body"]}
           </p>
 
           <div className="mt-8 grid gap-8 sm:grid-cols-2">
             <ul className="flex flex-col gap-3">
-              {PRIVACY_NO.map((line) => (
+              {lines(text["privacy.no"]).map((line) => (
                 <li key={line} className="flex items-center gap-3 text-[14.5px]" style={{ color: "#e4e9ed" }}>
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ff7a5a" strokeWidth="1.9" strokeLinecap="round" aria-hidden>
                     <circle cx="12" cy="12" r="9" />
@@ -263,7 +282,7 @@ export default function LandingPage() {
             </ul>
 
             <ul className="flex flex-col gap-3">
-              {PRIVACY_YES.map((line) => (
+              {lines(text["privacy.yes"]).map((line) => (
                 <li key={line} className="flex items-center gap-3 text-[14.5px]" style={{ color: "#e4e9ed" }}>
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#f6b93b" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <circle cx="12" cy="12" r="9" />
@@ -288,11 +307,10 @@ export default function LandingPage() {
       {/* ───────────── التحميل ───────────── */}
       <section id="download" className="wrap py-16 text-center">
         <h2 className="text-[28px] font-bold" style={{ fontFamily: "var(--font-display)" }}>
-          جاهزٌ للانطلاق؟
+          {text["download.title"]}
         </h2>
         <p className="mx-auto mt-2 max-w-md text-[14px] leading-[1.95] text-muted">
-          آثار يصل المتجرين قريباً. وحتى ذلك الحين، اكتب لنا إن أردت أن تكون من
-          أوّل من يجرّبه.
+          {text["download.body"]}
         </p>
 
         <div className="mt-7">
@@ -304,7 +322,7 @@ export default function LandingPage() {
           className="mt-5 inline-flex h-11 items-center rounded-xl px-5 text-[13px] font-bold"
           style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
         >
-          اكتب لنا
+          {text["download.cta"]}
         </Link>
       </section>
     </>

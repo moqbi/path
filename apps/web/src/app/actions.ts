@@ -9,6 +9,7 @@ import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
 import { dropMedia, migrateToCloud, storeUpload } from "@/lib/media";
 import { cloudReady, probeBucket } from "@/lib/storage";
 import { forgetWords } from "@/lib/moderation";
+import { SITE_TEXT, type SiteKey } from "@/lib/site";
 
 /*
   إجراءات اللوحة، منقولةٌ كما هي من `src/app/actions.ts` في الويب الحالي:
@@ -990,4 +991,154 @@ export async function deleteAccountFromWeb(
   await prisma.user.delete({ where: { id: user.id } });
 
   return { ok: "حُذف حسابك وكل ما فيه." };
+}
+
+// ───────────────────────── محتوى الموقع العام ─────────────────────────
+
+/**
+ * تحرير نصوص الموقع من اللوحة.
+ *
+ * كل حقلٍ يُحفظ بنفسه لا الصفحةُ كلّها: نموذجٌ واحد بثلاثين حقلاً يعني
+ * أنّ خطأً في حقلٍ يردّ التسعةَ والعشرين معه، وأن تعديل سطرٍ يُعيد كتابة
+ * ما لم يُمسّ فيضيع تمييزُ ما تغيّر.
+ *
+ * **والمساواةُ للافتراضيّ حذفٌ لا كتابة**: من أعاد النصّ إلى أصله يُمحى
+ * صفُّه، فيعود يتبع الكود إن تغيّر فيه لاحقاً — ولا يتجمّد على نسخةٍ
+ * قديمة نُسخت إلى القاعدة بلا قصد.
+ */
+export async function saveSiteText(
+  key: string,
+  _prev: AdminResult,
+  formData: FormData,
+): Promise<AdminResult> {
+  await requireAdmin();
+  if (!(key in SITE_TEXT)) return { error: "مفتاحٌ غير معروف" };
+
+  const value = String(formData.get("value") ?? "").trim().slice(0, 4000);
+  const fallback = SITE_TEXT[key as SiteKey];
+
+  if (!value || value === fallback) {
+    await prisma.siteText.deleteMany({ where: { key } });
+    revalidatePath("/", "layout");
+    return { ok: "رجع الأصل" };
+  }
+
+  await prisma.siteText.upsert({
+    where: { key },
+    update: { value },
+    create: { key, value },
+  });
+  revalidatePath("/", "layout");
+  return { ok: "حُفظ" };
+}
+
+/**
+ * صورة الرأس.
+ *
+ * تُخزَّن كبقية الصور في `Media` (القاعدة ١٢ و١٠١) لا ملفاً يُرفع مع
+ * النشر: نسخةٌ جديدة من الموقع لا تمحو ما رفعه المشرف، ونقلُ المشروع
+ * إلى خادمٍ آخر ينقلها معه.
+ *
+ * و١٩٢٠ بكسلاً لا ١٦٠٠: هذه صورةُ رأسٍ تُعرض بعرض الشاشة كاملاً على
+ * حاسوب، فما دونها يُرى ضبابياً.
+ */
+export async function setSiteImage(key: string, formData: FormData): Promise<void> {
+  const admin = await requireAdmin();
+  const { file, width, height } = picture(formData);
+  const media = await storeUpload(admin.id, file, width, height);
+
+  const old = await prisma.siteImage.findUnique({ where: { key }, select: { mediaId: true } });
+  await prisma.siteImage.upsert({
+    where: { key },
+    update: { mediaId: media.id },
+    create: { key, mediaId: media.id },
+  });
+  // والقديمة تذهب بملفّها: صفٌّ يُستبدل يترك بكسلاته بلا شيء يدلّ عليها.
+  if (old && old.mediaId !== media.id) await dropMedia([old.mediaId]);
+
+  revalidatePath("/", "layout");
+  revalidatePath("/admin");
+}
+
+export async function clearSiteImage(key: string): Promise<void> {
+  await requireAdmin();
+  const row = await prisma.siteImage.findUnique({ where: { key }, select: { mediaId: true } });
+  if (!row) return;
+  await prisma.siteImage.delete({ where: { key } });
+  await dropMedia([row.mediaId]);
+  revalidatePath("/", "layout");
+  revalidatePath("/admin");
+}
+
+// ── روابط التواصل ──
+
+const socialInput = z.object({
+  platform: z.string().trim().min(1, "اختر المنصّة").max(30),
+  url: z.string().trim().url("رابط غير صالح").max(300),
+  sortOrder: z.coerce.number().int().min(0).max(999).default(0),
+});
+
+export async function createSocialLink(
+  _prev: AdminResult,
+  formData: FormData,
+): Promise<AdminResult> {
+  await requireAdmin();
+  const parsed = socialInput.safeParse({
+    platform: formData.get("platform"),
+    url: formData.get("url"),
+    sortOrder: formData.get("sortOrder") || 0,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
+
+  /*
+    والرابط يُفحص بروتوكولُه: `javascript:` في `href` على صفحةٍ عامّة
+    يُنفَّذ في متصفّح كل زائر. و`z.url()` يقبله — يفحص الشكل لا المعنى.
+  */
+  const url = new URL(parsed.data.url);
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    return { error: "الرابط يبدأ بـhttps" };
+  }
+
+  await prisma.socialLink.create({ data: { ...parsed.data, url: url.toString() } });
+  revalidatePath("/", "layout");
+  revalidatePath("/admin");
+  return { ok: "أُضيف" };
+}
+
+export async function updateSocialLink(
+  id: string,
+  _prev: AdminResult,
+  formData: FormData,
+): Promise<AdminResult> {
+  await requireAdmin();
+  const parsed = socialInput.safeParse({
+    platform: formData.get("platform"),
+    url: formData.get("url"),
+    sortOrder: formData.get("sortOrder") || 0,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
+
+  const url = new URL(parsed.data.url);
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    return { error: "الرابط يبدأ بـhttps" };
+  }
+
+  await prisma.socialLink.update({
+    where: { id },
+    data: {
+      ...parsed.data,
+      url: url.toString(),
+      hidden: formData.get("hidden") === "on",
+    },
+  });
+  revalidatePath("/", "layout");
+  revalidatePath("/admin");
+  return { ok: "حُفظ" };
+}
+
+export async function deleteSocialLink(id: string): Promise<void> {
+  await requireAdmin();
+  await prisma.socialLink.deleteMany({ where: { id } });
+  revalidatePath("/", "layout");
+  revalidatePath("/admin");
 }

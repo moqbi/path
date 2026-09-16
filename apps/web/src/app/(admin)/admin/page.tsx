@@ -30,6 +30,8 @@ import {
 import { itemPaint, ScreenHeader, TagPill } from "@/components/ui";
 import { Saver } from "./saver";
 import { AdminEmail } from "./email";
+import { SitePanel } from "./site";
+import { SITE_TEXT, siteText, siteImage, type SiteKey } from "@/lib/site";
 import { ItemImage } from "./item-image";
 import { coinText, ar, relative, riyals } from "@/lib/format";
 import { parsePalette } from "@/lib/theme";
@@ -220,6 +222,7 @@ const SECTIONS = [
   { key: "tags", label: "الوسوم", store: false },
   { key: "users", label: "الحسابات", store: false },
   { key: "store", label: "المتجر", store: true },
+  { key: "site", label: "الموقع", store: false },
   { key: "team", label: "الصلاحيات", store: false, owner: true },
   { key: "files", label: "الملفات", store: false, owner: true },
   { key: "support", label: "الدعم", store: false },
@@ -271,8 +274,10 @@ export default async function AdminPage({
   );
   const section = sections.some((item) => item.key === raw) ? raw! : sections[0].key;
 
-  const [items, tags, people, categories, tickets, reports, bannedWords, packs, logs] =
-    await Promise.all([
+  const [
+    items, tags, people, categories, tickets, reports, bannedWords, packs,
+    site, heroMediaId, socials, logs,
+  ] = await Promise.all([
     prisma.storeItem.findMany({
       orderBy: { sortOrder: "asc" },
       include: {
@@ -329,6 +334,12 @@ export default async function AdminPage({
       orderBy: [{ sortOrder: "asc" }, { coins: "asc" }],
       include: { _count: { select: { topUps: true } } },
     }),
+    // محتوى الموقع: نصوصُه وصورةُ رأسه وروابطُ تواصله.
+    scope === "ALL" ? siteText() : Promise.resolve({} as Record<SiteKey, string>),
+    scope === "ALL" ? siteImage("hero") : Promise.resolve(null),
+    scope === "ALL"
+      ? prisma.socialLink.findMany({ orderBy: { sortOrder: "asc" } })
+      : Promise.resolve([]),
     // سجلّ الإشراف: يُقرأ مع البلاغات، فهما بابا التصرّف في المحتوى.
     scope === "ALL"
       ? prisma.moderationLog.findMany({
@@ -1211,6 +1222,15 @@ export default async function AdminPage({
           </>
         )}
         </>
+        ) : null}
+
+        {section === "site" ? (
+          <SitePanel
+            text={site}
+            defaults={SITE_TEXT as unknown as Record<string, string>}
+            heroMediaId={heroMediaId}
+            links={socials}
+          />
         ) : null}
 
         {section === "team" ? (

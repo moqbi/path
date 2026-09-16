@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { AthrMark, AthrWordmark } from "@/components/brand";
+import { FollowRow } from "@/components/social";
+import { siteText, socialLinks } from "@/lib/site";
 
 const COLUMNS = [
   {
@@ -32,7 +34,9 @@ const COLUMNS = [
  * يُبحث عنه في الذيل. والقانونيّ والتواصلُ وحذفُ الحساب في كل صفحة
  * لأنّ المتجرين يطلبان الوصول إليها من أيّ مكان لا من الرئيسة وحدها.
  */
-export default function PublicLayout({ children }: { children: React.ReactNode }) {
+export default async function PublicLayout({ children }: { children: React.ReactNode }) {
+  const [text, follow] = await Promise.all([siteText(), socialLinks()]);
+
   return (
     <div className="site">
       <header className="site-head">
@@ -87,12 +91,18 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                   آثار مومنتس
                 </span>
                 <span className="mt-3 text-[11.5px]" style={{ color: "var(--color-chrome-muted)" }}>
-                  لحظاتك، مع ناسك.
+                  {text["foot.tagline"]}
                 </span>
               </div>
             </div>
 
+            {/*
+              «تابعنا» بجانب أعمدة الروابط لا تحتها: الأيقونات تُلمح
+              بالعين ولا تُقرأ سطراً سطراً، فمكانها حيث تُرى لا حيث
+              ينتهي النصّ. وروابطُها صفوفٌ في القاعدة تُدار من اللوحة.
+            */}
             <nav className="flex flex-wrap gap-x-14 gap-y-8">
+              <FollowRow title={text["foot.follow"]} links={follow} />
               {COLUMNS.map((column) => (
                 <div key={column.title} className="flex flex-col gap-2.5">
                   <h2 className="text-[12px] font-bold" style={{ color: "var(--color-gold-bright)" }}>
@@ -116,7 +126,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           <hr className="my-8" style={{ borderColor: "var(--color-chrome-line)" }} />
 
           <p className="text-[11.5px]" style={{ color: "var(--color-chrome-muted)" }}>
-            © ٢٠٢٦ آثار مومنتس. جميع الحقوق محفوظة.
+            {text["foot.rights"]}
           </p>
         </div>
       </footer>

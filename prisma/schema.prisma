@@ -598,6 +598,9 @@ model Media {
   moment    Moment?    @relation("MomentMedia")
   storeItem StoreItem? @relation("StoreItemMedia")
 
+  /// صورةُ موقعٍ عامّة إن كانت — الرأس مثلاً.
+  siteImage SiteImage? @relation("SiteImage")
+
   @@index([ownerId, createdAt])
   @@index([ready, createdAt])
 }
@@ -675,6 +678,53 @@ enum ReportState {
  * بلا أثر. فكلُّ حذفٍ يُكتب هنا باسم صاحبه: من فعل، وبمن، ومتى، وما كان
  * المتن. والصفّ يبقى وإن ذهب المحتوى — سجلٌّ لا نسخةٌ احتياطية.
  */
+/**
+ * نصوص الموقع العام — يحرّرها المشرف بلا نشر نسخة.
+ * كل نصٍّ يُقرأ في صفحةٍ عامّة له مفتاح، وقيمتُه الافتراضيّة مكتوبةٌ في
+ * الكود (`lib/site.ts`): الصفّ يُنشأ عند أوّل تعديل لا عند البذر، فلا
+ * تُملأ القاعدة بمئة صفٍّ لم يمسسها أحد. وحذفُ الصفّ يردّ الافتراضيّ.
+ * ولا جدولَ «صفحة» ولا «قسم»: الصفحات معدودة، والمفتاح يقول مكانه
+ * (`hero.line`، `feature.circle.body`) — وشجرةُ محتوى كاملة لموقعٍ من
+ * سبع صفحات تُبنى مرّةً وتُصان إلى الأبد.
+ */
+model SiteText {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+/**
+ * صور الموقع العام — صورة الرأس اليوم، وما بعدها غداً.
+ * تُخزَّن كبقية الصور في `Media` وتُقدَّم من `/api/media` (القاعدة ١٢
+ * و١٠١)، فلا مسارٌ يُكتب في الكود ولا ملفٌّ يُرفع مع النشر. وبلا صفٍّ
+ * هنا يرسم الرأسُ لوحتَه المرسومة كما كان.
+ */
+model SiteImage {
+  key     String @id
+  mediaId String @unique
+  media   Media  @relation("SiteImage", fields: [mediaId], references: [id], onDelete: Cascade)
+
+  updatedAt DateTime @updatedAt
+}
+
+/**
+ * روابط التواصل — «تابعنا» في ذيل الموقع وفي شاشة الخصوصية بالتطبيق.
+ * صفوفٌ في القاعدة لا قائمةٌ في الكود: حسابٌ جديد يُضاف من اللوحة بلا
+ * نشر نسخة، وحسابٌ يُغلق يُخفى بضغطة. و`platform` يختار الأيقونة —
+ * فالرابط وحده لا يقول أيّ منصّة هو.
+ */
+model SocialLink {
+  id        String  @id @default(cuid())
+  platform  String
+  url       String
+  sortOrder Int     @default(0)
+  hidden    Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([hidden, sortOrder])
+}
+
 model ModerationLog {
   id String @id @default(cuid())
 
