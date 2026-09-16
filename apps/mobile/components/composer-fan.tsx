@@ -23,6 +23,26 @@ const TOP = 88;
 const BOTTOM = 4;
 const SIZE = 56;
 
+/** الزرّ: ٢٠ من الحافة اليمنى، ونصفُ قطره ٢٨. */
+const RIGHT = 20;
+/** هامشٌ يبقى من الحافة اليسرى حتى لا يلامس القرصُ الحافّة. */
+const EDGE = 10;
+
+/**
+ * نصف قطر القوس محسوبٌ على عرض الشاشة لا مكتوباً رقماً.
+ *
+ * ٢٤٦ مكتوبةً تعمل على ٣٧٥ فما فوق، وتخرج على شاشةٍ ٣٢٠: أدنى الأصناف
+ * زاويتُه ٤° فيمشي أفقياً بمقدار القطر كلّه تقريباً، فيقع نصفُه خارج
+ * الحافة اليسرى — وهو «صحيت»، فيُضغط على فراغ. قيست فعلاً على ٣٢٠×٥٦٨.
+ *
+ * والحدّ من العرض وحده: أعلى الأصناف عند ٨٨° يرتفع بمقدار القطر، وهو
+ * أقصرُ من أقصر شاشةٍ ندعمها (٥٦٨) بفارقٍ مريح.
+ */
+function radiusFor(width: number): number {
+  const reach = width - RIGHT - SIZE - EDGE;
+  return Math.min(RADIUS, reach / Math.cos((BOTTOM * Math.PI) / 180));
+}
+
 const ART = {
   write: require("../assets/composer/write.png"),
   photo: require("../assets/composer/photo.png"),
@@ -69,6 +89,7 @@ export function ComposerFan() {
   ] as const;
 
   const screen = Dimensions.get("window");
+  const radius = radiusFor(screen.width);
 
   return (
     <>
@@ -104,8 +125,8 @@ export function ComposerFan() {
           // الأوّل في الأعلى والأخير في الأسفل، وما بينهما بالتساوي.
           const angle = TOP - ((TOP - BOTTOM) * index) / (items.length - 1);
           const radians = (angle * Math.PI) / 180;
-          const x = -Math.cos(radians) * RADIUS;
-          const y = -Math.sin(radians) * RADIUS;
+          const x = -Math.cos(radians) * radius;
+          const y = -Math.sin(radians) * radius;
 
           return (
             <Animated.View
