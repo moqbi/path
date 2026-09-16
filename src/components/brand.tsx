@@ -23,6 +23,46 @@ export function AthrMark({ size = 32 }: { size?: number }) {
 }
 
 /**
+ * الاسم اللاتينيّ كلمتين لا كلمةً واحدة.
+ *
+ * «ATHAR» هي الاسم، و«Moments» لاحقتُه: أصغرُ منها وبلون العلامة، تجلس
+ * على خطّ قاعدتها لا في وسطها. وكلمتان بمقاسٍ ولونٍ واحد تُقرآن اسماً
+ * من مقطعين متساويين، والثانية ليست كذلك.
+ *
+ * و`dir="ltr"` لازمةٌ لا زينة: المستند `rtl`، فصفٌّ تحته يرصّ من
+ * اليمين — وكانت تُقرأ «Moments ATHAR».
+ *
+ * و`items-baseline` لا `items-center`: كلمةٌ صغيرة في وسط كلمةٍ كبيرة
+ * تطفو فوق خطّها، والعين تقرأ سطرين لا سطراً.
+ */
+export function AthrWordmark({
+  size = 24,
+  color,
+  accent = "var(--color-clay)",
+}: {
+  size?: number;
+  color?: string;
+  accent?: string;
+}) {
+  return (
+    <span dir="ltr" className="latin flex items-baseline whitespace-nowrap">
+      <span style={{ fontSize: size, fontWeight: 700, color, lineHeight: 1 }}>ATHAR</span>
+      <span
+        style={{
+          fontSize: size * 0.54,
+          fontWeight: 500,
+          color: accent,
+          marginInlineStart: size * 0.14,
+          lineHeight: 1,
+        }}
+      >
+        Moments
+      </span>
+    </span>
+  );
+}
+
+/**
  * العلامة كاملة: الرمز، ثم الاسم الكامل باللاتيني، ثم بالعربي تحته.
  *
  * الاسم الكامل «ATHAR Moments» / «آثار مومنتس» هو ما يُكتب في المتجرين
@@ -35,15 +75,10 @@ export function AthrLockup({ size = 44 }: { size?: number }) {
     <div className="flex flex-col items-center gap-3">
       <AthrMark size={size * 1.5} />
       <div className="flex flex-col items-center gap-1">
-        <span
-          className="latin whitespace-nowrap text-ink"
-          style={{ fontSize: size * 0.46, fontWeight: 700 }}
-        >
-          ATHAR Moments
-        </span>
+        <AthrWordmark size={size * 0.56} color="var(--color-ink)" />
         <span
           className="text-ink-2"
-          style={{ fontSize: size * 0.34, letterSpacing: "0.22em", fontWeight: 300 }}
+          style={{ fontSize: size * 0.32, letterSpacing: "0.2em", fontWeight: 300 }}
         >
           آثار مومنتس
         </span>

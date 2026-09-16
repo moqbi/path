@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { AthrMark } from "@/components/brand";
+import { AthrMark, AthrWordmark } from "@/components/brand";
 import { SparkIcon } from "@/components/icons";
 import { ar, membership } from "@/lib/format";
 
@@ -152,7 +152,7 @@ export default async function SharedProfile({ params }: Props) {
         <div className="mt-8 w-full rounded-2xl border border-line bg-card p-6">
           <span className="mx-auto mb-3 flex w-fit items-center gap-2">
             <AthrMark size={34} />
-            <span className="latin whitespace-nowrap text-[14px] font-bold">ATHAR Moments</span>
+            <AthrWordmark size={15} />
           </span>
 
           <p className="text-[14px] font-semibold">

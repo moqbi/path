@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AthrMark } from "@/components/brand";
+import { AthrMark, AthrWordmark } from "@/components/brand";
 
 const COLUMNS = [
   {
@@ -48,9 +48,10 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           <Link href="/" className="flex items-center gap-2.5" aria-label="آثار مومنتس">
             <AthrMark size={32} />
             <span className="flex min-w-0 flex-col leading-none">
-              <span className="latin whitespace-nowrap text-[14px] font-bold">
-                ATHAR<span className="hidden sm:inline"> Moments</span>
+              <span className="hidden sm:block">
+                <AthrWordmark size={15} />
               </span>
+              <span className="latin text-[14px] font-bold sm:hidden">ATHAR</span>
               <span
                 className="mt-1 whitespace-nowrap text-[10px] opacity-75"
                 style={{ letterSpacing: "0.2em" }}
@@ -81,7 +82,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             <div className="flex items-start gap-3">
               <AthrMark size={40} />
               <div className="flex flex-col leading-none">
-                <span className="latin whitespace-nowrap text-[16px] font-bold">ATHAR Moments</span>
+                <AthrWordmark size={17} />
                 <span className="mt-1.5 text-[11px] opacity-75" style={{ letterSpacing: "0.2em" }}>
                   آثار مومنتس
                 </span>

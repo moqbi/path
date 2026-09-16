@@ -11,7 +11,7 @@ import Svg, {
 } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { AthrMark, TAGLINE_AR, TAGLINE_EN } from "../components/brand";
+import { AthrMark, AthrWordmark, TAGLINE_AR, TAGLINE_EN } from "../components/brand";
 import { BackIcon } from "../components/icons";
 import { useSession } from "../lib/session";
 import { brandGradient, colors } from "../theme/tokens";
@@ -277,19 +277,14 @@ export default function Login() {
         >
           <AthrMark size={76} />
           {/*
-            الاسم كاملاً كما هو في المتجرين: «ATHAR Moments».
-            و`adjustsFontSizeToFit` لا زينة — ثلاثة عشر حرفاً بوزن ٧٠٠
-            عند ٣٢ نقطة أعرضُ من شاشةٍ ٣٢٠ بعد حشوتها، فينكسر السطر أو
-            يُقصّ. يصغر الخطّ ولا ينكسر الاسم.
+            الاسم كاملاً كما هو في المتجرين، بكلمتين لا بكلمة:
+            «ATHAR» بلون الورق و«Moments» أصغرَ بكهرمانِ العلامة على
+            خطّ قاعدتها. وعرضُه أضيق من كلمتين متساويتين، فيتّسع له
+            ٣٢٠ بلا تصغيرٍ ولا كسرِ سطر.
           */}
-          <Text
-            face="latin"
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            style={{ marginTop: 20, fontSize: 28, fontWeight: "700", color: "#f7f5ef" }}
-          >
-            ATHAR Moments
-          </Text>
+          <View style={{ marginTop: 20 }}>
+            <AthrWordmark size={30} color="#f7f5ef" />
+          </View>
           <Text style={{ marginTop: 20, fontSize: 15, fontWeight: "500", color: "#f0ece4" }}>
             {TAGLINE_AR}
           </Text>
@@ -326,14 +321,9 @@ export default function Login() {
           }}
         >
           <AthrMark size={96} />
-          <Text
-            face="latin"
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            style={{ marginTop: 12, fontSize: 26, fontWeight: "700", color: "#f7f5ef" }}
-          >
-            ATHAR Moments
-          </Text>
+          <View style={{ marginTop: 12 }}>
+            <AthrWordmark size={26} color="#f7f5ef" />
+          </View>
           <Text style={{ marginTop: 8, fontSize: 13, color: "#cbc5bb" }}>{TAGLINE_AR}</Text>
         </Animated.View>
 

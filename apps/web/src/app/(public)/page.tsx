@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AthrMark, TAGLINE_AR, TAGLINE_EN } from "@/components/brand";
+import { AthrMark, AthrWordmark, TAGLINE_AR, TAGLINE_EN } from "@/components/brand";
 import { HeroArt } from "./hero-art";
 import { MomentsShot, CircleShot, StoriesShot, ChatShot } from "./shots";
 
@@ -169,11 +169,11 @@ export default function LandingPage() {
           <AthrMark size={96} />
 
           <div className="mt-5 flex flex-col items-center gap-1">
-            <span
-              className="latin whitespace-nowrap text-[24px] font-bold leading-none sm:text-[38px]"
-              style={{ color: "var(--color-chrome-ink)" }}
-            >
-              ATHAR Moments
+            <span className="sm:hidden">
+              <AthrWordmark size={28} color="var(--color-chrome-ink)" />
+            </span>
+            <span className="hidden sm:block">
+              <AthrWordmark size={40} color="var(--color-chrome-ink)" />
             </span>
             <span
               className="text-[14px] font-medium sm:text-[15px]"
