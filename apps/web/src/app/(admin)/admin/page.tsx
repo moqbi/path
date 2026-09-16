@@ -271,7 +271,8 @@ export default async function AdminPage({
   );
   const section = sections.some((item) => item.key === raw) ? raw! : sections[0].key;
 
-  const [items, tags, people, categories, tickets, reports, bannedWords, packs] = await Promise.all([
+  const [items, tags, people, categories, tickets, reports, bannedWords, packs, logs] =
+    await Promise.all([
     prisma.storeItem.findMany({
       orderBy: { sortOrder: "asc" },
       include: {
@@ -293,6 +294,7 @@ export default async function AdminPage({
         isPlus: true,
         role: true,
         adminScope: true,
+        canModerate: true,
         tag: { select: { name: true, bg: true, fg: true } },
         tagId: true,
       },
@@ -327,6 +329,17 @@ export default async function AdminPage({
       orderBy: [{ sortOrder: "asc" }, { coins: "asc" }],
       include: { _count: { select: { topUps: true } } },
     }),
+    // سجلّ الإشراف: يُقرأ مع البلاغات، فهما بابا التصرّف في المحتوى.
+    scope === "ALL"
+      ? prisma.moderationLog.findMany({
+          orderBy: { createdAt: "desc" },
+          take: 60,
+          include: {
+            admin: { select: { name: true, memberNo: true } },
+            owner: { select: { name: true, memberNo: true } },
+          },
+        })
+      : Promise.resolve([]),
   ]);
 
   // الأصناف مرصوفة تحت تصنيفاتها كما تُرى في المتجر، وما بلا تصنيف في آخرها.
@@ -548,6 +561,21 @@ export default async function AdminPage({
                   امنح
                 </button>
               </form>
+
+              {/*
+                وبابُ لحظاته لمن يملك صلاحية الإشراف وحده: البلاغ يصل على
+                منشور، فيُفتح الحساب ليُرى ما حوله ثمّ يُحكم. ومن لا يملكها
+                لا يرى الرابط — والصفحة نفسها تفحص الصلاحية، فإخفاءُ
+                الرابط ليس حماية (القاعدة ١٣).
+              */}
+              {user.canModerate ? (
+                <Link
+                  href={`/admin/u/${person.id}`}
+                  className="block border-t border-line px-3 py-2.5 text-[12px] font-semibold text-clay-ink"
+                >
+                  اقرأ لحظاته
+                </Link>
+              ) : null}
 
               {owner ? <AdminEmail userId={person.id} current={person.email} /> : null}
             </div>
@@ -1192,6 +1220,10 @@ export default async function AdminPage({
               امنح حساباً صلاحية اللوحة: «المتجر» يفتح الأصناف والتصنيفات وحدها،
               و«اللوحة كاملة» يفتح كل شيء عدا هذه الصفحة — منحُ الصلاحيات لك وحدك.
               وما يُمنح يُسحب بضغطة.
+              <br />
+              و«إشراف» صلاحيةٌ مستقلّة: من يملكها يقرأ لحظات أيّ حساب بلا صداقة
+              ويحذف ما يخالف منها — للتصرّف في البلاغات. تُمنح لمشرفٍ وتُمنع عن
+              آخر، وكلُّ حذفٍ يُسجَّل باسم من حذفه.
             </p>
 
             <div className="mb-7 flex flex-col gap-2">
@@ -1216,11 +1248,26 @@ export default async function AdminPage({
                         {person.adminScope !== "NONE" ? (
                           <Chip>{person.adminScope === "ALL" ? "اللوحة" : "المتجر"}</Chip>
                         ) : null}
+                        {person.canModerate ? <Chip live>إشراف</Chip> : null}
                       </p>
                       <p dir="ltr" className="truncate text-right text-[11px] text-faint">
                         {person.email}
                       </p>
                     </div>
+                    {/*
+                      الإشراف صلاحيةٌ ثانية في النموذج نفسه: المالك يقرّر
+                      الدرجتين لشخصٍ واحد في نظرةٍ واحدة. ومستقلّةٌ عن
+                      المدى — مشرفٌ يملكها وآخر لا.
+                    */}
+                    <label className="flex shrink-0 items-center gap-1.5 text-[11.5px] font-semibold text-muted">
+                      <input
+                        type="checkbox"
+                        name="moderate"
+                        defaultChecked={person.canModerate}
+                        className="h-4 w-4 accent-[var(--color-clay)]"
+                      />
+                      إشراف
+                    </label>
                     <select
                       name="scope"
                       defaultValue={person.adminScope}
@@ -1405,6 +1452,43 @@ export default async function AdminPage({
                         حُسم {report.handledAt ? relative(report.handledAt) : ""}
                       </p>
                     )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/*
+              وسجلّ الإشراف تحتها: البلاغ يُحسم هنا، والحذفُ المباشر يجري
+              من صفحة الحساب — ومن مُنح تلك الصلاحية يُعرف ما فعل بها.
+              سلطةٌ بلا أثرٍ مكتوب لا يُسأل عنها أحد.
+            */}
+            <h2 className="mb-1 text-[15px] font-bold">سجلّ الإشراف</h2>
+            <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
+              كلّ حذفٍ جرى من صفحة حساب: من حذف، ومِن حساب مَن، ومتى، وما كان
+              المتن. والصفّ يبقى وإن ذهب المحتوى.
+            </p>
+            {logs.length === 0 ? (
+              <p className="mb-7 rounded-2xl border border-line bg-card p-5 text-center text-[12.5px] text-muted">
+                لا شيء في السجلّ.
+              </p>
+            ) : (
+              <div className="mb-7 flex flex-col gap-2">
+                {logs.map((row) => (
+                  <div key={row.id} className="rounded-2xl border border-line bg-card p-3">
+                    <p className="text-[12px]">
+                      <span className="font-semibold">{row.admin.name}</span> حذف لحظةً
+                      {row.owner ? ` من حساب ${row.owner.name} (${ar(row.owner.memberNo)})` : ""}
+                    </p>
+                    <p className="text-[10.5px] text-faint">{relative(row.createdAt)}</p>
+                    {row.snippet ? (
+                      <p
+                        dir="auto"
+                        className="mt-1.5 rounded-xl px-3 py-2 text-[12px] leading-relaxed"
+                        style={{ background: "var(--color-chip)" }}
+                      >
+                        {row.snippet}
+                      </p>
+                    ) : null}
                   </div>
                 ))}
               </div>

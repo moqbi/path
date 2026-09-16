@@ -16,6 +16,7 @@ export async function me(userId: string) {
       city: true,
       role: true,
       adminScope: true,
+      canModerate: true,
       isPlus: true,
       plusUntil: true,
       coins: true,
@@ -34,7 +35,12 @@ export async function me(userId: string) {
     },
   });
   if (!user) throw notFound("لا يوجد هذا الحساب");
-  return user;
+  /*
+    والمالك مشرفٌ بدوره لا بحقله: لو أُرسل الحقل خاماً لاحتاج كلُّ شاشةٍ
+    أن تجمع الدور إليه بنفسها — ونسيانُ ذلك في شاشةٍ واحدة يُخفي البابَ
+    عن المالك بلا سبب ظاهر.
+  */
+  return { ...user, canModerate: user.role === "ADMIN" || user.canModerate };
 }
 
 /**

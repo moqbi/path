@@ -78,28 +78,34 @@ enum Audience {
 // ───────────────────────────── المستخدم والدائرة ─────────────────────────────
 
 model User {
-  id           String    @id @default(cuid())
+  id           String  @id @default(cuid())
   /// رقم العضوية: تسلسل من ١ فصاعداً، لا يُعاد استعماله ولا يتغيّر.
   /// المتسلسلة في القاعدة لا في التطبيق، وإلا تصادم مسجّلان في اللحظة نفسها.
-  memberNo     Int       @unique @default(autoincrement())
-  email        String    @unique
+  memberNo     Int     @unique @default(autoincrement())
+  email        String  @unique
   passwordHash String
   name         String
   /// معرّف قصير يظهر تحت الاسم: @mohammed.
-  handle       String?   @unique
+  handle       String? @unique
   city         String?
   bio          String?
 
   /// اشتراك «آثار+». الصلاحية تُقرأ من plusUntil، وisPlus مشتقة منها عند الكتابة.
-  role      UserRole  @default(USER)
+  role        UserRole   @default(USER)
   /// صلاحية اللوحة الممنوحة لغير المالك — يمنحها المالك ويسحبها.
-  adminScope AdminScope @default(NONE)
-  isPlus    Boolean   @default(false)
-  plusUntil DateTime?
+  adminScope  AdminScope @default(NONE)
+  /// صلاحية الإشراف على المحتوى: قراءةُ لحظات أيّ حساب بلا صداقة،
+  /// وحذفُ ما يخالف منها. تُمنح لمشرفٍ بعينه وتُسحب منه، فمشرفٌ يملكها
+  /// وآخر لا — وهي **زائدةٌ** على صلاحية اللوحة لا لازمةٌ عنها: من
+  /// يدير المتجر لا يحتاج أن يقرأ لحظات الناس.
+  /// والمالك (`role = ADMIN`) يملكها دائماً بلا منح.
+  canModerate Boolean    @default(false)
+  isPlus      Boolean    @default(false)
+  plusUntil   DateTime?
 
   /// رصيد الكوينز. عملة المتجر الوحيدة: كل ما فيه يُشترى بها، ولا
   /// يُشترى شيءٌ بالريال مباشرةً. و١٠٠٠ كوينز = ٣٠ ر.س.
-  coins Int @default(0)
+  coins        Int       @default(0)
   /// آخر إيداعٍ لكوينز آثار+ الشهرية — به تُقاس الدورة التالية.
   /// والوعد «شهريّ» لا «مع كل فاتورة»: من اشترك سنوياً يفوتر مرّةً
   /// ويستحقّ اثنتي عشرة دفعة.
@@ -114,6 +120,10 @@ model User {
   coverY        Int     @default(50)
   avatarMedia   Media?  @relation("UserAvatar", fields: [avatarMediaId], references: [id], onDelete: SetNull)
   coverMedia    Media?  @relation("UserCover", fields: [coverMediaId], references: [id], onDelete: SetNull)
+
+  /// سجلّ ما حذفه هذا المشرف، وما حُذف له.
+  moderationBy ModerationLog[] @relation("ModerationBy")
+  moderationOn ModerationLog[] @relation("ModerationOn")
 
   /// وسم يظهر بجانب الاسم. يُمنح من لوحة التحكم.
   tagId String?
@@ -132,27 +142,27 @@ model User {
   viewGroupId     String?
   interactGroupId String?
   /// المكان الدقيق يُنشر أو تُنشر المدينة وحدها.
-  shareLocation Boolean @default(true)
+  shareLocation   Boolean @default(true)
   /// إشعار حين يُشار إليّ في لحظة.
-  notifyOnTag Boolean @default(true)
+  notifyOnTag     Boolean @default(true)
 
   /// آخر ظهور: يُحدَّث عند فتح التطبيق، ومنه «متصل الآن».
   lastSeenAt DateTime?
 
   createdAt DateTime @default(now())
 
-  tickets   SupportTicket[]
-  reports        Report[] @relation("Reporter")
-  reportsAgainst Report[] @relation("Reported")
-  sessions  RefreshToken[]
-  moments   Moment[]
-  reactions Reaction[]
-  views     View[]
-  comments  Comment[]
-  tags      MomentTag[]
-  purchases Purchase[]
-  giftsGiven Purchase[] @relation("GiftGiver")
-  topUps    CoinTopUp[]
+  tickets        SupportTicket[]
+  reports        Report[]        @relation("Reporter")
+  reportsAgainst Report[]        @relation("Reported")
+  sessions       RefreshToken[]
+  moments        Moment[]
+  reactions      Reaction[]
+  views          View[]
+  comments       Comment[]
+  tags           MomentTag[]
+  purchases      Purchase[]
+  giftsGiven     Purchase[]      @relation("GiftGiver")
+  topUps         CoinTopUp[]
 
   media          Media[]        @relation("MediaOwner")
   conversationsA Conversation[] @relation("ConversationA")
@@ -278,14 +288,14 @@ model Moment {
   placeName String?
   placeCity String?
   /// إحداثيات فعلية من إذن الموقع، لا إدخال يدوي.
-  lat Float?
-  lng Float?
+  lat       Float?
+  lng       Float?
 
   musicTitle  String?
   musicArtist String?
   /// رابط الأغنية كما أرسله المستخدم، ليُفتح ويُسمع.
-  musicUrl   String?
-  musicThumb String?
+  musicUrl    String?
+  musicThumb  String?
 
   /// تدرّج CSS يُرسم حين لا توجد صورة مرفوعة.
   imageSpec String?
@@ -294,13 +304,13 @@ model Moment {
   media   Media?  @relation("MomentMedia", fields: [mediaId], references: [id], onDelete: SetNull)
 
   /// الجمهور: الدائرة كلها، أو تصنيف منها، أو أشخاص بأعيانهم.
-  audience        Audience @default(CIRCLE)
+  audience        Audience     @default(CIRCLE)
   audienceGroupId String?
   audienceGroup   FriendGroup? @relation("MomentGroup", fields: [audienceGroupId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
 
-  author    User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author    User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
   tags      MomentTag[]
   viewers   MomentViewer[]
   reactions Reaction[]
@@ -339,10 +349,10 @@ model MomentTag {
 }
 
 model Reaction {
-  id       String       @id @default(cuid())
-  momentId String
-  userId   String
-  kind     ReactionKind
+  id        String       @id @default(cuid())
+  momentId  String
+  userId    String
+  kind      ReactionKind
   /// يُملأ فقط حين kind = CUSTOM.
   emoji     String?
   createdAt DateTime     @default(now())
@@ -388,8 +398,8 @@ model Tag {
   id   String @id @default(cuid())
   name String
   /// ألوان CSS (#rrggbb).
-  bg String
-  fg String
+  bg   String
+  fg   String
 
   autoForPlus Boolean @default(false)
   sortOrder   Int     @default(0)
@@ -411,25 +421,25 @@ model StoreCategory {
 }
 
 model StoreItem {
-  id    String        @id @default(cuid())
-  kind  StoreItemKind
-  name  String
+  id              String        @id @default(cuid())
+  kind            StoreItemKind
+  name            String
   /// السعر بالكوينز. صفر يعني أن الصنف يُكتسب ولا يُشترى.
-  priceCoins Int
+  priceCoins      Int
   /// تدرّج CSS يرسم الإطار. وللثيم والتميمة صورةٌ تُرفع، والتدرّج بديلها.
-  spec String
+  spec            String
   /// صورة الصنف — الثيم خلفيةٌ للتطبيق، والتميمة شعارٌ تحت صورة العرض.
-  mediaId String? @unique
-  media   Media?  @relation("StoreItemMedia", fields: [mediaId], references: [id], onDelete: SetNull)
+  mediaId         String?       @unique
+  media           Media?        @relation("StoreItemMedia", fields: [mediaId], references: [id], onDelete: SetNull)
   /// ألوان الثيم كاملةً (JSON): الأرضية والبطاقة والحبر واللمسة والشريط.
   /// الثيم ليس خلفيةً فقط — التطبيق كلّه يلبس ألوانه.
-  palette String?
+  palette         String?
   /// أصناف حصرية لمشتركي آثار+.
-  plusOnly Boolean @default(false)
+  plusOnly        Boolean       @default(false)
   /// أصناف تُكتسب بالبقاء لا بالدفع (مثل إطار «سنة كاملة»).
   earnedAfterDays Int?
 
-  sortOrder Int @default(0)
+  sortOrder Int      @default(0)
   /// متى أُضيف — منه يُبنى صفّ «وصل حديثاً» بلا علمٍ يُرفع يدوياً.
   createdAt DateTime @default(now())
   /// حزمة موسمية: تُعرض في «حزم محدودة» ما دامت مرفوعة.
@@ -445,14 +455,14 @@ model StoreItem {
 }
 
 model Purchase {
-  id        String   @id @default(cuid())
-  userId    String
-  itemId    String
+  id         String   @id @default(cuid())
+  userId     String
+  itemId     String
   /// ما دُفع فعلياً بالكوينز (قد يقل عن السعر بسبب خصم المشتركين).
-  paidCoins Int
+  paidCoins  Int
   /// من أهداه إن كان هدية — والدافع هو المُهدي لا المالك.
-  giftedById  String?
-  createdAt   DateTime @default(now())
+  giftedById String?
+  createdAt  DateTime @default(now())
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   item     StoreItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
@@ -469,16 +479,16 @@ model Purchase {
 /// (IAP لآبل وGoogle Play Billing)، فـ`sku` هو معرّف المنتج هناك، وبه
 /// يصل حدث RevenueCat فنعرف كم كوينز نودع.
 model CoinPack {
-  id    String @id @default(cuid())
-  name  String
-  coins Int
+  id           String @id @default(cuid())
+  name         String
+  coins        Int
   /// سعر الباقة بالهللات — للعرض وحده. ما يُخصم فعلاً يقرّره المتجر.
   priceHalalas Int
   /// معرّف المنتج في المتجرين. فارغٌ يعني باقةً لم تُربط بعد فلا تُباع.
-  sku String @default("")
+  sku          String @default("")
 
-  sortOrder Int     @default(0)
-  hidden    Boolean @default(false)
+  sortOrder Int      @default(0)
+  hidden    Boolean  @default(false)
   createdAt DateTime @default(now())
 
   topUps CoinTopUp[]
@@ -490,16 +500,16 @@ model CoinPack {
 /// ولا أجاب الدعمُ «أين ذهبت كوينزي». وحدثُ المتجر يصل مرّةً واحدة
 /// بمعرّفٍ فريد، و`eventId` يمنع إيداعه مرّتين إن أُعيد إرساله.
 model CoinTopUp {
-  id      String @id @default(cuid())
-  userId  String
-  packId  String?
-  coins   Int
+  id          String   @id @default(cuid())
+  userId      String
+  packId      String?
+  coins       Int
   paidHalalas Int
   /// معرّف حدث RevenueCat — فريدٌ فلا يُودَع الشحن مرّتين.
-  eventId String  @unique
+  eventId     String   @unique
   /// من أين: شراءٌ من متجر، أو منحةٌ من اللوحة، أو رصيد آثار+.
-  source  String  @default("STORE")
-  createdAt DateTime @default(now())
+  source      String   @default("STORE")
+  createdAt   DateTime @default(now())
 
   user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   pack CoinPack? @relation(fields: [packId], references: [id], onDelete: SetNull)
@@ -533,17 +543,17 @@ enum MessageKind {
 }
 
 model Message {
-  id             String   @id @default(cuid())
+  id             String      @id @default(cuid())
   conversationId String
   senderId       String
   body           String
   kind           MessageKind @default(TEXT)
   /// مرفقٌ واحد: صوتٌ أو صورة.
-  mediaId        String?  @unique
-  media          Media?   @relation("MessageMedia", fields: [mediaId], references: [id], onDelete: SetNull)
+  mediaId        String?     @unique
+  media          Media?      @relation("MessageMedia", fields: [mediaId], references: [id], onDelete: SetNull)
   /// مدّة المقطع الصوتي بالثواني.
   seconds        Int?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime    @default(now())
   deliveredAt    DateTime?
   readAt         DateTime?
   editedAt       DateTime?
@@ -558,7 +568,6 @@ model Message {
 
 /**
  * الصور تُخزَّن في القاعدة نفسها.
- *
  * قرار مرحلة: يجنّبنا خدمة تخزين خارجية ومفاتيحها، ويعمل على أي خادم بلا
  * إعداد. المتصفح يصغّر الصورة قبل الرفع فيبقى الحجم محدوداً. عند نمو
  * الاستخدام يُنقل هذا الجدول إلى S3 ويبقى بقية الكود كما هو، لأن كل شيء
@@ -582,11 +591,11 @@ model Media {
 
   owner User @relation("MediaOwner", fields: [ownerId], references: [id], onDelete: Cascade)
 
-  avatarOf User?   @relation("UserAvatar")
-  coverOf  User?   @relation("UserCover")
-  storyOf  Story?  @relation("StoryMedia")
-  messageOf Message? @relation("MessageMedia")
-  moment   Moment? @relation("MomentMedia")
+  avatarOf  User?      @relation("UserAvatar")
+  coverOf   User?      @relation("UserCover")
+  storyOf   Story?     @relation("StoryMedia")
+  messageOf Message?   @relation("MessageMedia")
+  moment    Moment?    @relation("MomentMedia")
   storeItem StoreItem? @relation("StoreItemMedia")
 
   @@index([ownerId, createdAt])
@@ -609,11 +618,11 @@ model SupportTicket {
   name  String?
   email String?
 
-  body String
+  body      String
   /// ردّ المشرف — فارغٌ حتى يُردّ.
   reply     String?
   repliedAt DateTime?
-  closed    Boolean  @default(false)
+  closed    Boolean   @default(false)
 
   createdAt DateTime @default(now())
 
@@ -626,22 +635,21 @@ model SupportTicket {
 /// سارقها جلسات الناس. والعائلة تُدوَّر مع كل تجديد، فإعادةُ استعمال
 /// توكنٍ قديم دليلُ سرقةٍ تُسقط العائلة كلها.
 model RefreshToken {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// SHA-256 للتوكن.
-  hash      String   @unique
+  hash      String    @unique
   family    String
   /// الجهاز كما وصفه العميل — ليعرف صاحبه أين جلساته.
   device    String?
   expiresAt DateTime
   revokedAt DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@index([userId, expiresAt])
   @@index([family])
 }
-
 
 /// ما يُبلَّغ عنه: لحظة، أو قصة، أو رسالة، أو شخص.
 enum ReportTarget {
@@ -661,9 +669,38 @@ enum ReportState {
 ///
 /// المراجعة يدويّة: البلاغ يُفتح ويقرؤه المشرف في اللوحة فيُبقي المحتوى
 /// أو يحذفه. ولا حذفَ تلقائيّ ببلاغٍ واحد — وإلا صار الإبلاغ سلاحاً.
+/**
+ * سجلّ أفعال المشرفين.
+ * صلاحيةُ قراءةِ لحظات الناس وحذفِها تُمنح ليُتصرَّف في بلاغ، لا لتُستعمل
+ * بلا أثر. فكلُّ حذفٍ يُكتب هنا باسم صاحبه: من فعل، وبمن، ومتى، وما كان
+ * المتن. والصفّ يبقى وإن ذهب المحتوى — سجلٌّ لا نسخةٌ احتياطية.
+ */
+model ModerationLog {
+  id String @id @default(cuid())
+
+  adminId String
+  admin   User   @relation("ModerationBy", fields: [adminId], references: [id], onDelete: Cascade)
+
+  /// صاحب المحتوى المحذوف. يبقى `null` إن حُذف حسابه بعدها.
+  ownerId String?
+  owner   User?   @relation("ModerationOn", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  /// ما جرى: `MOMENT_REMOVED` اليوم، وغيره حين يُبنى.
+  action   String
+  /// معرّف المحذوف — بلا مفتاحٍ أجنبيّ: المشار إليه ذهب.
+  targetId String
+  /// نسخةٌ من المتن وقت الحذف، ليُقرأ السجلّ بلا تخمين.
+  snippet  String?
+
+  createdAt DateTime @default(now())
+
+  @@index([adminId, createdAt])
+  @@index([createdAt])
+}
+
 model Report {
-  id     String       @id @default(cuid())
-  target ReportTarget
+  id       String       @id @default(cuid())
+  target   ReportTarget
   /// معرّف اللحظة أو القصة أو الرسالة أو الشخص — بلا مفتاحٍ أجنبيّ:
   /// المُبلَّغ عنه قد يُحذف، والبلاغ يبقى سجلّاً لما جرى.
   targetId String
@@ -682,7 +719,7 @@ model Report {
   /// نسخةٌ من المتن وقت البلاغ: المحتوى قد يُحذف قبل أن يُقرأ البلاغ.
   snippet String?
 
-  state    ReportState @default(OPEN)
+  state     ReportState @default(OPEN)
   handledAt DateTime?
   handledBy String?
 

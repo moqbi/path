@@ -2,6 +2,7 @@ import { prisma } from "@athar/db";
 import { CIRCLE_CAP } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { blockedWith, circleIds } from "./visibility";
+import { isModerator } from "../middleware/auth";
 
 /** ما يُعرض عن شخصٍ في قائمة أو بطاقة. */
 const PERSON = {
@@ -172,7 +173,19 @@ export async function userProfile(viewerId: string, id: string) {
 
   const set = new Set(theirs);
   const mutual = ids.filter((one) => set.has(one)).length;
-  if (mutual === 0 && !pending) throw notFound("لا يوجد هذا الحساب");
+
+  /*
+    والمشرف يفتح أيّ بطاقة.
+
+    البلاغ يصل من داخل الدائرة على من هو خارج دائرة المشرف، فلو بقي
+    الشرط على حاله لردّت اللوحةُ «لا يوجد هذا الحساب» عمّن يُبلَّغ عنه.
+    وهذا **بطاقةٌ لا لحظات**: اللحظات لها بابُها في `/v1/moderation`،
+    وهي تُقرأ من خلف `requireModerator` لا من هنا.
+  */
+  if (mutual === 0 && !pending) {
+    if (!(await isModerator(viewerId))) throw notFound("لا يوجد هذا الحساب");
+    return { person, friend: false as const, mutual, pending, owned: [] as string[] };
+  }
 
   return { person, friend: false as const, mutual, pending, owned: [] as string[] };
 }

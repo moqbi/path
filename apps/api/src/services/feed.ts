@@ -240,3 +240,29 @@ export async function momentsOf(
 
   return page(rows, options.limit, userId);
 }
+
+/**
+ * لحظات شخصٍ كما يقرؤها **المشرف** — بلا شرط الرؤية.
+ *
+ * وهذا بابٌ ثانٍ قصداً لا توسعةٌ لـ`visibleWhere()`: القاعدة ٢٣ تقول إنّ
+ * `visibleWhere()` البابُ الوحيد لقراءة اللحظات، وإضافةُ استثناءٍ داخلها
+ * تجعل كلّ استعلامٍ في التطبيق يحمل ثقباً يُفتح بحقلٍ في صفّ القارئ.
+ * فالثقب هنا وحده، ظاهرٌ باسمه، ولا يُنادى إلا من خلف `requireModerator`.
+ *
+ * ولا تفاعلَ فيه ولا تعليقَ يُكتب: المشرف يقرأ ليحكم، لا ليشارك.
+ */
+export async function moderatedMomentsOf(
+  viewerId: string,
+  authorId: string,
+  options: { cursor?: string; limit: number },
+) {
+  const rows = await prisma.moment.findMany({
+    where: { authorId },
+    select: shape,
+    orderBy: { createdAt: "desc" },
+    take: options.limit + 1,
+    ...cursorOf(options.cursor),
+  });
+
+  return page(rows, options.limit, viewerId);
+}

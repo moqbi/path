@@ -47,5 +47,30 @@ export const requireAdmin: MiddlewareHandler = async (c, next) => {
   await next();
 };
 
+/**
+ * الإشراف على المحتوى: المالك، أو مشرفٌ مُنح `canModerate`.
+ *
+ * صلاحيةٌ مستقلّة عن اللوحة قصداً: من يدير المتجر لا يحتاج أن يقرأ
+ * لحظات الناس، ومشرفٌ يملكها وآخر لا. والمالك يملكها بدوره.
+ *
+ * وتُقرأ من الصفّ لا من التوكن — للسبب نفسه في `requireAdmin`: من سُحبت
+ * صلاحيته يبقى بختمٍ صالح خمس عشرة دقيقة، وهذا الباب يفتح لحظات الناس.
+ */
+export const requireModerator: MiddlewareHandler = async (c, next) => {
+  const claims = c.get("user");
+  if (!claims) throw forbidden("هذا للمشرفين");
+  if (!(await isModerator(claims.sub))) throw forbidden("هذا للمشرفين");
+  await next();
+};
+
+/** هل يملك هذا الحساب صلاحية الإشراف؟ يُقرأ في الحرّاس وفي العرض معاً. */
+export async function isModerator(userId: string): Promise<boolean> {
+  const row = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, canModerate: true },
+  });
+  return row?.role === "ADMIN" || row?.canModerate === true;
+}
+
 /** المعرّف من التوكن — الدالّة الوحيدة التي يُقرأ منها. */
 export const me = (c: Context): string => c.get("user").sub;

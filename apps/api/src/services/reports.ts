@@ -1,6 +1,7 @@
 import { prisma } from "@athar/db";
 import { badRequest, notFound } from "../lib/errors";
 import { forgetWords } from "../lib/moderation";
+import { dropMedia } from "./media";
 
 /**
  * البلاغات: بابٌ للمستخدم، وبابٌ للمشرف.
@@ -162,4 +163,59 @@ export async function dropWord(id: string) {
   await prisma.bannedWord.deleteMany({ where: { id } });
   forgetWords();
   return { ok: true };
+}
+
+// ─────────────────────── الإشراف على المحتوى ───────────────────────
+
+/**
+ * حذفُ لحظةٍ بيد مشرف — لا بيد صاحبها.
+ *
+ * البلاغ يصل على منشور، فلا بدّ من بابٍ يفتحه المشرف ليتأكّد ثم يحذف.
+ * والحذف يذهب بتفاعلاته وتعليقاته بـ`Cascade` كما يذهب حين يحذفه صاحبه
+ * (القاعدة ٦١)، وبصورته معه (القاعدة ٨٤) — علاقةُ الصورة `SetNull`،
+ * فحذفُ اللحظة وحدها يترك بكسلاتها في السحابة بلا شيءٍ يدلّ عليها
+ * (القاعدة ١٠٤).
+ *
+ * وكلُّ حذفٍ يُختم في `ModerationLog`: سلطةٌ بلا أثرٍ مكتوب لا يُسأل
+ * عنها أحد، ومن مُنح الصلاحية يُعرف ما فعل بها.
+ */
+export async function removeMoment(adminId: string, momentId: string) {
+  const moment = await prisma.moment.findUnique({
+    where: { id: momentId },
+    select: { id: true, authorId: true, text: true, mediaId: true },
+  });
+  if (!moment) throw notFound("اللحظة غير موجودة");
+
+  await prisma.moderationLog.create({
+    data: {
+      adminId,
+      action: "MOMENT_REMOVED",
+      targetId: moment.id,
+      ownerId: moment.authorId,
+      snippet: moment.text?.slice(0, 200) ?? null,
+    },
+  });
+
+  await prisma.moment.delete({ where: { id: moment.id } });
+  if (moment.mediaId) await dropMedia([moment.mediaId]);
+
+  return { ok: "حُذفت اللحظة" };
+}
+
+/** سجلّ ما فعله المشرفون — يقرؤه المالك في اللوحة. */
+export async function logs(limit = 100) {
+  const rows = await prisma.moderationLog.findMany({
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    select: {
+      id: true,
+      action: true,
+      targetId: true,
+      snippet: true,
+      createdAt: true,
+      admin: { select: { id: true, name: true, memberNo: true } },
+      owner: { select: { id: true, name: true, memberNo: true } },
+    },
+  });
+  return { logs: rows };
 }

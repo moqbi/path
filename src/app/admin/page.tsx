@@ -239,6 +239,7 @@ export default async function AdminPage({
         isPlus: true,
         role: true,
         adminScope: true,
+        canModerate: true,
         tag: { select: { name: true, bg: true, fg: true } },
         tagId: true,
       },
@@ -466,6 +467,20 @@ export default async function AdminPage({
                   امنح
                 </button>
               </form>
+
+              {/*
+                وبابُ لحظاته لمن يملك صلاحية الإشراف وحده: البلاغ يصل على
+                منشور، فيُفتح الحساب ليُرى ما حوله ثمّ يُحكم. والصفحة نفسها
+                تفحص الصلاحية — إخفاءُ الرابط ليس حماية (القاعدة ١٣).
+              */}
+              {user.canModerate ? (
+                <Link
+                  href={`/admin/u/${person.id}`}
+                  className="block border-t border-line px-3 py-2.5 text-[12px] font-semibold text-clay-ink"
+                >
+                  اقرأ لحظاته
+                </Link>
+              ) : null}
 
               {owner ? <AdminEmail userId={person.id} current={person.email} /> : null}
             </div>
@@ -920,6 +935,10 @@ export default async function AdminPage({
               امنح حساباً صلاحية اللوحة: «المتجر» يفتح الأصناف والتصنيفات وحدها،
               و«اللوحة كاملة» يفتح كل شيء عدا هذه الصفحة — منحُ الصلاحيات لك وحدك.
               وما يُمنح يُسحب بضغطة.
+              <br />
+              و«إشراف» صلاحيةٌ مستقلّة: من يملكها يقرأ لحظات أيّ حساب بلا صداقة
+              ويحذف ما يخالف منها — للتصرّف في البلاغات. تُمنح لمشرفٍ وتُمنع عن
+              آخر، وكلُّ حذفٍ يُسجَّل باسم من حذفه.
             </p>
 
             <div className="mb-7 flex flex-col gap-2">
@@ -944,11 +963,26 @@ export default async function AdminPage({
                         {person.adminScope !== "NONE" ? (
                           <Chip>{person.adminScope === "ALL" ? "اللوحة" : "المتجر"}</Chip>
                         ) : null}
+                        {person.canModerate ? <Chip live>إشراف</Chip> : null}
                       </p>
                       <p dir="ltr" className="truncate text-right text-[11px] text-faint">
                         {person.email}
                       </p>
                     </div>
+                    {/*
+                      الإشراف صلاحيةٌ ثانية في النموذج نفسه: المالك يقرّر
+                      الدرجتين لشخصٍ واحد في نظرةٍ واحدة. ومستقلّةٌ عن
+                      المدى — مشرفٌ يملكها وآخر لا.
+                    */}
+                    <label className="flex shrink-0 items-center gap-1.5 text-[11.5px] font-semibold text-muted">
+                      <input
+                        type="checkbox"
+                        name="moderate"
+                        defaultChecked={person.canModerate}
+                        className="h-4 w-4 accent-[var(--color-clay)]"
+                      />
+                      إشراف
+                    </label>
                     <select
                       name="scope"
                       defaultValue={person.adminScope}

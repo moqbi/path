@@ -1,4 +1,4 @@
-import { View, FlatList, Pressable, ActivityIndicator } from "react-native";
+import { View, FlatList, Pressable, ActivityIndicator, Alert } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -71,11 +71,41 @@ export default function Profile() {
     mutationFn: () => api<{ id: string }>(`/v1/dm/with/${id}`, { method: "POST" }),
     onSuccess: (row) => router.push(`/dm/${row.id}` as never),
   });
+  /*
+    الإشراف: بطاقةُ من ليس في دائرتك تُفتح بلا لحظات (القاعدة ٢٠)، وهذا
+    يبقى كما هو لكلّ أحد — إلا لمن مُنح صلاحية الإشراف، فالبلاغ يصل على
+    منشورٍ ولا بدّ أن يُقرأ ليُحكم فيه.
+
+    وبابٌ ثانٍ ظاهرٌ لا توسعةٌ للأوّل: `/v1/moderation` من خلف
+    `requireModerator`، و`/v1/users/:id/moments` يبقى على شرط الرؤية
+    كما هو — فلا يحمل استعلامُ اللحظات العاديّ ثقباً.
+  */
+  const moderating = Boolean(me?.canModerate) && person.data?.friend === false;
+
   const moments = useQuery({
-    queryKey: keys.userMoments(id),
-    queryFn: () => api<{ moments: Moment[] }>(`/v1/users/${id}/moments?limit=20`),
+    queryKey: [...keys.userMoments(id), moderating],
+    queryFn: () =>
+      api<{ moments: Moment[] }>(
+        moderating
+          ? `/v1/moderation/users/${id}/moments?limit=20`
+          : `/v1/users/${id}/moments?limit=20`,
+      ),
     enabled: !!person.data,
   });
+
+  /* الحذف: سؤالٌ ثم حذف (القاعدة ٦١)، والسجلّ يُكتب في الخادم. */
+  const remove = useMutation({
+    mutationFn: (momentId: string) =>
+      api<{ ok: string }>(`/v1/moderation/moments/${momentId}`, { method: "DELETE" }),
+    onSuccess: () => void moments.refetch(),
+    onError: (error: Error) => Alert.alert("تعذّر الحذف", error.message),
+  });
+
+  const askRemove = (momentId: string) =>
+    Alert.alert("حذف اللحظة", "تُحذف بتفاعلاتها وتعليقاتها، ويُسجَّل الحذف باسمك.", [
+      { text: "تراجع", style: "cancel" },
+      { text: "احذف", style: "destructive", onPress: () => remove.mutate(momentId) },
+    ]);
 
   const who = person.data?.person;
 
@@ -93,7 +123,30 @@ export default function Profile() {
         <FlatList
           data={moments.data?.moments ?? []}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <MomentCard moment={item} viewerId={me?.id ?? ""} isPlus={me?.isPlus ?? false} />}
+          renderItem={({ item }) => (
+            <View>
+              <MomentCard moment={item} viewerId={me?.id ?? ""} isPlus={me?.isPlus ?? false} />
+              {moderating ? (
+                <Pressable
+                  onPress={() => askRemove(item.id)}
+                  style={{
+                    alignSelf: "flex-start",
+                    marginBottom: 12,
+                    paddingHorizontal: 12,
+                    height: 32,
+                    borderRadius: 10,
+                    borderWidth: 1,
+                    borderColor: colors.live,
+                    justifyContent: "center",
+                  }}
+                >
+                  <Text style={{ color: colors.live, fontSize: 12, fontWeight: "700" }}>
+                    احذف هذه اللحظة
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+          )}
           /*
             اللحظات تحتاج حشوة الخطّ الزمني نفسها: بدونها تلتصق البطاقات
             بالحافتين ويمشي عمود الصور خارج الخيط، فتُقرأ الصفحة مكسورة.
@@ -129,6 +182,26 @@ export default function Profile() {
                 <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 2 }}>
                   لك معانا {membership(who.createdAt)} · عضو {ar(who.memberNo)}
                 </Text>
+
+                {/*
+                  ويُقال للمشرف إنّه يقرأ بصلاحية: من يرى لحظات من ليس في
+                  دائرته بلا خبرٍ يظنّ الحدّ قد سقط عن الجميع.
+                */}
+                {moderating ? (
+                  <View
+                    style={{
+                      marginTop: 12,
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      borderRadius: 12,
+                      backgroundColor: colors.liveSoft,
+                    }}
+                  >
+                    <Text style={{ color: colors.live, fontSize: 11.5, fontWeight: "700", textAlign: "center" }}>
+                      تقرأ بصلاحية إشراف · كلّ حذفٍ يُسجَّل باسمك
+                    </Text>
+                  </View>
+                ) : null}
 
                 {/*
                   ثلاثة أفعال: إهداءٌ من مكانه، وآثارنا، ومحادثة. والحظر

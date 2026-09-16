@@ -846,10 +846,75 @@ export async function setAdminScope(userId: string, formData: FormData): Promise
   const owner = await requireOwner();
   const raw = String(formData.get("scope") ?? "NONE");
   const scope = raw === "ALL" || raw === "STORE" ? raw : "NONE";
+  /*
+    والإشراف على المحتوى صلاحيةٌ ثانية في النموذج نفسه، لا نموذجٌ ثانٍ:
+    المالك يقرّر الدرجتين لشخصٍ واحد في نظرةٍ واحدة. وهي **مستقلّة** عن
+    المدى: من يدير المتجر لا يحتاج أن يقرأ لحظات الناس.
+  */
+  const moderate = formData.get("moderate") === "on";
   // المالك لا يُنقص نفسه من حيث لا يدري.
   if (userId === owner.id) return;
-  await prisma.user.update({ where: { id: userId }, data: { adminScope: scope } });
+  await prisma.user.update({
+    where: { id: userId },
+    data: { adminScope: scope, canModerate: moderate },
+  });
   revalidatePath("/admin");
+}
+
+/**
+ * الإشراف: المالك، أو مشرفٌ مُنح `canModerate`.
+ *
+ * ويُقرأ من الصفّ في كل إجراء لا من الجلسة: هذا الباب يقرأ لحظات الناس
+ * ويحذفها، فلا يكفي أن تكون الصفحة مخفيّة (القاعدة ١٣).
+ */
+async function requireModerator() {
+  const user = await requireUser();
+  const row = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { role: true, canModerate: true },
+  });
+  if (row?.role !== "ADMIN" && !row?.canModerate) throw new Error("هذا للمشرفين");
+  return user;
+}
+
+/**
+ * حذفُ لحظةٍ بيد مشرف — لا بيد صاحبها.
+ *
+ * البلاغ يصل على منشور، فلا بدّ من بابٍ يدخله المشرف ليتأكّد ثم يحذف.
+ * وما يذهب معها يذهب: التفاعلات والتعليقات بـ`Cascade` (القاعدة ٦١)،
+ * وصورتها بيدها لأنّ علاقتها `SetNull` (القاعدة ٨٤).
+ *
+ * وكلُّ حذفٍ يُختم في `ModerationLog`: سلطةٌ بلا أثرٍ مكتوب لا يُسأل عنها
+ * أحد. والإجراء يردّ رسالةً ولا يرمي (القاعدة ٣١ و٩٠).
+ */
+export async function removeMomentAsAdmin(
+  momentId: string,
+  _prev: AdminResult,
+): Promise<AdminResult> {
+  const admin = await requireModerator();
+
+  const moment = await prisma.moment.findUnique({
+    where: { id: momentId },
+    select: { id: true, authorId: true, text: true, mediaId: true },
+  });
+  if (!moment) return { error: "اللحظة غير موجودة" };
+
+  await prisma.moderationLog.create({
+    data: {
+      adminId: admin.id,
+      action: "MOMENT_REMOVED",
+      targetId: moment.id,
+      ownerId: moment.authorId,
+      snippet: moment.text?.slice(0, 200) ?? null,
+    },
+  });
+
+  await prisma.moment.delete({ where: { id: moment.id } });
+  if (moment.mediaId) await dropMedia([moment.mediaId]);
+
+  revalidatePath(`/admin/u/${moment.authorId}`);
+  revalidatePath("/admin");
+  return { ok: "حُذفت اللحظة" };
 }
 
 // ───────────────────────────── الدعم الفني ─────────────────────────────

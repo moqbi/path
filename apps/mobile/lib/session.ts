@@ -32,6 +32,8 @@ export type Me = {
   bio: string | null;
   city: string | null;
   role: "USER" | "ADMIN";
+  /** صلاحية الإشراف على المحتوى: قراءةُ لحظات أيّ حساب بلا صداقة وحذفُها. */
+  canModerate: boolean;
   isPlus: boolean;
   coins: number;
   createdAt: string;

@@ -17,7 +17,7 @@ import { mountWs } from "./routes/v1/ws";
 import { sweepPending } from "./services/upload";
 import { sweepOld } from "./services/dm";
 import { coinRoutes, plusRoutes, storeRoutes } from "./routes/v1/store";
-import { moderationRoutes, reportRoutes } from "./routes/v1/reports";
+import { contentRoutes, moderationRoutes, reportRoutes } from "./routes/v1/reports";
 import { webhookRoutes } from "./routes/v1/webhooks";
 import { dripPlusCredit } from "./services/billing";
 import { storyRoutes } from "./routes/v1/stories";
@@ -100,6 +100,7 @@ app.route("/v1/reports", reportRoutes);
 app.route("/v1/webhooks", webhookRoutes);
 /** بابُ اللوحة — الدور يُفحص فيه لا في العرض. */
 app.route("/v1/admin", moderationRoutes);
+app.route("/v1/moderation", contentRoutes);
 
 mountWs(app, upgradeWebSocket);
 

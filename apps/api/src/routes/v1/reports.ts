@@ -2,7 +2,8 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { cuid } from "@athar/shared";
 import { zValidator } from "../../lib/validate";
-import { requireAuth, requireAdmin, me } from "../../middleware/auth";
+import { requireAuth, requireAdmin, requireModerator, me } from "../../middleware/auth";
+import * as feed from "../../services/feed";
 import * as reports from "../../services/reports";
 
 const reportInput = z.object({
@@ -65,3 +66,33 @@ export const moderationRoutes = new Hono()
   .delete("/banned-words/:id", zValidator("param", z.object({ id: cuid })), async (c) =>
     c.json(await reports.dropWord(c.req.valid("param").id)),
   );
+
+/**
+ * بابُ الإشراف على المحتوى — لمن مُنح `canModerate` وللمالك.
+ *
+ * منفصلٌ عن `moderationRoutes` قصداً: تلك للمالك وحدها (الكلمات
+ * الممنوعة وقرار البلاغ)، وهذه لمن يُنظر في البلاغات. وصلاحيةٌ واحدة
+ * تفتح البابين معاً تعطي مَن يُراجع البلاغاتِ مفاتيحَ اللوحة كلّها.
+ */
+export const contentRoutes = new Hono()
+  .use("*", requireAuth, requireModerator)
+
+  /* لحظات حسابٍ بعينه بلا صداقة — للتأكّد من بلاغ، لا للتصفّح. */
+  .get(
+    "/users/:id/moments",
+    zValidator("param", z.object({ id: cuid })),
+    zValidator("query", z.object({ cursor: cuid.optional(), limit: z.coerce.number().int().min(1).max(50).default(20) })),
+    async (c) => {
+      const { cursor, limit } = c.req.valid("query");
+      return c.json(
+        await feed.moderatedMomentsOf(me(c), c.req.valid("param").id, { cursor, limit }),
+      );
+    },
+  )
+
+  .delete("/moments/:id", zValidator("param", z.object({ id: cuid })), async (c) =>
+    c.json(await reports.removeMoment(me(c), c.req.valid("param").id)),
+  )
+
+  /* السجلّ: من حذف ماذا ومتى. */
+  .get("/logs", async (c) => c.json(await reports.logs()));

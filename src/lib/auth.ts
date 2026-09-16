@@ -112,6 +112,8 @@ export type SessionUser = {
   role: "USER" | "ADMIN";
   /// مدى صلاحية اللوحة الممنوح لغير المالك.
   adminScope: "NONE" | "STORE" | "ALL";
+  /// صلاحية الإشراف على المحتوى — مستقلّةٌ عن اللوحة، والمالك يملكها دائماً.
+  canModerate: boolean;
   avatarMediaId: string | null;
   coverMediaId: string | null;
   coverY: number;
@@ -150,6 +152,7 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
       createdAt: true,
       role: true,
       adminScope: true,
+      canModerate: true,
       avatarMediaId: true,
       coverMediaId: true,
       coverY: true,
@@ -183,6 +186,7 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
     createdAt: user.createdAt,
     role: user.role,
     adminScope: user.adminScope,
+    canModerate: user.role === "ADMIN" || user.canModerate,
     avatarMediaId: user.avatarMediaId,
     coverMediaId: user.coverMediaId,
     coverY: user.coverY,
