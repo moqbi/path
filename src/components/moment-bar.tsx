@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { addComment, deleteMoment, react, removeMomentAsAdmin } from "@/app/actions";
 import { LockIcon } from "@/components/icons";
-import { CUSTOM, facesFor, ReactionGlyph } from "@/components/reactions";
+import { CUSTOM, EmojiBoard, facesFor, ReactionGlyph } from "@/components/reactions";
 
 type Mine = { kind: string; emoji: string | null } | null;
 
@@ -212,24 +212,7 @@ export function MomentBar({
           </div>
 
           {board ? (
-            <div
-              className="no-bar grid grid-cols-8 gap-0.5 overflow-y-auto rounded-2xl border border-line bg-card p-1.5"
-              style={{ maxHeight: 168 }}
-            >
-              {CUSTOM.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={(event) => {
-                    stop(event);
-                    choose("CUSTOM", emoji);
-                  }}
-                  className="flex h-9 items-center justify-center rounded-lg text-[20px] leading-none hover:bg-chip"
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
+            <EmojiBoard onPick={(emoji) => choose("CUSTOM", emoji)} stop={stop} />
           ) : null}
 
           {author || moderate ? (

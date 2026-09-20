@@ -3,7 +3,7 @@ import { View, Pressable, ScrollView, ActivityIndicator } from "react-native";
 import { Text, TextInput } from "./type";
 import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ReactionGlyph, facesFor, CUSTOM } from "./reactions";
+import { ReactionGlyph, facesFor, CUSTOM, EMOJI_GROUPS } from "./reactions";
 import { LockIcon } from "./icons";
 import { ReportButton } from "./report-sheet";
 import { api } from "../lib/api";
@@ -202,17 +202,41 @@ export function MomentBar({
               */
               nestedScrollEnabled
               keyboardShouldPersistTaps="handled"
-              style={{ maxHeight: 168, borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
+              style={{ maxHeight: 208, borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
               contentContainerStyle={{ flexDirection: "row", flexWrap: "wrap", padding: 6 }}
             >
-              {CUSTOM.map((emoji) => (
-                <Pressable
-                  key={emoji}
-                  onPress={() => choose("CUSTOM", emoji)}
-                  style={{ width: "12.5%", height: 36, alignItems: "center", justifyContent: "center" }}
-                >
-                  <Text style={{ fontSize: 20 }}>{emoji}</Text>
-                </Pressable>
+              {EMOJI_GROUPS.map((group) => (
+                <View key={group.label} style={{ width: "100%" }}>
+                  {/*
+                    عنوانُ المجموعة فوق صفوفها: لوحةٌ من مئاتٍ بلا عناوين
+                    تُقرأ كومةً، ومن نزل فيها لا يعرف أين هو.
+                  */}
+                  <Text
+                    style={{
+                      width: "100%",
+                      color: colors.muted,
+                      fontSize: 10.5,
+                      fontWeight: "600",
+                      paddingHorizontal: 4,
+                      paddingVertical: 4,
+                      textAlign: "right",
+                    }}
+                  >
+                    {group.label}
+                  </Text>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                    {group.items.map((emoji) => (
+                      <Pressable
+                        // المفتاح يحمل اسم المجموعة: الوجه الواحد يجلس في مجموعتين.
+                        key={`${group.label}:${emoji}`}
+                        onPress={() => choose("CUSTOM", emoji)}
+                        style={{ width: "12.5%", height: 36, alignItems: "center", justifyContent: "center" }}
+                      >
+                        <Text style={{ fontSize: 20 }}>{emoji}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
               ))}
             </ScrollView>
           ) : null}

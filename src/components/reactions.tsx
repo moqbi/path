@@ -6,6 +6,7 @@ import { LockIcon } from "@/components/icons";
 import Link from "next/link";
 import { Avatar } from "@/components/ui";
 import { ar } from "@/lib/format";
+import { CUSTOM, EMOJI_GROUPS } from "@/lib/emoji";
 
 /**
  * ملفات التفاعلات في `public/reactions`. استبدال أيٍّ منها يغيّر شكله في
@@ -35,21 +36,12 @@ export function facesFor(momentKind?: string): readonly string[] {
 
 export const FACES = OPEN_FACES;
 /**
- * الإيموجي الحرّ لمشتركي آثار+.
+ * الإيموجي الحرّ لمشتركي آثار+ — قائمتُه في `lib/emoji.ts`.
  *
  * كان اثنين، والاشتراك يَعِد بـ«كل كيبوردك» — فصارت لوحةً تُفتح بضغطة:
  * الاثنان الأولان في الصفّ لأنهما الأكثر استعمالاً، والبقية خلف «＋».
  */
-export const CUSTOM = [
-  "🫶", "🔥", "🙏", "👏", "🥹", "☕️",
-  "❤️", "😍", "🤍", "✨", "🌙", "⭐️",
-  "😂", "🤣", "😅", "😭", "🥲", "🙃",
-  "😮", "🤯", "🫣", "👀", "🤔", "🤷",
-  "💪", "🤝", "🫂", "👑", "🎉", "🎁",
-  "🌹", "🌿", "🕊️", "☀️", "🌧️", "❄️",
-  "🍵", "🍰", "🍉", "🌶️", "🥇", "⚽️",
-  "📚", "🎧", "🎬", "✈️", "🚗", "🏠",
-];
+export { CUSTOM, EMOJI_GROUPS } from "@/lib/emoji";
 
 type Mine = { kind: string; emoji: string | null } | null;
 
@@ -242,24 +234,7 @@ export function Reactions({
           </div>
 
           {board ? (
-            <div
-              className="no-bar mt-1 grid grid-cols-6 gap-0.5 overflow-y-auto border-t border-line pt-1.5"
-              style={{ maxHeight: 172, width: 246 }}
-            >
-              {CUSTOM.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={(e) => {
-                    stop(e);
-                    choose("CUSTOM", emoji);
-                  }}
-                  className="flex h-10 items-center justify-center rounded-lg text-[21px] leading-none hover:bg-chip"
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
+            <EmojiBoard onPick={(emoji) => choose("CUSTOM", emoji)} stop={stop} />
           ) : null}
 
           {/*
@@ -377,6 +352,55 @@ export function Reactors({
           +{ar(reactions.length - shown.length)}
         </span>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * لوحة الإيموجي: مجموعاتٌ لها عناوين تُمرَّر كما يُمرَّر كيبورد النظام.
+ *
+ * وعنوانُ المجموعة `sticky` فوق صفوفها: لوحةٌ من مئاتٍ بلا عناوين
+ * تُقرأ كومةً، ومن نزل فيها لا يعرف أين هو. والمفتاح يحمل اسم
+ * المجموعة معه — الوجه الواحد يجلس في مجموعتين.
+ */
+export function EmojiBoard({
+  onPick,
+  stop,
+}: {
+  onPick: (emoji: string) => void;
+  /** يوقف صعود الحدث إلى الرابط الذي تحت الشريط (القاعدة ٢٨). */
+  stop: (event: React.MouseEvent) => void;
+}) {
+  return (
+    <div
+      className="no-bar mt-1 overflow-y-auto border-t border-line pt-1.5"
+      style={{ maxHeight: 208, width: 246 }}
+    >
+      {EMOJI_GROUPS.map((group) => (
+        <div key={group.label}>
+          <p
+            className="sticky top-0 z-10 px-1 py-1 text-[10.5px] font-semibold"
+            style={{ background: "var(--color-card)", color: "var(--color-muted)" }}
+          >
+            {group.label}
+          </p>
+          <div className="grid grid-cols-6 gap-0.5">
+            {group.items.map((emoji) => (
+              <button
+                key={`${group.label}:${emoji}`}
+                type="button"
+                onClick={(event) => {
+                  stop(event);
+                  onPick(emoji);
+                }}
+                className="flex h-10 items-center justify-center rounded-lg text-[21px] leading-none hover:bg-chip"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
