@@ -1,7 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db";
-import { cloudReady, deleteObjects, putObject } from "@/lib/storage";
+import { cloudReady, deleteObjects, getObject, putObject } from "@/lib/storage";
 
 /** أقصى حجم مقبول بعد تصغير المتصفح — حارس ضد رفع ملف ضخم يدوياً. */
 const MAX_BYTES = 1_500_000;
@@ -184,6 +184,47 @@ export async function dropMedia(ids: string[]): Promise<void> {
   });
   await prisma.media.deleteMany({ where: { id: { in: rows.map((row) => row.id) } } });
   await deleteObjects(rows.map((row) => row.key).filter((key): key is string => !!key));
+}
+
+/**
+ * ينسخ ملفاً إلى صاحبٍ آخر.
+ *
+ * ولماذا نسخةٌ لا إشارةٌ إلى الأصل: `User.coverMediaId` فريد
+ * (علاقةٌ واحدٌ لواحد)، فلو لبس اثنان غلافَ الثيم نفسه لاصطدما على
+ * القيد — ولانتُزع الملفُّ من صنف المتجر نفسه. والنسخة تجعل غلافه
+ * ملكَه: يغيّره أو يحذفه بلا أن يمسّ الصنف في المتجر.
+ *
+ * والبايتات تُنسخ حيث هي: صفٌّ جديد في القاعدة إن كانت فيها، وكائنٌ
+ * جديد في الدلو إن كانت في السحابة.
+ */
+export async function copyMedia(
+  sourceId: string,
+  toOwnerId: string,
+): Promise<{ id: string } | null> {
+  const source = await prisma.media.findUnique({
+    where: { id: sourceId },
+    select: { mime: true, width: true, height: true, key: true, bytes: true },
+  });
+  if (!source) return null;
+
+  if (source.key) {
+    const answer = await getObject(source.key);
+    if (!answer.ok) return null;
+    const bytes = new Uint8Array(await answer.arrayBuffer());
+    return write(toOwnerId, source.mime, bytes, source.width, source.height);
+  }
+
+  if (!source.bytes) return null;
+  return prisma.media.create({
+    data: {
+      ownerId: toOwnerId,
+      mime: source.mime,
+      bytes: source.bytes,
+      width: source.width,
+      height: source.height,
+    },
+    select: { id: true },
+  });
 }
 
 export const mediaUrl = (id: string | null | undefined) => (id ? `/api/media/${id}` : null);

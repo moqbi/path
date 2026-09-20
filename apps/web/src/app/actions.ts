@@ -656,6 +656,42 @@ export async function setItemImage(itemId: string, formData: FormData): Promise<
   revalidatePath("/");
 }
 
+/**
+ * غلافُ الثيم في اللوحة — صورةٌ ثانية غير صورة الصنف.
+ *
+ * الثيم يملأ خلفية التطبيق، والغلاف يجلس في رأس الشاشة: صورةٌ واحدة
+ * لا تصلح للاثنين، فالأولى تُقصّ في شريطٍ عريض والثانية تُمدَّد على
+ * شاشةٍ كاملة.
+ */
+export async function setItemCover(itemId: string, formData: FormData): Promise<void> {
+  const admin = await requireAdmin("store");
+  const { file, width, height } = picture(formData);
+  const media = await storeUpload(admin.id, file, width, height);
+
+  const before = await prisma.storeItem.findUnique({
+    where: { id: itemId },
+    select: { coverMediaId: true },
+  });
+  await prisma.storeItem.update({ where: { id: itemId }, data: { coverMediaId: media.id } });
+  // والسابق يذهب ببكسلاته: ما لا يشير إليه شيء لا يبقى في السحابة.
+  if (before?.coverMediaId) await dropMedia([before.coverMediaId]);
+
+  revalidatePath("/admin");
+  revalidatePath("/store");
+}
+
+export async function clearItemCover(itemId: string): Promise<void> {
+  await requireAdmin("store");
+  const before = await prisma.storeItem.findUnique({
+    where: { id: itemId },
+    select: { coverMediaId: true },
+  });
+  await prisma.storeItem.update({ where: { id: itemId }, data: { coverMediaId: null } });
+  if (before?.coverMediaId) await dropMedia([before.coverMediaId]);
+  revalidatePath("/admin");
+  revalidatePath("/store");
+}
+
 export async function clearItemImage(itemId: string): Promise<void> {
   await requireAdmin("store");
   await prisma.storeItem.update({ where: { id: itemId }, data: { mediaId: null } });

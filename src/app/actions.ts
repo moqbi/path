@@ -17,7 +17,7 @@ import { canInteract, canSeeMoment } from "@/lib/visibility";
 import { reverseGeocode } from "@/lib/places";
 import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
 import { deliverTo, openConversation, VOICE_SECONDS } from "@/lib/dm";
-import { dropMedia, migrateToCloud, storeClip, storeUpload } from "@/lib/media";
+import { copyMedia, dropMedia, migrateToCloud, storeClip, storeUpload } from "@/lib/media";
 import { cloudReady, probeBucket } from "@/lib/storage";
 import { isSupportedMusicUrl, resolveTrack } from "@/lib/music-link";
 import { guard } from "@/lib/moderation";
@@ -1566,8 +1566,45 @@ export async function buyItem(itemId: string): Promise<void> {
     prisma.purchase.create({ data: { userId: user.id, itemId, paidCoins: price } }),
   ]);
 
+  await wearItemCover(item.coverMediaId, user.id);
+
   revalidatePath("/store");
   revalidatePath("/me");
+  revalidatePath("/");
+}
+
+/**
+ * غلافُ الثيم يُلبَس عند شرائه.
+ *
+ * الثيم مزاجٌ كامل — ألوانُه وصورتُه — وغلافٌ لا يشبهه يكسره. فمن
+ * اشتراه وجد غلافه معه، **وله أن يغيّره بعدها**: نسخةٌ يملكها، لا
+ * قفلٌ عليه.
+ *
+ * والنسخة لأنّ `User.coverMediaId` فريد: إشارةٌ إلى ملفّ الصنف نفسه
+ * تصطدم عند ثاني مشترٍ وتنتزعه من المتجر (`copyMedia`).
+ *
+ * وخارج المعاملة عمداً: نسخُ البايتات قد يمرّ بالسحابة، وشراءٌ يُلغى
+ * لأنّ صورةً لم تُنسخ خسارةٌ لا مقابل لها — فالفشل يُبتلع ويبقى
+ * الصنف مملوكاً.
+ */
+async function wearItemCover(coverMediaId: string | null, userId: string): Promise<void> {
+  if (!coverMediaId) return;
+  try {
+    const copy = await copyMedia(coverMediaId, userId);
+    if (!copy) return;
+    const old = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { coverMediaId: true },
+    });
+    await prisma.user.update({
+      where: { id: userId },
+      data: { coverMediaId: copy.id, coverY: 50 },
+    });
+    // غلافُه السابق يذهب هو وبكسلاته: صفٌّ لا يشير إليه شيء (القاعدة ١٠٤).
+    if (old?.coverMediaId) await dropMedia([old.coverMediaId]);
+  } catch {
+    // غلافٌ لم يُلبَس لا يُبطل شراءً تمّ.
+  }
 }
 
 /**
@@ -1712,6 +1749,42 @@ export async function setItemImage(itemId: string, formData: FormData): Promise<
   revalidatePath("/admin");
   revalidatePath("/store");
   revalidatePath("/");
+}
+
+/**
+ * غلافُ الثيم في اللوحة — صورةٌ ثانية غير صورة الصنف.
+ *
+ * الثيم يملأ خلفية التطبيق، والغلاف يجلس في رأس الشاشة: صورةٌ واحدة
+ * لا تصلح للاثنين، فالأولى تُقصّ في شريطٍ عريض والثانية تُمدَّد على
+ * شاشةٍ كاملة.
+ */
+export async function setItemCover(itemId: string, formData: FormData): Promise<void> {
+  const admin = await requireAdmin("store");
+  const { file, width, height } = picture(formData);
+  const media = await storeUpload(admin.id, file, width, height);
+
+  const before = await prisma.storeItem.findUnique({
+    where: { id: itemId },
+    select: { coverMediaId: true },
+  });
+  await prisma.storeItem.update({ where: { id: itemId }, data: { coverMediaId: media.id } });
+  // والسابق يذهب ببكسلاته: ما لا يشير إليه شيء لا يبقى في السحابة.
+  if (before?.coverMediaId) await dropMedia([before.coverMediaId]);
+
+  revalidatePath("/admin");
+  revalidatePath("/store");
+}
+
+export async function clearItemCover(itemId: string): Promise<void> {
+  await requireAdmin("store");
+  const before = await prisma.storeItem.findUnique({
+    where: { id: itemId },
+    select: { coverMediaId: true },
+  });
+  await prisma.storeItem.update({ where: { id: itemId }, data: { coverMediaId: null } });
+  if (before?.coverMediaId) await dropMedia([before.coverMediaId]);
+  revalidatePath("/admin");
+  revalidatePath("/store");
 }
 
 export async function clearItemImage(itemId: string): Promise<void> {

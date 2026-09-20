@@ -35,6 +35,7 @@ import { Suspend } from "./suspend";
 import { PlusGrant } from "./plus";
 import { SITE_TEXT, siteText, siteImage, type SiteKey } from "@/lib/site";
 import { ItemImage } from "./item-image";
+import { ItemCover } from "./item-cover";
 import { coinText, ar, relative, riyals } from "@/lib/format";
 import { parsePalette } from "@/lib/theme";
 
@@ -1081,6 +1082,15 @@ export default async function AdminPage({
                             والإطار حلقةً حولها. التميمة والإطار يُحفظان PNG بشفافيتهما.
                             بلا صورة يُرسم التدرّج.
                           </p>
+
+                          {/*
+                            وللثيم غلافٌ ثانٍ — و«الخلفية» نوعُه القديم في
+                            القاعدة، فالصنفان واحدٌ في المتجر.
+                            والإطار والتميمة لا خلفية لهما تُلبَس.
+                          */}
+                          {item.kind === "THEME" || item.kind === "BACKGROUND" ? (
+                            <ItemCover itemId={item.id} mediaId={item.coverMediaId} />
+                          ) : null}
                         </div>
 
                         <Saver

@@ -3,6 +3,7 @@ import { prisma } from "@athar/db";
 import { PLUS_COINS } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { circleIds } from "./visibility";
+import { wearItemCover } from "./media";
 
 /**
  * المتجر كما يُعرض: تصنيفاتٌ ثم صفوف.
@@ -122,6 +123,9 @@ export async function buy(userId: string, itemId: string) {
     prisma.user.update({ where: { id: userId }, data: { coins: { decrement: price } } }),
     prisma.purchase.create({ data: { userId, itemId, paidCoins: price } }),
   ]);
+
+  // وغلافُ الثيم يُلبَس معه — خارج المعاملة: النسخ قد يمرّ بالسحابة.
+  await wearItemCover(item.coverMediaId, userId);
 
   return { ok: `اشتريت ${item.name}` };
 }

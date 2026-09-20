@@ -438,6 +438,10 @@ model StoreItem {
   /// صورة الصنف — الثيم خلفيةٌ للتطبيق، والتميمة شعارٌ تحت صورة العرض.
   mediaId         String?       @unique
   media           Media?        @relation("StoreItemMedia", fields: [mediaId], references: [id], onDelete: SetNull)
+  /// غلافٌ يأتي مع الثيم: من اشتراه لبس غلافَه، وله أن يغيّره بعدها.
+  /// صورتان لا واحدة — الثيم يملأ الخلفية، والغلاف يجلس في رأس الشاشة.
+  coverMediaId    String?       @unique
+  coverMedia      Media?        @relation("StoreItemCover", fields: [coverMediaId], references: [id], onDelete: SetNull)
   /// ألوان الثيم كاملةً (JSON): الأرضية والبطاقة والحبر واللمسة والشريط.
   /// الثيم ليس خلفيةً فقط — التطبيق كلّه يلبس ألوانه.
   palette         String?
@@ -604,6 +608,7 @@ model Media {
   messageOf Message?   @relation("MessageMedia")
   moment    Moment?    @relation("MomentMedia")
   storeItem StoreItem? @relation("StoreItemMedia")
+  storeCover StoreItem? @relation("StoreItemCover")
 
   /// صورةُ موقعٍ عامّة إن كانت — الرأس مثلاً.
   siteImage SiteImage? @relation("SiteImage")
