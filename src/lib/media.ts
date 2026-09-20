@@ -7,7 +7,9 @@ import { cloudReady, deleteObjects, putObject } from "@/lib/storage";
 const MAX_BYTES = 1_500_000;
 /** المتحرّكة تُرفع بملفها بلا تصغير، فحدُّها أعلى — ونفس ما يُقال للمستخدم. */
 const MAX_ANIMATED_BYTES = 3_000_000;
-const MAX_ANIMATED_SIDE = 1024;
+/** ٣٢٠ لا ١٠٢٤: تُرفع بملفها بلا تصغير، وأكبرُ ما تُعرض فيه ١٠٤ بكسلاً. */
+const MAX_ANIMATED_SIDE = 320;
+const MIN_ANIMATED_SIDE = 120;
 /** الصوت مسجَّلٌ في المتصفح بجودةٍ منخفضة: دقيقتان فيه أقلّ من ميغا. */
 const MAX_AUDIO_BYTES = 2_000_000;
 /** الفيديو عشرون ثانية بمعدّل بتّ محدود — وما زاد يُردّ برسالة لا بصمت. */
@@ -115,7 +117,10 @@ async function keep(
   const cap = moving ? MAX_ANIMATED_BYTES : MAX_BYTES;
   if (bytes.length > cap) throw new Error("الصورة كبيرة — صغّرها وأعد المحاولة");
   if (moving && Math.max(width, height) > MAX_ANIMATED_SIDE) {
-    throw new Error("مقاس الصورة المتحركة أكبر من ١٠٢٤×١٠٢٤");
+    throw new Error("مقاس الصورة المتحركة أكبر من ٣٢٠×٣٢٠");
+  }
+  if (moving && Math.min(width, height) < MIN_ANIMATED_SIDE) {
+    throw new Error("مقاس الصورة المتحركة أقلّ من ١٢٠×١٢٠");
   }
 
   return write(ownerId, mime, bytes, Math.max(1, Math.round(width)), Math.max(1, Math.round(height)));

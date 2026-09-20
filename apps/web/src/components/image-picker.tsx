@@ -46,8 +46,13 @@ export type Picked = { file: Blob; width: number; height: number };
 export const ANIMATED = {
   maxBytes: 3_000_000,
   minSide: 120,
-  maxSide: 1024,
-  rule: "GIF أو WebP متحركة · من ١٢٠×١٢٠ إلى ١٠٢٤×١٠٢٤ · حتى ٣ ميغابايت",
+  /*
+    ٣٢٠ لا ١٠٢٤: المتحركة تُرفع بملفها بلا تصغير، فمقاسُها هو ما يُفكّ
+    في الذاكرة عند كل عرض — وأكبرُ ما تُعرض فيه ١٠٤ بكسلاً. والحجم كما
+    هو (٣ ميغا)، فالمقاس وحده تغيّر.
+  */
+  maxSide: 320,
+  rule: "GIF أو WebP متحركة · من ١٢٠×١٢٠ إلى ٣٢٠×٣٢٠ · حتى ٣ ميغابايت",
 };
 
 /**
@@ -86,7 +91,7 @@ async function asIs(file: File): Promise<Picked> {
   const { width, height } = await measure(file);
   const side = Math.max(width, height);
   if (side > ANIMATED.maxSide) {
-    throw new Error(`مقاس الصورة ${width}×${height} — الحدّ ١٠٢٤×١٠٢٤.`);
+    throw new Error(`مقاس الصورة ${width}×${height} — الحدّ ٣٢٠×٣٢٠.`);
   }
   if (Math.min(width, height) < ANIMATED.minSide) {
     throw new Error(`مقاس الصورة ${width}×${height} — الأقل ١٢٠×١٢٠.`);

@@ -1,6 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "@athar/db";
-import { LIMITS, MIME, STORY_SECONDS, VOICE_SECONDS, type PresignInput } from "@athar/shared";
+import {
+  ANIMATED_SIDE,
+  LIMITS,
+  MIME,
+  STORY_SECONDS,
+  VOICE_SECONDS,
+  type PresignInput,
+} from "@athar/shared";
 import { cloudReady, deleteObjects, getObject, headObject, presignUrl, putObject } from "@athar/storage";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { measure, probeClip, processImage } from "../lib/process";
@@ -251,11 +258,27 @@ async function shape(
   }
 
   if (isImage) {
+    let size: { width: number; height: number };
     try {
-      return { mime, ...(await measure(bytes)) };
+      size = await measure(bytes);
     } catch {
       throw await reject(mediaId, key, "تعذّرت قراءة الصورة");
     }
+
+    /*
+      والمقاس يُفحص هنا لا في الشاشة وحدها: المتحركة تُرفع بملفها بلا
+      تصغير، فما يُقبل هو ما يُفكّ في ذاكرة كلّ جهازٍ يعرضه. ولم يكن
+      على الخادم فحصٌ أصلاً — الشاشة وحدها كانت تمنع.
+    */
+    const side = Math.max(size.width, size.height);
+    if (side > ANIMATED_SIDE.max) {
+      throw await reject(mediaId, key, `مقاس الصورة المتحركة أكبر من ٣٢٠×٣٢٠`);
+    }
+    if (Math.min(size.width, size.height) < ANIMATED_SIDE.min) {
+      throw await reject(mediaId, key, `مقاس الصورة المتحركة أقلّ من ١٢٠×١٢٠`);
+    }
+
+    return { mime, ...size };
   }
 
   const clip = await probeClip(bytes, EXT[mime] ?? "bin").catch(() => null);
