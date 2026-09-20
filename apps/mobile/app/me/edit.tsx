@@ -15,6 +15,8 @@ import { uploadFile } from "../../lib/upload";
 import { keys } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { brandGradient, colors } from "../../theme/tokens";
+import { BIO_MAX } from "@athar/shared";
+import { ar } from "../../lib/format";
 
 const COVER_H = 132;
 
@@ -157,14 +159,18 @@ export default function EditProfile() {
               </Text>
             </Field>
 
-            <Field label="نبذة">
+            <Field
+              label="نبذة"
+              hint={`${ar(BIO_MAX - bio.length)} `}
+              warn={bio.length >= BIO_MAX}
+            >
               <TextInput
                 value={bio}
                 onChangeText={setBio}
-                maxLength={160}
+                maxLength={BIO_MAX}
                 multiline
                 numberOfLines={3}
-                placeholder="سطران عنك…"
+                placeholder="سطرٌ عنك…"
                 placeholderTextColor={colors.faint}
                 style={[INPUT, { height: 92, paddingTop: 12, textAlignVertical: "top", lineHeight: 22 }]}
               />
@@ -220,12 +226,30 @@ const INPUT = {
   textAlign: "right",
 } as const;
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+  hint,
+  warn,
+}: {
+  label: string;
+  children: React.ReactNode;
+  /** عدّادٌ في طرف السطر — ما بقي من الحروف. */
+  hint?: string;
+  warn?: boolean;
+}) {
   return (
     <View style={{ gap: 6 }}>
-      <Text style={{ color: colors.ink2, fontSize: 12.5, fontWeight: "600", textAlign: "right" }}>
-        {label}
-      </Text>
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <Text
+          style={{ flex: 1, minWidth: 0, color: colors.ink2, fontSize: 12.5, fontWeight: "600", textAlign: "right" }}
+        >
+          {label}
+        </Text>
+        {hint ? (
+          <Text style={{ color: warn ? colors.live : colors.muted, fontSize: 11 }}>{hint}</Text>
+        ) : null}
+      </View>
       {children}
     </View>
   );

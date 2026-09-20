@@ -186,6 +186,9 @@ async function attachViewers(momentId: string, viewers: string[]): Promise<void>
 /** حدّ نصّ اللحظة — نفس حدّ الشاشة، فلا يقصّ الخادم ما سمحت به. */
 const TEXT_MAX = 250;
 
+/** النبذة سطرٌ يُقرأ تحت الاسم لا فقرة — والرقم نفسه في الشاشة. */
+const BIO_MAX = 100;
+
 /**
  * موقعٌ اختياريٌّ على لحظةٍ ليست لحظة مكان.
  *
@@ -1202,7 +1205,7 @@ export async function saveProfile(
     data: {
       name,
       handle: rawHandle || null,
-      bio: String(formData.get("bio") ?? "").trim().slice(0, 160) || null,
+      bio: String(formData.get("bio") ?? "").trim().slice(0, BIO_MAX) || null,
       city: String(formData.get("city") ?? "").trim().slice(0, 40) || null,
     },
   });

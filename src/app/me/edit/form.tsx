@@ -1,7 +1,14 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { saveProfile } from "@/app/actions";
+import { ar } from "@/lib/format";
+
+/**
+ * النبذة سطرٌ يُقرأ تحت الاسم لا فقرة. والرقم مكتوبٌ هنا وفي
+ * `saveProfile` معاً — كحدّ اللحظة — فلا يقصّ الخادم ما سمحت به الشاشة.
+ */
+const BIO_MAX = 100;
 
 const FIELD =
   "w-full rounded-xl border border-line bg-card px-4 text-[13.5px] text-ink outline-none focus:border-clay";
@@ -21,6 +28,7 @@ export function EditProfileForm({
   onSaved?: () => void;
 }) {
   const [state, action, pending] = useActionState(saveProfile, null);
+  const [bioText, setBioText] = useState(bio ?? "");
 
   useEffect(() => {
     if (state?.ok) onSaved?.();
@@ -49,13 +57,22 @@ export function EditProfileForm({
         حروف إنجليزية وأرقام و_ ، من ٣ إلى ٢٠ حرفاً. يظهر تحت اسمك.
       </p>
 
-      <label className="text-[12.5px] font-semibold text-ink-2">نبذة</label>
+      <label className="flex items-center justify-between text-[12.5px] font-semibold text-ink-2">
+        نبذة
+        <span
+          className="text-[11px] font-normal"
+          style={{ color: bioText.length >= BIO_MAX ? "var(--color-live)" : "var(--color-muted)" }}
+        >
+          {ar(BIO_MAX - bioText.length)}
+        </span>
+      </label>
       <textarea
         name="bio"
-        maxLength={160}
+        maxLength={BIO_MAX}
         rows={3}
-        defaultValue={bio ?? ""}
-        placeholder="سطران عنك…"
+        value={bioText}
+        onChange={(event) => setBioText(event.target.value.slice(0, BIO_MAX))}
+        placeholder="سطرٌ عنك…"
         className={`${FIELD} py-3 leading-relaxed`}
       />
 

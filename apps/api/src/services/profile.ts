@@ -1,4 +1,5 @@
 import { prisma } from "@athar/db";
+import { BIO_MAX } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { dropMedia } from "./media";
 
@@ -96,7 +97,7 @@ export async function saveProfile(
     data: {
       name,
       handle: handle || null,
-      bio: (input.bio ?? "").trim().slice(0, 160) || null,
+      bio: (input.bio ?? "").trim().slice(0, BIO_MAX) || null,
       city: (input.city ?? "").trim().slice(0, 40) || null,
     },
     select: { id: true, name: true, handle: true, bio: true, city: true },
