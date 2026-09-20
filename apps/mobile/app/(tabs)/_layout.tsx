@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { View, Pressable, Animated, Easing } from "react-native";
 import { Text } from "../../components/type";
-import { Tabs, useGlobalSearchParams, useRouter } from "expo-router";
+import { Tabs, useGlobalSearchParams, usePathname, useRouter } from "expo-router";
 import {
   BellIcon,
   CircleIcon,
@@ -54,6 +54,15 @@ export default function TabsLayout() {
   const { data } = useNoteCount();
   const unseen = data?.unseen ?? 0;
   const router = useRouter();
+
+  /*
+    ملفّ الصديق شاشةٌ داخل المكدّس السفلي لا صفحةٌ فوقه (القاعدة ٤٢):
+    كان في `app/u/[id].tsx` خارج المجموعة فيختفي الشريط تحته، وصار
+    `(tabs)/u/[id].tsx` بـ`href: null` — لا تبويبَ له، والشريط باقٍ.
+    وتبويب «الأصدقاء» يبقى مضيئاً تحته كما في الويب: من هناك يُفتح.
+  */
+  const path = usePathname();
+  const onFriend = path.startsWith("/u/");
 
   const { view } = useGlobalSearchParams<{ view?: string }>();
   const lens = LENSES.find((item) => item.key === (view ?? "")) ?? LENSES[0];
@@ -152,7 +161,14 @@ export default function TabsLayout() {
           name="circle"
           options={{
             title: "الأصدقاء",
-            tabBarIcon: ({ color }) => <CircleIcon size={19} color={color} />,
+            tabBarIcon: ({ color }) => (
+              <CircleIcon size={19} color={onFriend ? colors.clayInk : color} />
+            ),
+            tabBarLabelStyle: {
+              fontSize: 9.5,
+              fontFamily: familyOf("body", 500),
+              color: onFriend ? colors.clayInk : undefined,
+            },
           }}
         />
         <Tabs.Screen
@@ -181,6 +197,8 @@ export default function TabsLayout() {
             tabBarIcon: ({ color }) => <UserIcon size={19} color={color} />,
           }}
         />
+        {/* ملفّ الصديق: شاشةٌ بلا تبويبٍ يخصّها، فيبقى الشريط تحتها. */}
+        <Tabs.Screen name="u/[id]" options={{ href: null }} />
       </Tabs>
 
       {/* الحجاب: ضغطةٌ عليه تُغلق البابين. */}

@@ -1,21 +1,21 @@
 import { View, FlatList, Pressable, ActivityIndicator } from "react-native";
-import { Text } from "../../components/type";
+import { Text } from "../../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { AvatarMenu } from "../../components/avatar-menu";
-import { CoverLayer } from "../../components/cover";
-import { MediaImage } from "../../components/media-image";
-import { MomentCard } from "../../components/moment-card";
-import { ScreenHeader } from "../../components/screen-header";
-import { GiftButton } from "../../components/gift-sheet";
-import { MessageIcon, StarIcon, WithIcon } from "../../components/icons";
-import { api } from "../../lib/api";
-import { keys, type Moment } from "../../lib/queries";
-import { ar, membership } from "../../lib/format";
-import { useSession } from "../../lib/session";
-import { NameTag } from "../../components/name-tag";
-import { colors } from "../../theme/tokens";
+import { AvatarMenu } from "../../../components/avatar-menu";
+import { CoverLayer } from "../../../components/cover";
+import { MediaImage } from "../../../components/media-image";
+import { MomentCard } from "../../../components/moment-card";
+import { ScreenHeader } from "../../../components/screen-header";
+import { GiftButton } from "../../../components/gift-sheet";
+import { MessageIcon, StarIcon, WithIcon } from "../../../components/icons";
+import { api } from "../../../lib/api";
+import { keys, type Moment } from "../../../lib/queries";
+import { ar, membership } from "../../../lib/format";
+import { useSession } from "../../../lib/session";
+import { NameTag } from "../../../components/name-tag";
+import { colors } from "../../../theme/tokens";
 
 type Person = {
   id: string;
@@ -97,7 +97,7 @@ export default function Profile() {
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
-      <ScreenHeader title={who?.name ?? "ملف"} back="/circle" />
+      <ScreenHeader title={who?.name ?? "ملف"} />
 
       {person.isLoading ? (
         <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
