@@ -1,4 +1,4 @@
-import { View, Pressable, Image, Linking } from "react-native";
+import { View, Pressable, Image } from "react-native";
 import { Text } from "./type";
 import { useRouter } from "expo-router";
 import { Avatar, firstColor } from "./avatar";
@@ -7,6 +7,7 @@ import { PinIcon, PlayIcon, WithIcon, SunIcon, MoonIcon, PlaneIcon, GiftIcon, Sp
 import { MomentBar } from "./moment-bar";
 import { Bubble, CommentList, Reactors } from "./reactors";
 import { colors } from "../theme/tokens";
+import { openIn } from "../lib/browse";
 import { ar, relative, timeOfDay } from "../lib/format";
 import type { Moment } from "../lib/queries";
 
@@ -174,7 +175,7 @@ export function MomentCard({
           <Pressable
             accessibilityLabel="استمع"
             disabled={!moment.musicUrl}
-            onPress={() => moment.musicUrl && void Linking.openURL(moment.musicUrl)}
+            onPress={() => moment.musicUrl && void openIn(moment.musicUrl)}
             style={{ width: 44, height: 44, borderRadius: 12, overflow: "hidden", backgroundColor: colors.chip }}
           >
             <Image source={{ uri: moment.musicThumb }} style={{ width: 44, height: 44 }} resizeMode="cover" />
