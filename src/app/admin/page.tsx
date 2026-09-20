@@ -24,6 +24,7 @@ import { itemPaint, ScreenHeader, TagPill } from "@/components/ui";
 import { Saver } from "./saver";
 import { AdminEmail } from "./email";
 import { Suspend } from "./suspend";
+import { PlusGrant } from "./plus";
 import { ItemImage } from "./item-image";
 import { coinText, ar, relative } from "@/lib/format";
 import { parsePalette } from "@/lib/theme";
@@ -206,10 +207,14 @@ function search(q?: string) {
     return { memberNo: number };
   }
 
+  // والمعرّف معهما: هو ما يُقال بين الناس حين لا يُحفظ الرقم.
+  const handle = text.replace(/^@/, "").toLowerCase();
+
   return {
     OR: [
       { name: { contains: text, mode: "insensitive" as const } },
       { email: { contains: text, mode: "insensitive" as const } },
+      { handle: { equals: handle } },
     ],
   };
 }
@@ -273,6 +278,7 @@ export default async function AdminPage({
         name: true,
         email: true,
         isPlus: true,
+        plusUntil: true,
         role: true,
         adminScope: true,
         canModerate: true,
@@ -488,7 +494,7 @@ export default async function AdminPage({
           <input
             name="q"
             defaultValue={q ?? ""}
-            placeholder="رقم العضوية، أو اسم، أو بريد"
+            placeholder="رقم العضوية، أو المعرّف، أو اسم، أو بريد"
             className="h-11 grow rounded-xl border border-line bg-paper px-3 text-[13px] text-ink outline-none placeholder:text-faint"
           />
           <button
@@ -589,6 +595,9 @@ export default async function AdminPage({
                   reason={person.suspendedReason}
                 />
               ) : null}
+
+              {/* ومنحُ آثار+ حيث يُقرأ الحساب لا في شاشةٍ تعرض الناس كلَّهم. */}
+              {scope === "ALL" ? <PlusGrant userId={person.id} until={person.plusUntil} /> : null}
             </div>
           ))}
         </div>

@@ -22,6 +22,7 @@ import { cloudReady, probeBucket } from "@/lib/storage";
 import { isSupportedMusicUrl, resolveTrack } from "@/lib/music-link";
 import { guard } from "@/lib/moderation";
 import { SUSPEND_HOURS } from "@/lib/suspend";
+import { isPlusDays, PLUS_COINS, PLUS_LABEL } from "@/lib/plus";
 import type { MomentKind, ReactionKind } from "@/generated/prisma/client";
 
 // ───────────────────────────── الدخول والخروج ─────────────────────────────
@@ -1999,6 +2000,82 @@ export async function liftSuspension(userId: string): Promise<void> {
   });
   await prisma.moderationLog.create({
     data: { adminId: admin.id, action: "USER_RESTORED", targetId: userId, ownerId: userId },
+  });
+  revalidatePath("/admin");
+}
+
+/**
+ * منحُ آثار+ من اللوحة.
+ *
+ * بابٌ للمالك وللحالات التي لا يمرّ فيها الدفع: تعويضٌ، أو جائزة، أو
+ * حسابٌ تجريبيّ لمراجعة المتجرين. والدفع الحقيقي يبقى على IAP وحده —
+ * هذا ليس بديلاً عنه (`BILLING.md`).
+ *
+ * و**يُمدَّد ولا يُستبدَل**: من بقي له أسبوعان ومُنح شهراً صار له ستّة
+ * أسابيع — منحٌ يمسح ما دُفع ثمنه يأخذ أكثر ممّا يعطي.
+ *
+ * وأوّل منحٍ يودع رصيد الشهر (`PLUS_COINS`) ويختم `plusCreditAt` كما
+ * يفعل حدثُ RevenueCat بالضبط (القاعدة ٧٣ب)، فيتولّى الكنسُ الدوريّ
+ * ما بعده. ولولا الختم لبقي المُعطى بلا نقاطٍ حتى أوّل فاتورةٍ لا
+ * تأتي.
+ *
+ * والمدّة قائمةٌ مغلقة (`PLUS_DAYS`) لا حقلُ أيام.
+ */
+export async function grantPlus(
+  userId: string,
+  _prev: AdminResult,
+  formData: FormData,
+): Promise<AdminResult> {
+  const admin = await requireAdmin();
+
+  const days = Number(String(formData.get("days") ?? ""));
+  if (!isPlusDays(days)) return { error: "اختر المدّة" };
+
+  const target = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { plusUntil: true, plusCreditAt: true },
+  });
+  if (!target) return { error: "لا يوجد هذا الحساب" };
+
+  // يُمدَّد من نهايته إن كان قائماً، ومن اليوم إن كان منتهياً.
+  const from =
+    target.plusUntil && target.plusUntil.getTime() > Date.now() ? target.plusUntil : new Date();
+  const until = new Date(from.getTime() + days * 86_400_000);
+  const first = !target.plusCreditAt;
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      isPlus: true,
+      plusUntil: until,
+      ...(first ? { coins: { increment: PLUS_COINS }, plusCreditAt: new Date() } : null),
+    },
+  });
+
+  await prisma.moderationLog.create({
+    data: {
+      adminId: admin.id,
+      action: "PLUS_GRANTED",
+      targetId: userId,
+      ownerId: userId,
+      snippet: PLUS_LABEL[days],
+    },
+  });
+
+  revalidatePath("/admin");
+  return { ok: `مُنح ${PLUS_LABEL[days]}` };
+}
+
+/** نزعُه قبل انقضائه — ويُسجَّل كما سُجّل منحُه. */
+export async function revokePlus(userId: string): Promise<void> {
+  const admin = await requireAdmin();
+  await prisma.user.update({
+    where: { id: userId },
+    // والختم يُنسى: من عاد بعدها يبدأ دورةً جديدة لا يكمل ما انقطع.
+    data: { isPlus: false, plusUntil: null, plusCreditAt: null },
+  });
+  await prisma.moderationLog.create({
+    data: { adminId: admin.id, action: "PLUS_REVOKED", targetId: userId, ownerId: userId },
   });
   revalidatePath("/admin");
 }
