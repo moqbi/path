@@ -147,7 +147,7 @@ export default async function MessagesPage({
                     <Avatar
                       name={conversation.other.name}
                       size={48}
-                      frameSpec={conversation.other.frame?.spec}
+                      frame={conversation.other.frame}
                       charm={conversation.other.charm}
                       mediaId={conversation.other.avatarMediaId}
                     />

@@ -98,7 +98,7 @@ export function PeopleSheet({
                   name={item.name}
                   size={38}
                   mediaId={item.avatarMediaId}
-                  frameSpec={item.frame?.spec}
+                  frame={item.frame}
                   charm={item.charm}
                 />
                 <Text style={{ flex: 1, color: colors.ink, fontSize: 13.5, fontWeight: "600" }}>

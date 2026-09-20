@@ -130,7 +130,7 @@ export function MomentCard({
           name={moment.author.name}
           size={46}
           mediaId={moment.author.avatarMediaId}
-          frameSpec={moment.author.frame?.spec}
+          frame={moment.author.frame}
           charm={moment.author.charm}
         />
       </Pressable>

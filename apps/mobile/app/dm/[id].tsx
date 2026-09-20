@@ -116,7 +116,7 @@ export default function Conversation() {
   const thread = useQuery({
     queryKey: keys.thread(id),
     queryFn: () =>
-      api<{ id: string; other: { id: string; name: string; avatarMediaId: string | null; frame: { spec: string } | null; charm: { spec: string; mediaId: string | null } | null }; messages: Line[] }>(
+      api<{ id: string; other: { id: string; name: string; avatarMediaId: string | null; frame: { spec: string; mediaId: string | null } | null; charm: { spec: string; mediaId: string | null } | null }; messages: Line[] }>(
         `/v1/dm/${id}?limit=50`,
       ),
     refetchInterval: 8_000,

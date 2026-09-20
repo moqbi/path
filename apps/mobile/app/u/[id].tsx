@@ -143,9 +143,9 @@ export default function Profile() {
                   name={who.name}
                   size={78}
                   mediaId={who.avatarMediaId}
-                  frameSpec={who.frame?.spec}
-                  charm={who.charm}
                   frame={who.frame}
+                  charm={who.charm}
+                  frameItem={who.frame}
                   charmItem={who.charm}
                 />
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 }}>

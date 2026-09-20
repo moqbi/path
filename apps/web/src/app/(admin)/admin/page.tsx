@@ -1068,7 +1068,8 @@ export default async function AdminPage({
                             mime={item.media?.mime ?? null}
                           />
                           <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
-                            الثيم يُلبَس خلفيةً للتطبيق، والتميمة شعاراً تحت صورة العرض.
+                            الثيم يُلبَس خلفيةً للتطبيق، والتميمة شعاراً تحت صورة العرض،
+                            والإطار حلقةً حولها. التميمة والإطار يُحفظان PNG بشفافيتهما.
                             بلا صورة يُرسم التدرّج.
                           </p>
                         </div>

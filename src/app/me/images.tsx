@@ -2,7 +2,7 @@
 
 import { setAvatar } from "@/app/actions";
 import { ImagePicker } from "@/components/image-picker";
-import { Avatar } from "@/components/ui";
+import { Avatar, type Frame } from "@/components/ui";
 import { CameraIcon } from "@/components/icons";
 
 /**
@@ -12,7 +12,7 @@ import { CameraIcon } from "@/components/icons";
  */
 export function ProfileImages({
   name,
-  frameSpec,
+  frame,
   avatarMediaId,
   charm,
   isPlus = false,
@@ -20,7 +20,7 @@ export function ProfileImages({
   onError,
 }: {
   name: string;
-  frameSpec: string | null;
+  frame: Frame;
   avatarMediaId: string | null;
   charm?: { spec: string; mediaId: string | null } | null;
   /** المشترك يرفع صورةً متحركة كما هي. */
@@ -36,7 +36,7 @@ export function ProfileImages({
 }) {
   return (
     <div className="relative shrink-0">
-      <Avatar name={name} size={size} frameSpec={frameSpec} mediaId={avatarMediaId} charm={charm} />
+      <Avatar name={name} size={size} frame={frame} mediaId={avatarMediaId} charm={charm} />
 
       {/* زرّ الصورة على اليمين: اليسار مقعد التميمة في كل مكان. */}
       <div className="absolute -bottom-1 -right-1">

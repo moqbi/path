@@ -124,7 +124,7 @@ export type SessionUser = {
   frameId: string | null;
   backgroundId: string | null;
   charmId: string | null;
-  frame: { spec: string } | null;
+  frame: { spec: string; mediaId: string | null } | null;
   /** الثيم الملبوس: صورته إن رُفعت، وتدرّجه إن لم تُرفع. */
   background: { spec: string; mediaId: string | null; palette: string | null } | null;
   charm: { spec: string; mediaId: string | null } | null;
@@ -165,7 +165,7 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
       frameId: true,
       backgroundId: true,
       charmId: true,
-      frame: { select: { spec: true } },
+      frame: { select: { spec: true, mediaId: true } },
       background: { select: { spec: true, mediaId: true, palette: true } },
       charm: { select: { spec: true, mediaId: true } },
       tag: { select: { name: true, bg: true, fg: true } },

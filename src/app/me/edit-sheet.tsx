@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CloseIcon } from "@/components/icons";
+import { type Frame } from "@/components/ui";
 import { ANIMATED } from "@/components/image-picker";
 import { ProfileCover } from "./cover";
 import { ProfileImages } from "./images";
@@ -21,7 +22,7 @@ export function EditProfileSheet({
   bio,
   city,
   avatarMediaId,
-  frameSpec,
+  frame,
   charm,
   coverMediaId,
   coverSpec,
@@ -34,7 +35,7 @@ export function EditProfileSheet({
   bio: string | null;
   city: string | null;
   avatarMediaId: string | null;
-  frameSpec: string | null;
+  frame: Frame;
   charm?: { spec: string; mediaId: string | null } | null;
   coverMediaId: string | null;
   coverSpec: string | null;
@@ -110,7 +111,7 @@ export function EditProfileSheet({
             <div className="flex items-center gap-4 px-5 pb-1 pt-4">
               <ProfileImages
                 name={name}
-                frameSpec={frameSpec}
+                frame={frame}
                 avatarMediaId={avatarMediaId}
                 charm={charm}
                 isPlus={isPlus}

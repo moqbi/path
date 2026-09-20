@@ -144,10 +144,10 @@ export default async function FriendProfilePage({
             <AvatarMenu
               name={person.name}
               size={96}
-              frameSpec={person.frame?.spec}
+              frame={person.frame}
               charm={person.charm}
               mediaId={person.avatarMediaId}
-              frame={person.frame}
+              frameItem={person.frame}
               charmItem={person.charm}
               owned={mine.map((row) => row.itemId)}
             />
@@ -244,7 +244,7 @@ type Person = {
   isPlus: boolean;
   avatarMediaId: string | null;
   coverMediaId: string | null;
-  frame: { spec: string } | null;
+  frame: { spec: string; mediaId: string | null } | null;
   charm: { spec: string; mediaId: string | null } | null;
   background: { spec: string } | null;
   tag: { name: string; bg: string; fg: string } | null;
@@ -279,7 +279,7 @@ function LockedProfile({
           <Avatar
             name={person.name}
             size={96}
-            frameSpec={person.frame?.spec}
+            frame={person.frame}
               charm={person.charm}
             mediaId={person.avatarMediaId}
           />

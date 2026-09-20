@@ -2,7 +2,7 @@ import { useState } from "react";
 import { View, Pressable, Modal, ActivityIndicator } from "react-native";
 import { Text } from "./type";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Avatar, firstColor, type Charm } from "./avatar";
+import { Avatar, firstColor, type Charm, type Frame } from "./avatar";
 import { MediaImage } from "./media-image";
 import { CloseIcon } from "./icons";
 import { api } from "../lib/api";
@@ -39,17 +39,17 @@ export function AvatarMenu({
   name,
   size,
   mediaId,
-  frameSpec,
-  charm,
   frame,
+  charm,
+  frameItem,
   charmItem,
 }: {
   name: string;
   size: number;
   mediaId: string | null;
-  frameSpec?: string | null;
+  frame?: Frame;
   charm?: Charm;
-  frame: WornItem;
+  frameItem: WornItem;
   charmItem: WornItem;
 }) {
   const [view, setView] = useState<"none" | "menu" | "photo" | "frame" | "charm">("none");
@@ -62,7 +62,7 @@ export function AvatarMenu({
         accessibilityLabel={`صورة ${name}`}
         onPress={() => setView("menu")}
       >
-        <Avatar name={name} size={size} frameSpec={frameSpec} charm={charm} mediaId={mediaId} />
+        <Avatar name={name} size={size} frame={frame} charm={charm} mediaId={mediaId} />
       </Pressable>
 
       {view === "menu" ? (
@@ -76,11 +76,11 @@ export function AvatarMenu({
               onPress={() => setView("charm")}
             />
           ) : null}
-          {frame ? (
+          {frameItem ? (
             <Row
               label="عرض معلومات الإطار"
-              hint={frame.name}
-              art={frame}
+              hint={frameItem.name}
+              art={frameItem}
               onPress={() => setView("frame")}
             />
           ) : null}
@@ -132,7 +132,7 @@ export function AvatarMenu({
       ) : null}
 
       {view === "charm" && charmItem ? <ItemSheet item={charmItem} onClose={close} /> : null}
-      {view === "frame" && frame ? <ItemSheet item={frame} onClose={close} /> : null}
+      {view === "frame" && frameItem ? <ItemSheet item={frameItem} onClose={close} /> : null}
     </>
   );
 }

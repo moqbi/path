@@ -239,7 +239,7 @@ export default function Timeline() {
                 name={me.name}
                 size={68}
                 mediaId={me.avatarMediaId}
-                frameSpec={me.frame?.spec}
+                frame={me.frame}
                 charm={me.charm}
               />
             </View>
@@ -426,11 +426,11 @@ function LensHead({
   onClear,
 }: {
   view: string;
-  friend: { id: string; name: string; avatarMediaId: string | null; frame: { spec: string } | null; charm: { spec: string; mediaId: string | null } | null } | null;
+  friend: { id: string; name: string; avatarMediaId: string | null; frame: { spec: string; mediaId: string | null } | null; charm: { spec: string; mediaId: string | null } | null } | null;
   me: { name: string; avatarMediaId: string | null };
   count: number;
   since: Date | null;
-  people: { id: string; name: string; avatarMediaId: string | null; frame: { spec: string } | null; charm: { spec: string; mediaId: string | null } | null }[];
+  people: { id: string; name: string; avatarMediaId: string | null; frame: { spec: string; mediaId: string | null } | null; charm: { spec: string; mediaId: string | null } | null }[];
   onPick: (id: string) => void;
   onClear: () => void;
 }) {
@@ -453,7 +453,7 @@ function LensHead({
             <Avatar
               name={friend.name}
               size={44}
-              frameSpec={friend.frame?.spec}
+              frame={friend.frame}
               charm={friend.charm}
               mediaId={friend.avatarMediaId}
             />
@@ -512,7 +512,7 @@ function LensHead({
             <Avatar
               name={person.name}
               size={42}
-              frameSpec={person.frame?.spec}
+              frame={person.frame}
               charm={person.charm}
               mediaId={person.avatarMediaId}
             />

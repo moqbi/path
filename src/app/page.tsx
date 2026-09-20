@@ -61,7 +61,7 @@ export default async function TimelinePage({
             id: true,
             name: true,
             avatarMediaId: true,
-            frame: { select: { spec: true } },
+            frame: { select: { spec: true, mediaId: true } },
             charm: { select: { spec: true, mediaId: true } },
           },
         })
@@ -77,7 +77,7 @@ export default async function TimelinePage({
             id: true,
             name: true,
             avatarMediaId: true,
-            frame: { select: { spec: true } },
+            frame: { select: { spec: true, mediaId: true } },
             charm: { select: { spec: true, mediaId: true } },
           },
           orderBy: { name: "asc" },
@@ -144,7 +144,7 @@ export default async function TimelinePage({
           <Avatar
             name={user.name}
             size={68}
-            frameSpec={user.frame?.spec}
+            frame={user.frame}
             charm={user.charm}
             mediaId={user.avatarMediaId}
           />
@@ -164,7 +164,7 @@ export default async function TimelinePage({
                 <Avatar
                   name={friend.name}
                   size={44}
-                  frameSpec={friend.frame?.spec}
+                  frame={friend.frame}
                   charm={friend.charm}
                   mediaId={friend.avatarMediaId}
                 />
@@ -206,7 +206,7 @@ export default async function TimelinePage({
                     <Avatar
                       name={person.name}
                       size={42}
-                      frameSpec={person.frame?.spec}
+                      frame={person.frame}
                       charm={person.charm}
                       mediaId={person.avatarMediaId}
                     />

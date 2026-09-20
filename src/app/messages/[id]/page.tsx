@@ -30,7 +30,7 @@ export default async function ThreadPage({
           <Avatar
             name={conversation.other.name}
             size={34}
-            frameSpec={conversation.other.frame?.spec}
+            frame={conversation.other.frame}
             charm={conversation.other.charm}
           />
         }

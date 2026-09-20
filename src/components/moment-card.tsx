@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Avatar } from "@/components/ui";
+import { Avatar, type Frame } from "@/components/ui";
 import {
   MoonIcon,
   SunIcon,
@@ -80,7 +80,7 @@ function Spine({
   authorId,
   viewerId,
   name,
-  frameSpec,
+  frame,
   mediaId,
   charm,
   at,
@@ -88,7 +88,7 @@ function Spine({
   authorId: string;
   viewerId: string;
   name: string;
-  frameSpec?: string | null;
+  frame?: Frame;
   mediaId?: string | null;
   charm?: { spec: string; mediaId: string | null } | null;
   at: Date;
@@ -99,7 +99,7 @@ function Spine({
         href={authorId === viewerId ? "/me" : `/u/${authorId}`}
         aria-label={`ملف ${name}`}
       >
-        <Avatar name={name} size={46} frameSpec={frameSpec} mediaId={mediaId} charm={charm} />
+        <Avatar name={name} size={46} frame={frame} mediaId={mediaId} charm={charm} />
       </Link>
       <span className="text-[10px] font-semibold text-muted">{timeOfDay(at)}</span>
     </div>
@@ -160,7 +160,7 @@ function Row({
         authorId={moment.author.id}
         viewerId={viewerId}
         name={moment.author.name}
-        frameSpec={moment.author.frame?.spec}
+        frame={moment.author.frame}
         mediaId={moment.author.avatarMediaId}
         charm={moment.author.charm}
         at={moment.createdAt}

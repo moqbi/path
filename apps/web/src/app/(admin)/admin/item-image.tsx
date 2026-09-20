@@ -9,8 +9,12 @@ import { itemPaint } from "@/components/ui";
  * صورة الصنف في اللوحة.
  *
  * الثيم خلفيةُ التطبيق كلّه فيُرفع كبيراً (١٦٠٠ بكسل)، والتميمة شعارٌ
- * صغير يكفيه ٣٢٠ — لا نُثقل القاعدة بصورةٍ تُعرض بحجم ظفر. وتُحفظ
- * التميمة PNG بشفافيتها: ضغطها JPEG يُلبسها مربّعاً أسود.
+ * صغير يكفيه ٣٢٠ — لا نُثقل القاعدة بصورةٍ تُعرض بحجم ظفر. **والإطار
+ * حلقةٌ حول الوجه** فيكفيه ٥١٢.
+ *
+ * و**ما له شفافية يُحفظ PNG**: التميمة والإطار معاً. ضغطُهما JPEG
+ * يُلبسهما مربّعاً مصمتاً — وإطارٌ بمربّعٍ خلفه ليس إطاراً، وكان
+ * الإطار يُرفع كالثيم فيخرج بخلفيةٍ تُغطّي الصورة.
  */
 export function ItemImage({
   itemId,
@@ -25,7 +29,11 @@ export function ItemImage({
   mime?: string | null;
 }) {
   const charm = kind === "CHARM";
-  const flattened = charm && Boolean(mediaId) && mime !== "image/png";
+  const frame = kind === "FRAME";
+  // ما يُرسم فوق شيءٍ آخر يحتاج شفافيته: التميمة على الصورة، والإطار حولها.
+  const alpha = charm || frame;
+  const label = charm ? "التميمة" : frame ? "الإطار" : "الثيم";
+  const flattened = alpha && Boolean(mediaId) && mime !== "image/png";
 
   return (
     <>
@@ -35,8 +43,7 @@ export function ItemImage({
         className="mb-2 rounded-xl px-3 py-2 text-[11.5px] leading-relaxed"
         style={{ background: "var(--color-clay-soft)", color: "var(--color-clay)" }}
       >
-        هذه التميمة محفوظة بلا شفافية (خلفيةٌ سوداء خلف الشعار) — أعِد رفعها
-        الآن فتُحفظ PNG كما رُسمت.
+        {`صورة ${label} محفوظة بلا شفافية (خلفيةٌ مصمتة خلف الرسم) — أعِد رفعها الآن فتُحفظ PNG كما رُسمت.`}
       </p>
     ) : null}
 
@@ -47,10 +54,10 @@ export function ItemImage({
       />
 
       <ImagePicker
-        label={charm ? "صورة التميمة" : "صورة الثيم"}
-        maxSize={charm ? 320 : 1600}
-        keepAlpha={charm}
-        accept={charm ? "image/png,image/webp" : "image/jpeg,image/png,image/webp"}
+        label={`صورة ${label}`}
+        maxSize={charm ? 320 : frame ? 512 : 1600}
+        keepAlpha={alpha}
+        accept={alpha ? "image/png,image/webp" : "image/jpeg,image/png,image/webp"}
         onPicked={(file, width, height) => {
             const data = new FormData();
             data.set("image", file);
@@ -65,7 +72,7 @@ export function ItemImage({
           style={{ height: 46 }}
         >
           <CameraIcon size={15} />
-          {mediaId ? "غيّر الصورة" : charm ? "ارفع صورة التميمة" : "ارفع صورة الثيم"}
+          {mediaId ? "غيّر الصورة" : `ارفع صورة ${label}`}
         </span>
       </ImagePicker>
 

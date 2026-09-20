@@ -105,7 +105,7 @@ export default function Messages() {
               name={item.other.name}
               size={46}
               mediaId={item.other.avatarMediaId}
-              frameSpec={item.other.frame?.spec}
+              frame={item.other.frame}
               charm={item.other.charm}
             />
             <View style={{ flex: 1 }}>

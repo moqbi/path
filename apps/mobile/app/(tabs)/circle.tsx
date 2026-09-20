@@ -218,7 +218,7 @@ export default function Circle() {
                     name={request.requester.name}
                     size={40}
                     mediaId={request.requester.avatarMediaId}
-                    frameSpec={request.requester.frame?.spec}
+                    frame={request.requester.frame}
                     charm={request.requester.charm}
                   />
                   <Text style={{ flex: 1, color: colors.ink, fontSize: 13.5, fontWeight: "600" }}>
@@ -254,7 +254,7 @@ export default function Circle() {
                     name={person.name}
                     size={44}
                     mediaId={person.avatarMediaId}
-                    frameSpec={person.frame?.spec}
+                    frame={person.frame}
                     charm={person.charm}
                   />
                 </Pressable>
@@ -296,7 +296,7 @@ export default function Circle() {
                     name={member.name}
                     size={38}
                     mediaId={member.avatarMediaId}
-                    frameSpec={member.frame?.spec}
+                    frame={member.frame}
                     charm={member.charm}
                   />
                   <Text
@@ -357,7 +357,7 @@ export default function Circle() {
               name={friend.name}
               size={44}
               mediaId={friend.avatarMediaId}
-              frameSpec={friend.frame?.spec}
+              frame={friend.frame}
               charm={friend.charm}
             />
             <View style={{ flex: 1, minWidth: 0 }}>

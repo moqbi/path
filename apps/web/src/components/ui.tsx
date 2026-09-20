@@ -23,6 +23,17 @@ function tintFor(name: string): string {
 export type Charm = { spec: string; mediaId: string | null } | null | undefined;
 
 /**
+ * الإطار الملبوس: صورةٌ إن رُفعت، وتدرّجٌ إن لم تُرفع — كالتميمة وكبقية
+ * أصناف المتجر.
+ *
+ * ويُمرَّر **كاملاً** لا `spec` وحده: كان `Avatar` يقبل `frameSpec`
+ * فقط، فصورةُ الإطار المرفوعة تُهمَل بلا خطأٍ يظهر ويُرسم التدرّج
+ * مكانها — في المتجر وعلى الوجه معاً. والنوعُ يمنع تكرارها: من يمرّر
+ * `spec` وحده لا يُترجَم أصلاً.
+ */
+export type Frame = { spec: string; mediaId: string | null } | null | undefined;
+
+/**
  * خلفية صنف المتجر: صورته إن رُفعت، وإلا قيمة `spec` كما هي.
  *
  * إمّا المختصر وإمّا المفصّل، لا الاثنان في كائنٍ واحد — خلطهما يجعل React
@@ -45,13 +56,13 @@ export function itemPaint(
 export function Avatar({
   name,
   size = 40,
-  frameSpec,
+  frame,
   mediaId,
   charm,
 }: {
   name: string;
   size?: number;
-  frameSpec?: string | null;
+  frame?: Frame;
   mediaId?: string | null;
   charm?: Charm;
 }) {
@@ -78,7 +89,7 @@ export function Avatar({
   // التميمة تُعلَّق على الحاوية لا على الصورة، فلا يقصّها الإطار.
   const badge = charm ? <CharmBadge charm={charm} size={size} /> : null;
 
-  if (!frameSpec) {
+  if (!frame) {
     return (
       <div style={{ width: size, height: size }} className="relative shrink-0 rounded-full">
         {inner}
@@ -88,14 +99,23 @@ export function Avatar({
   }
 
   /*
-     الإطار المشترى يُرسم كحلقة تدرّج حول الصورة مباشرة — بلا حلقةٍ بيضاء
+     الإطار المشترى يُرسم حلقةً حول الصورة مباشرة — بلا حلقةٍ بيضاء
      بينهما: الحلقة البيضاء كانت تفصل الإطار عن الوجه فيُقرآن قرصين لا
      إطاراً على صورة.
+
+     وصورتُه إن رُفعت بـ`itemPaint` كبقية الأصناف، و`cover` لأنّ الحلقة
+     مربّعٌ يُقصّ في قرص: `contain` كان سيترك الرسم صغيراً في وسطه
+     ويُبقي الحافّة فارغة.
   */
   return (
     <div
       className="relative shrink-0 rounded-full"
-      style={{ width: size, height: size, background: frameSpec, padding: Math.max(2, size * 0.045) }}
+      style={{
+        width: size,
+        height: size,
+        ...itemPaint(frame),
+        padding: Math.max(2, size * 0.045),
+      }}
     >
       {inner}
       {badge}

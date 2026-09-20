@@ -19,6 +19,13 @@ function tintFor(name: string): string {
 export type Charm = { spec: string; mediaId: string | null } | null | undefined;
 
 /**
+ * الإطار الملبوس كاملاً لا `spec` وحده: كان يُمرَّر نصّ التدرّج فقط،
+ * فصورةُ الإطار المرفوعة تُهمَل بلا خطأٍ يظهر ويُرسم اللون مكانها.
+ * نسخةُ `Frame` في `src/components/ui.tsx` حرفاً بحرف.
+ */
+export type Frame = { spec: string; mediaId: string | null } | null | undefined;
+
+/**
  * صورة العرض.
  *
  * الإطار المشترى حلقةٌ حول الصورة مباشرة بلا حلقةٍ بيضاء بينهما: البيضاء
@@ -37,19 +44,19 @@ export function firstColor(spec: string | null | undefined, fallback: string): s
 export function Avatar({
   name,
   size = 40,
-  frameSpec,
+  frame,
   mediaId,
   charm,
   style,
 }: {
   name: string;
   size?: number;
-  frameSpec?: string | null;
+  frame?: Frame;
   mediaId?: string | null;
   charm?: Charm;
   style?: StyleProp<ViewStyle>;
 }) {
-  const pad = frameSpec ? Math.max(2, Math.round(size * 0.045)) : 0;
+  const pad = frame ? Math.max(2, Math.round(size * 0.045)) : 0;
   const inner = size - pad * 2;
 
   return (
@@ -60,11 +67,27 @@ export function Avatar({
           height: size,
           borderRadius: size / 2,
           padding: pad,
-          backgroundColor: frameSpec ? firstColor(frameSpec, colors.clay) : "transparent",
+          // صورةُ الإطار إن رُفعت تُرسم طبقةً تحت الصورة، وإلا فلونُه.
+          backgroundColor:
+            frame && !frame.mediaId ? firstColor(frame.spec, colors.clay) : "transparent",
         },
         style,
       ]}
     >
+      {frame?.mediaId ? (
+        <MediaImage
+          mediaId={frame.mediaId}
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: size,
+            height: size,
+            borderRadius: size / 2,
+          }}
+        />
+      ) : null}
+
       <View
         style={{
           width: inner,

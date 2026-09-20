@@ -192,9 +192,9 @@ export default function Me() {
                 name={me.name}
                 size={104}
                 mediaId={me.avatarMediaId}
-                frameSpec={me.frame?.spec}
-                charm={me.charm}
                 frame={me.frame}
+                charm={me.charm}
+                frameItem={me.frame}
                 charmItem={me.charm}
               />
 

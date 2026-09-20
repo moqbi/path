@@ -114,10 +114,10 @@ export default async function ProfilePage() {
           <AvatarMenu
             name={user.name}
             size={104}
-            frameSpec={user.frame?.spec ?? null}
+            frame={user.frame}
             charm={user.charm}
             mediaId={user.avatarMediaId}
-            frame={worn(user.frameId)}
+            frameItem={worn(user.frameId)}
             charmItem={worn(user.charmId)}
             owned={purchases.map((row) => row.item.id)}
           />
@@ -178,7 +178,7 @@ export default async function ProfilePage() {
               bio={user.bio}
               city={user.city}
               avatarMediaId={user.avatarMediaId}
-              frameSpec={user.frame?.spec ?? null}
+              frame={user.frame}
               charm={user.charm}
               coverMediaId={user.coverMediaId}
               coverSpec={user.background?.spec ?? null}

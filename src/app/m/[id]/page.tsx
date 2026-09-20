@@ -55,7 +55,7 @@ export default async function MomentPage({
               <Avatar
                 name={moment.author.name}
                 size={36}
-                frameSpec={moment.author.frame?.spec}
+                frame={moment.author.frame}
                 charm={moment.author.charm}
                 mediaId={moment.author.avatarMediaId}
               />
@@ -121,6 +121,8 @@ export default async function MomentPage({
               mine={mine}
               count={moment.reactions.length}
               isPlus={user.isPlus}
+              author={moment.author.id === user.id}
+              moderate={user.canModerate && moment.author.id !== user.id}
             />
           </div>
 

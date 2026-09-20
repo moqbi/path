@@ -53,7 +53,7 @@ export default async function CirclePage({
             name: true,
             isPlus: true,
             avatarMediaId: true,
-            frame: { select: { spec: true } },
+            frame: { select: { spec: true, mediaId: true } },
             charm: { select: { spec: true, mediaId: true } },
             tag: { select: { name: true, bg: true, fg: true } },
           },
@@ -78,7 +78,7 @@ export default async function CirclePage({
       city: true,
       lastSeenAt: true,
       avatarMediaId: true,
-      frame: { select: { spec: true } },
+      frame: { select: { spec: true, mediaId: true } },
       charm: { select: { spec: true, mediaId: true } },
       tag: { select: { name: true, bg: true, fg: true } },
       moments: { select: { createdAt: true }, orderBy: { createdAt: "desc" }, take: 1 },
@@ -155,7 +155,7 @@ export default async function CirclePage({
                   <Avatar
                     name={request.requester.name}
                     size={44}
-                    frameSpec={request.requester.frame?.spec}
+                    frame={request.requester.frame}
                     charm={request.requester.charm}
                     mediaId={request.requester.avatarMediaId}
                   />
@@ -229,7 +229,7 @@ export default async function CirclePage({
                         <Avatar
                           name={member.name}
                           size={46}
-                          frameSpec={member.frame?.spec}
+                          frame={member.frame}
                           charm={member.charm}
                           mediaId={member.avatarMediaId}
                         />
@@ -324,7 +324,7 @@ export default async function CirclePage({
                     <Avatar
                       name={member.name}
                       size={38}
-                      frameSpec={member.frame?.spec}
+                      frame={member.frame}
                           charm={member.charm}
                       mediaId={member.avatarMediaId}
                     />
@@ -392,7 +392,7 @@ export default async function CirclePage({
                       <Avatar
                         name={person.name}
                         size={44}
-                        frameSpec={person.frame?.spec}
+                        frame={person.frame}
                         charm={person.charm}
                         mediaId={person.avatarMediaId}
                       />

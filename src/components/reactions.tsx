@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { react } from "@/app/actions";
+import { deleteMoment, react, removeMomentAsAdmin } from "@/app/actions";
 import { LockIcon } from "@/components/icons";
 import Link from "next/link";
 import { Avatar } from "@/components/ui";
@@ -80,12 +80,24 @@ export function Reactions({
   mine,
   count,
   isPlus,
+  author = false,
+  moderate = false,
 }: {
   momentId: string;
   momentKind?: string;
   mine: Mine;
   count: number;
   isPlus: boolean;
+  /** صاحب اللحظة يحذفها من اللوحة نفسها (القاعدة ٦١). */
+  author?: boolean;
+  /**
+   * صلاحية الإشراف: الزرّ نفسه على لحظة غيره.
+   *
+   * صفحةُ اللحظة تفتحها البلاغات، فالحذف فيها لا في شاشةٍ أخرى. وكانت
+   * بلا حذفٍ أصلاً — لا لصاحبها ولا لغيره — فيُفتح المنشور المُبلَّغ
+   * عنه ولا يُفعل به شيء.
+   */
+  moderate?: boolean;
 }) {
   const faces = facesFor(momentKind);
   const [open, setOpen] = useState(false);
@@ -93,6 +105,7 @@ export function Reactions({
   const [board, setBoard] = useState(false);
   const [popped, setPopped] = useState(false);
   const [pending, start] = useTransition();
+  const [asking, setAsking] = useState(false);
   const root = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -246,6 +259,60 @@ export function Reactions({
                   {emoji}
                 </button>
               ))}
+            </div>
+          ) : null}
+
+          {/*
+            الحذف في اللوحة نفسها: سؤالٌ ثم حذف (القاعدة ٦١). والبابان
+            مختلفان وإن تشابه الزرّان — صاحبُها `deleteMoment`، والمشرفُ
+            `removeMomentAsAdmin` خلف فحصِ صلاحيةٍ ومعه سجلّ.
+          */}
+          {author || moderate ? (
+            <div className="mt-2 flex items-center justify-end gap-2 border-t border-line pt-2">
+              {asking ? (
+                <>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={(event) => {
+                      stop(event);
+                      setOpen(false);
+                      setAsking(false);
+                      start(() =>
+                        void (author
+                          ? deleteMoment(momentId)
+                          : removeMomentAsAdmin(momentId, null)),
+                      );
+                    }}
+                    className="h-8 rounded-full px-3 text-[11.5px] font-bold disabled:opacity-60"
+                    style={{ background: "var(--color-live)", color: "#fff" }}
+                  >
+                    أحذفها
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      stop(event);
+                      setAsking(false);
+                    }}
+                    className="h-8 rounded-full px-2.5 text-[11.5px] font-semibold text-muted"
+                  >
+                    تراجع
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    stop(event);
+                    setAsking(true);
+                  }}
+                  className="h-8 rounded-full px-2.5 text-[11.5px] font-semibold"
+                  style={{ color: "var(--color-live)" }}
+                >
+                  {author ? "احذف اللحظة" : "احذفها بصلاحية الإشراف"}
+                </button>
+              )}
             </div>
           ) : null}
         </div>

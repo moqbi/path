@@ -33,7 +33,7 @@ const PERSON = {
   isPlus: true,
   lastSeenAt: true,
   avatarMediaId: true,
-  frame: { select: { spec: true } },
+  frame: { select: { spec: true, mediaId: true } },
   charm: { select: { spec: true, mediaId: true } },
   tag: { select: { name: true, bg: true, fg: true } },
 } as const;

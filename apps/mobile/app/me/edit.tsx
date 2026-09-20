@@ -8,7 +8,7 @@ import * as Picker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { ScreenHeader } from "../../components/screen-header";
 import { CoverLayer } from "../../components/cover";
-import { Avatar } from "../../components/avatar";
+import { Avatar, type Frame } from "../../components/avatar";
 import { CameraIcon, CheckIcon, CloseIcon } from "../../components/icons";
 import { api } from "../../lib/api";
 import { uploadFile } from "../../lib/upload";
@@ -103,7 +103,7 @@ export default function EditProfile() {
               name={me.name}
               size={72}
               mediaId={me.avatarMediaId}
-              frameSpec={me.frame?.spec ?? null}
+              frame={me.frame}
               charm={me.charm}
               onError={setPictureError}
               onChanged={async () => {
@@ -437,7 +437,7 @@ function AvatarEditor({
   name,
   size,
   mediaId,
-  frameSpec,
+  frame,
   charm,
   onError,
   onChanged,
@@ -445,7 +445,7 @@ function AvatarEditor({
   name: string;
   size: number;
   mediaId: string | null;
-  frameSpec: string | null;
+  frame: Frame;
   charm?: { spec: string; mediaId: string | null } | null;
   /** الخطأ يُرفع إلى عمود الوصف — تحت الصورة يركب على النموذج. */
   onError: (message: string | null) => void;
@@ -481,7 +481,7 @@ function AvatarEditor({
     // فطار زرّ الكاميرا عن حافة الصورة وضاق نصّها المجاور.
     <View style={{ width: size, height: size }}>
       <View style={{ width: size, height: size }}>
-        <Avatar name={name} size={size} frameSpec={frameSpec} mediaId={mediaId} charm={charm} />
+        <Avatar name={name} size={size} frame={frame} mediaId={mediaId} charm={charm} />
 
         <Pressable
           onPress={pick}

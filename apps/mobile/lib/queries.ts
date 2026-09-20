@@ -252,7 +252,7 @@ export type StoryRing = {
   userId: string;
   name: string;
   avatarMediaId: string | null;
-  frame: { spec: string } | null;
+  frame: { spec: string; mediaId: string | null } | null;
   fresh: boolean;
   count: number;
 };

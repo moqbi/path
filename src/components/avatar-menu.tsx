@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { buyNow } from "@/app/actions";
-import { Avatar, itemPaint, type Charm } from "@/components/ui";
+import { Avatar, itemPaint, type Charm, type Frame } from "@/components/ui";
 import { CloseIcon } from "@/components/icons";
 import { useSwipeDown } from "@/components/nav";
 import { coinText } from "@/lib/format";
@@ -37,18 +37,18 @@ export function AvatarMenu({
   name,
   size,
   mediaId,
-  frameSpec,
-  charm,
   frame,
+  charm,
+  frameItem,
   charmItem,
   owned = [],
 }: {
   name: string;
   size: number;
   mediaId: string | null;
-  frameSpec?: string | null;
+  frame?: Frame;
   charm?: Charm;
-  frame: WornItem;
+  frameItem: WornItem;
   charmItem: WornItem;
   /** ما تملكه أنت من الأصناف — فلا يُعرض شراءُ ما اشتريته. */
   owned?: string[];
@@ -64,7 +64,7 @@ export function AvatarMenu({
         onClick={() => setView("menu")}
         className="block rounded-full"
       >
-        <Avatar name={name} size={size} frameSpec={frameSpec} charm={charm} mediaId={mediaId} />
+        <Avatar name={name} size={size} frame={frame} charm={charm} mediaId={mediaId} />
       </button>
 
       {view === "menu" ? (
@@ -78,11 +78,11 @@ export function AvatarMenu({
               onClick={() => setView("charm")}
             />
           ) : null}
-          {frame ? (
+          {frameItem ? (
             <Row
               label="عرض معلومات الإطار"
-              hint={frame.name}
-              art={frame}
+              hint={frameItem.name}
+              art={frameItem}
               onClick={() => setView("frame")}
             />
           ) : null}
@@ -122,8 +122,8 @@ export function AvatarMenu({
       {view === "charm" && charmItem ? (
         <ItemSheet item={charmItem} owned={owned.includes(charmItem.id)} onClose={close} />
       ) : null}
-      {view === "frame" && frame ? (
-        <ItemSheet item={frame} owned={owned.includes(frame.id)} onClose={close} />
+      {view === "frame" && frameItem ? (
+        <ItemSheet item={frameItem} owned={owned.includes(frameItem.id)} onClose={close} />
       ) : null}
     </>
   );

@@ -76,7 +76,7 @@ function Ring({ ring, label }: { ring: StoryRing; label: string }) {
         }}
       >
         <View style={{ width: "100%", height: "100%", borderRadius: 29, backgroundColor: colors.paper, padding: 2, alignItems: "center", justifyContent: "center" }}>
-          <Avatar name={ring.name} size={52} mediaId={ring.avatarMediaId} frameSpec={ring.frame?.spec} />
+          <Avatar name={ring.name} size={52} mediaId={ring.avatarMediaId} frame={ring.frame} />
         </View>
       </View>
       <Text numberOfLines={1} style={{ color: colors.ink2, fontSize: 10.5, textAlign: "center" }}>
