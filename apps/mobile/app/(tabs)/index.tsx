@@ -246,12 +246,21 @@ export default function Timeline() {
 
             <View style={{ flex: 1, paddingBottom: 6 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Text style={{ color: "#fff", fontSize: 14, fontWeight: "600", writingDirection: "auto" }}>
+                <Text
+                  style={{
+                    color: "#fff",
+                    fontSize: 14,
+                    fontWeight: "600",
+                    writingDirection: "auto",
+                    // ظلُّ الحرف بدل إعتام الغلاف كلّه.
+                    textShadowColor: "rgba(14,26,36,.62)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
+                  }}
+                >
                   {me.name}
                 </Text>
                 <NameTag isPlus={me.isPlus} tag={me.tag} size={10} />
               </View>
-              <Text style={{ color: "rgba(255,255,255,.92)", fontSize: 11.5 }}>
+              <Text style={{ color: "rgba(255,255,255,.92)", fontSize: 11.5, textShadowColor: "rgba(14,26,36,.62)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>
                 لك معانا {membership(me.createdAt)}
               </Text>
             </View>
@@ -289,7 +298,8 @@ export default function Timeline() {
                 borderRadius: 18,
                 alignItems: "center",
                 justifyContent: "center",
-                backgroundColor: "rgba(255,255,255,.22)",
+                // قرصٌ داكن لا شفّاف: بلا درعٍ كان الأبيضُ يذوب في غلافٍ فاتح.
+                backgroundColor: "rgba(14,26,36,.38)",
                 marginBottom: 4,
               }}
             >

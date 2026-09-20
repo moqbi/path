@@ -156,7 +156,7 @@ export function TimelineHead({
             <div className="min-w-0 grow pb-1.5">
               <p
                 className="flex items-center gap-1.5 truncate text-[14px] font-semibold"
-                style={{ color: "#fff", textShadow: "0 1px 3px rgba(14,26,36,.45)" }}
+                style={{ color: "#fff", textShadow: "0 1px 2px rgba(14,26,36,.6), 0 0 12px rgba(14,26,36,.45)" }}
               >
                 {name}
                 {tag}
@@ -164,7 +164,7 @@ export function TimelineHead({
               {/* تحت الاسم: كم لك معنا. الساعة يعرفها الجهاز، والمدة لا. */}
               <p
                 className="text-[11.5px]"
-                style={{ color: "rgba(255,255,255,.92)", textShadow: "0 1px 3px rgba(14,26,36,.45)" }}
+                style={{ color: "rgba(255,255,255,.92)", textShadow: "0 1px 2px rgba(14,26,36,.6), 0 0 12px rgba(14,26,36,.45)" }}
               >
                 لك معانا {since}
               </p>
@@ -175,7 +175,8 @@ export function TimelineHead({
               disabled={pending}
               aria-label="تحديث الخط الزمني"
               className="mb-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full disabled:opacity-60"
-              style={{ background: "rgba(255,255,255,.22)", color: "#fff" }}
+              // قرصٌ داكن لا شفّاف: بلا درعٍ على الغلاف كان الأبيضُ يذوب في صورةٍ فاتحة.
+              style={{ background: "rgba(14,26,36,.38)", color: "#fff" }}
             >
               <span
                 style={{

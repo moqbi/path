@@ -1,19 +1,19 @@
 import { useState } from "react";
 import { View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { MediaImage } from "./media-image";
 import { firstColor } from "./avatar";
 import { colors } from "../theme/tokens";
 
 /**
- * الغلاف يذوب في أرضية الصفحة.
+ * طبقة الغلاف: صورته وحدها.
  *
- * في الويب يجري ذلك بقناع (`mask-image`) يُخفي أسفل الصورة تدريجاً حتى
- * يصير ورق الصفحة. ولا قناع في الموبايل، فيُحاكى بتدرّجٍ فوق الصورة من
- * شفّافٍ إلى لون الورق نفسه: العين ترى الذوبان ذاته.
+ * كان فوقها درعٌ داكن يعمّ ارتفاعها وذوبانٌ إلى لون الورق — والاثنان
+ * يُقرآن على غلافٍ فاتح لطخةً رماديةً أسفل الصورة، لا ذوباناً. أُلغيا
+ * بطلب المالك، فالغلاف ينتهي بحافّةٍ نظيفة. ونسخةُ الويب مثلُها.
  *
- * والدرع تحت القناع لا فوقه — طبقةٌ داكنة خفيفة تُبقي الاسم الأبيض
- * مقروءاً على غلافٍ فاتح، ثم يذوب الاثنان معاً.
+ * وما يُكتب فوقه يحمل ظلّه بنفسه (`textShadow*` في رأس الخط الزمني):
+ * إعتامُ الغلاف كلّه ليُقرأ سطران فوقه ثمنٌ تدفعه الصورة كلّها.
+ * وذوبانُ الورق كان يكتب لونَه بيده فلا يتبع ثيماً تحته أصلاً.
  */
 export function CoverLayer({
   mediaId,
@@ -35,21 +35,6 @@ export function CoverLayer({
         <View style={{ width: "100%", height, backgroundColor: firstColor(spec, colors.chip) }} />
       )}
 
-      {/* الدرع: يُقرأ الاسم على أيّ غلاف. */}
-      <LinearGradient
-        colors={["rgba(14,26,36,0)", "rgba(14,26,36,0.46)"]}
-        locations={[0.4, 1]}
-        style={{ position: "absolute", inset: 0 }}
-        pointerEvents="none"
-      />
-
-      {/* الذوبان: آخر سُدس الغلاف يصير ورقاً. */}
-      <LinearGradient
-        colors={["rgba(234,229,217,0)", "rgba(234,229,217,0.58)", colors.paper]}
-        locations={[0.84, 0.94, 1]}
-        style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.round(height * 0.34) }}
-        pointerEvents="none"
-      />
     </View>
   );
 }
