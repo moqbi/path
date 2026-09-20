@@ -1,17 +1,33 @@
 /**
  * مؤثّرات صوتية خفيفة — نغمة واحدة قصيرة، لا ملفّات ولا تحميل.
  *
- * الصوت يُركَّب لحظةَ الحاجة عبر WebAudio: موجة جيبية تخفت في أقلّ من
- * عُشر ثانية. لا نُنشئ `AudioContext` إلا عند أوّل لمسة، فالمتصفّحات
- * تمنع الصوت قبل إيماءة المستخدم، وإنشاؤه مبكراً يتركه معلّقاً.
+ * الصوت يُركَّب لحظةَ الحاجة عبر WebAudio. لا نُنشئ `AudioContext` إلا
+ * عند أوّل لمسة، فالمتصفّحات تمنع الصوت قبل إيماءة المستخدم، وإنشاؤه
+ * مبكراً يتركه معلّقاً.
  *
  * وإن كان الجهاز مضبوطاً على «قلّل الحركة» سكتنا: من يطلب هدوء الحركة
  * يطلب هدوء الصوت معه.
+ *
+ * **والنغمة انزلاقٌ لا نقرتان**: كانت نقرتين منفصلتين بموجةٍ جيبية —
+ * تُسمعان «بيب بيب» كمنبّه ساعةٍ رخيصة. صارت نغمةً واحدة تنزلق بين
+ * ترددين بموجةٍ مثلّثة: أنعم، وأقصر، وتُقرأ حركةً لا تنبيهاً.
+ *
+ * **ولا يتداخل صوتان**: صوتٌ جديد يُسكت ما قبله (`hush`) قبل أن يبدأ.
+ * وكلُّ صوتٍ يُسجّل عُقَده، فضغطتان متتاليتان على الزرّ نفسه لا
+ * تُراكِمان موجتين تُسمعان ضجيجاً — وهذا ما كان يحدث مع السحب
+ * للتحديث: الإفلات يُطلق نغمةً والزرّ يُطلق أخرى فوقها.
  */
 
 let ctx: AudioContext | null = null;
 
 type Ctor = typeof AudioContext;
+
+/** ما يُصدر صوتاً الآن — يُسكَت قبل أيّ صوتٍ جديد. */
+let live: { osc: OscillatorNode; amp: GainNode }[] = [];
+
+/** آخر لحظة بدأ فيها صوت: ما دونها ضغطتان في وميضٍ واحد. */
+let last = 0;
+const GAP = 60;
 
 function audio(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -34,45 +50,85 @@ function quiet(): boolean {
   return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 }
 
-/** نغمة واحدة: تردّد، ومدّة، وحجم خافت لا يُزعج من حوله. */
-function tone(hz: number, seconds: number, gain: number, at = 0): void {
+/**
+ * يُسكت ما يُسمع الآن.
+ *
+ * والإسكات خفوتٌ في عشرة أجزاء من الألف لا إيقافٌ فوريّ: قطعُ الموجة
+ * في منتصفها يُسمع طقّةً أوضح من النغمة نفسها.
+ */
+function hush(context: AudioContext): void {
+  const now = context.currentTime;
+  for (const node of live) {
+    try {
+      node.amp.gain.cancelScheduledValues(now);
+      node.amp.gain.setValueAtTime(Math.max(0.0001, node.amp.gain.value), now);
+      node.amp.gain.exponentialRampToValueAtTime(0.0001, now + 0.01);
+      node.osc.stop(now + 0.03);
+    } catch {
+      // عُقدةٌ انتهت من نفسها — لا شيء يُسكَت.
+    }
+  }
+  live = [];
+}
+
+/** نغمةٌ تنزلق من تردّدٍ إلى تردّد، بحجمٍ خافت لا يُزعج من حول صاحبه. */
+function slide(from: number, to: number, seconds: number, gain: number): void {
   const context = audio();
   if (!context) return;
 
-  const start = context.currentTime + at;
+  hush(context);
+
+  const start = context.currentTime;
   const osc = context.createOscillator();
   const amp = context.createGain();
 
-  osc.type = "sine";
-  osc.frequency.setValueAtTime(hz, start);
+  // المثلّثة أنعم من الجيبية المجرّدة وأقلّ حدّةً من المربّعة.
+  osc.type = "triangle";
+  osc.frequency.setValueAtTime(from, start);
+  osc.frequency.exponentialRampToValueAtTime(to, start + seconds * 0.8);
 
-  // نهوض سريع ثم خفوت أُسّي: بلا الخفوت تسمع طقّةً في نهاية الموجة.
+  // نهوض سريع ثم خفوت أُسّي: بلا الخفوت تُسمع طقّةٌ في نهاية الموجة.
   amp.gain.setValueAtTime(0.0001, start);
-  amp.gain.exponentialRampToValueAtTime(gain, start + 0.012);
+  amp.gain.exponentialRampToValueAtTime(gain, start + 0.01);
   amp.gain.exponentialRampToValueAtTime(0.0001, start + seconds);
 
   osc.connect(amp).connect(context.destination);
   osc.start(start);
   osc.stop(start + seconds + 0.02);
+
+  live = [{ osc, amp }];
+  osc.onended = () => {
+    live = live.filter((node) => node.osc !== osc);
+  };
 }
 
-/** إفلات السحب للتحديث: نقرة صاعدة تقول «ذهب الطلب». */
+/** يمنع ضغطتين في وميضٍ واحد من أن تُسمعا صوتين. */
+function soon(): boolean {
+  const now = Date.now();
+  if (now - last < GAP) return true;
+  last = now;
+  return false;
+}
+
+/**
+ * التحديث: انزلاقٌ صاعد قصير يقول «ذهب الطلب».
+ *
+ * ويُسمع من البابين معاً — زرّ التحديث وإفلاتِ السحب — فالفعل واحد
+ * وإن اختلفت اليد.
+ */
 export function playRefresh(): void {
-  if (quiet()) return;
-  tone(660, 0.09, 0.05);
-  tone(990, 0.1, 0.035, 0.06);
+  if (quiet() || soon()) return;
+  slide(430, 880, 0.16, 0.05);
 }
 
-/** فتح قائمة النشر: نقرة صاعدة خفيفة مع تطاير الأيقونات. */
+/** فتح قوس النشر: انزلاقٌ صاعد أنعم وأقصر. */
 export function playOpen(): void {
-  if (quiet()) return;
-  tone(520, 0.07, 0.045);
-  tone(780, 0.08, 0.03, 0.05);
+  if (quiet() || soon()) return;
+  slide(360, 620, 0.12, 0.045);
 }
 
-/** إغلاقها: نفس النقرة معكوسة، فالأذن تعرف أنّ الشيء انطوى. */
+/** إغلاقه: النغمة نفسها منزلقةً إلى أسفل، فالأذن تعرف أنّ الشيء انطوى. */
 export function playClose(): void {
-  if (quiet()) return;
-  tone(700, 0.06, 0.04);
-  tone(460, 0.09, 0.03, 0.045);
+  if (quiet() || soon()) return;
+  slide(620, 340, 0.12, 0.04);
 }
