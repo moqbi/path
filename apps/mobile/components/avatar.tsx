@@ -23,7 +23,33 @@ export type Charm = { spec: string; mediaId: string | null } | null | undefined;
  * فصورةُ الإطار المرفوعة تُهمَل بلا خطأٍ يظهر ويُرسم اللون مكانها.
  * نسخةُ `Frame` في `src/components/ui.tsx` حرفاً بحرف.
  */
-export type Frame = { spec: string; mediaId: string | null } | null | undefined;
+export type Frame =
+  | { spec: string; mediaId: string | null; frameHole?: number | null }
+  | null
+  | undefined;
+
+/**
+ * كم يُكبَّر رسمُ الإطار حول الصورة — نسخةُ `frameZoom` في الويب.
+ *
+ * رسمُ الإطار قد يمتدّ بعيداً عن حلقته (جناحان، سعفٌ، تاج)، فوضعُه
+ * كلَّه في مربّع الوجه يصغّر الحلقةَ حتى تجلس **داخل** الصورة. فالمقياس
+ * من فراغه الأوسط: يُكبَّر الرسم بمقلوبه فيطابق الفراغُ الوجه.
+ */
+export function frameZoom(frame: NonNullable<Frame>): number {
+  const hole = frame.frameHole ?? 0;
+  if (hole < 20 || hole > 99) return 1;
+  return 100 / hole;
+}
+
+/**
+ * إزاحةُ الوجه داخل بطاقة الإطار — للمعاينات (المتجر، إكسسواراتي):
+ * الوجه يجلس في فراغ الرسم لا في مربّعه.
+ */
+export function frameInset(frame: { frameHole?: number | null }, box: number): number {
+  const hole = frame.frameHole ?? 0;
+  const ratio = hole >= 20 && hole <= 99 ? (100 - hole) / 200 : FRAME_INSET;
+  return Math.round(box * ratio);
+}
 
 /**
  * صورة العرض.
@@ -81,12 +107,22 @@ export function Avatar({
     تختفي خلف الوجه. وإطارٌ نصفُه خلف الصورة ليس إطاراً.
   */
   const painted = Boolean(frame?.mediaId);
+  /*
+    الوجه ينحسر تحت إطارٍ بلا قياسٍ محفوظ (حلقةٌ تملأ لوحتها)، ولا ينحسر
+    تحت إطارٍ قِيس فراغُه: الفراغ صار بقَدْر الوجه تماماً.
+  */
+  const zoom = painted && frame ? frameZoom(frame) : 1;
   const pad = frame
     ? painted
-      ? Math.round(size * FRAME_INSET)
+      ? zoom > 1.02
+        ? 0
+        : Math.round(size * FRAME_INSET)
       : Math.max(2, Math.round(size * 0.045))
     : 0;
   const inner = size - pad * 2;
+  // الرسمُ يُكبَّر بمقلوب فراغه ويُوسَّط على الوجه، فجناحاه يخرجان عنه.
+  const art = Math.round(size * zoom);
+  const artOff = Math.round((size - art) / 2);
 
   return (
     <View
@@ -132,12 +168,12 @@ export function Avatar({
       {painted && frame?.mediaId ? (
         <View
           pointerEvents="none"
-          style={{ position: "absolute", left: 0, top: 0, width: size, height: size }}
+          style={{ position: "absolute", left: artOff, top: artOff, width: art, height: art }}
         >
           <MediaImage
             mediaId={frame.mediaId}
             resizeMode="contain"
-            style={{ width: size, height: size }}
+            style={{ width: art, height: art }}
           />
         </View>
       ) : null}

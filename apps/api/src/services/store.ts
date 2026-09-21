@@ -18,6 +18,8 @@ const ITEM = {
   priceCoins: true,
   spec: true,
   mediaId: true,
+  /** فراغُ الإطار الأوسط: الوجه يجلس فيه لا في مربّع الرسم. */
+  frameHole: true,
   plusOnly: true,
   earnedAfterDays: true,
   limited: true,

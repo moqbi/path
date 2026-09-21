@@ -28,7 +28,7 @@ export type Person = {
   name: string;
   isPlus: boolean;
   avatarMediaId: string | null;
-  frame: { spec: string; mediaId: string | null } | null;
+  frame: { spec: string; mediaId: string | null; frameHole?: number | null } | null;
   charm: { spec: string; mediaId: string | null } | null;
   tag: { name: string; bg: string; fg: string } | null;
 };
@@ -164,6 +164,8 @@ export type StoreItem = {
   priceCoins: number;
   spec: string;
   mediaId: string | null;
+  /** اتّساعُ فراغ الإطار الأوسط: الوجه يجلس فيه لا في مربّع الرسم. */
+  frameHole?: number | null;
   plusOnly: boolean;
   earnedAfterDays: number | null;
   limited: boolean;
@@ -256,7 +258,7 @@ export type StoryRing = {
   userId: string;
   name: string;
   avatarMediaId: string | null;
-  frame: { spec: string; mediaId: string | null } | null;
+  frame: { spec: string; mediaId: string | null; frameHole?: number | null } | null;
   fresh: boolean;
   count: number;
 };

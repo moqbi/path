@@ -3,7 +3,7 @@ import { View, Pressable, Modal } from "react-native";
 import { Text } from "./type";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MediaImage } from "./media-image";
-import { firstColor } from "./avatar";
+import { firstColor, frameInset } from "./avatar";
 import { CheckIcon, LockIcon } from "./icons";
 import { api } from "../lib/api";
 import { keys, type StoreItem } from "../lib/queries";
@@ -98,17 +98,25 @@ function Preview({ item }: { item: StoreItem }) {
     if (item.mediaId) {
       return (
         <View style={{ width: 62, height: 62 }}>
-          <View
-            style={{
-              position: "absolute",
-              left: 5,
-              top: 5,
-              width: 52,
-              height: 52,
-              borderRadius: 26,
-              backgroundColor: colors.chip,
-            }}
-          />
+          {/* الوجهُ في فراغ الإطار لا في مربّع رسمه: رسمٌ بجناحين فراغُه
+              نصفُ عرضه، فقرصٌ يملأ المربّع يخرج من تحته. */}
+          {(() => {
+            const off = frameInset(item, 62);
+            const face = 62 - off * 2;
+            return (
+              <View
+                style={{
+                  position: "absolute",
+                  left: off,
+                  top: off,
+                  width: face,
+                  height: face,
+                  borderRadius: face / 2,
+                  backgroundColor: colors.chip,
+                }}
+              />
+            );
+          })()}
           <MediaImage
             mediaId={item.mediaId}
             resizeMode="contain"

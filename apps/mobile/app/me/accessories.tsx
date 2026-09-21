@@ -5,7 +5,7 @@ import { useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ScreenHeader } from "../../components/screen-header";
 import { MediaImage } from "../../components/media-image";
-import { firstColor } from "../../components/avatar";
+import { firstColor, frameInset } from "../../components/avatar";
 import { CheckIcon } from "../../components/icons";
 import { api } from "../../lib/api";
 import { keys } from "../../lib/queries";
@@ -20,11 +20,20 @@ type Owned = {
   spec: string;
   kind: Kind;
   mediaId: string | null;
+  /** اتّساعُ فراغ الإطار الأوسط: الوجه يجلس فيه لا في مربّع الرسم. */
+  frameHole?: number | null;
   giftedBy: string | null;
 };
 
 type Row = {
-  item: { id: string; name: string; spec: string; kind: Kind; mediaId: string | null };
+  item: {
+    id: string;
+    name: string;
+    spec: string;
+    kind: Kind;
+    mediaId: string | null;
+    frameHole?: number | null;
+  };
   giftedBy: { id: string; name: string } | null;
 };
 
@@ -195,6 +204,32 @@ function Art({ item }: { item: Owned }) {
   const paint = firstColor(item.spec, colors.chip);
 
   if (item.kind === "FRAME") {
+    /*
+       الإطار المصوَّر **فوق** قرصٍ محايد لا خلفه، كما يُرى على الوجه
+       (`Avatar`) وفي المتجر. وكان القرصُ فوقه يُخفي الرسمَ كلَّه —
+       وهذا «الإطار ما يظهر» في إكسسواراتي.
+    */
+    if (item.mediaId) {
+      const off = frameInset(item, 58);
+      const face = 58 - off * 2;
+      return (
+        <View style={{ width: 58, height: 58 }}>
+          <View
+            style={{
+              position: "absolute",
+              left: off,
+              top: off,
+              width: face,
+              height: face,
+              borderRadius: face / 2,
+              backgroundColor: colors.chip,
+            }}
+          />
+          <MediaImage mediaId={item.mediaId} resizeMode="contain" style={{ width: 58, height: 58 }} />
+        </View>
+      );
+    }
+
     return (
       <View style={{ width: 58, height: 58, borderRadius: 29, padding: 3, backgroundColor: paint }}>
         <View style={{ flex: 1, borderRadius: 26, backgroundColor: colors.card }} />

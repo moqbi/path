@@ -39,7 +39,7 @@ export type StoryRing = {
   userId: string;
   name: string;
   avatarMediaId: string | null;
-  frame: { spec: string; mediaId: string | null } | null;
+  frame: { spec: string; mediaId: string | null; frameHole: number | null } | null;
   /** فيها ما لم يُشاهَد بعد — الحلقة الملوّنة. */
   fresh: boolean;
   count: number;
@@ -65,7 +65,7 @@ export async function storyRings(userId: string): Promise<StoryRing[]> {
           id: true,
           name: true,
           avatarMediaId: true,
-          frame: { select: { spec: true, mediaId: true } },
+          frame: { select: { spec: true, mediaId: true, frameHole: true } },
           charm: { select: { spec: true, mediaId: true } },
         },
       },

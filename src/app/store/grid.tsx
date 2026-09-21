@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { buyNow, equip, unequip } from "@/app/actions";
 import { coinText, ar } from "@/lib/format";
 import { LockIcon, CheckIcon } from "@/components/icons";
-import { itemPaint } from "@/components/ui";
+import { frameInset, itemPaint } from "@/components/ui";
 import { Portal, Sheet } from "@/components/sheet";
 
 /**
@@ -33,6 +33,8 @@ export type Item = {
   limited: boolean;
   /** صورة الصنف — الثيم والتميمة صورتان، والإطار تدرّج. */
   mediaId: string | null;
+  /** اتّساعُ فراغ الإطار الأوسط: الوجه يجلس فيه، لا في مربّع الرسم. */
+  frameHole?: number | null;
   /**
    * ما تحمله الحزمة من أصناف — فارغٌ لما ليس حزمة.
    *
@@ -102,9 +104,11 @@ function Preview({ item }: { item: Item }) {
     if (item.mediaId) {
       return (
         <span className="relative block" style={{ width: 62, height: 62 }}>
+          {/* الوجهُ في فراغ الإطار لا في مربّع رسمه: رسمٌ بجناحين فراغُه
+              نصفُ عرضه، فقرصٌ يملأ المربّع يخرج من تحته. */}
           <span
             className="absolute rounded-full"
-            style={{ inset: 5, background: "var(--color-chip)" }}
+            style={{ inset: frameInset(item), background: "var(--color-chip)" }}
           />
           <span className="absolute inset-0 block" style={itemPaint(item, "contain")} />
         </span>

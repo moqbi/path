@@ -4,6 +4,7 @@ import { clearItemImage, setItemImage } from "@/app/actions";
 import { ImagePicker } from "@/components/image-picker";
 import { CameraIcon, CloseIcon } from "@/components/icons";
 import { itemPaint } from "@/components/ui";
+import { measureHole } from "@/lib/frame-hole";
 
 /**
  * صورة الصنف في اللوحة.
@@ -58,11 +59,16 @@ export function ItemImage({
         maxSize={charm ? 320 : frame ? 512 : 1600}
         keepAlpha={alpha}
         accept={alpha ? "image/png,image/webp" : "image/jpeg,image/png,image/webp"}
-        onPicked={(file, width, height) => {
+        onPicked={async (file, width, height) => {
             const data = new FormData();
             data.set("image", file);
             data.set("width", String(width));
             data.set("height", String(height));
+            // الإطار يُقاس فراغُه وقت الرفع: بعدها لا نملك بكسلاته هنا.
+            if (frame) {
+              const hole = await measureHole(file);
+              if (hole) data.set("hole", String(hole));
+            }
             return setItemImage(itemId, data);
           }}
         className="grow"

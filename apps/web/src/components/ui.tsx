@@ -31,7 +31,31 @@ export type Charm = { spec: string; mediaId: string | null } | null | undefined;
  * مكانها — في المتجر وعلى الوجه معاً. والنوعُ يمنع تكرارها: من يمرّر
  * `spec` وحده لا يُترجَم أصلاً.
  */
-export type Frame = { spec: string; mediaId: string | null } | null | undefined;
+export type Frame =
+  | { spec: string; mediaId: string | null; frameHole?: number | null }
+  | null
+  | undefined;
+
+/**
+ * كم يُكبَّر رسمُ الإطار حول الصورة.
+ *
+ * رسمُ الإطار قد يمتدّ بعيداً عن حلقته — جناحا عنقاء، سعفُ نخيل، تاج —
+ * فوضعُ الصورة كلّها في مربّع الوجه (`contain`) يصغّر الحلقةَ حتى تجلس
+ * **داخل** الصورة، ويبقى الوجهُ ظاهراً من حولها. وهذا ما رآه المالك في
+ * إطار العنقاء.
+ *
+ * فالمقياس من **الفراغ الأوسط** (`frameHole`): هو ما يجب أن يطابق
+ * الوجه، فيُكبَّر الرسم بمقلوبه — فراغٌ نصفُ العرض يعني رسماً بضعف
+ * القطر، وجناحاه يخرجان عن الصورة كما رُسما.
+ *
+ * وبلا قياسٍ محفوظ يبقى كما هو (١) — إطارُ حلقةٍ تملأ لوحتها يُرسم
+ * صحيحاً بلا شيء.
+ */
+export function frameZoom(frame: NonNullable<Frame>): number {
+  const hole = frame.frameHole ?? 0;
+  if (hole < 20 || hole > 99) return 1;
+  return 100 / hole;
+}
 
 /**
  * خلفية صنف المتجر: صورته إن رُفعت، وإلا قيمة `spec` كما هي.
@@ -60,6 +84,19 @@ export function itemPaint(
  * شيئاً واحداً، ولا تُصغّر الوجه حتى يضيع.
  */
 const FRAME_INSET = 0.07;
+
+/**
+ * إزاحةُ الوجه داخل بطاقة الإطار — للمعاينات التي ترسم الإطار في
+ * مربّعها لا حول وجهٍ حقيقيّ (المتجر، إكسسواراتي).
+ *
+ * البطاقةُ تعرض الرسمَ كاملاً، والوجهُ يجلس في فراغه الأوسط — فتُقرأ
+ * البطاقةُ كما يُقرأ الإطار على الصورة. وبلا قياسٍ محفوظ: حلقةٌ تملأ
+ * لوحتها، فالوجهُ تحتها بالحشوة المعتادة.
+ */
+export function frameInset(frame: { frameHole?: number | null }): string {
+  const hole = frame.frameHole ?? 0;
+  return hole >= 20 && hole <= 99 ? `${(100 - hole) / 2}%` : `${FRAME_INSET * 100}%`;
+}
 
 export function Avatar({
   name,
@@ -121,7 +158,12 @@ export function Avatar({
      لونٌ مصمت لا رسمٌ بشفافية.
   */
   const painted = Boolean(frame.mediaId);
-  const pad = painted ? size * FRAME_INSET : Math.max(2, size * 0.045);
+  /*
+    الوجه ينحسر قليلاً تحت إطارٍ بلا قياسٍ محفوظ (حلقةٌ تملأ لوحتها)،
+    ولا ينحسر تحت إطارٍ قِيس فراغُه: الفراغ صار بقَدْر الوجه تماماً.
+  */
+  const zoom = painted ? frameZoom(frame) : 1;
+  const pad = painted ? (zoom > 1.02 ? 0 : size * FRAME_INSET) : Math.max(2, size * 0.045);
 
   return (
     <div
@@ -139,8 +181,10 @@ export function Avatar({
         <span
           aria-hidden="true"
           data-frame="1"
-          className="pointer-events-none absolute inset-0 block"
+          className="pointer-events-none absolute block"
           style={{
+            // الرسمُ يُكبَّر بمقلوب فراغه الأوسط، ويُوسَّط على الوجه.
+            inset: `${((1 - frameZoom(frame)) / 2) * 100}%`,
             backgroundImage: `url(/api/media/${frame.mediaId})`,
             backgroundSize: "contain",
             backgroundPosition: "center",

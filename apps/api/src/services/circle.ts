@@ -18,7 +18,7 @@ const PERSON = {
   avatarMediaId: true,
   // الصنف الملبوس يُقرأ كاملاً: من ضغط صورةً وأعجبه إطارُها يرى اسمه
   // وسعره من مكانه، فلا يبحث عنه في المتجر.
-  frame: { select: { id: true, name: true, kind: true, spec: true, mediaId: true, priceCoins: true, plusOnly: true } },
+  frame: { select: { id: true, name: true, kind: true, spec: true, mediaId: true, frameHole: true, priceCoins: true, plusOnly: true } },
   charm: { select: { id: true, name: true, kind: true, spec: true, mediaId: true, priceCoins: true, plusOnly: true } },
   tag: { select: { name: true, bg: true, fg: true } },
 } as const;

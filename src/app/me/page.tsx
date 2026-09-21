@@ -47,6 +47,7 @@ export default async function ProfilePage() {
             spec: true,
             kind: true,
             mediaId: true,
+            frameHole: true,
             priceCoins: true,
             plusOnly: true,
           },
@@ -194,6 +195,7 @@ export default async function ProfilePage() {
                   spec: row.item.spec,
                   kind: row.item.kind,
                   mediaId: row.item.mediaId,
+                  frameHole: row.item.frameHole,
                   giftedBy: row.giftedBy?.name ?? null,
                 }))}
               equippedFrame={user.frameId}

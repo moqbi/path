@@ -436,11 +436,11 @@ function LensHead({
   onClear,
 }: {
   view: string;
-  friend: { id: string; name: string; avatarMediaId: string | null; frame: { spec: string; mediaId: string | null } | null; charm: { spec: string; mediaId: string | null } | null } | null;
+  friend: { id: string; name: string; avatarMediaId: string | null; frame: { spec: string; mediaId: string | null; frameHole?: number | null } | null; charm: { spec: string; mediaId: string | null } | null } | null;
   me: { name: string; avatarMediaId: string | null };
   count: number;
   since: Date | null;
-  people: { id: string; name: string; avatarMediaId: string | null; frame: { spec: string; mediaId: string | null } | null; charm: { spec: string; mediaId: string | null } | null }[];
+  people: { id: string; name: string; avatarMediaId: string | null; frame: { spec: string; mediaId: string | null; frameHole?: number | null } | null; charm: { spec: string; mediaId: string | null } | null }[];
   onPick: (id: string) => void;
   onClear: () => void;
 }) {

@@ -28,7 +28,7 @@ const shape = {
       name: true,
       isPlus: true,
       avatarMediaId: true,
-      frame: { select: { spec: true, mediaId: true } },
+      frame: { select: { spec: true, mediaId: true, frameHole: true } },
       charm: { select: { spec: true, mediaId: true } },
       tag: { select: { name: true, bg: true, fg: true } },
     },

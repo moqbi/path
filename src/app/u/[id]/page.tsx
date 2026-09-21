@@ -33,6 +33,7 @@ const WORN = {
   kind: true,
   spec: true,
   mediaId: true,
+  frameHole: true,
   priceCoins: true,
   plusOnly: true,
 } as const;
@@ -278,7 +279,7 @@ type Person = {
   isPlus: boolean;
   avatarMediaId: string | null;
   coverMediaId: string | null;
-  frame: { spec: string; mediaId: string | null } | null;
+  frame: { spec: string; mediaId: string | null; frameHole: number | null } | null;
   charm: { spec: string; mediaId: string | null } | null;
   background: { spec: string } | null;
   tag: { name: string; bg: string; fg: string } | null;

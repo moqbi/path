@@ -17,7 +17,7 @@ export type CommentShape = {
     id: string;
     name: string;
     avatarMediaId?: string | null;
-    frame?: { spec: string; mediaId: string | null } | null;
+    frame?: { spec: string; mediaId: string | null; frameHole: number | null } | null;
     charm?: { spec: string; mediaId: string | null } | null;
     isPlus?: boolean;
     tag?: { name: string; bg: string; fg: string } | null;

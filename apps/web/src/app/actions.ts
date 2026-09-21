@@ -717,7 +717,19 @@ export async function setItemImage(itemId: string, formData: FormData): Promise<
   const admin = await requireAdmin("store");
   const { file, width, height } = picture(formData);
   const media = await storeUpload(admin.id, file, width, height);
-  await prisma.storeItem.update({ where: { id: itemId }, data: { mediaId: media.id } });
+
+  /*
+     فراغُ الإطار الأوسط يُقاس في المتصفّح وقت الرفع (`measureHole`):
+     الخادم لا يفكّ PNG بلا مكتبة، والقياسُ نسبةٌ لا بكسلات. وبلا قياسٍ
+     يُمحى المحفوظ فلا يبقى قياسُ صورةٍ ذهبت على صورةٍ جديدة.
+  */
+  const raw = Number(formData.get("hole"));
+  const hole = Number.isFinite(raw) && raw >= 20 && raw <= 99 ? Math.round(raw) : null;
+
+  await prisma.storeItem.update({
+    where: { id: itemId },
+    data: { mediaId: media.id, frameHole: hole },
+  });
   revalidatePath("/admin");
   revalidatePath("/store");
   revalidatePath("/");
@@ -761,7 +773,10 @@ export async function clearItemCover(itemId: string): Promise<void> {
 
 export async function clearItemImage(itemId: string): Promise<void> {
   await requireAdmin("store");
-  await prisma.storeItem.update({ where: { id: itemId }, data: { mediaId: null } });
+  await prisma.storeItem.update({
+    where: { id: itemId },
+    data: { mediaId: null, frameHole: null },
+  });
   revalidatePath("/admin");
   revalidatePath("/store");
 }

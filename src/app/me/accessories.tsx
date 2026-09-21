@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { equip, unequip } from "@/app/actions";
 import { CheckIcon, CloseIcon } from "@/components/icons";
-import { itemPaint } from "@/components/ui";
+import { frameInset, itemPaint } from "@/components/ui";
 
 /**
  * الإكسسوارات: ما تملكه يُلبَس من ملفك، لا من المتجر.
@@ -19,6 +19,8 @@ export type Owned = {
   spec: string;
   kind: "FRAME" | "BACKGROUND" | "THEME" | "CHARM";
   mediaId: string | null;
+  /** اتّساعُ فراغ الإطار الأوسط: الوجه يجلس فيه، لا في مربّع الرسم. */
+  frameHole?: number | null;
   giftedBy: string | null;
 };
 
@@ -167,7 +169,21 @@ function Group({
                   borderWidth: on ? 1.5 : 1,
                 }}
               >
-                {frame ? (
+                {frame && item.mediaId ? (
+                  /*
+                     الإطار المصوَّر **فوق** قرصٍ محايد لا خلفه، كما يُرى
+                     على الوجه (`Avatar`) وفي المتجر. وكان يُدهن خلفيةً
+                     والقرصُ فوقه، فيختفي الرسمُ كلّه تحت لون البطاقة —
+                     وهذا «الإطار ما يظهر» في إكسسواراتي.
+                  */
+                  <span className="relative block" style={{ width: 58, height: 58 }}>
+                    <span
+                      className="absolute rounded-full"
+                      style={{ inset: frameInset(item), background: "var(--color-chip)" }}
+                    />
+                    <span className="absolute inset-0 block" style={itemPaint(item, "contain")} />
+                  </span>
+                ) : frame ? (
                   <span
                     className="rounded-full"
                     style={{ width: 58, height: 58, ...itemPaint(item), padding: 3 }}

@@ -61,7 +61,7 @@ export default async function TimelinePage({
             id: true,
             name: true,
             avatarMediaId: true,
-            frame: { select: { spec: true, mediaId: true } },
+            frame: { select: { spec: true, mediaId: true, frameHole: true } },
             charm: { select: { spec: true, mediaId: true } },
           },
         })
@@ -77,7 +77,7 @@ export default async function TimelinePage({
             id: true,
             name: true,
             avatarMediaId: true,
-            frame: { select: { spec: true, mediaId: true } },
+            frame: { select: { spec: true, mediaId: true, frameHole: true } },
             charm: { select: { spec: true, mediaId: true } },
           },
           orderBy: { name: "asc" },

@@ -63,7 +63,7 @@ export type Suggestion = {
   city: string | null;
   isPlus: boolean;
   avatarMediaId: string | null;
-  frame: { spec: string; mediaId: string | null } | null;
+  frame: { spec: string; mediaId: string | null; frameHole: number | null } | null;
   charm: { spec: string; mediaId: string | null } | null;
   tag: { name: string; bg: string; fg: string } | null;
   mutual: number;
@@ -125,7 +125,7 @@ export async function suggestions(userId: string, limit = 12): Promise<Suggestio
       city: true,
       isPlus: true,
       avatarMediaId: true,
-      frame: { select: { spec: true, mediaId: true } },
+      frame: { select: { spec: true, mediaId: true, frameHole: true } },
       charm: { select: { spec: true, mediaId: true } },
       tag: { select: { name: true, bg: true, fg: true } },
     },
