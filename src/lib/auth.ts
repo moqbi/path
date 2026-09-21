@@ -104,6 +104,9 @@ export type SessionUser = {
   name: string;
   handle: string | null;
   email: string | null;
+  /// متى أُكّد البريد — `null` يعني لم يُؤكَّد، ولا يُمنع به شيء
+  /// (القاعدة ١١٩ب). يُقرأ هنا ليُعرض التنبيه في الخطّ الزمنيّ.
+  emailVerifiedAt: Date | null;
   city: string | null;
   bio: string | null;
   isPlus: boolean;
@@ -147,6 +150,7 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
       name: true,
       handle: true,
       email: true,
+      emailVerifiedAt: true,
       city: true,
       bio: true,
       isPlus: true,
@@ -184,6 +188,7 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
     name: user.name,
     handle: user.handle,
     email: user.email,
+    emailVerifiedAt: user.emailVerifiedAt,
     city: user.city,
     bio: user.bio,
     isPlus: active,

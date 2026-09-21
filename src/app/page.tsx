@@ -12,6 +12,7 @@ import { Tour } from "@/components/tour";
 import { Avatar, Empty, NameTag } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import { TimelineHead } from "@/components/timeline-head";
+import { VerifyBanner } from "@/components/verify-banner";
 import { AthrHeaderMark } from "@/components/brand";
 import { MessageIcon, SparkIcon } from "@/components/icons";
 import { ar, dayLabel, membership } from "@/lib/format";
@@ -150,6 +151,13 @@ export default async function TimelinePage({
           />
         }
       >
+        {/*
+           أوّلُ ما يقع عليه بصرُه بعد التسجيل — ولا يمنعه من شيء
+           (القاعدة ١١٩ب). ومن لا بريدَ له (دخل بسناب) لا يُقال له
+           «أكّد بريدك»: صفُّ «اربط بريدك» في الإعدادات موضعُه.
+        */}
+        {user.email && !user.emailVerifiedAt ? <VerifyBanner email={user.email} /> : null}
+
         {view === "private" ? (
           <p className="mb-1 text-[11.5px] leading-relaxed text-muted">
             ما نُشر لتصنيفٍ من أصدقائك أو لأشخاص بأعيانهم — غيرهم لا يراها أصلاً.

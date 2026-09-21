@@ -40,6 +40,7 @@ export function VerifyEmail({
       <p className="mb-1 text-[13.5px] font-semibold">بريدك غير مؤكَّد</p>
       <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
         التأكيد بابُ استعادة حسابك يوم تنسى كلمة مرورك. لا يمنعك من شيء اليوم.
+        وإن أرسلتَ ولم تجد الرسالة في الوارد فانظر في «البريد غير الهامّ».
       </p>
 
       {said?.error ? (
