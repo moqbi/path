@@ -165,6 +165,25 @@ export function Avatar({
  */
 const CHARM_RATIO = 0.5;
 
+/**
+ * أين يجلس مركزُ التميمة: على قُطر الصورة في اتجاه الأسفل-اليسار.
+ *
+ * ١٫١٥ من نصف القطر — أي **خارج المحيط قليلاً**: التميمة تتدلّى من
+ * حافة الصورة لا تغرق فيها. وكانت تجلس على ٠٫٧٨ من نصف القطر فتُقرأ
+ * لصيقةً بالوجه مدفونةً في أسفله، وأكثرُها داخل الصورة لا خارجها.
+ *
+ * والإزاحة تُحسب بالمثلّثات لا تُكتب نسبةً: النسبةُ المكتوبة تنحرف مع
+ * كل تغييرٍ في `CHARM_RATIO`، والحساب يبقى صادقاً.
+ */
+const CHARM_REACH = 1.15;
+
+/** بُعدُ حافة التميمة عن حافة الحاوية — سالبٌ لأنها تخرج عنها. */
+function charmEdge(size: number, badge: number): number {
+  // المركّبة الأفقية (والرأسية، فالاتجاه قطريّ) لموضع المركز.
+  const reach = (size / 2) * CHARM_REACH * Math.SQRT1_2;
+  return size / 2 - reach - badge / 2;
+}
+
 function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }) {
   /*
    * قرابة ثلثي الصورة، حرّةً بلا إطار: التميمة شعارٌ يتدلّى من حافة
@@ -192,9 +211,9 @@ function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }
       style={{
         width: badge,
         height: badge,
-        // مركزها على حافة الدائرة تماماً: نصفها داخل الصورة ونصفها خارجها.
-        bottom: -badge * 0.26,
-        left: -badge * 0.26,
+        // مركزها على قُطر الصورة في اتجاه الأسفل-اليسار (`charmEdge`).
+        bottom: charmEdge(size, badge),
+        left: charmEdge(size, badge),
         // ظلٌّ خفيف يفصلها عن الصورة تحتها بلا حلقةٍ تحيط بها.
         filter: "drop-shadow(0 2px 4px rgba(14,26,36,.35))",
         ...paint,
