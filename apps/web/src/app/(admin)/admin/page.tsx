@@ -257,6 +257,82 @@ function search(q?: string) {
   };
 }
 
+/**
+ * صفُّ صلاحيات: المدى والإشراف في نموذجٍ واحد.
+ *
+ * والدرجتان **مستقلّتان**: من يدير المتجر لا يحتاج أن يقرأ لحظات
+ * الناس، ومن يقرؤها قد لا يدخل المتجر (القاعدة ١٠٩).
+ */
+function StaffRow({
+  person,
+}: {
+  person: {
+    id: string;
+    memberNo: number;
+    name: string;
+    email: string;
+    role: string;
+    adminScope: string;
+    canModerate: boolean;
+  };
+}) {
+  return (
+    <form
+      action={setAdminScope.bind(null, person.id)}
+      className="flex items-center gap-2 rounded-2xl border border-line bg-card p-3"
+    >
+      <span
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
+        style={{ background: "var(--color-chip)", color: "var(--color-muted)" }}
+      >
+        {ar(person.memberNo)}
+      </span>
+      <div className="min-w-0 grow">
+        <p dir="auto" className="flex items-center gap-1.5 truncate text-[13.5px] font-semibold">
+          {person.name}
+          {person.role === "ADMIN" ? <Chip gold>مالك</Chip> : null}
+          {person.adminScope !== "NONE" ? (
+            <Chip>{person.adminScope === "ALL" ? "اللوحة" : "المتجر"}</Chip>
+          ) : null}
+          {person.canModerate ? <Chip live>إشراف</Chip> : null}
+        </p>
+        <p dir="ltr" className="truncate text-right text-[11px] text-faint">
+          {person.email}
+        </p>
+      </div>
+      {/*
+        الإشراف صلاحيةٌ ثانية في النموذج نفسه: المالك يقرّر الدرجتين
+        لشخصٍ واحد في نظرةٍ واحدة.
+      */}
+      <label className="flex shrink-0 items-center gap-1.5 text-[11.5px] font-semibold text-muted">
+        <input
+          type="checkbox"
+          name="moderate"
+          defaultChecked={person.canModerate}
+          className="h-4 w-4 accent-[var(--color-clay)]"
+        />
+        إشراف
+      </label>
+      <select
+        name="scope"
+        defaultValue={person.adminScope}
+        className="h-10 max-w-[130px] shrink-0 rounded-xl border border-line bg-paper px-2 text-[12px] text-ink outline-none"
+      >
+        <option value="NONE">بلا صلاحية</option>
+        <option value="STORE">المتجر فقط</option>
+        <option value="ALL">اللوحة كاملة</option>
+      </select>
+      <button
+        type="submit"
+        className="h-10 shrink-0 rounded-xl px-3 text-[12px] font-bold"
+        style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+      >
+        احفظ
+      </button>
+    </form>
+  );
+}
+
 const SECTIONS = [
   { key: "tags", label: "الوسوم", store: false },
   { key: "users", label: "الحسابات", store: false },
@@ -315,7 +391,7 @@ export default async function AdminPage({
 
   const [
     items, tags, people, categories, tickets, reports, bannedWords, packs,
-    userCount, staff, site, heroMediaId, socials, logs,
+    userCount, staff, site, heroMediaId, socials, logs, found,
   ] = await Promise.all([
     prisma.storeItem.findMany({
       orderBy: { sortOrder: "asc" },
@@ -432,6 +508,28 @@ export default async function AdminPage({
           include: {
             admin: { select: { name: true, memberNo: true } },
             owner: { select: { name: true, memberNo: true } },
+          },
+        })
+      : Promise.resolve([]),
+    /*
+      ومن يُبحث عنه ليُمنح: قسمُ «الصلاحيات» كان يعرض **من مُنح وحده**،
+      فلا بابَ فيه لمنح غيره — ومن أراد أن يجعل حساباً مشرفاً لم يجد
+      إليه سبيلاً. والبحث هنا كبحث الحسابات: بالرقم أو المعرّف أو جزءٍ
+      من الاسم أو البريد (القاعدة ١١٥).
+    */
+    scope === "ALL" && q
+      ? prisma.user.findMany({
+          where: search(q),
+          orderBy: { memberNo: "asc" },
+          take: 10,
+          select: {
+            id: true,
+            memberNo: true,
+            name: true,
+            email: true,
+            role: true,
+            adminScope: true,
+            canModerate: true,
           },
         })
       : Promise.resolve([]),
@@ -1436,65 +1534,71 @@ export default async function AdminPage({
               آخر، وكلُّ حذفٍ يُسجَّل باسم من حذفه.
             </p>
 
+            {/*
+              البحث أوّلاً: القسم كان يعرض من مُنح وحده، فلا بابَ فيه
+              لمنح غيره. والبحث نموذجُ `GET` كبحث الحسابات — نتيجتُه في
+              العنوان فتُحفظ وتُشارَك (القاعدة ١١٥).
+            */}
+            <form method="get" className="mb-3 flex gap-2">
+              <input type="hidden" name="s" value="team" />
+              <input
+                name="q"
+                defaultValue={q ?? ""}
+                placeholder="ابحث لتمنح: رقم العضوية، أو المعرّف، أو اسم، أو بريد"
+                className="h-11 grow rounded-xl border border-line bg-paper px-3 text-[13px] text-ink outline-none placeholder:text-faint"
+              />
+              <button
+                type="submit"
+                className="h-11 shrink-0 rounded-xl px-4 text-[12.5px] font-bold"
+                style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+              >
+                ابحث
+              </button>
+              {q ? (
+                <Link
+                  href="/admin?s=team"
+                  className="flex h-11 shrink-0 items-center px-2 text-[12.5px] font-semibold text-muted"
+                >
+                  امسح
+                </Link>
+              ) : null}
+            </form>
+
+            {q ? (
+              <div className="mb-6">
+                <p className="mb-2 text-[11.5px] font-semibold text-muted">
+                  نتائج البحث عن «{q}» — {ar(found.length)} حساب
+                </p>
+                {found.length === 0 ? (
+                  <p className="rounded-2xl border border-line bg-card p-4 text-center text-[12.5px] text-muted">
+                    لا حساب بهذا البحث.
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {found
+                      .filter((person) => person.id !== user.id)
+                      .map((person) => (
+                        <StaffRow key={person.id} person={person} />
+                      ))}
+                  </div>
+                )}
+              </div>
+            ) : null}
+
+            <p className="mb-2 text-[11.5px] font-semibold text-muted">
+              من يملك صلاحيةً الآن — {ar(staff.filter((person) => person.id !== user.id).length)}
+            </p>
+
             <div className="mb-7 flex flex-col gap-2">
+              {staff.filter((person) => person.id !== user.id).length === 0 ? (
+                <p className="rounded-2xl border border-line bg-card p-4 text-center text-[12.5px] text-muted">
+                  لا أحد بعد. ابحث عن حسابٍ في الأعلى لتمنحه.
+                </p>
+              ) : null}
               {staff
                 .filter((person) => person.id !== user.id)
                 .map((person) => (
-                  <form
-                    key={person.id}
-                    action={setAdminScope.bind(null, person.id)}
-                    className="flex items-center gap-2 rounded-2xl border border-line bg-card p-3"
-                  >
-                    <span
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
-                      style={{ background: "var(--color-chip)", color: "var(--color-muted)" }}
-                    >
-                      {ar(person.memberNo)}
-                    </span>
-                    <div className="min-w-0 grow">
-                      <p dir="auto" className="flex items-center gap-1.5 truncate text-[13.5px] font-semibold">
-                        {person.name}
-                        {person.role === "ADMIN" ? <Chip gold>مالك</Chip> : null}
-                        {person.adminScope !== "NONE" ? (
-                          <Chip>{person.adminScope === "ALL" ? "اللوحة" : "المتجر"}</Chip>
-                        ) : null}
-                        {person.canModerate ? <Chip live>إشراف</Chip> : null}
-                      </p>
-                      <p dir="ltr" className="truncate text-right text-[11px] text-faint">
-                        {person.email}
-                      </p>
-                    </div>
-                    {/*
-                      الإشراف صلاحيةٌ ثانية في النموذج نفسه: المالك يقرّر
-                      الدرجتين لشخصٍ واحد في نظرةٍ واحدة. ومستقلّةٌ عن
-                      المدى — مشرفٌ يملكها وآخر لا.
-                    */}
-                    <label className="flex shrink-0 items-center gap-1.5 text-[11.5px] font-semibold text-muted">
-                      <input
-                        type="checkbox"
-                        name="moderate"
-                        defaultChecked={person.canModerate}
-                        className="h-4 w-4 accent-[var(--color-clay)]"
-                      />
-                      إشراف
-                    </label>
-                    <select
-                      name="scope"
-                      defaultValue={person.adminScope}
-                      className="h-10 max-w-[130px] shrink-0 rounded-xl border border-line bg-paper px-2 text-[12px] text-ink outline-none"
-                    >
-                      <option value="NONE">بلا صلاحية</option>
-                      <option value="STORE">المتجر فقط</option>
-                      <option value="ALL">اللوحة كاملة</option>
-                    </select>
-                    <button
-                      type="submit"
-                      className="h-10 shrink-0 rounded-xl px-3 text-[12px] font-bold"
-                      style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
-                    >
-                      احفظ
-                    </button>
-                  </form>
+                  <StaffRow key={person.id} person={person} />
                 ))}
             </div>
           </>
