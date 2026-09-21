@@ -17,6 +17,7 @@ import { STORY_HOURS, STORY_SECONDS } from "@/lib/stories";
 import { canInteract, canSeeMoment } from "@/lib/visibility";
 import { reverseGeocode } from "@/lib/places";
 import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
+import { consume, sendReset, sendVerify } from "@/lib/email-tokens";
 import { deliverTo, openConversation, VOICE_SECONDS } from "@/lib/dm";
 import { copyMedia, dropMedia, migrateToCloud, storeClip, storeUpload } from "@/lib/media";
 import { cloudReady, probeBucket } from "@/lib/storage";
@@ -52,6 +53,82 @@ export async function signIn(
 
   await createSession(user.id);
   redirect("/");
+}
+
+/**
+ * «نسيت كلمة المرور»: رسالةٌ فيها رابطٌ لساعةٍ واحدة.
+ *
+ * **والجواب واحدٌ سواء وُجد الحساب أو لم يوجد**: لو قلنا «لا حساب بهذا
+ * البريد» لصار البابُ وسيلةً لمعرفة من عندنا حسابٌ ومن ليس عنده. ومثلُه
+ * حين تُمنع رسالةٌ ثانيةً في دقيقة، أو حين لا يكون البريدُ مربوطاً بعد.
+ */
+export async function requestReset(
+  _prev: { ok?: string; error?: string } | null,
+  formData: FormData,
+): Promise<{ ok?: string; error?: string }> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const said = { ok: "إن كان هذا البريد مسجّلاً عندنا فقد أرسلنا إليه رابطاً. تحقّق من بريدك." };
+  if (!email.includes("@")) return { error: "اكتب بريداً صحيحاً" };
+
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, name: true, email: true },
+  });
+  if (user) await sendReset(user.id, user.email, user.name);
+  return said;
+}
+
+/**
+ * ضبطُ كلمة المرور بالرابط.
+ *
+ * والرمزُ يُستهلك قبل الكتابة: رابطٌ يُفتح مرّتين لا يضبط كلمتين.
+ * **وتُبطَل جلساتُه القائمة**: من نسي كلمته قد يكون فقد جهازه، وإعادةُ
+ * الضبط بابُه الوحيد لإخراج من فيه.
+ */
+export async function resetPassword(
+  _prev: { ok?: string; error?: string } | null,
+  formData: FormData,
+): Promise<{ ok?: string; error?: string }> {
+  const token = String(formData.get("token") ?? "");
+  const next = String(formData.get("next") ?? "");
+  const again = String(formData.get("again") ?? "");
+
+  if (next.length < 8) return { error: "كلمة المرور ٨ أحرف فأكثر" };
+  if (next !== again) return { error: "الكلمتان غير متطابقتين" };
+
+  const read = await consume(token, "RESET");
+  if ("error" in read) return { error: read.error };
+
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: read.userId },
+      data: {
+        passwordHash: await hashPassword(next),
+        // من وصلته الرسالة يملك البريد، فهذا تأكيدُه أيضاً.
+        emailVerifiedAt: new Date(),
+      },
+    }),
+    // الجلساتُ القائمة تذهب: قد يكون الجهازُ القديم في يدٍ أخرى.
+    prisma.refreshToken.deleteMany({ where: { userId: read.userId } }),
+  ]);
+
+  return { ok: "تم ضبط كلمة المرور — تقدر تدخل بها الآن" };
+}
+
+/** إعادةُ إرسال رسالة التأكيد من الإعدادات. */
+export async function resendVerify(): Promise<{ ok?: string; error?: string }> {
+  const user = await requireUser();
+  const row = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { email: true, name: true, emailVerifiedAt: true },
+  });
+  if (!row) return { error: "لا يوجد هذا الحساب" };
+  if (row.emailVerifiedAt) return { ok: "بريدك مؤكَّد أصلاً" };
+
+  const sent = await sendVerify(user.id, row.email, row.name);
+  return sent
+    ? { ok: "أرسلنا رابط التأكيد إلى بريدك" }
+    : { error: "تعذّر الإرسال الآن — جرّب بعد دقيقة" };
 }
 
 export async function signOut(): Promise<void> {

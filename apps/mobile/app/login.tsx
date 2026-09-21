@@ -388,6 +388,15 @@ export default function Login() {
                   {pending ? "لحظة…" : "دخول"}
                 </Text>
               </BrandButton>
+
+              {/* من نسي كلمته لا يستطيع الدخول ليطلبها، فبابُها هنا. */}
+              <Pressable onPress={() => router.push("/forgot" as never)}>
+                <Text
+                  style={{ fontSize: 12.5, fontWeight: "500", color: "rgba(247,245,239,.72)", textAlign: "center", paddingVertical: 6 }}
+                >
+                  نسيت كلمة المرور؟
+                </Text>
+              </Pressable>
             </View>
           ) : (
             <View style={{ gap: 10 }}>

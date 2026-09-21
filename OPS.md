@@ -208,7 +208,15 @@ R2_ACCESS_KEY_ID=...
 R2_SECRET_ACCESS_KEY=...
 ADMIN_EMAILS="..."
 REDIS_URL="redis://127.0.0.1:6379"
+
+# البريد الصادر (بريفو): تأكيدُ البريد وإعادةُ ضبط كلمة المرور.
+BREVO_API_KEY="..."
+MAIL_FROM="noreply@atharmts.com"
 ```
+
+> **ونطاقُ المرسِل يُثبَت في بريفو أوّلاً** (Senders & Domains): سجلّا
+> DKIM وSPF على `atharmts.com`، وإلّا رُفض الإرسال أو ذهب إلى «المهملات».
+> والرسائلُ تحمل روابط مطلقة، فبلا `SITE_URL` لا تُرسَل أصلاً.
 
 و`EXPO_PUBLIC_SITE_URL="https://atharmts.com"` في بناء الجوّال. ولا
 نطاقَ يُكتب في الكود (القاعدة ١٠٥).

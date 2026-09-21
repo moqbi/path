@@ -176,11 +176,16 @@ model User {
   quietFrom Int?
   quietTo   Int?
 
+  /// متى أُكّد البريد. فارغٌ يعني لم يُؤكَّد بعد — ولا يُمنع به الدخول:
+  /// حسابٌ قائمٌ لا يُقفل على صاحبه لأنّ رسالةً لم تصل.
+  emailVerifiedAt DateTime?
+
   /// آخر ظهور: يُحدَّث عند فتح التطبيق، ومنه «متصل الآن».
   lastSeenAt DateTime?
 
   createdAt DateTime @default(now())
 
+  emailTokens    EmailToken[]
   tickets        SupportTicket[]
   reports        Report[]        @relation("Reporter")
   reportsAgainst Report[]        @relation("Reported")
@@ -871,4 +876,35 @@ model BillingEvent {
   createdAt DateTime @default(now())
 
   @@index([appUserId, at])
+}
+
+/// لِمَ صدر الرمز: تأكيدُ بريدٍ أو إعادةُ ضبط كلمة مرور.
+enum EmailTokenKind {
+  VERIFY
+  RESET
+}
+
+/**
+ * رمزٌ يُرسَل إلى البريد ويُستعمل مرّةً واحدة.
+ *
+ * **التجزئة تُخزَّن لا الرمز**: قاعدةٌ تُسرَّق أو نسخةٌ احتياطيّة تُقرأ
+ * لا تُعطي قارئَها مفاتيحَ حسابات الناس — كما لا تُخزَّن كلمةُ المرور.
+ * والرمز يذهب إلى البريد وحده.
+ *
+ * و`usedAt` بدل الحذف: رابطٌ استُعمل مرّتين يُقال لصاحبه «انتهى» لا
+ * «غير موجود»، والفرقُ يوفّر عليه أن يظنّ الرابط مكسوراً فيعيد الطلب.
+ */
+model EmailToken {
+  id        String         @id @default(cuid())
+  userId    String
+  kind      EmailTokenKind
+  tokenHash String         @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, kind, createdAt])
+  @@index([expiresAt])
 }

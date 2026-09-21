@@ -45,6 +45,8 @@ export type Me = {
   coverY: number;
   shareLocation: boolean;
   notifyOnTag: boolean;
+  /** متى أُكّد البريد — فارغٌ يعني لم يُؤكَّد، ولا يُمنع به شيء. */
+  emailVerifiedAt?: string | null;
   /** التنبيهات: مفتاحٌ لكل نوع، وطرفا الوضع الهادئ بالدقائق. */
   notifyDm?: boolean;
   notifyFriend?: boolean;

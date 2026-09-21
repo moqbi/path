@@ -14,6 +14,7 @@ import { zValidator } from "../../lib/validate";
 import { requireAuth, me } from "../../middleware/auth";
 import * as profile from "../../services/profile";
 import * as feed from "../../services/feed";
+import * as auth from "../../services/auth";
 
 /**
  * حسابي.
@@ -51,6 +52,9 @@ export const profileRoutes = new Hono()
   .put("/notifications", zValidator("json", notifyInput), async (c) =>
     c.json(await profile.saveNotifications(me(c), c.req.valid("json"))),
   )
+
+  /** إعادةُ إرسال رسالة تأكيد البريد. */
+  .post("/verify/send", async (c) => c.json(await auth.resendVerify(me(c))))
 
   /** كلمة المرور — القديمةُ شرط، كالبريد وكالحذف. */
   .put("/password", zValidator("json", passwordChangeInput), async (c) =>

@@ -229,6 +229,15 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
               >
                 {pending ? "لحظة…" : "دخول"}
               </button>
+
+              {/* من نسي كلمته لا يستطيع الدخول ليطلبها، فبابُها هنا. */}
+              <a
+                href="/forgot"
+                className="mt-1 text-center text-[12.5px] font-medium"
+                style={{ color: "rgba(247,245,239,.72)" }}
+              >
+                نسيت كلمة المرور؟
+              </a>
             </form>
           ) : (
             <div className="flex flex-col gap-2.5">

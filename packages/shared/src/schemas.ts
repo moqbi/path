@@ -136,3 +136,15 @@ export const emailChangeInput = z.object({
   email,
   password: z.string().min(1, "اكتب كلمة المرور").max(200),
 });
+
+/** «نسيت كلمة المرور»: بريدٌ وحده. */
+export const forgotInput = z.object({ email });
+
+/** ضبطُ كلمة المرور بالرمز الذي وصل البريد. */
+export const resetInput = z.object({
+  token: z.string().min(10).max(200),
+  password: z.string().min(8, "كلمة المرور ٨ أحرف فأكثر").max(200),
+});
+
+/** تأكيدُ البريد بالرمز. */
+export const verifyInput = z.object({ token: z.string().min(10).max(200) });

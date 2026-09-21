@@ -1,6 +1,13 @@
 import { Hono } from "hono";
 import { zValidator } from "../../lib/validate";
-import { loginInput, refreshInput, registerInput } from "@athar/shared";
+import {
+  forgotInput,
+  loginInput,
+  refreshInput,
+  registerInput,
+  resetInput,
+  verifyInput,
+} from "@athar/shared";
 import * as auth from "../../services/auth";
 import { requireAuth, me } from "../../middleware/auth";
 import { rateLimit } from "../../middleware/rate-limit";
@@ -16,6 +23,9 @@ export const authRoutes = new Hono()
   .use("/register", rateLimit(5, 60))
   .use("/login", rateLimit(5, 60))
   .use("/refresh", rateLimit(30, 60))
+  // وبابُ البريد أهدأ منها كلّها: ثلاثٌ في الدقيقة، فلا يصير مِرشّة بريد.
+  .use("/forgot", rateLimit(3, 60))
+  .use("/reset", rateLimit(5, 60))
 
   .post("/register", zValidator("json", registerInput), async (c) => {
     const input = c.req.valid("json");
@@ -33,6 +43,22 @@ export const authRoutes = new Hono()
     const { refreshToken } = c.req.valid("json");
     return c.json(await auth.refresh(refreshToken, c.req.header("user-agent")));
   })
+
+  /**
+   * «نسيت كلمة المرور» — والجواب واحدٌ وُجد الحساب أو لم يوجد، وإلّا
+   * صار البابُ وسيلةً لمعرفة من عندنا حساب.
+   */
+  .post("/forgot", zValidator("json", forgotInput), async (c) =>
+    c.json(await auth.forgot(c.req.valid("json").email)),
+  )
+
+  .post("/reset", zValidator("json", resetInput), async (c) =>
+    c.json(await auth.resetPassword(c.req.valid("json"))),
+  )
+
+  .post("/verify", zValidator("json", verifyInput), async (c) =>
+    c.json(await auth.verifyEmail(c.req.valid("json").token)),
+  )
 
   .post("/logout", zValidator("json", refreshInput), async (c) => {
     await auth.logout(c.req.valid("json").refreshToken);

@@ -1,6 +1,7 @@
 import { randomBytes, scrypt as scryptCb, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { prisma } from "@athar/db";
+import { consume, sendReset, sendVerify } from "./email-tokens";
 import { TOKEN } from "@athar/shared";
 import { hashToken, newFamily, readRefresh, signAccess, signRefresh } from "../lib/tokens";
 import { badRequest, forbidden, unauthorized } from "../lib/errors";
@@ -101,7 +102,78 @@ export async function register(input: {
     select: PUBLIC_USER,
   });
 
+  /*
+     رسالةُ التأكيد تُرسَل ولا يُنتظر جوابُها، وفشلُها يُبتلع: حسابٌ
+     أُنشئ لا يُلغى لأنّ بريداً لم يخرج، ومن لم تصله رسالةٌ يطلبها من
+     الإعدادات.
+  */
+  void sendVerify(user.id, input.email, input.name).catch(() => {});
+
   return { user, ...(await issue(user, input.device)) };
+}
+
+/**
+ * «نسيت كلمة المرور»: رسالةٌ برابطٍ لساعة.
+ *
+ * والجواب واحدٌ وُجد الحساب أو لم يوجد — وإلّا صار البابُ وسيلةً لمعرفة
+ * من عندنا حساب.
+ */
+export async function forgot(email: string) {
+  const user = await prisma.user.findUnique({
+    where: { email: email.trim().toLowerCase() },
+    select: { id: true, email: true, name: true },
+  });
+  if (user) await sendReset(user.id, user.email, user.name);
+  return { ok: true };
+}
+
+/**
+ * ضبطُ كلمة المرور بالرمز.
+ *
+ * والجلساتُ القائمة تُبطَل: من نسي كلمته قد يكون فقد جهازه، وهذا بابُه
+ * الوحيد لإخراج من فيه. ومن وصلته الرسالة يملك البريد، فهو تأكيدُه.
+ */
+export async function resetPassword(input: { token: string; password: string }) {
+  const read = await consume(input.token, "RESET");
+  if ("error" in read) throw badRequest(read.error);
+
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: read.userId },
+      data: {
+        passwordHash: await hashPassword(input.password),
+        emailVerifiedAt: new Date(),
+      },
+    }),
+    prisma.refreshToken.deleteMany({ where: { userId: read.userId } }),
+  ]);
+  return { ok: true };
+}
+
+/** تأكيدُ البريد بالرمز — من الرابط أو من داخل التطبيق. */
+export async function verifyEmail(token: string) {
+  const read = await consume(token, "VERIFY");
+  if ("error" in read) throw badRequest(read.error);
+
+  await prisma.user.update({
+    where: { id: read.userId },
+    data: { emailVerifiedAt: new Date() },
+  });
+  return { ok: true };
+}
+
+/** إعادةُ إرسال رسالة التأكيد لصاحب الجلسة. */
+export async function resendVerify(userId: string) {
+  const row = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true, name: true, emailVerifiedAt: true },
+  });
+  if (!row) throw badRequest("لا يوجد هذا الحساب");
+  if (row.emailVerifiedAt) return { ok: true, already: true };
+
+  const sent = await sendVerify(userId, row.email, row.name);
+  if (!sent) throw badRequest("تعذّر الإرسال الآن — جرّب بعد دقيقة");
+  return { ok: true };
 }
 
 export async function login(input: { email: string; password: string; device?: string }) {

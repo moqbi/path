@@ -94,6 +94,7 @@ export default function Settings() {
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40, direction: "rtl" }} keyboardShouldPersistTaps="handled">
         {/* ── الحساب ── */}
         <Section title="الحساب" note="بريدك وكلمتك، ومن منعتَه، وبابُ الخروج الأخير">
+          <VerifyEmail verified={Boolean(me.emailVerifiedAt)} />
           <ChangePassword />
           <ChangeEmail current={me.email} />
 
@@ -881,6 +882,58 @@ function TimeField({
           </ScrollView>
         </Sheet>
       ) : null}
+    </View>
+  );
+}
+
+
+/**
+ * حالُ البريد: مؤكَّدٌ أو لا، ومعه زرُّ إعادة الإرسال.
+ *
+ * ولا يُمنع شيءٌ على غير المؤكَّد: حسابٌ قائمٌ لا يُقفل على صاحبه لأنّ
+ * رسالةً لم تصل. التأكيد بابُ الاستعادة يوم ينسى كلمته.
+ */
+function VerifyEmail({ verified }: { verified: boolean }) {
+  const [said, setSaid] = useState<string | null>(null);
+
+  const send = useMutation({
+    mutationFn: () => api("/v1/me/verify/send", { method: "POST" }),
+    onSuccess: () => setSaid("أرسلنا رابط التأكيد إلى بريدك"),
+    onError: (problem) =>
+      setSaid(problem instanceof Error ? problem.message : "تعذّر الإرسال"),
+  });
+
+  if (verified) {
+    return (
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, padding: 16, marginBottom: 12 }}>
+        <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600" }}>البريد مؤكَّد</Text>
+        <CheckIcon size={18} color={colors.clayInk} />
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, padding: 16, marginBottom: 12, gap: 8 }}>
+      <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600", textAlign: "right" }}>
+        بريدك غير مؤكَّد
+      </Text>
+      <Text style={{ color: colors.muted, fontSize: 11.5, lineHeight: 19, textAlign: "right" }}>
+        التأكيد بابُ استعادة حسابك يوم تنسى كلمة مرورك. لا يمنعك من شيء اليوم.
+      </Text>
+
+      {said ? (
+        <Text style={{ color: colors.clayInk, fontSize: 12, textAlign: "right" }}>{said}</Text>
+      ) : null}
+
+      <Pressable
+        onPress={() => { setSaid(null); send.mutate(); }}
+        disabled={send.isPending}
+        style={{ height: 44, borderRadius: 12, borderWidth: 1, borderColor: colors.line, alignItems: "center", justifyContent: "center", opacity: send.isPending ? 0.6 : 1 }}
+      >
+        <Text style={{ color: colors.clayInk, fontSize: 13, fontWeight: "600" }}>
+          {send.isPending ? "نرسل…" : "أرسل رابط التأكيد"}
+        </Text>
+      </Pressable>
     </View>
   );
 }

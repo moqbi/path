@@ -9,6 +9,7 @@ import { DeleteAccount } from "@/app/me/delete";
 import { ChangeEmail } from "@/app/settings/email";
 import { ChangePassword } from "@/app/settings/password";
 import { Notifications } from "@/app/settings/notifications";
+import { VerifyEmail } from "@/app/settings/verify-email";
 import { ar } from "@/lib/format";
 
 /**
@@ -32,6 +33,7 @@ export default async function SettingsPage() {
     prisma.user.findUnique({
       where: { id: user.id },
       select: {
+        emailVerifiedAt: true,
         viewGroupId: true,
         interactGroupId: true,
         shareLocation: true,
@@ -63,6 +65,7 @@ export default async function SettingsPage() {
         {/* ── الحساب ── */}
         <Section title="الحساب" note="بريدك وكلمتك، ومن منعتَه، وبابُ الخروج الأخير">
           <div className="flex flex-col gap-3">
+            <VerifyEmail verified={Boolean(settings?.emailVerifiedAt)} />
             <ChangePassword />
             <ChangeEmail current={user.email} />
 

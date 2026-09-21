@@ -27,6 +27,7 @@ export async function me(userId: string) {
       avatarMediaId: true,
       coverMediaId: true,
       coverY: true,
+      emailVerifiedAt: true,
       shareLocation: true,
       notifyOnTag: true,
       notifyDm: true,
