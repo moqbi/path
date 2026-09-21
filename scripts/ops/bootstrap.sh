@@ -73,13 +73,25 @@ EOF
 systemctl restart ssh
 
 say "جدارُ النار"
+# **بالرقم لا بالاسم**: `ufw allow OpenSSH` يعتمد على ملفّ تعريفٍ قد لا
+# يوجد، فتُقفَل ٢٢ ويبقى ٨٠ و٤٤٣ مفتوحين — وهو عطلٌ وقع فعلاً: الخادم
+# يردّ على الويب ولا يُدخَل إليه. والرقمُ لا يعتمد على شيء.
 ufw --force reset >/dev/null
 ufw default deny incoming >/dev/null
 ufw default allow outgoing >/dev/null
-ufw allow OpenSSH >/dev/null
-ufw allow 80/tcp >/dev/null
-ufw allow 443/tcp >/dev/null
+ufw allow 22/tcp
+ufw allow 80/tcp
+ufw allow 443/tcp
 ufw --force enable
+
+# ولا يُكمل السكربتُ قبل أن يتأكّد: خادمٌ بلا بابٍ للدخول لا يُصلَح إلا
+# من وحدة تحكّم المزوّد، وأكثرُ الناس لا يعرفها إلا وقت الحاجة.
+if ! ufw status | grep -qE '^22/tcp +ALLOW'; then
+  echo "✗ المنفذ ٢٢ غير مسموح — أُوقف قبل أن يُقفل الخادمُ على صاحبه"
+  ufw status verbose
+  exit 1
+fi
+ufw status numbered
 
 say "fail2ban"
 # **والحظرُ قصيرٌ عمداً**: من جرّب الدخول بكلمةٍ بعد إقفال الكلمات
