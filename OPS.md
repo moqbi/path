@@ -303,8 +303,20 @@ eas credentials -p android  # FCM V1 service account key ← Upload
 خادمٌ واحد يعني أنّ النسخة الاحتياطيّة هي الفرق بين عطلٍ وكارثة.
 ثلاث طبقات:
 
-1. **`pg_dump` يوميّاً إلى R2** (دلوٌ غير دلو الملفّات) عبر `rclone`،
-   مع الاحتفاظ بثلاثين يوماً.
+1. **`pg_dump` يوميّاً إلى R2** — والسكربتان جاهزان في المستودع:
+   `scripts/ops/backup-db.sh` و`restore-db.sh`، ومعهما وحدتا systemd.
+
+   ```bash
+   apt install -y rclone
+   rclone config   # نوع: s3 ← مزوّد: Cloudflare R2 ← المفاتيح نفسها
+   systemctl enable --now athar-backup.timer
+   ```
+
+   و**الدلو غير دلو الملفّات** (`athar-backups`): خلطُهما يجعل خطأً في
+   مسارٍ يمحو الاثنين. وأنشئه من لوحة Cloudflare لا بالواجهة البرمجية:
+   اللوحةُ وحدها تعطي **Location hint: Western Europe** و**Jurisdiction:
+   European Union** — وبياناتُ النسخ بياناتٌ شخصية، فلا تُترك تهبط في
+   أمريكا الشمالية بالافتراض.
 2. **أرشفة WAL** إن أردت استعادةً إلى لحظةٍ بعينها لا إلى ليلة أمس.
 3. **لقطة Hetzner** للنظام كلّه — وهي **ليست** نسخةً آمنةً للقاعدة
    بذاتها (لقطةُ قاعدةٍ تعمل قد تخرج غير متّسقة)، فهي لاستعادة

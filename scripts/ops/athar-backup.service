@@ -1,0 +1,8 @@
+[Unit]
+Description=نسخةُ قاعدة آثار إلى R2
+
+[Service]
+Type=oneshot
+User=athar
+EnvironmentFile=/home/athar/app/.env
+ExecStart=/home/athar/app/scripts/ops/backup-db.sh

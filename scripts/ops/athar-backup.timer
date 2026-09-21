@@ -1,0 +1,10 @@
+[Unit]
+Description=نسخةُ قاعدة آثار اليوميّة
+
+[Timer]
+# ثالثةَ فجرِ الرياض: أهدأ ساعةٍ في اليوم عند جمهور التطبيق.
+OnCalendar=*-*-* 00:00:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target
