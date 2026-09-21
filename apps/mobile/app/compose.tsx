@@ -11,6 +11,7 @@ import { PeopleSheet, PickerButton, type Friend } from "../components/people-she
 import { CloseIcon, LockIcon, PinIcon, WithIcon } from "../components/icons";
 import { api } from "../lib/api";
 import { uploadFile } from "../lib/upload";
+import { maybeAskToRate } from "../lib/rate";
 import { useCircle } from "../lib/queries";
 import { ar } from "../lib/format";
 import { SourceSheet } from "../components/source-sheet";
@@ -172,6 +173,13 @@ export default function Compose() {
       await client.invalidateQueries({ queryKey: ["feed"] });
       await client.invalidateQueries({ queryKey: ["me"] });
       router.replace("/");
+
+      /*
+        لحظةٌ نُشرت: هنا يُسأل عن التقييم إن اكتملت شروطه (`lib/rate.ts`)
+        — لا عند الإقلاع. من سُئل وهو يفعل شيئاً أحبّه أجاب، ومن سُئل
+        وهو يبحث عن زرّ أغلق. ولا يُنتظر: السؤال بعد الانتقال لا قبله.
+      */
+      void maybeAskToRate();
     } catch (problem) {
       setError(problem instanceof Error ? problem.message : "تعذّر النشر");
     } finally {

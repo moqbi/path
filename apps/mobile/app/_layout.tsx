@@ -14,6 +14,7 @@ import { Tajawal_400Regular, Tajawal_700Bold } from "@expo-google-fonts/tajawal"
 import { Montserrat_500Medium, Montserrat_700Bold } from "@expo-google-fonts/montserrat";
 import { useSession } from "../lib/session";
 import { primeAccess } from "../lib/api";
+import { markFirstSeen } from "../lib/rate";
 import { Suspended } from "../components/suspended";
 import { colors } from "../theme/tokens";
 
@@ -78,6 +79,8 @@ function Gate() {
 
   useEffect(() => {
     void primeAccess().then(restore);
+    // ختمُ أوّل فتحٍ لطلب التقييم: يُكتب مرّةً ولا يزيد (`lib/rate.ts`).
+    void markFirstSeen();
   }, [restore]);
 
   useEffect(() => {
