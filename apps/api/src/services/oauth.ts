@@ -95,13 +95,24 @@ async function readSnap(accessToken: string): Promise<Identity> {
     },
     body: JSON.stringify({ query: "{me{externalId displayName}}" }),
   });
-  if (!response.ok) throw unauthorized("تعذّر التحقّق من الرمز");
+  /*
+     والحالتان تُفرَّقان في السجلّ وإن اتّحدت الرسالة: ردٌّ برفضٍ من سناب
+     شيء، وردٌّ بنجاحٍ لا معرّف فيه شيءٌ آخر — والأولى مفاتيحُ والثانية
+     صلاحيّاتٌ لم تُمنح. ولا يُكتب الرمز.
+  */
+  if (!response.ok) {
+    console.error("[snap] /v1/me", response.status, (await response.text().catch(() => "")).slice(0, 300));
+    throw unauthorized("تعذّر التحقّق من الرمز");
+  }
 
   const payload = (await response.json()) as {
     data?: { me?: { externalId?: string; displayName?: string } };
   };
   const me = payload.data?.me;
-  if (!me?.externalId) throw unauthorized("تعذّر التحقّق من الرمز");
+  if (!me?.externalId) {
+    console.error("[snap] /v1/me ردٌّ بلا externalId", JSON.stringify(payload).slice(0, 300));
+    throw unauthorized("تعذّر التحقّق من الرمز");
+  }
 
   return {
     provider: "SNAP",
@@ -123,6 +134,12 @@ export async function readIdentity(
     return await readGoogle(idToken);
   } catch (problem) {
     if (problem instanceof Error && problem.message.includes("غير مفعّل")) throw problem;
+    /*
+       الرسالةُ تُسطَّح في وجه الطالب عمداً — تفصيلُ سببِ رفضِ رمزٍ يعين
+       من يجرّب — ولا تُسطَّح في السجلّ: بلا هذا السطر يبقى «تعذّر
+       التحقّق من الرمز» كلَّ ما يملكه من يصلح العطل.
+    */
+    console.error("[oauth]", provider, problem instanceof Error ? problem.message : String(problem));
     throw unauthorized("تعذّر التحقّق من الرمز");
   }
 }
