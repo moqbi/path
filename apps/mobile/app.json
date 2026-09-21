@@ -33,6 +33,12 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "color": "#F6B93B"
+        }
+      ],
       "./plugins/with-rtl"
     ],
     "extra": {

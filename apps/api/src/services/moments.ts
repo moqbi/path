@@ -6,6 +6,7 @@ import { isSupportedMusicUrl, resolveTrack } from "../lib/music-link";
 import { guard } from "../lib/moderation";
 import { canInteract, canSeeMoment, circleIds } from "./visibility";
 import { dropMedia } from "./media";
+import { push } from "./push";
 
 /** تدرّجات تقوم مقام الصورة حين تُنشر لحظة صورة بلا ملف. */
 const IMAGE_SPECS = [
@@ -79,6 +80,19 @@ async function attachTags(momentId: string, authorId: string, userIds: string[])
   if (data.length === 0) return;
 
   await prisma.momentTag.createMany({ data, skipDuplicates: true });
+
+  // والإشارة تصل صاحبَها تنبيهاً: هي الخبرُ الذي لا يراه في خطّه
+  // (اللحظة تبقى في صفحة كاتبها وحده).
+  const who = await prisma.user.findUnique({ where: { id: authorId }, select: { name: true } });
+  for (const row of data) {
+    void push({
+      userId: row.userId,
+      kind: "TAG",
+      title: who?.name ?? "صديقك",
+      body: "أشار إليك في لحظة",
+      path: `/m/${momentId}`,
+    });
+  }
 }
 
 /**
@@ -307,13 +321,26 @@ export async function react(
     create: { momentId, userId, kind: input.kind as never, emoji },
     update: { kind: input.kind as never, emoji },
   });
+
+  // ولا يُنبَّه أحدٌ على تفاعله بنفسه.
+  if (moment.authorId !== userId) {
+    const who = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+    void push({
+      userId: moment.authorId,
+      kind: "REACTION",
+      title: who?.name ?? "صديقك",
+      body: "تفاعل مع لحظتك",
+      path: `/m/${momentId}`,
+    });
+  }
+
   return { reacted: true };
 }
 
 /** تعليق. */
 export async function addComment(userId: string, momentId: string, body: string) {
   await guard(body);
-  await assertCanInteract(userId, momentId);
+  const moment = await assertCanInteract(userId, momentId);
 
   const comment = await prisma.comment.create({
     data: { momentId, userId, body: body.trim().slice(0, 500) },
@@ -332,6 +359,17 @@ export async function addComment(userId: string, momentId: string, body: string)
       },
     },
   });
+
+  if (moment.authorId !== userId) {
+    void push({
+      userId: moment.authorId,
+      kind: "COMMENT",
+      title: comment.user.name,
+      body: comment.body.slice(0, 120),
+      path: `/m/${momentId}`,
+    });
+  }
+
   return comment;
 }
 

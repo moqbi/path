@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { getItem } from "./store";
 import { api, clearTokens, saveTokens } from "./api";
 import { startBilling, stopBilling } from "./billing";
+import { disablePush } from "./push";
 
 /**
  * من أنت — في مكانٍ واحد.
@@ -121,6 +122,8 @@ export const useSession = create<State>((set) => ({
         body: JSON.stringify({ refreshToken }),
       }).catch(() => {});
     }
+    // ونزعُ الجهاز قبل مسح التوكن: بعده لا تصل الطلبات مُستوثَقة.
+    await disablePush();
     await clearTokens();
     await stopBilling();
     set({ me: null, ready: true });

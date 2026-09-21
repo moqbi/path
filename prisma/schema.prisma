@@ -186,6 +186,7 @@ model User {
   createdAt DateTime @default(now())
 
   emailTokens    EmailToken[]
+  devices        DeviceToken[]
   tickets        SupportTicket[]
   reports        Report[]        @relation("Reporter")
   reportsAgainst Report[]        @relation("Reported")
@@ -907,4 +908,31 @@ model EmailToken {
 
   @@index([userId, kind, createdAt])
   @@index([expiresAt])
+}
+
+/**
+ * جهازٌ يُرسَل إليه التنبيه.
+ *
+ * الرمزُ من Expo (`ExponentPushToken[…]`) لا من آبل وقوقل مباشرةً:
+ * خدمةُ Expo تعرف أيُّ جهازٍ على أيّ منصّة فتوصّله، فلا نحمل نحن
+ * شهادةَ APNs ومفتاحَ FCM في خادمنا ولا نكتب بروتوكولين.
+ *
+ * **والرمز فريدٌ لا المستخدم**: جهازٌ واحد قد يُسجَّل عليه حسابان
+ * بالتتابع، فالرمزُ ينتقل إلى آخر من دخل به — وإلّا وصل تنبيهُ الأوّل
+ * إلى يد الثاني.
+ */
+model DeviceToken {
+  id     String @id @default(cuid())
+  userId String
+  token  String @unique
+  /// «ios» أو «android» — للإحصاء ولتشخيص ما لا يصل.
+  platform String
+
+  createdAt DateTime @default(now())
+  /// آخرُ مرّةٍ أكّده الجهاز: ما طال صمتُه يُكنَس.
+  seenAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

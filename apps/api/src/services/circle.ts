@@ -1,4 +1,5 @@
 import { prisma } from "@athar/db";
+import { push } from "./push";
 import { CIRCLE_CAP } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { blockedWith, circleIds } from "./visibility";
@@ -263,6 +264,16 @@ export async function requestFriend(userId: string, targetId: string) {
     create: { requesterId: userId, addresseeId: targetId },
     update: {},
   });
+
+  const who = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+  void push({
+    userId: targetId,
+    kind: "FRIEND",
+    title: who?.name ?? "طلب صداقة",
+    body: "يبغى يكون من دائرتك",
+    path: "/circle",
+  });
+
   return { status: "PENDING" as const };
 }
 

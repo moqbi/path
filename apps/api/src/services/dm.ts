@@ -1,4 +1,5 @@
 import { prisma } from "@athar/db";
+import { push } from "./push";
 import { guard } from "../lib/moderation";
 import { MESSAGE_KEEP_DAYS, VOICE_SECONDS } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
@@ -208,7 +209,24 @@ export async function send(
     }),
   ]);
 
-  return { message, to: otherSide(conversation, userId), conversationId };
+  const to = otherSide(conversation, userId);
+
+  const who = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+  void push({
+    userId: to,
+    kind: "DM",
+    title: who?.name ?? "رسالة جديدة",
+    // ولا يُكتب متنُ الرسالة الصوتية ولا الصورة: نوعُها خبرُها.
+    body:
+      input.kind === "TEXT"
+        ? body.slice(0, 140)
+        : input.kind === "VOICE"
+          ? "رسالة صوتية"
+          : "صورة",
+    path: `/dm/${conversationId}`,
+  });
+
+  return { message, to, conversationId };
 }
 
 /** تعديل رسالة: لصاحبها وحده، ويبقى أثر التعديل ظاهراً للطرفين. */

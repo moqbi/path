@@ -6,6 +6,7 @@ import {
   emailChangeInput,
   notifyInput,
   pageQuery,
+  deviceInput,
   passwordChangeInput,
   privacyInput,
   profileInput,
@@ -15,6 +16,7 @@ import { requireAuth, me } from "../../middleware/auth";
 import * as profile from "../../services/profile";
 import * as feed from "../../services/feed";
 import * as auth from "../../services/auth";
+import * as push from "../../services/push";
 
 /**
  * حسابي.
@@ -51,6 +53,21 @@ export const profileRoutes = new Hono()
   /** التنبيهات: ما يصل الجهاز ومتى يسكت. */
   .put("/notifications", zValidator("json", notifyInput), async (c) =>
     c.json(await profile.saveNotifications(me(c), c.req.valid("json"))),
+  )
+
+  /**
+   * تسجيلُ جهازٍ للتنبيهات ونزعُه.
+   *
+   * الرمزُ من Expo، ويُسجَّل لصاحب الجلسة — وينتقل إليه إن كان لغيره:
+   * جهازٌ واحد قد يُسجَّل عليه حسابان بالتتابع.
+   */
+  .put("/devices", zValidator("json", deviceInput), async (c) => {
+    const { token, platform } = c.req.valid("json");
+    return c.json(await push.registerDevice(me(c), token, platform));
+  })
+
+  .delete("/devices", zValidator("json", z.object({ token: z.string().min(10).max(300) })), async (c) =>
+    c.json(await push.forgetDevice(me(c), c.req.valid("json").token)),
   )
 
   /** إعادةُ إرسال رسالة تأكيد البريد. */

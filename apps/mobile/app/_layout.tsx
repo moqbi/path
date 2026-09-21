@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { I18nManager, Platform, View, ActivityIndicator } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
+import * as Notifications from "expo-notifications";
+import { enablePush } from "../lib/push";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useFonts } from "expo-font";
@@ -89,6 +91,28 @@ function Gate() {
     if (!me && inApp) router.replace("/login");
     if (me && segments[0] === "login") router.replace("/");
   }, [me, ready, segments, router]);
+
+  /*
+    التنبيهات تُسجَّل بعد الدخول لا عند الإقلاع: إذنٌ يُطلب قبل أن
+    يُعطى المستخدمُ شيئاً يُرفض بلا تفكير — ورفضُه في آبل لا يُسأل بعده
+    ثانيةً (كإذن الموقع، القاعدة ٦٨).
+  */
+  useEffect(() => {
+    if (!me) return;
+    void enablePush();
+  }, [me?.id]);
+
+  /*
+    وضغطةُ التنبيه تفتح موضعَه: رسالةً أو لحظةً أو الأصدقاء. ومن فتح
+    تنبيهاً ووجد نفسه في الخط الزمنيّ يسأل «أين ما نبّهني؟».
+  */
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const path = response.notification.request.content.data?.path;
+      if (typeof path === "string" && path.startsWith("/")) router.push(path as never);
+    });
+    return () => sub.remove();
+  }, [router]);
 
   /*
     الموقوف مؤقّتاً يرى سبب وقفه لا تطبيقاً يردّ خطأً مع كل ضغطة.
