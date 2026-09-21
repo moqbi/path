@@ -20,7 +20,8 @@
     "media:to-cloud": "tsx scripts/media-to-cloud.ts",
     "api:dev": "pnpm --filter @athar/api dev",
     "api:typecheck": "pnpm --filter @athar/api typecheck",
-    "ws:install": "pnpm install"
+    "ws:install": "pnpm install",
+    "api:test": "pnpm --filter @athar/api test"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

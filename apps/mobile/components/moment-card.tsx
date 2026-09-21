@@ -301,7 +301,16 @@ export function MomentCard({
               {head}
               <View style={{ paddingHorizontal: 14, paddingBottom: 12, paddingTop: 8 }}>
                 {moment.reactions.length > 0 ? (
-                  <Reactors reactions={moment.reactions} viewerId={viewerId} />
+                  <>
+                    <Reactors reactions={moment.reactions} viewerId={viewerId} />
+                    {/* الخادمُ يرسل اثني عشر وجهاً بسقف، والباقي عددٌ:
+                        ثلاثةُ آلاف صفٍّ في تمريرةٍ واحدة ثمنٌ بلا مقابل. */}
+                    {moment._count.reactions > moment.reactions.length ? (
+                      <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 4 }}>
+                        و{ar(moment._count.reactions - moment.reactions.length)} غيرهم
+                      </Text>
+                    ) : null}
+                  </>
                 ) : null}
                 {moment.comments.length > 0 ? (
                   <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 10 }}>

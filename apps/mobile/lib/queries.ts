@@ -72,7 +72,7 @@ export type Moment = {
       tag?: { name: string; bg: string; fg: string } | null;
     };
   }[];
-  _count: { views: number; comments: number };
+  _count: { views: number; comments: number; reactions: number };
 };
 
 type Page = { moments: Moment[]; nextCursor?: string };

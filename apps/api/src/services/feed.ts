@@ -34,6 +34,11 @@ const shape = {
     },
   },
   tags: { select: { user: { select: { id: true, name: true } } } },
+  /*
+     التفاعلاتُ بسقف: لحظةٌ في دائرةٍ ممتلئة قد تحمل مئةً وخمسين، وعشرون
+     لحظةً في الصفحة تعني ثلاثة آلاف صفٍّ في كلّ تمريرة. والشاشة تعرض
+     وجوهاً وعدداً، فاثنا عشر وجهاً يكفيانها — والعددُ من `_count`.
+  */
   reactions: {
     select: {
       userId: true,
@@ -41,6 +46,7 @@ const shape = {
       emoji: true,
       user: { select: { name: true, avatarMediaId: true } },
     },
+    take: 12,
   },
   comments: {
     select: {
@@ -60,7 +66,7 @@ const shape = {
     orderBy: { createdAt: "asc" },
     take: 3,
   },
-  _count: { select: { views: true, comments: true } },
+  _count: { select: { views: true, comments: true, reactions: true } },
 } as const;
 
 /**
@@ -96,7 +102,14 @@ function page<T extends Row & { id: string }>(rows: T[], limit: number, viewerId
   return { moments, nextCursor: more ? moments.at(-1)?.id : undefined };
 }
 
-/** المؤشّر يُقصي نفسه: نبدأ بما بعده لا به. */
+/**
+ * المؤشّر يُقصي نفسه: نبدأ بما بعده لا به.
+ *
+ * **والترتيبُ بالطابع وحده لا يكفي معه**: لحظتان في الطابع نفسه (وهو
+ * حالُ البذرة، وحالُ من ينشر لحظتين في ثانية) تجعلان الصفحة التالية
+ * تتخطّى إحداهما أو تُكرّرها — فيُضاف المعرّفُ ثانياً، وهو فريدٌ فيحسم
+ * الترتيب دائماً.
+ */
 const cursorOf = (cursor?: string) => ({
   cursor: cursor ? { id: cursor } : undefined,
   skip: cursor ? 1 : 0,
@@ -116,7 +129,7 @@ export async function timeline(userId: string, options: { cursor?: string; limit
   const rows = await prisma.moment.findMany({
     where,
     select: shape,
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: options.limit + 1,
     ...cursorOf(options.cursor),
   });
@@ -131,7 +144,7 @@ export async function privateTimeline(userId: string, options: { cursor?: string
   const rows = await prisma.moment.findMany({
     where: { ...where, audience: { not: "CIRCLE" } },
     select: shape,
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: options.limit + 1,
     ...cursorOf(options.cursor),
   });
@@ -247,7 +260,7 @@ export async function momentsOf(
   const rows = await prisma.moment.findMany({
     where: { ...where, authorId },
     select: shape,
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: options.limit + 1,
     ...cursorOf(options.cursor),
   });
@@ -273,7 +286,7 @@ export async function moderatedMomentsOf(
   const rows = await prisma.moment.findMany({
     where: { authorId },
     select: shape,
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: options.limit + 1,
     ...cursorOf(options.cursor),
   });
