@@ -81,12 +81,20 @@ SSH_KEY="ssh-ed25519 AAAA… اسمك" bash bootstrap.sh
 # بـathar، من جذر المستودع
 RENDER_DATABASE_URL="postgresql://…render.com/…?sslmode=require" DIRECT_URL="postgresql://athar:…@127.0.0.1:5432/athar" ADMIN_EMAILS="you@example.com"   scripts/ops/migrate-from-render.sh
 
-sudo cp scripts/ops/athar-*.service /etc/systemd/system/
-sudo cp scripts/ops/Caddyfile /etc/caddy/Caddyfile
-sudo systemctl daemon-reload && sudo systemctl enable athar-web athar-api
-scripts/ops/deploy.sh
-sudo systemctl reload caddy
+# وهذه بـroot: ما يُكتب في /etc ليس لحساب التطبيق
+cp /home/athar/app/scripts/ops/athar-*.service /etc/systemd/system/
+cp /home/athar/app/scripts/ops/Caddyfile /etc/caddy/Caddyfile
+systemctl daemon-reload && systemctl enable athar-web athar-api
+
+# والنشرُ بـathar
+sudo -iu athar bash -lc "cd ~/app && scripts/ops/deploy.sh"
+systemctl reload caddy
 ```
+
+> **وحسابُ `athar` بلا كلمة مرور** عمداً (لا يُدخَل إليه إلا بمفتاح)،
+> فـ`sudo` منه يسأل عن كلمةٍ لا وجود لها. ولهذا يُعطى في `bootstrap.sh`
+> إذناً بلا كلمة لأمرين بعينهما — إعادةِ تشغيل الخدمتين وإعادةِ تحميل
+> Caddy — وما عداهما يُفعل من جلسة root.
 
 > **وترتيبُ السحابة يهمّ**: يبقى سجلّا DNS **رماديَّين** (بلا وكيل) حتى
 > يأخذ Caddy شهادته — التحدّي يمرّ بالمنفذ ٨٠ — ثمّ يُلوَّنان برتقاليّاً

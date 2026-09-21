@@ -49,6 +49,18 @@ chmod 600 "/home/$APP_USER/.ssh/authorized_keys"
 install -d -m 700 /root/.ssh && echo "$SSH_KEY" > /root/.ssh/authorized_keys
 chmod 600 /root/.ssh/authorized_keys
 
+say "صلاحيةٌ محدودة لـ$APP_USER"
+# حسابُ التطبيق بلا كلمة مرور — فلا يستطيع `sudo` أن يسأله عنها.
+# وبدل أن نعطيه المفتاحَ كلَّه: أمرانِ بعينهما بلا كلمة، وهما ما يحتاجه
+# النشر. وكلُّ ما عداهما يُفعل بـroot عن قصد.
+cat > /etc/sudoers.d/athar <<EOF
+$APP_USER ALL=(root) NOPASSWD: /usr/bin/systemctl restart athar-web athar-api, \
+  /usr/bin/systemctl restart athar-web, /usr/bin/systemctl restart athar-api, \
+  /usr/bin/systemctl reload caddy, /usr/bin/systemctl status athar-web athar-api
+EOF
+chmod 440 /etc/sudoers.d/athar
+visudo -cf /etc/sudoers.d/athar >/dev/null
+
 say "قفلُ SSH على المفاتيح"
 cat > /etc/ssh/sshd_config.d/99-athar.conf <<'EOF'
 # كلمةُ مرورٍ على منفذٍ مفتوح للعالم تُجرَّب آلافَ المرّات في اليوم.
@@ -152,5 +164,8 @@ cat <<EOF
    DIRECT_URL="postgresql://$DB_USER:$DB_PASS@127.0.0.1:5432/$DB_NAME"
 
    ثمّ: انقل المستودع، واملأ .env، وشغّل migrate-from-render.sh ثمّ deploy.sh
+
+   وما يُكتب في /etc يُفعل بـroot لا بـ$APP_USER: وحداتُ systemd
+   وCaddyfile تُنسخ مرّةً واحدة من جلسة root.
 
 EOF
