@@ -34,6 +34,7 @@ export default async function SettingsPage() {
       where: { id: user.id },
       select: {
         emailVerifiedAt: true,
+        passwordHash: true,
         viewGroupId: true,
         interactGroupId: true,
         shareLocation: true,
@@ -54,6 +55,9 @@ export default async function SettingsPage() {
   const select =
     "h-11 w-full rounded-xl border border-line bg-paper px-3 text-[13px] text-ink outline-none";
 
+  // من دخل بمزوّدٍ لا كلمةَ له: يضعها بلا قديمة، ويربط بريده بلا كلمة.
+  const hasPassword = Boolean(settings?.passwordHash);
+
   return (
     <div className="screen">
       <ScreenHeader title="الإعدادات والخصوصية" back="/me" />
@@ -62,9 +66,12 @@ export default async function SettingsPage() {
         {/* ── الحساب ── */}
         <Section title="الحساب" note="بريدك وكلمتك، ومن منعتَه، وبابُ الخروج الأخير">
           <div className="flex flex-col gap-3">
-            <VerifyEmail verified={Boolean(settings?.emailVerifiedAt)} />
-            <ChangePassword />
-            <ChangeEmail current={user.email} />
+            <VerifyEmail
+              verified={Boolean(settings?.emailVerifiedAt)}
+              hasEmail={Boolean(user.email)}
+            />
+            <ChangePassword hasPassword={hasPassword} />
+            <ChangeEmail current={user.email} hasPassword={hasPassword} />
 
             <Link
               href="/settings/blocked"

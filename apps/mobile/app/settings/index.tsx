@@ -94,9 +94,9 @@ export default function Settings() {
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40, direction: "rtl" }} keyboardShouldPersistTaps="handled">
         {/* ── الحساب ── */}
         <Section title="الحساب" note="بريدك وكلمتك، ومن منعتَه، وبابُ الخروج الأخير">
-          <VerifyEmail verified={Boolean(me.emailVerifiedAt)} />
-          <ChangePassword />
-          <ChangeEmail current={me.email} />
+          <VerifyEmail verified={Boolean(me.emailVerifiedAt)} hasEmail={Boolean(me.email)} />
+          <ChangePassword hasPassword={me.hasPassword !== false} />
+          <ChangeEmail current={me.email} hasPassword={me.hasPassword !== false} />
 
           <Link
             title="قائمة الحظر"
@@ -398,7 +398,13 @@ function Link({
  * تغيير البريد — مطويٌّ كحذف الحساب: تغييرٌ لا يُفعل كل يوم ولا يُضغط
  * بالخطأ. وكلمة المرور شرط: البريد اسمُ الدخول، وتغييرُه نقلٌ للحساب.
  */
-function ChangeEmail({ current }: { current: string }) {
+function ChangeEmail({
+  current,
+  hasPassword,
+}: {
+  current: string | null;
+  hasPassword: boolean;
+}) {
   const refresh = useSession((state) => state.refresh);
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
@@ -425,17 +431,21 @@ function ChangeEmail({ current }: { current: string }) {
       >
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600", textAlign: "right" }}>
-            البريد الإلكتروني
+            {current ? "البريد الإلكتروني" : "اربط بريدك"}
           </Text>
-          <Text style={{ color: colors.muted, fontSize: 11.5, textAlign: "right" }}>{current}</Text>
+          <Text style={{ color: colors.muted, fontSize: 11.5, textAlign: "right" }}>
+            {current ?? "لا بريدَ على حسابك — وبه تستعيده إن ضاع"}
+          </Text>
         </View>
-        <Text style={{ color: colors.clayInk, fontSize: 11.5 }}>غيّره</Text>
+        <Text style={{ color: colors.clayInk, fontSize: 11.5 }}>{current ? "غيّره" : "اربطه"}</Text>
       </Pressable>
 
       {open ? (
         <View style={{ borderTopWidth: 1, borderTopColor: colors.line, padding: 16, gap: 12 }}>
           <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 20, textAlign: "right" }}>
-            البريد هو اسم دخولك. بعد تغييره تدخل بالبريد الجديد وكلمة المرور نفسها.
+            {current
+              ? "البريد هو اسم دخولك. بعد تغييره تدخل بالبريد الجديد وكلمة المرور نفسها."
+              : "من دخل بسناب لا بريدَ له، وبلا بريدٍ لا نستطيع أن نعيد إليه حسابه إن فقد سنابه. اربطه الآن."}
           </Text>
 
           <TextInput
@@ -448,14 +458,17 @@ function ChangeEmail({ current }: { current: string }) {
             autoCorrect={false}
             style={SETTING_FIELD}
           />
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            placeholder="كلمة المرور"
-            placeholderTextColor={colors.faint}
-            secureTextEntry
-            style={SETTING_FIELD}
-          />
+          {/* وكلمةُ المرور تُطلب ممّن له كلمة: من دخل بمزوّدٍ الجلسةُ دليلُه. */}
+          {hasPassword ? (
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder="كلمة المرور"
+              placeholderTextColor={colors.faint}
+              secureTextEntry
+              style={SETTING_FIELD}
+            />
+          ) : null}
 
           {said?.error ? (
             <Text accessibilityRole="alert" style={{ color: colors.live, fontSize: 12, textAlign: "right" }}>
@@ -474,7 +487,7 @@ function ChangeEmail({ current }: { current: string }) {
             style={{ height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay, opacity: change.isPending ? 0.6 : 1 }}
           >
             <Text style={{ color: colors.onBrand, fontSize: 14, fontWeight: "700" }}>
-              {change.isPending ? "نحفظ…" : "احفظ البريد"}
+              {change.isPending ? "نحفظ…" : current ? "احفظ البريد" : "اربط البريد"}
             </Text>
           </Pressable>
         </View>
@@ -618,7 +631,7 @@ function Section({
  * القديمةُ شرط، والجديدةُ مرّتين: خطأٌ في حرفٍ واحد يُقفل الحساب على
  * صاحبه، ولا بريدَ في المنظومة بعد يستعيده به.
  */
-function ChangePassword() {
+function ChangePassword({ hasPassword }: { hasPassword: boolean }) {
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
@@ -651,20 +664,27 @@ function ChangePassword() {
         onPress={() => setOpen((was) => !was)}
         style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16 }}
       >
-        <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600" }}>كلمة المرور</Text>
-        <Text style={{ color: colors.clayInk, fontSize: 11.5 }}>غيّرها</Text>
+        <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600" }}>
+          {hasPassword ? "كلمة المرور" : "اضبط كلمة مرور"}
+        </Text>
+        <Text style={{ color: colors.clayInk, fontSize: 11.5 }}>
+          {hasPassword ? "غيّرها" : "اضبطها"}
+        </Text>
       </Pressable>
 
       {open ? (
         <View style={{ borderTopWidth: 1, borderTopColor: colors.line, padding: 16, gap: 12 }}>
-          <TextInput
-            value={current}
-            onChangeText={setCurrent}
-            placeholder="كلمة المرور الحالية"
-            placeholderTextColor={colors.faint}
-            secureTextEntry
-            style={SETTING_FIELD}
-          />
+          {/* ومن دخل بمزوّدٍ لا قديمةَ له تُطلب: الجلسةُ دليلُه. */}
+          {hasPassword ? (
+            <TextInput
+              value={current}
+              onChangeText={setCurrent}
+              placeholder="كلمة المرور الحالية"
+              placeholderTextColor={colors.faint}
+              secureTextEntry
+              style={SETTING_FIELD}
+            />
+          ) : null}
           <TextInput
             value={next}
             onChangeText={setNext}
@@ -699,7 +719,7 @@ function ChangePassword() {
             style={{ height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay, opacity: change.isPending ? 0.6 : 1 }}
           >
             <Text style={{ color: colors.onBrand, fontSize: 14, fontWeight: "700" }}>
-              {change.isPending ? "نحفظ…" : "احفظ كلمة المرور"}
+              {change.isPending ? "نحفظ…" : hasPassword ? "احفظ كلمة المرور" : "اضبط كلمة المرور"}
             </Text>
           </Pressable>
         </View>
@@ -892,7 +912,7 @@ function TimeField({
  * ولا يُمنع شيءٌ على غير المؤكَّد: حسابٌ قائمٌ لا يُقفل على صاحبه لأنّ
  * رسالةً لم تصل. التأكيد بابُ الاستعادة يوم ينسى كلمته.
  */
-function VerifyEmail({ verified }: { verified: boolean }) {
+function VerifyEmail({ verified, hasEmail }: { verified: boolean; hasEmail: boolean }) {
   const [said, setSaid] = useState<string | null>(null);
 
   const send = useMutation({
@@ -901,6 +921,9 @@ function VerifyEmail({ verified }: { verified: boolean }) {
     onError: (problem) =>
       setSaid(problem instanceof Error ? problem.message : "تعذّر الإرسال"),
   });
+
+  // ومن لا بريدَ له يقرأ «اربط بريدك» تحته، فلا يُقال له شيئان.
+  if (!hasEmail) return null;
 
   if (verified) {
     return (

@@ -29,7 +29,8 @@ export type Me = {
   memberNo: number;
   name: string;
   handle: string | null;
-  email: string;
+  /** فارغٌ لمن دخل بسناب ولم يربط بريداً بعد. */
+  email: string | null;
   bio: string | null;
   city: string | null;
   role: "USER" | "ADMIN";
@@ -46,6 +47,8 @@ export type Me = {
   coverY: number;
   shareLocation: boolean;
   notifyOnTag: boolean;
+  /** هل على الحساب كلمةُ مرور؟ من دخل بمزوّدٍ لا كلمةَ له حتى يضعها. */
+  hasPassword?: boolean;
   /** متى أُكّد البريد — فارغٌ يعني لم يُؤكَّد، ولا يُمنع به شيء. */
   emailVerifiedAt?: string | null;
   /** التنبيهات: مفتاحٌ لكل نوع، وطرفا الوضع الهادئ بالدقائق. */

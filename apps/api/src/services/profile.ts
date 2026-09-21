@@ -29,6 +29,8 @@ export async function me(userId: string) {
       coverMediaId: true,
       coverY: true,
       emailVerifiedAt: true,
+      // وجودُها وحده يُرسَل لا هي: الشاشة تسأل «أضبطُها أم أغيّرها؟».
+      passwordHash: true,
       shareLocation: true,
       notifyOnTag: true,
       notifyDm: true,
@@ -53,7 +55,12 @@ export async function me(userId: string) {
     أن تجمع الدور إليه بنفسها — ونسيانُ ذلك في شاشةٍ واحدة يُخفي البابَ
     عن المالك بلا سبب ظاهر.
   */
-  return { ...user, canModerate: user.role === "ADMIN" || user.canModerate };
+  const { passwordHash, ...rest } = user;
+  return {
+    ...rest,
+    hasPassword: Boolean(passwordHash),
+    canModerate: user.role === "ADMIN" || user.canModerate,
+  };
 }
 
 /**
@@ -327,18 +334,29 @@ export async function deleteAccount(userId: string, password: string) {
 
   const row = await prisma.user.findUnique({
     where: { id: userId },
-    select: { email: true, passwordHash: true },
+    select: { email: true, name: true, passwordHash: true },
   });
   /*
      ومن دخل بمزوّدٍ ولا كلمةَ له يكتب **بريده** بدلها: لا بدّ من شيءٍ
      يعرفه هو ولا يعرفه من التقط جهازه المفتوح.
   */
   if (!row) throw notFound("لا يوجد هذا الحساب");
+  /*
+     ومن لا كلمةَ له ولا بريد (دخل بسناب ولم يربط بريداً) يكتب **اسمه**:
+     شيءٌ يعرفه هو، ولا بدّ من حاجزٍ قبل آخر خطوة.
+  */
+  const answer = (row.email ?? row.name).toLowerCase();
   const confirmed = row.passwordHash
     ? await verifyPassword(password, row.passwordHash)
-    : password.trim().toLowerCase() === row.email.toLowerCase();
+    : password.trim().toLowerCase() === answer;
   if (!confirmed) {
-    throw forbidden(row.passwordHash ? "كلمة المرور غير صحيحة" : "اكتب بريدك كما هو للتأكيد");
+    throw forbidden(
+      row.passwordHash
+        ? "كلمة المرور غير صحيحة"
+        : row.email
+          ? "اكتب بريدك كما هو للتأكيد"
+          : "اكتب اسمك كما هو للتأكيد",
+    );
   }
 
   const files = await prisma.media.findMany({ where: { ownerId: userId }, select: { id: true } });

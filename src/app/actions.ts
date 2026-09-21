@@ -81,7 +81,8 @@ export async function requestReset(
     where: { email },
     select: { id: true, name: true, email: true },
   });
-  if (user) await sendReset(user.id, user.email, user.name);
+  // ومن لا بريدَ له (دخل بسناب) لا يصله شيء — ولا يُقال ذلك للسائل.
+  if (user?.email) await sendReset(user.id, user.email, user.name);
   return said;
 }
 
@@ -130,6 +131,7 @@ export async function resendVerify(): Promise<{ ok?: string; error?: string }> {
     select: { email: true, name: true, emailVerifiedAt: true },
   });
   if (!row) return { error: "لا يوجد هذا الحساب" };
+  if (!row.email) return { error: "اربط بريدك أوّلاً" };
   if (row.emailVerifiedAt) return { ok: "بريدك مؤكَّد أصلاً" };
 
   const sent = await sendVerify(user.id, row.email, row.name);
@@ -192,11 +194,19 @@ export async function deleteAccount(
      حذفاً بل حادثة.
   */
   if (!row) return "كلمة المرور غير صحيحة";
-  const confirmed = row.passwordHash
-    ? await verifyPassword(password, row.passwordHash)
-    : password.trim().toLowerCase() === user.email.toLowerCase();
-  if (!confirmed) {
-    return row.passwordHash ? "كلمة المرور غير صحيحة" : "اكتب بريدك كما هو للتأكيد";
+  /*
+     ومن لا كلمةَ له ولا بريد (دخل بسناب ولم يربط بريداً) يكتب **اسمه**
+     كما هو: شيءٌ يعرفه هو، ولا بدّ من حاجزٍ قبل آخر خطوة.
+  */
+  const proof = (row.passwordHash ?? null)
+    ? await verifyPassword(password, row.passwordHash as string)
+    : password.trim().toLowerCase() === (user.email ?? user.name).toLowerCase();
+  if (!proof) {
+    return row.passwordHash
+      ? "كلمة المرور غير صحيحة"
+      : user.email
+        ? "اكتب بريدك كما هو للتأكيد"
+        : "اكتب اسمك كما هو للتأكيد";
   }
 
   /*

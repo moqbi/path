@@ -10,9 +10,19 @@ import { CheckIcon } from "@/components/icons";
  * ولا يُمنع شيءٌ على غير المؤكَّد: حسابٌ قائمٌ لا يُقفل على صاحبه لأنّ
  * رسالةً لم تصل. التأكيد بابُ الاستعادة يوم ينسى كلمته.
  */
-export function VerifyEmail({ verified }: { verified: boolean }) {
+export function VerifyEmail({
+  verified,
+  hasEmail,
+}: {
+  verified: boolean;
+  hasEmail: boolean;
+}) {
   const [said, setSaid] = useState<{ ok?: string; error?: string } | null>(null);
   const [busy, start] = useTransition();
+
+  // ومن لا بريدَ له لا يُقال له «بريدك غير مؤكَّد»: صفُّ «اربط بريدك»
+  // تحته يقول ما يلزم، وسطران يقولان الشيء نفسه ضجيج.
+  if (!hasEmail) return null;
 
   if (verified) {
     return (

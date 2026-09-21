@@ -10,7 +10,7 @@ import { setUserEmail, type AdminResult } from "@/app/actions";
  * مكان المعتاد. ولا يُعرض إلا للمالك — والإجراء نفسه يفحص ذلك، فالإخفاء
  * ترتيبٌ للشاشة لا حماية.
  */
-export function AdminEmail({ userId, current }: { userId: string; current: string }) {
+export function AdminEmail({ userId, current }: { userId: string; current: string | null }) {
   const bound = setUserEmail.bind(null, userId);
   const [state, action, pending] = useActionState<AdminResult, FormData>(bound, null);
 
@@ -28,7 +28,7 @@ export function AdminEmail({ userId, current }: { userId: string; current: strin
             type="email"
             required
             dir="ltr"
-            defaultValue={current}
+            defaultValue={current ?? ""}
             aria-label="البريد الجديد"
             className="h-10 min-w-0 grow rounded-xl border border-line bg-paper px-3 text-[12px] text-ink outline-none focus:border-clay"
           />

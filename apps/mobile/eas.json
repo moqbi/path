@@ -22,7 +22,8 @@
         "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "",
         "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "",
-        "EXPO_PUBLIC_SITE_URL": "https://atharmts.com"
+        "EXPO_PUBLIC_SITE_URL": "https://atharmts.com",
+        "EXPO_PUBLIC_SNAP_CLIENT_ID": ""
       },
       "android": {
         "buildType": "apk"
@@ -35,7 +36,8 @@
         "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "",
         "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "",
-        "EXPO_PUBLIC_SITE_URL": "https://atharmts.com"
+        "EXPO_PUBLIC_SITE_URL": "https://atharmts.com",
+        "EXPO_PUBLIC_SNAP_CLIENT_ID": ""
       }
     }
   },

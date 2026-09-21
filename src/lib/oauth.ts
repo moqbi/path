@@ -157,7 +157,7 @@ export async function upsertIdentity(identity: Identity) {
   });
 
   // وبريدٌ لم يؤكّده مزوّدُه يُؤكَّد برسالةٍ كما يفعل التسجيل بالبريد.
-  if (!identity.emailVerified) {
+  if (!identity.emailVerified && user.email) {
     void sendVerify(user.id, user.email, user.name).catch(() => {});
   }
 

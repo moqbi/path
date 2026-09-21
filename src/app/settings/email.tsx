@@ -12,24 +12,34 @@ import { changeEmail } from "@/app/actions";
  * وكلمة المرور شرط: البريد اسمُ الدخول، وتغييرُه نقلٌ للحساب إلى عنوانٍ
  * آخر. جهازٌ مفتوحٌ في يد غيرك لا يفعل ذلك بضغطتين.
  */
-export function ChangeEmail({ current }: { current: string }) {
+export function ChangeEmail({
+  current,
+  hasPassword,
+}: {
+  current: string | null;
+  hasPassword: boolean;
+}) {
   const [state, action, pending] = useActionState(changeEmail, null);
 
   return (
     <details className="mb-3 rounded-2xl border border-line bg-card">
       <summary className="flex cursor-pointer list-none items-center justify-between p-4">
         <span>
-          <span className="block text-[13.5px] font-semibold">البريد الإلكتروني</span>
+          <span className="block text-[13.5px] font-semibold">
+            {current ? "البريد الإلكتروني" : "اربط بريدك"}
+          </span>
           <span dir="ltr" className="block text-right text-[11.5px] text-muted">
-            {current}
+            {current ?? "لا بريدَ على حسابك — وبه تستعيده إن ضاع"}
           </span>
         </span>
-        <span className="shrink-0 text-[11.5px] text-clay-ink">غيّره</span>
+        <span className="shrink-0 text-[11.5px] text-clay-ink">{current ? "غيّره" : "اربطه"}</span>
       </summary>
 
       <form action={action} className="flex flex-col gap-3 border-t border-line p-4">
         <p className="text-[12px] leading-relaxed text-muted">
-          البريد هو اسم دخولك. بعد تغييره تدخل بالبريد الجديد وكلمة المرور نفسها.
+          {current
+            ? "البريد هو اسم دخولك. بعد تغييره تدخل بالبريد الجديد وكلمة المرور نفسها."
+            : "من دخل بسناب لا بريدَ له، وبلا بريدٍ لا نستطيع أن نعيد إليه حسابه إن فقد سنابه. اربطه الآن."}
         </p>
 
         <input
@@ -43,16 +53,22 @@ export function ChangeEmail({ current }: { current: string }) {
           className="rounded-xl border border-line bg-paper px-4 text-[13.5px] text-ink outline-none focus:border-clay"
           style={{ height: 48 }}
         />
-        <input
-          name="password"
-          type="password"
-          required
-          autoComplete="current-password"
-          placeholder="كلمة المرور"
-          aria-label="كلمة المرور"
-          className="rounded-xl border border-line bg-paper px-4 text-[13.5px] text-ink outline-none focus:border-clay"
-          style={{ height: 48 }}
-        />
+        {/*
+           وكلمةُ المرور تُطلب ممّن له كلمة: من دخل بمزوّدٍ الجلسةُ
+           دليلُه، وحقلٌ لا يستطيع ملأه بابٌ مغلق لا حارس.
+        */}
+        {hasPassword ? (
+          <input
+            name="password"
+            type="password"
+            required
+            autoComplete="current-password"
+            placeholder="كلمة المرور"
+            aria-label="كلمة المرور"
+            className="rounded-xl border border-line bg-paper px-4 text-[13.5px] text-ink outline-none focus:border-clay"
+            style={{ height: 48 }}
+          />
+        ) : null}
 
         {state?.error ? (
           <p role="alert" className="text-[12px]" style={{ color: "var(--color-live)" }}>
@@ -71,7 +87,7 @@ export function ChangeEmail({ current }: { current: string }) {
           className="rounded-xl text-[14px] font-bold disabled:opacity-60"
           style={{ height: 48, background: "var(--color-clay)", color: "var(--color-on-brand)" }}
         >
-          {pending ? "نحفظ…" : "احفظ البريد"}
+          {pending ? "نحفظ…" : current ? "احفظ البريد" : "اربط البريد"}
         </button>
       </form>
     </details>

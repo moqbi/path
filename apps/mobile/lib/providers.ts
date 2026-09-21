@@ -1,6 +1,7 @@
 import { Platform } from "react-native";
 import * as AppleAuth from "expo-apple-authentication";
 import * as Google from "expo-auth-session/providers/google";
+import * as AuthSession from "expo-auth-session";
 import { api, saveTokens } from "./api";
 import type { Me } from "./session";
 
@@ -40,7 +41,7 @@ type Session = { user: Me; accessToken: string; refreshToken: string };
  * فمن لم يلتقطه التطبيقُ حينها لم يعد يجده في الرمز أبداً.
  */
 async function exchange(
-  provider: "GOOGLE" | "APPLE",
+  provider: "GOOGLE" | "APPLE" | "SNAP",
   idToken: string,
   name: string | null,
 ): Promise<Me> {
@@ -87,4 +88,61 @@ export function useGoogle() {
 /** يُكمل دخولَ قوقل بالرمز الذي ردّه الخطّاف. */
 export async function finishGoogle(idToken: string): Promise<Me> {
   return exchange("GOOGLE", idToken, null);
+}
+
+/**
+ * سناب: رمزُ وصولٍ بـPKCE، لا رمزُ هويّة.
+ *
+ * وبلا حزمةٍ أصليّةٍ من سناب: `expo-auth-session` تفتح صفحتَها وتعود
+ * بالرمز، فلا نُدخل وحدةً أصليّةً ثالثة في البناء لأجل بابٍ واحد.
+ *
+ * وعميلُها **عامّ** (Public Client): لا سرَّ في التطبيق — والسرُّ في
+ * التطبيق ليس سرّاً، فكلُّ من فكّ الحزمة قرأه.
+ */
+const SNAP = {
+  authorizationEndpoint: "https://accounts.snapchat.com/accounts/oauth2/auth",
+  tokenEndpoint: "https://accounts.snapchat.com/accounts/oauth2/token",
+};
+
+const SNAP_SCOPES = [
+  "https://auth.snapchat.com/oauth2/api/user.display_name",
+  "https://auth.snapchat.com/oauth2/api/user.external_id",
+];
+
+export function snapReady(): boolean {
+  return Boolean(process.env.EXPO_PUBLIC_SNAP_CLIENT_ID);
+}
+
+export function useSnap() {
+  const clientId = process.env.EXPO_PUBLIC_SNAP_CLIENT_ID ?? "";
+  // العودةُ إلى التطبيق بمخطّطه (`athar://`) لا إلى صفحةِ ويب.
+  const redirectUri = AuthSession.makeRedirectUri({ scheme: "athar", path: "snap" });
+
+  return AuthSession.useAuthRequest(
+    {
+      clientId,
+      scopes: SNAP_SCOPES,
+      redirectUri,
+      responseType: "code",
+      usePKCE: true,
+    },
+    SNAP,
+  );
+}
+
+/**
+ * يُبادل الرمزَ المؤقّت برمز وصول، ثمّ يرسله إلى خادمنا ليسأل سناب
+ * «من صاحبُه؟» — فلا يُصدَّق ما يقوله التطبيق عن نفسه.
+ */
+export async function finishSnap(code: string, verifier: string): Promise<Me> {
+  const clientId = process.env.EXPO_PUBLIC_SNAP_CLIENT_ID ?? "";
+  const redirectUri = AuthSession.makeRedirectUri({ scheme: "athar", path: "snap" });
+
+  const token = await AuthSession.exchangeCodeAsync(
+    { clientId, code, redirectUri, extraParams: { code_verifier: verifier } },
+    SNAP,
+  );
+  if (!token.accessToken) throw new Error("ما وصل رمزٌ من سناب");
+
+  return exchange("SNAP", token.accessToken, null);
 }

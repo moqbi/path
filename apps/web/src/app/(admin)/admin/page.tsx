@@ -270,7 +270,8 @@ function StaffRow({
     id: string;
     memberNo: number;
     name: string;
-    email: string;
+    /** فارغٌ لمن دخل بسناب ولم يربط بريداً بعد. */
+    email: string | null;
     role: string;
     adminScope: string;
     canModerate: boolean;

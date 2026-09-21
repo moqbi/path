@@ -124,7 +124,8 @@ export async function forgot(email: string) {
     where: { email: email.trim().toLowerCase() },
     select: { id: true, email: true, name: true },
   });
-  if (user) await sendReset(user.id, user.email, user.name);
+  // ومن لا بريدَ له (دخل بسناب) لا يصله شيء — ولا يُقال ذلك للسائل.
+  if (user?.email) await sendReset(user.id, user.email, user.name);
   return { ok: true };
 }
 
@@ -170,6 +171,7 @@ export async function resendVerify(userId: string) {
     select: { email: true, name: true, emailVerifiedAt: true },
   });
   if (!row) throw badRequest("لا يوجد هذا الحساب");
+  if (!row.email) throw badRequest("اربط بريدك أوّلاً");
   if (row.emailVerifiedAt) return { ok: true, already: true };
 
   const sent = await sendVerify(userId, row.email, row.name);
@@ -185,7 +187,7 @@ export async function resendVerify(userId: string) {
  * بالبريد: بابٌ ثانٍ يتجاوز الإيقاف ليس إيقافاً.
  */
 export async function oauth(input: {
-  provider: "GOOGLE" | "APPLE";
+  provider: "GOOGLE" | "APPLE" | "SNAP";
   idToken: string;
   name?: string | null;
   device?: string;

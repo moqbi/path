@@ -223,6 +223,7 @@ SUPPORT_EMAIL="support@atharmts.com"
 GOOGLE_CLIENT_IDS="...ios...,...android...,...web..."
 APPLE_CLIENT_IDS="app.athar.mobile,app.athar.signin"
 NEXT_PUBLIC_GOOGLE_CLIENT_ID="...web..."
+SNAP_CLIENT_ID="..."
 ```
 
 > **ونطاقُ المرسِل يُثبَت في بريفو أوّلاً** (Senders & Domains): سجلّا

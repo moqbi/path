@@ -9,7 +9,7 @@ import { changePassword } from "@/app/actions";
  * القديمةُ شرط، والجديدةُ مرّتين: خطأٌ في حرفٍ واحد يُقفل الحساب على
  * صاحبه، ولا بريدَ في المنظومة بعد يستعيده به.
  */
-export function ChangePassword() {
+export function ChangePassword({ hasPassword }: { hasPassword: boolean }) {
   const [state, action, pending] = useActionState(changePassword, null);
 
   const field =
@@ -18,21 +18,28 @@ export function ChangePassword() {
   return (
     <details className="rounded-2xl border border-line bg-card">
       <summary className="flex cursor-pointer list-none items-center justify-between p-4">
-        <span className="text-[13.5px] font-semibold">كلمة المرور</span>
-        <span className="shrink-0 text-[11.5px] text-clay-ink">غيّرها</span>
+        <span className="text-[13.5px] font-semibold">
+          {hasPassword ? "كلمة المرور" : "اضبط كلمة مرور"}
+        </span>
+        <span className="shrink-0 text-[11.5px] text-clay-ink">
+          {hasPassword ? "غيّرها" : "اضبطها"}
+        </span>
       </summary>
 
       <form action={action} className="flex flex-col gap-3 border-t border-line p-4">
-        <input
-          name="current"
-          type="password"
-          required
-          autoComplete="current-password"
-          placeholder="كلمة المرور الحالية"
-          aria-label="كلمة المرور الحالية"
-          className={field}
-          style={{ height: 48 }}
-        />
+        {/* ومن دخل بمزوّدٍ لا قديمةَ له تُطلب: الجلسةُ دليلُه. */}
+        {hasPassword ? (
+          <input
+            name="current"
+            type="password"
+            required
+            autoComplete="current-password"
+            placeholder="كلمة المرور الحالية"
+            aria-label="كلمة المرور الحالية"
+            className={field}
+            style={{ height: 48 }}
+          />
+        ) : null}
         <input
           name="next"
           type="password"
@@ -73,7 +80,7 @@ export function ChangePassword() {
           className="rounded-xl text-[14px] font-bold disabled:opacity-60"
           style={{ height: 48, background: "var(--color-clay)", color: "var(--color-on-brand)" }}
         >
-          {pending ? "نحفظ…" : "احفظ كلمة المرور"}
+          {pending ? "نحفظ…" : hasPassword ? "احفظ كلمة المرور" : "اضبط كلمة المرور"}
         </button>
       </form>
     </details>

@@ -162,7 +162,8 @@ export const deviceInput = z.object({
  * موافقة، فمن لم يلتقطه التطبيقُ حينها لم يعد يجده في الرمز.
  */
 export const oauthInput = z.object({
-  provider: z.enum(["GOOGLE", "APPLE"]),
+  provider: z.enum(["GOOGLE", "APPLE", "SNAP"]),
+  /** رمزُ هويّةٍ من آبل وقوقل، ورمزُ وصولٍ من سناب. */
   idToken: z.string().min(20).max(4000),
   name: z.string().trim().max(60).nullish(),
 });

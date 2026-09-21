@@ -103,7 +103,7 @@ export type SessionUser = {
   memberNo: number;
   name: string;
   handle: string | null;
-  email: string;
+  email: string | null;
   city: string | null;
   bio: string | null;
   isPlus: boolean;
