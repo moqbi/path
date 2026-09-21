@@ -154,3 +154,15 @@ export const deviceInput = z.object({
   token: z.string().min(10).max(300),
   platform: z.enum(["ios", "android"]),
 });
+
+/**
+ * الدخول بمزوّد: رمزُ هويّةٍ موقَّعٌ منه.
+ *
+ * والاسمُ من الجهاز لآبل وحدها: لا تعطيه إلّا مرّةً واحدة وقت أوّل
+ * موافقة، فمن لم يلتقطه التطبيقُ حينها لم يعد يجده في الرمز.
+ */
+export const oauthInput = z.object({
+  provider: z.enum(["GOOGLE", "APPLE"]),
+  idToken: z.string().min(20).max(4000),
+  name: z.string().trim().max(60).nullish(),
+});

@@ -2,6 +2,7 @@ import { randomBytes, scrypt as scryptCb, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { prisma } from "@athar/db";
 import { consume, sendReset, sendVerify } from "./email-tokens";
+import { readIdentity, upsertIdentity } from "./oauth";
 import { TOKEN } from "@athar/shared";
 import { hashToken, newFamily, readRefresh, signAccess, signRefresh } from "../lib/tokens";
 import { badRequest, forbidden, unauthorized } from "../lib/errors";
@@ -176,6 +177,38 @@ export async function resendVerify(userId: string) {
   return { ok: true };
 }
 
+/**
+ * الدخول بمزوّد: يتحقّق الخادمُ من الرمز، ثمّ يجد الحساب أو ينشئه،
+ * ثمّ يُصدر جلستنا نحن — لا جلسةَ المزوّد.
+ *
+ * والموقوفُ مؤقّتاً لا تُصدَر له جلسة من هنا كما لا تُصدَر من الدخول
+ * بالبريد: بابٌ ثانٍ يتجاوز الإيقاف ليس إيقافاً.
+ */
+export async function oauth(input: {
+  provider: "GOOGLE" | "APPLE";
+  idToken: string;
+  name?: string | null;
+  device?: string;
+}) {
+  const identity = await readIdentity(input.provider, input.idToken, input.name ?? null);
+  const { userId } = await upsertIdentity(identity);
+
+  const row = await prisma.user.findUnique({
+    where: { id: userId },
+    select: PUBLIC_USER,
+  });
+  if (!row) throw unauthorized("تعذّر الدخول");
+
+  const held = await suspensionOf(userId);
+  if (held) {
+    throw forbidden(
+      `حسابك موقوف حتى ${untilText(held.until)}${held.reason ? ` — ${held.reason}` : ""}`,
+    );
+  }
+
+  return { user: row, ...(await issue(row, input.device)) };
+}
+
 export async function login(input: { email: string; password: string; device?: string }) {
   const row = await prisma.user.findUnique({
     where: { email: input.email },
@@ -183,7 +216,8 @@ export async function login(input: { email: string; password: string; device?: s
   });
 
   // رسالةٌ واحدة للحالتين: «لا يوجد حساب» تقول للمهاجم أيّ بريدٍ مسجّل.
-  if (!row || !(await verifyPassword(input.password, row.passwordHash))) {
+  // ومن دخل بمزوّدٍ ولم يضع كلمةً بعد لا كلمةَ له تُطابَق.
+  if (!row || !row.passwordHash || !(await verifyPassword(input.password, row.passwordHash))) {
     throw unauthorized("البريد أو كلمة المرور غير صحيحة");
   }
 

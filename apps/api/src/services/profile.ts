@@ -196,10 +196,16 @@ export async function changePassword(
     select: { passwordHash: true },
   });
   if (!row) throw notFound("لا يوجد هذا الحساب");
-  if (!(await verifyPassword(input.current, row.passwordHash))) {
+  /*
+     ومن دخل بمزوّدٍ ولا كلمةَ له **يضعها بلا قديمة**: الجلسةُ نفسها
+     دليلُ أنّه هو، وبها يصير له بابان — المزوّد والبريد.
+  */
+  if (row.passwordHash && !(await verifyPassword(input.current, row.passwordHash))) {
     throw forbidden("كلمة المرور الحالية غير صحيحة");
   }
-  if (input.current === input.next) throw badRequest("الجديدة هي نفسها الحالية");
+  if (row.passwordHash && input.current === input.next) {
+    throw badRequest("الجديدة هي نفسها الحالية");
+  }
 
   await prisma.user.update({
     where: { id: userId },
@@ -247,7 +253,8 @@ export async function changeEmail(
     select: { email: true, passwordHash: true },
   });
   if (!row) throw notFound("لا يوجد هذا الحساب");
-  if (!(await verifyPassword(input.password, row.passwordHash))) {
+  // ومن لا كلمةَ له: الجلسةُ دليلُه، وبابُ مزوّده يبقى مفتوحاً بعد التغيير.
+  if (row.passwordHash && !(await verifyPassword(input.password, row.passwordHash))) {
     throw forbidden("كلمة المرور غير صحيحة");
   }
 
@@ -320,10 +327,18 @@ export async function deleteAccount(userId: string, password: string) {
 
   const row = await prisma.user.findUnique({
     where: { id: userId },
-    select: { passwordHash: true },
+    select: { email: true, passwordHash: true },
   });
-  if (!row || !(await verifyPassword(password, row.passwordHash))) {
-    throw forbidden("كلمة المرور غير صحيحة");
+  /*
+     ومن دخل بمزوّدٍ ولا كلمةَ له يكتب **بريده** بدلها: لا بدّ من شيءٍ
+     يعرفه هو ولا يعرفه من التقط جهازه المفتوح.
+  */
+  if (!row) throw notFound("لا يوجد هذا الحساب");
+  const confirmed = row.passwordHash
+    ? await verifyPassword(password, row.passwordHash)
+    : password.trim().toLowerCase() === row.email.toLowerCase();
+  if (!confirmed) {
+    throw forbidden(row.passwordHash ? "كلمة المرور غير صحيحة" : "اكتب بريدك كما هو للتأكيد");
   }
 
   const files = await prisma.media.findMany({ where: { ownerId: userId }, select: { id: true } });

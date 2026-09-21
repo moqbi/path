@@ -85,7 +85,9 @@ model User {
   /// المتسلسلة في القاعدة لا في التطبيق، وإلا تصادم مسجّلان في اللحظة نفسها.
   memberNo     Int     @unique @default(autoincrement())
   email        String  @unique
-  passwordHash String
+  /// فارغةٌ لمن دخل بمزوّد (آبل أو قوقل أو سناب) ولم يضع كلمةً بعد.
+  /// ومن أراد أن يدخل بالبريد أيضاً يضعها من الإعدادات.
+  passwordHash String?
   name         String
   /// معرّف قصير يظهر تحت الاسم: @mohammed.
   handle       String? @unique
@@ -187,6 +189,7 @@ model User {
 
   emailTokens    EmailToken[]
   devices        DeviceToken[]
+  identities     AuthIdentity[]
   tickets        SupportTicket[]
   reports        Report[]        @relation("Reporter")
   reportsAgainst Report[]        @relation("Reported")
@@ -934,5 +937,38 @@ model DeviceToken {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+}
+
+/// مزوّدُ الدخول — وسناب ثالثٌ يأتي بعد آبل وقوقل.
+enum AuthProvider {
+  GOOGLE
+  APPLE
+  SNAP
+}
+
+/**
+ * هويّةٌ عند مزوّد: «هذا الحسابُ عندنا هو ذاك الحسابُ عندهم».
+ *
+ * جدولٌ مستقلّ لا عمودان في `User`: الشخصُ الواحد قد يربط آبل وقوقل
+ * معاً بحسابٍ واحد، وعمودٌ لكل مزوّدٍ يعني عموداً جديداً مع كل مزوّد.
+ *
+ * و`subject` هو معرّفُ المستخدم عند المزوّد — **لا بريدُه**: البريدُ
+ * يتغيّر (وآبل تعطي بريداً مُقنَّعاً يُبدَّل)، والمعرّفُ لا يتغيّر.
+ * وفريدٌ مع المزوّد: حسابان عندنا لا يشيران إلى هويّةٍ واحدة عندهم.
+ */
+model AuthIdentity {
+  id       String       @id @default(cuid())
+  userId   String
+  provider AuthProvider
+  subject  String
+  /// البريدُ كما أعطاه المزوّد وقت الربط — للسجلّ لا للمطابقة.
+  email    String?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, subject])
   @@index([userId])
 }

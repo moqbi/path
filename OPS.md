@@ -218,6 +218,10 @@ BREVO_API_KEY="..."
 # SMTP_PASS="xsmtpsib-..."
 MAIL_FROM="noreply@atharmts.com"
 SUPPORT_EMAIL="support@atharmts.com"
+
+# الدخول بمزوّد: معرّفاتُ العملاء، مفصولةً بفاصلة.
+GOOGLE_CLIENT_IDS="...ios...,...android...,...web..."
+APPLE_CLIENT_IDS="app.athar.mobile,app.athar.signin"
 ```
 
 > **ونطاقُ المرسِل يُثبَت في بريفو أوّلاً** (Senders & Domains): سجلّا

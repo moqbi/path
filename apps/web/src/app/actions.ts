@@ -47,7 +47,11 @@ export async function signIn(
 
   const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
   // رسالة واحدة للحالتين حتى لا يكشف النموذج أي البُرد مسجَّلة.
-  const ok = user ? await verifyPassword(parsed.data.password, user.passwordHash) : false;
+  // ومن دخل بمزوّدٍ ولا كلمةَ له لا يدخل من هنا — واللوحةُ للمالك أصلاً.
+  const ok =
+    user && user.passwordHash
+      ? await verifyPassword(parsed.data.password, user.passwordHash)
+      : false;
   if (!user || !ok) return { error: "البريد أو كلمة المرور غير صحيحة" };
 
   await createSession(user.id);
@@ -930,7 +934,9 @@ export async function changeEmail(_prev: AdminResult, formData: FormData): Promi
     where: { id: user.id },
     select: { passwordHash: true },
   });
-  if (!row || !(await verifyPassword(password, row.passwordHash))) {
+  if (!row) return { error: "لا يوجد هذا الحساب" };
+  // ومن لا كلمةَ له: الجلسةُ دليلُه، وبابُ مزوّده يبقى بعد التغيير.
+  if (row.passwordHash && !(await verifyPassword(password, row.passwordHash))) {
     return { error: "كلمة المرور غير صحيحة" };
   }
 
@@ -1113,7 +1119,13 @@ export async function deleteAccountFromWeb(
     select: { id: true, passwordHash: true },
   });
   // رسالةٌ واحدة للحالتين حتى لا يكشف النموذج أيّ البُرد مسجَّلة.
-  const ok = user ? await verifyPassword(password, user.passwordHash) : false;
+  /*
+     ومن دخل بمزوّدٍ ولا كلمةَ له لا يحذف حسابه من الموقع: يحذفه من
+     التطبيق حيث جلستُه هي دليلُه — وجوجل بلاي تطلب طريقاً من خارج
+     التطبيق، وهو قائمٌ لمن له كلمة.
+  */
+  const ok =
+    user && user.passwordHash ? await verifyPassword(password, user.passwordHash) : false;
   if (!user || !ok) return { error: "البريد أو كلمة المرور غير صحيحة" };
 
   // ملفاته تُجمَع قبل حذفه: الصفوف تذهب بـ`Cascade`، وكائنات السحابة لا

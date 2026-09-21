@@ -17,6 +17,7 @@ import * as profile from "../../services/profile";
 import * as feed from "../../services/feed";
 import * as auth from "../../services/auth";
 import * as push from "../../services/push";
+import * as oauth from "../../services/oauth";
 
 /**
  * حسابي.
@@ -68,6 +69,13 @@ export const profileRoutes = new Hono()
 
   .delete("/devices", zValidator("json", z.object({ token: z.string().min(10).max(300) })), async (c) =>
     c.json(await push.forgetDevice(me(c), c.req.valid("json").token)),
+  )
+
+  /** ما رُبط بحسابك من مزوّدين، وفكُّ أحدها. */
+  .get("/identities", async (c) => c.json({ identities: await oauth.myIdentities(me(c)) }))
+
+  .delete("/identities/:id", async (c) =>
+    c.json(await oauth.unlinkIdentity(me(c), c.req.param("id"))),
   )
 
   /** إعادةُ إرسال رسالة تأكيد البريد. */

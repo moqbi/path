@@ -5,6 +5,7 @@ import {
   loginInput,
   refreshInput,
   registerInput,
+  oauthInput,
   resetInput,
   verifyInput,
 } from "@athar/shared";
@@ -22,6 +23,7 @@ export const authRoutes = new Hono()
   // الدخول والتسجيل أهدأ من غيرهما: خمس محاولات في الدقيقة لكل عنوان.
   .use("/register", rateLimit(5, 60))
   .use("/login", rateLimit(5, 60))
+  .use("/oauth", rateLimit(10, 60))
   .use("/refresh", rateLimit(30, 60))
   // وبابُ البريد أهدأ منها كلّها: ثلاثٌ في الدقيقة، فلا يصير مِرشّة بريد.
   .use("/forgot", rateLimit(3, 60))
@@ -37,6 +39,16 @@ export const authRoutes = new Hono()
     const input = c.req.valid("json");
     const device = c.req.header("user-agent");
     return c.json(await auth.login({ ...input, device }));
+  })
+
+  /**
+   * الدخول بمزوّد — والرمزُ يُتحقَّق منه في الخادم لا يُصدَّق كما جاء:
+   * من يرسل طلباً بيده يكتب أيَّ معرّفٍ فيدخل حسابَ غيره.
+   */
+  .post("/oauth", zValidator("json", oauthInput), async (c) => {
+    const input = c.req.valid("json");
+    const device = c.req.header("user-agent");
+    return c.json(await auth.oauth({ ...input, device }));
   })
 
   .post("/refresh", zValidator("json", refreshInput), async (c) => {

@@ -49,7 +49,12 @@ export async function signIn(
 
   const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
   // رسالة واحدة للحالتين حتى لا يكشف النموذج أي البُرد مسجَّلة.
-  const ok = user ? await verifyPassword(parsed.data.password, user.passwordHash) : false;
+  // ومن دخل بمزوّدٍ ولم يضع كلمةً بعد لا كلمةَ له تُطابَق — والرسالةُ
+  // واحدةٌ في الحالين، فلا يُعرف من الشاشة أيُّ بريدٍ مسجّل ولا كيف دخل.
+  const ok =
+    user && user.passwordHash
+      ? await verifyPassword(parsed.data.password, user.passwordHash)
+      : false;
   if (!user || !ok) return { error: "البريد أو كلمة المرور غير صحيحة" };
 
   await createSession(user.id);
@@ -157,10 +162,20 @@ export async function deleteAccount(
     where: { id: user.id },
     select: { passwordHash: true },
   });
-  // كلمة مرور خاطئة تُردّ رسالةً في الشاشة لا استثناءً يكسرها: هذه آخر
-  // خطوة قبل فقد كل شيء، فلا يجوز أن تنتهي بصفحة خطأ غامضة.
-  if (!row || !(await verifyPassword(password, row.passwordHash))) {
-    return "كلمة المرور غير صحيحة";
+  /*
+     كلمة مرور خاطئة تُردّ رسالةً في الشاشة لا استثناءً يكسرها: هذه آخر
+     خطوة قبل فقد كل شيء، فلا يجوز أن تنتهي بصفحة خطأ غامضة.
+
+     **ومن دخل بمزوّدٍ ولا كلمةَ له يكتب بريده** بدلها: لا بدّ من شيءٍ
+     يعرفه هو ولا يعرفه من التقط جهازه المفتوح، وحذفٌ بضغطةٍ واحدة ليس
+     حذفاً بل حادثة.
+  */
+  if (!row) return "كلمة المرور غير صحيحة";
+  const confirmed = row.passwordHash
+    ? await verifyPassword(password, row.passwordHash)
+    : password.trim().toLowerCase() === user.email.toLowerCase();
+  if (!confirmed) {
+    return row.passwordHash ? "كلمة المرور غير صحيحة" : "اكتب بريدك كما هو للتأكيد";
   }
 
   /*
@@ -1388,12 +1403,17 @@ export async function changePassword(
     where: { id: user.id },
     select: { passwordHash: true },
   });
-  if (!row || !(await verifyPassword(current, row.passwordHash))) {
+  if (!row) return { error: "لا يوجد هذا الحساب" };
+  /*
+     ومن دخل بمزوّدٍ ولا كلمةَ له **يضعها بلا قديمة**: لا قديمةَ تُطلب،
+     والجلسةُ نفسها دليلُ أنّه هو. وبها يصير له بابان: المزوّد والبريد.
+  */
+  if (row.passwordHash && !(await verifyPassword(current, row.passwordHash))) {
     return { error: "كلمة المرور الحالية غير صحيحة" };
   }
   if (next.length < 8) return { error: "كلمة المرور الجديدة ٨ أحرف فأكثر" };
   if (next !== again) return { error: "الكلمتان الجديدتان غير متطابقتين" };
-  if (next === current) return { error: "الجديدة هي نفسها الحالية" };
+  if (row.passwordHash && next === current) return { error: "الجديدة هي نفسها الحالية" };
 
   await prisma.user.update({
     where: { id: user.id },
@@ -2309,7 +2329,12 @@ export async function changeEmail(_prev: AdminResult, formData: FormData): Promi
     where: { id: user.id },
     select: { passwordHash: true },
   });
-  if (!row || !(await verifyPassword(password, row.passwordHash))) {
+  /*
+     ومن دخل بمزوّدٍ ولا كلمةَ له: الجلسةُ دليلُه، وبريدُه اليومَ من
+     المزوّد نفسه — فتغييرُه هنا لا يُغلق عليه باب الدخول بمزوّده.
+  */
+  if (!row) return { error: "لا يوجد هذا الحساب" };
+  if (row.passwordHash && !(await verifyPassword(password, row.passwordHash))) {
     return { error: "كلمة المرور غير صحيحة" };
   }
 
