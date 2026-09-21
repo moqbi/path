@@ -216,7 +216,7 @@ export function ComposerFan() {
               aria-hidden="true"
               className="block h-full w-full rounded-full"
               style={{
-                backgroundImage: "url(/composer/plus.png)",
+                backgroundImage: `url(${asset("/composer/plus.png")})`,
                 backgroundSize: "contain",
                 backgroundPosition: "center",
                 backgroundRepeat: "no-repeat",

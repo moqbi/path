@@ -8,6 +8,7 @@ import { TabBar } from "@/components/tab-bar";
 import { AthrPageMark } from "@/components/brand";
 import { MessageIcon, SparkIcon, StoreIcon, TagIcon, WithIcon } from "@/components/icons";
 import { ar, dayLabel, relative } from "@/lib/format";
+import { BASE } from "@/lib/base";
 
 const FILTERS = [
   { key: "", label: "الكل" },
@@ -153,7 +154,7 @@ export default async function NotificationsPage({
                       {note.thumb ? (
                         <span
                           className="h-11 w-11 shrink-0 rounded-xl bg-cover bg-center"
-                          style={{ backgroundImage: `url(/api/media/${note.thumb})` }}
+                          style={{ backgroundImage: `url(${BASE}/api/media/${note.thumb})` }}
                         />
                       ) : null}
                     </Link>

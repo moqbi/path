@@ -4,7 +4,7 @@ import { TAGLINE_AR, TAGLINE_EN } from "@/components/brand";
 import { currentUser } from "@/lib/auth";
 import { parsePalette, themeVars, veilOf } from "@/lib/theme";
 import { NavProbe } from "@/components/nav";
-import { asset } from "@/lib/base";
+import { BASE, asset } from "@/lib/base";
 
 export const metadata: Metadata = {
   title: "آثار مومنتس · ATHAR Moments",
@@ -35,7 +35,7 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const user = await currentUser();
   const theme = user?.background ?? null;
-  const image = theme?.mediaId ? `url(/api/media/${theme.mediaId})` : null;
+  const image = theme?.mediaId ? `url(${BASE}/api/media/${theme.mediaId})` : null;
   const palette = parsePalette(theme?.palette);
   // حجابٌ خفيف: يكفي لقراءة النصّ ولا يطمس الصورة. أعلى من هذا كان يخفيها.
   const veil = veilOf(palette);

@@ -5,7 +5,7 @@ import { signIn } from "@/app/actions";
 import { useGoogleLogin } from "./google";
 import { AthrMark, TAGLINE_AR, TAGLINE_EN } from "@/components/brand";
 import { BackIcon } from "@/components/icons";
-import { BASE } from "@/lib/base";
+import { BASE, asset } from "@/lib/base";
 
 type Phase = "intro" | "leaving" | "form";
 
@@ -72,7 +72,7 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
       className="screen relative"
       style={{
         backgroundImage: photo
-          ? "linear-gradient(180deg,rgba(14,26,36,.35),rgba(14,26,36,.88)), url(/login-bg.jpg)"
+          ? `linear-gradient(180deg,rgba(14,26,36,.35),rgba(14,26,36,.88)), url(${asset("/login-bg.jpg")})`
           : [
               "radial-gradient(120% 60% at 85% 18%, rgba(255,196,120,.55), transparent 60%)",
               "linear-gradient(180deg,#16293a 0%,#2c4055 30%,#7b6a63 62%,#3d3a3a 78%,#171d24 100%)",
