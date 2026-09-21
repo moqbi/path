@@ -1,9 +1,10 @@
-import { randomBytes, scrypt as scryptCb, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, scrypt as scryptCb, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { prisma } from "@athar/db";
 import { consume, sendReset, sendVerify } from "./email-tokens";
+import { letterHtml, sendMail } from "./mail";
 import { readIdentity, upsertIdentity } from "./oauth";
-import { TOKEN, UNVERIFIED_MINUTES } from "@athar/shared";
+import { TOKEN, UNVERIFIED_MINUTES, appUrl } from "@athar/shared";
 import { hashToken, newFamily, readRefresh, signAccess, signRefresh } from "../lib/tokens";
 import { badRequest, forbidden, unauthorized } from "../lib/errors";
 import { suspensionOf, untilText } from "../middleware/auth";
@@ -79,39 +80,54 @@ async function issue(
   return { accessToken: access, refreshToken: refresh };
 }
 
-export async function register(input: {
-  email: string;
-  password: string;
-  name: string;
-  device?: string;
-}) {
+/**
+ * طلبُ التسجيل بالبريد — **ولا يُنشأ حساب**.
+ *
+ * حسابٌ يُنشأ قبل التأكيد يأخذ رقمَ عضويّةٍ من المتسلسلة، فإذا حُذف
+ * لأنّ صاحبه لم يؤكّد بقيت فجوةٌ لا صاحب لها — والرقمُ لا يُعاد
+ * استعماله ولا يصحّ أن يُعاد (القاعدة ١٥): رابطُ المشاركة
+ * `/u/<الرقم>` يصير حينئذٍ لشخصٍ آخر.
+ *
+ * فيُحفظ الطلبُ في `PendingSignup`، ويُولَد `User` عند فتح الرابط.
+ * والرابطُ يفتح صفحةَ الويب (`SITE_URL/app/verify`) لا التطبيق: بابٌ
+ * واحدٌ يُصان، ومن فُتح حسابه يدخل من شاشة الدخول بكلمته.
+ *
+ * **ولا توكنَ يُردّ هنا**: لا حساب بعدُ فلا جلسة.
+ */
+export async function register(input: { email: string; password: string; name: string }) {
   const taken = await prisma.user.findUnique({ where: { email: input.email }, select: { id: true } });
-  if (taken) throw badRequest("هذا البريد مسجّل");
+  if (taken) throw badRequest("هذا البريد مسجّل — سجّل الدخول به");
 
-  /*
-     ورقمُ العضوية **لا يُكتب هنا**: مصدرُه متسلسلةُ Postgres
-     (`@default(autoincrement())` — القاعدة ١٥). وحسابُه في التطبيق
-     يعطل من وجهين: مسجّلان في اللحظة نفسها يقرآن آخرَ رقمٍ فيكتبانه
-     معاً، **وكتابتُه يدوياً لا تُقدّم المتسلسلة** — فحين تلحق بما كُتب
-     يسقط كلُّ تسجيلٍ بعدها على قيد الفرادة.
-  */
-  const user = await prisma.user.create({
-    data: {
-      email: input.email,
-      passwordHash: await hashPassword(input.password),
-      name: input.name,
-    },
-    select: PUBLIC_USER,
+  const token = randomBytes(32).toString("base64url");
+  const data = {
+    name: input.name,
+    passwordHash: await hashPassword(input.password),
+    tokenHash: createHash("sha256").update(token).digest("hex"),
+    expiresAt: new Date(Date.now() + UNVERIFIED_MINUTES * 60_000),
+  };
+
+  // وطلبٌ ثانٍ بالبريد نفسه يحلّ محلّ الأوّل: من لم تصله الرسالة يعيد،
+  // ولا يُردّ بـ«مسجّل» على طلبٍ لم يكتمل.
+  await prisma.pendingSignup.upsert({
+    where: { email: input.email },
+    create: { email: input.email, ...data },
+    update: data,
   });
 
-  /*
-     رسالةُ التأكيد تُرسَل ولا يُنتظر جوابُها، وفشلُها يُبتلع: حسابٌ
-     أُنشئ لا يُلغى لأنّ بريداً لم يخرج، ومن لم تصله رسالةٌ يطلبها من
-     الإعدادات.
-  */
-  void sendVerify(user.id, input.email, input.name).catch(() => {});
+  const sent = await sendSignupLink(input.email, input.name, token);
+  // وفشلُ الإرسال يُقال: هذه هي البابُ الوحيد، ومن ظنّ أنّ حسابه فُتح
+  // وينتظر رسالةً لن تأتي ينتظر أبداً.
+  if (!sent) throw badRequest("تعذّر إرسال الرسالة — حاول بعد قليل");
 
-  return { user, ...(await issue(user, input.device)) };
+  return { ok: true, sent: true as const };
+}
+
+/** يكنس الطلبات التي انقضت مهلتُها — لا حساب لها فلا شيء يُحذف معها. */
+export async function sweepPendingSignups(): Promise<number> {
+  const { count } = await prisma.pendingSignup.deleteMany({
+    where: { expiresAt: { lt: new Date() } },
+  });
+  return count;
 }
 
 /**
@@ -298,29 +314,26 @@ export async function profile(userId: string) {
   return prisma.user.findUnique({ where: { id: userId }, select: PUBLIC_USER });
 }
 
+
 /**
- * يحذف الحسابات التي سُجّلت ببريدٍ ولم تُؤكَّد خلال المهلة.
+ * رسالةُ «افتح حسابك»: رابطٌ إلى صفحة الويب التي تُولّد الحساب.
  *
- * حذفٌ حقيقيّ لا إخفاء: صفُّ المستخدم يذهب ومعه ما يشير إليه بالتتالي
- * — ورقمُ عضويّته لا يُعاد استعماله (القاعدة ١٥)، فلا يرث أحدٌ رقمَ من
- * حُذف.
- *
- * وشروطُه في `UNVERIFIED_MINUTES` مشروحة: من دخل بمزوّدٍ لا يطاله،
- * ومن نشر لحظةً لا يطاله، والمشرفُ لا يطاله بحال.
+ * وهي لا تمرّ بـ`sendVerify`: تلك تحتاج `userId`، ولا حساب بعد.
  */
-export async function sweepUnverified(): Promise<number> {
-  const cutoff = new Date(Date.now() - UNVERIFIED_MINUTES * 60_000);
-  const { count } = await prisma.user.deleteMany({
-    where: {
-      emailVerifiedAt: null,
-      email: { not: null },
-      passwordHash: { not: null },
-      role: "USER",
-      createdAt: { lt: cutoff },
-      identities: { none: {} },
-      moments: { none: {} },
-    },
+async function sendSignupLink(email: string, name: string, token: string): Promise<boolean> {
+  const url = appUrl(`/verify?token=${token}`);
+  if (!url) return false;
+  return sendMail({
+    to: email,
+    subject: "أكّد بريدك لتفتح حسابك في آثار",
+    text: `أهلاً ${name} — افتح هذا الرابط لتفتح حسابك: ${url}`,
+    html: letterHtml({
+      title: `أهلاً ${name}`,
+      intro:
+        "لم يُفتح حسابك بعد. افتح الرابط ليُفتح — ولا يعمل إلا لدقائق، فإن تأخّرتَ أعِد التسجيل.",
+      button: "افتح حسابي",
+      url,
+      note: "إن لم تكن أنت من طلب هذا، تجاهل الرسالة ولا يحدث شيء.",
+    }),
   });
-  if (count > 0) console.info("[كنس] حساباتٌ لم تُؤكَّد:", count);
-  return count;
 }

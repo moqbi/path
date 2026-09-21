@@ -23,6 +23,7 @@ import {
 } from "../lib/providers";
 import { AthrMark, AthrWordmark, TAGLINE_AR, TAGLINE_EN } from "../components/brand";
 import { BackIcon } from "../components/icons";
+import { api } from "../lib/api";
 import { useSession } from "../lib/session";
 import { brandGradient, colors } from "../theme/tokens";
 
@@ -192,6 +193,13 @@ export default function Login() {
   const adopt = useSession((s) => s.adopt);
 
   const [showEmail, setShowEmail] = useState(false);
+  /*
+     بابان في الشاشة نفسها لا شاشتان: من فتحها ليُنشئ حساباً لا يُرسَل
+     إلى شاشةٍ أخرى ثمّ يُعاد. وحقلُ الاسم يظهر مع الإنشاء وحده.
+  */
+  const [newcomer, setNewcomer] = useState(false);
+  const [sent, setSent] = useState<string | null>(null);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -324,11 +332,24 @@ export default function Login() {
     setPending(true);
     setError(null);
     try {
+      if (newcomer) {
+        /*
+           والتسجيل **لا يفتح جلسة**: لا حساب بعدُ حتى يُفتح الرابط،
+           فيُولَد هناك ويأخذ رقمَ عضويّته (القاعدة ١٥). فيبقى في هذه
+           الشاشة ومعه ما يقول له أين يبحث.
+        */
+        await api("/v1/auth/register", {
+          method: "POST",
+          body: JSON.stringify({ name: name.trim(), email: email.trim(), password }),
+        });
+        setSent("أرسلنا رابطاً إلى بريدك — افتحه ليُفتح حسابك.");
+        return;
+      }
       await signIn(email, password);
       router.replace("/");
     } catch (problem) {
       // رسالةٌ واحدة للحالتين: أيُّ بريدٍ مسجَّل ليس خبراً يُعطى.
-      setError(problem instanceof Error ? problem.message : "تعذّر الدخول");
+      setError(problem instanceof Error ? problem.message : newcomer ? "تعذّر التسجيل" : "تعذّر الدخول");
     } finally {
       setPending(false);
     }
@@ -422,7 +443,42 @@ export default function Login() {
           pointerEvents={formVisible ? "auto" : "none"}
           style={{ opacity: formFade, transform: [{ translateY: formRise }] }}
         >
-          {showEmail ? (
+          {sent ? (
+            <View style={{ gap: 12 }}>
+              <Text
+                accessibilityRole="alert"
+                style={{
+                  fontSize: 13,
+                  lineHeight: 22,
+                  color: "#e8e2d8",
+                  textAlign: "center",
+                  backgroundColor: "rgba(14,26,36,.6)",
+                  borderRadius: 12,
+                  paddingHorizontal: 16,
+                  paddingVertical: 16,
+                }}
+              >
+                {sent}
+                {"\n"}
+                <Text style={{ fontSize: 11.5, color: "rgba(247,245,239,.62)" }}>
+                  إن لم تجد الرسالة في الوارد فانظر في «البريد غير الهامّ».
+                </Text>
+              </Text>
+              <Pressable
+                onPress={() => {
+                  setSent(null);
+                  setNewcomer(false);
+                  setPassword("");
+                }}
+              >
+                <Text
+                  style={{ fontSize: 12.5, fontWeight: "600", color: "rgba(247,245,239,.86)", textAlign: "center", paddingVertical: 6 }}
+                >
+                  أكّدتُ — سجّل دخولي
+                </Text>
+              </Pressable>
+            </View>
+          ) : showEmail ? (
             <View style={{ gap: 10 }}>
               <Pressable
                 onPress={() => setShowEmail(false)}
@@ -440,6 +496,17 @@ export default function Login() {
                 <Text style={{ fontSize: 12.5, color: "#b9b2a8" }}>كل الخيارات</Text>
               </Pressable>
 
+              {newcomer ? (
+                <TextInput
+                  style={FIELD}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="اسمك"
+                  placeholderTextColor="rgba(247,245,239,.5)"
+                  maxLength={40}
+                  textContentType="name"
+                />
+              ) : null}
               <TextInput
                 style={FIELD}
                 value={email}
@@ -457,10 +524,10 @@ export default function Login() {
                 style={FIELD}
                 value={password}
                 onChangeText={setPassword}
-                placeholder="كلمة المرور"
+                placeholder={newcomer ? "كلمة المرور — ٨ أحرف فأكثر" : "كلمة المرور"}
                 placeholderTextColor="rgba(247,245,239,.5)"
                 secureTextEntry
-                textContentType="password"
+                textContentType={newcomer ? "newPassword" : "password"}
                 onSubmitEditing={submit}
               />
 
@@ -475,16 +542,34 @@ export default function Login() {
 
               <BrandButton onPress={submit} disabled={pending} style={{ marginTop: 8 }}>
                 <Text style={{ fontSize: 15.5, fontWeight: "700", color: colors.onBrand }}>
-                  {pending ? "لحظة…" : "دخول"}
+                  {pending ? "لحظة…" : newcomer ? "إنشاء حساب" : "دخول"}
                 </Text>
               </BrandButton>
 
-              {/* من نسي كلمته لا يستطيع الدخول ليطلبها، فبابُها هنا. */}
-              <Pressable onPress={() => router.push("/forgot" as never)}>
+              {/*
+                 ومن نسي كلمته لا يستطيع الدخول ليطلبها، فبابُها هنا —
+                 ولا تُعرض لمن يُنشئ حساباً: لا كلمةَ له بعدُ لينساها.
+              */}
+              {newcomer ? null : (
+                <Pressable onPress={() => router.push("/forgot" as never)}>
+                  <Text
+                    style={{ fontSize: 12.5, fontWeight: "500", color: "rgba(247,245,239,.72)", textAlign: "center", paddingVertical: 6 }}
+                  >
+                    نسيت كلمة المرور؟
+                  </Text>
+                </Pressable>
+              )}
+
+              <Pressable
+                onPress={() => {
+                  setNewcomer((was) => !was);
+                  setError(null);
+                }}
+              >
                 <Text
-                  style={{ fontSize: 12.5, fontWeight: "500", color: "rgba(247,245,239,.72)", textAlign: "center", paddingVertical: 6 }}
+                  style={{ fontSize: 12.5, fontWeight: "600", color: "rgba(247,245,239,.86)", textAlign: "center", paddingVertical: 6 }}
                 >
-                  نسيت كلمة المرور؟
+                  {newcomer ? "عندي حساب — سجّل دخولي" : "ما عندي حساب — أنشئ واحداً"}
                 </Text>
               </Pressable>
             </View>

@@ -509,9 +509,10 @@ model StoreItem {
   /// ما تحتويه هذه الحزمة، وفي أيّ حزمةٍ يقع هذا الصنف.
   holds          BundleItem[] @relation("BundleHolds")
   heldIn         BundleItem[] @relation("BundleHeld")
-  usersWithFrame User[]     @relation("UserFrame")
-  usersWithBg    User[]     @relation("UserBackground")
-  usersWithCharm User[]     @relation("UserCharm")
+  usersWithFrame User[]       @relation("UserFrame")
+  usersWithBg    User[]       @relation("UserBackground")
+  usersWithCharm User[]       @relation("UserCharm")
+
   /// يُرتَّب بـ`sortOrder` ويُفلتر بـ`hidden` في كل فتحةِ متجر.
   @@index([hidden, sortOrder])
 }
@@ -666,12 +667,12 @@ model Media {
 
   owner User @relation("MediaOwner", fields: [ownerId], references: [id], onDelete: Cascade)
 
-  avatarOf  User?      @relation("UserAvatar")
-  coverOf   User?      @relation("UserCover")
-  storyOf   Story?     @relation("StoryMedia")
-  messageOf Message?   @relation("MessageMedia")
-  moment    Moment?    @relation("MomentMedia")
-  storeItem StoreItem? @relation("StoreItemMedia")
+  avatarOf   User?      @relation("UserAvatar")
+  coverOf    User?      @relation("UserCover")
+  storyOf    Story?     @relation("StoryMedia")
+  messageOf  Message?   @relation("MessageMedia")
+  moment     Moment?    @relation("MomentMedia")
+  storeItem  StoreItem? @relation("StoreItemMedia")
   storeCover StoreItem? @relation("StoreItemCover")
 
   /// صورةُ موقعٍ عامّة إن كانت — الرأس مثلاً.
@@ -896,14 +897,33 @@ enum EmailTokenKind {
 
 /**
  * رمزٌ يُرسَل إلى البريد ويُستعمل مرّةً واحدة.
- *
  * **التجزئة تُخزَّن لا الرمز**: قاعدةٌ تُسرَّق أو نسخةٌ احتياطيّة تُقرأ
  * لا تُعطي قارئَها مفاتيحَ حسابات الناس — كما لا تُخزَّن كلمةُ المرور.
  * والرمز يذهب إلى البريد وحده.
- *
  * و`usedAt` بدل الحذف: رابطٌ استُعمل مرّتين يُقال لصاحبه «انتهى» لا
  * «غير موجود»، والفرقُ يوفّر عليه أن يظنّ الرابط مكسوراً فيعيد الطلب.
  */
+/// طلبُ تسجيلٍ لم يُؤكَّد بعد — **ولا حساب له في `User`**.
+///
+/// حسابٌ يُنشأ قبل التأكيد يأخذ رقمَ عضويّةٍ ثمّ يُحذف، فتبقى فجوةٌ
+/// لا صاحبَ لها — ورقمُ العضوية لا يُعاد استعماله (القاعدة ١٥). فيُحفظ
+/// الطلبُ هنا، ويُولَد `User` عند فتح الرابط فيأخذ رقمَه حينئذٍ.
+///
+/// وكلمةُ المرور **مجزَّأةٌ هنا كما تُجزَّأ هناك**: جدولٌ ينتظر عشر
+/// دقائق لا يُستثنى من قاعدةٍ تحمي ما يدوم.
+/// والرمزُ مجزَّأٌ كذلك (القاعدة ١١٩ب).
+model PendingSignup {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  tokenHash    String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
 model EmailToken {
   id        String         @id @default(cuid())
   userId    String
@@ -921,19 +941,17 @@ model EmailToken {
 
 /**
  * جهازٌ يُرسَل إليه التنبيه.
- *
  * الرمزُ من Expo (`ExponentPushToken[…]`) لا من آبل وقوقل مباشرةً:
  * خدمةُ Expo تعرف أيُّ جهازٍ على أيّ منصّة فتوصّله، فلا نحمل نحن
  * شهادةَ APNs ومفتاحَ FCM في خادمنا ولا نكتب بروتوكولين.
- *
  * **والرمز فريدٌ لا المستخدم**: جهازٌ واحد قد يُسجَّل عليه حسابان
  * بالتتابع، فالرمزُ ينتقل إلى آخر من دخل به — وإلّا وصل تنبيهُ الأوّل
  * إلى يد الثاني.
  */
 model DeviceToken {
-  id     String @id @default(cuid())
-  userId String
-  token  String @unique
+  id       String @id @default(cuid())
+  userId   String
+  token    String @unique
   /// «ios» أو «android» — للإحصاء ولتشخيص ما لا يصل.
   platform String
 
@@ -955,10 +973,8 @@ enum AuthProvider {
 
 /**
  * هويّةٌ عند مزوّد: «هذا الحسابُ عندنا هو ذاك الحسابُ عندهم».
- *
  * جدولٌ مستقلّ لا عمودان في `User`: الشخصُ الواحد قد يربط آبل وقوقل
  * معاً بحسابٍ واحد، وعمودٌ لكل مزوّدٍ يعني عموداً جديداً مع كل مزوّد.
- *
  * و`subject` هو معرّفُ المستخدم عند المزوّد — **لا بريدُه**: البريدُ
  * يتغيّر (وآبل تعطي بريداً مُقنَّعاً يُبدَّل)، والمعرّفُ لا يتغيّر.
  * وفريدٌ مع المزوّد: حسابان عندنا لا يشيران إلى هويّةٍ واحدة عندهم.

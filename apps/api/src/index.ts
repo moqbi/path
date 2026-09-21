@@ -23,7 +23,7 @@ import { dripPlusCredit } from "./services/billing";
 import { storyRoutes } from "./routes/v1/stories";
 import { siteRoutes } from "./routes/v1/site";
 import { sweep as sweepStories } from "./services/stories";
-import { sweepUnverified } from "./services/auth";
+import { sweepPendingSignups } from "./services/auth";
 import { UNVERIFIED_MINUTES } from "@athar/shared";
 
 /**
@@ -85,14 +85,14 @@ setInterval(
 ).unref();
 
 /*
-   وكنسُ الحسابات التي لم تُؤكَّد على مؤقّتٍ أقصر: مهلتُه عشرُ دقائق
-   (`UNVERIFIED_MINUTES`)، ومؤقّتٌ كلَّ نصف ساعة يُبقي الحساب أربعين
+   وكنسُ طلبات التسجيل على مؤقّتٍ أقصر: مهلتُها عشرُ دقائق
+   (`UNVERIFIED_MINUTES`)، ومؤقّتٌ كلَّ نصف ساعة يُبقي الطلب أربعين
    دقيقةً — أربعةَ أضعاف ما قُرّر. والثلثُ يجعل أطولَ ما يعيشه ثلاثَ
    عشرةَ دقيقة، والاستعلامُ سطرٌ واحد على فهرسٍ لا يُثقل.
 */
 setInterval(
   () => {
-    void sweepUnverified().catch((error) => console.error("✗ كنس غير المؤكَّدة", error));
+    void sweepPendingSignups().catch((error) => console.error("✗ كنس طلبات التسجيل", error));
   },
   Math.max(1, Math.round(UNVERIFIED_MINUTES / 3)) * 60_000,
 ).unref();

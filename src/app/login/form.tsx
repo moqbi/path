@@ -53,7 +53,15 @@ const PROVIDERS = [
   { key: "snap", label: "Snapchat", mark: <SnapMark /> },
 ];
 
-export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?: boolean }) {
+export function LoginForm({
+  photo,
+  deleted = false,
+  verify = "",
+}: {
+  photo: boolean;
+  deleted?: boolean;
+  verify?: string;
+}) {
   const phase = usePhases();
   const [showEmail, setShowEmail] = useState(false);
   /*
@@ -68,6 +76,13 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
   const form = newcomer
     ? { action: upAction, error: upState?.error, pending: upPending, label: "إنشاء حساب" }
     : { action, error: state?.error, pending, label: "دخول" };
+
+  /*
+     ورسالةُ النجاح تحلّ محلّ النموذج لا تجلس فوقه: التسجيل لم يُنشئ
+     حساباً بعد — أُرسل رابطٌ — فترك الحقول مفتوحةً يُقرأ «أعِد
+     المحاولة» ويُنشئ طلباً ثانياً بالبريد نفسه.
+  */
+  const sent = upState?.ok ?? "";
   const [notice, setNotice] = useState<string | null>(
     // العودة إلى هذه الشاشة بعد الحذف تحتاج جملة تؤكد أن ما طُلب قد تمّ.
     deleted ? "حُذف حسابك وكل ما فيه. تسعدنا عودتك متى شئت." : null,
@@ -190,7 +205,42 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
             pointerEvents: formVisible ? "auto" : "none",
           }}
         >
-          {showEmail ? (
+          {verify ? (
+            <p
+              role="alert"
+              className="mb-3 rounded-xl px-4 py-3 text-[12.5px] leading-relaxed"
+              style={{ background: "rgba(14,26,36,.6)", color: "#ffb9a4" }}
+            >
+              {verify}
+            </p>
+          ) : null}
+
+          {sent ? (
+            <div className="flex flex-col gap-3 text-center">
+              <p
+                role="status"
+                className="rounded-xl px-4 py-4 text-[13px] leading-relaxed"
+                style={{ background: "rgba(14,26,36,.6)", color: "#e8e2d8" }}
+              >
+                {sent}
+                <br />
+                <span className="text-[11.5px]" style={{ color: "rgba(247,245,239,.62)" }}>
+                  إن لم تجد الرسالة في الوارد فانظر في «البريد غير الهامّ».
+                </span>
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setNewcomer(false);
+                  setShowEmail(true);
+                }}
+                className="text-[12.5px] font-semibold"
+                style={{ color: "rgba(247,245,239,.86)" }}
+              >
+                أكّدتُ — سجّل دخولي
+              </button>
+            </div>
+          ) : showEmail ? (
             <form action={form.action} className="flex flex-col gap-2.5">
               <button
                 type="button"
