@@ -1,0 +1,18 @@
+[Unit]
+Description=آثار — تطبيق الويب
+After=network.target postgresql.service pgbouncer.service
+
+[Service]
+User=athar
+WorkingDirectory=/home/athar/app
+EnvironmentFile=/home/athar/app/.env
+Environment=PORT=3000
+ExecStart=/usr/bin/npm run start
+Restart=always
+RestartSec=3
+# وحدٌّ للذاكرة: خادمٌ بأربعة غيغا يحمل قاعدةً وخدمتين، وتسريبٌ في
+# إحداهما يقتل الأخرى معه.
+MemoryMax=900M
+
+[Install]
+WantedBy=multi-user.target

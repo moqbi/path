@@ -1,0 +1,30 @@
+# atharmts.com — الويب على الجذر، والواجهة البرمجية على /v1.
+#
+# وCaddy يأخذ الشهادة بنفسه ويجدّدها، بشرط أن يصل إليه المنفذ ٨٠ من
+# العالم: فالسجلّ في Cloudflare يبقى **رماديّاً** (بلا وكيل) حتى تُؤخذ
+# الشهادة، ثمّ يُلوَّن برتقاليّاً بوضع Full (strict).
+atharmts.com, www.atharmts.com {
+	encode zstd gzip
+
+	# الواجهةُ البرمجية تسبق الجذر: أطولُ مسارٍ يفوز في Caddy، لكنّ
+	# الترتيب يوضّح القصد لمن يقرأ.
+	handle /v1/* {
+		reverse_proxy 127.0.0.1:4000
+	}
+	handle /health {
+		reverse_proxy 127.0.0.1:4000
+	}
+
+	handle {
+		reverse_proxy 127.0.0.1:3000
+	}
+
+	header {
+		# لا يُخمَّن نوعُ ملفٍّ من محتواه، ولا يُوضع الموقع في إطار.
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		# سنةٌ كاملة: النطاقُ لنا وحدنا ولا شيء عليه بلا TLS.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	}
+}

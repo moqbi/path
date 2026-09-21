@@ -1,0 +1,16 @@
+[Unit]
+Description=آثار — خادم الواجهة البرمجية
+After=network.target postgresql.service pgbouncer.service redis-server.service
+
+[Service]
+User=athar
+WorkingDirectory=/home/athar/app/apps/api
+EnvironmentFile=/home/athar/app/.env
+Environment=PORT=4000
+ExecStart=/usr/bin/npx tsx src/index.ts
+Restart=always
+RestartSec=3
+MemoryMax=900M
+
+[Install]
+WantedBy=multi-user.target

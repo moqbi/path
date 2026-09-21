@@ -32,7 +32,8 @@ Postgres والتطبيق يتنازعان المعالج نفسه، لا قبل
 
 | المرحلة | العتاد | لماذا |
 |---|---|---|
-| الإطلاق (حتى ~٢٠ ألف مسجَّل) | ٨ vCPU / ١٦ GB / ١٦٠ GB NVMe (من صنف CX/CPX) | كلّ شيء على خادمٍ واحد بمريح |
+| الإطلاق (حتى ~٢٠ ألف مسجَّل) | ٨ vCPU / ١٦ GB / ١٦٠ GB NVMe | كلّ شيء على خادمٍ واحد بمريح |
+| **القائم اليوم** (Vultr فرانكفورت) | ٤ GB / ١٠٠ GB | يكفي الإطلاق والتجربة، ويضيق عند بضعة آلافٍ نشطين: Postgres وخدمتا Node وRedis في أربعة غيغا. والرامُ أوّلُ ما ينفد، فراقب `free -m` |
 | نموّ (~٨٠ ألفاً) | معالجٌ **مخصَّص** ٨ / ٣٢ GB / ٢٤٠ GB (صنف CCX) | Postgres يكره المعالج المشترَك: تأخّرُ الاستعلام يتذبذب بلا سبب ظاهر |
 | ٢٠٠ ألف | خادما تطبيق (٨ / ١٦ لكلٍّ) + خادم قاعدة مخصَّص (١٦ / ٦٤ / ٥٠٠ GB) | عند هذا الحدّ يفصل كلٌّ منهما عن الآخر |
 
@@ -58,6 +59,40 @@ Postgres والتطبيق يتنازعان المعالج نفسه، لا قبل
 ---
 
 ## ٣. التنصيب
+
+**سكربتٌ واحد يفعل كلَّ ما في هذا القسم** — والخطواتُ بعده مشروحةٌ لمن
+أراد أن يقرأ ما يجري أو يصلح خطوةً بعينها:
+
+```bash
+# على الخادم، بـroot، مرّةً واحدة
+curl -fsSL https://raw.githubusercontent.com/moqbi/path/main/scripts/ops/bootstrap.sh -o bootstrap.sh
+SSH_KEY="ssh-ed25519 AAAA… اسمك" bash bootstrap.sh
+```
+
+يفعل بالترتيب: مستخدمٌ بلا كلمة مرور، وقفلُ SSH على المفاتيح، وجدارُ
+نار، وfail2ban، وتحديثاتٌ أمنيّة تلقائية، ثمّ Node 22 وPostgres 16
+وPgBouncer وRedis وCaddy، ثمّ **ضبطُ Postgres على حجم رام الخادم
+فعلياً** (يقرأ `/proc/meminfo` ولا يكتب رقماً)، ثمّ القاعدةُ ومستخدمُها
+بكلمةٍ عشوائية يطبعها لك في النهاية.
+
+ثمّ النقلُ والنشر:
+
+```bash
+# بـathar، من جذر المستودع
+RENDER_DATABASE_URL="postgresql://…render.com/…?sslmode=require" DIRECT_URL="postgresql://athar:…@127.0.0.1:5432/athar" ADMIN_EMAILS="you@example.com"   scripts/ops/migrate-from-render.sh
+
+sudo cp scripts/ops/athar-*.service /etc/systemd/system/
+sudo cp scripts/ops/Caddyfile /etc/caddy/Caddyfile
+sudo systemctl daemon-reload && sudo systemctl enable athar-web athar-api
+scripts/ops/deploy.sh
+sudo systemctl reload caddy
+```
+
+> **وترتيبُ السحابة يهمّ**: يبقى سجلّا DNS **رماديَّين** (بلا وكيل) حتى
+> يأخذ Caddy شهادته — التحدّي يمرّ بالمنفذ ٨٠ — ثمّ يُلوَّنان برتقاليّاً
+> ووضعُ TLS على **Full (strict)**. وبالعكس تُقرأ الشهادةُ خطأً ٥٢٦.
+
+### الخطوات مشروحةً
 
 أوبونتو ٢٤٫٠٤ LTS. كلّ ما يلي بـ`root` ما لم يُذكر غيره.
 
