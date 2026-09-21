@@ -18,6 +18,7 @@ import { canInteract, canSeeMoment } from "@/lib/visibility";
 import { reverseGeocode } from "@/lib/places";
 import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
 import { consume, sendReset, sendVerify } from "@/lib/email-tokens";
+import { readIdentity, upsertIdentity } from "@/lib/oauth";
 import { mailReply, tellSupport } from "@/lib/support-mail";
 import { deliverTo, openConversation, VOICE_SECONDS } from "@/lib/dm";
 import { copyMedia, dropMedia, migrateToCloud, storeClip, storeUpload } from "@/lib/media";
@@ -135,6 +136,26 @@ export async function resendVerify(): Promise<{ ok?: string; error?: string }> {
   return sent
     ? { ok: "أرسلنا رابط التأكيد إلى بريدك" }
     : { error: "تعذّر الإرسال الآن — جرّب بعد دقيقة" };
+}
+
+/**
+ * الدخول بمزوّد من الويب.
+ *
+ * الصفحةُ تأخذ رمزَ الهويّة من المزوّد، والخادمُ يتحقّق منه ثمّ يفتح
+ * جلستَنا — ولا يُصدَّق ما يرسله المتصفّح كما جاء.
+ */
+export async function signInWithProvider(
+  provider: "GOOGLE" | "APPLE",
+  idToken: string,
+): Promise<{ error?: string }> {
+  try {
+    const identity = await readIdentity(provider, idToken, null);
+    const { userId } = await upsertIdentity(identity);
+    await createSession(userId);
+  } catch (problem) {
+    return { error: problem instanceof Error ? problem.message : "تعذّر الدخول" };
+  }
+  redirect("/");
 }
 
 export async function signOut(): Promise<void> {

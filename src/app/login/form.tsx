@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { signIn } from "@/app/actions";
+import { useGoogleLogin } from "./google";
 import { AthrMark, TAGLINE_AR, TAGLINE_EN } from "@/components/brand";
 import { BackIcon } from "@/components/icons";
 
@@ -59,6 +60,8 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
     // العودة إلى هذه الشاشة بعد الحذف تحتاج جملة تؤكد أن ما طُلب قد تمّ.
     deleted ? "حُذف حسابك وكل ما فيه. تسعدنا عودتك متى شئت." : null,
   );
+  // قوقل يُحمَّل عند أوّل عرضٍ لأزرار المزوّدين، ويفتح نافذته عند الضغط.
+  const askGoogle = useGoogleLogin(setNotice);
 
   const introVisible = phase === "intro";
   const formVisible = phase === "form";
@@ -247,11 +250,18 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
                     key={provider.key}
                     type="button"
                     aria-label={`المتابعة بحساب ${provider.label}`}
-                    onClick={() =>
+                    onClick={() => {
+                      setNotice(null);
+                      if (provider.key === "google") {
+                        askGoogle();
+                        return;
+                      }
                       setNotice(
-                        "الدخول عبر المزوّدين يحتاج تسجيل التطبيق عندهم وإضافة مفاتيحه. استخدم البريد الآن.",
-                      )
-                    }
+                        provider.key === "apple"
+                          ? "الدخول بحساب آبل يعمل داخل التطبيق. استخدم البريد هنا."
+                          : "الدخول بفيسبوك يحتاج تسجيل التطبيق عنده. استخدم البريد الآن.",
+                      );
+                    }}
                     className="flex flex-1 items-center justify-center rounded-xl"
                     style={{
                       height: 54,

@@ -16,7 +16,8 @@
         "NSPhotoLibraryUsageDescription": "لاختيار صورة من ألبومك.",
         "NSLocationWhenInUseUsageDescription": "لتحديد المكان الذي تنشر منه لحظتك.",
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "package": "app.athar.mobile",
@@ -39,6 +40,7 @@
           "color": "#F6B93B"
         }
       ],
+      "expo-apple-authentication",
       "./plugins/with-rtl"
     ],
     "extra": {

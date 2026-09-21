@@ -11,6 +11,13 @@ import Svg, {
 } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import {
+  appleReady,
+  finishGoogle,
+  googleReady,
+  signInWithApple,
+  useGoogle,
+} from "../lib/providers";
 import { AthrMark, AthrWordmark, TAGLINE_AR, TAGLINE_EN } from "../components/brand";
 import { BackIcon } from "../components/icons";
 import { useSession } from "../lib/session";
@@ -179,6 +186,7 @@ export default function Login() {
   const phase = usePhases();
   const keyboard = useKeyboardHeight();
   const signIn = useSession((s) => s.signIn);
+  const adopt = useSession((s) => s.adopt);
 
   const [showEmail, setShowEmail] = useState(false);
   const [email, setEmail] = useState("");
@@ -189,6 +197,62 @@ export default function Login() {
     // العودة إلى هذه الشاشة بعد الحذف تحتاج جملة تؤكد أن ما طُلب قد تمّ.
     deleted === "1" ? "حُذف حسابك وكل ما فيه. تسعدنا عودتك متى شئت." : null,
   );
+
+  /*
+     قوقل يحتاج خطّافاً يفتح صفحتَه ويردّ الرمز، وآبل تُنجزها في نافذةٍ
+     من النظام. وكلاهما ينتهي إلى الباب نفسه: رمزٌ يذهب إلى خادمنا
+     فيتحقّق منه ويُصدر جلستنا.
+  */
+  const [, googleAnswer, promptGoogle] = useGoogle();
+
+  useEffect(() => {
+    if (googleAnswer?.type !== "success") return;
+    const idToken = googleAnswer.params?.id_token;
+    if (!idToken) return;
+
+    setPending(true);
+    finishGoogle(idToken)
+      .then((user) => {
+        adopt(user);
+        router.replace("/");
+      })
+      .catch((problem: unknown) =>
+        setError(problem instanceof Error ? problem.message : "تعذّر الدخول بقوقل"),
+      )
+      .finally(() => setPending(false));
+  }, [googleAnswer, adopt, router]);
+
+  /** ما يجري عند ضغط زرّ مزوّد. */
+  async function withProvider(key: string) {
+    setError(null);
+    setNotice(null);
+
+    if (key === "facebook") {
+      setNotice("الدخول بفيسبوك يحتاج تسجيل التطبيق عنده. استخدم البريد أو المزوّدين الآخرين.");
+      return;
+    }
+
+    if (key === "google") {
+      if (!googleReady()) {
+        setNotice("الدخول بقوقل غير مفعّل في هذه النسخة.");
+        return;
+      }
+      await promptGoogle();
+      return;
+    }
+
+    setPending(true);
+    try {
+      adopt(await signInWithApple());
+      router.replace("/");
+    } catch (problem) {
+      // إلغاءُ المستخدم ليس خطأً يُعرض: أغلق النافذة وانتهى.
+      const text = problem instanceof Error ? problem.message : "";
+      if (!/cancel/i.test(text)) setError(text || "تعذّر الدخول بحساب آبل");
+    } finally {
+      setPending(false);
+    }
+  }
 
   const introVisible = phase === "intro";
   const formVisible = phase === "form";
@@ -401,16 +465,13 @@ export default function Login() {
           ) : (
             <View style={{ gap: 10 }}>
               <View style={{ flexDirection: "row", gap: 10 }}>
-                {PROVIDERS.map((provider) => (
+                {PROVIDERS.filter((provider) => provider.key !== "apple" || appleReady()).map((provider) => (
                   <Pressable
                     key={provider.key}
                     accessibilityRole="button"
                     accessibilityLabel={`المتابعة بحساب ${provider.label}`}
-                    onPress={() =>
-                      setNotice(
-                        "الدخول عبر المزوّدين يحتاج تسجيل التطبيق عندهم وإضافة مفاتيحه. استخدم البريد الآن.",
-                      )
-                    }
+                    disabled={pending}
+                    onPress={() => void withProvider(provider.key)}
                     style={{
                       flex: 1,
                       height: 54,

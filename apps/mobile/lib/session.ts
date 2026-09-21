@@ -71,6 +71,8 @@ type State = {
   ready: boolean;
   restore: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  /** جلسةٌ صدرت من بابٍ آخر (مزوّد): يُعتمد صاحبُها كما هو. */
+  adopt: (user: Me) => void;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
 };
@@ -98,6 +100,16 @@ export const useSession = create<State>((set) => ({
       await clearTokens();
       set({ me: null, ready: true });
     }
+  },
+
+  /*
+     الدخولُ بمزوّدٍ يحفظ التوكن بنفسه (`lib/providers.ts`)، فلا يبقى
+     إلّا اعتمادُ صاحبه هنا — وبلا سؤالٍ ثانٍ عن `/v1/me`: الخادمُ ردّه
+     مع الجلسة.
+  */
+  adopt(user) {
+    void startBilling(user.id).catch(() => {});
+    set({ me: user, ready: true });
   },
 
   async signIn(email, password) {
