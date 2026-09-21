@@ -13,6 +13,7 @@ APP_USER="${APP_USER:-athar}"
 DB_NAME="${DB_NAME:-athar}"
 DB_USER="${DB_USER:-athar}"
 SSH_KEY="${SSH_KEY:-}"          # محتوى المفتاح العامّ (ssh-ed25519 …)
+TRUSTED_IP="${TRUSTED_IP:-}"    # عنوانُك — لا يُحظر بحال. اعرفه: curl ifconfig.me
 
 say() { printf "\n\033[1;33m▸ %s\033[0m\n" "$1"; }
 
@@ -81,12 +82,20 @@ ufw allow 443/tcp >/dev/null
 ufw --force enable
 
 say "fail2ban"
-cat > /etc/fail2ban/jail.local <<'EOF'
+# **والحظرُ قصيرٌ عمداً**: من جرّب الدخول بكلمةٍ بعد إقفال الكلمات
+# (وهو أوّلُ ما يفعله صاحبُ الخادم بالعادة) يُحسب فاشلاً فيُحظر —
+# والحظرُ يُسقط الحزم فيُقرأ «انتهت المهلة» لا «مرفوض»، فيظنّه عطلاً في
+# الشبكة. عشرُ دقائق تكفي لردّ الآلات، ولا تُقفل الخادمَ على صاحبه.
+#
+# ومخرجُ النجاة حين يقع: لوحةُ المزوّد ← Console، فهي لا تمرّ بـSSH.
+cat > /etc/fail2ban/jail.local <<EOF
 [sshd]
 enabled  = true
-maxretry = 4
+maxretry = 6
 findtime = 10m
-bantime  = 1h
+bantime  = 10m
+# ولا يُحظر الخادمُ نفسه بحال.
+ignoreip = 127.0.0.1/8 ::1 ${TRUSTED_IP:-}
 EOF
 systemctl enable --now fail2ban
 
