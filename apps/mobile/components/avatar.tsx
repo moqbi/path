@@ -74,16 +74,23 @@ const FRAME_INSET = 0.07;
 const CHARM_RATIO = 0.5;
 
 /**
- * أين يجلس مركزُ التميمة: على قُطر الصورة في اتجاه الأسفل-اليسار،
- * **خارج المحيط قليلاً** فتتدلّى من حافتها لا تغرق فيها. نسخةُ الويب
+ * أين يجلس مركزُ التميمة: **يسارَ الصورة مرتفعةً على حافّتها** —
+ * نصفُها فوق الصورة والإطار ونصفُها خارجهما. نسخةُ الويب
  * حرفاً بحرف (`CHARM_REACH` في `src/components/ui.tsx`).
  */
-const CHARM_REACH = 1.15;
+const CHARM_REACH = 1;
 
-/** بُعدُ حافة التميمة عن حافة الحاوية — سالبٌ لأنها تخرج عنها. */
-function charmEdge(size: number, badge: number): number {
-  const reach = (size / 2) * CHARM_REACH * Math.SQRT1_2;
-  return Math.round(size / 2 - reach - badge / 2);
+/** كم تنزل التميمة عن أفق مركز الصورة، بالدرجات — كنسخة الويب. */
+const CHARM_ANGLE = 20;
+
+/** موضعُ التميمة من حافتَي الحاوية — سالبٌ حيث تخرج عنها. */
+function charmSeat(size: number, badge: number): { left: number; top: number } {
+  const radius = (size / 2) * CHARM_REACH;
+  const radians = (CHARM_ANGLE * Math.PI) / 180;
+  return {
+    left: Math.round(size / 2 - radius * Math.cos(radians) - badge / 2),
+    top: Math.round(size / 2 + radius * Math.sin(radians) - badge / 2),
+  };
 }
 
 export function Avatar({
@@ -197,9 +204,8 @@ function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }
         position: "absolute",
         width: badge,
         height: badge,
-        // مركزها على قُطر الصورة في اتجاه الأسفل-اليسار (`charmEdge`).
-        left: charmEdge(size, badge),
-        bottom: charmEdge(size, badge),
+        // مركزها على محيط الصورة يساراً، منخفضةً عن أفقها ٢٠° (`charmSeat`).
+        ...charmSeat(size, badge),
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: charm.mediaId ? "transparent" : firstColor(charm.spec, colors.clay),

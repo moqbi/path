@@ -23,6 +23,14 @@ const TOP = 88;
 const BOTTOM = 4;
 const SIZE = 56;
 
+/**
+ * قرصُ الصنف ورسمُه: الرسم ٣٢ بكسلاً، والقرص يلبسه بحشوةٍ لا يزيد.
+ * قرصٌ بحجم زرّ النشر (٥٦) حول رسمٍ ٣٢ يترك هالةً بيضاء تُقرأ أكبر من
+ * رسمها. ويُوسَّط في مربّع الزرّ (`SIZE`) فلا يتغيّر مدار القوس.
+ */
+const DISC = 44;
+const ICON = 32;
+
 /** الزرّ: ٢٠ من الحافة اليمنى، ونصفُ قطره ٢٨. */
 const RIGHT = 20;
 /** هامشٌ يبقى من الحافة اليسرى حتى لا يلامس القرصُ الحافّة. */
@@ -152,9 +160,11 @@ export function ComposerFan() {
                   item.run();
                 }}
                 style={{
-                  width: SIZE,
-                  height: SIZE,
-                  borderRadius: SIZE / 2,
+                  width: DISC,
+                  height: DISC,
+                  marginTop: (SIZE - DISC) / 2,
+                  marginLeft: (SIZE - DISC) / 2,
+                  borderRadius: DISC / 2,
                   alignItems: "center",
                   justifyContent: "center",
                   backgroundColor: colors.card,
@@ -165,7 +175,7 @@ export function ComposerFan() {
                 {/* الرسم صورةٌ لا خطّ: تُستبدل من `assets/composer` وحدها. */}
                 <Image
                   source={ART[item.key]}
-                  style={{ width: 30, height: 30, opacity: busy === item.key ? 0.45 : 1 }}
+                  style={{ width: ICON, height: ICON, opacity: busy === item.key ? 0.45 : 1 }}
                   resizeMode="contain"
                 />
               </Pressable>

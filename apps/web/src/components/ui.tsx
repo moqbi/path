@@ -210,22 +210,33 @@ export function Avatar({
 const CHARM_RATIO = 0.5;
 
 /**
- * أين يجلس مركزُ التميمة: على قُطر الصورة في اتجاه الأسفل-اليسار.
+ * أين يجلس مركزُ التميمة: **يسارَ الصورة مرتفعةً على حافّتها**.
  *
- * ١٫١٥ من نصف القطر — أي **خارج المحيط قليلاً**: التميمة تتدلّى من
- * حافة الصورة لا تغرق فيها. وكانت تجلس على ٠٫٧٨ من نصف القطر فتُقرأ
- * لصيقةً بالوجه مدفونةً في أسفله، وأكثرُها داخل الصورة لا خارجها.
+ * زاويةٌ ٢٠° تحت الأفق لا ٤٥°، ومركزٌ على المحيط تماماً (١٫٠ من نصف
+ * القطر): فنصفُها فوق الصورة والإطار ونصفُها خارجهما — تُقرأ معلّقةً
+ * على الحافّة.
+ *
+ * وكانت على قُطرِ الأسفل-اليسار بـ١٫١٥: تهبط تحت الصورة كلّها فتُقرأ
+ * ساقطةً منها لا لابسةً لها، وهو ما رآه المالك.
+ * وقبلها كانت على ٠٫٧٨ مدفونةً في أسفل الوجه.
  *
  * والإزاحة تُحسب بالمثلّثات لا تُكتب نسبةً: النسبةُ المكتوبة تنحرف مع
- * كل تغييرٍ في `CHARM_RATIO`، والحساب يبقى صادقاً.
+ * كل تغييرٍ في `CHARM_RATIO` أو في الزاوية، والحساب يبقى صادقاً.
  */
-const CHARM_REACH = 1.15;
+const CHARM_REACH = 1;
 
-/** بُعدُ حافة التميمة عن حافة الحاوية — سالبٌ لأنها تخرج عنها. */
-function charmEdge(size: number, badge: number): number {
-  // المركّبة الأفقية (والرأسية، فالاتجاه قطريّ) لموضع المركز.
-  const reach = (size / 2) * CHARM_REACH * Math.SQRT1_2;
-  return size / 2 - reach - badge / 2;
+/** كم تنزل التميمة عن أفق مركز الصورة، بالدرجات. */
+const CHARM_ANGLE = 20;
+
+/** موضعُ التميمة من حافتَي الحاوية — سالبٌ حيث تخرج عنها. */
+function charmSeat(size: number, badge: number): { left: number; top: number } {
+  const radius = (size / 2) * CHARM_REACH;
+  const radians = (CHARM_ANGLE * Math.PI) / 180;
+  // يساراً بجيب التمام، ونزولاً بالجيب — والمركز ثم نصفُ التميمة.
+  return {
+    left: size / 2 - radius * Math.cos(radians) - badge / 2,
+    top: size / 2 + radius * Math.sin(radians) - badge / 2,
+  };
 }
 
 function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }) {
@@ -255,9 +266,8 @@ function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }
       style={{
         width: badge,
         height: badge,
-        // مركزها على قُطر الصورة في اتجاه الأسفل-اليسار (`charmEdge`).
-        bottom: charmEdge(size, badge),
-        left: charmEdge(size, badge),
+        // مركزها على محيط الصورة يساراً، منخفضةً عن أفقها ٢٠° (`charmSeat`).
+        ...charmSeat(size, badge),
         // ظلٌّ خفيف يفصلها عن الصورة تحتها بلا حلقةٍ تحيط بها.
         filter: "drop-shadow(0 2px 4px rgba(14,26,36,.35))",
         ...paint,

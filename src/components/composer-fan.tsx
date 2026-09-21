@@ -30,6 +30,10 @@ type Item = {
  * بكسلاً والقرص ٥٦، فتبقى فرجة تُرى. وأعلى الأصناف عند ٨٨° لا ٩٠: القرص
  * عند القائمة تماماً يخرج من حافة الإطار اليمنى.
  */
+/** قرصُ الصنف ورسمُه: الرسم ٣٢ والقرص يلبسه بحشوةٍ لا يزيد. */
+const DISC = 44;
+const ICON = 32;
+
 const RADIUS = 246;
 const TOP = 88;
 const BOTTOM = 4;
@@ -145,8 +149,17 @@ export function ComposerFan() {
                   item.run();
                 }}
                 aria-label={item.label}
-                className="pointer-events-auto absolute inset-0 flex items-center justify-center rounded-full disabled:opacity-60"
+                className="pointer-events-auto absolute flex items-center justify-center rounded-full disabled:opacity-60"
                 style={{
+                  /*
+                     قرصُ الصنف أصغر من زرّ النشر (`DISC` مقابل ٥٦): الرسم
+                     ٣٢ بكسلاً، وقرصٌ بحجم الزرّ حوله يترك هالةً بيضاء
+                     تُقرأ أكبر من رسمها. ويُوسَّط في مربّع الزرّ.
+                  */
+                  width: DISC,
+                  height: DISC,
+                  left: (56 - DISC) / 2,
+                  top: (56 - DISC) / 2,
                   background: "var(--color-card)",
                   border: "1px solid var(--color-line)",
                   transform: open
@@ -167,8 +180,8 @@ export function ComposerFan() {
                 <span
                   aria-hidden="true"
                   style={{
-                    width: 30,
-                    height: 30,
+                    width: ICON,
+                    height: ICON,
                     backgroundImage: `url(${item.src})`,
                     backgroundSize: "contain",
                     backgroundPosition: "center",
