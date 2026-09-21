@@ -87,7 +87,14 @@ async function readGoogle(idToken: string): Promise<Identity> {
 async function readSnap(accessToken: string): Promise<Identity> {
   if (!process.env.SNAP_CLIENT_ID) throw badRequest("الدخول بسناب غير مفعّل");
 
-  const response = await fetch("https://api.snapchat.com/v1/me", {
+  /*
+     و`kit.snapchat.com` لا `api.snapchat.com`: الثاني يُحلّ إلى
+     `feelinsonice-hrd.appspot.com` — خادمُ سناب القديم على App Engine —
+     بشهادةٍ لا تحمل اسمه، فيسقط الطلب في المصافحة قبل أن يصل. وNode
+     تردّ عليه «fetch failed» عاريةً، فلا يقول السجلّ إنّ العلّة في
+     العنوان لا في الشبكة.
+  */
+  const response = await fetch("https://kit.snapchat.com/v1/me", {
     method: "POST",
     headers: {
       authorization: `Bearer ${accessToken}`,
