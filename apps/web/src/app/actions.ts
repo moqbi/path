@@ -496,6 +496,26 @@ export async function setUserTag(userId: string, formData: FormData): Promise<vo
   revalidateTags();
 }
 
+/**
+ * فتحُ حسابٍ للجميع — للمالك وحده.
+ *
+ * حسابُ أخبار التطبيق ونحوه: بطاقتُه ولحظاتُه **الموجّهة إلى الدائرة
+ * كلها** تُقرأ بلا صداقة، ويقبل طلب إضافةٍ من أيّ أحد. وما خصّ به
+ * صاحبُه تصنيفاً أو أشخاصاً بأعيانهم يبقى لهم وحدهم.
+ *
+ * ولحظاتُه **لا تدخل خطّ أحدٍ قبل أن يُضيفه**: تُقرأ بزيارةٍ مقصودة
+ * لملفّه — لا استكشاف عام في آثار (القاعدة ٢)، ولا محتوى يُدفع إلى
+ * خطوط الناس بلا إذنهم.
+ *
+ * وحقلٌ يُمنح لحسابٍ بعينه لا رقمُ عضويةٍ مكتوبٌ في الكود: رقمُ ٣ اليوم
+ * قد يصير غيرَه غداً، والمكتوبُ يبقى في ملفٍّ منسيّ.
+ */
+export async function setOpenAccount(userId: string, open: boolean): Promise<void> {
+  await requireAdmin();
+  await prisma.user.update({ where: { id: userId }, data: { isOpen: open } });
+  revalidateTags();
+}
+
 function revalidateTags() {
   revalidatePath("/admin");
   revalidatePath("/");

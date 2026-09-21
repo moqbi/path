@@ -25,6 +25,8 @@ type Person = {
   city: string | null;
   bio: string | null;
   isPlus: boolean;
+  /** حسابٌ مفتوح: يُقرأ ويُضاف بلا صديقٍ مشترك (القاعدة ٣٢ب). */
+  isOpen?: boolean;
   createdAt: string;
   avatarMediaId: string | null;
   coverMediaId: string | null;
@@ -64,6 +66,11 @@ export default function Profile() {
   const person = useQuery({
     queryKey: keys.user(id),
     queryFn: () => api<{ person: Person; friend: boolean; owned: string[] }>(`/v1/users/${id}`),
+  });
+
+  /** إضافةُ حسابٍ مفتوح: الطلب نفسه الذي يُرسل من «مقترحون». */
+  const add = useMutation({
+    mutationFn: () => api(`/v1/circle/${id}/request`, { method: "POST" }),
   });
 
   /** المحادثة تُفتح من هنا: تُنشأ إن لم تكن، ثم نذهب إليها. */
@@ -207,6 +214,35 @@ export default function Profile() {
                       <MessageIcon size={17} color={colors.ink2} />
                     </Pressable>
                   </View>
+                ) : who.isOpen ? (
+                  /*
+                    الحساب المفتوح يُقرأ بلا صداقة، فيبقى له زرُّ إضافةٍ
+                    مكان أفعال الأصدقاء — ولا إهداءَ ولا محادثةَ ولا
+                    «آثارنا» مع من لم يُضَف بعد.
+                  */
+                  <Pressable
+                    onPress={() => add.mutate()}
+                    disabled={add.isPending || add.isSuccess}
+                    style={{
+                      marginTop: 12,
+                      height: 42,
+                      paddingHorizontal: 18,
+                      borderRadius: 12,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: add.isSuccess ? colors.chip : colors.clay,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: add.isSuccess ? colors.muted : colors.onBrand,
+                        fontSize: 13,
+                        fontWeight: "700",
+                      }}
+                    >
+                      {add.isSuccess ? "أُرسل الطلب" : "أضفه"}
+                    </Text>
+                  </Pressable>
                 ) : null}
                 {who.bio ? (
                   <Text style={{ color: colors.ink2, fontSize: 13, textAlign: "center", marginTop: 7, lineHeight: 22 }}>

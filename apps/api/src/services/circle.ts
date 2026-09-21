@@ -8,6 +8,8 @@ import { isModerator } from "../middleware/auth";
 const PERSON = {
   id: true,
   memberNo: true,
+  /// حسابٌ مفتوح: تُقرأ بطاقتُه ولحظاتُه العامّة بلا صداقة (القاعدة ٣٢ب).
+  isOpen: true,
   name: true,
   handle: true,
   city: true,
@@ -182,7 +184,8 @@ export async function userProfile(viewerId: string, id: string) {
     وهذا **بطاقةٌ لا لحظات**: اللحظات لها بابُها في `/v1/moderation`،
     وهي تُقرأ من خلف `requireModerator` لا من هنا.
   */
-  if (mutual === 0 && !pending) {
+  // والحساب المفتوح تُقرأ بطاقتُه بلا صديقٍ مشترك — كلحظاته العامّة.
+  if (mutual === 0 && !pending && !person.isOpen) {
     if (!(await isModerator(viewerId))) throw notFound("لا يوجد هذا الحساب");
     return { person, friend: false as const, mutual, pending, owned: [] as string[] };
   }
@@ -229,10 +232,20 @@ export async function requestFriend(userId: string, targetId: string) {
   const blocked = await blockedWith(userId);
   if (blocked.includes(targetId)) throw notFound("لا يوجد هذا الحساب");
 
-  const target = await prisma.user.findUnique({ where: { id: targetId }, select: { id: true } });
+  const target = await prisma.user.findUnique({
+    where: { id: targetId },
+    select: { id: true, isOpen: true },
+  });
   if (!target) throw notFound("لا يوجد هذا الحساب");
 
-  if ((await mutualCount(userId, targetId)) === 0) throw forbidden("ما بينكما صديق مشترك");
+  /*
+    الإضافة من أصدقاء الأصدقاء وحدهم (القاعدة ٢٠) — **إلا الحسابَ
+    المفتوح**: حسابُ أخبار التطبيق يقبل من أيّ أحد، وإلا احتاج كلُّ
+    مستخدمٍ جديد وسيطاً ليصل إلى أخبار التطبيق الذي نزّله للتوّ.
+  */
+  if (!target.isOpen && (await mutualCount(userId, targetId)) === 0) {
+    throw forbidden("ما بينكما صديق مشترك");
+  }
   await assertRoomForBoth(userId, targetId);
 
   // طلبٌ قادمٌ من الطرف الآخر يُقبل بالطلب المقابل: لا يُنشأ طلبان.

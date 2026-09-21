@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { circleIds, mutualCount } from "@/lib/circle";
+import { blockedWith } from "@/lib/visibility";
 import { momentShape } from "@/lib/feed";
 import {
   acceptFriend,
@@ -53,8 +54,10 @@ export default async function FriendProfilePage({
   if (!viewer) redirect("/login");
   if (id === viewer.id) redirect("/me");
 
-  const ids = await circleIds(viewer.id);
+  const [ids, blocked] = await Promise.all([circleIds(viewer.id), blockedWith(viewer.id)]);
   const friend = ids.includes(id);
+  // والحظر في الاتجاهين فوق كل شيء — حتى فوق انفتاح الحساب.
+  if (blocked.includes(id)) notFound();
 
   const person = await prisma.user.findUnique({
     where: { id },
@@ -64,6 +67,7 @@ export default async function FriendProfilePage({
       name: true,
       city: true,
       isPlus: true,
+      isOpen: true,
       createdAt: true,
       avatarMediaId: true,
       coverMediaId: true,
@@ -75,10 +79,16 @@ export default async function FriendProfilePage({
   });
   if (!person) notFound();
 
-  // من ليس في الدائرة: تُعرض بطاقته وحدها إن كان يجمعكما صديق مشترك أو
-  // طلبٌ معلّق. لا خطّ زمني ولا محادثة قبل القبول — والغريب تماماً لا
-  // يُعرَض أصلاً، فلا اكتشاف عام في التطبيق.
-  if (!friend) {
+  /*
+    من ليس في الدائرة: تُعرض بطاقته وحدها إن كان يجمعكما صديق مشترك أو
+    طلبٌ معلّق. لا خطّ زمني ولا محادثة قبل القبول — والغريب تماماً لا
+    يُعرَض أصلاً، فلا اكتشاف عام في التطبيق.
+
+    **والحساب المفتوح يُستثنى** (`isOpen`): حسابُ أخبار التطبيق يُقرأ
+    بلا صداقة ويُضاف من أيّ أحد. ولحظاته لا تدخل خطّ أحدٍ قبل أن
+    يُضيفه — يُقرأ بزيارةٍ مقصودة لا بدفعٍ إلى الخط الزمني.
+  */
+  if (!friend && !person.isOpen) {
     const [mutual, pending] = await Promise.all([
       mutualCount(viewer.id, id),
       prisma.friendship.findFirst({
@@ -105,8 +115,14 @@ export default async function FriendProfilePage({
   }
 
   const [moments, theirCircle, frames, theirs, mine] = await Promise.all([
+    /*
+      بابٌ ثانٍ ظاهرٌ لا توسعةٌ لـ`visibleWhere()` (القاعدة ٢٣): الصديق
+      يقرأ ما وُجّه إليه، والزائرُ لحسابٍ مفتوح يقرأ ما وُجّه إلى
+      الدائرة كلها وحده — فلا تُقرأ لحظةٌ خصّ بها صاحبُها تصنيفاً أو
+      أشخاصاً بأعيانهم.
+    */
     prisma.moment.findMany({
-      where: { authorId: id },
+      where: friend ? { authorId: id } : { authorId: id, audience: "CIRCLE" },
       select: momentShape,
       orderBy: { createdAt: "desc" },
       take: 40,
@@ -151,7 +167,14 @@ export default async function FriendProfilePage({
               charmItem={person.charm}
               owned={mine.map((row) => row.itemId)}
             />
-            <div className="flex items-center gap-2 pb-1.5">
+            {/*
+              الإهداء والمحادثة و«آثارنا» لأصدقائك: الأوّل للأصدقاء وحدهم
+              (القاعدة ٣٩)، والثاني يُفتح بينكما، والثالث ما جمعكما —
+              ولا شيء من ذلك بينك وبين حسابٍ مفتوح لم تُضِفه بعد.
+              فيظهر له زرُّ الإضافة مكانها.
+            */}
+            {friend ? (
+              <div className="flex items-center gap-2 pb-1.5">
               <GiftButton
                 items={frames.map((item) => ({
                   id: item.id,
@@ -188,6 +211,17 @@ export default async function FriendProfilePage({
                 </button>
               </form>
             </div>
+            ) : (
+              <form action={requestFriend.bind(null, person.id)} className="pb-1.5">
+                <button
+                  type="submit"
+                  className="brand-gradient rounded-xl px-4 text-[13px] font-bold"
+                  style={{ height: 42, color: "var(--color-on-brand)" }}
+                >
+                  أضفه
+                </button>
+              </form>
+            )}
           </div>
 
           <h1 className="mb-1 flex flex-wrap items-center gap-2 text-[19px] font-bold">

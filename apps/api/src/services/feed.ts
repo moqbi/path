@@ -1,6 +1,6 @@
 import { prisma } from "@athar/db";
 import { notFound } from "../lib/errors";
-import { visibleWhere } from "./visibility";
+import { blockedWith, visibleWhere } from "./visibility";
 
 /**
  * شكل اللحظة كما يقرؤها الموبايل.
@@ -228,7 +228,21 @@ export async function momentsOf(
   authorId: string,
   options: { cursor?: string; limit: number },
 ) {
-  const where = await visibleWhere(userId);
+  /*
+    والحساب المفتوح بابٌ ثانٍ ظاهرٌ كباب الإشراف: من يزوره يقرأ ما
+    وُجّه إلى **الدائرة كلها** وحده — لا ما خُصّ به تصنيفٌ ولا أشخاصٌ
+    بأعيانهم — فلا يُوسَّع `visibleWhere()` بثقبٍ يحمله كلُّ استعلام.
+  */
+  const author = await prisma.user.findUnique({
+    where: { id: authorId },
+    select: { isOpen: true },
+  });
+
+  // والحظر فوق الانفتاح: من حظره صاحبُ الحساب — أو حظره هو — لا يقرأه.
+  const open =
+    author?.isOpen === true && !(await blockedWith(userId)).includes(authorId);
+
+  const where = open ? { audience: "CIRCLE" as const } : await visibleWhere(userId);
 
   const rows = await prisma.moment.findMany({
     where: { ...where, authorId },

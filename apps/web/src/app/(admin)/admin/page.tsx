@@ -13,6 +13,7 @@ import {
   deleteTag,
   replyTicket,
   setAdminScope,
+  setOpenAccount,
   setUserTag,
   updateStoreItem,
   updateTag,
@@ -343,6 +344,7 @@ export default async function AdminPage({
         name: true,
         email: true,
         isPlus: true,
+        isOpen: true,
         plusUntil: true,
         role: true,
         adminScope: true,
@@ -715,6 +717,26 @@ export default async function AdminPage({
 
               {/* ومنحُ آثار+ حيث يُقرأ الحساب لا في شاشةٍ تعرض الناس كلَّهم. */}
               {scope === "ALL" ? <PlusGrant userId={person.id} until={person.plusUntil} /> : null}
+
+              {/*
+                وفتحُ الحساب للمالك وحده: بطاقتُه ولحظاتُه العامّة تُقرأ
+                بلا صداقة، ويقبل الإضافة من الجميع — لحساب أخبار التطبيق.
+              */}
+              {owner ? (
+                <form
+                  action={setOpenAccount.bind(null, person.id, !person.isOpen)}
+                  className="flex items-center gap-2 border-t border-line px-3 py-2.5"
+                >
+                  <button type="submit" className="text-[12px] font-semibold text-clay-ink">
+                    {person.isOpen ? "أغلقه" : "افتحه للجميع"}
+                  </button>
+                  <span className="text-[11px] text-faint">
+                    {person.isOpen
+                      ? "مفتوح — لحظاته العامّة تُقرأ بلا صداقة ويُضيفه الجميع"
+                      : "حسابٌ عاديّ — لا يُقرأ إلا بعد الإضافة"}
+                  </span>
+                </form>
+              ) : null}
             </div>
           ))}
         </div>
