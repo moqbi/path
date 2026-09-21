@@ -3,7 +3,7 @@ import { promisify } from "node:util";
 import { prisma } from "@athar/db";
 import { consume, sendReset, sendVerify } from "./email-tokens";
 import { readIdentity, upsertIdentity } from "./oauth";
-import { TOKEN } from "@athar/shared";
+import { TOKEN, UNVERIFIED_MINUTES } from "@athar/shared";
 import { hashToken, newFamily, readRefresh, signAccess, signRefresh } from "../lib/tokens";
 import { badRequest, forbidden, unauthorized } from "../lib/errors";
 import { suspensionOf, untilText } from "../middleware/auth";
@@ -296,4 +296,31 @@ export async function logoutAll(userId: string): Promise<void> {
 
 export async function profile(userId: string) {
   return prisma.user.findUnique({ where: { id: userId }, select: PUBLIC_USER });
+}
+
+/**
+ * يحذف الحسابات التي سُجّلت ببريدٍ ولم تُؤكَّد خلال المهلة.
+ *
+ * حذفٌ حقيقيّ لا إخفاء: صفُّ المستخدم يذهب ومعه ما يشير إليه بالتتالي
+ * — ورقمُ عضويّته لا يُعاد استعماله (القاعدة ١٥)، فلا يرث أحدٌ رقمَ من
+ * حُذف.
+ *
+ * وشروطُه في `UNVERIFIED_MINUTES` مشروحة: من دخل بمزوّدٍ لا يطاله،
+ * ومن نشر لحظةً لا يطاله، والمشرفُ لا يطاله بحال.
+ */
+export async function sweepUnverified(): Promise<number> {
+  const cutoff = new Date(Date.now() - UNVERIFIED_MINUTES * 60_000);
+  const { count } = await prisma.user.deleteMany({
+    where: {
+      emailVerifiedAt: null,
+      email: { not: null },
+      passwordHash: { not: null },
+      role: "USER",
+      createdAt: { lt: cutoff },
+      identities: { none: {} },
+      moments: { none: {} },
+    },
+  });
+  if (count > 0) console.info("[كنس] حساباتٌ لم تُؤكَّد:", count);
+  return count;
 }

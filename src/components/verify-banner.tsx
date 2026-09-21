@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { resendVerify } from "@/app/actions";
+import { UNVERIFIED_MINUTES } from "@/lib/verify";
+import { ar } from "@/lib/format";
 
 /**
  * «أكّد بريدك» في أعلى الخطّ الزمنيّ.
@@ -40,7 +42,11 @@ export function VerifyBanner({ email }: { email: string }) {
       <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
         أرسلنا رابط التأكيد إلى <span dir="ltr" className="latin font-semibold">{email}</span>.
         إن لم تجده في الوارد فانظر في «البريد غير الهامّ» — أوّلُ رسالةٍ منّا تذهب
-        إليه أحياناً. والتأكيد بابُ استعادة حسابك يوم تنسى كلمة مرورك.
+        إليه أحياناً.
+      </p>
+      <p className="mb-3 text-[11.5px] font-semibold leading-relaxed" style={{ color: "var(--color-live)" }}>
+        وأكّده خلال {ar(UNVERIFIED_MINUTES)} دقائق، وإلّا حُذف الحساب — لا نُبقي
+        حساباً ببريدٍ لم يُثبت صاحبُه أنّه له.
       </p>
 
       {said?.error ? (

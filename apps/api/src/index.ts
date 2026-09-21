@@ -23,6 +23,8 @@ import { dripPlusCredit } from "./services/billing";
 import { storyRoutes } from "./routes/v1/stories";
 import { siteRoutes } from "./routes/v1/site";
 import { sweep as sweepStories } from "./services/stories";
+import { sweepUnverified } from "./services/auth";
+import { UNVERIFIED_MINUTES } from "@athar/shared";
 
 /**
  * خادم آثار.
@@ -80,6 +82,19 @@ setInterval(
     void dripPlusCredit().catch((error) => console.error("✗ رصيد آثار+", error));
   },
   SWEEP_MINUTES * 60_000,
+).unref();
+
+/*
+   وكنسُ الحسابات التي لم تُؤكَّد على مؤقّتٍ أقصر: مهلتُه عشرُ دقائق
+   (`UNVERIFIED_MINUTES`)، ومؤقّتٌ كلَّ نصف ساعة يُبقي الحساب أربعين
+   دقيقةً — أربعةَ أضعاف ما قُرّر. والثلثُ يجعل أطولَ ما يعيشه ثلاثَ
+   عشرةَ دقيقة، والاستعلامُ سطرٌ واحد على فهرسٍ لا يُثقل.
+*/
+setInterval(
+  () => {
+    void sweepUnverified().catch((error) => console.error("✗ كنس غير المؤكَّدة", error));
+  },
+  Math.max(1, Math.round(UNVERIFIED_MINUTES / 3)) * 60_000,
 ).unref();
 
 app.route("/v1/auth", authRoutes);
