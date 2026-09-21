@@ -10,6 +10,7 @@ import {
 import { z } from "zod";
 import { zValidator } from "../../lib/validate";
 import { requireActive, requireAuth, me } from "../../middleware/auth";
+import { rateLimitUser } from "../../middleware/rate-limit";
 import * as feed from "../../services/feed";
 import * as moments from "../../services/moments";
 
@@ -45,6 +46,15 @@ export const momentRoutes = new Hono()
     قراءة سبب وقفه.
   */
   .use("*", requireAuth, requireActive)
+  /*
+     وحدٌّ على الكتابة بمفتاح صاحبها: حسابٌ واحد يستطيع أن يُغرق القاعدة
+     بلحظاتٍ أو تعليقاتٍ في ثوانٍ. والأرقام سخيّةٌ على الإنسان ضيّقةٌ على
+     السكربت: ثلاثون لحظةً وستّون تعليقاً ومئةُ تفاعلٍ في الساعة.
+  */
+  .use("/", rateLimitUser(30, 3600))
+  .use("/mark", rateLimitUser(30, 3600))
+  .use("/:id/comments", rateLimitUser(60, 3600))
+  .use("/:id/react", rateLimitUser(100, 3600))
 
   .post("/", zValidator("json", momentInput), async (c) =>
     c.json(await moments.createMoment(me(c), c.req.valid("json")), 201),

@@ -24,6 +24,27 @@ function take(key: string, limit: number, windowMs: number): boolean {
   return hit.count <= limit;
 }
 
+/**
+ * حدٌّ بمفتاح **صاحب الجلسة** لا بعنوانه.
+ *
+ * مسارُ الكتابة يُحرَس بصاحبه: عشرةٌ خلف نفس الشبكة (مقهى، جامعة،
+ * شركةٌ بعنوانٍ واحد) يتقاسمون عنواناً فيُخنق بريئهم بذنب غيره،
+ * وواحدٌ بعشرة عناوين يتجاوز الحدّ بتبديلها. والمعرّفُ من التوكن
+ * لا من الجسد، فلا يُنتحل.
+ *
+ * ويُركَّب **بعد** `requireAuth` وإلّا لم يكن ثمّةَ من يُحاسَب.
+ */
+export function rateLimitUser(limit: number, windowSeconds: number): MiddlewareHandler {
+  const windowMs = windowSeconds * 1000;
+  return async (c, next) => {
+    const claims = c.get("user") as { sub?: string } | undefined;
+    const userId = claims?.sub;
+    if (!userId) return next();
+    if (!take(`u:${userId}:${c.req.path}`, limit, windowMs)) throw tooMany();
+    await next();
+  };
+}
+
 export function rateLimit(limit: number, windowSeconds: number): MiddlewareHandler {
   const windowMs = windowSeconds * 1000;
   return async (c, next) => {

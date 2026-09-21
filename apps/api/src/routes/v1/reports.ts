@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { cuid } from "@athar/shared";
 import { zValidator } from "../../lib/validate";
+import { rateLimitUser } from "../../middleware/rate-limit";
 import { requireAuth, requireAdmin, requireModerator, me } from "../../middleware/auth";
 import * as feed from "../../services/feed";
 import * as reports from "../../services/reports";
@@ -16,6 +17,8 @@ const reportInput = z.object({
 /** بابُ المستخدم: بلاغٌ على لحظة أو قصة أو رسالة أو شخص. */
 export const reportRoutes = new Hono()
   .use("*", requireAuth)
+  // والبلاغُ عشرون في الساعة: من يُبلّغ أكثر يُبلّغ بلا قراءة.
+  .use("/", rateLimitUser(20, 3600))
 
   .post("/", zValidator("json", reportInput), async (c) =>
     c.json(await reports.open(me(c), c.req.valid("json")), 201),

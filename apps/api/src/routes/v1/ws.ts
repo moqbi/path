@@ -3,6 +3,7 @@ import type { UpgradeWebSocket, WSContext } from "hono/ws";
 import { readAccess } from "../../lib/tokens";
 import { isOnline, join, leave, push } from "../../lib/hub";
 import { prisma } from "@athar/db";
+import { passed } from "../../lib/throttle";
 import * as dm from "../../services/dm";
 
 /**
@@ -92,7 +93,14 @@ export function mountWs(app: Hono, upgradeWebSocket: UpgradeWebSocket) {
  */
 async function onPresence(userId: string) {
   try {
-    await prisma.user.update({ where: { id: userId }, data: { lastSeenAt: new Date() } });
+    /*
+       والختمُ مرّةً كلّ دقيقة لا مع كل اتّصال: شبكةٌ متقطّعة تفتح
+       الويب-سوكِت وتغلقه مراراً في الدقيقة، فيصير الحضورُ — وهو زينة —
+       أكثرَ ما يُكتب في أكثر الجداول قراءة.
+    */
+    if (passed(`seen:${userId}`, 60_000)) {
+      await prisma.user.update({ where: { id: userId }, data: { lastSeenAt: new Date() } });
+    }
 
     const pending = await prisma.message.findMany({
       where: {

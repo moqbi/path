@@ -37,7 +37,42 @@ export type Note = {
 /** عمرُ خبر المتجر: ثلاثة أيام كنافذة «الجديد» في عدّاد التبويب. */
 const NEW_ITEM_DAYS = 3;
 
+/**
+ * خبيئةٌ قصيرة للاشتقاق.
+ *
+ * الاشتقاقُ ثمانيةُ استعلاماتٍ في كلّ فتحة تبويب، والتبويبُ يُفتح
+ * ويُغلق ويُسحب للتحديث في دقيقة. وخمسٌ وأربعون ثانية لا يُحسّها أحد:
+ * من تفاعل معك الآن يراه بعدها، ومن سحب للتحديث يراه — لأنّ السحب
+ * يُبطلها.
+ *
+ * وفي الذاكرة لا في Redis: نسخةٌ واحدة من الخادم اليوم، وعند تعدّدها
+ * تصير كلُّ نسخةٍ خبيئتَها وهذا مقبول — أسوأُ ما يقع أن يرى المستخدم
+ * خبراً متأخّراً خمسَ عشرة ثانية.
+ */
+const CACHE_MS = 45_000;
+const cache = new Map<string, { at: number; notes: Note[] }>();
+
+/** يُنسى ما خُبّئ لصاحبه — يُنادى عند فعلٍ يغيّر ما يُشتقّ. */
+export function forgetNotifications(userId: string): void {
+  cache.delete(userId);
+}
+
 export async function notifications(userId: string, limit = 40): Promise<Note[]> {
+  const fresh = cache.get(userId);
+  if (fresh && Date.now() - fresh.at < CACHE_MS) return fresh.notes.slice(0, limit);
+
+  const notes = await derive(userId, limit);
+
+  // كنسٌ كسول: ما بردت خبيئتُه يُحذف عند أوّل مرورٍ بعد المئة.
+  if (cache.size > 100) {
+    const now = Date.now();
+    for (const [key, row] of cache) if (now - row.at > CACHE_MS) cache.delete(key);
+  }
+  cache.set(userId, { at: Date.now(), notes });
+  return notes;
+}
+
+async function derive(userId: string, limit: number): Promise<Note[]> {
   const me = await prisma.user.findUnique({
     where: { id: userId },
     select: { notifyOnTag: true },

@@ -512,6 +512,8 @@ model StoreItem {
   usersWithFrame User[]     @relation("UserFrame")
   usersWithBg    User[]     @relation("UserBackground")
   usersWithCharm User[]     @relation("UserCharm")
+  /// يُرتَّب بـ`sortOrder` ويُفلتر بـ`hidden` في كل فتحةِ متجر.
+  @@index([hidden, sortOrder])
 }
 
 /// صنفٌ داخل حزمة. شراءُ الحزمة يملّك كلَّ ما تحمله من هذه الصفوف.

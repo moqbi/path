@@ -3,6 +3,7 @@ import { z } from "zod";
 import { cuid, messageInput, pageQuery } from "@athar/shared";
 import { zValidator } from "../../lib/validate";
 import { requireActive, requireAuth, me } from "../../middleware/auth";
+import { rateLimitUser } from "../../middleware/rate-limit";
 import { pushBoth } from "../../lib/hub";
 import * as dm from "../../services/dm";
 
@@ -72,6 +73,8 @@ export const messageRoutes = new Hono()
     قراءة سبب وقفه.
   */
   .use("*", requireAuth, requireActive)
+  // ومئتا رسالةٍ في الساعة: سخيّةٌ على المحادثة، ضيّقةٌ على السكربت.
+  .use("/:id/messages", rateLimitUser(200, 3600))
 
   .patch("/:id", zValidator("param", byId), zValidator("json", messageInput), async (c) => {
     const edited = await dm.edit(me(c), c.req.valid("param").id, c.req.valid("json").body);

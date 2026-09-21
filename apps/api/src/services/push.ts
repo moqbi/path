@@ -1,4 +1,5 @@
 import { prisma } from "@athar/db";
+import { forgetNotifications } from "./notifications";
 
 /**
  * تنبيهاتُ الجهاز عبر خدمة Expo.
@@ -73,6 +74,13 @@ export type PushMessage = {
  */
 export async function push(message: PushMessage): Promise<void> {
   try {
+    /*
+       وخبيئةُ الإشعارات تُنسى لصاحبها أوّلاً — قبل أبواب التفضيلات
+       والوضع الهادئ: من أطفأ تنبيهَ التفاعلات ما زال يرى التفاعل في
+       تبويبه، فالتبويبُ سجلٌّ لا جرس.
+    */
+    forgetNotifications(message.userId);
+
     const user = await prisma.user.findUnique({
       where: { id: message.userId },
       select: {

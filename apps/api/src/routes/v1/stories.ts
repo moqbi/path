@@ -3,12 +3,15 @@ import { z } from "zod";
 import { cuid, storyInput } from "@athar/shared";
 import { zValidator } from "../../lib/validate";
 import { requireActive, requireAuth, me } from "../../middleware/auth";
+import { rateLimitUser } from "../../middleware/rate-limit";
 import * as stories from "../../services/stories";
 
 const byId = z.object({ id: cuid });
 
 export const storyRoutes = new Hono()
   .use("*", requireAuth, requireActive)
+  // وعشرون قصّةً في الساعة: القصّة تذهب بيومها، ولا أحد ينشر أكثر.
+  .use("/", rateLimitUser(20, 3600))
 
   /** الحلقات: أنت أولاً، ثم من لم تُشاهد قصصهم. */
   .get("/", async (c) => c.json({ rings: await stories.rings(me(c)) }))
