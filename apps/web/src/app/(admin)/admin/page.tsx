@@ -1017,6 +1017,7 @@ export default async function AdminPage({
                 <div className="flex flex-col gap-2">
                   <Check name="plusOnly" label="حصري لمشتركي آثار+" />
                   <Check name="limited" label="حزمة محدودة — تظهر في صفّ «حزم محدودة»" />
+                  <Check name="hidden" label="مخفيّ عن المتجر — ومن اشتراه يبقى له" />
                 </div>
 
                 <PaletteFields palette={null} />
@@ -1055,6 +1056,7 @@ export default async function AdminPage({
                               <Chip>{KIND_LABEL[item.kind]}</Chip>
                               {item.plusOnly ? <Chip gold>آثار+</Chip> : null}
                               {item.limited ? <Chip live>محدودة</Chip> : null}
+                              {item.hidden ? <Chip>مخفيّ</Chip> : null}
                             </p>
                             <p className="truncate text-[11.5px] text-muted">
                               {item.earnedAfterDays
@@ -1192,6 +1194,7 @@ export default async function AdminPage({
                           <div className="flex flex-col gap-2">
                             <Check name="plusOnly" label="حصري لمشتركي آثار+" on={item.plusOnly} />
                             <Check name="limited" label="حزمة محدودة" on={item.limited} />
+                            <Check name="hidden" label="مخفيّ عن المتجر" on={item.hidden} />
                           </div>
 
                           <PaletteFields palette={parsePalette(item.palette)} />

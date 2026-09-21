@@ -3,11 +3,11 @@ import { View, SectionList, Pressable, ScrollView, ActivityIndicator, RefreshCon
 import { Text } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Avatar } from "../../components/avatar";
+import { Avatar, firstColor } from "../../components/avatar";
 import { MediaImage } from "../../components/media-image";
 import { ScreenHeader } from "../../components/screen-header";
 import { ReactionGlyph } from "../../components/reactions";
-import { MessageIcon, SparkIcon, TagIcon, WithIcon } from "../../components/icons";
+import { MessageIcon, SparkIcon, StoreIcon, TagIcon, WithIcon } from "../../components/icons";
 import { useNotes, type Note } from "../../lib/queries";
 import { dayLabel, relative } from "../../lib/format";
 import { colors } from "../../theme/tokens";
@@ -24,6 +24,7 @@ function go(href: string): string | null {
   if (kind === "user" && id) return `/u/${id}`;
   if (kind === "circle") return "/circle";
   if (kind === "me") return "/me";
+  if (kind === "store") return "/store";
   return null;
 }
 
@@ -49,6 +50,7 @@ const KIND_STYLE: Record<Note["kind"], { bg: string; ink: string }> = {
   FRIEND: { bg: "#e3f3e8", ink: "#2f9e58" },
   MESSAGE: { bg: colors.goldSoft, ink: colors.goldInk },
   GIFT: { bg: colors.goldSoft, ink: colors.goldInk },
+  STORE: { bg: colors.claySoft, ink: colors.clayInk },
 };
 
 function KindBadge({ note }: { note: Note }) {
@@ -78,6 +80,8 @@ function KindBadge({ note }: { note: Note }) {
         <WithIcon size={11} color={style.ink} />
       ) : note.kind === "GIFT" ? (
         <SparkIcon size={11} color={style.ink} />
+      ) : note.kind === "STORE" ? (
+        <StoreIcon size={11} color={style.ink} />
       ) : (
         <MessageIcon size={11} color={style.ink} />
       )}
@@ -201,7 +205,31 @@ export default function Notifications() {
               }}
             >
               <View>
-                <Avatar name={item.person.name} size={44} mediaId={item.person.avatarMediaId} />
+                {item.person ? (
+                  <Avatar
+                    name={item.person.name}
+                    size={44}
+                    mediaId={item.person.avatarMediaId}
+                  />
+                ) : (
+                  /* خبرُ المتجر لا صاحب له، فرسمُ الصنف مكان الصورة. */
+                  <View
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 22,
+                      overflow: "hidden",
+                      backgroundColor: firstColor(item.item?.spec, colors.chip),
+                    }}
+                  >
+                    {item.item?.mediaId ? (
+                      <MediaImage
+                        mediaId={item.item.mediaId}
+                        style={{ width: 44, height: 44 }}
+                      />
+                    ) : null}
+                  </View>
+                )}
                 <KindBadge note={item} />
               </View>
 

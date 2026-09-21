@@ -559,6 +559,7 @@ const storeItemInput = z.object({
   /** التصنيف اختياري: صنفٌ بلا تصنيف يظهر في «المميز» وحده. */
   categoryId: z.string().trim().optional(),
   limited: z.coerce.boolean(),
+  hidden: z.coerce.boolean(),
   sortOrder: z.coerce.number().int().min(0).max(9999).optional(),
 });
 
@@ -586,10 +587,11 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
     earnedAfterDays: formData.get("earnedAfterDays") || undefined,
     categoryId: formData.get("categoryId") || undefined,
     limited: formData.get("limited") === "on",
+    hidden: formData.get("hidden") === "on",
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
 
-  const { kind, name, priceCoins, spec, plusOnly, earnedAfterDays, categoryId, limited } =
+  const { kind, name, priceCoins, spec, plusOnly, earnedAfterDays, categoryId, limited, hidden } =
     parsed.data;
   const last = await prisma.storeItem.findFirst({
     orderBy: { sortOrder: "desc" },
@@ -607,6 +609,7 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
       earnedAfterDays: earnedAfterDays && earnedAfterDays > 0 ? earnedAfterDays : null,
       categoryId: categoryId || null,
       limited,
+      hidden,
       palette: readPalette(formData),
       sortOrder: (last?.sortOrder ?? 0) + 1,
     },
@@ -633,6 +636,7 @@ export async function updateStoreItem(
     earnedAfterDays: formData.get("earnedAfterDays") || undefined,
     categoryId: formData.get("categoryId") || undefined,
     limited: formData.get("limited") === "on",
+    hidden: formData.get("hidden") === "on",
     sortOrder: formData.get("sortOrder") || undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
@@ -646,6 +650,7 @@ export async function updateStoreItem(
     earnedAfterDays,
     categoryId,
     limited,
+    hidden,
     sortOrder,
   } = parsed.data;
   await prisma.storeItem.update({
@@ -659,6 +664,7 @@ export async function updateStoreItem(
       earnedAfterDays: earnedAfterDays && earnedAfterDays > 0 ? earnedAfterDays : null,
       categoryId: categoryId || null,
       limited,
+      hidden,
       palette: readPalette(formData),
       sortOrder: sortOrder ?? undefined,
     },
@@ -1539,6 +1545,12 @@ export async function buyItem(itemId: string): Promise<void> {
 
   const item = await prisma.storeItem.findUnique({ where: { id: itemId } });
   if (!item) throw new Error("الصنف غير موجود");
+  /*
+    والمخفيّ لا يُشترى ولو عُرف معرّفه: إجراءُ الخادم يُستدعى بـPOST
+    مباشرةً، فإخفاؤه من الشاشة ليس منعاً. و«غير موجود» لا «مخفيّ» —
+    وجودُه ليس ممّا يُخبَر به.
+  */
+  if (item.hidden) throw new Error("الصنف غير موجود");
   if (item.plusOnly && !user.isPlus) throw new Error("هذا الصنف لمشتركي آثار+");
 
   if (item.earnedAfterDays !== null) {
@@ -1632,7 +1644,7 @@ export async function giftItem(
       select: { name: true, isPlus: true },
     }),
   ]);
-  if (!item || !friend) return { error: "الصنف غير موجود" };
+  if (!item || !friend || item.hidden) return { error: "الصنف غير موجود" };
   if (item.earnedAfterDays !== null) return { error: "هذا الصنف يُكتسب بالوقت، لا يُهدى" };
   if (item.plusOnly && !friend.isPlus) return { error: `${friend.name} ليس مشتركاً في آثار+` };
 

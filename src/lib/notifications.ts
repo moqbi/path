@@ -2,7 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { blockedWith } from "@/lib/visibility";
 
-export type NoteKind = "REACTION" | "COMMENT" | "TAG" | "FRIEND" | "MESSAGE" | "GIFT";
+export type NoteKind = "REACTION" | "COMMENT" | "TAG" | "FRIEND" | "MESSAGE" | "GIFT" | "STORE";
 
 export type Note = {
   id: string;
@@ -10,7 +10,13 @@ export type Note = {
   at: Date;
   text: string;
   href: string;
-  person: { id: string; name: string; avatarMediaId: string | null };
+  /**
+   * من فعل. وهو **اختياريّ**: خبرُ المتجر لا صاحب له — صنفٌ جديد
+   * ليس فعلَ أحدٍ بك، فيجلس في مكان الصورة رسمُ الصنف نفسه.
+   */
+  person?: { id: string; name: string; avatarMediaId: string | null };
+  /** رسمُ صنف المتجر في خبره: صورته إن رُفعت، وإلا تدرّجه. */
+  item?: { spec: string; mediaId: string | null };
   emoji?: string | null;
   reaction?: string;
   /** صورة اللحظة المعنية — تظهر مصغّرة في طرف الصف. */
@@ -24,6 +30,9 @@ export type Note = {
  * حين تُحذف اللحظة أو الحساب. الاشتقاق يبقيها صادقة دائماً: ما تراه هو
  * ما في القاعدة الآن، لا نسخةٌ منه قديمة.
  */
+/** عمرُ خبر المتجر: ثلاثة أيام كنافذة «الجديد» في عدّاد التبويب. */
+const NEW_ITEM_DAYS = 3;
+
 export async function notifications(userId: string, limit = 40): Promise<Note[]> {
   const me = await prisma.user.findUnique({
     where: { id: userId },
@@ -33,7 +42,7 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
 
   const person = { select: { id: true, name: true, avatarMediaId: true } };
 
-  const [reactions, comments, tags, friendships, messages, gifts] = await Promise.all([
+  const [reactions, comments, tags, friendships, messages, gifts, fresh] = await Promise.all([
     prisma.reaction.findMany({
       where: { moment: { authorId: userId }, userId: { not: userId } },
       select: {
@@ -112,6 +121,24 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
       orderBy: { createdAt: "desc" },
       take: limit,
     }),
+    /*
+      جديدُ المتجر: خبرٌ لا فعل.
+
+      ويُشتقّ من `createdAt` كبقية الإشعارات (القاعدة ٢٥) لا من جدولٍ
+      يُكتب لكل مستخدمٍ عند كل إضافة — مئة صنفٍ في ألف حساب مئةُ ألف
+      صفّ لخبرٍ عمرُه ثلاثة أيام. والمخفيُّ لا يُخبَر عنه، وما يُكتسب
+      بالوقت كذلك: ليس وصولاً جديداً إلى المتجر.
+    */
+    prisma.storeItem.findMany({
+      where: {
+        hidden: false,
+        earnedAfterDays: null,
+        createdAt: { gt: new Date(Date.now() - NEW_ITEM_DAYS * 86_400_000) },
+      },
+      select: { id: true, name: true, spec: true, mediaId: true, createdAt: true, limited: true },
+      orderBy: { createdAt: "desc" },
+      take: 8,
+    }),
   ]);
 
   const notes: Note[] = [
@@ -176,6 +203,14 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
           ]
         : [],
     ),
+    ...fresh.map((row) => ({
+      id: `s-${row.id}`,
+      kind: "STORE" as const,
+      at: row.createdAt,
+      text: row.limited ? `${row.name} في المتجر — لفترة محدودة` : `${row.name} وصل المتجر`,
+      href: "/store",
+      item: { spec: row.spec, mediaId: row.mediaId },
+    })),
     ...messages.map((row) => ({
       id: `m-${row.id}`,
       kind: "MESSAGE" as const,
@@ -187,7 +222,8 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
   ];
 
   return notes
-    .filter((note) => !hidden.has(note.person.id))
+    // وما لا صاحب له لا يُحجب: خبرُ المتجر ليس من أحد.
+    .filter((note) => !note.person || !hidden.has(note.person.id))
     .sort((a, b) => b.at.getTime() - a.at.getTime())
     .slice(0, limit);
 }

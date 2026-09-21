@@ -135,11 +135,13 @@ export const useCircle = () =>
 
 export type Note = {
   id: string;
-  kind: "REACTION" | "COMMENT" | "TAG" | "FRIEND" | "MESSAGE" | "GIFT";
+  kind: "REACTION" | "COMMENT" | "TAG" | "FRIEND" | "MESSAGE" | "GIFT" | "STORE";
   at: string;
   text: string;
   href: string;
-  person: { id: string; name: string; avatarMediaId: string | null };
+  /** خبرُ المتجر لا صاحب له، فيجلس رسمُ الصنف مكان الصورة. */
+  person?: { id: string; name: string; avatarMediaId: string | null };
+  item?: { spec: string; mediaId: string | null };
   emoji?: string | null;
   reaction?: string;
   thumb?: string | null;

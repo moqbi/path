@@ -31,7 +31,8 @@ const FRESH = 3;
 export async function storefront(userId: string) {
   const [categories, items, purchases, user] = await Promise.all([
     prisma.storeCategory.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),
-    prisma.storeItem.findMany({ orderBy: { sortOrder: "asc" }, select: ITEM }),
+    // والمخفيّ لا يُعرض: يُرفع ويُنزل بلا حذفٍ يُضيع ما اشتراه أحد.
+    prisma.storeItem.findMany({ where: { hidden: false }, orderBy: { sortOrder: "asc" }, select: ITEM }),
     prisma.purchase.findMany({ where: { userId }, select: { itemId: true } }),
     prisma.user.findUnique({
       where: { id: userId },
@@ -103,6 +104,8 @@ export async function buy(userId: string, itemId: string) {
   ]);
   if (!me) throw notFound("لا يوجد هذا الحساب");
   if (!item) throw notFound("الصنف غير موجود");
+  // والمخفيّ لا يُشترى ولو عُرف معرّفه، و«غير موجود» لا «مخفيّ».
+  if (item.hidden) throw notFound("الصنف غير موجود");
   if (item.plusOnly && !me.isPlus) throw forbidden("هذا الصنف لمشتركي آثار+");
 
   if (item.earnedAfterDays !== null) {
@@ -151,7 +154,7 @@ export async function gift(userId: string, itemId: string, toUserId: string) {
     prisma.storeItem.findUnique({ where: { id: itemId } }),
     prisma.user.findUnique({ where: { id: toUserId }, select: { name: true, isPlus: true } }),
   ]);
-  if (!me || !item || !friend) throw notFound("الصنف غير موجود");
+  if (!me || !item || !friend || item.hidden) throw notFound("الصنف غير موجود");
   if (item.earnedAfterDays !== null) throw badRequest("هذا الصنف يُكتسب بالوقت، لا يُهدى");
   if (item.plusOnly && !friend.isPlus) throw badRequest(`${friend.name} ليس مشتركاً في آثار+`);
 

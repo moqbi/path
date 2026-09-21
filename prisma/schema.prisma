@@ -455,6 +455,9 @@ model StoreItem {
   createdAt DateTime @default(now())
   /// حزمة موسمية: تُعرض في «حزم محدودة» ما دامت مرفوعة.
   limited   Boolean  @default(false)
+  /// مخفيٌّ عن المتجر بيد المشرف — ولا يُنزع ممّن اشتراه: ما دُفع ثمنه
+  /// يبقى في إكسسواراته ويُلبَس. بابُ الموسميّ: يُرفع ويُنزل بلا حذف.
+  hidden    Boolean  @default(false)
 
   categoryId String?
   category   StoreCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)

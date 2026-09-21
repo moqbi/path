@@ -3,10 +3,10 @@ import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { notifications, type NoteKind } from "@/lib/notifications";
 import { ReactionGlyph } from "@/components/reactions";
-import { Avatar, Empty } from "@/components/ui";
+import { Avatar, Empty, itemPaint } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import { AthrPageMark } from "@/components/brand";
-import { MessageIcon, SparkIcon, TagIcon, WithIcon } from "@/components/icons";
+import { MessageIcon, SparkIcon, StoreIcon, TagIcon, WithIcon } from "@/components/icons";
 import { ar, dayLabel, relative } from "@/lib/format";
 
 const FILTERS = [
@@ -30,6 +30,7 @@ const KIND_STYLE: Record<NoteKind, { bg: string; ink: string }> = {
   FRIEND: { bg: "#e3f3e8", ink: "#2f9e58" },
   MESSAGE: { bg: "var(--color-gold-soft)", ink: "var(--color-gold-ink)" },
   GIFT: { bg: "var(--color-gold-soft)", ink: "var(--color-gold-ink)" },
+  STORE: { bg: "var(--color-clay-soft)", ink: "var(--color-clay-ink)" },
 };
 
 export default async function NotificationsPage({
@@ -107,7 +108,19 @@ export default async function NotificationsPage({
                     >
                       {/* الصورة ومعها دائرة النوع — من فعل، وماذا فعل. */}
                       <span className="relative shrink-0">
-                        <Avatar name={note.person.name} size={44} mediaId={note.person.avatarMediaId} />
+                        {note.person ? (
+                          <Avatar
+                            name={note.person.name}
+                            size={44}
+                            mediaId={note.person.avatarMediaId}
+                          />
+                        ) : (
+                          /* خبرُ المتجر لا صاحب له، فرسمُ الصنف مكان الصورة. */
+                          <span
+                            className="block h-11 w-11 rounded-full"
+                            style={note.item ? itemPaint(note.item) : { background: "var(--color-chip)" }}
+                          />
+                        )}
                         <span
                           className="absolute -bottom-1 -left-1 flex h-5 w-5 items-center justify-center rounded-full"
                           style={{ background: style.bg, color: style.ink, border: "1.5px solid var(--color-card)" }}
@@ -122,6 +135,8 @@ export default async function NotificationsPage({
                             <WithIcon size={11} />
                           ) : note.kind === "GIFT" ? (
                             <SparkIcon size={11} />
+                          ) : note.kind === "STORE" ? (
+                            <StoreIcon size={11} />
                           ) : (
                             <MessageIcon size={11} />
                           )}

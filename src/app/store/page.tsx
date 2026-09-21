@@ -30,7 +30,9 @@ export default async function StorePage({
 
   const [categories, all, purchases] = await Promise.all([
     prisma.storeCategory.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),
-    prisma.storeItem.findMany({ orderBy: { sortOrder: "asc" } }),
+    // والمخفيّ لا يُعرض: بابُ الموسميّ — يُرفع ويُنزل بلا حذفٍ يُضيع
+    // ما اشتراه أحد (`hidden`).
+    prisma.storeItem.findMany({ where: { hidden: false }, orderBy: { sortOrder: "asc" } }),
     prisma.purchase.findMany({ where: { userId: user.id }, select: { itemId: true } }),
   ]);
 
