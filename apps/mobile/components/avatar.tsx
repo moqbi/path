@@ -41,6 +41,12 @@ export function firstColor(spec: string | null | undefined, fallback: string): s
   return match ? match[0] : fallback;
 }
 
+/** كم ينحسر الوجه داخل الإطار المصوَّر — كنسخة الويب. */
+const FRAME_INSET = 0.07;
+
+/** حجمُ التميمة نسبةً من قطر الصورة: نصفُه تقريباً لا ثلثاه. */
+const CHARM_RATIO = 0.5;
+
 export function Avatar({
   name,
   size = 40,
@@ -56,7 +62,17 @@ export function Avatar({
   charm?: Charm;
   style?: StyleProp<ViewStyle>;
 }) {
-  const pad = frame ? Math.max(2, Math.round(size * 0.045)) : 0;
+  /*
+    **الإطار المصوَّر يُرسم فوق الصورة لا تحتها** — كنسخة الويب حرفاً
+    بحرف: كان طبقةً تحتها فلا يُرى منه إلا خيطٌ عند الحافة، وزخرفتُه
+    تختفي خلف الوجه. وإطارٌ نصفُه خلف الصورة ليس إطاراً.
+  */
+  const painted = Boolean(frame?.mediaId);
+  const pad = frame
+    ? painted
+      ? Math.round(size * FRAME_INSET)
+      : Math.max(2, Math.round(size * 0.045))
+    : 0;
   const inner = size - pad * 2;
 
   return (
@@ -67,27 +83,12 @@ export function Avatar({
           height: size,
           borderRadius: size / 2,
           padding: pad,
-          // صورةُ الإطار إن رُفعت تُرسم طبقةً تحت الصورة، وإلا فلونُه.
-          backgroundColor:
-            frame && !frame.mediaId ? firstColor(frame.spec, colors.clay) : "transparent",
+          // والتدرّج يبقى تحتها حلقةً بالحشوة: لونٌ مصمت فوق الوجه يحجبه.
+          backgroundColor: frame && !painted ? firstColor(frame.spec, colors.clay) : "transparent",
         },
         style,
       ]}
     >
-      {frame?.mediaId ? (
-        <MediaImage
-          mediaId={frame.mediaId}
-          style={{
-            position: "absolute",
-            left: 0,
-            top: 0,
-            width: size,
-            height: size,
-            borderRadius: size / 2,
-          }}
-        />
-      ) : null}
-
       <View
         style={{
           width: inner,
@@ -115,6 +116,19 @@ export function Avatar({
         )}
       </View>
 
+      {painted && frame?.mediaId ? (
+        <View
+          pointerEvents="none"
+          style={{ position: "absolute", left: 0, top: 0, width: size, height: size }}
+        >
+          <MediaImage
+            mediaId={frame.mediaId}
+            resizeMode="contain"
+            style={{ width: size, height: size }}
+          />
+        </View>
+      ) : null}
+
       {charm && size >= 22 ? <CharmBadge charm={charm} size={size} /> : null}
     </View>
   );
@@ -125,7 +139,7 @@ export function Avatar({
  * و`contain` كي يُرى كاملاً لا مقصوصاً ليملأ مربّعاً.
  */
 function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }) {
-  const badge = Math.round(size * 0.68);
+  const badge = Math.round(size * CHARM_RATIO);
 
   return (
     <View

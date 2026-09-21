@@ -53,6 +53,14 @@ export function itemPaint(
     : { background: item.spec };
 }
 
+/**
+ * كم ينحسر الوجه داخل الإطار المصوَّر.
+ *
+ * سبعةٌ في المئة من القطر: تكفي ليجلس الإطار على حافّة الصورة فيُقرآن
+ * شيئاً واحداً، ولا تُصغّر الوجه حتى يضيع.
+ */
+const FRAME_INSET = 0.07;
+
 export function Avatar({
   name,
   size = 40,
@@ -99,29 +107,63 @@ export function Avatar({
   }
 
   /*
-     الإطار المشترى يُرسم حلقةً حول الصورة مباشرة — بلا حلقةٍ بيضاء
-     بينهما: الحلقة البيضاء كانت تفصل الإطار عن الوجه فيُقرآن قرصين لا
-     إطاراً على صورة.
+     **الإطار المصوَّر يُرسم فوق الصورة لا تحتها.**
 
-     وصورتُه إن رُفعت بـ`itemPaint` كبقية الأصناف، و`cover` لأنّ الحلقة
-     مربّعٌ يُقصّ في قرص: `contain` كان سيترك الرسم صغيراً في وسطه
-     ويُبقي الحافّة فارغة.
+     كان يُدهن خلفيةً للحاوية والصورةُ فوقه بحشوةٍ صغيرة، فلا يُرى منه
+     إلا خيطٌ عند الحافة — وزخرفتُه (سعفُ النخيل، حبّاتُ الذهب) تختفي
+     خلف الوجه. وإطارٌ نصفُه خلف الصورة ليس إطاراً.
+
+     فصارت صورتُه طبقةً فوق الصورة: الوجه يجلس أصغر قليلاً
+     (`FRAME_INSET`) والإطار يعلوه بـ`contain` فيُرى كاملاً بحافّتيه —
+     الخارجية والداخلية — كما رُسم.
+
+     والتدرّج يبقى تحتها حلقةً بالحشوة: تدرّجٌ فوق الوجه يحجبه، فهو
+     لونٌ مصمت لا رسمٌ بشفافية.
   */
+  const painted = Boolean(frame.mediaId);
+  const pad = painted ? size * FRAME_INSET : Math.max(2, size * 0.045);
+
   return (
     <div
       className="relative shrink-0 rounded-full"
       style={{
         width: size,
         height: size,
-        ...itemPaint(frame),
-        padding: Math.max(2, size * 0.045),
+        ...(painted ? null : itemPaint(frame)),
+        padding: pad,
       }}
     >
       {inner}
+
+      {painted ? (
+        <span
+          aria-hidden="true"
+          data-frame="1"
+          className="pointer-events-none absolute inset-0 block"
+          style={{
+            backgroundImage: `url(/api/media/${frame.mediaId})`,
+            backgroundSize: "contain",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
+          }}
+        />
+      ) : null}
+
       {badge}
     </div>
   );
 }
+
+/**
+ * حجمُ التميمة نسبةً من قطر الصورة.
+ *
+ * ونصفُ القطر تقريباً لا ثلثاه: التميمة شعارٌ يتدلّى من الصورة لا
+ * قرصٌ يزاحمها. و٠٫٦٨ كانت تُقرأ مقبولةً مع رسمٍ صغيرٍ في وسط لوحته،
+ * فإذا رُفعت تميمةٌ يملأ رسمُها لوحتَها — هلالٌ من حافةٍ إلى حافة —
+ * خرجت أكبر من الوجه نفسه. والنسبةُ واحدةٌ مهما كان الرسم، فما يُرفع
+ * كبيراً يصغر في مكانه.
+ */
+const CHARM_RATIO = 0.5;
 
 function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }) {
   /*
@@ -130,8 +172,8 @@ function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }
    * و٠٫٥٢ من قبل بقيت تُقرأ صغيرة بجانب الصورة الأكبر.
    * ولذلك `contain`: الشعار يُرى كاملاً، لا مقصوصاً ليملأ مربّعاً.
    */
-  const badge = Math.round(size * 0.68);
-  if (badge < 14) return null;
+  const badge = Math.round(size * CHARM_RATIO);
+  if (badge < 12) return null;
 
   const paint = charm.mediaId
     ? {

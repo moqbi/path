@@ -80,13 +80,37 @@ function Preview({ item }: { item: StoreItem }) {
   }
 
   if (item.kind === "FRAME") {
+    /*
+      الإطار المصوَّر يُرسم **فوق** قرصٍ محايد لا خلفه — كما يُرى على
+      الوجه تماماً (`Avatar`): كان يُدهن خلفيةً والقرصُ فوقه، فتُخفى
+      حافّتُه الداخلية وزخرفتُها.
+    */
+    if (item.mediaId) {
+      return (
+        <View style={{ width: 62, height: 62 }}>
+          <View
+            style={{
+              position: "absolute",
+              left: 5,
+              top: 5,
+              width: 52,
+              height: 52,
+              borderRadius: 26,
+              backgroundColor: colors.chip,
+            }}
+          />
+          <MediaImage
+            mediaId={item.mediaId}
+            resizeMode="contain"
+            style={{ width: 62, height: 62 }}
+          />
+        </View>
+      );
+    }
+
     return (
       <View style={{ width: 62, height: 62, borderRadius: 31, backgroundColor: paint, padding: 3 }}>
-        {item.mediaId ? (
-          <MediaImage mediaId={item.mediaId} style={{ width: 56, height: 56, borderRadius: 28 }} />
-        ) : (
-          <View style={{ flex: 1, borderRadius: 28, backgroundColor: colors.card }} />
-        )}
+        <View style={{ flex: 1, borderRadius: 28, backgroundColor: colors.card }} />
       </View>
     );
   }

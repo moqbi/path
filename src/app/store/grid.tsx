@@ -83,6 +83,24 @@ function Preview({ item }: { item: Item }) {
   }
 
   if (item.kind === "FRAME") {
+    /*
+      الإطار المصوَّر يُرسم **فوق** قرصٍ محايد لا خلفه — كما يُرى على
+      الوجه تماماً (`Avatar`). ودهنُه خلفيةً والقرصُ فوقه كان يُخفي
+      حافّته الداخلية وزخرفتَها، فتختلف بطاقتُه في المتجر عن هيئته على
+      الصورة.
+    */
+    if (item.mediaId) {
+      return (
+        <span className="relative block" style={{ width: 62, height: 62 }}>
+          <span
+            className="absolute rounded-full"
+            style={{ inset: 5, background: "var(--color-chip)" }}
+          />
+          <span className="absolute inset-0 block" style={itemPaint(item, "contain")} />
+        </span>
+      );
+    }
+
     return (
       <span
         className="rounded-full"
