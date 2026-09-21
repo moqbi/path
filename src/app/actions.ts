@@ -8,6 +8,7 @@ import {
   createSession,
   currentUser,
   destroySession,
+  hashPassword,
   requireUser,
   verifyPassword,
 } from "@/lib/auth";
@@ -1218,12 +1219,101 @@ export async function savePrivacy(formData: FormData): Promise<void> {
       viewGroupId: pick("viewGroupId"),
       interactGroupId: pick("interactGroupId"),
       shareLocation: formData.get("shareLocation") === "on",
-      notifyOnTag: formData.get("notifyOnTag") === "on",
+      // وإشعارُ الإشارة انتقل إلى «التنبيهات» — فلا يُكتب من هنا بحال:
+      // نموذجٌ لا يحمل الحقل كان سيطفئه في كل حفظٍ للخصوصية.
     },
   });
 
-  revalidatePath("/settings/privacy");
+  revalidatePath("/settings");
   revalidatePath("/");
+}
+
+/**
+ * تفضيلات التنبيهات.
+ *
+ * حقلٌ لكل نوع، فيقرأ المرسلُ ما يخصّه وحده. **وتسري على تنبيهات
+ * الجهاز** لا على تبويب الإشعارات: التبويب سجلُّ ما جرى، وإطفاءُ نوعٍ
+ * يعني «لا توقظني» لا «امحُ الخبر» — ومن أطفأ التفاعلات ثم فتح
+ * التطبيق يريد أن يرى من تفاعل.
+ *
+ * والوضع الهادئ دقائقُ من منتصف الليل: «١٠:٣٠ مساءً» وقتٌ يختاره
+ * الناس، والساعةُ وحدها لا تكفيه. وفراغُ أحد الطرفين إلغاءٌ للوضع كلّه
+ * — بدايةٌ بلا نهاية صمتٌ إلى الأبد.
+ */
+export async function saveNotifications(formData: FormData): Promise<void> {
+  const user = await requireUser();
+
+  const on = (name: string) => formData.get(name) === "on";
+  /** «٢٢:٣٠» ← ١٣٥٠ دقيقة. وما ليس وقتاً يردّ فراغاً. */
+  const minutes = (name: string): number | null => {
+    const raw = String(formData.get(name) ?? "");
+    const match = /^(\d{1,2}):(\d{2})$/.exec(raw);
+    if (!match) return null;
+    const hour = Number(match[1]);
+    const minute = Number(match[2]);
+    if (hour > 23 || minute > 59) return null;
+    return hour * 60 + minute;
+  };
+
+  const quiet = on("quiet");
+  const from = quiet ? minutes("quietFrom") : null;
+  const to = quiet ? minutes("quietTo") : null;
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      notifyDm: on("notifyDm"),
+      notifyFriend: on("notifyFriend"),
+      notifyOnTag: on("notifyOnTag"),
+      notifyReaction: on("notifyReaction"),
+      notifyComment: on("notifyComment"),
+      notifyStoreNew: on("notifyStoreNew"),
+      notifyStoreDeals: on("notifyStoreDeals"),
+      // الطرفان معاً أو لا وضعَ هادئ.
+      quietFrom: from !== null && to !== null ? from : null,
+      quietTo: from !== null && to !== null ? to : null,
+    },
+  });
+
+  revalidatePath("/settings");
+}
+
+/**
+ * تغيير كلمة المرور.
+ *
+ * القديمةُ شرط: جهازٌ مفتوحٌ في يد غيرك لا يقفل الحساب على صاحبه
+ * بضغطتين. والجديدة تُكتب مرّتين، فخطأٌ في حرفٍ واحد يُقفل الحساب على
+ * من كتبه.
+ *
+ * ولا تُبطَل الجلسات القائمة: من غيّر كلمته من جهازه لا يُخرَج منه.
+ */
+export async function changePassword(
+  _prev: AdminResult,
+  formData: FormData,
+): Promise<AdminResult> {
+  const user = await requireUser();
+
+  const current = String(formData.get("current") ?? "");
+  const next = String(formData.get("next") ?? "");
+  const again = String(formData.get("again") ?? "");
+
+  const row = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { passwordHash: true },
+  });
+  if (!row || !(await verifyPassword(current, row.passwordHash))) {
+    return { error: "كلمة المرور الحالية غير صحيحة" };
+  }
+  if (next.length < 8) return { error: "كلمة المرور الجديدة ٨ أحرف فأكثر" };
+  if (next !== again) return { error: "الكلمتان الجديدتان غير متطابقتين" };
+  if (next === current) return { error: "الجديدة هي نفسها الحالية" };
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash: await hashPassword(next) },
+  });
+
+  return { ok: "تم تغيير كلمة المرور" };
 }
 
 /** الحظر: لا يرى أحدهما الآخر ولا يتفاعل معه، والصداقة تُفكّ إن وُجدت. */
@@ -2140,7 +2230,7 @@ export async function changeEmail(_prev: AdminResult, formData: FormData): Promi
   if ("error" in checked) return checked;
 
   const result = await writeEmail(user.id, checked.email);
-  revalidatePath("/settings/privacy");
+  revalidatePath("/settings");
   revalidatePath("/me");
   return result;
 }

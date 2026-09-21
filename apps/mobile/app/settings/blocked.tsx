@@ -36,7 +36,7 @@ export default function BlockedScreen() {
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
-      <ScreenHeader title="المحظورون" back="/settings/privacy" />
+      <ScreenHeader title="المحظورون" back="/settings" />
 
       <FlatList
         data={people}

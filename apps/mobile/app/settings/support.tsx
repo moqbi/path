@@ -51,7 +51,7 @@ export default function Support() {
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
-      <ScreenHeader title="الدعم وتواصل معنا" back="/settings/privacy" />
+      <ScreenHeader title="الدعم وتواصل معنا" back="/settings" />
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
         <View style={{ borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, padding: 16, marginBottom: 20 }}>

@@ -1,6 +1,15 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { coverInput, cuid, emailChangeInput, pageQuery, privacyInput, profileInput } from "@athar/shared";
+import {
+  coverInput,
+  cuid,
+  emailChangeInput,
+  notifyInput,
+  pageQuery,
+  passwordChangeInput,
+  privacyInput,
+  profileInput,
+} from "@athar/shared";
 import { zValidator } from "../../lib/validate";
 import { requireAuth, me } from "../../middleware/auth";
 import * as profile from "../../services/profile";
@@ -36,6 +45,16 @@ export const profileRoutes = new Hono()
 
   .put("/privacy", zValidator("json", privacyInput), async (c) =>
     c.json(await profile.savePrivacy(me(c), c.req.valid("json"))),
+  )
+
+  /** التنبيهات: ما يصل الجهاز ومتى يسكت. */
+  .put("/notifications", zValidator("json", notifyInput), async (c) =>
+    c.json(await profile.saveNotifications(me(c), c.req.valid("json"))),
+  )
+
+  /** كلمة المرور — القديمةُ شرط، كالبريد وكالحذف. */
+  .put("/password", zValidator("json", passwordChangeInput), async (c) =>
+    c.json(await profile.changePassword(me(c), c.req.valid("json"))),
   )
 
   .put("/cover", zValidator("json", coverInput), async (c) =>

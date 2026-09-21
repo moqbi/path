@@ -25,7 +25,7 @@ export default async function SupportPage() {
 
   return (
     <div className="screen">
-      <ScreenHeader title="الدعم وتواصل معنا" back="/settings/privacy" />
+      <ScreenHeader title="الدعم وتواصل معنا" back="/settings" />
 
       <main className="scroll-area px-5 py-4">
         <div className="mb-5 rounded-2xl border border-line bg-card p-4">

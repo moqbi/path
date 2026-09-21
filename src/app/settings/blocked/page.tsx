@@ -20,7 +20,7 @@ export default async function BlockedPage() {
 
   return (
     <div className="screen">
-      <ScreenHeader title="المحظورون" back="/settings/privacy" />
+      <ScreenHeader title="المحظورون" back="/settings" />
 
       <main className="scroll-area px-5 py-4">
         <p className="mb-3 text-[11.5px] leading-relaxed text-muted">

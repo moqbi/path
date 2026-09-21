@@ -45,6 +45,15 @@ export type Me = {
   coverY: number;
   shareLocation: boolean;
   notifyOnTag: boolean;
+  /** التنبيهات: مفتاحٌ لكل نوع، وطرفا الوضع الهادئ بالدقائق. */
+  notifyDm?: boolean;
+  notifyFriend?: boolean;
+  notifyReaction?: boolean;
+  notifyComment?: boolean;
+  notifyStoreNew?: boolean;
+  notifyStoreDeals?: boolean;
+  quietFrom?: number | null;
+  quietTo?: number | null;
   viewGroupId: string | null;
   interactGroupId: string | null;
   frame: Worn;

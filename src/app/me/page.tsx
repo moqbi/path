@@ -203,8 +203,8 @@ export default async function ProfilePage() {
               equippedCharm={user.charmId}
             />
             <Link
-              href="/settings/privacy"
-              aria-label="الخصوصية والإعدادات"
+              href="/settings"
+              aria-label="الإعدادات والخصوصية"
               className="flex w-11 shrink-0 items-center justify-center rounded-xl border border-line bg-card text-ink-2"
               style={{ height: 46 }}
             >

@@ -300,7 +300,7 @@ export default async function CirclePage({
                 );
               })}
               <Link
-                href="/settings/privacy"
+                href="/settings"
                 className="shrink-0 rounded-full border border-dashed border-line px-4 py-2 text-[12.5px] font-semibold text-muted"
               >
                 + تصنيف
@@ -311,7 +311,7 @@ export default async function CirclePage({
               <Empty
                 title="لا تصنيفات بعد"
                 hint="العائلة، الزملاء… التصنيف لك وحدك ولا يراه أحد."
-                action={{ href: "/settings/privacy", label: "أنشئ تصنيفاً" }}
+                action={{ href: "/settings", label: "أنشئ تصنيفاً" }}
               />
             ) : (
               <div className="overflow-hidden rounded-2xl border border-line bg-card">

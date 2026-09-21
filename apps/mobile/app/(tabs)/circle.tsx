@@ -169,7 +169,7 @@ export default function Circle() {
                     </View>
                   ))}
                   <Pressable
-                    onPress={() => router.push("/settings/privacy" as never)}
+                    onPress={() => router.push("/settings" as never)}
                     style={{ height: 34, paddingHorizontal: 14, borderRadius: 999, alignItems: "center", justifyContent: "center", borderWidth: 1, borderStyle: "dashed", borderColor: colors.line }}
                   >
                     <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600" }}>+ تصنيف</Text>

@@ -1,5 +1,5 @@
 import { prisma } from "@athar/db";
-import { BIO_MAX } from "@athar/shared";
+import { BIO_MAX, type NotifyInput } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { dropMedia } from "./media";
 
@@ -29,6 +29,14 @@ export async function me(userId: string) {
       coverY: true,
       shareLocation: true,
       notifyOnTag: true,
+      notifyDm: true,
+      notifyFriend: true,
+      notifyReaction: true,
+      notifyComment: true,
+      notifyStoreNew: true,
+      notifyStoreDeals: true,
+      quietFrom: true,
+      quietTo: true,
       viewGroupId: true,
       interactGroupId: true,
       frame: { select: { id: true, name: true, kind: true, spec: true, mediaId: true, frameHole: true, priceCoins: true, plusOnly: true } },
@@ -118,7 +126,7 @@ export async function savePrivacy(
     viewGroupId?: string | null;
     interactGroupId?: string | null;
     shareLocation: boolean;
-    notifyOnTag: boolean;
+    notifyOnTag?: boolean;
   },
 ) {
   const groups = await prisma.friendGroup.findMany({
@@ -134,8 +142,66 @@ export async function savePrivacy(
       viewGroupId: pick(input.viewGroupId),
       interactGroupId: pick(input.interactGroupId),
       shareLocation: input.shareLocation,
-      notifyOnTag: input.notifyOnTag,
+      // ولا يُكتب إلا إن أُرسل: نسخةٌ جديدة من التطبيق تتركه لشاشة
+      // التنبيهات، فكتابتُه افتراضاً تطفئه في كل حفظٍ للخصوصية.
+      ...(input.notifyOnTag === undefined ? {} : { notifyOnTag: input.notifyOnTag }),
     },
+  });
+  return { ok: true };
+}
+
+/**
+ * تفضيلات التنبيهات — نسخةُ الويب (`saveNotifications` في `actions.ts`).
+ *
+ * والوضع الهادئ طرفاه معاً أو لا وضع: بدايةٌ بلا نهاية صمتٌ إلى الأبد.
+ */
+export async function saveNotifications(userId: string, input: NotifyInput) {
+  const from = input.quietFrom ?? null;
+  const to = input.quietTo ?? null;
+  const quiet = from !== null && to !== null;
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      notifyDm: input.notifyDm,
+      notifyFriend: input.notifyFriend,
+      notifyOnTag: input.notifyOnTag,
+      notifyReaction: input.notifyReaction,
+      notifyComment: input.notifyComment,
+      notifyStoreNew: input.notifyStoreNew,
+      notifyStoreDeals: input.notifyStoreDeals,
+      quietFrom: quiet ? from : null,
+      quietTo: quiet ? to : null,
+    },
+  });
+  return { ok: true };
+}
+
+/**
+ * تغيير كلمة المرور.
+ *
+ * القديمةُ شرط: جهازٌ مفتوحٌ في يد غيرك لا يقفل الحساب على صاحبه.
+ * ولا تُبطَل الجلسات: من غيّرها من جهازه لا يُخرَج منه.
+ */
+export async function changePassword(
+  userId: string,
+  input: { current: string; next: string },
+) {
+  const { verifyPassword, hashPassword } = await import("./auth");
+
+  const row = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { passwordHash: true },
+  });
+  if (!row) throw notFound("لا يوجد هذا الحساب");
+  if (!(await verifyPassword(input.current, row.passwordHash))) {
+    throw forbidden("كلمة المرور الحالية غير صحيحة");
+  }
+  if (input.current === input.next) throw badRequest("الجديدة هي نفسها الحالية");
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash: await hashPassword(input.next) },
   });
   return { ok: true };
 }

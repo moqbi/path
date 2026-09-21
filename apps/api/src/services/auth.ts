@@ -19,7 +19,7 @@ const scrypt = promisify(scryptCb) as (
  * تمريره نصّاً يشتقّ مفتاحاً مختلفاً، فتُغلق الحسابات القائمة في وجه
  * أصحابها. الصيغة `salt:hash` بالسداسي في الحالتين.
  */
-async function hashPassword(password: string): Promise<string> {
+export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16);
   const key = await scrypt(password, salt, 64);
   return `${salt.toString("hex")}:${key.toString("hex")}`;

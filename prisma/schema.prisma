@@ -160,6 +160,22 @@ model User {
   /// إشعار حين يُشار إليّ في لحظة.
   notifyOnTag     Boolean @default(true)
 
+  /// التنبيهات: ما يصل الجهاز ومتى.
+  /// حقلٌ لكل نوع لا قائمةٌ في نصّ: الاستعلام يقرأ ما يحتاجه وحده،
+  /// والنوعُ الجديد عمودٌ بقيمةٍ افتراضية لا هجرةُ بياناتٍ لكل صفّ.
+  notifyDm         Boolean @default(true)
+  notifyFriend     Boolean @default(true)
+  notifyReaction   Boolean @default(true)
+  notifyComment    Boolean @default(true)
+  notifyStoreNew   Boolean @default(true)
+  notifyStoreDeals Boolean @default(true)
+
+  /// الوضع الهادئ: دقائقُ من منتصف الليل، والفارغ يعني لا وضع هادئ.
+  /// بالدقائق لا بالساعات: «١٠:٣٠ مساءً» وقتٌ يختاره الناس.
+  /// و`from > to` مدّةٌ تعبر منتصف الليل — وهي الحال الغالبة.
+  quietFrom Int?
+  quietTo   Int?
+
   /// آخر ظهور: يُحدَّث عند فتح التطبيق، ومنه «متصل الآن».
   lastSeenAt DateTime?
 

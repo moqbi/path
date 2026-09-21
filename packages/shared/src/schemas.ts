@@ -91,7 +91,36 @@ export const privacyInput = z.object({
   viewGroupId: cuid.nullish(),
   interactGroupId: cuid.nullish(),
   shareLocation: z.boolean(),
+  /**
+   * إشعارُ الإشارة انتقل إلى «التنبيهات»، فصار اختيارياً هنا:
+   * نسخةُ تطبيقٍ قديمة ما زالت ترسله، وأخرى جديدة لا ترسله — ولو كان
+   * مطلوباً لسقط طلبُ الجديدة، ولو كُتب افتراضاً لأطفأه في كل حفظ.
+   */
+  notifyOnTag: z.boolean().optional(),
+});
+
+/**
+ * تفضيلات التنبيهات: مفتاحٌ لكل نوع، وطرفا الوضع الهادئ بالدقائق من
+ * منتصف الليل — و`null` فيهما إلغاءٌ للوضع.
+ */
+export const notifyInput = z.object({
+  notifyDm: z.boolean(),
+  notifyFriend: z.boolean(),
   notifyOnTag: z.boolean(),
+  notifyReaction: z.boolean(),
+  notifyComment: z.boolean(),
+  notifyStoreNew: z.boolean(),
+  notifyStoreDeals: z.boolean(),
+  quietFrom: z.number().int().min(0).max(1439).nullish(),
+  quietTo: z.number().int().min(0).max(1439).nullish(),
+});
+
+export type NotifyInput = z.infer<typeof notifyInput>;
+
+/** تغيير كلمة المرور: القديمةُ شرطٌ، والجديدةُ ثمانيةٌ فأكثر. */
+export const passwordChangeInput = z.object({
+  current: z.string().min(1, "اكتب كلمة المرور الحالية").max(200),
+  next: z.string().min(8, "كلمة المرور ٨ أحرف فأكثر").max(200),
 });
 
 export const coverInput = z.object({ y: z.coerce.number().min(0).max(100) });

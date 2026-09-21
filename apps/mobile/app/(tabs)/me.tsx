@@ -232,7 +232,7 @@ export default function Me() {
             <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: 20, marginTop: 10, marginBottom: 18 }}>
               <Action grow label="تعديل الملف" onPress={() => router.push("/me/edit" as never)} />
               <Action grow label="إكسسواراتي" onPress={() => router.push("/me/accessories" as never)} />
-              <Action label="الخصوصية" icon={<GearIcon size={18} color={colors.ink2} />} onPress={() => router.push("/settings/privacy" as never)} />
+              <Action label="الإعدادات" icon={<GearIcon size={18} color={colors.ink2} />} onPress={() => router.push("/settings" as never)} />
               <Action
                 label="خروج"
                 icon={<ExitIcon size={18} color={colors.ink2} />}
