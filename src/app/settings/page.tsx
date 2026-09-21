@@ -51,9 +51,6 @@ export default async function SettingsPage() {
     prisma.block.count({ where: { blockerId: user.id } }),
   ]);
 
-  // لا نطاقَ يُكتب في الكود: بلا بيئةٍ مضبوطة يختفي بابُ السياسة.
-  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "";
-
   const select =
     "h-11 w-full rounded-xl border border-line bg-paper px-3 text-[13px] text-ink outline-none";
 
@@ -224,39 +221,36 @@ export default async function SettingsPage() {
         </Section>
 
         {/* ── بابان يخرجان من الإعدادات ── */}
-        {site ? (
-          <>
-            <a
-              href={`${site}/privacy`}
-              target="_blank"
-              rel="noreferrer"
-              className="mb-3 flex items-center justify-between rounded-2xl border border-line bg-card p-4"
-            >
-              <span>
-                <span className="block text-[13.5px] font-semibold">سياسة الخصوصية</span>
-                <span className="block text-[11.5px] text-muted">ما نجمعه وما لا نجمعه</span>
-              </span>
-              <span className="shrink-0 text-clay-ink">
-                <BookIcon size={18} />
-              </span>
-            </a>
+        {/*
+           الوثيقتان صفحتان في التطبيق نفسه لا رابطٌ إلى نطاقٍ خارجيّ:
+           بلا بيئةٍ مضبوطة كان الصفّان يختفيان تماماً — والمتجران
+           يشترطان أن يجدهما المستخدم.
+        */}
+        <Link
+          href="/legal/privacy"
+          className="mb-3 flex items-center justify-between rounded-2xl border border-line bg-card p-4"
+        >
+          <span>
+            <span className="block text-[13.5px] font-semibold">سياسة الخصوصية</span>
+            <span className="block text-[11.5px] text-muted">ما نجمعه وما لا نجمعه</span>
+          </span>
+          <span className="shrink-0 text-clay-ink">
+            <BookIcon size={18} />
+          </span>
+        </Link>
 
-            <a
-              href={`${site}/terms`}
-              target="_blank"
-              rel="noreferrer"
-              className="mb-3 flex items-center justify-between rounded-2xl border border-line bg-card p-4"
-            >
-              <span>
-                <span className="block text-[13.5px] font-semibold">شروط الاستخدام</span>
-                <span className="block text-[11.5px] text-muted">ما لك وما عليك في آثار</span>
-              </span>
-              <span className="shrink-0 text-clay-ink">
-                <BookIcon size={18} />
-              </span>
-            </a>
-          </>
-        ) : null}
+        <Link
+          href="/legal/terms"
+          className="mb-3 flex items-center justify-between rounded-2xl border border-line bg-card p-4"
+        >
+          <span>
+            <span className="block text-[13.5px] font-semibold">شروط الاستخدام</span>
+            <span className="block text-[11.5px] text-muted">ما لك وما عليك في آثار</span>
+          </span>
+          <span className="shrink-0 text-clay-ink">
+            <BookIcon size={18} />
+          </span>
+        </Link>
 
         <Link
           href="/settings/support"

@@ -302,3 +302,38 @@ h3 {
     transform: scale(0.8);
   }
 }
+
+/*
+   الوثائق (سياسة الخصوصية وشروط الاستخدام) داخل التطبيق.
+
+   نصٌّ طويلٌ يُقرأ لا شاشةُ أفعال: عناوينُ أثقل، وفقراتٌ متباعدة،
+   وقوائمُ بنقاطها — وإلّا قُرئ الكلُّ كتلةً واحدة.
+*/
+.legal h2 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-top: 22px;
+  margin-bottom: 6px;
+  color: var(--color-ink);
+}
+
+.legal p,
+.legal li {
+  font-size: 13.5px;
+  line-height: 1.95;
+  color: var(--color-ink-2);
+}
+
+.legal p {
+  margin-bottom: 10px;
+}
+
+.legal ul {
+  list-style: disc;
+  padding-inline-start: 20px;
+  margin-bottom: 10px;
+}
+
+.legal li {
+  margin-bottom: 6px;
+}

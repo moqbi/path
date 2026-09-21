@@ -236,22 +236,13 @@ export default function Settings() {
 
         {/* السياسة في متصفّحٍ داخل التطبيق: من قرأها يعود بزرٍّ إلى مكانه
             لا يخرج إلى سفاري ويبقى هناك (القاعدة ٦٢). */}
-        {hasSite() ? (
-          <>
-            <Link
-              title="سياسة الخصوصية"
-              note="ما نجمعه وما لا نجمعه"
-              right={<BookIcon size={18} color={colors.clayInk} />}
-              onPress={() => void openIn(`${SITE_URL}/privacy`)}
-            />
-            <Link
-              title="شروط الاستخدام"
-              note="ما لك وما عليك في آثار"
-              right={<BookIcon size={18} color={colors.clayInk} />}
-              onPress={() => void openIn(`${SITE_URL}/terms`)}
-            />
-          </>
-        ) : null}
+        {/*
+           الوثيقتان تُفتحان في المتصفّح الداخليّ (القاعدة ٦٢)، وتبقيان
+           ظاهرتين دائماً: المتجران يشترطان أن يجدهما المستخدم، وصفٌّ
+           يختفي لأنّ بيئةً لم تُضبط يُقرأ «لا وجود له».
+        */}
+        <LegalLink title="سياسة الخصوصية" note="ما نجمعه وما لا نجمعه" path="/privacy" />
+        <LegalLink title="شروط الاستخدام" note="ما لك وما عليك في آثار" path="/terms" />
 
         <Link
           title="الدعم الفني — تواصل معنا"
@@ -942,6 +933,34 @@ function VerifyEmail({ verified }: { verified: boolean }) {
           {send.isPending ? "نرسل…" : "أرسل رابط التأكيد"}
         </Text>
       </Pressable>
+    </View>
+  );
+}
+
+
+/**
+ * بابُ وثيقةٍ على الموقع، يُفتح في متصفّحٍ داخل التطبيق.
+ *
+ * وبلا `EXPO_PUBLIC_SITE_URL` يبقى الصفُّ ظاهراً ويقول لماذا لم يُفتح:
+ * صفٌّ يختفي يُقرأ «لا وجود للوثيقة»، وهذا ما يسأل عنه مراجعُ المتجر.
+ */
+function LegalLink({ title, note, path }: { title: string; note: string; path: string }) {
+  const [said, setSaid] = useState<string | null>(null);
+
+  return (
+    <View>
+      <Link
+        title={title}
+        note={said ?? note}
+        right={<BookIcon size={18} color={colors.clayInk} />}
+        onPress={() => {
+          if (!hasSite()) {
+            setSaid("لم يُضبط عنوان الموقع في هذه النسخة");
+            return;
+          }
+          void openIn(`${SITE_URL}${path}`);
+        }}
+      />
     </View>
   );
 }
