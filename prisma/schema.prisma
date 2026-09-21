@@ -61,6 +61,8 @@ enum StoreItemKind {
   THEME
   /// تميمة تُعلَّق على الصورة — قادمة.
   CHARM
+  /// حزمة: صنفٌ لا يُلبَس، شراؤه يملّك ما بداخله من أصناف.
+  BUNDLE
 }
 
 enum FriendshipStatus {
@@ -468,9 +470,25 @@ model StoreItem {
   category   StoreCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   purchases      Purchase[]
+  /// ما تحتويه هذه الحزمة، وفي أيّ حزمةٍ يقع هذا الصنف.
+  holds          BundleItem[] @relation("BundleHolds")
+  heldIn         BundleItem[] @relation("BundleHeld")
   usersWithFrame User[]     @relation("UserFrame")
   usersWithBg    User[]     @relation("UserBackground")
   usersWithCharm User[]     @relation("UserCharm")
+}
+
+/// صنفٌ داخل حزمة. شراءُ الحزمة يملّك كلَّ ما تحمله من هذه الصفوف.
+model BundleItem {
+  id       String @id @default(cuid())
+  bundleId String
+  itemId   String
+
+  bundle StoreItem @relation("BundleHolds", fields: [bundleId], references: [id], onDelete: Cascade)
+  item   StoreItem @relation("BundleHeld", fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([bundleId, itemId])
+  @@index([itemId])
 }
 
 model Purchase {

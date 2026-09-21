@@ -14,7 +14,7 @@ import { itemPaint } from "@/components/ui";
  */
 export type Item = {
   id: string;
-  kind: "FRAME" | "BACKGROUND" | "THEME" | "CHARM";
+  kind: string;
   name: string;
   priceCoins: number;
   spec: string;
@@ -23,9 +23,65 @@ export type Item = {
   limited: boolean;
   /** صورة الصنف — الثيم والتميمة صورتان، والإطار تدرّج. */
   mediaId: string | null;
+  /**
+   * ما تحمله الحزمة من أصناف — فارغٌ لما ليس حزمة.
+   *
+   * وبطاقةُ الحزمة ترسمه وتعدّه: باقةٌ تُشترى على غير علمٍ بما فيها
+   * صندوقٌ عشوائيّ بلا عشوائية، والقاعدة ٦ تمنع الصناديق.
+   */
+  holds?: { id: string; name: string; spec: string; mediaId: string | null; kind: string }[];
 };
 
 function Preview({ item }: { item: Item }) {
+  /*
+    الحزمة تُعرض بما فيها: ثلاثةُ رسومٍ متداخلة وعددُ ما بقي — فما يُشترى
+    يُرى قبل شرائه.
+  */
+  if (item.kind === "BUNDLE") {
+    const inside = item.holds ?? [];
+    const shown = inside.slice(0, 3);
+    return (
+      <span className="flex h-[62px] items-center justify-center">
+        {shown.length === 0 ? (
+          <span
+            className="rounded-xl"
+            style={{ width: 54, height: 54, background: "var(--color-chip)" }}
+          />
+        ) : (
+          shown.map((one, index) => (
+            <span
+              key={one.id}
+              className="rounded-xl border"
+              style={{
+                width: 44,
+                height: 44,
+                marginInlineStart: index === 0 ? 0 : -14,
+                borderColor: "var(--color-card)",
+                borderWidth: 2,
+                ...itemPaint(one, one.kind === "CHARM" ? "contain" : "cover"),
+              }}
+            />
+          ))
+        )}
+        {inside.length > shown.length ? (
+          <span
+            className="flex items-center justify-center rounded-xl text-[11px] font-bold"
+            style={{
+              width: 44,
+              height: 44,
+              marginInlineStart: -14,
+              background: "var(--color-chip)",
+              color: "var(--color-ink-2)",
+              border: "2px solid var(--color-card)",
+            }}
+          >
+            +{ar(inside.length - shown.length)}
+          </span>
+        ) : null}
+      </span>
+    );
+  }
+
   if (item.kind === "FRAME") {
     return (
       <span
@@ -78,6 +134,9 @@ export function StoreGrid({
 
   function act(item: Item) {
     setError(null);
+
+    // والحزمة لا تُلبَس: ما فيها يُلبَس من الملف أو من بطاقته هنا.
+    if (item.kind === "BUNDLE" && ownedSet.has(item.id)) return;
 
     if (ownedSet.has(item.id)) {
       if (wornId(item) === item.id) {
@@ -158,7 +217,20 @@ export function StoreGrid({
 
               <span className="text-[11.5px] font-medium">{item.name}</span>
 
-              {worn ? (
+              {item.kind === "BUNDLE" && have ? (
+                <span className="flex items-center gap-1 text-[10.5px] font-semibold text-clay">
+                  <CheckIcon size={12} /> صارت لك
+                </span>
+              ) : item.kind === "BUNDLE" ? (
+                <>
+                  <span className="text-[10px] text-faint">
+                    {ar(item.holds?.length ?? 0)} أصناف
+                  </span>
+                  <span className="text-[11px] font-semibold text-clay">
+                    {coinText(price(item))}
+                  </span>
+                </>
+              ) : worn ? (
                 <span className="flex items-center gap-1 text-[10.5px] font-semibold text-clay">
                   <CheckIcon size={12} /> ملبوس
                 </span>

@@ -20,6 +20,65 @@ import { colors } from "../theme/tokens";
 function Preview({ item }: { item: StoreItem }) {
   const paint = firstColor(item.spec, colors.chip);
 
+  /*
+    الحزمة تُعرض بما فيها: رسومٌ متداخلة وعددُ ما بقي — فما يُشترى يُرى
+    قبل شرائه (القاعدة ٦ تمنع الصناديق العشوائية).
+  */
+  if (item.kind === "BUNDLE") {
+    const inside = (item.holds ?? []).map((row) => row.item);
+    const shown = inside.slice(0, 3);
+    return (
+      <View style={{ height: 62, flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
+        {shown.length === 0 ? (
+          <View style={{ width: 54, height: 54, borderRadius: 12, backgroundColor: colors.chip }} />
+        ) : (
+          shown.map((one, index) => (
+            <View
+              key={one.id}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 12,
+                overflow: "hidden",
+                marginLeft: index === 0 ? 0 : -14,
+                borderWidth: 2,
+                borderColor: colors.card,
+                backgroundColor: firstColor(one.spec, colors.chip),
+              }}
+            >
+              {one.mediaId ? (
+                <MediaImage
+                  mediaId={one.mediaId}
+                  resizeMode={one.kind === "CHARM" ? "contain" : "cover"}
+                  style={{ width: 40, height: 40 }}
+                />
+              ) : null}
+            </View>
+          ))
+        )}
+        {inside.length > shown.length ? (
+          <View
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 12,
+              marginLeft: -14,
+              borderWidth: 2,
+              borderColor: colors.card,
+              backgroundColor: colors.chip,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Text style={{ color: colors.ink2, fontSize: 11, fontWeight: "700" }}>
+              +{ar(inside.length - shown.length)}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+    );
+  }
+
   if (item.kind === "FRAME") {
     return (
       <View style={{ width: 62, height: 62, borderRadius: 31, backgroundColor: paint, padding: 3 }}>
@@ -112,6 +171,9 @@ export function StoreGrid({
   function act(item: StoreItem) {
     setError(null);
 
+    // والحزمة لا تُلبَس: ما فيها يُلبَس من الملف.
+    if (item.kind === "BUNDLE" && ownedSet.has(item.id)) return;
+
     if (ownedSet.has(item.id)) {
       if (wornId(item) === item.id) {
         strip.mutate(item.kind === "FRAME" ? "FRAME" : item.kind === "CHARM" ? "CHARM" : "BACKGROUND");
@@ -194,7 +256,23 @@ export function StoreGrid({
                 {item.name}
               </Text>
 
-              {worn ? (
+              {item.kind === "BUNDLE" && have ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <CheckIcon size={12} color={colors.clay} />
+                  <Text style={{ color: colors.clayInk, fontSize: 10.5, fontWeight: "600" }}>
+                    صارت لك
+                  </Text>
+                </View>
+              ) : item.kind === "BUNDLE" ? (
+                <>
+                  <Text style={{ color: colors.faint, fontSize: 10 }}>
+                    {ar(item.holds?.length ?? 0)} أصناف
+                  </Text>
+                  <Text style={{ color: colors.clayInk, fontSize: 11, fontWeight: "600" }}>
+                    {coinText(price(item))}
+                  </Text>
+                </>
+              ) : worn ? (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   <CheckIcon size={12} color={colors.clay} />
                   <Text style={{ color: colors.clayInk, fontSize: 10.5, fontWeight: "600" }}>ملبوس</Text>

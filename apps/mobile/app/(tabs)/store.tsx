@@ -127,6 +127,10 @@ export default function Store() {
             <>
               <Row title="وصل حديثاً" flame>{grid(data?.rows.fresh ?? [])}</Row>
               <Row title="ثيمات آثار">{grid(data?.rows.themes ?? [])}</Row>
+              {(data?.rows.bundles?.length ?? 0) > 0 ? (
+                <Row title="باقات">{grid(data?.rows.bundles ?? [])}</Row>
+              ) : null}
+
               <Row title="حزم محدودة">{grid(data?.rows.limited ?? [])}</Row>
             </>
           )}

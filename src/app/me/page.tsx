@@ -9,7 +9,7 @@ import { MomentCard } from "@/components/moment-card";
 import { EditProfileSheet } from "./edit-sheet";
 import { ProfileCover } from "./cover";
 import { ProfileShell } from "./shell";
-import { Accessories } from "./accessories";
+import { Accessories, type Owned } from "./accessories";
 import { coverStyle, NameTag } from "@/components/ui";
 import { AvatarMenu } from "@/components/avatar-menu";
 import { TabBar } from "@/components/tab-bar";
@@ -185,14 +185,17 @@ export default async function ProfilePage() {
               coverY={user.coverY}
             />
             <Accessories
-              owned={purchases.map((row) => ({
-                id: row.item.id,
-                name: row.item.name,
-                spec: row.item.spec,
-                kind: row.item.kind,
-                mediaId: row.item.mediaId,
-                giftedBy: row.giftedBy?.name ?? null,
-              }))}
+              /* والحزمة لا تُلبَس: ما فيها من أصناف مُلّك وحده، فهو ما يُعرض. */
+              owned={purchases
+                .filter((row): row is typeof row & { item: { kind: Owned["kind"] } } => row.item.kind !== "BUNDLE")
+                .map((row) => ({
+                  id: row.item.id,
+                  name: row.item.name,
+                  spec: row.item.spec,
+                  kind: row.item.kind,
+                  mediaId: row.item.mediaId,
+                  giftedBy: row.giftedBy?.name ?? null,
+                }))}
               equippedFrame={user.frameId}
               equippedTheme={user.backgroundId}
               equippedCharm={user.charmId}

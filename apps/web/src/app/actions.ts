@@ -120,7 +120,7 @@ function readPalette(formData: FormData): string | null {
 export type AdminResult = { ok?: string; error?: string } | null;
 
 const storeItemInput = z.object({
-  kind: z.enum(["FRAME", "BACKGROUND", "THEME", "CHARM"]),
+  kind: z.enum(["FRAME", "BACKGROUND", "THEME", "CHARM", "BUNDLE"]),
   name: z.string().trim().min(1, "اكتب الاسم").max(40),
   priceCoins: z.coerce.number().int().min(0).max(1_000_000),
   spec: z.string().trim().min(1, "اكتب تدرّج CSS").max(1000),
@@ -521,6 +521,47 @@ function revalidateTags() {
   revalidatePath("/");
   revalidatePath("/me");
   revalidatePath("/circle");
+}
+
+/**
+ * ما تحمله الحزمة من أصناف.
+ *
+ * الحزمة صنفٌ لا يُلبَس: شراؤها يملّك ما بداخلها. وما يُشترى يُرى قبل
+ * شرائه (القاعدة ٦: لا صناديق عشوائية)، فبطاقتُها في المتجر ترسم ما
+ * فيها وتعدّه — ومن هنا يُملأ.
+ *
+ * ولا تحمل حزمةٌ حزمةً: عشٌّ يُحسب بلا قاع.
+ */
+export async function addToBundle(bundleId: string, formData: FormData): Promise<void> {
+  await requireAdmin("store");
+
+  const itemId = String(formData.get("itemId") ?? "");
+  if (!itemId) return;
+  if (itemId === bundleId) throw new Error("الحزمة لا تحمل نفسها");
+
+  const [bundle, item] = await Promise.all([
+    prisma.storeItem.findUnique({ where: { id: bundleId }, select: { kind: true } }),
+    prisma.storeItem.findUnique({ where: { id: itemId }, select: { kind: true } }),
+  ]);
+  if (!bundle || bundle.kind !== "BUNDLE") throw new Error("هذا ليس حزمة");
+  if (!item) throw new Error("الصنف غير موجود");
+  if (item.kind === "BUNDLE") throw new Error("الحزمة لا تحمل حزمة");
+
+  await prisma.bundleItem.upsert({
+    where: { bundleId_itemId: { bundleId, itemId } },
+    create: { bundleId, itemId },
+    update: {},
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/store");
+}
+
+export async function dropFromBundle(bundleId: string, itemId: string): Promise<void> {
+  await requireAdmin("store");
+  await prisma.bundleItem.deleteMany({ where: { bundleId, itemId } });
+  revalidatePath("/admin");
+  revalidatePath("/store");
 }
 
 export async function deleteStoreItem(itemId: string): Promise<void> {

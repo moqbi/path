@@ -159,7 +159,7 @@ export const useNoteCount = () =>
 
 export type StoreItem = {
   id: string;
-  kind: "FRAME" | "BACKGROUND" | "THEME" | "CHARM";
+  kind: "FRAME" | "BACKGROUND" | "THEME" | "CHARM" | "BUNDLE";
   name: string;
   priceCoins: number;
   spec: string;
@@ -169,6 +169,8 @@ export type StoreItem = {
   limited: boolean;
   categoryId: string | null;
   palette: string | null;
+  /** ما تحمله الحزمة — فارغٌ لما ليس حزمة. */
+  holds?: { item: { id: string; name: string; kind: string; spec: string; mediaId: string | null } }[];
 };
 
 export const useStore = () =>
@@ -179,7 +181,7 @@ export const useStore = () =>
         categories: { id: string; name: string; slug: string }[];
         items: StoreItem[];
         owned: string[];
-        rows: { fresh: StoreItem[]; themes: StoreItem[]; limited: StoreItem[] };
+        rows: { fresh: StoreItem[]; themes: StoreItem[]; bundles: StoreItem[]; limited: StoreItem[] };
         coins: number;
         isPlus: boolean;
         daysHere: number;

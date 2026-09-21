@@ -32,7 +32,17 @@ export default async function StorePage({
     prisma.storeCategory.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),
     // والمخفيّ لا يُعرض: بابُ الموسميّ — يُرفع ويُنزل بلا حذفٍ يُضيع
     // ما اشتراه أحد (`hidden`).
-    prisma.storeItem.findMany({ where: { hidden: false }, orderBy: { sortOrder: "asc" } }),
+    prisma.storeItem.findMany({
+      where: { hidden: false },
+      orderBy: { sortOrder: "asc" },
+      include: {
+        // ما تحمله الحزمة: بطاقتُها ترسمه وتعدّه، فلا تُشترى على غير علم.
+        holds: {
+          where: { item: { hidden: false } },
+          select: { item: { select: { id: true, name: true, spec: true, mediaId: true, kind: true } } },
+        },
+      },
+    }),
     prisma.purchase.findMany({ where: { userId: user.id }, select: { itemId: true } }),
   ]);
 
@@ -50,6 +60,7 @@ export default async function StorePage({
     earnedAfterDays: item.earnedAfterDays,
     limited: item.limited,
     mediaId: item.mediaId,
+    holds: item.holds.map((row) => row.item),
   });
 
   const grid = (items: typeof all) => (
@@ -71,6 +82,8 @@ export default async function StorePage({
     (item) => (item.kind === "THEME" || item.kind === "BACKGROUND") && !item.limited,
   );
   const limited = all.filter((item) => item.limited);
+  // والحزم صفٌّ بنفسها: ما جُمع في باقةٍ واحدة لا يُقرأ بين الأصناف المفردة.
+  const bundles = all.filter((item) => item.kind === "BUNDLE" && !item.limited);
 
   return (
     <div className="screen">
@@ -124,6 +137,8 @@ export default async function StorePage({
             </Row>
 
             <Row title="ثيمات آثار">{grid(themes)}</Row>
+
+            {bundles.length > 0 ? <Row title="باقات">{grid(bundles)}</Row> : null}
 
             <Row title="حزم محدودة">{grid(limited)}</Row>
           </>

@@ -24,6 +24,16 @@ const ITEM = {
   categoryId: true,
   palette: true,
   createdAt: true,
+  /*
+    ما تحمله الحزمة: بطاقتُها ترسمه وتعدّه، فما يُشترى يُرى قبل شرائه
+    (القاعدة ٦ تمنع الصناديق العشوائية).
+  */
+  holds: {
+    where: { item: { hidden: false } },
+    select: {
+      item: { select: { id: true, name: true, kind: true, spec: true, mediaId: true } },
+    },
+  },
 } as const;
 
 const FRESH = 3;
@@ -53,12 +63,14 @@ export async function storefront(userId: string) {
     (item) => (item.kind === "THEME" || item.kind === "BACKGROUND") && !item.limited,
   );
   const limited = items.filter((item) => item.limited);
+  // والحزم صفٌّ بنفسها: ما جُمع في باقةٍ واحدة لا يُقرأ بين الأصناف المفردة.
+  const bundles = items.filter((item) => item.kind === "BUNDLE" && !item.limited);
 
   return {
     categories,
     items,
     owned,
-    rows: { fresh, themes, limited },
+    rows: { fresh, themes, bundles, limited },
     coins: user?.coins ?? 0,
     isPlus: user?.isPlus ?? false,
     daysHere: user ? Math.floor((Date.now() - +user.createdAt) / 86_400_000) : 0,
@@ -94,6 +106,20 @@ const priceFor = (item: { priceCoins: number }, isPlus: boolean) =>
  * الخصم والتمليك في معاملةٍ واحدة حتى لا ينقص الرصيد بلا صنفٍ ولا يُملَك
  * صنفٌ بلا خصم. وما يُكتسب بالوقت لا يُشترى: يُنال بالبقاء لا بالمال.
  */
+/**
+ * ما تحمله الحزمة من أصناف — فارغةٌ لما ليس حزمة.
+ *
+ * والمخفيُّ منها يُتجاوَز: صنفٌ أُنزل من المتجر لا يُملَّك بشراء حزمةٍ
+ * قديمة تحمله.
+ */
+async function bundleContents(bundleId: string) {
+  const rows = await prisma.bundleItem.findMany({
+    where: { bundleId, item: { hidden: false } },
+    select: { item: { select: { id: true, coverMediaId: true } } },
+  });
+  return rows.map((row) => row.item);
+}
+
 export async function buy(userId: string, itemId: string) {
   const [me, item] = await Promise.all([
     prisma.user.findUnique({
@@ -122,13 +148,37 @@ export async function buy(userId: string, itemId: string) {
   const price = priceFor(item, me.isPlus);
   if (me.coins < price) throw badRequest("رصيدك لا يكفي");
 
+  /*
+    الحزمة صنفٌ لا يُلبَس: شراؤها يملّك ما بداخلها دفعةً واحدة، وما
+    يملكه المشتري منها أصلاً يُتجاوَز بلا خصمٍ ثانٍ. وسعرُها سعرُها هي
+    لا مجموعَ ما فيها — وهذا مكسبُ من يشتريها.
+  */
+  const inside = await bundleContents(itemId);
+  const already = new Set(
+    inside.length
+      ? (
+          await prisma.purchase.findMany({
+            where: { userId, itemId: { in: inside.map((one) => one.id) } },
+            select: { itemId: true },
+          })
+        ).map((row) => row.itemId)
+      : [],
+  );
+
   await prisma.$transaction([
     prisma.user.update({ where: { id: userId }, data: { coins: { decrement: price } } }),
     prisma.purchase.create({ data: { userId, itemId, paidCoins: price } }),
+    // وما بداخلها بثمنٍ صفر: ثمنُه دُفع في الحزمة، والصفّ ملكيّةٌ لا فاتورة.
+    ...inside
+      .filter((one) => !already.has(one.id))
+      .map((one) => prisma.purchase.create({ data: { userId, itemId: one.id, paidCoins: 0 } })),
   ]);
 
   // وغلافُ الثيم يُلبَس معه — خارج المعاملة: النسخ قد يمرّ بالسحابة.
   await wearItemCover(item.coverMediaId, userId);
+  for (const one of inside) {
+    if (!already.has(one.id)) await wearItemCover(one.coverMediaId, userId);
+  }
 
   return { ok: `اشتريت ${item.name}` };
 }
@@ -167,11 +217,31 @@ export async function gift(userId: string, itemId: string, toUserId: string) {
   const price = priceFor(item, me.isPlus);
   if (me.coins < price) throw badRequest("رصيدك لا يكفي");
 
+  // وحزمةٌ تُهدى تُملّك المُهدى إليه ما بداخلها كذلك.
+  const giftInside = await bundleContents(itemId);
+  const hasAlready = new Set(
+    giftInside.length
+      ? (
+          await prisma.purchase.findMany({
+            where: { userId: toUserId, itemId: { in: giftInside.map((one) => one.id) } },
+            select: { itemId: true },
+          })
+        ).map((row) => row.itemId)
+      : [],
+  );
+
   await prisma.$transaction([
     prisma.user.update({ where: { id: userId }, data: { coins: { decrement: price } } }),
     prisma.purchase.create({
       data: { userId: toUserId, itemId, paidCoins: price, giftedById: userId },
     }),
+    ...giftInside
+      .filter((one) => !hasAlready.has(one.id))
+      .map((one) =>
+        prisma.purchase.create({
+          data: { userId: toUserId, itemId: one.id, paidCoins: 0, giftedById: userId },
+        }),
+      ),
   ]);
 
   const [sent, got] = await prisma.$transaction([

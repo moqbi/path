@@ -550,7 +550,7 @@ function readPalette(formData: FormData): string | null {
 export type AdminResult = { ok?: string; error?: string } | null;
 
 const storeItemInput = z.object({
-  kind: z.enum(["FRAME", "BACKGROUND", "THEME", "CHARM"]),
+  kind: z.enum(["FRAME", "BACKGROUND", "THEME", "CHARM", "BUNDLE"]),
   name: z.string().trim().min(1, "اكتب الاسم").max(40),
   priceCoins: z.coerce.number().int().min(0).max(1_000_000),
   spec: z.string().trim().min(1, "اكتب تدرّج CSS").max(1000),
@@ -849,6 +849,47 @@ function revalidateTags() {
   revalidatePath("/");
   revalidatePath("/me");
   revalidatePath("/circle");
+}
+
+/**
+ * ما تحمله الحزمة من أصناف.
+ *
+ * الحزمة صنفٌ لا يُلبَس: شراؤها يملّك ما بداخلها. وما يُشترى يُرى قبل
+ * شرائه (القاعدة ٦: لا صناديق عشوائية)، فبطاقتُها في المتجر ترسم ما
+ * فيها وتعدّه — ومن هنا يُملأ.
+ *
+ * ولا تحمل حزمةٌ حزمةً: عشٌّ يُحسب بلا قاع.
+ */
+export async function addToBundle(bundleId: string, formData: FormData): Promise<void> {
+  await requireAdmin("store");
+
+  const itemId = String(formData.get("itemId") ?? "");
+  if (!itemId) return;
+  if (itemId === bundleId) throw new Error("الحزمة لا تحمل نفسها");
+
+  const [bundle, item] = await Promise.all([
+    prisma.storeItem.findUnique({ where: { id: bundleId }, select: { kind: true } }),
+    prisma.storeItem.findUnique({ where: { id: itemId }, select: { kind: true } }),
+  ]);
+  if (!bundle || bundle.kind !== "BUNDLE") throw new Error("هذا ليس حزمة");
+  if (!item) throw new Error("الصنف غير موجود");
+  if (item.kind === "BUNDLE") throw new Error("الحزمة لا تحمل حزمة");
+
+  await prisma.bundleItem.upsert({
+    where: { bundleId_itemId: { bundleId, itemId } },
+    create: { bundleId, itemId },
+    update: {},
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/store");
+}
+
+export async function dropFromBundle(bundleId: string, itemId: string): Promise<void> {
+  await requireAdmin("store");
+  await prisma.bundleItem.deleteMany({ where: { bundleId, itemId } });
+  revalidatePath("/admin");
+  revalidatePath("/store");
 }
 
 export async function deleteStoreItem(itemId: string): Promise<void> {
@@ -1574,6 +1615,20 @@ export async function editMessage(
 
 const PLUS_DISCOUNT = 0.2;
 
+/**
+ * ما تحمله الحزمة من أصناف — فارغةٌ لما ليس حزمة.
+ *
+ * والمخفيُّ منها يُتجاوَز: صنفٌ أُنزل من المتجر لا يُملَّك بشراء حزمةٍ
+ * قديمة تحمله.
+ */
+async function bundleContents(bundleId: string) {
+  const rows = await prisma.bundleItem.findMany({
+    where: { bundleId, item: { hidden: false } },
+    select: { item: { select: { id: true, coverMediaId: true } } },
+  });
+  return rows.map((row) => row.item);
+}
+
 export async function buyItem(itemId: string): Promise<void> {
   const user = await requireUser();
 
@@ -1603,6 +1658,25 @@ export async function buyItem(itemId: string): Promise<void> {
 
   if (user.coins < price) throw new Error("رصيدك لا يكفي");
 
+  /*
+    الحزمة صنفٌ لا يُلبَس: شراؤها يملّك ما بداخلها.
+
+    وما يملكه المشتري منها أصلاً يُتجاوَز بلا خصمٍ ثانٍ — والسعر سعرُ
+    الحزمة كما هو: من اشتراها وهو يملك نصفها اشترى النصف الآخر بسعرها،
+    وهذا ما تقوله بطاقتُها قبل الضغط.
+  */
+  const inside = await bundleContents(itemId);
+  const already = inside.length
+    ? new Set(
+        (
+          await prisma.purchase.findMany({
+            where: { userId: user.id, itemId: { in: inside.map((one) => one.id) } },
+            select: { itemId: true },
+          })
+        ).map((row) => row.itemId),
+      )
+    : new Set<string>();
+
   // الخصم والشراء في معاملة واحدة حتى لا ينقص الرصيد بلا صنف والعكس.
   await prisma.$transaction([
     prisma.user.update({
@@ -1610,9 +1684,19 @@ export async function buyItem(itemId: string): Promise<void> {
       data: { coins: { decrement: price } },
     }),
     prisma.purchase.create({ data: { userId: user.id, itemId, paidCoins: price } }),
+    // وما بداخلها بثمنٍ صفر: ثمنُه دُفع في الحزمة، والصفّ ملكيّةٌ لا فاتورة.
+    ...inside
+      .filter((one) => !already.has(one.id))
+      .map((one) =>
+        prisma.purchase.create({ data: { userId: user.id, itemId: one.id, paidCoins: 0 } }),
+      ),
   ]);
 
   await wearItemCover(item.coverMediaId, user.id);
+  // وغلافُ ثيمٍ داخل الحزمة يُلبَس كما لو اشتُري وحده.
+  for (const one of inside) {
+    if (!already.has(one.id)) await wearItemCover(one.coverMediaId, user.id);
+  }
 
   revalidatePath("/store");
   revalidatePath("/me");
@@ -1693,6 +1777,19 @@ export async function giftItem(
     : item.priceCoins;
   if (user.coins < price) return { error: "رصيدك لا يكفي" };
 
+  // وحزمةٌ تُهدى تُملّك المُهدى إليه ما بداخلها كذلك.
+  const giftInside = await bundleContents(itemId);
+  const hasAlready = new Set(
+    giftInside.length
+      ? (
+          await prisma.purchase.findMany({
+            where: { userId: toUserId, itemId: { in: giftInside.map((one) => one.id) } },
+            select: { itemId: true },
+          })
+        ).map((row) => row.itemId)
+      : [],
+  );
+
   await prisma.$transaction([
     prisma.user.update({
       where: { id: user.id },
@@ -1701,6 +1798,13 @@ export async function giftItem(
     prisma.purchase.create({
       data: { userId: toUserId, itemId, paidCoins: price, giftedById: user.id },
     }),
+    ...giftInside
+      .filter((one) => !hasAlready.has(one.id))
+      .map((one) =>
+        prisma.purchase.create({
+          data: { userId: toUserId, itemId: one.id, paidCoins: 0, giftedById: user.id },
+        }),
+      ),
   ]);
 
   /*

@@ -28,6 +28,7 @@ import { Suspend } from "./suspend";
 import { PlusGrant } from "./plus";
 import { ItemImage } from "./item-image";
 import { ItemCover } from "./item-cover";
+import { BundleItems } from "./bundle";
 import { coinText, ar, relative } from "@/lib/format";
 import { parsePalette } from "@/lib/theme";
 
@@ -61,6 +62,7 @@ const KINDS = [
   { value: "THEME", label: "ثيم" },
   { value: "CHARM", label: "تميمة" },
   { value: "BACKGROUND", label: "خلفية" },
+  { value: "BUNDLE", label: "حزمة" },
 ] as const;
 
 const KIND_LABEL: Record<string, string> = {
@@ -68,6 +70,7 @@ const KIND_LABEL: Record<string, string> = {
   THEME: "ثيم",
   CHARM: "تميمة",
   BACKGROUND: "خلفية",
+  BUNDLE: "حزمة",
 };
 
 const STORE_VIEWS = [
@@ -259,6 +262,14 @@ export default async function AdminPage({
       include: {
         _count: { select: { purchases: true } },
         media: { select: { mime: true } },
+        // ما تحمله الحزمة — يُقرأ هنا لتُعرض قائمتُه ويُحسب مجموع أسعارها.
+        holds: {
+          select: {
+            item: {
+              select: { id: true, name: true, kind: true, spec: true, mediaId: true, priceCoins: true },
+            },
+          },
+        },
       },
     }),
     prisma.tag.findMany({
@@ -808,6 +819,24 @@ export default async function AdminPage({
                           */}
                           {item.kind === "THEME" || item.kind === "BACKGROUND" ? (
                             <ItemCover itemId={item.id} mediaId={item.coverMediaId} />
+                          ) : null}
+
+                          {/* والحزمة تُملأ من هنا: ما فيها يُرى قبل أن يُشترى. */}
+                          {item.kind === "BUNDLE" ? (
+                            <BundleItems
+                              bundleId={item.id}
+                              holds={item.holds.map((row) => row.item)}
+                              all={items
+                                .filter((one) => one.kind !== "BUNDLE")
+                                .map((one) => ({
+                                  id: one.id,
+                                  name: one.name,
+                                  kind: one.kind,
+                                  spec: one.spec,
+                                  mediaId: one.mediaId,
+                                  priceCoins: one.priceCoins,
+                                }))}
+                            />
                           ) : null}
                         </div>
 
