@@ -123,6 +123,25 @@ async function readSnap(accessToken: string): Promise<Identity> {
   };
 }
 
+/**
+ * سببُ خطأٍ نصّاً، ومعه سببُه إن كان له سبب.
+ *
+ * `fetch` في Node تردّ «fetch failed» لكلّ عطلٍ في الشبكة — عنوانٌ لا
+ * يُحلّ، ومنفذٌ مغلق، ومصافحةٌ مرفوضة، ومهلةٌ — والفرقُ بينها كلُّ ما
+ * يهمّ، وهو في `cause` وحدها. وبلا قراءتها يبقى السجلّ يقول «فشل».
+ */
+function why(problem: unknown): string {
+  if (!(problem instanceof Error)) return String(problem);
+  const cause = problem.cause;
+  const inner =
+    cause instanceof Error
+      ? `${cause.message}${"code" in cause ? ` (${String((cause as { code?: unknown }).code)})` : ""}`
+      : cause
+        ? String(cause)
+        : "";
+  return inner ? `${problem.message} · ${inner}` : problem.message;
+}
+
 export async function readIdentity(
   provider: "GOOGLE" | "APPLE" | "SNAP",
   idToken: string,
@@ -139,7 +158,7 @@ export async function readIdentity(
        من يجرّب — ولا تُسطَّح في السجلّ: بلا هذا السطر يبقى «تعذّر
        التحقّق من الرمز» كلَّ ما يملكه من يصلح العطل.
     */
-    console.error("[oauth]", provider, problem instanceof Error ? problem.message : String(problem));
+    console.error("[oauth]", provider, why(problem));
     throw unauthorized("تعذّر التحقّق من الرمز");
   }
 }
