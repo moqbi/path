@@ -4,6 +4,7 @@ import * as Google from "expo-auth-session/providers/google";
 import * as AuthSession from "expo-auth-session";
 import { api, saveTokens } from "./api";
 import type { Me } from "./session";
+import { appUrl } from "@athar/shared";
 
 /**
  * الدخول بمزوّد على الجوّال.
@@ -120,8 +121,11 @@ export function snapReady(): boolean {
  * `/snap/callback` وهي تردّ المستخدم إلى التطبيق بما جاء منها.
  */
 function snapRedirect(): string {
-  const site = (process.env.EXPO_PUBLIC_SITE_URL ?? "").replace(/\/+$/, "");
-  return site ? `${site}/snap/callback` : AuthSession.makeRedirectUri({ scheme: "athar", path: "snap" });
+  // و`appUrl` لا `SITE_URL` عارياً: الصفحةُ تحت `/app` منذ صار الجذرُ
+  // لصفحة الهبوط (القاعدة ١٢٢)، وعنوانٌ لا يطابق ما سُجّل عند سناب
+  // يُردّ بـ«تعذّر تحميل بيانات المصادقة» قبل أن يُسأل المستخدم شيئاً.
+  const site = appUrl("/snap/callback");
+  return site || AuthSession.makeRedirectUri({ scheme: "athar", path: "snap" });
 }
 
 export function useSnap() {

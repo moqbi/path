@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 import { createSession } from "@/lib/auth";
 import { readIdentity, upsertIdentity } from "@/lib/oauth";
-import { SITE_URL } from "@/lib/site-url";
+import { SITE_URL, appUrl } from "@/lib/site-url";
 
 /**
  * عودةُ سناب: تُبادَل الشيفرةُ برمز وصول، ثمّ يُسأل خادمُ سناب عن
@@ -15,7 +15,7 @@ const TOKEN = "https://accounts.snapchat.com/accounts/oauth2/token";
 
 export async function GET(request: NextRequest) {
   const back = (reason: string) =>
-    NextResponse.redirect(new URL(`/login?snap=${reason}`, SITE_URL || request.url));
+    NextResponse.redirect(appUrl(`/login?snap=${reason}`) || new URL(`/login?snap=${reason}`, request.url));
 
   const code = request.nextUrl.searchParams.get("code");
   const state = request.nextUrl.searchParams.get("state");
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
         grant_type: "authorization_code",
         code,
         client_id: clientId,
-        redirect_uri: `${SITE_URL}/api/snap/finish`,
+        redirect_uri: appUrl("/api/snap/finish"),
         code_verifier: verifier,
       }),
     });
@@ -55,5 +55,5 @@ export async function GET(request: NextRequest) {
     return back("fail");
   }
 
-  return NextResponse.redirect(new URL("/", SITE_URL || request.url));
+  return NextResponse.redirect(appUrl("/") || new URL("/", request.url));
 }

@@ -104,3 +104,20 @@ export const SITE_URL: string =
 
 /** هل يوجد عنوانٌ صالح؟ أقصرُ من `SITE_URL !== ""` في كل موضع. */
 export const hasSite = (): boolean => SITE_URL.startsWith("http");
+
+/**
+ * جذرُ تطبيق الويب على النطاق (القاعدة ١٢٢).
+ *
+ * الموقعُ العامّ يملك `/` — الهبوطَ و`/u` و`/admin` و`/contact` — وتطبيقُ
+ * الويب يجلس تحت `/app`. فما يقصد **شاشةً في التطبيق** يمرّ بـ`appUrl`،
+ * وما يقصد الموقعَ العامّ يبقى على `SITE_URL` عارياً.
+ *
+ * ونسختُه في `src/lib/base.ts` للتطبيق نفسه: ذاك مشروعٌ بـnpm لا يرى
+ * حزمَ pnpm، و`next.config.ts` يقرؤها منه قبل أن يُحلّ شيء. وهما سطرٌ
+ * واحد، فإن تغيّر تغيّرا معاً.
+ */
+export const WEB_BASE = "/app";
+
+/** رابطٌ مطلقٌ إلى شاشةٍ في التطبيق: `appUrl("/snap/callback")`. */
+export const appUrl = (path: string): string =>
+  hasSite() ? `${SITE_URL.replace(/\/+$/, "")}${WEB_BASE}${path}` : "";

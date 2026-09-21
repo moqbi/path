@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "@/lib/db";
-import { SITE_URL } from "@/lib/site-url";
+import { SITE_URL, appUrl } from "@/lib/site-url";
 import { letterHtml, sendMail } from "@/lib/mail";
 
 /**
@@ -80,7 +80,7 @@ export async function sendVerify(userId: string, email: string, name: string): P
   const token = await issue(userId, "VERIFY");
   if (!token) return false;
 
-  const url = `${SITE_URL}/verify?token=${token}`;
+  const url = appUrl(`/verify?token=${token}`);
   return sendMail({
     to: email,
     subject: "أكّد بريدك في آثار",
@@ -107,7 +107,7 @@ export async function sendReset(userId: string, email: string, name: string): Pr
   const token = await issue(userId, "RESET");
   if (!token) return false;
 
-  const url = `${SITE_URL}/reset?token=${token}`;
+  const url = appUrl(`/reset?token=${token}`);
   return sendMail({
     to: email,
     subject: "إعادة ضبط كلمة مرورك في آثار",

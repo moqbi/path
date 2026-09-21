@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { SITE_URL } from "@/lib/site-url";
+import { SITE_URL, appUrl } from "@/lib/site-url";
 
 /**
  * بدءُ الدخول بسناب من الويب.
@@ -36,7 +36,7 @@ export async function GET() {
 
   const query = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: `${SITE_URL}/api/snap/finish`,
+    redirect_uri: appUrl("/api/snap/finish"),
     response_type: "code",
     scope: SCOPES,
     state,
