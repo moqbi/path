@@ -20,3 +20,6 @@ next-env.d.ts
 *-firebase-adminsdk-*.json
 google-services.json
 GoogleService-Info.plist
+
+# قفلُ npm: المستودع بـpnpm، ووجودُ قفلين يجعل EAS يختار الخطأ منهما
+package-lock.json
