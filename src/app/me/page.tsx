@@ -305,14 +305,19 @@ export default async function ProfilePage() {
           </div>
         </div>
 
+        {/*
+           و`a` لا `Link`: اللوحة خارج جذر التطبيق (`/app` — القاعدة
+           ١٢٢)، و`next/link` يسبق كلَّ مسارٍ بالجذر فيصير `/app/admin`
+           — وذاك بابٌ حُذف.
+        */}
         {user.role === "ADMIN" ? (
-          <Link
+          <a
             href="/admin"
             className="mb-3 flex items-center justify-center gap-2 rounded-xl border border-line bg-card text-[14px] font-semibold text-ink-2"
             style={{ height: 48 }}
           >
             لوحة التحكم
-          </Link>
+          </a>
         ) : null}
 
         {!user.isPlus ? (

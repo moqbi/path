@@ -732,177 +732,7 @@ const categoryInput = z.object({
   sortOrder: z.coerce.number().int().min(0).max(999).optional(),
 });
 
-export async function createStoreItem(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
-  await requireAdmin("store");
-
-  const parsed = storeItemInput.safeParse({
-    kind: formData.get("kind"),
-    name: formData.get("name"),
-    // الحقل الفارغ يعني صفراً لا `NaN` — وإلا انكسر الحفظ بلا سبب مفهوم.
-    priceCoins: formData.get("priceCoins") || 0,
-    spec: formData.get("spec"),
-    plusOnly: formData.get("plusOnly") === "on",
-    earnedAfterDays: formData.get("earnedAfterDays") || undefined,
-    categoryId: formData.get("categoryId") || undefined,
-    limited: formData.get("limited") === "on",
-    hidden: formData.get("hidden") === "on",
-  });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
-
-  const { kind, name, priceCoins, spec, plusOnly, earnedAfterDays, categoryId, limited, hidden } =
-    parsed.data;
-  const last = await prisma.storeItem.findFirst({
-    orderBy: { sortOrder: "desc" },
-    select: { sortOrder: true },
-  });
-
-  await prisma.storeItem.create({
-    data: {
-      kind,
-      name,
-      // الأسعار تُدخَل بالريال وتُخزَّن بالهللات، فلا تدخل كسور عشرية القاعدة.
-      priceCoins,
-      spec,
-      plusOnly,
-      earnedAfterDays: earnedAfterDays && earnedAfterDays > 0 ? earnedAfterDays : null,
-      categoryId: categoryId || null,
-      limited,
-      hidden,
-      palette: readPalette(formData),
-      sortOrder: (last?.sortOrder ?? 0) + 1,
-    },
-  });
-
-  revalidatePath("/admin");
-  revalidatePath("/store");
-  return { ok: `أُضيف «${name}»` };
-}
-
-export async function updateStoreItem(
-  itemId: string,
-  _prev: AdminResult,
-  formData: FormData,
-): Promise<AdminResult> {
-  await requireAdmin("store");
-
-  const parsed = storeItemInput.safeParse({
-    kind: formData.get("kind"),
-    name: formData.get("name"),
-    priceCoins: formData.get("priceCoins") || 0,
-    spec: formData.get("spec"),
-    plusOnly: formData.get("plusOnly") === "on",
-    earnedAfterDays: formData.get("earnedAfterDays") || undefined,
-    categoryId: formData.get("categoryId") || undefined,
-    limited: formData.get("limited") === "on",
-    hidden: formData.get("hidden") === "on",
-    sortOrder: formData.get("sortOrder") || undefined,
-  });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
-
-  const {
-    kind,
-    name,
-    priceCoins,
-    spec,
-    plusOnly,
-    earnedAfterDays,
-    categoryId,
-    limited,
-    hidden,
-    sortOrder,
-  } = parsed.data;
-  await prisma.storeItem.update({
-    where: { id: itemId },
-    data: {
-      kind,
-      name,
-      priceCoins,
-      spec,
-      plusOnly,
-      earnedAfterDays: earnedAfterDays && earnedAfterDays > 0 ? earnedAfterDays : null,
-      categoryId: categoryId || null,
-      limited,
-      hidden,
-      palette: readPalette(formData),
-      sortOrder: sortOrder ?? undefined,
-    },
-  });
-
-  revalidatePath("/admin");
-  revalidatePath("/store");
-  return { ok: "حُفظ" };
-}
-
 // ───────────────────────── تصنيفات المتجر (اللوحة) ─────────────────────────
-
-export async function createCategory(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
-  await requireAdmin("store");
-
-  const parsed = categoryInput.safeParse({
-    name: formData.get("name"),
-    slug: formData.get("slug"),
-    sortOrder: formData.get("sortOrder") || undefined,
-  });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
-
-  const { name, slug, sortOrder } = parsed.data;
-  const taken = await prisma.storeCategory.findUnique({ where: { slug } });
-  if (taken) return { error: "المعرّف مستعمل" };
-
-  const last = await prisma.storeCategory.findFirst({
-    orderBy: { sortOrder: "desc" },
-    select: { sortOrder: true },
-  });
-
-  await prisma.storeCategory.create({
-    data: { name, slug, sortOrder: sortOrder ?? (last?.sortOrder ?? 0) + 1 },
-  });
-
-  revalidatePath("/admin");
-  revalidatePath("/store");
-  return { ok: `أُضيف تصنيف «${name}»` };
-}
-
-export async function updateCategory(
-  categoryId: string,
-  _prev: AdminResult,
-  formData: FormData,
-): Promise<AdminResult> {
-  await requireAdmin("store");
-
-  const parsed = categoryInput.safeParse({
-    name: formData.get("name"),
-    slug: formData.get("slug"),
-    sortOrder: formData.get("sortOrder") || undefined,
-  });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
-
-  const { name, slug, sortOrder } = parsed.data;
-  const taken = await prisma.storeCategory.findUnique({ where: { slug } });
-  if (taken && taken.id !== categoryId) return { error: "المعرّف مستعمل" };
-
-  await prisma.storeCategory.update({
-    where: { id: categoryId },
-    data: {
-      name,
-      slug,
-      sortOrder: sortOrder ?? undefined,
-      active: formData.get("active") === "on",
-    },
-  });
-
-  revalidatePath("/admin");
-  revalidatePath("/store");
-  return { ok: "حُفظ" };
-}
-
-/** حذف تصنيف لا يحذف أصنافه: تعود بلا تصنيف، ولا يضيع ما اشتراه أحد. */
-export async function deleteCategory(categoryId: string): Promise<void> {
-  await requireAdmin("store");
-  await prisma.storeCategory.delete({ where: { id: categoryId } });
-  revalidatePath("/admin");
-  revalidatePath("/store");
-}
 
 // ───────────────────────────── الوسوم ─────────────────────────────
 
@@ -934,161 +764,11 @@ async function keepSingleAuto(tagId: string, autoForPlus: boolean) {
   });
 }
 
-export async function createTag(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
-  await requireAdmin();
-  const parsed = readTag(formData);
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
-
-  const data = parsed.data;
-  const last = await prisma.tag.findFirst({ orderBy: { sortOrder: "desc" }, select: { sortOrder: true } });
-  const tag = await prisma.tag.create({ data: { ...data, sortOrder: (last?.sortOrder ?? 0) + 1 } });
-  await keepSingleAuto(tag.id, data.autoForPlus);
-  revalidateTags();
-  return { ok: `أُضيف وسم «${data.name}»` };
-}
-
-export async function updateTag(
-  tagId: string,
-  _prev: AdminResult,
-  formData: FormData,
-): Promise<AdminResult> {
-  await requireAdmin();
-  const parsed = readTag(formData);
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
-
-  await prisma.tag.update({ where: { id: tagId }, data: parsed.data });
-  await keepSingleAuto(tagId, parsed.data.autoForPlus);
-  revalidateTags();
-  return { ok: "حُفظ" };
-}
-
-export async function deleteTag(tagId: string): Promise<void> {
-  await requireAdmin();
-  // الحاملون يفقدون الوسم لا حساباتهم — العلاقة `SetNull`.
-  await prisma.tag.delete({ where: { id: tagId } });
-  revalidateTags();
-}
-
-/** منح الوسم لحساب، أو نزعه بقيمة فارغة. */
-export async function setUserTag(userId: string, formData: FormData): Promise<void> {
-  await requireAdmin();
-  const raw = String(formData.get("tagId") ?? "");
-  const tagId = raw.length > 0 ? raw : null;
-  if (tagId) {
-    const exists = await prisma.tag.findUnique({ where: { id: tagId }, select: { id: true } });
-    if (!exists) throw new Error("الوسم غير موجود");
-  }
-  await prisma.user.update({ where: { id: userId }, data: { tagId } });
-  revalidateTags();
-}
-
-/**
- * فتحُ حسابٍ للجميع — للمالك وحده.
- *
- * حسابُ أخبار التطبيق ونحوه: بطاقتُه ولحظاتُه **الموجّهة إلى الدائرة
- * كلها** تُقرأ بلا صداقة، ويقبل طلب إضافةٍ من أيّ أحد. وما خصّ به
- * صاحبُه تصنيفاً أو أشخاصاً بأعيانهم يبقى لهم وحدهم.
- *
- * ولحظاتُه **لا تدخل خطّ أحدٍ قبل أن يُضيفه**: تُقرأ بزيارةٍ مقصودة
- * لملفّه — لا استكشاف عام في آثار (القاعدة ٢)، ولا محتوى يُدفع إلى
- * خطوط الناس بلا إذنهم.
- *
- * وحقلٌ يُمنح لحسابٍ بعينه لا رقمُ عضويةٍ مكتوبٌ في الكود: رقمُ ٣ اليوم
- * قد يصير غيرَه غداً، والمكتوبُ يبقى في ملفٍّ منسيّ.
- */
-export async function setOpenAccount(userId: string, open: boolean): Promise<void> {
-  await requireAdmin();
-  await prisma.user.update({ where: { id: userId }, data: { isOpen: open } });
-  revalidateTags();
-}
-
 function revalidateTags() {
   revalidatePath("/admin");
   revalidatePath("/");
   revalidatePath("/me");
   revalidatePath("/circle");
-}
-
-/**
- * ما تحمله الحزمة من أصناف.
- *
- * الحزمة صنفٌ لا يُلبَس: شراؤها يملّك ما بداخلها. وما يُشترى يُرى قبل
- * شرائه (القاعدة ٦: لا صناديق عشوائية)، فبطاقتُها في المتجر ترسم ما
- * فيها وتعدّه — ومن هنا يُملأ.
- *
- * ولا تحمل حزمةٌ حزمةً: عشٌّ يُحسب بلا قاع.
- */
-export async function addToBundle(bundleId: string, formData: FormData): Promise<void> {
-  await requireAdmin("store");
-
-  const itemId = String(formData.get("itemId") ?? "");
-  if (!itemId) return;
-  if (itemId === bundleId) throw new Error("الحزمة لا تحمل نفسها");
-
-  const [bundle, item] = await Promise.all([
-    prisma.storeItem.findUnique({ where: { id: bundleId }, select: { kind: true } }),
-    prisma.storeItem.findUnique({ where: { id: itemId }, select: { kind: true } }),
-  ]);
-  if (!bundle || bundle.kind !== "BUNDLE") throw new Error("هذا ليس حزمة");
-  if (!item) throw new Error("الصنف غير موجود");
-  if (item.kind === "BUNDLE") throw new Error("الحزمة لا تحمل حزمة");
-
-  await prisma.bundleItem.upsert({
-    where: { bundleId_itemId: { bundleId, itemId } },
-    create: { bundleId, itemId },
-    update: {},
-  });
-
-  revalidatePath("/admin");
-  revalidatePath("/store");
-}
-
-export async function dropFromBundle(bundleId: string, itemId: string): Promise<void> {
-  await requireAdmin("store");
-  await prisma.bundleItem.deleteMany({ where: { bundleId, itemId } });
-  revalidatePath("/admin");
-  revalidatePath("/store");
-}
-
-export async function deleteStoreItem(itemId: string): Promise<void> {
-  await requireAdmin("store");
-  await prisma.storeItem.delete({ where: { id: itemId } });
-  revalidatePath("/admin");
-  revalidatePath("/store");
-}
-
-export async function grantCredit(userId: string, riyals: number): Promise<void> {
-  await requireAdmin();
-  await prisma.user.update({
-    where: { id: userId },
-    data: { coins: { increment: Math.round(riyals * 100) } },
-  });
-  revalidatePath("/admin");
-}
-
-/**
- * منح صلاحية اللوحة وسحبها — للمالك وحده.
- *
- * لا يُمنح دور `ADMIN` لأحد: المالك واحد، وما يُمنح مدىً يُسحب بضغطة،
- * ولا يستطيع الممنوح أن يرفع نفسه ولا أن يمنح غيره.
- */
-export async function setAdminScope(userId: string, formData: FormData): Promise<void> {
-  const owner = await requireOwner();
-  const raw = String(formData.get("scope") ?? "NONE");
-  const scope = raw === "ALL" || raw === "STORE" ? raw : "NONE";
-  /*
-    والإشراف على المحتوى صلاحيةٌ ثانية في النموذج نفسه، لا نموذجٌ ثانٍ:
-    المالك يقرّر الدرجتين لشخصٍ واحد في نظرةٍ واحدة. وهي **مستقلّة** عن
-    المدى: من يدير المتجر لا يحتاج أن يقرأ لحظات الناس.
-  */
-  const moderate = formData.get("moderate") === "on";
-  // المالك لا يُنقص نفسه من حيث لا يدري.
-  if (userId === owner.id) return;
-  await prisma.user.update({
-    where: { id: userId },
-    data: { adminScope: scope, canModerate: moderate },
-  });
-  revalidatePath("/admin");
 }
 
 /**
@@ -1171,38 +851,6 @@ export async function openTicket(_prev: AdminResult, formData: FormData): Promis
   revalidatePath("/settings/support");
   revalidatePath("/admin");
   return { ok: "وصلتنا رسالتك — نردّ عليك هنا" };
-}
-
-export async function replyTicket(
-  ticketId: string,
-  _prev: AdminResult,
-  formData: FormData,
-): Promise<AdminResult> {
-  await requireAdmin();
-  const reply = String(formData.get("reply") ?? "").trim().slice(0, 1200);
-  if (reply.length < 2) return { error: "اكتب الردّ" };
-
-  const ticket = await prisma.supportTicket.update({
-    where: { id: ticketId },
-    data: { reply, repliedAt: new Date() },
-    select: { email: true, name: true, body: true, userId: true },
-  });
-
-  // من كتب من الموقع بلا حساب لا شاشةَ له، فالردّ يذهب إلى بريده.
-  if (!ticket.userId && ticket.email) {
-    void mailReply({ to: ticket.email, name: ticket.name, question: ticket.body, reply });
-  }
-
-  revalidatePath("/admin");
-  revalidatePath("/settings/support");
-  return { ok: "أُرسل الردّ" };
-}
-
-export async function closeTicket(ticketId: string): Promise<void> {
-  await requireAdmin();
-  await prisma.supportTicket.update({ where: { id: ticketId }, data: { closed: true } });
-  revalidatePath("/admin");
-  revalidatePath("/settings/support");
 }
 
 // ───────────────────────────── الدائرة ─────────────────────────────
@@ -1890,80 +1538,6 @@ async function bundleContents(bundleId: string) {
   return rows.map((row) => row.item);
 }
 
-export async function buyItem(itemId: string): Promise<void> {
-  const user = await requireUser();
-
-  const item = await prisma.storeItem.findUnique({ where: { id: itemId } });
-  if (!item) throw new Error("الصنف غير موجود");
-  /*
-    والمخفيّ لا يُشترى ولو عُرف معرّفه: إجراءُ الخادم يُستدعى بـPOST
-    مباشرةً، فإخفاؤه من الشاشة ليس منعاً. و«غير موجود» لا «مخفيّ» —
-    وجودُه ليس ممّا يُخبَر به.
-  */
-  if (item.hidden) throw new Error("الصنف غير موجود");
-  if (item.plusOnly && !user.isPlus) throw new Error("هذا الصنف لمشتركي آثار+");
-
-  if (item.earnedAfterDays !== null) {
-    const days = Math.floor((Date.now() - user.createdAt.getTime()) / 86_400_000);
-    if (days < item.earnedAfterDays) throw new Error("هذا الصنف يُكتسب بالوقت، لا يُشترى");
-  }
-
-  const price = user.isPlus
-    ? Math.round(item.priceCoins * (1 - PLUS_DISCOUNT))
-    : item.priceCoins;
-
-  const owned = await prisma.purchase.findUnique({
-    where: { userId_itemId: { userId: user.id, itemId } },
-  });
-  if (owned) return;
-
-  if (user.coins < price) throw new Error("رصيدك لا يكفي");
-
-  /*
-    الحزمة صنفٌ لا يُلبَس: شراؤها يملّك ما بداخلها.
-
-    وما يملكه المشتري منها أصلاً يُتجاوَز بلا خصمٍ ثانٍ — والسعر سعرُ
-    الحزمة كما هو: من اشتراها وهو يملك نصفها اشترى النصف الآخر بسعرها،
-    وهذا ما تقوله بطاقتُها قبل الضغط.
-  */
-  const inside = await bundleContents(itemId);
-  const already = inside.length
-    ? new Set(
-        (
-          await prisma.purchase.findMany({
-            where: { userId: user.id, itemId: { in: inside.map((one) => one.id) } },
-            select: { itemId: true },
-          })
-        ).map((row) => row.itemId),
-      )
-    : new Set<string>();
-
-  // الخصم والشراء في معاملة واحدة حتى لا ينقص الرصيد بلا صنف والعكس.
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: user.id },
-      data: { coins: { decrement: price } },
-    }),
-    prisma.purchase.create({ data: { userId: user.id, itemId, paidCoins: price } }),
-    // وما بداخلها بثمنٍ صفر: ثمنُه دُفع في الحزمة، والصفّ ملكيّةٌ لا فاتورة.
-    ...inside
-      .filter((one) => !already.has(one.id))
-      .map((one) =>
-        prisma.purchase.create({ data: { userId: user.id, itemId: one.id, paidCoins: 0 } }),
-      ),
-  ]);
-
-  await wearItemCover(item.coverMediaId, user.id);
-  // وغلافُ ثيمٍ داخل الحزمة يُلبَس كما لو اشتُري وحده.
-  for (const one of inside) {
-    if (!already.has(one.id)) await wearItemCover(one.coverMediaId, user.id);
-  }
-
-  revalidatePath("/store");
-  revalidatePath("/me");
-  revalidatePath("/");
-}
-
 /**
  * غلافُ الثيم يُلبَس عند شرائه.
  *
@@ -2094,10 +1668,90 @@ export async function giftItem(
 }
 
 /**
+ * الشراءُ نفسه — **غير مُصدَّر**.
+ *
+ * كان إجراءَ خادمٍ تناديه شبكةُ اللوحة القديمة، وقد ذهبت. وما بقي له
+ * منادٍ إلا `buyNow` في هذا الملفّ — وإبقاؤه مُصدَّراً يترك باب شراءٍ
+ * حيّاً بـPOST لا شاشةَ تحرسه ولا أحد ينظر إليه.
+ */
+async function buyItem(itemId: string): Promise<void> {
+  const user = await requireUser();
+
+  const item = await prisma.storeItem.findUnique({ where: { id: itemId } });
+  if (!item) throw new Error("الصنف غير موجود");
+  /*
+    والمخفيّ لا يُشترى ولو عُرف معرّفه: إجراءُ الخادم يُستدعى بـPOST
+    مباشرةً، فإخفاؤه من الشاشة ليس منعاً. و«غير موجود» لا «مخفيّ» —
+    وجودُه ليس ممّا يُخبَر به.
+  */
+  if (item.hidden) throw new Error("الصنف غير موجود");
+  if (item.plusOnly && !user.isPlus) throw new Error("هذا الصنف لمشتركي آثار+");
+
+  if (item.earnedAfterDays !== null) {
+    const days = Math.floor((Date.now() - user.createdAt.getTime()) / 86_400_000);
+    if (days < item.earnedAfterDays) throw new Error("هذا الصنف يُكتسب بالوقت، لا يُشترى");
+  }
+
+  const price = user.isPlus
+    ? Math.round(item.priceCoins * (1 - PLUS_DISCOUNT))
+    : item.priceCoins;
+
+  const owned = await prisma.purchase.findUnique({
+    where: { userId_itemId: { userId: user.id, itemId } },
+  });
+  if (owned) return;
+
+  if (user.coins < price) throw new Error("رصيدك لا يكفي");
+
+  /*
+    الحزمة صنفٌ لا يُلبَس: شراؤها يملّك ما بداخلها.
+
+    وما يملكه المشتري منها أصلاً يُتجاوَز بلا خصمٍ ثانٍ — والسعر سعرُ
+    الحزمة كما هو: من اشتراها وهو يملك نصفها اشترى النصف الآخر بسعرها،
+    وهذا ما تقوله بطاقتُها قبل الضغط.
+  */
+  const inside = await bundleContents(itemId);
+  const already = inside.length
+    ? new Set(
+        (
+          await prisma.purchase.findMany({
+            where: { userId: user.id, itemId: { in: inside.map((one) => one.id) } },
+            select: { itemId: true },
+          })
+        ).map((row) => row.itemId),
+      )
+    : new Set<string>();
+
+  // الخصم والشراء في معاملة واحدة حتى لا ينقص الرصيد بلا صنف والعكس.
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: user.id },
+      data: { coins: { decrement: price } },
+    }),
+    prisma.purchase.create({ data: { userId: user.id, itemId, paidCoins: price } }),
+    // وما بداخلها بثمنٍ صفر: ثمنُه دُفع في الحزمة، والصفّ ملكيّةٌ لا فاتورة.
+    ...inside
+      .filter((one) => !already.has(one.id))
+      .map((one) =>
+        prisma.purchase.create({ data: { userId: user.id, itemId: one.id, paidCoins: 0 } }),
+      ),
+  ]);
+
+  await wearItemCover(item.coverMediaId, user.id);
+  // وغلافُ ثيمٍ داخل الحزمة يُلبَس كما لو اشتُري وحده.
+  for (const one of inside) {
+    if (!already.has(one.id)) await wearItemCover(one.coverMediaId, user.id);
+  }
+
+  revalidatePath("/store");
+  revalidatePath("/me");
+  revalidatePath("/");
+}
+/**
  * شراءٌ من نافذةٍ لا من صفحة المتجر: يردّ الرسالة ولا يرميها.
  *
- * الرمي في `buyItem` يناسب شبكة المتجر التي تُعيد الرسم بعده، ولا يناسب
- * نافذةً صغيرة فوق ملف صديقك — فيها تُقرأ النتيجة في مكانها.
+ * الرمي في `buyItem` لا يناسب نافذةً صغيرة فوق ملف صديقك: فيها تُقرأ
+ * النتيجة في مكانها لا في شاشةِ خطأٍ عامّة (القاعدة ٩٠).
  */
 export async function buyNow(itemId: string): Promise<{ ok?: string; error?: string }> {
   try {
@@ -2148,79 +1802,6 @@ export async function unequip(kind: "FRAME" | "BACKGROUND" | "CHARM"): Promise<v
 }
 
 /**
- * صورة صنف المتجر: الثيم صورةٌ تملأ خلفية التطبيق، والتميمة شعارٌ صغير.
- * ترفعها اللوحة كما تُرفع صورة الغلاف — تُخزَّن في القاعدة وتُقدَّم من
- * `/api/media`، فلا استضافة خارجية ولا رابطٌ ينكسر.
- */
-export async function setItemImage(itemId: string, formData: FormData): Promise<void> {
-  const admin = await requireAdmin("store");
-  const { file, width, height } = picture(formData);
-  const media = await storeUpload(admin.id, file, width, height);
-
-  /*
-     فراغُ الإطار الأوسط يُقاس في المتصفّح وقت الرفع (`measureHole`):
-     الخادم لا يفكّ PNG بلا مكتبة، والقياسُ نسبةٌ لا بكسلات. وبلا قياسٍ
-     يُمحى المحفوظ فلا يبقى قياسُ صورةٍ ذهبت على صورةٍ جديدة.
-  */
-  const raw = Number(formData.get("hole"));
-  const hole = Number.isFinite(raw) && raw >= 20 && raw <= 99 ? Math.round(raw) : null;
-
-  await prisma.storeItem.update({
-    where: { id: itemId },
-    data: { mediaId: media.id, frameHole: hole },
-  });
-  revalidatePath("/admin");
-  revalidatePath("/store");
-  revalidatePath("/");
-}
-
-/**
- * غلافُ الثيم في اللوحة — صورةٌ ثانية غير صورة الصنف.
- *
- * الثيم يملأ خلفية التطبيق، والغلاف يجلس في رأس الشاشة: صورةٌ واحدة
- * لا تصلح للاثنين، فالأولى تُقصّ في شريطٍ عريض والثانية تُمدَّد على
- * شاشةٍ كاملة.
- */
-export async function setItemCover(itemId: string, formData: FormData): Promise<void> {
-  const admin = await requireAdmin("store");
-  const { file, width, height } = picture(formData);
-  const media = await storeUpload(admin.id, file, width, height);
-
-  const before = await prisma.storeItem.findUnique({
-    where: { id: itemId },
-    select: { coverMediaId: true },
-  });
-  await prisma.storeItem.update({ where: { id: itemId }, data: { coverMediaId: media.id } });
-  // والسابق يذهب ببكسلاته: ما لا يشير إليه شيء لا يبقى في السحابة.
-  if (before?.coverMediaId) await dropMedia([before.coverMediaId]);
-
-  revalidatePath("/admin");
-  revalidatePath("/store");
-}
-
-export async function clearItemCover(itemId: string): Promise<void> {
-  await requireAdmin("store");
-  const before = await prisma.storeItem.findUnique({
-    where: { id: itemId },
-    select: { coverMediaId: true },
-  });
-  await prisma.storeItem.update({ where: { id: itemId }, data: { coverMediaId: null } });
-  if (before?.coverMediaId) await dropMedia([before.coverMediaId]);
-  revalidatePath("/admin");
-  revalidatePath("/store");
-}
-
-export async function clearItemImage(itemId: string): Promise<void> {
-  await requireAdmin("store");
-  await prisma.storeItem.update({
-    where: { id: itemId },
-    data: { mediaId: null, frameHole: null },
-  });
-  revalidatePath("/admin");
-  revalidatePath("/store");
-}
-
-/**
  * اشتراك تجريبي: يفعّل «آثار+» ويودع رصيد المتجر الشهري مباشرة.
  * الدفع الحقيقي يمر عبر IAP لآبل وGoogle Play — لا يمكن تنفيذه على الويب.
  */
@@ -2251,72 +1832,6 @@ export async function cancelPlus(): Promise<void> {
   });
   revalidatePath("/me");
   revalidatePath("/subscribe");
-}
-
-/**
- * حالة تخزين الملفات — للمالك وحده.
- *
- * رقمان لا رأي: كم ملفاً في السحابة وكم بقي في القاعدة. ومن لا يرى
- * الأرقام لا يعرف أنّ النقل جرى أصلاً.
- */
-export async function storageState(): Promise<{
-  cloud: boolean;
-  bucket: string | null;
-  inCloud: number;
-  inDb: number;
-  dbBytes: number;
-}> {
-  await requireOwner();
-
-  const [inCloud, inDb, sum] = await Promise.all([
-    prisma.media.count({ where: { key: { not: null } } }),
-    prisma.media.count({ where: { key: null, bytes: { not: null } } }),
-    prisma.$queryRaw<{ total: bigint | null }[]>`
-      SELECT SUM(OCTET_LENGTH("bytes"))::bigint AS total FROM "Media" WHERE "bytes" IS NOT NULL
-    `,
-  ]);
-
-  return {
-    cloud: cloudReady(),
-    bucket: process.env.R2_BUCKET ?? null,
-    inCloud,
-    inDb,
-    dbBytes: Number(sum[0]?.total ?? 0),
-  };
-}
-
-/**
- * ينقل دفعةً من الملفات إلى السحابة بطلب المالك.
- *
- * النقل يجري وحده مع الكنس، وهذا الزرّ للمن لا يريد الانتظار. والدفعة
- * محدودة كي لا يتجاوز الطلب مهلته على خادمٍ مجانيّ.
- */
-export async function moveMediaToCloud(
-  _prev: AdminResult,
-  _formData: FormData,
-): Promise<AdminResult> {
-  await requireOwner();
-  if (!cloudReady()) return { error: "مفاتيح R2 غير مضبوطة" };
-
-  try {
-    const moved = await migrateToCloud(60);
-    revalidatePath("/admin");
-    return { ok: moved > 0 ? `نُقل ${moved}` : "لا شيء ينتظر النقل" };
-  } catch (problem) {
-    return { error: problem instanceof Error ? problem.message : "تعذّر النقل" };
-  }
-}
-
-/**
- * يفحص الدلو فعلاً — كتابةٌ وقراءةٌ وحذف — ويردّ ما قاله.
- *
- * «مربوطة» في الشاشة تقرأ المتغيّرات لا الدلو، فقد تكون المفاتيح
- * مكتوبةً والرفع يسقط. وهذا الزرّ يقول أيّهما.
- */
-export async function testStorage(_prev: AdminResult, _formData: FormData): Promise<AdminResult> {
-  await requireOwner();
-  const verdict = await probeBucket();
-  return verdict.ok ? { ok: `الدلو يعمل · ${verdict.detail}` } : { error: verdict.detail };
 }
 
 // ───────────────────────────── تغيير البريد ─────────────────────────────
@@ -2411,175 +1926,6 @@ export async function changeEmail(_prev: AdminResult, formData: FormData): Promi
   return result;
 }
 
-/**
- * تغيير بريد حسابٍ من اللوحة — للمالك وحده.
- *
- * وليست هذه صرامةً زائدة: من يغيّر بريد حسابٍ يملك الحساب: ينقله إلى
- * عنوانٍ يقرأه هو. فلو مُنحت للوحة كاملةً لصار كلُّ مشرفٍ قادراً على
- * أخذ حساب المالك نفسه. تُمنح الصلاحيات من هنا، ولا تُمنح هذه.
- */
-export async function setUserEmail(
-  userId: string,
-  _prev: AdminResult,
-  formData: FormData,
-): Promise<AdminResult> {
-  await requireOwner();
-
-  const checked = await readNewEmail(userId, formData);
-  if ("error" in checked) return checked;
-
-  const result = await writeEmail(userId, checked.email);
-  revalidatePath("/admin");
-  return result;
-}
-
 // ───────────────────────── الإيقاف المؤقّت ─────────────────────────
 
 
-/**
- * إيقافٌ مؤقّت — للمشرف على المحتوى.
- *
- * والحساب يبقى كما هو: لحظاته وأصدقاؤه ورصيده. يُمنع من **الكتابة**
- * وحدها ومن إصدار جلسةٍ جديدة، وتبقى له القراءة — حظرٌ يمحو التطبيق من
- * يد صاحبه يُقرأ عطلاً لا عقوبة، ومن مُنع من النشر لا يُمنع من قراءة
- * سبب وقفه.
- *
- * وجلساتُه القائمة تُبطَل: توكنُ التجديد عمرُه ثلاثون يوماً، ولولا
- * إبطالُه لبقي الموقوف داخلاً بجلسةٍ صدرت قبل القرار.
- *
- * ولا يُوقِف المشرفُ مشرفاً ولا نفسه: الأولى تجعل الإيقاف سلاحاً بين
- * المشرفين، والثانية تُغلق اللوحة على صاحبها بزلّة.
- */
-export async function suspendUser(
-  userId: string,
-  _prev: AdminResult,
-  formData: FormData,
-): Promise<AdminResult> {
-  const admin = await requireModerator();
-  if (userId === admin.id) return { error: "لا تُوقف نفسك" };
-
-  const target = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { role: true, canModerate: true, memberNo: true },
-  });
-  if (!target) return { error: "لا يوجد هذا الحساب" };
-  if (target.role === "ADMIN" || target.canModerate) return { error: "هذا مشرف" };
-
-  const pick = SUSPEND_HOURS.find((one) => one.key === String(formData.get("hours")));
-  if (!pick) return { error: "اختر المدّة" };
-
-  const reason = String(formData.get("reason") ?? "").trim().slice(0, 200);
-  const until = new Date(Date.now() + pick.hours * 3_600_000);
-
-  await prisma.user.update({
-    where: { id: userId },
-    data: { suspendedUntil: until, suspendedReason: reason || null },
-  });
-  // الجلسات القائمة تُبطَل، وإلا بقي داخلاً بتوكنٍ صدر قبل القرار.
-  await prisma.refreshToken.updateMany({
-    where: { userId, revokedAt: null },
-    data: { revokedAt: new Date() },
-  });
-
-  await prisma.moderationLog.create({
-    data: {
-      adminId: admin.id,
-      action: "USER_SUSPENDED",
-      targetId: userId,
-      ownerId: userId,
-      snippet: `${pick.label}${reason ? ` — ${reason}` : ""}`,
-    },
-  });
-
-  revalidatePath("/admin");
-  return { ok: `أُوقف ${pick.label}` };
-}
-
-/** رفعُ الإيقاف قبل انقضائه — ويُسجَّل كما سُجّل فرضُه. */
-export async function liftSuspension(userId: string): Promise<void> {
-  const admin = await requireModerator();
-  await prisma.user.update({
-    where: { id: userId },
-    data: { suspendedUntil: null, suspendedReason: null },
-  });
-  await prisma.moderationLog.create({
-    data: { adminId: admin.id, action: "USER_RESTORED", targetId: userId, ownerId: userId },
-  });
-  revalidatePath("/admin");
-}
-
-/**
- * منحُ آثار+ من اللوحة.
- *
- * بابٌ للمالك وللحالات التي لا يمرّ فيها الدفع: تعويضٌ، أو جائزة، أو
- * حسابٌ تجريبيّ لمراجعة المتجرين. والدفع الحقيقي يبقى على IAP وحده —
- * هذا ليس بديلاً عنه (`BILLING.md`).
- *
- * و**يُمدَّد ولا يُستبدَل**: من بقي له أسبوعان ومُنح شهراً صار له ستّة
- * أسابيع — منحٌ يمسح ما دُفع ثمنه يأخذ أكثر ممّا يعطي.
- *
- * وأوّل منحٍ يودع رصيد الشهر (`PLUS_COINS`) ويختم `plusCreditAt` كما
- * يفعل حدثُ RevenueCat بالضبط (القاعدة ٧٣ب)، فيتولّى الكنسُ الدوريّ
- * ما بعده. ولولا الختم لبقي المُعطى بلا نقاطٍ حتى أوّل فاتورةٍ لا
- * تأتي.
- *
- * والمدّة قائمةٌ مغلقة (`PLUS_DAYS`) لا حقلُ أيام.
- */
-export async function grantPlus(
-  userId: string,
-  _prev: AdminResult,
-  formData: FormData,
-): Promise<AdminResult> {
-  const admin = await requireAdmin();
-
-  const days = Number(String(formData.get("days") ?? ""));
-  if (!isPlusDays(days)) return { error: "اختر المدّة" };
-
-  const target = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { plusUntil: true, plusCreditAt: true },
-  });
-  if (!target) return { error: "لا يوجد هذا الحساب" };
-
-  // يُمدَّد من نهايته إن كان قائماً، ومن اليوم إن كان منتهياً.
-  const from =
-    target.plusUntil && target.plusUntil.getTime() > Date.now() ? target.plusUntil : new Date();
-  const until = new Date(from.getTime() + days * 86_400_000);
-  const first = !target.plusCreditAt;
-
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      isPlus: true,
-      plusUntil: until,
-      ...(first ? { coins: { increment: PLUS_COINS }, plusCreditAt: new Date() } : null),
-    },
-  });
-
-  await prisma.moderationLog.create({
-    data: {
-      adminId: admin.id,
-      action: "PLUS_GRANTED",
-      targetId: userId,
-      ownerId: userId,
-      snippet: PLUS_LABEL[days],
-    },
-  });
-
-  revalidatePath("/admin");
-  return { ok: `مُنح ${PLUS_LABEL[days]}` };
-}
-
-/** نزعُه قبل انقضائه — ويُسجَّل كما سُجّل منحُه. */
-export async function revokePlus(userId: string): Promise<void> {
-  const admin = await requireAdmin();
-  await prisma.user.update({
-    where: { id: userId },
-    // والختم يُنسى: من عاد بعدها يبدأ دورةً جديدة لا يكمل ما انقطع.
-    data: { isPlus: false, plusUntil: null, plusCreditAt: null },
-  });
-  await prisma.moderationLog.create({
-    data: { adminId: admin.id, action: "PLUS_REVOKED", targetId: userId, ownerId: userId },
-  });
-  revalidatePath("/admin");
-}
