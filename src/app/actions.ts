@@ -18,6 +18,7 @@ import { canInteract, canSeeMoment } from "@/lib/visibility";
 import { reverseGeocode } from "@/lib/places";
 import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
 import { consume, sendReset, sendVerify } from "@/lib/email-tokens";
+import { mailReply, tellSupport } from "@/lib/support-mail";
 import { deliverTo, openConversation, VOICE_SECONDS } from "@/lib/dm";
 import { copyMedia, dropMedia, migrateToCloud, storeClip, storeUpload } from "@/lib/media";
 import { cloudReady, probeBucket } from "@/lib/storage";
@@ -1086,6 +1087,8 @@ export async function openTicket(_prev: AdminResult, formData: FormData): Promis
   if (open >= 3) return { error: "عندك رسائل مفتوحة — انتظر الردّ عليها" };
 
   await prisma.supportTicket.create({ data: { userId: user.id, body } });
+  // خبرٌ إلى صندوق الدعم: لوحةٌ لا يفتحها أحدٌ تترك سؤالاً أسبوعاً.
+  void tellSupport({ from: `${user.name} (#${user.memberNo})`, body });
   revalidatePath("/settings/support");
   revalidatePath("/admin");
   return { ok: "وصلتنا رسالتك — نردّ عليك هنا" };
@@ -1100,10 +1103,17 @@ export async function replyTicket(
   const reply = String(formData.get("reply") ?? "").trim().slice(0, 1200);
   if (reply.length < 2) return { error: "اكتب الردّ" };
 
-  await prisma.supportTicket.update({
+  const ticket = await prisma.supportTicket.update({
     where: { id: ticketId },
     data: { reply, repliedAt: new Date() },
+    select: { email: true, name: true, body: true, userId: true },
   });
+
+  // من كتب من الموقع بلا حساب لا شاشةَ له، فالردّ يذهب إلى بريده.
+  if (!ticket.userId && ticket.email) {
+    void mailReply({ to: ticket.email, name: ticket.name, question: ticket.body, reply });
+  }
+
   revalidatePath("/admin");
   revalidatePath("/settings/support");
   return { ok: "أُرسل الردّ" };

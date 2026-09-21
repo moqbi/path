@@ -225,20 +225,37 @@ export default async function SettingsPage() {
 
         {/* ── بابان يخرجان من الإعدادات ── */}
         {site ? (
-          <a
-            href={`${site}/privacy`}
-            target="_blank"
-            rel="noreferrer"
-            className="mb-3 flex items-center justify-between rounded-2xl border border-line bg-card p-4"
-          >
-            <span>
-              <span className="block text-[13.5px] font-semibold">سياسة الخصوصية</span>
-              <span className="block text-[11.5px] text-muted">ما نجمعه وما لا نجمعه</span>
-            </span>
-            <span className="shrink-0 text-clay-ink">
-              <BookIcon size={18} />
-            </span>
-          </a>
+          <>
+            <a
+              href={`${site}/privacy`}
+              target="_blank"
+              rel="noreferrer"
+              className="mb-3 flex items-center justify-between rounded-2xl border border-line bg-card p-4"
+            >
+              <span>
+                <span className="block text-[13.5px] font-semibold">سياسة الخصوصية</span>
+                <span className="block text-[11.5px] text-muted">ما نجمعه وما لا نجمعه</span>
+              </span>
+              <span className="shrink-0 text-clay-ink">
+                <BookIcon size={18} />
+              </span>
+            </a>
+
+            <a
+              href={`${site}/terms`}
+              target="_blank"
+              rel="noreferrer"
+              className="mb-3 flex items-center justify-between rounded-2xl border border-line bg-card p-4"
+            >
+              <span>
+                <span className="block text-[13.5px] font-semibold">شروط الاستخدام</span>
+                <span className="block text-[11.5px] text-muted">ما لك وما عليك في آثار</span>
+              </span>
+              <span className="shrink-0 text-clay-ink">
+                <BookIcon size={18} />
+              </span>
+            </a>
+          </>
         ) : null}
 
         <Link

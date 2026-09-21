@@ -2,6 +2,7 @@ import { prisma } from "@athar/db";
 import { BIO_MAX, type NotifyInput } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { dropMedia } from "./media";
+import { tellSupport } from "./support-mail";
 
 /** الحساب كما يقرؤه صاحبه: كل ما تعرضه شاشة «الملف الشخصي» وتحريرها. */
 export async function me(userId: string) {
@@ -353,6 +354,12 @@ export async function openTicket(userId: string, body: string) {
   const open = await prisma.supportTicket.count({ where: { userId, closed: false } });
   if (open >= 3) throw badRequest("عندك رسائل مفتوحة — انتظر الردّ عليها");
 
+  const row = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { name: true, memberNo: true },
+  });
   await prisma.supportTicket.create({ data: { userId, body: text } });
+  // خبرٌ إلى صندوق الدعم: لوحةٌ لا يفتحها أحدٌ تترك سؤالاً أسبوعاً.
+  void tellSupport({ from: `${row?.name ?? "مستخدم"} (#${row?.memberNo ?? "?"})`, body: text });
   return { ok: "وصلتنا رسالتك — نردّ عليك هنا" };
 }

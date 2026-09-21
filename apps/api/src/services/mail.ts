@@ -1,4 +1,5 @@
 import { SITE_URL } from "@athar/shared";
+import { sendSmtp } from "./smtp";
 
 /**
  * البريد الصادر عبر بريفو.
@@ -26,6 +27,22 @@ export type Letter = {
 export async function sendMail(letter: Letter): Promise<boolean> {
   const key = process.env.BREVO_API_KEY;
   const from = process.env.MAIL_FROM;
+
+  /*
+     بابان إلى بريفو: مفتاحُ الواجهة (`xkeysib`) ومفتاحُ SMTP
+     (`xsmtpsib`) — والثاني لا يمشي على الواجهة أصلاً. فمن عنده الأوّل
+     يمرّ من هنا، ومن عنده الثاني يمرّ بـ`sendSmtp`.
+  */
+  if (!key && from && process.env.SMTP_HOST) {
+    return sendSmtp({
+      to: letter.to,
+      fromEmail: from,
+      fromName: FROM_NAME,
+      subject: letter.subject,
+      html: letter.html,
+      text: letter.text,
+    });
+  }
 
   if (!key || !from) {
     // لا مفتاحَ ولا عنوانَ صادر: بيئةٌ لم تُربط. يُكتب ولا يُرسَل.

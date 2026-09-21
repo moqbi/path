@@ -237,12 +237,20 @@ export default function Settings() {
         {/* السياسة في متصفّحٍ داخل التطبيق: من قرأها يعود بزرٍّ إلى مكانه
             لا يخرج إلى سفاري ويبقى هناك (القاعدة ٦٢). */}
         {hasSite() ? (
-          <Link
-            title="سياسة الخصوصية"
-            note="ما نجمعه وما لا نجمعه"
-            right={<BookIcon size={18} color={colors.clayInk} />}
-            onPress={() => void openIn(`${SITE_URL}/privacy`)}
-          />
+          <>
+            <Link
+              title="سياسة الخصوصية"
+              note="ما نجمعه وما لا نجمعه"
+              right={<BookIcon size={18} color={colors.clayInk} />}
+              onPress={() => void openIn(`${SITE_URL}/privacy`)}
+            />
+            <Link
+              title="شروط الاستخدام"
+              note="ما لك وما عليك في آثار"
+              right={<BookIcon size={18} color={colors.clayInk} />}
+              onPress={() => void openIn(`${SITE_URL}/terms`)}
+            />
+          </>
         ) : null}
 
         <Link

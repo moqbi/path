@@ -210,8 +210,14 @@ ADMIN_EMAILS="..."
 REDIS_URL="redis://127.0.0.1:6379"
 
 # البريد الصادر (بريفو): تأكيدُ البريد وإعادةُ ضبط كلمة المرور.
+# إمّا مفتاحُ الواجهة (xkeysib) وإمّا مفتاحُ SMTP (xsmtpsib) — لا يتبادلان.
 BREVO_API_KEY="..."
+# SMTP_HOST="smtp-relay.brevo.com"
+# SMTP_PORT="587"
+# SMTP_USER="..."
+# SMTP_PASS="xsmtpsib-..."
 MAIL_FROM="noreply@atharmts.com"
+SUPPORT_EMAIL="support@atharmts.com"
 ```
 
 > **ونطاقُ المرسِل يُثبَت في بريفو أوّلاً** (Senders & Domains): سجلّا

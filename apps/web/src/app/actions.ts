@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { mailReply, tellSupport } from "@/lib/support-mail";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -683,6 +684,7 @@ export async function openTicket(_prev: AdminResult, formData: FormData): Promis
   if (open >= 3) return { error: "عندك رسائل مفتوحة — انتظر الردّ عليها" };
 
   await prisma.supportTicket.create({ data: { userId: user.id, body } });
+  void tellSupport({ from: `${user.name} (#${user.memberNo})`, body });
   revalidatePath("/settings/support");
   revalidatePath("/admin");
   return { ok: "وصلتنا رسالتك — نردّ عليك هنا" };
@@ -697,10 +699,17 @@ export async function replyTicket(
   const reply = String(formData.get("reply") ?? "").trim().slice(0, 1200);
   if (reply.length < 2) return { error: "اكتب الردّ" };
 
-  await prisma.supportTicket.update({
+  const ticket = await prisma.supportTicket.update({
     where: { id: ticketId },
     data: { reply, repliedAt: new Date() },
+    select: { email: true, name: true, body: true, userId: true },
   });
+
+  // من كتب من الموقع بلا حساب لا شاشةَ له، فالردّ يذهب إلى بريده.
+  if (!ticket.userId && ticket.email) {
+    void mailReply({ to: ticket.email, name: ticket.name, question: ticket.body, reply });
+  }
+
   revalidatePath("/admin");
   revalidatePath("/settings/support");
   return { ok: "أُرسل الردّ" };
@@ -1072,6 +1081,12 @@ export async function openPublicTicket(
 
   await prisma.supportTicket.create({
     data: { name: parsed.data.name, email: parsed.data.email, body: parsed.data.body },
+  });
+  // خبرٌ إلى صندوق الدعم، ومعه بريدُ صاحبه فيُردّ عليه منه مباشرةً.
+  void tellSupport({
+    from: parsed.data.name,
+    body: parsed.data.body,
+    replyTo: parsed.data.email,
   });
   revalidatePath("/admin");
   return { ok: "وصلتنا رسالتك — نردّ على بريدك" };
