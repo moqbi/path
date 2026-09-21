@@ -25,7 +25,7 @@ function audiences(name: string): string[] {
 }
 
 export type Identity = {
-  provider: "GOOGLE" | "APPLE";
+  provider: "GOOGLE" | "APPLE" | "SNAP";
   subject: string;
   email: string | null;
   /** آبل لا تعطي الاسم إلا مرّةً واحدة وقت أوّل موافقة، فيأتي من الجهاز. */
@@ -74,13 +74,53 @@ async function readGoogle(idToken: string): Promise<Identity> {
   };
 }
 
+/**
+ * سناب: **رمزُ وصولٍ لا رمزُ هويّة**.
+ *
+ * فلا مفاتيحَ تُفحص ولا جمهورٌ يُقارن — بل نسأل خادمَها بالرمز: «من
+ * صاحبُ هذا؟». والجوابُ معرّفٌ خارجيّ واسمُ عرض، **ولا بريدَ إطلاقاً**
+ * (سناب لا تعطيه)، فمن دخل بها يربط بريده من الإعدادات.
+ *
+ * والسؤالُ من خادمنا لا من الجهاز: رمزٌ يمرّ بالتطبيق وحده يصدّقه من
+ * يكتبه بيده.
+ */
+async function readSnap(accessToken: string): Promise<Identity> {
+  if (!process.env.SNAP_CLIENT_ID) throw new Error("الدخول بسناب غير مفعّل");
+
+  const response = await fetch("https://api.snapchat.com/v1/me", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ query: "{me{externalId displayName}}" }),
+  });
+  if (!response.ok) throw new Error("تعذّر التحقّق من الرمز");
+
+  const payload = (await response.json()) as {
+    data?: { me?: { externalId?: string; displayName?: string } };
+  };
+  const me = payload.data?.me;
+  if (!me?.externalId) throw new Error("تعذّر التحقّق من الرمز");
+
+  return {
+    provider: "SNAP",
+    subject: me.externalId,
+    email: null,
+    name: me.displayName ?? null,
+    emailVerified: false,
+  };
+}
+
 export async function readIdentity(
-  provider: "GOOGLE" | "APPLE",
+  provider: "GOOGLE" | "APPLE" | "SNAP",
   idToken: string,
   name: string | null,
 ): Promise<Identity> {
   try {
-    return provider === "APPLE" ? await readApple(idToken, name) : await readGoogle(idToken);
+    if (provider === "APPLE") return await readApple(idToken, name);
+    if (provider === "SNAP") return await readSnap(idToken);
+    return await readGoogle(idToken);
   } catch (problem) {
     if (problem instanceof Error && problem.message.includes("غير مفعّل")) throw problem;
     throw new Error("تعذّر التحقّق من الرمز");
@@ -128,11 +168,16 @@ export async function upsertIdentity(identity: Identity) {
   }
 
   /*
-     ولا بدّ من بريد: هو اسمُ الدخول وبابُ الاستعادة، والمخطّط يفرضه.
-     ومن أخفى بريده عند آبل يصلنا عنوانُها المُقنَّع (`privaterelay`) —
-     وهو صالحٌ يصل صاحبَه، فيُقبل كغيره.
+     **وحسابُ سناب يُنشأ بلا بريد**: سناب لا تعطيه، ويربطه صاحبُه من
+     الإعدادات. ومن أخفى بريده عند آبل يصلنا عنوانُها المُقنَّع
+     (`privaterelay`) وهو صالحٌ يصل صاحبَه، فيُقبل كغيره.
+
+     وغيرُ سناب لا بدّ له من بريد: آبل وقوقل تعطيانه، وغيابُه عندهما
+     يعني رمزاً ناقصاً لا حساباً بلا بريد.
   */
-  if (!identity.email) throw new Error("لم يعطنا المزوّد بريداً — جرّب الدخول بالبريد");
+  if (!identity.email && identity.provider !== "SNAP") {
+    throw new Error("لم يعطنا المزوّد بريداً — جرّب الدخول بالبريد");
+  }
 
   const last = await prisma.user.findFirst({
     orderBy: { memberNo: "desc" },
@@ -142,7 +187,7 @@ export async function upsertIdentity(identity: Identity) {
   const user = await prisma.user.create({
     data: {
       email: identity.email,
-      name: identity.name?.trim() || identity.email.split("@")[0],
+      name: identity.name?.trim() || identity.email?.split("@")[0] || "صديق",
       memberNo: (last?.memberNo ?? 0) + 1,
       emailVerifiedAt: identity.emailVerified ? new Date() : null,
       identities: {

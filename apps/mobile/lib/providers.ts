@@ -113,10 +113,20 @@ export function snapReady(): boolean {
   return Boolean(process.env.EXPO_PUBLIC_SNAP_CLIENT_ID);
 }
 
+/**
+ * وجهةُ العودة: صفحةٌ على موقعنا ترتدّ إلى التطبيق.
+ *
+ * **سناب تقبل HTTPS ولا تقبل مخطّطَ التطبيق** (`athar://`)، فتعود إلى
+ * `/snap/callback` وهي تردّ المستخدم إلى التطبيق بما جاء منها.
+ */
+function snapRedirect(): string {
+  const site = (process.env.EXPO_PUBLIC_SITE_URL ?? "").replace(/\/+$/, "");
+  return site ? `${site}/snap/callback` : AuthSession.makeRedirectUri({ scheme: "athar", path: "snap" });
+}
+
 export function useSnap() {
   const clientId = process.env.EXPO_PUBLIC_SNAP_CLIENT_ID ?? "";
-  // العودةُ إلى التطبيق بمخطّطه (`athar://`) لا إلى صفحةِ ويب.
-  const redirectUri = AuthSession.makeRedirectUri({ scheme: "athar", path: "snap" });
+  const redirectUri = snapRedirect();
 
   return AuthSession.useAuthRequest(
     {
@@ -136,7 +146,7 @@ export function useSnap() {
  */
 export async function finishSnap(code: string, verifier: string): Promise<Me> {
   const clientId = process.env.EXPO_PUBLIC_SNAP_CLIENT_ID ?? "";
-  const redirectUri = AuthSession.makeRedirectUri({ scheme: "athar", path: "snap" });
+  const redirectUri = snapRedirect();
 
   const token = await AuthSession.exchangeCodeAsync(
     { clientId, code, redirectUri, extraParams: { code_verifier: verifier } },

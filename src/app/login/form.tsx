@@ -49,7 +49,7 @@ function usePhases(): Phase {
 const PROVIDERS = [
   { key: "apple", label: "Apple", mark: <AppleMark /> },
   { key: "google", label: "Google", mark: <GoogleMark /> },
-  { key: "facebook", label: "Facebook", mark: <FacebookMark /> },
+  { key: "snap", label: "Snapchat", mark: <SnapMark /> },
 ];
 
 export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?: boolean }) {
@@ -256,10 +256,13 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
                         askGoogle();
                         return;
                       }
+                      if (provider.key === "snap") {
+                        // البدءُ من الخادم: المتحقّقُ والحارسُ يُولَّدان هناك.
+                        window.location.href = "/api/snap/start";
+                        return;
+                      }
                       setNotice(
-                        provider.key === "apple"
-                          ? "الدخول بحساب آبل يعمل داخل التطبيق. استخدم البريد هنا."
-                          : "الدخول بفيسبوك يحتاج تسجيل التطبيق عنده. استخدم البريد الآن.",
+                        "الدخول بحساب آبل يعمل داخل التطبيق. استخدم البريد هنا.",
                       );
                     }}
                     className="flex flex-1 items-center justify-center rounded-xl"
@@ -318,10 +321,15 @@ function GoogleMark() {
     </svg>
   );
 }
-function FacebookMark() {
+/**
+ * شبحُ سناب — نسخةُ الجوّال حرفاً بحرف.
+ *
+ * وفيسبوك ذهب: مفاتيحُه لم تُسجَّل، وزرٌّ لا يعمل أسوأ من زرٍّ غائب.
+ */
+function SnapMark() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="#1877F2">
-      <path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12Z" />
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="#FFFC00" stroke="#0E1A24" strokeWidth="1">
+      <path d="M12 2.6c2.7 0 4.5 2 4.5 4.6 0 .8-.1 1.6-.1 2 .3.2.8.2 1.2 0 .5-.2 1 .1 1.1.5.1.5-.2.9-.9 1.2-.6.3-1.2.4-1.1.9.2.9 2 2.9 3.6 3.3.4.1.5.4.4.7-.2.6-1.4.9-2.3 1-.3 0-.4.3-.5.7 0 .3-.1.6-.5.6-.5 0-1.1-.2-1.9-.1-.8.1-1.5.5-2.2 1.1-.4.3-.9.5-1.3.5s-.9-.2-1.3-.5c-.7-.6-1.4-1-2.2-1.1-.8-.1-1.4.1-1.9.1-.4 0-.5-.3-.5-.6-.1-.4-.2-.7-.5-.7-.9-.1-2.1-.4-2.3-1-.1-.3 0-.6.4-.7 1.6-.4 3.4-2.4 3.6-3.3.1-.5-.5-.6-1.1-.9-.7-.3-1-.7-.9-1.2.1-.4.6-.7 1.1-.5.4.2.9.2 1.2 0 0-.4-.1-1.2-.1-2C7.5 4.6 9.3 2.6 12 2.6Z" />
     </svg>
   );
 }
