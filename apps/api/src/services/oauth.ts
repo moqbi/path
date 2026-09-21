@@ -222,16 +222,11 @@ export async function upsertIdentity(identity: Identity) {
     throw badRequest("لم يعطنا المزوّد بريداً — جرّب الدخول بالبريد");
   }
 
-  const last = await prisma.user.findFirst({
-    orderBy: { memberNo: "desc" },
-    select: { memberNo: true },
-  });
-
+  // ورقمُ العضوية من متسلسلة Postgres لا من حسابٍ هنا (القاعدة ١٥).
   const user = await prisma.user.create({
     data: {
       email: identity.email,
       name: identity.name?.trim() || identity.email?.split("@")[0] || "صديق",
-      memberNo: (last?.memberNo ?? 0) + 1,
       emailVerifiedAt: identity.emailVerified ? new Date() : null,
       identities: {
         create: {

@@ -36,6 +36,62 @@ const credentials = z.object({
   password: z.string().min(1, "اكتب كلمة المرور"),
 });
 
+/**
+ * إنشاءُ حسابٍ بالبريد.
+ *
+ * وكان بابُ التسجيل مفقوداً من الويب والجوّال معاً والخادمُ يحمله
+ * (`/v1/auth/register`): فمن لا يملك قوقل ولا آبل ولا سناب لا يدخل
+ * التطبيق بحال — وأوّلُ ما يفعله مراجعُ المتجر أن يُنشئ حساباً.
+ *
+ * ورقمُ العضوية **لا يُكتب هنا**: مصدرُه متسلسلةُ Postgres (القاعدة ١٥).
+ */
+const newAccount = z.object({
+  name: z.string().trim().min(2, "اكتب اسمك").max(40, "الاسم طويل"),
+  email: z.string().trim().toLowerCase().email("بريد غير صالح"),
+  password: z.string().min(8, "كلمة المرور ثمانية أحرف فأكثر"),
+});
+
+export async function signUp(
+  _previous: { error?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string }> {
+  const parsed = newAccount.safeParse({
+    name: formData.get("name"),
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
+  }
+
+  const taken = await prisma.user.findUnique({
+    where: { email: parsed.data.email },
+    select: { id: true },
+  });
+  // وهنا يُقال صراحةً — بخلاف بابِ الدخول وإعادةِ الضبط: من يسجّل
+  // ببريدٍ مأخوذ لا بدّ أن يعرف لماذا رُفض، وإلّا أعاد المحاولة أبداً.
+  if (taken) return { error: "هذا البريد مسجّل — سجّل الدخول به" };
+
+  const user = await prisma.user.create({
+    data: {
+      name: parsed.data.name,
+      email: parsed.data.email,
+      passwordHash: await hashPassword(parsed.data.password),
+    },
+    select: { id: true },
+  });
+
+  /*
+     رسالةُ التأكيد تُرسَل ولا يُنتظر جوابُها، وفشلُها يُبتلع: حسابٌ
+     أُنشئ لا يُلغى لأنّ بريداً لم يخرج، ومن لم تصله يطلبها من
+     الإعدادات (القاعدة ١١٩ب).
+  */
+  void sendVerify(user.id, parsed.data.email, parsed.data.name).catch(() => {});
+
+  await createSession(user.id);
+  redirect("/");
+}
+
 export async function signIn(
   _previous: { error?: string } | null,
   formData: FormData,

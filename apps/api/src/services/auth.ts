@@ -88,17 +88,18 @@ export async function register(input: {
   const taken = await prisma.user.findUnique({ where: { email: input.email }, select: { id: true } });
   if (taken) throw badRequest("هذا البريد مسجّل");
 
-  const last = await prisma.user.findFirst({
-    orderBy: { memberNo: "desc" },
-    select: { memberNo: true },
-  });
-
+  /*
+     ورقمُ العضوية **لا يُكتب هنا**: مصدرُه متسلسلةُ Postgres
+     (`@default(autoincrement())` — القاعدة ١٥). وحسابُه في التطبيق
+     يعطل من وجهين: مسجّلان في اللحظة نفسها يقرآن آخرَ رقمٍ فيكتبانه
+     معاً، **وكتابتُه يدوياً لا تُقدّم المتسلسلة** — فحين تلحق بما كُتب
+     يسقط كلُّ تسجيلٍ بعدها على قيد الفرادة.
+  */
   const user = await prisma.user.create({
     data: {
       email: input.email,
       passwordHash: await hashPassword(input.password),
       name: input.name,
-      memberNo: (last?.memberNo ?? 0) + 1,
     },
     select: PUBLIC_USER,
   });
