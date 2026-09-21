@@ -3,7 +3,6 @@ import { View, Pressable, Image, Animated, Easing, Dimensions } from "react-nati
 import { Text } from "./type";
 import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 import { api } from "../lib/api";
 import { playClose, playOpen } from "../lib/sound";
 import { colors } from "../theme/tokens";
@@ -199,8 +198,10 @@ export function ComposerFan() {
             borderRadius: SIZE / 2,
             alignItems: "center",
             justifyContent: "center",
-            // الزرّ بلون العمق، وعلامة الزائد وحدها بتدرّج الشعار.
-            backgroundColor: colors.night,
+            /*
+               الزرّ رسمٌ في `assets/composer/plus.png` لا خطٌّ في الكود:
+               قرصٌ ملوّن برأسه، فلا قرصَ داكنٌ تحته يُقرأ حلقةً حوله.
+            */
           }}
         >
           <Animated.View
@@ -215,15 +216,11 @@ export function ComposerFan() {
               ],
             }}
           >
-            <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
-              <Defs>
-                <LinearGradient id="fabPlus" x1="4" y1="20" x2="20" y2="4" gradientUnits="userSpaceOnUse">
-                  <Stop stopColor="#F6B93B" />
-                  <Stop offset="1" stopColor="#FF7A5A" />
-                </LinearGradient>
-              </Defs>
-              <Path d="M12 5v14M5 12h14" stroke="url(#fabPlus)" strokeWidth={2.6} strokeLinecap="round" />
-            </Svg>
+            <Image
+              source={require("../assets/composer/plus.png")}
+              style={{ width: SIZE, height: SIZE }}
+              resizeMode="contain"
+            />
           </Animated.View>
         </Pressable>
       </View>

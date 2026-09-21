@@ -78,7 +78,7 @@ const CHARM_RATIO = 0.5;
  * نصفُها فوق الصورة والإطار ونصفُها خارجهما. نسخةُ الويب
  * حرفاً بحرف (`CHARM_REACH` في `src/components/ui.tsx`).
  */
-const CHARM_REACH = 1;
+const CHARM_REACH = 0.85;
 
 /** كم تنزل التميمة عن أفق مركز الصورة، بالدرجات — كنسخة الويب. */
 const CHARM_ANGLE = 20;

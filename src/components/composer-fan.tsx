@@ -104,7 +104,7 @@ export function ComposerFan() {
     {
       key: "wake",
       label: "صحيت",
-      src: "/composer/wake.svg",
+      src: "/composer/wake.png",
       run: () => {
         setBusy("wake");
         start(() => void postWake());
@@ -200,27 +200,27 @@ export function ComposerFan() {
             onClick={() => toggle(!open)}
             className="pointer-events-auto absolute inset-0 flex items-center justify-center rounded-full"
             style={{
-              // الزر بلون العمق، وعلامة الزائد وحدها بتدرّج الشعار.
-              background: "var(--color-night)",
+              /*
+                 الزرّ رسمٌ في `public/composer/plus.png` لا خطٌّ في الكود:
+                 قرصٌ ملوّن برأسه، فلا قرصَ داكنٌ تحته يُقرأ حلقةً حوله —
+                 ويُستبدل بتبديل الملف كبقية رسوم القائمة.
+              */
               boxShadow: "0 8px 24px rgba(14,26,36,.35)",
+              borderRadius: "9999px",
               transform: open ? "rotate(135deg)" : "rotate(0deg)",
               transition: "transform 380ms cubic-bezier(.18,1.3,.42,1)",
             }}
           >
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <defs>
-                <linearGradient id="fab-plus" x1="4" y1="20" x2="20" y2="4" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#F6B93B" />
-                  <stop offset="1" stopColor="#FF7A5A" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M12 5v14M5 12h14"
-                stroke="url(#fab-plus)"
-                strokeWidth="2.6"
-                strokeLinecap="round"
-              />
-            </svg>
+            <span
+              aria-hidden="true"
+              className="block h-full w-full rounded-full"
+              style={{
+                backgroundImage: "url(/composer/plus.png)",
+                backgroundSize: "contain",
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat",
+              }}
+            />
           </button>
         </div>
       </div>
