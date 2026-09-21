@@ -22,10 +22,10 @@ pg_dump "$RENDER_DATABASE_URL" -Fc --no-owner --no-acl -f "$dump"
 ls -lh "$dump"
 
 say "٢/٦ صفوفُ المصدر — تُقارَن بعد الاستعادة"
-before=$(psql "$RENDER_DATABASE_URL" -qtA -c '
-  select (select count(*) from "User") || "/" ||
-         (select count(*) from "Moment") || "/" ||
-         (select count(*) from "Media")' 2>/dev/null || echo "?")
+before=$(psql "$RENDER_DATABASE_URL" -qtA -c "
+  select (select count(*) from \"User\")   || '/' ||
+         (select count(*) from \"Moment\") || '/' ||
+         (select count(*) from \"Media\")" 2>/dev/null || echo "?")
 echo "   مستخدمون/لحظات/ملفّات: $before"
 
 say "٣/٦ نسخةٌ احتياطيّة لما عندنا قبل أن نكتب فوقه"
@@ -39,11 +39,14 @@ fi
 say "٤/٦ الاستعادة"
 pg_restore -d "$DIRECT_URL" --no-owner --no-acl --clean --if-exists "$dump"
 
-say "٥/٦ الهجرات"
+say "٥/٦ العميل ثمّ الهجرات"
 cd "$(dirname "$0")/../.."
+# `generate` قبل كلّ شيء: `boot-defaults` يستورد العميل المولَّد، ومستودعٌ
+# حديثُ النسخ لا يحمله — فيسقط بـ«Cannot find module».
+npx prisma generate
 DATABASE_URL="$DIRECT_URL" npx prisma migrate deploy
 
-say "٦/٦ الأدوار — فخُّ الترقية (`boot-defaults`)"
+say '٦/٦ الأدوار — فخُّ الترقية (boot-defaults)'
 # البذرةُ محروسةٌ بقاعدةٍ فارغة، فقاعدةٌ منقولةٌ عامرة قد تترك الجميع
 # بلا دورٍ فتُقفل اللوحة في وجه صاحبها. الرفعُ هنا صريحٌ لا مشروط.
 # و`ADMIN_EMAILS` لازمةٌ هنا: بلا قائمةٍ صريحة لا يُرقّى إلا حسابُ
