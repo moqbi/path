@@ -19,13 +19,10 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://atharmts.com",
         "EXPO_PUBLIC_SITE_URL": "https://atharmts.com",
-        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "",
-        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "186550074028-pve7oubeech3slm7i02jgf48l9cboo3v.apps.googleusercontent.com",
         "EXPO_PUBLIC_SNAP_CLIENT_ID": "f3f2c1a7-b3d3-44e1-8f18-f88526b1dd1e"
       },
-      "android": { "buildType": "apk" },
-      "ios": { "simulator": false }
+      "android": { "buildType": "apk" }
     },
 
     "production": {
@@ -33,12 +30,8 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://atharmts.com",
         "EXPO_PUBLIC_SITE_URL": "https://atharmts.com",
-        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "",
-        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "186550074028-pve7oubeech3slm7i02jgf48l9cboo3v.apps.googleusercontent.com",
-        "EXPO_PUBLIC_SNAP_CLIENT_ID": "f3f2c1a7-b3d3-44e1-8f18-f88526b1dd1e",
-        "EXPO_PUBLIC_RC_IOS_KEY": "",
-        "EXPO_PUBLIC_RC_ANDROID_KEY": ""
+        "EXPO_PUBLIC_SNAP_CLIENT_ID": "f3f2c1a7-b3d3-44e1-8f18-f88526b1dd1e"
       }
     }
   },
@@ -46,9 +39,7 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "",
-        "ascAppId": "",
-        "appleTeamId": ""
+        "ascAppId": "6814650237"
       }
     }
   }
