@@ -24,7 +24,9 @@ atharmts.com, www.atharmts.com {
 		reverse_proxy 127.0.0.1:4000
 	}
 
-	handle /app/* {
+	# `/app` و`/app/*` كلاهما: النمطُ بالنجمة يشترط شرطةً بعده، فـ`/app`
+	# عاريةً كانت تسقط إلى الموقع العامّ فيردّ ٤٠٤ على تطبيقٍ ليس عنده.
+	handle /app /app/* {
 		reverse_proxy 127.0.0.1:3000
 	}
 
