@@ -4,14 +4,15 @@ import { TAGLINE_AR, TAGLINE_EN } from "@/components/brand";
 import { currentUser } from "@/lib/auth";
 import { parsePalette, themeVars, veilOf } from "@/lib/theme";
 import { NavProbe } from "@/components/nav";
+import { asset } from "@/lib/base";
 
 export const metadata: Metadata = {
   title: "آثار مومنتس · ATHAR Moments",
   description: `${TAGLINE_AR} ${TAGLINE_EN}`,
   /* أيقونة التبويب والاختصار على الشاشة الرئيسة: العلامة نفسها. */
   icons: {
-    icon: "/icon.png",
-    apple: "/apple-icon.png",
+    icon: asset("/icon.png"),
+    apple: asset("/apple-icon.png"),
   },
 };
 

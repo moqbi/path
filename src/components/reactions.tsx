@@ -7,18 +7,19 @@ import Link from "next/link";
 import { Avatar } from "@/components/ui";
 import { ar } from "@/lib/format";
 import { CUSTOM, EMOJI_GROUPS } from "@/lib/emoji";
+import { asset } from "@/lib/base";
 
 /**
  * ملفات التفاعلات في `public/reactions`. استبدال أيٍّ منها يغيّر شكله في
  * التطبيق كله بلا لمس الكود — ولذلك المفتاح هو الاسم لا رسم بداخل مكوّن.
  */
 export const REACTION_SRC: Record<string, string> = {
-  SMILE: "/reactions/smile.png",
-  LAUGH: "/reactions/laugh.png",
-  GASP: "/reactions/gasp.png",
-  SAD: "/reactions/sad.png",
-  LOVE: "/reactions/love.png",
-  SLEEPY: "/reactions/sleepy.png",
+  SMILE: asset("/reactions/smile.png"),
+  LAUGH: asset("/reactions/laugh.png"),
+  GASP: asset("/reactions/gasp.png"),
+  SAD: asset("/reactions/sad.png"),
+  LOVE: asset("/reactions/love.png"),
+  SLEEPY: asset("/reactions/sleepy.png"),
 };
 
 /** الوجوه العامة، ثم النوم — يُعرض لكل اللحظات وهو الأنسب للحظة نوم. */

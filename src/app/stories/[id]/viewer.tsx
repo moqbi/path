@@ -7,6 +7,7 @@ import { Avatar } from "@/components/ui";
 import { CloseIcon, EyeIcon } from "@/components/icons";
 import { filterCss } from "@/components/story-composer";
 import { ar, relative } from "@/lib/format";
+import { BASE } from "@/lib/base";
 
 /** مدة شريحة الصورة. والفيديو مدّته مدّته. */
 const SLIDE_MS = 5000;
@@ -89,7 +90,7 @@ export function StoryViewer({
         {story.video ? (
           <video
             key={story.id}
-            src={`/api/media/${story.mediaId}`}
+            src={`${BASE}/api/media/${story.mediaId}`}
             autoPlay
             playsInline
             muted={false}
@@ -99,7 +100,7 @@ export function StoryViewer({
         ) : (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
-            src={`/api/media/${story.mediaId}`}
+            src={`${BASE}/api/media/${story.mediaId}`}
             alt=""
             className="absolute inset-0 h-full w-full"
             style={{ objectFit: "contain", filter: filterCss(story.filter) }}

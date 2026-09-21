@@ -55,9 +55,11 @@ say "صلاحيةٌ محدودة لـ$APP_USER"
 # وبدل أن نعطيه المفتاحَ كلَّه: أمرانِ بعينهما بلا كلمة، وهما ما يحتاجه
 # النشر. وكلُّ ما عداهما يُفعل بـroot عن قصد.
 cat > /etc/sudoers.d/athar <<EOF
-$APP_USER ALL=(root) NOPASSWD: /usr/bin/systemctl restart athar-web athar-api, \
-  /usr/bin/systemctl restart athar-web, /usr/bin/systemctl restart athar-api, \
-  /usr/bin/systemctl reload caddy, /usr/bin/systemctl status athar-web athar-api
+$APP_USER ALL=(root) NOPASSWD: /usr/bin/systemctl restart athar-web athar-site athar-api, \
+  /usr/bin/systemctl restart athar-web, /usr/bin/systemctl restart athar-site, \
+  /usr/bin/systemctl restart athar-api, \
+  /usr/bin/systemctl reload caddy, \
+  /usr/bin/systemctl status athar-web athar-site athar-api
 EOF
 chmod 440 /etc/sudoers.d/athar
 visudo -cf /etc/sudoers.d/athar >/dev/null

@@ -3,6 +3,7 @@ import { initial } from "@/lib/format";
 import { SparkIcon } from "@/components/icons";
 import { AthrPageMark } from "@/components/brand";
 import { BackButton, BackSwipe } from "@/components/nav";
+import { BASE } from "@/lib/base";
 
 /**
  * خلفية الحرف تُشتق من الاسم لا تُخزَّن، فتبقى ثابتة لكل شخص بلا عمود إضافي
@@ -69,7 +70,7 @@ export function itemPaint(
 ) {
   return item.mediaId
     ? {
-        backgroundImage: `url(/api/media/${item.mediaId})`,
+        backgroundImage: `url(${BASE}/api/media/${item.mediaId})`,
         backgroundSize: fit,
         backgroundPosition: "center" as const,
         backgroundRepeat: "no-repeat" as const,
@@ -118,7 +119,7 @@ export function Avatar({
         width: "100%",
         height: "100%",
         backgroundColor: mediaId ? undefined : tintFor(name),
-        backgroundImage: mediaId ? `url(/api/media/${mediaId})` : undefined,
+        backgroundImage: mediaId ? `url(${BASE}/api/media/${mediaId})` : undefined,
         backgroundSize: mediaId ? "cover" : undefined,
         backgroundPosition: mediaId ? "center" : undefined,
         // الحرف على تدرّج فاتح دائماً، فحبره ثابت لا يتبع الوضع —
@@ -185,7 +186,7 @@ export function Avatar({
           style={{
             // الرسمُ يُكبَّر بمقلوب فراغه الأوسط، ويُوسَّط على الوجه.
             inset: `${((1 - frameZoom(frame)) / 2) * 100}%`,
-            backgroundImage: `url(/api/media/${frame.mediaId})`,
+            backgroundImage: `url(${BASE}/api/media/${frame.mediaId})`,
             backgroundSize: "contain",
             backgroundPosition: "center",
             backgroundRepeat: "no-repeat",
@@ -240,7 +241,7 @@ function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }
 
   const paint = charm.mediaId
     ? {
-        backgroundImage: `url(/api/media/${charm.mediaId})`,
+        backgroundImage: `url(${BASE}/api/media/${charm.mediaId})`,
         backgroundSize: "contain" as const,
         backgroundPosition: "center" as const,
         backgroundRepeat: "no-repeat" as const,
@@ -314,7 +315,7 @@ export function coverStyle(
 ): React.CSSProperties {
   if (mediaId) {
     return {
-      backgroundImage: `url(/api/media/${mediaId})`,
+      backgroundImage: `url(${BASE}/api/media/${mediaId})`,
       backgroundSize: "cover",
       backgroundPosition: `center ${Math.min(100, Math.max(0, y))}%`,
     };

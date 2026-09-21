@@ -82,9 +82,10 @@ SSH_KEY="ssh-ed25519 AAAA… اسمك" bash bootstrap.sh
 RENDER_DATABASE_URL="postgresql://…render.com/…?sslmode=require" DIRECT_URL="postgresql://athar:…@127.0.0.1:5432/athar" ADMIN_EMAILS="you@example.com"   scripts/ops/migrate-from-render.sh
 
 # وهذه بـroot: ما يُكتب في /etc ليس لحساب التطبيق
-cp /home/athar/app/scripts/ops/athar-*.service /etc/systemd/system/
+cp /home/athar/app/scripts/ops/athar-*.service /home/athar/app/scripts/ops/athar-*.timer /etc/systemd/system/
 cp /home/athar/app/scripts/ops/Caddyfile /etc/caddy/Caddyfile
-systemctl daemon-reload && systemctl enable athar-web athar-api
+systemctl daemon-reload && systemctl enable athar-web athar-site athar-api
+systemctl enable --now athar-backup.timer
 
 # والنشرُ بـathar
 sudo -iu athar bash -lc "cd ~/app && scripts/ops/deploy.sh"
@@ -95,6 +96,12 @@ systemctl reload caddy
 > فـ`sudo` منه يسأل عن كلمةٍ لا وجود لها. ولهذا يُعطى في `bootstrap.sh`
 > إذناً بلا كلمة لأمرين بعينهما — إعادةِ تشغيل الخدمتين وإعادةِ تحميل
 > Caddy — وما عداهما يُفعل من جلسة root.
+
+> **وثلاث خدماتٍ لا اثنتان** (القاعدة ١٢٢): `athar-site` على ٣٠٠١ يحمل
+> صفحة الهبوط و`/contact` و`/delete-account` و`/u/*` واللوحة على الجذر،
+> و`athar-web` على ٣٠٠٠ يحمل التطبيق تحت `/app`، و`athar-api` على ٤٠٠٠.
+> و`basePath` يُدمج وقت البناء: تغييرُه يستلزم `deploy.sh` لا إعادةَ
+> تشغيل.
 
 > **وترتيبُ السحابة يهمّ**: يبقى سجلّا DNS **رماديَّين** (بلا وكيل) حتى
 > يأخذ Caddy شهادته — التحدّي يمرّ بالمنفذ ٨٠ — ثمّ يُلوَّنان برتقاليّاً

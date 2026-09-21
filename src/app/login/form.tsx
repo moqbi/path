@@ -5,6 +5,7 @@ import { signIn } from "@/app/actions";
 import { useGoogleLogin } from "./google";
 import { AthrMark, TAGLINE_AR, TAGLINE_EN } from "@/components/brand";
 import { BackIcon } from "@/components/icons";
+import { BASE } from "@/lib/base";
 
 type Phase = "intro" | "leaving" | "form";
 
@@ -258,7 +259,7 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
                       }
                       if (provider.key === "snap") {
                         // البدءُ من الخادم: المتحقّقُ والحارسُ يُولَّدان هناك.
-                        window.location.href = "/api/snap/start";
+                        window.location.href = `${BASE}/api/snap/start`;
                         return;
                       }
                       setNotice(

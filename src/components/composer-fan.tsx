@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { postSleep, postWake } from "@/app/actions";
 import { playClose, playOpen } from "@/lib/sound";
+import { asset } from "@/lib/base";
 
 /**
  * زر النشر وقائمته المتطايرة — على نمط Path.
@@ -70,31 +71,31 @@ export function ComposerFan() {
     {
       key: "write",
       label: "اكتب",
-      src: "/composer/write.png",
+      src: asset("/composer/write.png"),
       run: () => router.push("/compose?kind=THOUGHT"),
     },
     {
       key: "photo",
       label: "صورة",
-      src: "/composer/photo.png",
+      src: asset("/composer/photo.png"),
       run: () => router.push("/compose?kind=PHOTO"),
     },
     {
       key: "place",
       label: "مكان",
-      src: "/composer/place.png",
+      src: asset("/composer/place.png"),
       run: () => router.push("/compose?kind=PLACE"),
     },
     {
       key: "music",
       label: "أغنية",
-      src: "/composer/music.png",
+      src: asset("/composer/music.png"),
       run: () => router.push("/compose?kind=MUSIC"),
     },
     {
       key: "sleep",
       label: "نوم",
-      src: "/composer/sleep.png",
+      src: asset("/composer/sleep.png"),
       run: () => {
         setBusy("sleep");
         start(() => void postSleep());
@@ -104,7 +105,7 @@ export function ComposerFan() {
     {
       key: "wake",
       label: "صحيت",
-      src: "/composer/wake.png",
+      src: asset("/composer/wake.png"),
       run: () => {
         setBusy("wake");
         start(() => void postWake());

@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { cloudReady, deleteObjects, getObject, putObject } from "@/lib/storage";
+import { BASE } from "@/lib/base";
 
 /** أقصى حجم مقبول بعد تصغير المتصفح — حارس ضد رفع ملف ضخم يدوياً. */
 const MAX_BYTES = 1_500_000;
@@ -227,7 +228,7 @@ export async function copyMedia(
   });
 }
 
-export const mediaUrl = (id: string | null | undefined) => (id ? `/api/media/${id}` : null);
+export const mediaUrl = (id: string | null | undefined) => (id ? `${BASE}/api/media/${id}` : null);
 
 /**
  * نقل ما بقي في القاعدة إلى السحابة.

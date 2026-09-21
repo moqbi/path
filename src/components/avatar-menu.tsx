@@ -6,6 +6,7 @@ import { Avatar, itemPaint, type Charm, type Frame } from "@/components/ui";
 import { CloseIcon } from "@/components/icons";
 import { Portal, Sheet } from "@/components/sheet";
 import { coinText } from "@/lib/format";
+import { BASE } from "@/lib/base";
 
 /** صنفٌ يلبسه صاحب الملف — إطارٌ أو تميمة — كما يُعرض في المتجر. */
 export type WornItem = {
@@ -98,7 +99,7 @@ export function AvatarMenu({
           {mediaId ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
-              src={`/api/media/${mediaId}`}
+              src={`${BASE}/api/media/${mediaId}`}
               alt=""
               style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: 18 }}
             />

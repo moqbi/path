@@ -73,9 +73,17 @@ export const siteText = cache(async function siteText(): Promise<Record<SiteKey,
 export const lines = (value: string): string[] =>
   value.split("\n").map((line) => line.trim()).filter(Boolean);
 
-/** صورةٌ عامّة بمفتاحها — `null` يعني «ارسم الافتراضيّ». */
+/**
+ * صورةٌ عامّة بمفتاحها — `null` يعني «ارسم الافتراضيّ».
+ *
+ * وفشلُ القراءة `null` كذلك، كأختيها: صفحةُ الهبوط تُرسم برأسٍ مرسوم
+ * (`HeroArt`) إن لم تكن هناك صورة، وهذا خيرٌ من أن يسقط الموقع كلّه
+ * لأنّ القاعدة تأخّرت لحظة.
+ */
 export const siteImage = cache(async function siteImage(key: string): Promise<string | null> {
-  const row = await prisma.siteImage.findUnique({ where: { key }, select: { mediaId: true } });
+  const row = await prisma.siteImage
+    .findUnique({ where: { key }, select: { mediaId: true } })
+    .catch(() => null);
   return row?.mediaId ?? null;
 });
 

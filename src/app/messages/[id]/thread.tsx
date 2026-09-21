@@ -5,6 +5,7 @@ import { editMessage } from "@/app/actions";
 import { Ticks, receiptOf } from "@/components/receipt";
 import { PauseIcon, PlayIcon } from "@/components/icons";
 import { ar, timeOfDay } from "@/lib/format";
+import { BASE } from "@/lib/base";
 
 /**
  * سطور المحادثة: فقاعة لكلّ رسالة، وتحت رسائلي إيصالها.
@@ -156,7 +157,7 @@ function Shot({ mediaId }: { mediaId: string }) {
         style={{ lineHeight: 0, background: "var(--color-chip)" }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={`/api/media/${mediaId}`} alt="" style={{ display: "block", maxHeight: 280 }} />
+        <img src={`${BASE}/api/media/${mediaId}`} alt="" style={{ display: "block", maxHeight: 280 }} />
       </button>
 
       {open ? (
@@ -167,7 +168,7 @@ function Shot({ mediaId }: { mediaId: string }) {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={`/api/media/${mediaId}`}
+            src={`${BASE}/api/media/${mediaId}`}
             alt=""
             style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
           />
@@ -202,7 +203,7 @@ function Voice({ mediaId, seconds, mine }: { mediaId: string; seconds: number; m
     >
       <audio
         ref={sound}
-        src={`/api/media/${mediaId}`}
+        src={`${BASE}/api/media/${mediaId}`}
         preload="none"
         onTimeUpdate={(event) => setAt(event.currentTarget.currentTime)}
         onEnded={() => {

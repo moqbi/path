@@ -13,6 +13,7 @@ import {
   WithIcon,
 } from "@/components/icons";
 import { ar } from "@/lib/format";
+import { BASE } from "@/lib/base";
 
 type Kind = "PHOTO" | "THOUGHT" | "PLACE" | "MUSIC";
 
@@ -86,7 +87,7 @@ export function ComposeForm({
         setFix(here);
         setLocating(false);
         // الأماكن حولك تُجلب بعد الإحداثيات: تختار أين أنت بالضبط.
-        fetch(`/api/places?lat=${here.lat}&lng=${here.lng}`)
+        fetch(`${BASE}/api/places?lat=${here.lat}&lng=${here.lng}`)
           .then((response) => (response.ok ? response.json() : { places: [] }))
           .then((data: { places: Spot[] }) => setSpots(data.places ?? []))
           .catch(() => setSpots([]));

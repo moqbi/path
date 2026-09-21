@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CloseIcon } from "@/components/icons";
+import { BASE } from "@/lib/base";
 
 /**
  * صورة اللحظة في إطارٍ ثابت.
@@ -47,7 +48,7 @@ export function Photo({
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={`/api/media/${mediaId}`}
+          src={`${BASE}/api/media/${mediaId}`}
           alt=""
           style={{ width: "100%", height, display: "block", objectFit: "cover" }}
         />
@@ -64,7 +65,7 @@ export function Photo({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={`/api/media/${mediaId}`}
+            src={`${BASE}/api/media/${mediaId}`}
             alt=""
             style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
           />

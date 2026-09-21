@@ -1,7 +1,17 @@
 import type { NextConfig } from "next";
+import { BASE } from "./src/lib/base";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+
+  /*
+    صفحةُ الهبوط تملك `/` (مشروع `apps/web`)، وهذا التطبيق تحت `/app`.
+    والقيمة تُقرأ من `src/lib/base.ts` لا تُكتب هنا رقماً ثانياً: ما لا
+    يسبقه الإطارُ بالجذر — `fetch` بمسارٍ مطلق، و`src` في وسمٍ عاديّ،
+    و`url(...)` في نمط — يُكتب بذلك الثابت نفسه.
+    وهي تُدمج في حزمة المتصفّح وقت البناء، فتغييرُها يستلزم بناءً جديداً.
+  */
+  basePath: BASE,
 
   /**
    * يمنع `next dev` من حقن كتلة `nextjs-agent-rules` في CLAUDE.md.

@@ -6,6 +6,7 @@ import { currentUser } from "@/lib/auth";
 import { ScreenHeader } from "@/components/ui";
 import { ar, dayLabel, timeOfDay } from "@/lib/format";
 import { RemoveMoment } from "./remove";
+import { BASE } from "@/lib/base";
 
 export const metadata: Metadata = { title: "لحظات حساب · لوحة التحكم" };
 
@@ -165,7 +166,7 @@ export default async function ModeratedProfile({
               {moment.mediaId ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={`/api/media/${moment.mediaId}`}
+                  src={`${BASE}/api/media/${moment.mediaId}`}
                   alt=""
                   className="mt-2 max-h-[280px] w-full rounded-xl object-cover"
                 />

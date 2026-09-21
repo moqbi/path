@@ -34,6 +34,14 @@ const COLUMNS = [
  * يُبحث عنه في الذيل. والقانونيّ والتواصلُ وحذفُ الحساب في كل صفحة
  * لأنّ المتجرين يطلبان الوصول إليها من أيّ مكان لا من الرئيسة وحدها.
  */
+/*
+  لا تُخبَّأ صفحاتُ الموقع العامّ: نصوصُها وصورُها تُحرَّر من `/admin?s=site`
+  **بلا نشر نسخة** (القاعدة ١١٠)، ورسمُها مرّةً وقت البناء يجمّدها على ما
+  كانت عليه ساعتئذٍ — فيُحرّر المشرفُ سطراً ولا يتغيّر شيء حتى يُبنى
+  المشروع من جديد. وهي صفحاتٌ خفيفةٌ باستعلامٍ أو اثنين ملفوفَين بـ`cache`.
+*/
+export const dynamic = "force-dynamic";
+
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
   const [text, follow] = await Promise.all([siteText(), socialLinks()]);
 
