@@ -74,23 +74,13 @@ const FRAME_INSET = 0.07;
 const CHARM_RATIO = 0.5;
 
 /**
- * أين يجلس مركزُ التميمة: **يسارَ الصورة مرتفعةً على حافّتها** —
- * نصفُها فوق الصورة والإطار ونصفُها خارجهما. نسخةُ الويب
- * حرفاً بحرف (`CHARM_REACH` في `src/components/ui.tsx`).
+ * أين تجلس التميمة: **ركنُ الصورة الأسفل-الأيسر** — نسخةُ الويب.
+ *
+ * حافّتُها اليمنى على محور الصورة الرأسيّ، وقاعُها على قاعها: جزءٌ
+ * فوق الصورة والإطار وجزءٌ خارجهما، ولا تنزل تحتهما.
  */
-const CHARM_REACH = 0.85;
-
-/** كم تنزل التميمة عن أفق مركز الصورة، بالدرجات — كنسخة الويب. */
-const CHARM_ANGLE = 20;
-
-/** موضعُ التميمة من حافتَي الحاوية — سالبٌ حيث تخرج عنها. */
 function charmSeat(size: number, badge: number): { left: number; top: number } {
-  const radius = (size / 2) * CHARM_REACH;
-  const radians = (CHARM_ANGLE * Math.PI) / 180;
-  return {
-    left: Math.round(size / 2 - radius * Math.cos(radians) - badge / 2),
-    top: Math.round(size / 2 + radius * Math.sin(radians) - badge / 2),
-  };
+  return { left: Math.round(size / 2 - badge), top: Math.round(size - badge) };
 }
 
 export function Avatar({
@@ -204,7 +194,7 @@ function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }
         position: "absolute",
         width: badge,
         height: badge,
-        // مركزها على محيط الصورة يساراً، منخفضةً عن أفقها ٢٠° (`charmSeat`).
+        // ركنُها الأسفل-الأيسر: يمينُها على المحور، وقاعُها على القاع.
         ...charmSeat(size, badge),
         alignItems: "center",
         justifyContent: "center",
