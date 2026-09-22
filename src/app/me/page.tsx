@@ -94,7 +94,7 @@ export default async function ProfilePage() {
       {/* المشاركة في الطرف المقابل للعلامة: رابط ملفك ورقم عضويتك. */}
       <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
         <AthrPageMark label="الملف الشخصي" />
-        <ShareProfile id={user.id} name={user.name} memberNo={user.memberNo} />
+        <ShareProfile name={user.name} memberNo={user.memberNo} />
       </header>
 
       {/*

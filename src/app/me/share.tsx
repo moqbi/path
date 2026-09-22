@@ -14,11 +14,9 @@ import { ar } from "@/lib/format";
  * وإلا نُسخ الرابط — ولا يُترك المستخدم بلا خبر أيّهما حدث.
  */
 export function ShareProfile({
-  id,
   name,
   memberNo,
 }: {
-  id: string;
   name: string;
   memberNo: number;
 }) {
@@ -30,7 +28,7 @@ export function ShareProfile({
   }
 
   async function share() {
-    const url = `${window.location.origin}/u/${id}`;
+    const url = `${window.location.origin}/u/${memberNo}`;
     const text = `${name} · عضوية رقم ${ar(memberNo)} في آثار`;
     try {
       if (navigator.share) {
