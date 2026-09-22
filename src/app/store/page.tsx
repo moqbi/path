@@ -90,10 +90,13 @@ export default async function StorePage({
       <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
         <AthrPageMark label="المتجر" />
         {/*
-          الرصيد لافتةٌ هنا لا زرّ: الشحن يمرّ بمتجر الجهاز، ولا متجرَ
-          في المتصفّح — فزرٌّ يفتح ما لا يوجد أسوأ من لا زرّ.
+          الرصيد بابُ الشحن: من يقرأ رصيده هو من يريد شحنه، فالطريق من
+          حيث يُقرأ. وضغطةٌ تموت تحت الإصبع تُقرأ عطلاً.
+          و`/coins` في الويب **عرضٌ لا شراء**: نافذةُ آبل لا تُفتح في
+          متصفّح، والشراء في التطبيق على الجوّال (القاعدة ٧٣ج).
         */}
-        <span
+        <Link
+          href="/coins"
           className="flex items-center gap-2 rounded-full border px-3.5 py-2"
           style={{ background: "var(--color-gold-soft)", borderColor: "var(--color-gold-line)" }}
         >
@@ -101,7 +104,7 @@ export default async function StorePage({
           <span className="text-[12.5px] font-semibold text-gold">
             رصيدك {coinText(user.coins)}
           </span>
-        </span>
+        </Link>
       </header>
 
       {/* شريط التصنيفات: «المميز» أولاً، ثم ما يضيفه المشرف. */}
