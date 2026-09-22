@@ -214,11 +214,11 @@ export default function Profile() {
                       <MessageIcon size={17} color={colors.ink2} />
                     </Pressable>
                   </View>
-                ) : who.isOpen ? (
+                ) : (
                   /*
-                    الحساب المفتوح يُقرأ بلا صداقة، فيبقى له زرُّ إضافةٍ
-                    مكان أفعال الأصدقاء — ولا إهداءَ ولا محادثةَ ولا
-                    «آثارنا» مع من لم يُضَف بعد.
+                    ومن لم يُضَف بعدُ يبقى له زرُّ إضافةٍ مكان أفعال
+                    الأصدقاء الثلاثة — لا إهداءَ ولا محادثةَ ولا
+                    «آثارنا» قبل أن يَقبل.
                   */
                   <Pressable
                     onPress={() => add.mutate()}
@@ -243,7 +243,7 @@ export default function Profile() {
                       {add.isSuccess ? "أُرسل الطلب" : "أضفه"}
                     </Text>
                   </Pressable>
-                ) : null}
+                )}
                 {who.bio ? (
                   <Text style={{ color: colors.ink2, fontSize: 13, textAlign: "center", marginTop: 7, lineHeight: 22 }}>
                     {who.bio}
@@ -253,7 +253,25 @@ export default function Profile() {
             </>
           }
           ListEmptyComponent={
-            moments.isLoading ? null : (
+            moments.isLoading ? null : person.data?.friend === false ? (
+              /* مكانُ اللحظات يقول لماذا لا تُرى — لا سطرٌ يُقرأ «ما نشر شي». */
+              <View
+                style={{
+                  marginHorizontal: 20,
+                  marginTop: 16,
+                  padding: 16,
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: colors.line,
+                  backgroundColor: colors.card,
+                }}
+              >
+                <Text style={{ color: colors.muted, fontSize: 12.5, lineHeight: 22 }}>
+                  لن تتمكّن من مشاهدة لحظاته حتى تضيفه إلى دائرتك ويقبل طلبك.
+                  والمحادثة و«آثارنا» والإهداء تُفتح بعدها.
+                </Text>
+              </View>
+            ) : (
               <Text style={{ color: colors.faint, fontSize: 12.5, textAlign: "center", paddingVertical: 24 }}>
                 لا لحظات تراها.
               </Text>

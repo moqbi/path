@@ -278,6 +278,7 @@ type Person = {
   name: string;
   city: string | null;
   isPlus: boolean;
+  createdAt: Date;
   avatarMediaId: string | null;
   coverMediaId: string | null;
   frame: { spec: string; mediaId: string | null; frameHole: number | null } | null;
@@ -287,9 +288,18 @@ type Person = {
 };
 
 /**
- * بطاقة من ليس في دائرتك: اسمه وصورته وعدد الأصدقاء المشتركين، وزر
- * الإضافة. لا لحظاته ولا محادثته — كلاهما بعد القبول، والخادم يمنعهما
- * لا الواجهة وحدها.
+ * ملفّ من ليس في دائرتك — **بهيئة ملفّ الصديق نفسها**.
+ *
+ * غلافٌ وصورةٌ واسمٌ ورقمُ عضوية كما يراها الصديق تماماً، ويتبدّل شيئان
+ * وحدهما: مكانُ اللحظات يحمل سطراً يقول لماذا لا تُرى، ومكانُ
+ * «آثارنا» والإهداء والمحادثة يحمل زرَّ الإضافة. صفحةٌ بتخطيطٍ آخر
+ * تُقرأ تطبيقاً آخر، والفرقُ بين الحالين ليس فرقَ تصميم.
+ *
+ * والثلاثةُ لا تظهر قبل القبول: الإهداء للأصدقاء وحدهم (القاعدة ٣٩)،
+ * والمحادثةُ بابٌ بين اثنين، و«آثارنا» ما جمعكما ولمّا يجمعكما شيء.
+ *
+ * ولا عددَ أصدقائه هنا: عددُ الدائرة يقول عن صاحبها ما لم يأذن بقوله
+ * (القاعدة ٨٧ب)، والصديق وحده يقرؤه.
  */
 function LockedProfile({
   person,
@@ -302,6 +312,8 @@ function LockedProfile({
   sentByMe: boolean;
   incoming: string | null;
 }) {
+  const joined = `${MONTHS[person.createdAt.getMonth()]} ${ar(person.createdAt.getFullYear())}`;
+
   return (
     <div className="screen">
       <ScreenHeader title={person.name} mark />
@@ -312,75 +324,81 @@ function LockedProfile({
         </div>
 
         <div className="relative px-5" style={{ marginTop: -34 }}>
-          <Avatar
-            name={person.name}
-            size={96}
-            frame={person.frame}
+          <div className="mb-3 flex items-end justify-between">
+            <Avatar
+              name={person.name}
+              size={96}
+              frame={person.frame}
               charm={person.charm}
-            mediaId={person.avatarMediaId}
-          />
+              mediaId={person.avatarMediaId}
+            />
 
-          <h1 className="mb-1 mt-3 flex flex-wrap items-center gap-2 text-[19px] font-bold">
+            {incoming ? (
+              <div className="flex items-center gap-2 pb-1.5">
+                <form action={acceptFriend.bind(null, incoming)}>
+                  <button
+                    type="submit"
+                    className="flex items-center gap-1.5 rounded-xl px-4 text-[13px] font-bold"
+                    style={{ height: 42, background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+                  >
+                    <CheckIcon size={16} />
+                    اقبل
+                  </button>
+                </form>
+                <form action={ignoreFriend.bind(null, incoming)}>
+                  <button
+                    type="submit"
+                    aria-label="تجاهل"
+                    className="flex w-11 items-center justify-center rounded-xl border border-line bg-card text-muted"
+                    style={{ height: 42 }}
+                  >
+                    <CloseIcon size={17} />
+                  </button>
+                </form>
+              </div>
+            ) : sentByMe ? (
+              <span
+                className="flex items-center rounded-xl border border-line bg-card px-4 text-[13px] font-semibold text-muted"
+                style={{ height: 42, marginBottom: 6 }}
+              >
+                طلبك معلّق
+              </span>
+            ) : (
+              <form action={requestFriend.bind(null, person.id)} className="pb-1.5">
+                <button
+                  type="submit"
+                  className="brand-gradient rounded-xl px-4 text-[13px] font-bold"
+                  style={{ height: 42, color: "var(--color-on-brand)" }}
+                >
+                  أضفه
+                </button>
+              </form>
+            )}
+          </div>
+
+          <h1 className="mb-1 flex flex-wrap items-center gap-2 text-[19px] font-bold">
             {person.name}
             <NameTag isPlus={person.isPlus} tag={person.tag} size={11} />
           </h1>
-          <p className="mb-5 text-[12.5px] text-muted">
-            عضوية رقم {ar(person.memberNo)}
-            {person.city ? ` · ${person.city}` : ""}
+          <p className="mb-4 text-[12.5px] text-muted">
+            عضوية رقم {ar(person.memberNo)} · {person.city ? `${person.city} · ` : null}
+            في آثار من {joined}
             {mutual > 0
               ? ` · ${mutual === 1 ? "صديق مشترك واحد" : `${ar(mutual)} أصدقاء مشتركين`}`
               : ""}
           </p>
+        </div>
 
-          {incoming ? (
-            <div className="mb-5 flex gap-2.5">
-              <form action={acceptFriend.bind(null, incoming)} className="grow">
-                <button
-                  type="submit"
-                  className="flex w-full items-center justify-center gap-2 rounded-xl text-[14px] font-bold"
-                  style={{ height: 48, background: "var(--color-clay)", color: "var(--color-on-brand)" }}
-                >
-                  <CheckIcon size={17} />
-                  اقبل الإضافة
-                </button>
-              </form>
-              <form action={ignoreFriend.bind(null, incoming)}>
-                <button
-                  type="submit"
-                  aria-label="تجاهل"
-                  className="flex items-center justify-center rounded-xl border border-line text-muted"
-                  style={{ height: 48, width: 48 }}
-                >
-                  <CloseIcon size={17} />
-                </button>
-              </form>
-            </div>
-          ) : sentByMe ? (
-            <p
-              className="mb-5 flex items-center justify-center rounded-xl border border-line text-[13.5px] font-semibold text-muted"
-              style={{ height: 48 }}
-            >
-              طلبك معلّق عنده
-            </p>
-          ) : (
-            <form action={requestFriend.bind(null, person.id)} className="mb-5">
-              <button
-                type="submit"
-                className="brand-gradient w-full rounded-xl text-[14.5px] font-bold"
-                style={{ height: 50, color: "var(--color-on-brand)" }}
-              >
-                أضفه إلى أصدقائي
-              </button>
-            </form>
-          )}
-
+        {/* مكانُ اللحظات يقول لماذا لا تُرى — لا فراغٌ يُقرأ «ما نشر شي». */}
+        <div className="px-5">
           <div className="flex items-start gap-2.5 rounded-2xl border border-line bg-card p-4">
             <span className="mt-0.5 shrink-0 text-muted">
               <LockIcon size={16} />
             </span>
             <p className="text-[12.5px] leading-relaxed text-muted">
-              لحظاته ومحادثته بعد قبول الإضافة. الدائرة الصغيرة تعني أن ما يُنشر
-              فيها لا يُرى من خارجها.
+              لن تتمكّن من مشاهدة لحظاته حتى تضيفه إلى دائرتك ويقبل طلبك.
+              والمحادثة و«آثارنا» والإهداء تُفتح بعدها. الدائرة الصغيرة تعني
+              أن ما يُنشر فيها لا يُرى من خارجها.
             </p>
           </div>
         </div>
