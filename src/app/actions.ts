@@ -12,7 +12,7 @@ import {
   requireUser,
   verifyPassword,
 } from "@/lib/auth";
-import { assertRoomForBoth, circleIds, mutualCount } from "@/lib/circle";
+import { assertRoomForBoth, circleIds } from "@/lib/circle";
 import { STORY_HOURS, STORY_SECONDS } from "@/lib/stories";
 import { canInteract, canSeeMoment } from "@/lib/visibility";
 import { reverseGeocode } from "@/lib/places";
@@ -932,21 +932,14 @@ export async function requestFriend(targetId: string): Promise<void> {
   if (targetId === user.id) throw new Error("لا يمكنك إضافة نفسك");
 
   /*
-    الإضافة من أصدقاء الأصدقاء وحدهم (القاعدة ٢٠) — **إلا الحسابَ
-    المفتوح**: حسابُ أخبار التطبيق ونحوه يقبل من أيّ أحد، وإلا احتاج
-    كلُّ مستخدمٍ جديد وسيطاً ليصل إلى أخبار التطبيق الذي نزّله للتوّ.
-    وهو استثناءٌ بحقلٍ يُمنح من اللوحة لحسابٍ بعينه، لا بابٌ مفتوح.
+    ولا يُشترط صديقٌ مشترك: من فتح بطاقةً يرسل طلباً، وصاحبُها يقبل أو
+    يدع — الحارسُ هو القبول لا الوصول (القاعدة ٢٠).
   */
   const target = await prisma.user.findUnique({
     where: { id: targetId },
-    select: { isOpen: true },
+    select: { id: true },
   });
   if (!target) throw new Error("لا يوجد هذا الحساب");
-
-  if (!target.isOpen) {
-    const mutual = await mutualCount(user.id, targetId);
-    if (mutual === 0) throw new Error("ما بينكما صديق مشترك");
-  }
 
   await assertRoomForBoth(user.id, targetId);
   await prisma.friendship.upsert({

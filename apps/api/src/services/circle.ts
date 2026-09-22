@@ -3,7 +3,6 @@ import { push } from "./push";
 import { CIRCLE_CAP } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { blockedWith, circleIds } from "./visibility";
-import { isModerator } from "../middleware/auth";
 
 /** ما يُعرض عن شخصٍ في قائمة أو بطاقة. */
 const PERSON = {
@@ -178,19 +177,16 @@ export async function userProfile(viewerId: string, id: string) {
   const mutual = ids.filter((one) => set.has(one)).length;
 
   /*
-    والمشرف يفتح أيّ بطاقة.
+    البطاقة تُقرأ لكلّ حسابٍ قائم — بقرار المالك.
 
-    البلاغ يصل من داخل الدائرة على من هو خارج دائرة المشرف، فلو بقي
-    الشرط على حاله لردّت اللوحةُ «لا يوجد هذا الحساب» عمّن يُبلَّغ عنه.
-    وهذا **بطاقةٌ لا لحظات**: اللحظات لها بابُها في `/v1/moderation`،
-    وهي تُقرأ من خلف `requireModerator` لا من هنا.
+    من أعطى رابطه أعطى بطاقته: صورةٌ واسمٌ ورقمُ عضوية، بلا لحظةٍ ولا
+    محادثة حتى تُقبل الإضافة. وهذا ليس استكشافاً عامّاً (القاعدة ٢):
+    لا بحثَ بالاسم ولا بالبريد ولا قائمةَ تُتصفَّح — يصلها من يصلها
+    برابطٍ أعطاه صاحبه أو من قائمةٍ كان فيها.
+
+    وكان الشرط `mutual === 0` يُخفيها، فمن حذف صديقاً لا يجمعه به أحد
+    وجد صفحةَ «غير موجود» مكان من كان صديقَه أمسِ، ولا بابَ إلى إعادته.
   */
-  // والحساب المفتوح تُقرأ بطاقتُه بلا صديقٍ مشترك — كلحظاته العامّة.
-  if (mutual === 0 && !pending && !person.isOpen) {
-    if (!(await isModerator(viewerId))) throw notFound("لا يوجد هذا الحساب");
-    return { person, friend: false as const, mutual, pending, owned: [] as string[] };
-  }
-
   return { person, friend: false as const, mutual, pending, owned: [] as string[] };
 }
 
@@ -214,18 +210,12 @@ async function assertRoomForBoth(a: string, b: string) {
   }
 }
 
-/** عدد الأصدقاء المشتركين بين اثنين. */
-async function mutualCount(a: string, b: string): Promise<number> {
-  const [circleA, circleB] = await Promise.all([circleIds(a), circleIds(b)]);
-  const set = new Set(circleB);
-  return circleA.filter((id) => set.has(id)).length;
-}
-
 /**
- * طلب صداقة — من المقترحين وحدهم.
+ * طلب صداقة — من بطاقةِ من وصلتَ إليه.
  *
- * لا بحث بالبريد ولا اكتشاف عام: من لا يجمعك به صديقٌ مشترك لا يظهر لك
- * ولا يصلك منه طلب. والفحص هنا لا في الشاشة.
+ * ولا يُشترط صديقٌ مشترك: من فتح بطاقةً يرسل طلباً، وصاحبُها هو من
+ * يقبل أو يدع. والحارسُ هو القبول لا الوصول — ومن حذف صديقاً يستطيع
+ * أن يعيده، وذلك ما لم يكن ممكناً حين كان الشرط قائماً.
  */
 export async function requestFriend(userId: string, targetId: string) {
   if (targetId === userId) throw badRequest("لا يمكنك إضافة نفسك");
@@ -239,14 +229,6 @@ export async function requestFriend(userId: string, targetId: string) {
   });
   if (!target) throw notFound("لا يوجد هذا الحساب");
 
-  /*
-    الإضافة من أصدقاء الأصدقاء وحدهم (القاعدة ٢٠) — **إلا الحسابَ
-    المفتوح**: حسابُ أخبار التطبيق يقبل من أيّ أحد، وإلا احتاج كلُّ
-    مستخدمٍ جديد وسيطاً ليصل إلى أخبار التطبيق الذي نزّله للتوّ.
-  */
-  if (!target.isOpen && (await mutualCount(userId, targetId)) === 0) {
-    throw forbidden("ما بينكما صديق مشترك");
-  }
   await assertRoomForBoth(userId, targetId);
 
   // طلبٌ قادمٌ من الطرف الآخر يُقبل بالطلب المقابل: لا يُنشأ طلبان.
