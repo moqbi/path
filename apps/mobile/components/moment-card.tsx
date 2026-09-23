@@ -1,10 +1,9 @@
-import { useState } from "react";
 import { View, Pressable, Image } from "react-native";
 import { Text } from "./type";
 import { useRouter } from "expo-router";
 import { Avatar, firstColor } from "./avatar";
 import { MediaImage } from "./media-image";
-import { PhotoViewer } from "./photo-viewer";
+import { viewPhoto } from "./photo-viewer";
 import { PinIcon, PlayIcon, WithIcon, SunIcon, MoonIcon, PlaneIcon, GiftIcon, SparkIcon } from "./icons";
 import { MomentBar } from "./moment-bar";
 import { Bubble, CommentList, Reactors } from "./reactors";
@@ -119,7 +118,6 @@ export function MomentCard({
   here?: boolean;
 }) {
   const router = useRouter();
-  const [viewing, setViewing] = useState<string | null>(null);
   const withNames = moment.tags.map((t) => t.name);
   const open = () => {
     if (!here) router.push(`/m/${moment.id}` as never);
@@ -220,7 +218,6 @@ export function MomentCard({
 
     return (
       <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, paddingBottom: 20 }}>
-        <PhotoViewer mediaId={viewing} onClose={() => setViewing(null)} />
         {spine}
         <View style={{ flex: 1 }}>
           <MomentBar
@@ -234,7 +231,7 @@ export function MomentCard({
             extra={
               <>
                 {moment.mediaId ? (
-                  <Pressable accessibilityLabel="افتح الصورة" onPress={() => setViewing(moment.mediaId)}>
+                  <Pressable accessibilityLabel="افتح الصورة" onPress={() => viewPhoto(moment.mediaId)}>
                     <MediaImage
                       mediaId={moment.mediaId}
                       style={{ width: "100%", height: 190, borderRadius: 14, marginTop: 10 }}
@@ -254,7 +251,7 @@ export function MomentCard({
     <View>
       {/* الصورة تفتح نفسها كاملةً (القاعدة ٣٠)، والنصُّ تحتها يفتح اللحظة. */}
       {moment.mediaId ? (
-        <Pressable accessibilityLabel="افتح الصورة" onPress={() => setViewing(moment.mediaId)}>
+        <Pressable accessibilityLabel="افتح الصورة" onPress={() => viewPhoto(moment.mediaId)}>
           <MediaImage mediaId={moment.mediaId} style={{ width: "100%", height: 230 }} />
         </Pressable>
       ) : moment.imageSpec ? (
@@ -288,7 +285,6 @@ export function MomentCard({
 
   return (
     <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, paddingBottom: 20 }}>
-      <PhotoViewer mediaId={viewing} onClose={() => setViewing(null)} />
       {spine}
 
       <View

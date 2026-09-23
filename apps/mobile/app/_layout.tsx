@@ -19,6 +19,7 @@ import { primeAccess } from "../lib/api";
 import { markFirstSeen } from "../lib/rate";
 import { watchCity } from "../lib/arrive";
 import { Suspended } from "../components/suspended";
+import { PhotoViewer } from "../components/photo-viewer";
 import { applyTheme, colors, themeStore } from "../theme/tokens";
 
 /**
@@ -163,6 +164,7 @@ function Gate() {
     ومعه تعمل إيماءةُ الرجوع من الحافة وزرُّ الرجوع في أندرويد.
   */
   return (
+    <>
     <Stack
       // مفتاحُ الثيم: تبديلُه يُعيد بناء المكدّس بألوانه الجديدة.
       key={skin}
@@ -179,6 +181,9 @@ function Gate() {
         contentStyle: { backgroundColor: colors.paper, direction: "rtl" },
       }}
     />
+    {/* نافذةُ الصورة هنا لا في البطاقة: لا جدَّ لها يلتقط سحبتها. */}
+    <PhotoViewer />
+    </>
   );
 }
 

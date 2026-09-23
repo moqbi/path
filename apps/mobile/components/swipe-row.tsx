@@ -20,6 +20,8 @@ export function SwipeRow({
   confirmLabel = "حذف",
   onSecond,
   secondLabel,
+  surface,
+  width = REVEAL,
   children,
 }: {
   onDelete: () => void | Promise<void>;
@@ -27,10 +29,18 @@ export function SwipeRow({
   /** فعلٌ ثانٍ يظهر بجانب الأول — الحظر مثلاً بجانب الإزالة. */
   onSecond?: () => void | Promise<void>;
   secondLabel?: string;
+  /**
+   * لونُ ما يُزاح: الصفُّ يغطّي الزرّ تحته بأرضيّته، فيجب أن تكون أرضيّةَ
+   * مكانه — الورقُ في القوائم، والبطاقةُ في التعليقات. وإلّا ظهر شريطٌ
+   * بلونٍ غريب تحت كلّ تعليق.
+   */
+  surface?: string;
+  /** عرضُ الزرّ المكشوف — «حذف بصلاحية الإشراف» أطولُ من «حذف». */
+  width?: number;
   children: React.ReactNode;
 }) {
   const second = onSecond && secondLabel ? { run: onSecond, label: secondLabel } : null;
-  const reveal = second ? REVEAL * 2 : REVEAL;
+  const reveal = second ? width * 2 : width;
 
   const [busy, setBusy] = useState(false);
   /*
@@ -110,7 +120,7 @@ export function SwipeRow({
 
       <Animated.View
         {...pan.panHandlers}
-        style={{ backgroundColor: colors.paper, transform: [{ translateX: shift }] }}
+        style={{ backgroundColor: surface ?? colors.paper, transform: [{ translateX: shift }] }}
       >
         {children}
 

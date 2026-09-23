@@ -136,7 +136,16 @@ export function MomentBar({
       {panelFirst ? null : extra}
 
       {open ? (
-        <View style={{ marginTop: 8, gap: 8, paddingHorizontal: inset ? 12 : 0 }}>
+        <View
+          style={{
+            marginTop: 8,
+            // واللوحةُ فوق الصورة حين `panelFirst`، فلها مسافةٌ من تحتها
+            // كما لها من فوقها — كان حقلُ التعليق ملاصقاً لحافّة الصورة.
+            marginBottom: panelFirst ? 12 : 0,
+            gap: 8,
+            paddingHorizontal: inset ? 12 : 0,
+          }}
+        >
           {/*
             الصفّ ينزل سطراً ثانياً ولا يُقصّ.
 

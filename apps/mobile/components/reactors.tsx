@@ -1,4 +1,4 @@
-import { View, Pressable, Alert } from "react-native";
+import { View, Pressable } from "react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { Text } from "./type";
@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import { Avatar } from "./avatar";
 import { ReactionGlyph } from "./reactions";
 import { NameTag } from "./name-tag";
+import { SwipeRow } from "./swipe-row";
 import { colors } from "../theme/tokens";
 import { relative } from "../lib/format";
 import type { Moment } from "../lib/queries";
@@ -81,7 +82,7 @@ export function CommentList({
   viewerId: string;
   size?: number;
   /**
-   * صلاحية الإشراف: «احذفه بصلاحية الإشراف» تحت تعليق غيره.
+   * صلاحية الإشراف: سحبُ تعليق غيره يكشف «حذف بصلاحية».
    *
    * كاللحظة تماماً (القاعدة ١١٤): الحكمُ في مكان القراءة، والبابُ
    * `/v1/moderation/comments/:id` لا بابُ صاحب التعليق — ومعه سجلّ.
@@ -90,27 +91,29 @@ export function CommentList({
 }) {
   const router = useRouter();
   const client = useQueryClient();
-  const remove = useMutation({
-    mutationFn: (id: string) => api(`/v1/moderation/comments/${id}`, { method: "DELETE" }),
-    onSettled: () => {
-      void client.invalidateQueries({ queryKey: ["feed"] });
-      void client.invalidateQueries({ queryKey: ["moment"] });
-      void client.invalidateQueries({ queryKey: ["user"] });
-    },
+  const refresh = () => {
+    void client.invalidateQueries({ queryKey: ["feed"] });
+    void client.invalidateQueries({ queryKey: ["moment"] });
+    void client.invalidateQueries({ queryKey: ["user"] });
+    void client.invalidateQueries({ queryKey: ["me", "moments"] });
+  };
+  /*
+    بابان لا باب: صاحبُ التعليق من `/v1/comments/:id`، والمشرفُ من بابه
+    خلف `requireModerator` ومعه سجلّ — ولا يُوسَّع أحدهما ليقبل الآخر.
+  */
+  const drop = useMutation({
+    mutationFn: ({ id, mine }: { id: string; mine: boolean }) =>
+      api(mine ? `/v1/comments/${id}` : `/v1/moderation/comments/${id}`, { method: "DELETE" }),
+    onSettled: refresh,
   });
-
-  // سؤالٌ قبل الحذف: لا رجعة فيه، وضغطةٌ عابرة على تعليقٍ لا تكفي.
-  const ask = (id: string) =>
-    Alert.alert("حذف التعليق", "يُحذف بصلاحية الإشراف ويُكتب في السجلّ.", [
-      { text: "إلغاء", style: "cancel" },
-      { text: "احذف", style: "destructive", onPress: () => remove.mutate(id) },
-    ]);
 
   if (comments.length === 0) return null;
 
   return (
     <View style={{ gap: 8 }}>
-      {comments.map((comment) => (
+      {comments.map((comment) => {
+        const mine = comment.user.id === viewerId;
+        const row = (
         <View key={comment.id} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
           <Pressable
             onPress={() =>
@@ -143,22 +146,29 @@ export function CommentList({
               </Text>
             </View>
             <Text style={{ color: colors.ink2, fontSize: 12.5, lineHeight: 21 }}>{comment.body}</Text>
-            {moderate && comment.user.id !== viewerId ? (
-              <Pressable
-                accessibilityRole="button"
-                disabled={remove.isPending}
-                onPress={() => ask(comment.id)}
-                hitSlop={8}
-                style={{ alignSelf: "flex-start", marginTop: 3 }}
-              >
-                <Text style={{ color: colors.live, fontSize: 11, fontWeight: "600" }}>
-                  احذفه بصلاحية الإشراف
-                </Text>
-              </Pressable>
-            ) : null}
           </View>
         </View>
-      ))}
+        );
+
+        /*
+          الحذفُ يُكشف بالسحب من اليسار إلى اليمين — لا زرٌّ تحت كلّ تعليق:
+          عشرون تعليقاً تحت كلٍّ منها سطرٌ أحمر تُقرأ لوحةَ حذفٍ لا محادثة.
+          صاحبُ التعليق يحذف تعليقه وحده، والمشرفُ تعليقَ غيره. والسحبةُ ثمّ
+          الضغطةُ على الزرّ المكشوف خطوتان — وهما السؤالُ قبل الحذف.
+        */
+        if (!mine && !moderate) return row;
+        return (
+          <SwipeRow
+            key={comment.id}
+            surface={colors.card}
+            width={mine ? 72 : 118}
+            confirmLabel={mine ? "حذف" : "حذف بصلاحية"}
+            onDelete={() => drop.mutateAsync({ id: comment.id, mine }).then(() => undefined)}
+          >
+            {row}
+          </SwipeRow>
+        );
+      })}
     </View>
   );
 }
