@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Image, type ImageStyle, type StyleProp } from "react-native";
+import { type ImageStyle, type StyleProp } from "react-native";
+import { Image } from "expo-image";
 import { baseUrl, currentAccess, renewAccess, watchAccess } from "../lib/api";
 
 /**
@@ -12,6 +13,14 @@ import { baseUrl, currentAccess, renewAccess, watchAccess } from "../lib/api";
  * وتوكن الوصول يعيش خمس عشرة دقيقة: صورةٌ تُطلب بعد انتهائه تُردّ
  * بـ401 و`<Image>` لا يعيد المحاولة وحده. فالخطأ يُقرأ هنا انتهاءً،
  * ويُجدَّد مرّةً واحدة، ثم يُعاد التركيب بمفتاحٍ جديد.
+ *
+ * **و`expo-image` لا `<Image>` من React Native**: الأخير يفكّ الصورة
+ * المتحرّكة (صورُ عرض آثار+، القاعدة ٨٢) إطاراً إطاراً على خيطٍ خلفيّ
+ * — فإذا أُعيد رسمُ القائمة (تحديثٌ، أو توكنٌ تجدّد فتغيّر المفتاح)
+ * وهو في منتصف إطار، قرأ من صورةٍ حُرّرت فمات التطبيق بـ`SIGTRAP` في
+ * `RCTAnimatedImage animatedImageFrameAtIndex`. وهو ما وقع فعلاً «بعد
+ * أن يعمل التطبيق فترة». و`expo-image` يفكّها بـSDWebImage، وتلك تملك
+ * الإطار حتى تفرغ منه — وخبيئتُه على القرص تُغني عن إعادة التنزيل.
  */
 export function MediaImage({
   mediaId,
@@ -39,11 +48,14 @@ export function MediaImage({
       source={{
         uri: `${baseUrl}/v1/media/${mediaId}`,
         headers: { authorization: `Bearer ${token}` },
+        // الخبيئة بالمعرّف: العنوان ثابت لكنّ الترويسة تتجدّد، والصورة هي هي.
+        cacheKey: mediaId,
       }}
       style={style}
-      resizeMode={resizeMode}
+      contentFit={resizeMode}
+      transition={120}
       onLoad={(event) => {
-        const size = event.nativeEvent.source;
+        const size = event.source;
         if (size?.width && size.height) onSize?.(size.width, size.height);
       }}
       onError={() => {

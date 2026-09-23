@@ -90,7 +90,3 @@ export function playClose(): void {
   play("close");
 }
 
-/** نقرةٌ عامّة لما ليس فتحاً ولا إغلاقاً ولا تحديثاً — كغالق الكاميرا. */
-export function tap(): void {
-  play("open");
-}

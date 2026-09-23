@@ -1,4 +1,6 @@
-import { View, Pressable } from "react-native";
+import { View, Pressable, Alert } from "react-native";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "../lib/api";
 import { Text } from "./type";
 import { useRouter } from "expo-router";
 import { Avatar } from "./avatar";
@@ -73,12 +75,37 @@ export function CommentList({
   comments,
   viewerId,
   size = 26,
+  moderate = false,
 }: {
   comments: Moment["comments"];
   viewerId: string;
   size?: number;
+  /**
+   * صلاحية الإشراف: «احذفه بصلاحية الإشراف» تحت تعليق غيره.
+   *
+   * كاللحظة تماماً (القاعدة ١١٤): الحكمُ في مكان القراءة، والبابُ
+   * `/v1/moderation/comments/:id` لا بابُ صاحب التعليق — ومعه سجلّ.
+   */
+  moderate?: boolean;
 }) {
   const router = useRouter();
+  const client = useQueryClient();
+  const remove = useMutation({
+    mutationFn: (id: string) => api(`/v1/moderation/comments/${id}`, { method: "DELETE" }),
+    onSettled: () => {
+      void client.invalidateQueries({ queryKey: ["feed"] });
+      void client.invalidateQueries({ queryKey: ["moment"] });
+      void client.invalidateQueries({ queryKey: ["user"] });
+    },
+  });
+
+  // سؤالٌ قبل الحذف: لا رجعة فيه، وضغطةٌ عابرة على تعليقٍ لا تكفي.
+  const ask = (id: string) =>
+    Alert.alert("حذف التعليق", "يُحذف بصلاحية الإشراف ويُكتب في السجلّ.", [
+      { text: "إلغاء", style: "cancel" },
+      { text: "احذف", style: "destructive", onPress: () => remove.mutate(id) },
+    ]);
+
   if (comments.length === 0) return null;
 
   return (
@@ -116,6 +143,19 @@ export function CommentList({
               </Text>
             </View>
             <Text style={{ color: colors.ink2, fontSize: 12.5, lineHeight: 21 }}>{comment.body}</Text>
+            {moderate && comment.user.id !== viewerId ? (
+              <Pressable
+                accessibilityRole="button"
+                disabled={remove.isPending}
+                onPress={() => ask(comment.id)}
+                hitSlop={8}
+                style={{ alignSelf: "flex-start", marginTop: 3 }}
+              >
+                <Text style={{ color: colors.live, fontSize: 11, fontWeight: "600" }}>
+                  احذفه بصلاحية الإشراف
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
         </View>
       ))}
@@ -124,7 +164,15 @@ export function CommentList({
 }
 
 /** قالبُ ما تحت الحدث: المتفاعلون ثم خطٌّ ثم التعليقات. */
-export function Bubble({ moment, viewerId }: { moment: Moment; viewerId: string }) {
+export function Bubble({
+  moment,
+  viewerId,
+  moderate = false,
+}: {
+  moment: Moment;
+  viewerId: string;
+  moderate?: boolean;
+}) {
   const hasComments = moment.comments.length > 0;
   const hasReactions = moment.reactions.length > 0;
   if (!hasComments && !hasReactions) return null;
@@ -145,7 +193,7 @@ export function Bubble({ moment, viewerId }: { moment: Moment; viewerId: string 
       {hasReactions && hasComments ? (
         <View style={{ height: 1, backgroundColor: colors.line, marginVertical: 10 }} />
       ) : null}
-      <CommentList comments={moment.comments} viewerId={viewerId} />
+      <CommentList comments={moment.comments} viewerId={viewerId} moderate={moderate} />
     </View>
   );
 }

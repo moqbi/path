@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { View, Pressable, Image } from "react-native";
 import { Text } from "./type";
 import { useRouter } from "expo-router";
 import { Avatar, firstColor } from "./avatar";
 import { MediaImage } from "./media-image";
+import { PhotoViewer } from "./photo-viewer";
 import { PinIcon, PlayIcon, WithIcon, SunIcon, MoonIcon, PlaneIcon, GiftIcon, SparkIcon } from "./icons";
 import { MomentBar } from "./moment-bar";
 import { Bubble, CommentList, Reactors } from "./reactors";
@@ -107,15 +109,21 @@ export function MomentCard({
    * ثلاثة استعلامات لسؤالٍ واحد.
    */
   moderate = false,
+  here = false,
 }: {
   moment: Moment;
   viewerId: string;
   isPlus: boolean;
   moderate?: boolean;
+  /** البطاقة في صفحة اللحظة نفسها: الضغطُ عليها لا يفتح الصفحةَ فوقها ثانيةً. */
+  here?: boolean;
 }) {
   const router = useRouter();
+  const [viewing, setViewing] = useState<string | null>(null);
   const withNames = moment.tags.map((t) => t.name);
-  const open = () => router.push(`/m/${moment.id}` as never);
+  const open = () => {
+    if (!here) router.push(`/m/${moment.id}` as never);
+  };
   const isEvent = EVENTS.has(moment.kind);
   const found = moment.reactions.find((r) => r.mine);
   const mineReaction = found ? { kind: found.kind, emoji: found.emoji } : null;
@@ -212,6 +220,7 @@ export function MomentCard({
 
     return (
       <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, paddingBottom: 20 }}>
+        <PhotoViewer mediaId={viewing} onClose={() => setViewing(null)} />
         {spine}
         <View style={{ flex: 1 }}>
           <MomentBar
@@ -225,12 +234,14 @@ export function MomentCard({
             extra={
               <>
                 {moment.mediaId ? (
-                  <MediaImage
-                    mediaId={moment.mediaId}
-                    style={{ width: "100%", height: 190, borderRadius: 14, marginTop: 10 }}
-                  />
+                  <Pressable accessibilityLabel="افتح الصورة" onPress={() => setViewing(moment.mediaId)}>
+                    <MediaImage
+                      mediaId={moment.mediaId}
+                      style={{ width: "100%", height: 190, borderRadius: 14, marginTop: 10 }}
+                    />
+                  </Pressable>
                 ) : null}
-                <Bubble moment={moment} viewerId={viewerId} />
+                <Bubble moment={moment} viewerId={viewerId} moderate={moderate} />
               </>
             }
           />
@@ -240,14 +251,17 @@ export function MomentCard({
   }
 
   const head = (
-    <Pressable onPress={open}>
+    <View>
+      {/* الصورة تفتح نفسها كاملةً (القاعدة ٣٠)، والنصُّ تحتها يفتح اللحظة. */}
       {moment.mediaId ? (
-        <MediaImage mediaId={moment.mediaId} style={{ width: "100%", height: 230 }} />
+        <Pressable accessibilityLabel="افتح الصورة" onPress={() => setViewing(moment.mediaId)}>
+          <MediaImage mediaId={moment.mediaId} style={{ width: "100%", height: 230 }} />
+        </Pressable>
       ) : moment.imageSpec ? (
         <View style={{ height: 132, backgroundColor: firstColor(moment.imageSpec, colors.chip) }} />
       ) : null}
 
-      <View style={{ paddingHorizontal: 14, paddingTop: 10 }}>
+      <Pressable onPress={open} style={{ paddingHorizontal: 14, paddingTop: 10 }}>
         {moment.text ? (
           <Text style={{ color: colors.ink, fontSize: 13.5, lineHeight: 23, marginBottom: 8 }}>
             {moment.text}
@@ -268,12 +282,13 @@ export function MomentCard({
             <Text style={{ color: colors.muted, fontSize: 12 }}>مع {withNames.join(" و")}</Text>
           </View>
         ) : null}
-      </View>
-    </Pressable>
+      </Pressable>
+    </View>
   );
 
   return (
     <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, paddingBottom: 20 }}>
+      <PhotoViewer mediaId={viewing} onClose={() => setViewing(null)} />
       {spine}
 
       <View
@@ -314,7 +329,7 @@ export function MomentCard({
                 ) : null}
                 {moment.comments.length > 0 ? (
                   <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 10 }}>
-                    <CommentList comments={moment.comments} viewerId={viewerId} />
+                    <CommentList comments={moment.comments} viewerId={viewerId} moderate={moderate} />
                     {moment._count.comments > moment.comments.length ? (
                       <Pressable onPress={open} style={{ marginTop: 8 }}>
                         <Text style={{ color: colors.clayInk, fontSize: 12, fontWeight: "600" }}>

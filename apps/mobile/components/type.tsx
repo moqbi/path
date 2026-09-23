@@ -1,5 +1,6 @@
 import { forwardRef } from "react";
 import {
+  Platform,
   Text as RNText,
   TextInput as RNTextInput,
   StyleSheet,
@@ -42,12 +43,41 @@ export type TextProps = RNTextProps & { face?: Face };
  *
  * ومكانه هذا الغلاف لا ستّون ملفّاً: كلُّ نصٍّ يمرّ من هنا أصلاً.
  */
+/**
+ * المحاذاة تُكتب بالاتجاه لا بالجهة — على آبل.
+ *
+ * محرّكُ النصّ في المعمارية الجديدة يقلب `left`↔`right` **بلا شرط**
+ * متى كان التخطيط من اليمين (`RCTAttributedTextUtils.mm`: «if
+ * layoutDirection == RightToLeft … Right → Left»)، ولا يقرأ
+ * `swapLeftAndRightInRTL(false)` أصلاً — ذاك يحكم مواضعَ التخطيط لا
+ * محاذاةَ النصّ. فكان `textAlign: "right"` يُرسم يساراً، وهو ما رآه
+ * المالك: «النصوص ما زالت من اليسار إلى اليمين».
+ *
+ * والقلبُ لا يمسّ المحاذاة «الطبيعيّة» (`auto`)، وهذه تُحسم باتجاه
+ * الكتابة: `rtl` تُحاذي يميناً و`ltr` يساراً، في أيّ شجرةٍ كان النصّ
+ * — حتى في نافذةٍ (`Modal`) لا ترث اتجاه الجذر. فالقصدُ يُترجَم إليها:
+ * «يمين» ← طبيعيّةٌ باتجاهٍ من اليمين، و«يسار» ← طبيعيّةٌ باتجاهٍ من
+ * اليسار (حقولُ الروابط والبريد). والوسطُ يبقى وسطاً.
+ *
+ * وأندرويد على حاله: لا يمرّ بهذا الكود، ولم يُرَ فيه عطل.
+ */
+function align(flat: TextStyle): Pick<TextStyle, "textAlign" | "writingDirection"> {
+  const want = flat.textAlign ?? "right";
+  if (Platform.OS !== "ios" || (want !== "right" && want !== "left")) {
+    return { textAlign: want, writingDirection: flat.writingDirection ?? "rtl" };
+  }
+  const told = flat.writingDirection;
+  return {
+    textAlign: "auto",
+    writingDirection: told === "rtl" || told === "ltr" ? told : want === "right" ? "rtl" : "ltr",
+  };
+}
+
 function paint(style: unknown, face: Face): TextStyle {
   const flat = (StyleSheet.flatten(style as never) ?? {}) as TextStyle;
   return {
-    textAlign: "right",
-    writingDirection: "rtl",
     ...flat,
+    ...align(flat),
     fontFamily: familyOf(face, flat.fontWeight),
     fontWeight: undefined,
   };

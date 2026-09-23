@@ -126,7 +126,9 @@ export default function Profile() {
               moment={item}
               viewerId={me?.id ?? ""}
               isPlus={me?.isPlus ?? false}
-              moderate={moderating}
+              // صلاحيةُ الحذف للمشرف على كل لحظةٍ يقرؤها، صديقاً كان صاحبها
+              // أو لا — `moderating` يقول من أيّ بابٍ جاءت اللحظات لا غير.
+              moderate={me?.canModerate ?? false}
             />
           )}
           /*

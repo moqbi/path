@@ -8,8 +8,8 @@ import Svg, { Circle, Path } from "react-native-svg";
 import { STORY_SECONDS } from "@athar/shared";
 import { CloseIcon } from "../components/icons";
 import { keepShot } from "../lib/capture";
-import { tap } from "../lib/sound";
 import { ar } from "../lib/format";
+import { StoryVideo } from "../components/story-video";
 import { colors } from "../theme/tokens";
 
 /**
@@ -128,16 +128,23 @@ export default function Camera() {
 
     setRecording(true);
     setElapsed(0);
+    /*
+      المدّة من الساعة لا من `elapsed`: الدالّة أُغلقت على قيمته ساعةَ
+      بدأ التسجيل — صفرٌ دائماً — فكان كلُّ مقطعٍ «٠ ثانية» ويردّه
+      الخادم بـ«seconds: too small». والساعة لا تُغلَق على شيء.
+    */
+    const began = Date.now();
     try {
       const clip = await camera.current.recordAsync({ maxDuration: limit });
       if (clip?.uri) {
+        const seconds = Math.max(1, Math.min(limit, Math.round((Date.now() - began) / 1000)));
         setShot({
           uri: clip.uri,
           mime: "video/mp4",
           width: 0,
           height: 0,
           video: true,
-          seconds: Math.min(elapsed, limit),
+          seconds,
         });
       }
     } finally {
@@ -150,9 +157,11 @@ export default function Camera() {
     return (
       <View style={{ flex: 1, backgroundColor: "#000" }}>
         {shot.video ? (
+          /* المقطع يُشغَّل ويُعاد — لا سطرٌ يصفه على شاشةٍ سوداء. */
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>
-              مقطعٌ من {ar(shot.seconds)} ثانية
+            <StoryVideo source={shot.uri} local width={screen.width} height={screen.height * 0.78} loop />
+            <Text style={{ color: "rgba(255,255,255,.75)", fontSize: 12.5, marginTop: 8 }}>
+              {ar(shot.seconds)} ثانية
             </Text>
           </View>
         ) : (
@@ -232,10 +241,12 @@ export default function Camera() {
           <Pressable
             accessibilityLabel={mode === "video" ? (recording ? "أوقف التسجيل" : "سجّل") : "صوّر"}
             disabled={busy}
-            onPress={() => {
-              tap();
-              void (mode === "video" ? roll() : shoot());
-            }}
+            /*
+              بلا مؤثّرٍ هنا: كان `tap()` يُسمِع نغمةَ فتح قوس النشر نفسها،
+              فيُسمع الغالق زرَّ الزائد. والنظامُ يُسمع غالقَه بنفسه في آبل،
+              وثلاثُ نغماتٍ لثلاثة أفعال (القاعدة ٣٦) لا رابعة مستعارة.
+            */
+            onPress={() => void (mode === "video" ? roll() : shoot())}
             style={{ width: 78, height: 78, borderRadius: 39, borderWidth: 3, borderColor: "rgba(255,255,255,.9)", alignItems: "center", justifyContent: "center" }}
           >
             <View

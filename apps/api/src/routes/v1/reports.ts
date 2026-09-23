@@ -97,5 +97,9 @@ export const contentRoutes = new Hono()
     c.json(await reports.removeMoment(me(c), c.req.valid("param").id)),
   )
 
+  .delete("/comments/:id", zValidator("param", z.object({ id: cuid })), async (c) =>
+    c.json(await reports.removeComment(me(c), c.req.valid("param").id)),
+  )
+
   /* السجلّ: من حذف ماذا ومتى. */
   .get("/logs", async (c) => c.json(await reports.logs()));

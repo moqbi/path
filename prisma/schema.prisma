@@ -812,7 +812,7 @@ model ModerationLog {
   ownerId String?
   owner   User?   @relation("ModerationOn", fields: [ownerId], references: [id], onDelete: SetNull)
 
-  /// ما جرى: `MOMENT_REMOVED` اليوم، وغيره حين يُبنى.
+  /// ما جرى: `MOMENT_REMOVED` أو `COMMENT_REMOVED`.
   action   String
   /// معرّف المحذوف — بلا مفتاحٍ أجنبيّ: المشار إليه ذهب.
   targetId String

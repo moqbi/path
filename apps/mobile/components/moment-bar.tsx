@@ -325,7 +325,11 @@ export function MomentBar({
               الإبلاغ بجانب «إرسال»: المكان الذي يُفتح قصداً على اللحظة.
               ولا يُبلّغ أحدٌ عن لحظته، فلا يُعرض لصاحبها.
             */}
-            {author ? null : <ReportButton target="MOMENT" targetId={momentId} />}
+            {/*
+              والمشرف لا يُبلغ: يحكم. زرُّ «بلاغ» أمامه يرسل القضيّة إلى
+              نفسه، و«احذفها بصلاحية الإشراف» فوقه يؤدّي الغرض بضغطة.
+            */}
+            {author || moderate ? null : <ReportButton target="MOMENT" targetId={momentId} />}
           </View>
         </View>
       ) : null}

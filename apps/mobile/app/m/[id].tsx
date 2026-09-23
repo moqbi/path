@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { View, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import { View, ScrollView, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text, TextInput } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
@@ -24,6 +25,7 @@ export default function MomentPage() {
   const moment = useMoment(id);
   const comment = useComment(id);
   const [body, setBody] = useState("");
+  const insets = useSafeAreaInsets();
 
   if (moment.isLoading) {
     return (
@@ -50,7 +52,20 @@ export default function MomentPage() {
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
       <ScreenHeader title="لحظة" back="/" />
 
-      <ScrollView contentContainerStyle={{ paddingTop: 12, paddingBottom: 24 }}>
+      {/*
+        حقلُ التعليق **خارج** التمرير ومثبّتٌ في أسفل الشاشة، ويصعد مع
+        الكيبورد (`KeyboardAvoidingView`). كان داخل التمرير تحت البطاقة
+        مباشرةً، فيجلس في منتصف الشاشة كأنّ كيبورداً مفتوحاً تحته.
+      */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+      <ScrollView
+        style={{ flex: 1 }}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingTop: 12, paddingBottom: 24 }}
+      >
         {/*
           حشوة الخطّ الزمني نفسها: البطاقة مرسومةٌ على ورقٍ بعمود صورٍ
           وخيط، وبلا حشوةٍ جانبية تلتصق بالحافتين ويمشي العمود خارج
@@ -62,10 +77,23 @@ export default function MomentPage() {
             viewerId={me?.id ?? ""}
             isPlus={me?.isPlus ?? false}
             moderate={me?.canModerate ?? false}
+            here
           />
         </View>
+      </ScrollView>
 
-        <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 14 }}>
+        <View
+          style={{
+            flexDirection: "row",
+            gap: 8,
+            paddingHorizontal: 14,
+            paddingTop: 10,
+            paddingBottom: Math.max(insets.bottom, 12),
+            borderTopWidth: 1,
+            borderTopColor: colors.line,
+            backgroundColor: colors.paper,
+          }}
+        >
           <TextInput
             value={body}
             onChangeText={setBody}
@@ -104,7 +132,7 @@ export default function MomentPage() {
             <Text style={{ color: colors.onBrand, fontSize: 13, fontWeight: "700" }}>أرسل</Text>
           </Pressable>
         </View>
-      </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

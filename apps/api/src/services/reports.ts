@@ -202,6 +202,34 @@ export async function removeMoment(adminId: string, momentId: string) {
   return { ok: "حُذفت اللحظة" };
 }
 
+/**
+ * حذفُ تعليقٍ مسيء بيد المشرف — بابُ `removeMoment` نفسُه للتعليق.
+ *
+ * صاحبُ التعليق يحذفه من `/v1/comments/:id` ولا يُوسَّع ذلك الباب ليقبل
+ * غيره (القاعدة ١١٤): بابٌ للصاحب وبابٌ للمشرف، وهذا خلف
+ * `requireModerator` ومعه سجلّ.
+ */
+export async function removeComment(adminId: string, commentId: string) {
+  const comment = await prisma.comment.findUnique({
+    where: { id: commentId },
+    select: { id: true, userId: true, body: true },
+  });
+  if (!comment) throw notFound("التعليق غير موجود");
+
+  await prisma.moderationLog.create({
+    data: {
+      adminId,
+      action: "COMMENT_REMOVED",
+      targetId: comment.id,
+      ownerId: comment.userId,
+      snippet: comment.body.slice(0, 200),
+    },
+  });
+
+  await prisma.comment.delete({ where: { id: comment.id } });
+  return { ok: "حُذف التعليق" };
+}
+
 /** سجلّ ما فعله المشرفون — يقرؤه المالك في اللوحة. */
 export async function logs(limit = 100) {
   const rows = await prisma.moderationLog.findMany({
