@@ -30,8 +30,21 @@ const SIZE = 56;
 const DISC = 44;
 const ICON = 32;
 
-/** الزرّ: ٢٠ من الحافة اليمنى، ونصفُ قطره ٢٨. */
-const RIGHT = 20;
+/**
+ * الزرّ: ٢٨ من الحافة اليمنى لا ٢٠.
+ *
+ * على الجهاز كان يكاد يلامس الحافّة — والإبهام يصل إليه وهو ملتصقٌ،
+ * لكنّه يُقرأ ملصوقاً لا موضوعاً. وفي الويب يجلس داخل هيكل هاتفٍ له
+ * حافّةٌ من حوله، فلا يُحسّ الفرق إلا على شاشةٍ حقيقية.
+ */
+const RIGHT = 28;
+
+/**
+ * وقرصُ الزرّ ٤٨ لا ٥٦: مربّعُ الصنف يبقى ٥٦ فلا يتغيّر مدار القوس،
+ * ويصغر الرسمُ وحده. رسمٌ ٥٦ ملوّنٌ برأسه يُقرأ أكبر من أقراص الأصناف
+ * (٤٤) بفارقٍ ظاهر، وهو زرٌّ واحد لا لافتة.
+ */
+const PLUS = 48;
 /** هامشٌ يبقى من الحافة اليسرى حتى لا يلامس القرصُ الحافّة. */
 const EDGE = 10;
 
@@ -125,7 +138,7 @@ export function ComposerFan() {
       <View
         // الزرّ على اليمين كما في الويب، والأصناف تطير يساراً — وزواياه
         // محسوبةٌ على ذلك (القاعدة ٨).
-        style={{ position: "absolute", right: 20, bottom: 86, width: SIZE, height: SIZE }}
+        style={{ position: "absolute", right: RIGHT, bottom: 86, width: SIZE, height: SIZE }}
         pointerEvents="box-none"
       >
         {items.map((item, index) => {
@@ -218,7 +231,7 @@ export function ComposerFan() {
           >
             <Image
               source={require("../assets/composer/plus.png")}
-              style={{ width: SIZE, height: SIZE }}
+              style={{ width: PLUS, height: PLUS }}
               resizeMode="contain"
             />
           </Animated.View>

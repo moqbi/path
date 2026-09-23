@@ -50,7 +50,7 @@ export default function Support() {
   const rows = tickets.data?.tickets ?? [];
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
       <ScreenHeader title="الدعم وتواصل معنا" back="/settings" />
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">

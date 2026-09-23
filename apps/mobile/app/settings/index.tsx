@@ -88,7 +88,7 @@ export default function Settings() {
   if (!me) return null;
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
       <ScreenHeader title="الإعدادات والخصوصية" back="/me" />
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40, direction: "rtl" }} keyboardShouldPersistTaps="handled">

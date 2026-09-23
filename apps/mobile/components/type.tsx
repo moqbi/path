@@ -27,9 +27,30 @@ import { familyOf, type Face } from "../theme/fonts";
  */
 export type TextProps = RNTextProps & { face?: Face };
 
+/**
+ * ومعه اتّجاهُ النصّ.
+ *
+ * `swapLeftAndRightInRTL(false)` يمنع React Native من قلب `textAlign`
+ * من نفسه (وهو لازمٌ: الشجرة مكتوبةٌ على مقاس الويب — انظر «اتجاه
+ * التطبيق على الجوّال»)، لكنّه يُبقي `textAlign` الافتراضيّ على
+ * اليسار. فخرج التطبيق كلّه على الجهاز بنصوصٍ من اليسار، والمعاينةُ
+ * على الويب تعرضها يميناً لأنّ `direction: rtl` في CSS يُحاذي بنفسه.
+ *
+ * فالافتراضُ هنا **يمينٌ**، ولا يُكتب إلا حين لا يذكره النمط: ما كُتب
+ * فيه `center` أو `left` يبقى كما كُتب. ومعه `writingDirection` فتُقرأ
+ * الأرقامُ وعلاماتُ الترقيم في موضعها من السطر العربيّ.
+ *
+ * ومكانه هذا الغلاف لا ستّون ملفّاً: كلُّ نصٍّ يمرّ من هنا أصلاً.
+ */
 function paint(style: unknown, face: Face): TextStyle {
   const flat = (StyleSheet.flatten(style as never) ?? {}) as TextStyle;
-  return { ...flat, fontFamily: familyOf(face, flat.fontWeight), fontWeight: undefined };
+  return {
+    textAlign: "right",
+    writingDirection: "rtl",
+    ...flat,
+    fontFamily: familyOf(face, flat.fontWeight),
+    fontWeight: undefined,
+  };
 }
 
 export const Text = forwardRef<RNText, TextProps>(function Text(

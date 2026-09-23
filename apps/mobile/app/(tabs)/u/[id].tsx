@@ -103,7 +103,7 @@ export default function Profile() {
   const who = person.data?.person;
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
       <ScreenHeader title={who?.name ?? "ملف"} />
 
       {person.isLoading ? (

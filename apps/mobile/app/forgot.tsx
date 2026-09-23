@@ -32,7 +32,7 @@ export default function Forgot() {
   });
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
       <ScreenHeader title="نسيت كلمة المرور" back="/login" />
 
       <View style={{ padding: 20, gap: 12, direction: "rtl" }}>

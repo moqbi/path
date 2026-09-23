@@ -34,7 +34,7 @@ export default function MomentPage() {
 
   if (moment.isLoading) {
     return (
-      <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+      <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
         <ScreenHeader title="لحظة" back="/" />
         <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
       </SafeAreaView>
@@ -44,7 +44,7 @@ export default function MomentPage() {
   const data = moment.data?.moment;
   if (!data) {
     return (
-      <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+      <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
         <ScreenHeader title="لحظة" back="/" />
         <Text style={{ color: colors.muted, fontSize: 13.5, textAlign: "center", marginTop: 50 }}>
           اللحظة غير موجودة.
@@ -56,7 +56,7 @@ export default function MomentPage() {
   const line = { height: 1, backgroundColor: colors.line, marginHorizontal: 16 };
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
       <ScreenHeader title="لحظة" back="/" />
 
       <ScrollView contentContainerStyle={{ paddingTop: 12, paddingBottom: 24 }}>

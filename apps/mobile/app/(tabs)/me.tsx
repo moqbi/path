@@ -2,7 +2,7 @@ import { SITE_URL, hasSite } from "@athar/shared";
 import { useMemo } from "react";
 import { View, SectionList, Pressable, ActivityIndicator, Alert, Share } from "react-native";
 import { Text } from "../../components/type";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { AvatarMenu } from "../../components/avatar-menu";
@@ -97,6 +97,8 @@ function Action({
 export default function Me() {
   const { me, signOut } = useSession();
   const router = useRouter();
+  // حشوةُ الحافّة العليا في الرأس الداكن نفسه — انظر `components/screen-header.tsx`.
+  const insets = useSafeAreaInsets();
 
   const stats = useQuery({
     queryKey: ["me", "stats"],
@@ -124,7 +126,7 @@ export default function Me() {
   const s = stats.data;
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
       {/* الرأس: العلامة، ففاصل، فاسم الشاشة — والمشاركة في الطرف المقابل. */}
       <View
         style={{
@@ -132,7 +134,7 @@ export default function Me() {
           alignItems: "center",
           justifyContent: "space-between",
           paddingHorizontal: 20,
-          paddingTop: 6,
+          paddingTop: insets.top + 6,
           paddingBottom: 10,
           backgroundColor: colors.chrome,
         }}

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { View, ScrollView, Pressable, ActivityIndicator, RefreshControl } from "react-native";
 import { Text } from "../../components/type";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { AthrMark } from "../../components/brand";
 import { StoreGrid } from "../../components/store-grid";
@@ -31,6 +31,8 @@ function Row({ title, flame = false, children }: { title: string; flame?: boolea
  */
 export default function Store() {
   const router = useRouter();
+  // حشوةُ الحافّة العليا في الرأس الداكن نفسه — انظر `components/screen-header.tsx`.
+  const insets = useSafeAreaInsets();
   const store = useStore();
   const [slug, setSlug] = useState("");
   const data = store.data;
@@ -50,14 +52,14 @@ export default function Store() {
   const category = data?.categories.find((row) => row.slug === slug) ?? null;
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
           paddingHorizontal: 20,
-          paddingTop: 6,
+          paddingTop: insets.top + 6,
           paddingBottom: 10,
           backgroundColor: colors.chrome,
         }}

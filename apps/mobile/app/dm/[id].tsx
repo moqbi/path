@@ -225,7 +225,7 @@ export default function Conversation() {
   const lines = thread.data?.messages ?? [];
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
       <ScreenHeader title={other?.name ?? "محادثة"} back="/messages" />
 
       <KeyboardAvoidingView

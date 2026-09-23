@@ -206,7 +206,7 @@ export default function Compose() {
   });
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
       {/* الرأس كبقية الشاشات: العلامة ثم فاصل ثم «لحظة» — لا اسم نوعٍ عارٍ. */}
       <ScreenHeader title="لحظة" back="/" />
 

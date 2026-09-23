@@ -83,7 +83,7 @@ export default function Accessories() {
   };
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
       <ScreenHeader title="إكسسواراتي" back="/me" />
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40, direction: "rtl" }}>

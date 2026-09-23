@@ -85,7 +85,7 @@ export default function Messages() {
   });
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
       <ScreenHeader title="المحادثات" back="/" />
 
       <FlatList

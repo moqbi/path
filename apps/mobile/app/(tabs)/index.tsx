@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { View, SectionList, ActivityIndicator, Pressable, Animated, Easing, PanResponder } from "react-native";
 import { Text } from "../../components/type";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MomentCard, SPINE_W } from "../../components/moment-card";
 import { SPINE_X } from "../../components/spine";
@@ -34,6 +34,8 @@ const PULL_TRIP = 62;
 export default function Timeline() {
   const me = useSession((s) => s.me);
   const router = useRouter();
+  // حشوةُ الحافّة العليا في الرأس الداكن نفسه — انظر `components/screen-header.tsx`.
+  const insets = useSafeAreaInsets();
 
   /*
     العدسات ثلاثٌ في الخط الزمني نفسه لا ثلاثُ صفحات: الرأس والغلاف
@@ -155,7 +157,7 @@ export default function Timeline() {
   if (!me) return null;
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
       {/*
         الرأس: العلامة ثم ATHAR، و«آثار+» قبل الرسائل.
 
@@ -169,7 +171,8 @@ export default function Timeline() {
           justifyContent: "space-between",
           minHeight: 56,
           paddingHorizontal: 16,
-          paddingVertical: 8,
+          paddingTop: insets.top + 8,
+          paddingBottom: 8,
           backgroundColor: colors.chrome,
         }}
       >
