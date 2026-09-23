@@ -413,9 +413,13 @@ function ChangeEmail({
 
   const change = useMutation({
     mutationFn: () =>
-      api("/v1/me/email", { method: "PUT", body: JSON.stringify({ email, password }) }),
-    onSuccess: async () => {
-      setSaid({ ok: "تغيّر بريدك" });
+      api<{ sent?: boolean }>("/v1/me/email", { method: "PUT", body: JSON.stringify({ email, password }) }),
+    onSuccess: async (row) => {
+      setSaid({
+        ok: row?.sent
+          ? "تغيّر بريدك — أرسلنا إليه رابط التأكيد"
+          : "تغيّر بريدك — أكّده من «أرسل رابط التأكيد»",
+      });
       setPassword("");
       await refresh();
     },
@@ -914,10 +918,23 @@ function TimeField({
  */
 function VerifyEmail({ verified, hasEmail }: { verified: boolean; hasEmail: boolean }) {
   const [said, setSaid] = useState<string | null>(null);
+  const refresh = useSession((state) => state.refresh);
 
+  /*
+    «أرسلنا» لا تُقال إلا حين أُرسل شيء. الخادم يردّ `already` حين يكون
+    البريد مؤكَّداً أصلاً ولا يرسل — وكانت الشاشة تقول «أرسلنا» في الحالين،
+    فينتظر صاحبُها رسالةً لن تأتي. فتُحدَّث الجلسة ويظهر «مؤكَّد».
+  */
   const send = useMutation({
-    mutationFn: () => api("/v1/me/verify/send", { method: "POST" }),
-    onSuccess: () => setSaid("أرسلنا رابط التأكيد إلى بريدك"),
+    mutationFn: () => api<{ already?: boolean }>("/v1/me/verify/send", { method: "POST" }),
+    onSuccess: async (row) => {
+      if (row?.already) {
+        setSaid("بريدك مؤكَّد أصلاً");
+        await refresh();
+        return;
+      }
+      setSaid("أرسلنا رابط التأكيد إلى بريدك — وإن لم تجده فانظر في البريد غير المرغوب");
+    },
     onError: (problem) =>
       setSaid(problem instanceof Error ? problem.message : "تعذّر الإرسال"),
   });

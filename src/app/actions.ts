@@ -1874,12 +1874,23 @@ async function readNewEmail(
 
 /** يكتب البريد، ويترجم اصطدام قيد الفرادة إلى رسالةٍ لا صفحة خطأ. */
 async function writeEmail(userId: string, email: string): Promise<AdminResult> {
+  // بريدٌ جديد بريدٌ غيرُ مؤكَّد، ورسالتُه تخرج معه — كنسخة الخادم.
+  let name: string;
   try {
-    await prisma.user.update({ where: { id: userId }, data: { email } });
-    return { ok: `صار البريد ${email}` };
+    ({ name } = await prisma.user.update({
+      where: { id: userId },
+      data: { email, emailVerifiedAt: null },
+      select: { name: true },
+    }));
   } catch {
     return { error: "هذا البريد مستعمل في حسابٍ آخر" };
   }
+  const sent = await sendVerify(userId, email, name).catch(() => false);
+  return {
+    ok: sent
+      ? `صار البريد ${email} — أرسلنا إليه رابط التأكيد`
+      : `صار البريد ${email} — أكّده من «أرسل رابط التأكيد»`,
+  };
 }
 
 /**

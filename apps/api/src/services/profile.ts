@@ -274,17 +274,27 @@ export async function changeEmail(
   });
   if (taken) throw badRequest("هذا البريد مستعمل في حسابٍ آخر");
 
+  /*
+    **بريدٌ جديد بريدٌ غيرُ مؤكَّد**: التأكيدُ كان للعنوان القديم، ونقلُه
+    إلى الجديد يجعل عنواناً لم يُفتح قطّ «مؤكَّداً» — وهو بابُ الاستعادة
+    يوم تُنسى الكلمة (القاعدة ١١٩ب). ورسالةُ التأكيد تخرج معه في الحال:
+    كان الربطُ لا يرسل شيئاً، فمن ربط بريده من حساب سناب بقي بلا رسالة.
+  */
+  let user: { id: string; email: string | null; name: string };
   try {
-    const user = await prisma.user.update({
+    user = await prisma.user.update({
       where: { id: userId },
-      data: { email },
-      select: { id: true, email: true },
+      data: { email, emailVerifiedAt: null },
+      select: { id: true, email: true, name: true },
     });
-    return user;
   } catch {
     // بين الفحص والكتابة لحظةٌ يسع فيها طلبٌ آخر أن يأخذه؛ والقيد هو الحَكَم.
     throw badRequest("هذا البريد مستعمل في حسابٍ آخر");
   }
+
+  const { sendVerify } = await import("./email-tokens");
+  const sent = await sendVerify(user.id, email, user.name).catch(() => false);
+  return { id: user.id, email: user.email, sent };
 }
 
 /**
