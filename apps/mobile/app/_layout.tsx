@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { I18nManager, Platform, View, ActivityIndicator } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as Notifications from "expo-notifications";
@@ -18,7 +18,7 @@ import { useSession } from "../lib/session";
 import { primeAccess } from "../lib/api";
 import { markFirstSeen } from "../lib/rate";
 import { Suspended } from "../components/suspended";
-import { colors } from "../theme/tokens";
+import { applyTheme, colors, themeStore } from "../theme/tokens";
 
 /**
  * العربية من اليمين — قراراً لا إعداداً، وفي البيئات الثلاث معاً.
@@ -103,6 +103,16 @@ function Gate() {
   }, [me?.id]);
 
   /*
+    الثيم يُلبَس هنا: ألوانُ الحساب تُكتب في `colors` فتتبدّل الشجرة
+    كلّها (القاعدة ٧٢). و`useSyncExternalStore` يُعيد بناءها حين
+    تتبدّل — والمكوّنات تقرأ المرجع نفسه فلا تعرف أنّ شيئاً جرى.
+  */
+  const skin = useSyncExternalStore(themeStore.subscribe, themeStore.get, themeStore.get);
+  useEffect(() => {
+    applyTheme(me?.background?.palette ?? null);
+  }, [me?.background?.palette]);
+
+  /*
     وضغطةُ التنبيه تفتح موضعَه: رسالةً أو لحظةً أو الأصدقاء. ومن فتح
     تنبيهاً ووجد نفسه في الخط الزمنيّ يسأل «أين ما نبّهني؟».
   */
@@ -144,6 +154,8 @@ function Gate() {
   */
   return (
     <Stack
+      // مفتاحُ الثيم: تبديلُه يُعيد بناء المكدّس بألوانه الجديدة.
+      key={skin}
       screenOptions={{
         headerShown: false,
         /*
