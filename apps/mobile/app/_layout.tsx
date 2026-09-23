@@ -17,6 +17,7 @@ import { Montserrat_500Medium, Montserrat_700Bold } from "@expo-google-fonts/mon
 import { useSession } from "../lib/session";
 import { primeAccess } from "../lib/api";
 import { markFirstSeen } from "../lib/rate";
+import { watchCity } from "../lib/arrive";
 import { Suspended } from "../components/suspended";
 import { applyTheme, colors, themeStore } from "../theme/tokens";
 
@@ -100,6 +101,15 @@ function Gate() {
   useEffect(() => {
     if (!me) return;
     void enablePush();
+  }, [me?.id]);
+
+  /*
+    وفتحُ التطبيق في مدينةٍ أخرى يكتب لحظةَ الوصول — بلا أن يُطلب إذنٌ
+    من أجلها، وبلا خدمةٍ تعمل في الخلفيّة.
+  */
+  useEffect(() => {
+    if (!me) return;
+    return watchCity();
   }, [me?.id]);
 
   /*

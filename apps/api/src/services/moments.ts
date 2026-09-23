@@ -212,14 +212,46 @@ export async function createMoment(userId: string, input: MomentInput) {
   await attachViewers(moment.id, seen.viewers);
   await attachTags(moment.id, userId, input.with ?? []);
 
-  if (where.placeCity && where.placeCity !== me.city) {
-    await prisma.$transaction([
-      prisma.user.update({ where: { id: userId }, data: { city: where.placeCity } }),
-      prisma.moment.create({ data: { authorId: userId, kind: "CITY", text: where.placeCity } }),
-    ]);
-  }
+  await markCity(userId, where.placeCity, me.city);
 
   return { id: moment.id };
+}
+
+/**
+ * «وصل إلى الرياض»: مدينةٌ تغيّرت تُكتب لحظةً بنفسها.
+ *
+ * والمدينةُ تُحفظ مع اللحظة لا تُحسب مرّتين: من لم تتغيّر مدينتُه لا
+ * يُكتب له شيء، ومن تغيّرت كُتبت مرّةً واحدة — الصفُّ والحدث في معاملةٍ
+ * واحدة فلا تبقى لحظةٌ بلا مدينةٍ محفوظة ولا مدينةٌ بلا لحظة.
+ */
+async function markCity(userId: string, city: string | null, was: string | null) {
+  if (!city || city === was) return false;
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: userId }, data: { city } }),
+    prisma.moment.create({ data: { authorId: userId, kind: "CITY", text: city } }),
+  ]);
+  return true;
+}
+
+/**
+ * فتحُ التطبيق في مدينةٍ أخرى يكتب لحظةَ الوصول.
+ *
+ * وكان لا يُكتب إلا مع نشر لحظةٍ فيها موقع — فمن سافر ولم ينشر شيئاً
+ * لم تعرف دائرتُه أنّه سافر، **وهذا ما طلبه المالك**: اللحظةُ تُرسل
+ * أوّل ما يُفتح التطبيق في مدينةٍ ثانية.
+ *
+ * والإذنُ لا يُطلب من أجلها (القاعدة ٦٨): الجهاز يرسل إحداثياته إن
+ * كان الإذنُ ممنوحاً أصلاً، وإلّا لم يُنادَ هذا الباب.
+ * و«إظهار موقعي» لا يمنعها: المدينةُ تبقى في كل حال (القاعدة ٦٨)،
+ * وهي وحدها ما يُحفظ هنا — لا نقطةَ ولا اسمَ مكان.
+ */
+export async function checkInCity(userId: string, lat: number, lng: number) {
+  const me = await prisma.user.findUnique({ where: { id: userId }, select: { city: true } });
+  if (!me) throw notFound("لا حساب");
+
+  const place = await reverseGeocode(lat, lng);
+  const wrote = await markCity(userId, place.city, me.city);
+  return { city: place.city, wrote };
 }
 
 /**

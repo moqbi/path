@@ -18,6 +18,9 @@ import { SourceSheet } from "../components/source-sheet";
 import { takeShot } from "../lib/capture";
 import { colors } from "../theme/tokens";
 
+/** مكانٌ قريب كما يردّه `/v1/places/nearby`. */
+type NearbyPlace = { id: string; name: string; kind: string | null; meters: number };
+
 type Kind = "PHOTO" | "THOUGHT" | "PLACE" | "MUSIC";
 
 /** حدّ نصّ اللحظة: ما زاد عن هذا يصير مقالاً لا لحظة. */
@@ -56,6 +59,14 @@ export default function Compose() {
   const [fix, setFix] = useState<{ lat: number; lng: number } | null>(null);
   const [locating, setLocating] = useState(kind === "PLACE");
   const [geoError, setGeoError] = useState<string | null>(null);
+  /*
+    الأماكن حولك: أقربُ عنوانٍ يردّ شارعاً، والشارع لا يقول أين أنت —
+    في المقهى أم في المطعم المجاور (القاعدة ٦٣). فتُعرض المعالم
+    المسمّاة حولك ويُختار منها، وبلا اختيارٍ يُكتب أقربُ عنوان.
+  */
+  const [around, setAround] = useState<NearbyPlace[]>([]);
+  const [asking2, setAsking2] = useState(false);
+  const [chosen, setChosen] = useState<string | null>(null);
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,6 +109,23 @@ export default function Compose() {
       alive = false;
     };
   }, [wantPlace, fix]);
+
+  useEffect(() => {
+    if (!fix) {
+      setAround([]);
+      setChosen(null);
+      return;
+    }
+    let alive = true;
+    setAsking2(true);
+    api<{ places: NearbyPlace[] }>(`/v1/places/nearby?lat=${fix.lat}&lng=${fix.lng}`)
+      .then((row) => alive && setAround(row.places))
+      .catch(() => alive && setAround([]))
+      .finally(() => alive && setAsking2(false));
+    return () => {
+      alive = false;
+    };
+  }, [fix]);
 
   /*
     العودة من الكاميرا: اللقطة تنتظر في `lib/capture`، وتُقرأ مرّةً
@@ -167,6 +195,7 @@ export default function Compose() {
           viewers: audience === "PICKED" ? viewers : undefined,
           lat: fix?.lat,
           lng: fix?.lng,
+          place: chosen ?? undefined,
         }),
       });
 
@@ -328,9 +357,11 @@ export default function Compose() {
                     <Text style={{ color: colors.muted, fontSize: 13.5 }}>نحدّد موقعك…</Text>
                   ) : fix ? (
                     <>
-                      <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "600" }}>موقعك حُدّد</Text>
+                      <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "600" }}>
+                        {chosen ?? "موقعك حُدّد"}
+                      </Text>
                       <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 2 }}>
-                        يُكتب اسم المكان من الإحداثيات عند النشر.
+                        {chosen ? "اختر غيره من القائمة" : "اختر مكاناً من حولك، أو اتركه فيُكتب أقرب عنوان."}
                       </Text>
                     </>
                   ) : (
@@ -352,6 +383,60 @@ export default function Compose() {
                   </Pressable>
                 )}
               </View>
+
+              {/* الأماكن حولك: سطرٌ لكلٍّ باسمه ونوعه وبُعده. */}
+              {fix && !locating ? (
+                asking2 ? (
+                  <View style={{ borderTopWidth: 1, borderTopColor: colors.line, padding: 14 }}>
+                    <Text style={{ color: colors.muted, fontSize: 12 }}>نقرأ الأماكن حولك…</Text>
+                  </View>
+                ) : around.length === 0 ? (
+                  <View style={{ borderTopWidth: 1, borderTopColor: colors.line, padding: 14 }}>
+                    <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 21 }}>
+                      ما لقينا مكاناً مسمّى حولك — يُكتب أقرب عنوان عند النشر.
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={{ borderTopWidth: 1, borderTopColor: colors.line }}>
+                    {around.map((place) => {
+                      const on = chosen === place.name;
+                      return (
+                        <Pressable
+                          key={place.id}
+                          onPress={() => setChosen(on ? null : place.name)}
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 10,
+                            minHeight: 48,
+                            paddingHorizontal: 14,
+                            paddingVertical: 10,
+                            backgroundColor: on ? colors.claySoft : "transparent",
+                          }}
+                        >
+                          <PinIcon size={14} color={on ? colors.clayInk : colors.faint} />
+                          <View style={{ flex: 1, minWidth: 0 }}>
+                            <Text
+                              numberOfLines={1}
+                              style={{ color: on ? colors.clayInk : colors.ink, fontSize: 13.5, fontWeight: on ? "700" : "500" }}
+                            >
+                              {place.name}
+                            </Text>
+                            {place.kind ? (
+                              <Text style={{ color: colors.faint, fontSize: 11 }}>{place.kind}</Text>
+                            ) : null}
+                          </View>
+                          <Text style={{ color: colors.faint, fontSize: 11 }}>
+                            {place.meters < 1000
+                              ? `${ar(place.meters)} م`
+                              : `${ar((place.meters / 1000).toFixed(1))} كم`}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                )
+              ) : null}
             </View>
           )}
 
