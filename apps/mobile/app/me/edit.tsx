@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { View, Pressable, ScrollView, ActivityIndicator, PanResponder, KeyboardAvoidingView, Platform } from "react-native";
 import { Text, TextInput } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Picker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
@@ -44,6 +44,13 @@ export default function EditProfile() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [pictureError, setPictureError] = useState<string | null>(null);
+  /*
+    ما دام الغلافُ يُضبط تقف الصفحةُ كلّها: التمريرُ الأصليّ في آبل يأخذ
+    السحبة قبل أن يُسأل الغلاف — فكانت الصفحةُ تتحرّك لا الصورة — وسحبُ
+    الحافّة يُرجع الشاشة إلى ما قبلها. رفضُ الإذن في جافاسكربت لا يوقفهما،
+    فيُطفآن صراحةً.
+  */
+  const [framingCover, setFramingCover] = useState(false);
 
   if (!me) return null;
 
@@ -82,7 +89,12 @@ export default function EditProfile() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={{ paddingBottom: 40, direction: "rtl" }} keyboardShouldPersistTaps="handled">
+        <Stack.Screen options={{ gestureEnabled: !framingCover }} />
+        <ScrollView
+          scrollEnabled={!framingCover}
+          contentContainerStyle={{ paddingBottom: 40, direction: "rtl" }}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={{ color: colors.muted, fontSize: 11.5, paddingHorizontal: 20, paddingTop: 14, textAlign: "right" }}>
             الغلاف والصورة وبياناتك في مكانٍ واحد
           </Text>
@@ -95,6 +107,7 @@ export default function EditProfile() {
             mediaId={me.coverMediaId}
             spec={me.background?.spec ?? null}
             initial={{ x: me.coverX ?? 50, y: me.coverY, zoom: me.coverZoom ?? 100 }}
+            onAdjusting={setFramingCover}
             onChanged={async () => {
               await refresh();
               await client.invalidateQueries({ queryKey: keys.me });
@@ -280,14 +293,21 @@ function CoverEditor({
   spec,
   initial,
   onChanged,
+  onAdjusting,
 }: {
   mediaId: string | null;
   spec: string | null;
   initial: Framing;
   onChanged: () => Promise<void>;
+  /** الصفحةُ تُطفئ تمريرها وسحبَ حافّتها ما دام الغلافُ يُضبط. */
+  onAdjusting?: (on: boolean) => void;
 }) {
   const [framing, setFraming] = useState<Framing>(initial);
-  const [adjusting, setAdjusting] = useState(false);
+  const [adjusting, setAdjustingState] = useState(false);
+  const setAdjusting = (on: boolean) => {
+    setAdjustingState(on);
+    onAdjusting?.(on);
+  };
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
