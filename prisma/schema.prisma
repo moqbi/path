@@ -138,6 +138,10 @@ model User {
   coverMediaId  String? @unique
   /// موضع الغلاف عمودياً (٪): يضبطه صاحبه بسحب الصورة.
   coverY        Int     @default(50)
+  /// موضعُ الغلاف أفقياً (٪) — كـ`coverY`. والتكبيرُ نسبةٌ من ١٠٠ إلى ٣٠٠:
+  /// الصورة لا تُقصّ عند الرفع، وما يُحفظ أيُّ جزءٍ منها يُرى وبأيّ قُرب.
+  coverX        Int     @default(50)
+  coverZoom     Int     @default(100)
   avatarMedia   Media?  @relation("UserAvatar", fields: [avatarMediaId], references: [id], onDelete: SetNull)
   coverMedia    Media?  @relation("UserCover", fields: [coverMediaId], references: [id], onDelete: SetNull)
 

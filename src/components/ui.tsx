@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SUPPORTER_TAG } from "@/lib/supporter";
 import { initial } from "@/lib/format";
 import { SparkIcon } from "@/components/icons";
 import { AthrPageMark } from "@/components/brand";
@@ -286,17 +287,33 @@ export function CoverLayer({
   mediaId,
   spec,
   y = 50,
+  x = 50,
+  zoom = 100,
 }: {
   mediaId: string | null | undefined;
   spec: string | null | undefined;
   y?: number;
+  x?: number;
+  /** القُرب (١٠٠–٣٠٠) — يضبطه الجوّال بإصبعين، ويُرسم هنا بالمعادلة نفسها. */
+  zoom?: number;
 }) {
+  /*
+    المعادلةُ نفسها في الجوّال (`coverFrame` في `components/cover.tsx`):
+    الصورةُ تملأ الإطار بموضعها (`background-position`)، ثمّ تُكبَّر حول
+    النقطة نفسها (`transform-origin`). والغلافُ الخارجيّ يقصّ ما خرج.
+  */
+  const scale = mediaId ? Math.min(300, Math.max(100, zoom)) / 100 : 1;
   return (
-    <span
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-0 block"
-      style={coverStyle(mediaId, spec, y)}
-    />
+    <span aria-hidden="true" className="pointer-events-none absolute inset-0 block overflow-hidden">
+      <span
+        className="absolute inset-0 block"
+        style={{
+          ...coverStyle(mediaId, spec, y, x),
+          transform: scale === 1 ? undefined : `scale(${scale})`,
+          transformOrigin: `${x}% ${y}%`,
+        }}
+      />
+    </span>
   );
 }
 
@@ -312,12 +329,15 @@ export function coverStyle(
   spec: string | null | undefined,
   /** موضع الصورة عمودياً (٪) — يضبطه صاحب الحساب بسحب الغلاف. */
   y: number = 50,
+  /** وأفقياً — يضبطه الجوّال. */
+  x: number = 50,
 ): React.CSSProperties {
   if (mediaId) {
+    const pct = (value: number) => Math.min(100, Math.max(0, value));
     return {
       backgroundImage: `url(${BASE}/api/media/${mediaId})`,
       backgroundSize: "cover",
-      backgroundPosition: `center ${Math.min(100, Math.max(0, y))}%`,
+      backgroundPosition: `${pct(x)}% ${pct(y)}%`,
     };
   }
 
@@ -436,7 +456,8 @@ export function NameTag({
           <SparkIcon size={Math.round(size * 1.25)} />
         </span>
       ) : null}
-      <TagPill tag={tag ?? null} size={size} />
+      {/* وسمُ المشرف يسبق، وإلّا «داعم» لكل مشترك (`SUPPORTER_TAG`). */}
+      <TagPill tag={tag ?? (isPlus ? SUPPORTER_TAG : null)} size={size} />
     </>
   );
 }

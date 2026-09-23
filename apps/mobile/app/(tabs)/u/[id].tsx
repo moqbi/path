@@ -30,6 +30,9 @@ type Person = {
   createdAt: string;
   avatarMediaId: string | null;
   coverMediaId: string | null;
+  coverX?: number;
+  coverY?: number;
+  coverZoom?: number;
   /* الصنف الملبوس كاملاً: نافذةُ الصورة تعرض اسمه وسعره وتبيعه. */
   frame: {
     id: string;
@@ -144,7 +147,7 @@ export default function Profile() {
                 بحدٍّ حادّ، فيبدو الملف صفحةً من تطبيقٍ آخر.
               */}
               <View style={{ height: 120, marginHorizontal: -20, overflow: "hidden" }}>
-                <CoverLayer mediaId={who.coverMediaId} spec={null} height={120} />
+                <CoverLayer mediaId={who.coverMediaId} spec={null} height={120} x={who.coverX} y={who.coverY} zoom={who.coverZoom} />
               </View>
 
               <View style={{ alignItems: "center", marginTop: -32, paddingHorizontal: 16, marginBottom: 14 }}>

@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { AthrMark, AthrWordmark } from "@/components/brand";
-import { SparkIcon } from "@/components/icons";
+import { NameTag } from "@/components/ui";
 import { ar, membership } from "@/lib/format";
+import { siteText, storeUrl } from "@/lib/site";
+import { OpenInApp } from "./open-in-app";
 
 /**
  * صفحة المشاركة — بطاقة شخصٍ لمن لم ينزّل التطبيق بعد.
@@ -26,6 +29,7 @@ async function findPerson(raw: string) {
   return prisma.user.findUnique({
     where: { memberNo: number },
     select: {
+      id: true,
       memberNo: true,
       name: true,
       bio: true,
@@ -34,6 +38,9 @@ async function findPerson(raw: string) {
       createdAt: true,
       avatarMediaId: true,
       coverMediaId: true,
+      coverX: true,
+      coverY: true,
+      coverZoom: true,
       tag: { select: { name: true, bg: true, fg: true } },
     },
   });
@@ -70,9 +77,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+/**
+ * **بهيئة ملفّ الصديق في التطبيق** (القاعدة ٢٠): غلافٌ بعرض الشاشة
+ * وموضعِه كما ضبطه صاحبه، ثمّ الصورةُ على حافّته، ثمّ الاسمُ ووسمُه، ثمّ
+ * البيانات — وتحتها «افتح في التطبيق». كانت بطاقةً وسط الصفحة بتخطيطٍ
+ * آخر، فتُقرأ موقعاً غير التطبيق الذي دُعي إليه قارئُها.
+ *
+ * و«الإحصاءات» هنا ما يعرّف بلا أن يكشف: رقمُ العضوية، ومدّةُ البقاء،
+ * والمدينة. **لا عددُ لحظاتٍ ولا أصدقاء** (القاعدة ٨٧ب): عددُ الدائرة يقول
+ * عن صاحبها ما لم يأذن بقوله لغريبٍ فتح رابطاً.
+ */
 export default async function SharedProfile({ params }: Props) {
   const { id } = await params;
-  const person = await findPerson(id);
+  const [person, text, agent] = await Promise.all([
+    findPerson(id),
+    siteText(),
+    headers().then((all) => all.get("user-agent") ?? ""),
+  ]);
 
   // «غير موجود» لا «ممنوع»: الثانية تؤكّد للسائل أنّ الرقم صحيح.
   if (!person) notFound();
@@ -80,76 +101,87 @@ export default async function SharedProfile({ params }: Props) {
   const cover = person.coverMediaId ? `/api/public/cover/${person.memberNo}` : null;
   const avatar = person.avatarMediaId ? `/api/public/avatar/${person.memberNo}` : null;
 
+  const ios = storeUrl(text["store.ios"]);
+  const android = storeUrl(text["store.android"]);
+  // متجرُ جهاز القارئ: من فتح الرابط من أندرويد لا يُرسَل إلى App Store.
+  const mine = /android/i.test(agent) ? android ?? ios : ios ?? android;
+
+  const zoom = Math.min(300, Math.max(100, person.coverZoom)) / 100;
+  const stats = [
+    { label: "رقم العضوية", value: ar(person.memberNo) },
+    { label: "معنا منذ", value: membership(person.createdAt) },
+    ...(person.city ? [{ label: "المدينة", value: person.city }] : []),
+  ];
+
   return (
-    <article className="mx-auto max-w-[520px]">
-      <div
-        className="relative mb-0 h-[150px] overflow-hidden rounded-2xl"
-        style={{
-          background: cover
-            ? `center / cover no-repeat url(${cover})`
-            : "linear-gradient(135deg,#0e1a24,#2b3f4f)",
-        }}
-      >
-        {/* الغلاف يذوب في أرضيته (القاعدة ٥٣) — لا حدٌّ حادّ تحته. */}
-        <span
-          aria-hidden
-          className="absolute inset-x-0 bottom-0 h-16"
-          style={{ background: "linear-gradient(to top, var(--color-paper), transparent)" }}
-        />
+    <article className="mx-auto max-w-[520px] pb-10">
+      {/* الغلاف بموضعه وقُربه — المعادلةُ نفسها في التطبيق (`coverFrame`). */}
+      <div className="relative h-[176px] overflow-hidden sm:rounded-b-2xl">
+        {cover ? (
+          <span
+            aria-hidden
+            className="absolute inset-0 block"
+            style={{
+              backgroundImage: `url(${cover})`,
+              backgroundSize: "cover",
+              backgroundPosition: `${person.coverX}% ${person.coverY}%`,
+              transform: zoom === 1 ? undefined : `scale(${zoom})`,
+              transformOrigin: `${person.coverX}% ${person.coverY}%`,
+            }}
+          />
+        ) : (
+          <span
+            aria-hidden
+            className="absolute inset-0 block"
+            style={{ backgroundImage: "linear-gradient(135deg,#0e1a24,#2b3f4f)" }}
+          />
+        )}
       </div>
 
-      {/*
-        `relative` هنا لازمة لا زينة: الغلاف فوقه `relative` كذلك،
-        والعنصر الموضوع يُرسم فوق أخيه الساكن مهما كان ترتيبهما — فكانت
-        الصورة تُقصّ نصفها تحت الغلاف.
-      */}
       <div className="relative -mt-12 flex flex-col items-center px-5 text-center">
         <span
-          className="flex h-[92px] w-[92px] items-center justify-center overflow-hidden rounded-full border-4 text-[30px] font-bold"
+          className="flex h-[96px] w-[96px] items-center justify-center overflow-hidden rounded-full border-4 text-[30px] font-bold"
           style={{
             borderColor: "var(--color-paper)",
-            background: avatar
-              ? `center / cover no-repeat url(${avatar})`
-              : "linear-gradient(135deg,#f6b93b,#ff7a5a)",
+            backgroundImage: avatar ? `url(${avatar})` : "linear-gradient(135deg,#f6b93b,#ff7a5a)",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
             color: "#14212b",
           }}
         >
           {avatar ? "" : person.name.slice(0, 1)}
         </span>
 
-        <h1 className="mt-3 flex items-center gap-2 text-[21px] font-bold">
+        {/* النجمةُ ووسمُ «داعم» من `NameTag` نفسه — لا رسمٌ ثانٍ لهما هنا. */}
+        <h1 className="mt-3 flex items-center justify-center gap-2 text-[21px] font-bold">
           <span dir="auto">{person.name}</span>
-          {/* آثار+ نجمة `SparkIcon` نفسها في كل مكان (القاعدة ٧٦). */}
-          {person.isPlus ? (
-            <span className="text-gold" aria-label="مشترك في آثار+">
-              <SparkIcon size={16} />
-            </span>
-          ) : null}
-          {person.tag ? (
-            <span
-              className="rounded-full px-2.5 py-1 text-[11px] font-bold"
-              style={{ background: person.tag.bg, color: person.tag.fg }}
-            >
-              {person.tag.name}
-            </span>
-          ) : null}
+          <NameTag isPlus={person.isPlus} tag={person.tag} size={11} />
         </h1>
 
-        <p className="mt-1 text-[12.5px] text-muted">
-          عضو رقم {ar(person.memberNo)}
-          {person.city ? ` · ${person.city}` : ""}
-        </p>
-        <p className="text-[12.5px] text-muted">معنا {membership(person.createdAt)}</p>
-
         {person.bio ? (
-          <p className="mt-4 max-w-[420px] text-[13.5px] leading-relaxed text-ink-2">{person.bio}</p>
+          <p dir="auto" className="mt-2 max-w-[420px] text-[13.5px] leading-relaxed text-ink-2">
+            {person.bio}
+          </p>
         ) : null}
 
+        <dl className="mt-5 grid w-full gap-2" style={{ gridTemplateColumns: `repeat(${stats.length}, 1fr)` }}>
+          {stats.map((stat) => (
+            <div key={stat.label} className="rounded-2xl border border-line bg-card px-2 py-3">
+              <dd className="text-[15px] font-bold leading-tight">{stat.value}</dd>
+              <dt className="mt-1 text-[10.5px] text-muted">{stat.label}</dt>
+            </div>
+          ))}
+        </dl>
+
+        <div className="mt-5 w-full">
+          <OpenInApp userId={person.id} store={mine} />
+        </div>
+
         {/*
-          الدعوة: هذه الصفحة لمن لم ينزّل التطبيق، فالفعل واحدٌ ظاهر —
-          وما يُرى منها لا يُغني عن التطبيق، فاللحظات لا تُعرض هنا.
+          الدعوة: من لم يُنزّل التطبيق. ومكانُ اللحظات سطرٌ يقول لماذا لا تُرى
+          — كما في ملفّ من ليس صديقاً داخل التطبيق.
         */}
-        <div className="mt-8 w-full rounded-2xl border border-line bg-card p-6">
+        <div className="mt-6 w-full rounded-2xl border border-line bg-card p-6">
           <span className="mx-auto mb-3 flex w-fit items-center gap-2">
             <AthrMark size={34} />
             <AthrWordmark size={15} />
@@ -163,8 +195,8 @@ export default async function SharedProfile({ params }: Props) {
           </p>
 
           <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-            <StoreButton store="App Store" />
-            <StoreButton store="Google Play" />
+            <StoreButton store="App Store" href={ios} />
+            <StoreButton store="Google Play" href={android} />
           </div>
         </div>
       </div>
@@ -173,10 +205,22 @@ export default async function SharedProfile({ params }: Props) {
 }
 
 /**
- * زرّ المتجر «قريباً» بلا رابط: زرٌّ يفتح صفحةً لا وجود لها أسوأ من زرٍّ
- * يقول إنّه لم يُفتح بعد — وهو ما تقوله صفحة الهبوط نفسها.
+ * زرُّ المتجر: رابطُه من اللوحة (`store.ios` و`store.android`)، وبلا رابطٍ
+ * يقول «قريباً» ولا يفتح شيئاً — زرٌّ إلى صفحةٍ لا وجود لها أسوأ من زرٍّ
+ * يقول إنّه لم يُفتح بعد.
  */
-function StoreButton({ store }: { store: string }) {
+function StoreButton({ store, href }: { store: string; href: string | null }) {
+  if (href) {
+    return (
+      <a
+        href={href}
+        className="flex grow items-center justify-center gap-2 rounded-xl px-4 py-3 text-[12.5px] font-bold"
+        style={{ background: "var(--color-chrome)", color: "var(--color-chrome-ink)" }}
+      >
+        {store}
+      </a>
+    );
+  }
   return (
     <span
       className="flex grow items-center justify-center gap-2 rounded-xl border border-line px-4 py-3 text-[12.5px] font-semibold text-muted"

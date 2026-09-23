@@ -572,7 +572,10 @@ export async function setCover(formData: FormData): Promise<string | void> {
   try {
     const { file, width, height } = picture(formData);
     const media = await storeUpload(user.id, file, width, height);
-    await prisma.user.update({ where: { id: user.id }, data: { coverMediaId: media.id } });
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { coverMediaId: media.id, coverY: 50, coverX: 50, coverZoom: 100 },
+    });
   } catch (problem) {
     return problem instanceof Error ? problem.message : "تعذّر حفظ الصورة";
   }
@@ -1556,7 +1559,7 @@ async function wearItemCover(coverMediaId: string | null, userId: string): Promi
     });
     await prisma.user.update({
       where: { id: userId },
-      data: { coverMediaId: copy.id, coverY: 50 },
+      data: { coverMediaId: copy.id, coverY: 50, coverX: 50, coverZoom: 100 },
     });
     // غلافُه السابق يذهب هو وبكسلاته: صفٌّ لا يشير إليه شيء (القاعدة ١٠٤).
     if (old?.coverMediaId) await dropMedia([old.coverMediaId]);

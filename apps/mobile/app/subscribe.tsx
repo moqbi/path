@@ -5,13 +5,29 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ScreenHeader } from "../components/screen-header";
-import { BookIcon, CameraIcon, MicIcon, SparkIcon, StoreIcon } from "../components/icons";
+import { BookIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, StoreIcon } from "../components/icons";
+import { TagPill } from "../components/name-tag";
+import { SUPPORTER_TAG } from "@athar/shared";
 import { api } from "../lib/api";
 import { billingReady, buy, openManage, plans, restore, testStore, type Plan } from "../lib/billing";
 import { useSession } from "../lib/session";
 import { colors } from "../theme/tokens";
 
 const PERKS = [
+  /*
+    ما يُرى بجانب الاسم أوّلاً: النجمةُ توثيقاً، ووسمُ «داعم» — والرسمُ هو
+    الشيءُ نفسه كما يظهر في الخطّ الزمنيّ لا أيقونةٌ عنه.
+  */
+  {
+    title: "نجمة التوثيق",
+    body: "بجانب اسمك في كل مكان — في اللحظات والتعليقات والأصدقاء",
+    icon: <SparkIcon size={18} color={colors.clay} />,
+  },
+  {
+    title: "وسم «داعم»",
+    body: "يظهر بجانب اسمك ما دام اشتراكك قائماً",
+    icon: <TagPill tag={SUPPORTER_TAG} size={10} />,
+  },
   {
     title: "تفاعل بأي إيموجي",
     body: "الخمسة الأساسية تبقى للجميع · لك كل كيبوردك",
@@ -25,7 +41,8 @@ const PERKS = [
   {
     title: "دوائر منفصلة",
     body: "العائلة، الشلة، الشغل — كل وحدة بخصوصيتها",
-    icon: <SparkIcon size={18} color={colors.gold} />,
+    // النجمةُ صارت للتوثيق، فللدوائر رسمُها.
+    icon: <CircleIcon size={18} color={colors.gold} />,
   },
   {
     title: "رسالة صوتية دقيقتان",

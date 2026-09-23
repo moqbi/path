@@ -138,6 +138,8 @@ export default async function TimelinePage({
         coverMediaId={user.coverMediaId}
         coverSpec={user.background?.spec ?? null}
         coverY={user.coverY}
+        coverX={user.coverX}
+        coverZoom={user.coverZoom}
         name={user.name}
         since={membership(user.createdAt)}
         tag={<NameTag isPlus={user.isPlus} tag={user.tag} size={10} />}

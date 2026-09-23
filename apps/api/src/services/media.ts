@@ -103,7 +103,7 @@ export async function wearItemCover(
     });
     await prisma.user.update({
       where: { id: userId },
-      data: { coverMediaId: copy.id, coverY: 50 },
+      data: { coverMediaId: copy.id, coverY: 50, coverX: 50, coverZoom: 100 },
     });
     if (old?.coverMediaId) await dropMedia([old.coverMediaId]);
   } catch {

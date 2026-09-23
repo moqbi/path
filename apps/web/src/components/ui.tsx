@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SUPPORTER_TAG } from "@athar/shared";
 import { initial } from "@/lib/format";
 import { SparkIcon } from "@/components/icons";
 import { AthrPageMark } from "@/components/brand";
@@ -428,7 +429,7 @@ export function NameTag({
           <SparkIcon size={Math.round(size * 1.25)} />
         </span>
       ) : null}
-      <TagPill tag={tag ?? null} size={size} />
+      <TagPill tag={tag ?? (isPlus ? SUPPORTER_TAG : null)} size={size} />
     </>
   );
 }

@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { playClose, playOpen } from "../lib/sound";
+import { Spot } from "./spot";
 import { colors } from "../theme/tokens";
 
 /**
@@ -229,11 +230,14 @@ export function ComposerFan() {
               ],
             }}
           >
-            <Image
-              source={require("../assets/composer/plus.png")}
-              style={{ width: PLUS, height: PLUS }}
-              resizeMode="contain"
-            />
+            {/* هدفُ الجولة: تضع دائرتها على الزائد نفسه. */}
+            <Spot id="compose">
+              <Image
+                source={require("../assets/composer/plus.png")}
+                style={{ width: PLUS, height: PLUS }}
+                resizeMode="contain"
+              />
+            </Spot>
           </Animated.View>
         </Pressable>
       </View>

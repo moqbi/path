@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { AthrMark, AthrWordmark } from "@/components/brand";
 import { FollowRow } from "@/components/social";
-import { siteText, socialLinks } from "@/lib/site";
+import { headers } from "next/headers";
+import { siteText, socialLinks, storeUrl } from "@/lib/site";
 
 const COLUMNS = [
   {
@@ -43,7 +44,18 @@ const COLUMNS = [
 export const dynamic = "force-dynamic";
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
-  const [text, follow] = await Promise.all([siteText(), socialLinks()]);
+  const [text, follow, agent] = await Promise.all([
+    siteText(),
+    socialLinks(),
+    headers().then((all) => all.get("user-agent") ?? ""),
+  ]);
+  /*
+    «حمّل التطبيق» يفتح متجرَ جهاز القارئ حين يُضبط رابطُه في اللوحة،
+    وإلّا نزل إلى قسم التحميل في الهبوط كما كان — لا زرٌّ إلى صفحةٍ ميّتة.
+  */
+  const ios = storeUrl(text["store.ios"]);
+  const android = storeUrl(text["store.android"]);
+  const download = (/android/i.test(agent) ? android ?? ios : ios ?? android) ?? "/#download";
 
   return (
     <div className="site">
@@ -74,7 +86,7 @@ export default async function PublicLayout({ children }: { children: React.React
           </Link>
 
           <Link
-            href="/#download"
+            href={download}
             className="flex h-9 items-center gap-1.5 rounded-full px-4 text-[12.5px] font-bold"
             style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
           >

@@ -130,6 +130,8 @@ export async function userProfile(viewerId: string, id: string) {
       createdAt: true,
       coverMediaId: true,
       coverY: true,
+      coverX: true,
+      coverZoom: true,
       background: { select: { spec: true, mediaId: true, palette: true } },
     },
   });

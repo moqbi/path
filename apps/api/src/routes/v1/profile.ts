@@ -87,7 +87,7 @@ export const profileRoutes = new Hono()
   )
 
   .put("/cover", zValidator("json", coverInput), async (c) =>
-    c.json(await profile.setCoverPosition(me(c), c.req.valid("json").y)),
+    c.json(await profile.setCoverPosition(me(c), c.req.valid("json"))),
   )
 
   .delete("/cover", async (c) => c.json(await profile.clearCover(me(c))))

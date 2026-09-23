@@ -1,6 +1,7 @@
 import { View } from "react-native";
 import { Text } from "./type";
 import { SparkIcon } from "./icons";
+import { SUPPORTER_TAG } from "@athar/shared";
 import { colors } from "../theme/tokens";
 
 export type Tag = { name: string; bg: string; fg: string } | null | undefined;
@@ -12,8 +13,8 @@ export type Tag = { name: string; bg: string; fg: string } | null | undefined;
  * واحد يرسمه في كل شاشة، فلا يختلف شكله بين الخط الزمني والتعليقات
  * والأصدقاء (القاعدة ١٦).
  *
- * والاشتراك نجمةٌ لا وسم (القاعدة ٥٨): الوسم التلقائي انتهى، وبقي وسمٌ
- * يُمنح لشخصٍ بعينه.
+ * والمشتركُ ينال النجمةَ ووسمَ «داعم» معها (`SUPPORTER_TAG`) — ووسمٌ
+ * يمنحه المشرفُ لشخصٍ بعينه يسبقه.
  */
 export function NameTag({
   isPlus,
@@ -31,7 +32,7 @@ export function NameTag({
       {isPlus ? (
         <SparkIcon size={Math.round(size * 1.25)} color={colors.clay} />
       ) : null}
-      <TagPill tag={tag ?? null} size={size} />
+      <TagPill tag={tag ?? (isPlus ? SUPPORTER_TAG : null)} size={size} />
     </>
   );
 }

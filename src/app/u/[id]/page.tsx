@@ -72,6 +72,9 @@ export default async function FriendProfilePage({
       createdAt: true,
       avatarMediaId: true,
       coverMediaId: true,
+      coverX: true,
+      coverY: true,
+      coverZoom: true,
       frame: { select: WORN },
       charm: { select: WORN },
       background: { select: { spec: true } },
@@ -153,7 +156,13 @@ export default async function FriendProfilePage({
 
       <div className="scroll-area">
         <div className="relative shrink-0 overflow-hidden" style={{ height: 140 }}>
-          <CoverLayer mediaId={person.coverMediaId} spec={person.background?.spec} />
+          <CoverLayer
+            mediaId={person.coverMediaId}
+            spec={person.background?.spec}
+            x={person.coverX}
+            y={person.coverY}
+            zoom={person.coverZoom}
+          />
         </div>
 
         <div className="relative px-5" style={{ marginTop: -34 }}>
@@ -281,6 +290,9 @@ type Person = {
   createdAt: Date;
   avatarMediaId: string | null;
   coverMediaId: string | null;
+  coverX: number;
+  coverY: number;
+  coverZoom: number;
   frame: { spec: string; mediaId: string | null; frameHole: number | null } | null;
   charm: { spec: string; mediaId: string | null } | null;
   background: { spec: string } | null;
@@ -320,7 +332,13 @@ function LockedProfile({
 
       <div className="scroll-area">
         <div className="relative shrink-0 overflow-hidden" style={{ height: 140 }}>
-          <CoverLayer mediaId={person.coverMediaId} spec={person.background?.spec} />
+          <CoverLayer
+            mediaId={person.coverMediaId}
+            spec={person.background?.spec}
+            x={person.coverX}
+            y={person.coverY}
+            zoom={person.coverZoom}
+          />
         </div>
 
         <div className="relative px-5" style={{ marginTop: -34 }}>

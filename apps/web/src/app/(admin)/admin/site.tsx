@@ -349,6 +349,12 @@ const GROUPS: { title: string; note?: string; fields: { key: string; label: stri
       { key: "download.title", label: "العنوان" },
       { key: "download.body", label: "المتن", multiline: true },
       { key: "download.cta", label: "نصّ الزرّ" },
+      {
+        key: "store.ios",
+        label: "رابط App Store",
+        note: "أو رابط TestFlight العامّ قبل النشر. فارغٌ = «قريباً». يبدأ بـhttps://",
+      },
+      { key: "store.android", label: "رابط Google Play", note: "فارغٌ = «قريباً»." },
     ],
   },
   {

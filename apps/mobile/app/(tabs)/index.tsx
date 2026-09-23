@@ -5,7 +5,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MomentCard, SPINE_W } from "../../components/moment-card";
 import { SPINE_X } from "../../components/spine";
-import { CoverLayer } from "../../components/cover";
+import { COVER_HEIGHT, CoverLayer } from "../../components/cover";
 import { Avatar } from "../../components/avatar";
 import { AthrMark } from "../../components/brand";
 import { MessageIcon, RefreshIcon, SparkIcon, StarIcon } from "../../components/icons";
@@ -18,7 +18,7 @@ import { playRefresh } from "../../lib/sound";
 import { NameTag } from "../../components/name-tag";
 import { colors } from "../../theme/tokens";
 
-const COVER = 176;
+const COVER = COVER_HEIGHT;
 
 /** أقصى ما ينزل به الغلاف، والمسافة التي يُحسب بعدها التحديث. */
 const PULL_MAX = 96;
@@ -223,7 +223,7 @@ export default function Timeline() {
 
         {/* الغلاف: صورتك على محور الخيط، والمدّة تحت الاسم، والتحديث مقابله. */}
         <View style={{ height: COVER, overflow: "hidden" }}>
-          <CoverLayer mediaId={me.coverMediaId} spec={me.background?.spec} height={COVER} />
+          <CoverLayer mediaId={me.coverMediaId} spec={me.background?.spec} height={COVER} x={me.coverX} y={me.coverY} zoom={me.coverZoom} />
 
           <View
             style={{

@@ -123,7 +123,15 @@ export const passwordChangeInput = z.object({
   next: z.string().min(8, "كلمة المرور ٨ أحرف فأكثر").max(200),
 });
 
-export const coverInput = z.object({ y: z.coerce.number().min(0).max(100) });
+/*
+  `x` و`zoom` اختياريّان: الويب يضبط الموضع الرأسيّ وحده، ولو كُتبا
+  افتراضاً لأعاد كلُّ حفظٍ منه ما ضبطه الجوّال إلى الوسط.
+*/
+export const coverInput = z.object({
+  y: z.coerce.number().min(0).max(100),
+  x: z.coerce.number().min(0).max(100).optional(),
+  zoom: z.coerce.number().min(100).max(300).optional(),
+});
 
 export const groupInput = z.object({ name: z.string().trim().min(1, "اكتب اسم التصنيف").max(20) });
 

@@ -1,10 +1,23 @@
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { cancelPlus, subscribe } from "@/app/actions";
-import { BookIcon, CameraIcon, MicIcon, SparkIcon, StoreIcon } from "@/components/icons";
+import { BookIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, StoreIcon } from "@/components/icons";
+import { TagPill } from "@/components/ui";
+import { SUPPORTER_TAG } from "@/lib/supporter";
 import { ScreenHeader } from "@/components/ui";
 
 const PERKS = [
+  // كما في الجوّال: النجمةُ والوسمُ أوّلاً، مرسومَين كما يظهران بجانب الاسم.
+  {
+    title: "نجمة التوثيق",
+    body: "بجانب اسمك في كل مكان — في اللحظات والتعليقات والأصدقاء",
+    icon: <SparkIcon size={18} />,
+  },
+  {
+    title: "وسم «داعم»",
+    body: "يظهر بجانب اسمك ما دام اشتراكك قائماً",
+    icon: <TagPill tag={SUPPORTER_TAG} size={10} />,
+  },
   {
     title: "تفاعل بأي إيموجي",
     body: "الخمسة الأساسية تبقى للجميع · لك كل كيبوردك",
@@ -18,7 +31,7 @@ const PERKS = [
   {
     title: "دوائر منفصلة",
     body: "العائلة، الشلة، الشغل — كل وحدة بخصوصيتها",
-    icon: <SparkIcon size={18} />,
+    icon: <CircleIcon size={18} />,
   },
   {
     title: "رسالة صوتية دقيقتان",

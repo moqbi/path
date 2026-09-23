@@ -108,6 +108,8 @@ export default async function ProfilePage() {
             mediaId={user.coverMediaId}
             spec={user.background?.spec ?? null}
             initialY={user.coverY}
+            x={user.coverX}
+            zoom={user.coverZoom}
             height={176}
           />
         }

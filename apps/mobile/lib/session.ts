@@ -45,6 +45,8 @@ export type Me = {
   avatarMediaId: string | null;
   coverMediaId: string | null;
   coverY: number;
+  coverX: number;
+  coverZoom: number;
   shareLocation: boolean;
   notifyOnTag: boolean;
   /** هل على الحساب كلمةُ مرور؟ من دخل بمزوّدٍ لا كلمةَ له حتى يضعها. */

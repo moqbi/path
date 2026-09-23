@@ -6,7 +6,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { AvatarMenu } from "../../components/avatar-menu";
-import { CoverLayer } from "../../components/cover";
+import { COVER_HEIGHT, CoverLayer } from "../../components/cover";
 import { MomentCard, SPINE_W } from "../../components/moment-card";
 import { AthrMark } from "../../components/brand";
 import {
@@ -19,7 +19,7 @@ import { ar, dayLabel, MONTHS } from "../../lib/format";
 import { NameTag } from "../../components/name-tag";
 import { colors } from "../../theme/tokens";
 
-const COVER = 176;
+const COVER = COVER_HEIGHT;
 
 function Stat({ icon, value, label, first }: { icon: React.ReactNode; value: string; label: string; first: boolean }) {
   return (
@@ -186,7 +186,7 @@ export default function Me() {
         ListHeaderComponent={
           <>
             <View style={{ height: COVER, overflow: "hidden" }}>
-              <CoverLayer mediaId={me.coverMediaId} spec={me.background?.spec} height={COVER} />
+              <CoverLayer mediaId={me.coverMediaId} spec={me.background?.spec} height={COVER} x={me.coverX} y={me.coverY} zoom={me.coverZoom} />
             </View>
 
             <View style={{ alignItems: "center", marginTop: -52, paddingHorizontal: 20 }}>

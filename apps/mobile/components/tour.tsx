@@ -1,98 +1,122 @@
 import { useEffect, useRef, useState } from "react";
-import { View, Pressable, Modal, Animated, Easing, PanResponder } from "react-native";
+import { View, Pressable, Modal, Animated, Easing, Dimensions } from "react-native";
+import Svg, { Path } from "react-native-svg";
 import { Text } from "./type";
-import { LinearGradient } from "expo-linear-gradient";
-import { CircleIcon, HomeIcon, LockIcon, PlusIcon, WithIcon } from "./icons";
+import { measureSpot, type Rect } from "./spot";
 import { getItem, setItem } from "../lib/store";
-import { brandGradient, colors } from "../theme/tokens";
+import { colors } from "../theme/tokens";
 
-const KEY = "athr:tour";
+/**
+ * الجولة تُعرض مرّةً لكل جهاز. والمفتاحُ بنسخةٍ (`v2`): من رأى النافذة
+ * القديمة يرى الجولة مرّةً — هي شيءٌ آخر لا الشيءُ نفسه مكرّراً.
+ */
+const KEY = "athr:tour:v2";
 
-const STEPS = [
+/**
+ * خطواتُ الجولة: هدفٌ على الشاشة وسطران عنه.
+ *
+ * بالترتيب الذي تُقرأ به الشاشة: اللحظات، ثمّ بابُها المخفيّ، ثمّ زرُّ
+ * النشر، ثمّ بقيّةُ التبويبات من اليمين إلى اليسار.
+ */
+const STEPS: { spot: string; title: string; body: string }[] = [
   {
-    Icon: HomeIcon,
-    title: "خطّك الزمني",
-    body: "لحظاتك ولحظات أصدقائك في يوميّة واحدة: مكانٌ حللت به، أغنية تسمعها، خاطرة، أو نوم. لا خوارزمية ترتّبها — الأحدث أولاً.",
+    spot: "tab.index",
+    title: "اللحظات",
+    body: "خطّك الزمنيّ: لحظاتك ولحظات أصدقائك، الأحدث أولاً — بلا خوارزميةٍ ترتّبها.",
   },
   {
-    Icon: PlusIcon,
-    title: "انشر بضغطة",
-    body: "زرّ الزائد يفتح قوساً: اكتب، صورة، مكان، أغنية، نوم. والمكان يأتي من جهازك لا من لوحة المفاتيح.",
+    spot: "tab.index",
+    title: "اضغط عليه مطوّلاً",
+    body: "ضغطةٌ مطوّلة على «اللحظات» تفتح بابين: لحظاتك الخاصة التي لا يراها غيرك، و«آثارنا» — ما بينك وبين كل صديق.",
   },
   {
-    Icon: CircleIcon,
-    title: "مئة وخمسون",
-    body: "سقف أصدقائك ١٥٠ ولا يُشترى. الإضافة من أصدقاء أصدقائك وحدهم — لا بحث ولا اكتشاف عام.",
+    spot: "compose",
+    title: "انشر لحظة",
+    body: "الزائد يفتح قوساً: خاطرة، صورة، مكان، أغنية، نوم، صحو. وعند النشر تختار من يرى: كل دائرتك، أو تصنيفاً منها، أو أشخاصاً بأعيانهم.",
   },
   {
-    Icon: LockIcon,
-    title: "من يرى ماذا",
-    body: "عند النشر تختار: كل أصدقائك، أو تصنيفاً منهم (العائلة، الزملاء)، أو أشخاصاً بأعيانهم. ومن هو خارج الجمهور لا تصله اللحظة أصلاً.",
+    spot: "tab.circle",
+    title: "الأصدقاء",
+    body: "دائرتك: مئةٌ وخمسون لا أكثر، ولا يُشترى مقعدٌ فيها. لا بحث ولا استكشاف — تُضيف من أعطاك رابط ملفه، ومن المقترحين من أصدقاء أصدقائك. ومنها محادثاتك.",
   },
   {
-    Icon: WithIcon,
-    title: "آثارنا",
-    body: "اضغط مطوّلاً على تبويب «اللحظات» لتفتح لحظاتك الخاصة، وآثارك المشتركة مع كل صديق.",
+    spot: "tab.notifications",
+    title: "الإشعارات",
+    body: "من تفاعل مع لحظتك، ومن علّق، ومن أضافك أو أهداك — ونقطةٌ على الجرس حين يجدّ شيء.",
+  },
+  {
+    spot: "tab.store",
+    title: "المتجر",
+    body: "إطاراتٌ وتمائمُ وثيماتٌ تُلبسها ملفّك، بالنقاط. كلُّ صنفٍ يُرى قبل شرائه — ولا صناديقَ عشوائية.",
+  },
+  {
+    spot: "tab.me",
+    title: "أنا",
+    body: "ملفّك: الغلافُ والصورة والنبذة وما تلبسه. ومنه الإعدادات والخصوصية، ومشاركةُ رابط ملفّك.",
   },
 ];
 
+/** حولَ الهدف فراغٌ يتنفّس فيه — الدائرة لا تلتصق بحوافّه. */
+const PAD = 14;
+
 /**
- * جولة أول فتح.
+ * جولة أوّل فتح — **تُري لا تحكي**.
  *
- * تُعرض مرة واحدة ثم تُنسى في مخزن الجهاز — لا صفّ في القاعدة لشيء يخصّ
- * هذا الجهاز وحده. وتُقرأ بعد التركيب لا قبله، فلا تومض للعائدين.
+ * كانت نافذةً من الأسفل بخمس شرائح تصف الشاشة وصفاً: «تبويب اللحظات…»
+ * والقارئُ لا يعرف أيَّها يُقصد. صارت الشاشةُ نفسها هي الشرح: تُعتَم
+ * قليلاً، وتنفتح دائرةٌ على التبويب المقصود، وفوقه سطران عنه — فيعرف
+ * أين هو قبل أن يعرف ما هو.
+ *
+ * والدائرةُ **ثقبٌ حقيقيّ** في الحجاب (`Path` بقاعدة `evenodd`): التبويبُ
+ * تحتها يُرى بألوانه لا مغطّىً بطبقةٍ فاتحة.
  */
 export function Tour() {
   const [step, setStep] = useState<number | null>(null);
-  const slide = useRef(new Animated.Value(0)).current;
-  const swipe = useRef<number | null>(null);
+  const [hole, setHole] = useState<Rect | null>(null);
+  const fade = useRef(new Animated.Value(0)).current;
+  const pulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     void getItem(KEY).then((seen) => {
-      if (seen !== "1") setStep(0);
+      // مهلةٌ قصيرة: الشريطُ السفليّ يُرسم بعد الشاشة، ولا دائرة بلا هدف.
+      if (seen !== "1") setTimeout(() => setStep(0), 700);
     });
   }, []);
 
-  function go(next: number, from: number) {
-    if (next < 0 || next >= STEPS.length) return;
-    // الشريحة تدخل من الجهة التي جاءت منها.
-    slide.setValue(next > from ? 42 : -42);
-    setStep(next);
-    Animated.timing(slide, {
-      toValue: 0,
-      duration: 360,
-      easing: Easing.bezier(0.18, 1.1, 0.32, 1),
-      useNativeDriver: true,
-    }).start();
-  }
+  // كلُّ خطوةٍ تقيس هدفها ساعتها، ثمّ تظهر.
+  useEffect(() => {
+    if (step === null) return;
+    let alive = true;
+    fade.setValue(0);
+    const id = STEPS[step].spot;
+    void measureSpot(id).then((rect) => {
+      if (!alive) return;
+      // التبويبُ أيقونةٌ وتحتها اسمُه: الدائرةُ تحتضن الاثنين لا الأيقونة وحدها.
+      setHole(rect && id.startsWith("tab.") ? { ...rect, height: rect.height + 16 } : rect);
+      Animated.timing(fade, {
+        toValue: 1,
+        duration: 260,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    });
+    return () => {
+      alive = false;
+    };
+  }, [step, fade]);
 
-  const pan = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_event, gesture) =>
-        Math.abs(gesture.dx) > 12 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
-      onPanResponderGrant: (_event, gesture) => {
-        swipe.current = gesture.x0;
-      },
-      onPanResponderRelease: (_event, gesture) => {
-        swipe.current = null;
-        setStep((was) => {
-          if (was === null) return was;
-          // في RTL: السحب لليسار يمضي إلى التالي.
-          const next = gesture.dx < -48 ? was + 1 : gesture.dx > 48 ? was - 1 : was;
-          if (next === was || next < 0 || next >= STEPS.length) return was;
-          slide.setValue(next > was ? 42 : -42);
-          Animated.timing(slide, {
-            toValue: 0,
-            duration: 360,
-            easing: Easing.bezier(0.18, 1.1, 0.32, 1),
-            useNativeDriver: true,
-          }).start();
-          return next;
-        });
-      },
-    }),
-  ).current;
+  // حلقةٌ تنبض حول الدائرة: العينُ تذهب إلى ما يتحرّك.
+  useEffect(() => {
+    if (step === null) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 900, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0, duration: 0, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [step, pulse]);
 
   async function close() {
     await setItem(KEY, "1");
@@ -101,89 +125,116 @@ export function Tour() {
 
   if (step === null) return null;
 
+  const screen = Dimensions.get("window");
   const current = STEPS[step];
   const last = step === STEPS.length - 1;
 
+  const circle = hole
+    ? {
+        cx: hole.x + hole.width / 2,
+        cy: hole.y + hole.height / 2,
+        r: Math.max(hole.width, hole.height) / 2 + PAD,
+      }
+    : null;
+
+  // الحجابُ مستطيلُ الشاشة وفيه ثقبٌ دائريّ — قوسان يرسمان الدائرة.
+  const veil = circle
+    ? `M0 0H${screen.width}V${screen.height}H0Z ` +
+      `M${circle.cx - circle.r} ${circle.cy}` +
+      `a${circle.r} ${circle.r} 0 1 0 ${circle.r * 2} 0` +
+      `a${circle.r} ${circle.r} 0 1 0 ${-circle.r * 2} 0Z`
+    : `M0 0H${screen.width}V${screen.height}H0Z`;
+
+  /*
+    النافذةُ فوق الهدف إن كان في النصف الأسفل — والأهدافُ كلُّها في
+    الشريط السفليّ أو فوقه بقليل — وتحته إن كان في الأعلى.
+  */
+  const below = circle ? circle.cy < screen.height / 2 : false;
+  const cardStyle = circle
+    ? below
+      ? { top: circle.cy + circle.r + 18 }
+      : { bottom: screen.height - (circle.cy - circle.r) + 18 }
+    : { top: screen.height / 2 - 110 };
+
   return (
-    <Modal transparent animationType="fade" onRequestClose={() => void close()}>
-      <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(14,26,36,.82)" }}>
+    <Modal transparent animationType="none" onRequestClose={() => void close()} statusBarTranslucent>
+      <Animated.View style={{ flex: 1, opacity: fade }}>
+        {/* تعتيمٌ خفيف لا ظلام: الشاشةُ تبقى مقروءةً حول الدائرة. */}
+        <Svg width={screen.width} height={screen.height} style={{ position: "absolute" }}>
+          <Path d={veil} fill="rgba(14,26,36,0.62)" fillRule="evenodd" />
+        </Svg>
+
+        {circle ? (
+          <Animated.View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              left: circle.cx - circle.r,
+              top: circle.cy - circle.r,
+              width: circle.r * 2,
+              height: circle.r * 2,
+              borderRadius: circle.r,
+              borderWidth: 2,
+              borderColor: colors.gold,
+              opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.9, 0] }),
+              transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.35] }) }],
+            }}
+          />
+        ) : null}
+
         <View
-          {...pan.panHandlers}
           style={{
+            position: "absolute",
+            left: 20,
+            right: 20,
+            ...cardStyle,
+            borderRadius: 20,
             backgroundColor: colors.card,
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
-            paddingHorizontal: 24,
-            paddingTop: 28,
-            paddingBottom: 36,
-            alignItems: "center",
+            padding: 18,
+            shadowColor: "#0E1A24",
+            shadowOpacity: 0.25,
+            shadowRadius: 16,
+            shadowOffset: { width: 0, height: 6 },
+            elevation: 10,
           }}
         >
-          <Animated.View style={{ alignItems: "center", transform: [{ translateX: slide }] }}>
-            <View
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: 32,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: colors.claySoft,
-                marginBottom: 16,
-              }}
-            >
-              <current.Icon size={28} color={colors.clayInk} />
+          <Text face="display" style={{ color: colors.ink, fontSize: 17, fontWeight: "700", marginBottom: 6 }}>
+            {current.title}
+          </Text>
+          <Text style={{ color: colors.ink2, fontSize: 13.5, lineHeight: 23 }}>{current.body}</Text>
+
+          <View style={{ flexDirection: "row", alignItems: "center", marginTop: 16 }}>
+            {/* نقاطُ الخطوات: أين أنت منها. */}
+            <View style={{ flex: 1, flexDirection: "row", gap: 5 }}>
+              {STEPS.map((_, index) => (
+                <View
+                  key={index}
+                  style={{
+                    width: index === step ? 16 : 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: index === step ? colors.clay : colors.line,
+                  }}
+                />
+              ))}
             </View>
 
-            <Text style={{ color: colors.ink, fontSize: 19, fontWeight: "700", marginBottom: 8 }}>
-              {current.title}
-            </Text>
-            <Text style={{ color: colors.ink2, fontSize: 13.5, lineHeight: 26, textAlign: "center", maxWidth: 320, marginBottom: 24 }}>
-              {current.body}
-            </Text>
-          </Animated.View>
-
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 20 }}>
-            {STEPS.map((_, index) => (
-              <Pressable
-                key={index}
-                accessibilityLabel={`الشريحة ${index + 1}`}
-                onPress={() => go(index, step)}
-                style={{
-                  width: index === step ? 20 : 7,
-                  height: 7,
-                  borderRadius: 4,
-                  backgroundColor: index === step ? colors.clay : colors.line,
-                }}
-              />
-            ))}
-          </View>
-
-          <View style={{ flexDirection: "row", gap: 10, alignSelf: "stretch" }}>
+            {last ? null : (
+              <Pressable onPress={() => void close()} hitSlop={10} style={{ paddingHorizontal: 12, height: 40, justifyContent: "center" }}>
+                <Text style={{ color: colors.muted, fontSize: 13 }}>تخطَّ</Text>
+              </Pressable>
+            )}
             <Pressable
-              onPress={() => void close()}
-              style={{ height: 50, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: colors.line, alignItems: "center", justifyContent: "center" }}
+              onPress={() => (last ? void close() : setStep(step + 1))}
+              style={{ height: 40, paddingHorizontal: 20, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
             >
-              <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "600" }}>تخطّى</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => (last ? void close() : go(step + 1, step))}
-              style={{ flex: 1 }}
-            >
-              <LinearGradient
-                colors={[brandGradient[0], brandGradient[1]]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{ height: 50, borderRadius: 12, alignItems: "center", justifyContent: "center" }}
-              >
-                <Text style={{ color: colors.onBrand, fontSize: 15, fontWeight: "700" }}>
-                  {last ? "ابدأ" : "التالي"}
-                </Text>
-              </LinearGradient>
+              <Text style={{ color: colors.onBrand, fontSize: 13.5, fontWeight: "700" }}>
+                {last ? "ابدأ" : "التالي"}
+              </Text>
             </Pressable>
           </View>
         </View>
-      </View>
+      </Animated.View>
     </Modal>
   );
 }

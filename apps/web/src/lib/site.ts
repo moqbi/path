@@ -47,6 +47,13 @@ export const SITE_TEXT = {
   "download.body":
     "آثار مومنتس يصل المتجرين قريباً. وحتى ذلك الحين، اكتب لنا إن أردت أن تكون من أوّل من يجرّبه.",
   "download.cta": "اكتب لنا",
+  /*
+    روابطُ المتجرين: فارغةٌ حتى يُنشر التطبيق، فيقول الزرّ «قريباً» ولا
+    يفتح صفحةً ميّتة. وتُلصق من اللوحة يوم النشر — أو رابطُ TestFlight
+    العامّ قبله — بلا نسخةٍ جديدة من الموقع. ولا يُقبل إلا `https://`.
+  */
+  "store.ios": "",
+  "store.android": "",
 
   // ── الذيل ──
   "foot.tagline": "لحظاتك، مع ناسك.",
@@ -68,6 +75,10 @@ export const siteText = cache(async function siteText(): Promise<Record<SiteKey,
   }
   return out;
 });
+
+/** رابطُ متجرٍ صالح أو لا شيء: حقلٌ حرّ لا يُرسم منه `javascript:`. */
+export const storeUrl = (value: string): string | null =>
+  /^https:\/\/[^\s]+$/.test(value.trim()) ? value.trim() : null;
 
 /** سطورٌ من حقلٍ واحد: القائمة تُحرَّر نصّاً بسطرٍ لكل بند. */
 export const lines = (value: string): string[] =>

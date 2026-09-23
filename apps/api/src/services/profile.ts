@@ -28,6 +28,8 @@ export async function me(userId: string) {
       avatarMediaId: true,
       coverMediaId: true,
       coverY: true,
+      coverX: true,
+      coverZoom: true,
       emailVerifiedAt: true,
       // وجودُها وحده يُرسَل لا هي: الشاشة تسأل «أضبطُها أم أغيّرها؟».
       passwordHash: true,
@@ -221,11 +223,26 @@ export async function changePassword(
   return { ok: true };
 }
 
-/** موضع الغلاف رأسياً بالنسبة المئوية — ما يراه صاحبه حين يسحبه. */
-export async function setCoverPosition(userId: string, y: number) {
-  const value = Math.round(Math.min(100, Math.max(0, Number(y) || 0)));
-  await prisma.user.update({ where: { id: userId }, data: { coverY: value } });
-  return { coverY: value };
+const clamp = (value: number, low: number, high: number) =>
+  Math.round(Math.min(high, Math.max(low, Number(value) || low)));
+
+/**
+ * موضع الغلاف وقُربه — ما يراه صاحبه حين يسحبه ويكبّره.
+ *
+ * وما لم يُرسَل لا يُمسّ: الويب يضبط الرأسيّ وحده، فلا يعيد حفظُه ما ضبطه
+ * الجوّال أفقياً أو قرّبه.
+ */
+export async function setCoverPosition(
+  userId: string,
+  input: { y: number; x?: number; zoom?: number },
+) {
+  const data = {
+    coverY: clamp(input.y, 0, 100),
+    ...(input.x === undefined ? {} : { coverX: clamp(input.x, 0, 100) }),
+    ...(input.zoom === undefined ? {} : { coverZoom: clamp(input.zoom, 100, 300) }),
+  };
+  await prisma.user.update({ where: { id: userId }, data });
+  return data;
 }
 
 /** إزالة الغلاف — وبكسلاته معه، فلا يبقى ملفٌّ لا يشير إليه شيء. */
@@ -323,7 +340,11 @@ export async function setPicture(
 
   await prisma.user.update({
     where: { id: userId },
-    data: which === "avatar" ? { avatarMediaId: media.id } : { coverMediaId: media.id },
+    // غلافٌ جديد يبدأ من الوسط وبلا تكبير: الموضعُ المحفوظ كان لصورةٍ أخرى.
+    data:
+      which === "avatar"
+        ? { avatarMediaId: media.id }
+        : { coverMediaId: media.id, coverY: 50, coverX: 50, coverZoom: 100 },
   });
 
   const old = which === "avatar" ? before?.avatarMediaId : before?.coverMediaId;

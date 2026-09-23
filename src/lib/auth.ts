@@ -123,6 +123,8 @@ export type SessionUser = {
   avatarMediaId: string | null;
   coverMediaId: string | null;
   coverY: number;
+  coverX: number;
+  coverZoom: number;
   /** الملبوس الآن: المعرّفان ليُعرف أيّ صنفٍ عليه علامة «ملبوس». */
   frameId: string | null;
   backgroundId: string | null;
@@ -165,6 +167,8 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
       avatarMediaId: true,
       coverMediaId: true,
       coverY: true,
+      coverX: true,
+      coverZoom: true,
       lastSeenAt: true,
       frameId: true,
       backgroundId: true,
@@ -204,6 +208,8 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
     avatarMediaId: user.avatarMediaId,
     coverMediaId: user.coverMediaId,
     coverY: user.coverY,
+    coverX: user.coverX,
+    coverZoom: user.coverZoom,
     frameId: user.frameId,
     backgroundId: user.backgroundId,
     charmId: user.charmId,

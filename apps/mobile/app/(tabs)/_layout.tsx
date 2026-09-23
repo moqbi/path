@@ -12,6 +12,7 @@ import {
   WithIcon,
 } from "../../components/icons";
 import { useNoteCount } from "../../lib/queries";
+import { Spot } from "../../components/spot";
 import { colors } from "../../theme/tokens";
 import { familyOf } from "../../theme/fonts";
 
@@ -134,7 +135,11 @@ export default function TabsLayout() {
           options={{
             // تبويب اللحظات يحمل اسم العدسة المفتوحة.
             title: lens.label,
-            tabBarIcon: ({ color }) => <HomeIcon size={19} color={color} />,
+            tabBarIcon: ({ color }) => (
+              <Spot id="tab.index">
+                <HomeIcon size={19} color={color} />
+              </Spot>
+            ),
             /*
               الضغطة المطوّلة بابٌ مخفيّ، وتُقاس بمؤقّتٍ كما في الويب:
               نصف ثانيةٍ من الضغط تفتح البابين، ورفعُ الإصبع قبلها يلغيها
@@ -162,7 +167,9 @@ export default function TabsLayout() {
           options={{
             title: "الأصدقاء",
             tabBarIcon: ({ color }) => (
-              <CircleIcon size={19} color={onFriend ? colors.clayInk : color} />
+              <Spot id="tab.circle">
+                <CircleIcon size={19} color={onFriend ? colors.clayInk : color} />
+              </Spot>
             ),
             tabBarLabelStyle: {
               fontSize: 9.5,
@@ -176,10 +183,10 @@ export default function TabsLayout() {
           options={{
             title: "الإشعارات",
             tabBarIcon: ({ color, focused }) => (
-              <View>
+              <Spot id="tab.notifications">
                 <BellIcon size={19} color={color} />
                 {unseen > 0 && !focused ? <Dot /> : null}
-              </View>
+              </Spot>
             ),
           }}
         />
@@ -187,14 +194,22 @@ export default function TabsLayout() {
           name="store"
           options={{
             title: "المتجر",
-            tabBarIcon: ({ color }) => <StoreIcon size={19} color={color} />,
+            tabBarIcon: ({ color }) => (
+              <Spot id="tab.store">
+                <StoreIcon size={19} color={color} />
+              </Spot>
+            ),
           }}
         />
         <Tabs.Screen
           name="me"
           options={{
             title: "أنا",
-            tabBarIcon: ({ color }) => <UserIcon size={19} color={color} />,
+            tabBarIcon: ({ color }) => (
+              <Spot id="tab.me">
+                <UserIcon size={19} color={color} />
+              </Spot>
+            ),
           }}
         />
         {/* ملفّ الصديق: شاشةٌ بلا تبويبٍ يخصّها، فيبقى الشريط تحتها. */}
