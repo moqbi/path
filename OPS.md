@@ -116,7 +116,7 @@ systemctl reload caddy
 ```bash
 apt update && apt upgrade -y
 apt install -y ufw fail2ban unattended-upgrades postgresql-16 \
-               pgbouncer redis-server git curl
+               pgbouncer redis-server git curl ffmpeg
 dpkg-reconfigure --priority=low unattended-upgrades
 
 adduser --disabled-password --gecos "" athar
@@ -131,6 +131,12 @@ ufw enable
 
 و**الدخول بالمفاتيح وحدها**: في `/etc/ssh/sshd_config` اجعل
 `PasswordAuthentication no` و`PermitRootLogin prohibit-password`.
+
+> **وخادمٌ قائمٌ من قبل هذا السطر ينقصه ffmpeg**: ثُبِّت في
+> `bootstrap.sh` متأخّراً، فمن أقلع خادمه قبله يضيفها بيده —
+> `apt install -y ffmpeg` ثمّ `systemctl restart athar-api`. وعلامتُها
+> في السجلّ سطرٌ يقول `[media] ffprobe مفقود`، وأثرُها على المستخدم
+> رسالةٌ صوتيّة وفيديو قصّةٍ يُردّان بـ«تعذّرت قراءة المقطع».
 
 ### ٣٫٢ Node
 

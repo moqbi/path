@@ -25,8 +25,14 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq && apt-get upgrade -y -qq
 
 say "الحزم"
+# وffmpeg ليس زينة: `ffprobe` منه يقيس مدّة المقاطع عند اعتمادها
+# (`lib/process.ts`). وخادمٌ بلا هذه الحزمة كان يردّ كلَّ رسالةٍ صوتية
+# وكلَّ فيديو قصّةٍ بـ«تعذّرت قراءة المقطع» — وصاحبُ المقطع لا يد له.
+# والصورةُ في `apps/api/Dockerfile` تثبّتها منذ بُنيت، وهذا الخادم لا
+# يمرّ بها فسقطت من بين يديه.
 apt-get install -y -qq ufw fail2ban unattended-upgrades postgresql-16 \
-  postgresql-contrib pgbouncer redis-server git curl rclone gnupg ca-certificates
+  postgresql-contrib pgbouncer redis-server git curl rclone gnupg ca-certificates \
+  ffmpeg
 
 say "Node 22"
 curl -fsSL https://deb.nodesource.com/setup_22.x | bash - >/dev/null
