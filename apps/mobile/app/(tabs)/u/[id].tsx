@@ -253,7 +253,7 @@ export default function Profile() {
             </>
           }
           ListEmptyComponent={
-            moments.isLoading ? null : person.data?.friend === false ? (
+            moments.isLoading ? null : person.data?.friend === false && !moderating ? (
               /* مكانُ اللحظات يقول لماذا لا تُرى — لا سطرٌ يُقرأ «ما نشر شي». */
               <View
                 style={{
