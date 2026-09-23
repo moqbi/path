@@ -23,6 +23,12 @@ export const FILTERS: { key: string; name: string; css: string }[] = [
   { key: "mono", name: "رمادي", css: "grayscale(1) contrast(1.08)" },
   { key: "vivid", name: "زاهي", css: "saturate(1.5) contrast(1.1)" },
   { key: "fade", name: "باهت", css: "saturate(.75) brightness(1.08) contrast(.92)" },
+  { key: "sand", name: "رملي", css: "sepia(.6) saturate(1.1) brightness(1.05)" },
+  { key: "rose", name: "وردي", css: "hue-rotate(12deg) saturate(1.2) brightness(1.03)" },
+  { key: "film", name: "فيلم", css: "contrast(1.2) saturate(.85) sepia(.15)" },
+  { key: "night", name: "ليلي", css: "brightness(.9) contrast(1.15) hue-rotate(-8deg) saturate(.9)" },
+  { key: "noon", name: "ظهيرة", css: "brightness(1.12) contrast(1.05) saturate(1.15)" },
+  { key: "ink", name: "حبر", css: "grayscale(1) contrast(1.35) brightness(.95)" },
 ];
 
 export const filterCss = (key: string | null | undefined) =>

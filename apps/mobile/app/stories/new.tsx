@@ -7,6 +7,7 @@ import * as Picker from "expo-image-picker";
 import { useQueryClient } from "@tanstack/react-query";
 import { ScreenHeader } from "../../components/screen-header";
 import { Filtered } from "../../components/filtered";
+import { StoryVideo } from "../../components/story-video";
 import { FILTERS } from "../../lib/filters";
 import { api } from "../../lib/api";
 import { uploadFile } from "../../lib/upload";
@@ -58,6 +59,7 @@ export default function NewStory() {
       video: shot.video,
       seconds: shot.seconds,
     });
+    if (shot.video) setFilter("");
   });
 
   async function pick() {
@@ -94,6 +96,7 @@ export default function NewStory() {
       video,
       seconds,
     });
+    if (video) setFilter("");
   }
 
   async function publish() {
@@ -139,7 +142,10 @@ export default function NewStory() {
           }}
         >
           {draft ? (
-            draft.video || !filter ? (
+            draft.video ? (
+              /* المقطع يُشغَّل ويُعاد قبل أن يُرسل — لا صورةٌ ساكنة منه. */
+              <StoryVideo source={draft.uri} local width={screen.width - 42} height={previewHeight} />
+            ) : !filter ? (
               <Image source={{ uri: draft.uri }} style={{ width: "100%", height: "100%" }} resizeMode="contain" />
             ) : (
               <LocalFiltered uri={draft.uri} filter={filter} width={screen.width - 42} height={previewHeight} />
@@ -158,7 +164,12 @@ export default function NewStory() {
           </Text>
         </Pressable>
 
-        {draft ? (
+        {draft && draft.video ? (
+          <Text style={{ color: colors.muted, fontSize: 11.5, lineHeight: 21 }}>
+            فيديو {ar(draft.seconds)} ثانية · الحدّ {ar(STORY_SECONDS)}
+            {"\n"}الفلاتر للصور — المقطع يُنشر كما صُوِّر.
+          </Text>
+        ) : draft ? (
           <>
             <Text style={{ color: colors.faint, fontSize: 11.5, fontWeight: "600", marginBottom: 10 }}>
               فلتر
@@ -187,12 +198,6 @@ export default function NewStory() {
                 );
               })}
             </ScrollView>
-
-            {draft.video ? (
-              <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 10 }}>
-                فيديو {ar(draft.seconds)} ثانية · الحدّ {ar(STORY_SECONDS)}
-              </Text>
-            ) : null}
           </>
         ) : null}
 

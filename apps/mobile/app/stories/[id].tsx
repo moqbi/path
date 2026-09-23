@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Avatar } from "../../components/avatar";
 import { ReportButton } from "../../components/report-sheet";
 import { Filtered } from "../../components/filtered";
+import { StoryVideo } from "../../components/story-video";
 import { CloseIcon, EyeIcon } from "../../components/icons";
 import { api } from "../../lib/api";
 import { useSession } from "../../lib/session";
@@ -122,12 +123,22 @@ export default function StoryViewer() {
 
   return (
     <View style={{ flex: 1, backgroundColor: "#0b1219" }}>
-      <Filtered
-        mediaId={story.mediaId}
-        filter={story.filter}
-        width={screen.width}
-        height={screen.height}
-      />
+      {/* المقطع يُشغَّل، والصورة تُرسم بفلترها. و`<Image>` لا يفكّ MP4. */}
+      {video ? (
+        <StoryVideo
+          source={story.mediaId}
+          width={screen.width}
+          height={screen.height}
+          paused={paused}
+        />
+      ) : (
+        <Filtered
+          mediaId={story.mediaId}
+          filter={story.filter}
+          width={screen.width}
+          height={screen.height}
+        />
+      )}
 
       {/* نصفان للتنقّل: يمينٌ يرجع ويسارٌ يتقدّم، والضغط المطوّل يوقف. */}
       <Pressable

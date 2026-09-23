@@ -294,22 +294,22 @@ async function shape(
   }
 
   /*
-    وخادمٌ بلا ffprobe لا يردّ تسجيلاً سليماً: المقطع الصوتيّ يُقبل
-    بحدّ بايتاته (`LIMITS.audio`)، ومدّتُه تُفحص مرّةً أخرى عند
-    الإرسال (`VOICE_SECONDS`). أمّا الفيديو فلا مخرج له: مدّتُه شرطٌ
-    لا يقوم مقامه حجم.
+    وخادمٌ بلا ffprobe لا يردّ ملفاً سليماً: عطلُ بيئةٍ لا ملفٌّ فاسد،
+    وصاحبُ المقطع لا يد له فيه. فيمرّ بحدّ بايتاته — `LIMITS.audio`
+    للصوت و`LIMITS.video` للمقطع — ومدّتُه تُفحص حيث تُستعمل: عند
+    إرسال الرسالة (`VOICE_SECONDS`) وعند نشر القصّة (`STORY_SECONDS`)،
+    وكلاهما يقرأ ما أرسله العميل. وهذا **تنازلٌ مقصود** عن القاعدة ٩٨:
+    مدّةٌ من العميل أضعفُ من مدّةٍ من الملفّ، وقصصٌ لا تُنشر أسوأ.
+    والسطرُ في السجلّ ليُثبَّت ffprobe على الخادم فيعود الفحص.
   */
   const clip = await probeClip(bytes, EXT[mime] ?? "bin").catch((problem: unknown) => {
     if (problem instanceof NoProbe) {
-      console.error("[media] ffprobe مفقود — المقطع يمرّ بحدّ حجمه وحده");
-      return mime.startsWith("audio/") ? ({ seconds: 0, width: 0, height: 0 } as const) : null;
+      console.error("[media] ffprobe مفقود على هذا الخادم — المقطع يمرّ بحدّ حجمه وحده");
+      return { seconds: 0, width: 0, height: 0 } as const;
     }
     return null;
   });
   if (!clip) throw await reject(mediaId, key, "تعذّرت قراءة المقطع");
-  if (clip.seconds <= 0 && !mime.startsWith("audio/")) {
-    throw await reject(mediaId, key, "تعذّرت قراءة المقطع");
-  }
 
   // القصّة عشرون ثانية، والرسالة الصوتية عشرون — ومئةٌ وعشرون لمشتركي
   // آثار+. الحدّ الأعلى هنا، والتمييز بينهما عند الإرسال حيث يُعرف المشترك.
