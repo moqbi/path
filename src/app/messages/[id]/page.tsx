@@ -25,6 +25,7 @@ export default async function ThreadPage({
     <div className="screen">
       <ScreenHeader
         title={conversation.other.name}
+        titleHref={`/u/${conversation.other.id}`}
         back="/messages"
         action={
           <Avatar

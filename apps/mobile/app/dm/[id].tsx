@@ -3,7 +3,7 @@ import { ReportButton } from "../../components/report-sheet";
 import { View, FlatList, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
 import { Text, TextInput } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Picker from "expo-image-picker";
 import { Audio } from "expo-av";
@@ -99,6 +99,7 @@ export default function Conversation() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const me = useSession((s) => s.me);
   const client = useQueryClient();
+  const router = useRouter();
 
   const [body, setBody] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
@@ -108,6 +109,10 @@ export default function Conversation() {
 
   const [taping, setTaping] = useState(false);
   const [seconds, setSeconds] = useState(0);
+  // ما سُجِّل ووقف ولم يُرسل بعد: يُسمع ويُحذف قبل أن يخرج.
+  const [tape, setTape] = useState<{ uri: string; seconds: number } | null>(null);
+  const [hearing, setHearing] = useState(false);
+  const heard = useRef<Audio.Sound | null>(null);
   const recorder = useRef<Audio.Recording | null>(null);
   const ticker = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -133,6 +138,7 @@ export default function Conversation() {
   useEffect(() => () => {
     if (ticker.current) clearInterval(ticker.current);
     void recorder.current?.stopAndUnloadAsync();
+    void heard.current?.unloadAsync();
   }, []);
 
   const refresh = () => {
@@ -159,6 +165,7 @@ export default function Conversation() {
 
   async function beginTape() {
     setError(null);
+    setTape(null);
     const granted = await Audio.requestPermissionsAsync();
     if (!granted.granted) {
       setError("لازم تسمح بالميكروفون.");
@@ -176,25 +183,62 @@ export default function Conversation() {
     // يقف وحده عند الحدّ، فلا يكتشف صاحبه بعد دقيقتين أنّ ما سجّله لن يُقبل.
     ticker.current = setInterval(() => {
       setSeconds((value) => {
-        if (value + 1 >= maxSeconds) void finishTape(true);
+        if (value + 1 >= maxSeconds) void stopTape(true);
         return value + 1;
       });
     }, 1000);
   }
 
-  async function finishTape(keep: boolean) {
+  /**
+   * الإيقاف لا الإرسال.
+   *
+   * ما سُجِّل يقف ويُعرض فيُسمع أو يُحذف، ثمّ يُرسل بزرٍّ ثانٍ — ومن
+   * أرسل بمجرّد أن رفع إصبعه أرسل ما لم يسمعه.
+   */
+  async function stopTape(keep: boolean) {
     if (ticker.current) clearInterval(ticker.current);
-    const tape = recorder.current;
+    const machine = recorder.current;
     recorder.current = null;
     setTaping(false);
-    if (!tape) return;
-
     const length = Math.max(1, seconds);
-    await tape.stopAndUnloadAsync();
-    const uri = tape.getURI();
     setSeconds(0);
-    if (!keep || !uri) return;
+    if (!machine) return;
 
+    await machine.stopAndUnloadAsync().catch(() => undefined);
+    // يُعاد وضعُ الصوت إلى السمّاعة، وإلّا خرجت المعاينة خافتةً في آبل.
+    await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true });
+    const uri = machine.getURI();
+    if (!keep || !uri) return;
+    setTape({ uri, seconds: length });
+  }
+
+  async function hearTape() {
+    if (!tape) return;
+    if (heard.current) {
+      if (hearing) await heard.current.pauseAsync();
+      else await heard.current.replayAsync();
+      setHearing(!hearing);
+      return;
+    }
+    const { sound } = await Audio.Sound.createAsync({ uri: tape.uri }, { shouldPlay: true });
+    sound.setOnPlaybackStatusUpdate((status) => {
+      if (status.isLoaded && status.didJustFinish) setHearing(false);
+    });
+    heard.current = sound;
+    setHearing(true);
+  }
+
+  async function dropTape() {
+    await heard.current?.unloadAsync().catch(() => undefined);
+    heard.current = null;
+    setHearing(false);
+    setTape(null);
+  }
+
+  async function sendTape() {
+    if (!tape) return;
+    const { uri, seconds: length } = tape;
+    await dropTape();
     try {
       const mediaId = await uploadFile(uri, "audio/mp4", "VOICE");
       send.mutate({ kind: "VOICE", mediaId, seconds: length });
@@ -226,7 +270,12 @@ export default function Conversation() {
 
   return (
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
-      <ScreenHeader title={other?.name ?? "محادثة"} back="/messages" />
+      <ScreenHeader
+        title={other?.name ?? "محادثة"}
+        back="/messages"
+        // اسمُ من أحادثه بابُ ملفّه: من فتح محادثةً قد يريد أن يرى صاحبها.
+        onTitlePress={other ? () => router.push(`/u/${other.id}` as never) : undefined}
+      />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -341,18 +390,49 @@ export default function Conversation() {
           {taping ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 12, height: 48, borderRadius: 999, borderWidth: 1, borderColor: colors.live, backgroundColor: colors.liveSoft, paddingHorizontal: 16 }}>
               <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.live }} />
-              <Text style={{ flex: 1, color: colors.live, fontSize: 13, fontWeight: "600" }}>
+              <Text style={{ flex: 1, minWidth: 0, color: colors.live, fontSize: 13, fontWeight: "600" }}>
                 {clock(seconds)} / {clock(maxSeconds)}
               </Text>
               <Pressable
                 accessibilityLabel="إلغاء التسجيل"
-                onPress={() => void finishTape(false)}
+                onPress={() => void stopTape(false)}
                 style={{ width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
               >
                 <CloseIcon size={16} color={colors.muted} />
               </Pressable>
               <Pressable
-                onPress={() => void finishTape(true)}
+                onPress={() => void stopTape(true)}
+                style={{ height: 36, paddingHorizontal: 16, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
+              >
+                <Text style={{ color: colors.onBrand, fontSize: 13, fontWeight: "700" }}>إيقاف</Text>
+              </Pressable>
+            </View>
+          ) : tape ? (
+            /* وقف التسجيل: يُسمع، أو يُحذف، أو يُرسل. */
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, height: 48, borderRadius: 999, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, paddingHorizontal: 14 }}>
+              <Pressable
+                accessibilityLabel={hearing ? "إيقاف السماع" : "اسمع التسجيل"}
+                onPress={() => void hearTape()}
+                style={{ width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: colors.chip }}
+              >
+                {hearing ? (
+                  <View style={{ width: 11, height: 11, borderRadius: 2, backgroundColor: colors.ink2 }} />
+                ) : (
+                  <PlayIcon size={13} color={colors.ink2} />
+                )}
+              </Pressable>
+              <Text style={{ flex: 1, minWidth: 0, color: colors.ink2, fontSize: 12.5, fontWeight: "600" }}>
+                {clock(tape.seconds)}
+              </Text>
+              <Pressable
+                accessibilityLabel="احذف التسجيل"
+                onPress={() => void dropTape()}
+                style={{ width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.paper }}
+              >
+                <CloseIcon size={16} color={colors.live} />
+              </Pressable>
+              <Pressable
+                onPress={() => void sendTape()}
                 style={{ height: 36, paddingHorizontal: 16, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
               >
                 <Text style={{ color: colors.onBrand, fontSize: 13, fontWeight: "700" }}>أرسل</Text>

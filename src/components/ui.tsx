@@ -332,12 +332,15 @@ export function ScreenHeader({
   title,
   back,
   action,
+  titleHref,
   display = false,
   mark = false,
 }: {
   title: string;
   back?: string;
   action?: React.ReactNode;
+  /** اسمٌ في الرأس قد يكون باباً: اسمُ من تحادثه يفتح ملفّه. */
+  titleHref?: string;
   display?: boolean;
   /** العلامة بدل الاسم العاري: الرمز، ثم فاصل، ثم اسم الشاشة. */
   mark?: boolean;
@@ -353,6 +356,10 @@ export function ScreenHeader({
         {back ? <BackButton href={back} /> : null}
         {mark ? (
           <AthrPageMark label={title} />
+        ) : titleHref ? (
+          <Link href={titleHref} className="text-[18px] font-semibold">
+            {title}
+          </Link>
         ) : (
           <h1
             className={display ? "text-[23px]" : "text-[18px] font-semibold"}

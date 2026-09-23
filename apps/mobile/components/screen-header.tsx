@@ -17,10 +17,13 @@ export function ScreenHeader({
   title,
   back,
   right,
+  onTitlePress,
 }: {
   title: string;
   back?: string;
   right?: React.ReactNode;
+  /** اسمٌ في الرأس قد يكون باباً: اسمُ من تحادثه يفتح ملفّه. */
+  onTitlePress?: () => void;
 }) {
   const router = useRouter();
   /*
@@ -47,9 +50,17 @@ export function ScreenHeader({
       }}
     >
       <AthrMark size={32} />
-      <Text face="display" style={{ flex: 1, color: colors.chromeInk, fontSize: 16, fontWeight: "700" }}>
-        {title}
-      </Text>
+      {onTitlePress ? (
+        <Pressable accessibilityRole="link" onPress={onTitlePress} style={{ flex: 1, minWidth: 0 }} hitSlop={8}>
+          <Text face="display" style={{ color: colors.chromeInk, fontSize: 16, fontWeight: "700" }}>
+            {title}
+          </Text>
+        </Pressable>
+      ) : (
+        <Text face="display" style={{ flex: 1, color: colors.chromeInk, fontSize: 16, fontWeight: "700" }}>
+          {title}
+        </Text>
+      )}
 
       {right}
 

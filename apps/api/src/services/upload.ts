@@ -10,7 +10,7 @@ import {
 } from "@athar/shared";
 import { cloudReady, deleteObjects, getObject, headObject, presignUrl, putObject } from "@athar/storage";
 import { badRequest, forbidden, notFound } from "../lib/errors";
-import { measure, probeClip, processImage } from "../lib/process";
+import { NoProbe, measure, probeClip, processImage } from "../lib/process";
 
 /**
  * الرفع في خطوتين: رابطٌ مؤقّت ثم اعتماد.
@@ -198,9 +198,21 @@ export async function commit(userId: string, mediaId: string) {
   const real = sniff(bytes);
   if (!real) throw await reject(media.id, media.key, "صيغة غير مدعومة");
 
-  // WebM حاويةٌ واحدة للصوت والفيديو: الغرض يفصل بينهما.
+  /*
+    حاوياتٌ تحمل الصوت والفيديو معاً فلا تقول بصمتُها أيّهما فيها:
+    WebM، وMP4 — فأندرويد يكتب تسجيله `.m4a` بعلامة `isom` لا `M4A `،
+    فيُقرأ فيديو ويُردّ «صيغة غير مدعومة» وهو صوتٌ سليم. والغرض يفصل
+    بينهما: بابُ الصوت لا يُرفع إليه إلا صوت.
+  */
+  const container = real === "video/webm" || real === "video/mp4";
   const actual =
-    real === "video/webm" && rule.mimes.includes("audio/webm") ? media.mime : (real as string);
+    container && purpose === "VOICE"
+      ? real === "video/webm"
+        ? "audio/webm"
+        : "audio/mp4"
+      : real === "video/webm" && rule.mimes.includes("audio/webm")
+        ? media.mime
+        : (real as string);
   if (!rule.mimes.includes(actual)) throw await reject(media.id, media.key, "صيغة غير مدعومة");
 
   const moving = isAnimated(actual, bytes);
@@ -281,8 +293,23 @@ async function shape(
     return { mime, ...size };
   }
 
-  const clip = await probeClip(bytes, EXT[mime] ?? "bin").catch(() => null);
-  if (!clip || clip.seconds <= 0) throw await reject(mediaId, key, "تعذّرت قراءة المقطع");
+  /*
+    وخادمٌ بلا ffprobe لا يردّ تسجيلاً سليماً: المقطع الصوتيّ يُقبل
+    بحدّ بايتاته (`LIMITS.audio`)، ومدّتُه تُفحص مرّةً أخرى عند
+    الإرسال (`VOICE_SECONDS`). أمّا الفيديو فلا مخرج له: مدّتُه شرطٌ
+    لا يقوم مقامه حجم.
+  */
+  const clip = await probeClip(bytes, EXT[mime] ?? "bin").catch((problem: unknown) => {
+    if (problem instanceof NoProbe) {
+      console.error("[media] ffprobe مفقود — المقطع يمرّ بحدّ حجمه وحده");
+      return mime.startsWith("audio/") ? ({ seconds: 0, width: 0, height: 0 } as const) : null;
+    }
+    return null;
+  });
+  if (!clip) throw await reject(mediaId, key, "تعذّرت قراءة المقطع");
+  if (clip.seconds <= 0 && !mime.startsWith("audio/")) {
+    throw await reject(mediaId, key, "تعذّرت قراءة المقطع");
+  }
 
   // القصّة عشرون ثانية، والرسالة الصوتية عشرون — ومئةٌ وعشرون لمشتركي
   // آثار+. الحدّ الأعلى هنا، والتمييز بينهما عند الإرسال حيث يُعرف المشترك.

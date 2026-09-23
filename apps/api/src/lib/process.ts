@@ -82,6 +82,12 @@ export type Clip = { seconds: number; width: number; height: number };
  * وعشرون للرسالة الصوتية ومئةٌ وعشرون لمشتركي آثار+. ورقمٌ يُرسله العميل
  * ليس حدّاً.
  */
+export class NoProbe extends Error {
+  constructor() {
+    super("ffprobe غير مثبّت على هذا الخادم");
+  }
+}
+
 export async function probeClip(input: Uint8Array, extension: string): Promise<Clip> {
   const folder = await mkdtemp(join(tmpdir(), "athr-"));
   const path = join(folder, `clip.${extension}`);
@@ -103,6 +109,14 @@ export async function probeClip(input: Uint8Array, extension: string): Promise<C
       width: visual?.width ?? 0,
       height: visual?.height ?? 0,
     };
+  } catch (problem) {
+    /*
+      ffprobe مفقودٌ يختلف عن ملفٍّ لا يُقرأ: الأوّل عطلُ بيئةٍ يُرفع
+      إلى من ينشرها، والثاني ملفٌّ يُردّ. وخلطُهما كان يقول لصاحب
+      التسجيل «تعذّرت قراءة المقطع» وتسجيلُه سليم.
+    */
+    if ((problem as { code?: string }).code === "ENOENT") throw new NoProbe();
+    throw problem;
   } finally {
     await rm(folder, { recursive: true, force: true });
   }

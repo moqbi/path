@@ -234,7 +234,7 @@ export function StoreGrid({
     <>
       {/* بطاقةُ الصنف: عرضٌ وشراء — الضغطة تفتح لا تشتري. */}
       {chosen ? (
-        <Sheet onClose={() => setOpen(null)} title={KIND_LABEL[chosen.kind] ?? "صنف"}>
+        <Sheet onClose={() => { setShowing(false); setOpen(null); }} title={KIND_LABEL[chosen.kind] ?? "صنف"}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 16, paddingVertical: 8 }}>
             <View style={{ width: 80, height: 80, alignItems: "center", justifyContent: "center" }}>
               <Preview item={chosen} />
@@ -334,62 +334,68 @@ export function StoreGrid({
               رصيدك {coinText(coins)} — ينقصك {coinText(price(chosen) - coins)}
             </Text>
           ) : null}
+
+          {/*
+            نافذتا «عرض» والنتيجة **داخل** البطاقة لا بجانبها: آبل
+            تعرض نافذةً واحدةً فوق الشاشة، فنافذةٌ أختٌ لنافذةٍ مفتوحة
+            تُقدَّم خلفها فلا تُرى — وهذا سببُ أنّ «عرض» لم يكن يفعل شيئاً.
+          */}
+          {/* «عرض»: الرسم كاملاً. */}
+          {showing && chosen ? (
+            <Modal transparent animationType="fade" onRequestClose={() => setShowing(false)}>
+              <Pressable
+                onPress={() => setShowing(false)}
+                style={{ flex: 1, backgroundColor: "rgba(14,26,36,.88)", alignItems: "center", justifyContent: "center", padding: 32 }}
+              >
+                {chosen.mediaId ? (
+                  <MediaImage
+                    mediaId={chosen.mediaId}
+                    resizeMode="contain"
+                    style={{ width: 280, height: 280 }}
+                  />
+                ) : (
+                  <View style={{ width: 240, height: 240, borderRadius: 24, backgroundColor: firstColor(chosen.spec, colors.chip) }} />
+                )}
+              </Pressable>
+            </Modal>
+          ) : null}
+
+          {/* والنتيجة نافذةٌ تُقرأ، لا سطرٌ في طرف الشاشة. */}
+          {said ? (
+            <Modal transparent animationType="fade" onRequestClose={() => setSaid(null)}>
+              <View style={{ flex: 1, backgroundColor: "rgba(14,26,36,.5)", alignItems: "center", justifyContent: "center", paddingHorizontal: 32 }}>
+                <View style={{ width: "100%", maxWidth: 300, borderRadius: 24, backgroundColor: colors.card, padding: 24 }}>
+                  <Text
+                    style={{
+                      color: said.ok ? colors.clayInk : colors.live,
+                      fontSize: 15,
+                      fontWeight: "700",
+                      textAlign: "center",
+                    }}
+                  >
+                    {said.ok ? "تمّ الشراء" : said.error}
+                  </Text>
+                  <Text style={{ color: colors.muted, fontSize: 12.5, lineHeight: 21, textAlign: "center", marginTop: 6 }}>
+                    {said.ok
+                      ? "صار لك — البسه من إكسسواراتك في «أنا»."
+                      : "اشحن نقاطك من زرّ الرصيد في أعلى المتجر ثم أعِد المحاولة."}
+                  </Text>
+                  <Pressable
+                    onPress={() => {
+                      setSaid(null);
+                      setOpen(null);
+                    }}
+                    style={{ height: 46, borderRadius: 12, backgroundColor: colors.clay, alignItems: "center", justifyContent: "center", marginTop: 16 }}
+                  >
+                    <Text style={{ color: colors.onBrand, fontSize: 13.5, fontWeight: "700" }}>تمام</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </Modal>
+          ) : null}
         </Sheet>
       ) : null}
 
-      {/* «عرض»: الرسم كاملاً. */}
-      {showing && chosen ? (
-        <Modal transparent animationType="fade" onRequestClose={() => setShowing(false)}>
-          <Pressable
-            onPress={() => setShowing(false)}
-            style={{ flex: 1, backgroundColor: "rgba(14,26,36,.88)", alignItems: "center", justifyContent: "center", padding: 32 }}
-          >
-            {chosen.mediaId ? (
-              <MediaImage
-                mediaId={chosen.mediaId}
-                resizeMode="contain"
-                style={{ width: 280, height: 280 }}
-              />
-            ) : (
-              <View style={{ width: 240, height: 240, borderRadius: 24, backgroundColor: firstColor(chosen.spec, colors.chip) }} />
-            )}
-          </Pressable>
-        </Modal>
-      ) : null}
-
-      {/* والنتيجة نافذةٌ تُقرأ، لا سطرٌ في طرف الشاشة. */}
-      {said ? (
-        <Modal transparent animationType="fade" onRequestClose={() => setSaid(null)}>
-          <View style={{ flex: 1, backgroundColor: "rgba(14,26,36,.5)", alignItems: "center", justifyContent: "center", paddingHorizontal: 32 }}>
-            <View style={{ width: "100%", maxWidth: 300, borderRadius: 24, backgroundColor: colors.card, padding: 24 }}>
-              <Text
-                style={{
-                  color: said.ok ? colors.clayInk : colors.live,
-                  fontSize: 15,
-                  fontWeight: "700",
-                  textAlign: "center",
-                }}
-              >
-                {said.ok ? "تمّ الشراء" : said.error}
-              </Text>
-              <Text style={{ color: colors.muted, fontSize: 12.5, lineHeight: 21, textAlign: "center", marginTop: 6 }}>
-                {said.ok
-                  ? "صار لك — البسه من إكسسواراتك في «أنا»."
-                  : "اشحن نقاطك من زرّ الرصيد في أعلى المتجر ثم أعِد المحاولة."}
-              </Text>
-              <Pressable
-                onPress={() => {
-                  setSaid(null);
-                  setOpen(null);
-                }}
-                style={{ height: 46, borderRadius: 12, backgroundColor: colors.clay, alignItems: "center", justifyContent: "center", marginTop: 16 }}
-              >
-                <Text style={{ color: colors.onBrand, fontSize: 13.5, fontWeight: "700" }}>تمام</Text>
-              </Pressable>
-            </View>
-          </View>
-        </Modal>
-      ) : null}
 
       {error ? (
         <View style={{ marginBottom: 12, borderRadius: 12, backgroundColor: colors.claySoft, paddingHorizontal: 16, paddingVertical: 12 }}>
