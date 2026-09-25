@@ -60,6 +60,9 @@ const shape = {
           isPlus: true,
           avatarMediaId: true,
           tag: { select: { name: true, bg: true, fg: true } },
+          // الإطارُ والتميمة مع صورة المعلّق كما في كلّ مكانٍ تظهر فيه صورته.
+          frame: { select: { spec: true, mediaId: true, frameHole: true } },
+          charm: { select: { spec: true, mediaId: true } },
         },
       },
     },

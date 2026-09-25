@@ -10,6 +10,7 @@ import { ScreenHeader } from "../../components/screen-header";
 import { StoryStrip } from "../../components/stories";
 import { api } from "../../lib/api";
 import { keys, useCircle, useRings, useSuggestions } from "../../lib/queries";
+import { usePullRefresh } from "../../lib/refresh";
 import { ar, presence } from "../../lib/format";
 import { useSession } from "../../lib/session";
 import { NameTag } from "../../components/name-tag";
@@ -37,9 +38,12 @@ type Row = Member | Suggested;
 
 export default function Circle() {
   const [tab, setTab] = useState<Tab>("friends");
+  /* التصنيفُ المختار في «تصنيفاتي» — الفراغُ يعني «الكل». */
+  const [groupFilter, setGroupFilter] = useState("");
   const circle = useCircle();
   const suggested = useSuggestions();
   const rings = useRings();
+  const pullRefresh = usePullRefresh(() => Promise.all([circle.refetch(), suggested.refetch(), rings.refetch()]));
   const router = useRouter();
   const client = useQueryClient();
   const me = useSession((state) => state.me);
@@ -78,6 +82,12 @@ export default function Circle() {
     onSettled: () => void client.invalidateQueries({ queryKey: keys.circle }),
   });
 
+  /* المحادثة من صفّ الصديق: السحبُ يكشفها مع الإزالة والحظر. */
+  const talk = useMutation({
+    mutationFn: (id: string) => api<{ id: string }>(`/v1/dm/with/${id}`, { method: "POST" }),
+    onSuccess: (row) => router.push(`/dm/${row.id}` as never),
+  });
+
   const ask = useMutation({
     mutationFn: (id: string) => api(`/v1/circle/${id}/request`, { method: "POST" }),
     onSettled: () => {
@@ -108,13 +118,18 @@ export default function Circle() {
           قائمةٌ واحدة لثلاثة أبواب: صفوفها تختلف شكلاً لا مكاناً، فتبقى
           الأبواب فوقها ثابتة ويتبدّل ما تحتها — كعدسات الخط الزمني.
         */
-        data={(tab === "suggested" ? people : (data?.members ?? [])) as Row[]}
+        data={
+          (tab === "suggested"
+            ? people
+            : tab === "groups" && groupFilter
+              ? (data?.members ?? []).filter((member) => member.groupId === groupFilter)
+              : (data?.members ?? [])) as Row[]
+        }
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingBottom: 24, flexGrow: 1 }}
         refreshControl={
           <RefreshControl
-            refreshing={circle.isRefetching}
-            onRefresh={() => void circle.refetch()}
+            {...pullRefresh}
             tintColor={colors.clay}
           />
         }
@@ -157,17 +172,25 @@ export default function Circle() {
                   التصنيف لك وحدك: من صنّفته «عائلة» لا يرى تصنيفك ولا يراه غيرك.
                 </Text>
 
+                {/*
+                  التصنيفاتُ شرائحُ تُفلتر لا لافتاتٌ تُقرأ: اختيارُ «عائلة» يُبقي
+                  من صنّفتَهم عائلةً وحدهم، و«الكل» يعيد الجميع.
+                */}
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 6 }}>
-                  {groups.map((group) => (
-                    <View
-                      key={group.id}
-                      style={{ height: 34, paddingHorizontal: 14, borderRadius: 999, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
-                    >
-                      <Text style={{ color: colors.ink2, fontSize: 12 }}>
-                        {group.name} ({ar(group.count)})
-                      </Text>
-                    </View>
-                  ))}
+                  {[{ id: "", name: "الكل", count: data?.members.length ?? 0 }, ...groups].map((group) => {
+                    const on = groupFilter === group.id;
+                    return (
+                      <Pressable
+                        key={group.id || "all"}
+                        onPress={() => setGroupFilter(group.id)}
+                        style={{ height: 34, paddingHorizontal: 14, borderRadius: 999, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: on ? colors.clay : colors.line, backgroundColor: on ? colors.clay : colors.card }}
+                      >
+                        <Text style={{ color: on ? colors.onBrand : colors.ink2, fontSize: 12, fontWeight: on ? "700" : "400" }}>
+                          {group.name} ({ar(group.count)})
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
                   <Pressable
                     onPress={() => router.push("/settings" as never)}
                     style={{ height: 34, paddingHorizontal: 14, borderRadius: 999, alignItems: "center", justifyContent: "center", borderWidth: 1, borderStyle: "dashed", borderColor: colors.line }}
@@ -343,15 +366,24 @@ export default function Circle() {
             أدوات القطع تُجمع في الصفّ لا في الملف: الملف يُقرأ، والسحب
             يكشف «حظر» و«إزالة» معاً. وشرط آبل محفوظ: الحظر موجود.
           */
+          /*
+            وكلُّ صديقٍ في قالبه كالمقترحين والتصنيفات: صفوفٌ عائمةٌ على
+            الورق تُقرأ قائمةً واحدة لا أشخاصاً. والسحبُ يكشف «محادثة» مع
+            أداتَي القطع — الفعلُ الأكثرُ مع الصديق لا يحتاج فتحَ ملفّه.
+          */
+          <View style={{ marginHorizontal: 16, marginTop: 8, borderRadius: 16, borderWidth: 1, borderColor: colors.line, overflow: "hidden" }}>
           <SwipeRow
             onDelete={() => void cut.mutate(friend.id)}
             confirmLabel="إزالة"
             onSecond={() => void ban.mutate(friend.id)}
             secondLabel="حظر"
+            lead={{ label: "محادثة", run: () => void talk.mutate(friend.id) }}
+            surface={colors.card}
+            width={76}
           >
           <Pressable
             onPress={() => router.push(`/u/${friend.id}` as never)}
-            style={{ flexDirection: "row", alignItems: "center", gap: 11, paddingHorizontal: 16, paddingVertical: 10 }}
+            style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12 }}
           >
             <Avatar
               name={friend.name}
@@ -376,6 +408,7 @@ export default function Circle() {
             </View>
           </Pressable>
           </SwipeRow>
+          </View>
           );
         }}
         ListEmptyComponent={
@@ -389,7 +422,9 @@ export default function Circle() {
               <Text style={{ color: colors.muted, fontSize: 13.5, textAlign: "center", lineHeight: 24 }}>
                 {tab === "suggested"
                   ? "ما فيه مقترحون. حين يكبر عدد أصدقائك يظهر هنا من يعرفونهم."
-                  : "دائرتك فارغة. لا بحث هنا — من يجمعك به صديقٌ مشترك يظهر لك في المقترحين."}
+                  : tab === "groups" && groupFilter
+                    ? "ما في هذا التصنيف أحدٌ بعد. اختر «الكل» وصنّف من شئت."
+                    : "دائرتك فارغة. لا بحث هنا — من يجمعك به صديقٌ مشترك يظهر لك في المقترحين."}
               </Text>
             </View>
           )

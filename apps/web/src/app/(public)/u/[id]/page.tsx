@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { AthrMark, AthrWordmark } from "@/components/brand";
-import { NameTag } from "@/components/ui";
+import { NameTag, frameZoom } from "@/components/ui";
 import { ar, membership } from "@/lib/format";
 import { siteText, storeUrl } from "@/lib/site";
 import { OpenInApp } from "./open-in-app";
@@ -42,6 +42,8 @@ async function findPerson(raw: string) {
       coverY: true,
       coverZoom: true,
       tag: { select: { name: true, bg: true, fg: true } },
+      frame: { select: { spec: true, mediaId: true, frameHole: true } },
+      charm: { select: { spec: true, mediaId: true } },
     },
   });
 }
@@ -100,6 +102,18 @@ export default async function SharedProfile({ params }: Props) {
 
   const cover = person.coverMediaId ? `/api/public/cover/${person.memberNo}` : null;
   const avatar = person.avatarMediaId ? `/api/public/avatar/${person.memberNo}` : null;
+  /*
+    الإطارُ والتميمة كما تُرسم في التطبيق: الإطارُ فوق الوجه بمقلوب فراغه
+    (القاعدة ٨٠ب)، والتميمةُ يسارَ الصورة وأغلبُها خارجها وفوق الإطار
+    (القاعدة ٥٩). وكانت الصفحة ترسم الوجه وحده، فيبدو الملفُّ عارياً لمن
+    فتحه في المتصفّح.
+  */
+  const AVATAR = 96;
+  const frame = person.frame?.mediaId ? `/api/public/frame/${person.memberNo}` : null;
+  const frameScale = person.frame?.mediaId ? frameZoom(person.frame) : 1;
+  const facePad = frame && frameScale <= 1.02 ? AVATAR * 0.07 : 0;
+  const charm = person.charm?.mediaId ? `/api/public/charm/${person.memberNo}` : null;
+  const badge = Math.round(AVATAR * 0.5);
 
   const ios = storeUrl(text["store.ios"]);
   const android = storeUrl(text["store.android"]);
@@ -139,17 +153,50 @@ export default async function SharedProfile({ params }: Props) {
       </div>
 
       <div className="relative -mt-12 flex flex-col items-center px-5 text-center">
-        <span
-          className="flex h-[96px] w-[96px] items-center justify-center overflow-hidden rounded-full border-4 text-[30px] font-bold"
-          style={{
-            borderColor: "var(--color-paper)",
-            backgroundImage: avatar ? `url(${avatar})` : "linear-gradient(135deg,#f6b93b,#ff7a5a)",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            color: "#14212b",
-          }}
-        >
-          {avatar ? "" : person.name.slice(0, 1)}
+        <span className="relative block" style={{ width: AVATAR, height: AVATAR, padding: facePad }}>
+          <span
+            className="flex h-full w-full items-center justify-center overflow-hidden rounded-full text-[30px] font-bold"
+            style={{
+              border: frame ? undefined : "4px solid var(--color-paper)",
+              backgroundImage: avatar ? `url(${avatar})` : "linear-gradient(135deg,#f6b93b,#ff7a5a)",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              color: "#14212b",
+            }}
+          >
+            {avatar ? "" : person.name.slice(0, 1)}
+          </span>
+          {frame ? (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute block"
+              style={{
+                inset: `${((1 - frameScale) / 2) * 100}%`,
+                backgroundImage: `url(${frame})`,
+                backgroundSize: "contain",
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat",
+              }}
+            />
+          ) : null}
+          {charm ? (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute block"
+              style={{
+                width: badge,
+                height: badge,
+                left: -badge * 0.3,
+                top: AVATAR - badge,
+                zIndex: 2,
+                backgroundImage: `url(${charm})`,
+                backgroundSize: "contain",
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat",
+                filter: "drop-shadow(0 2px 4px rgba(14,26,36,.28))",
+              }}
+            />
+          ) : null}
         </span>
 
         {/* النجمةُ ووسمُ «داعم» من `NameTag` نفسه — لا رسمٌ ثانٍ لهما هنا. */}

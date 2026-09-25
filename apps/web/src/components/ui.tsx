@@ -224,7 +224,7 @@ const CHARM_RATIO = 0.5;
  * لا يغطّيها.
  */
 function charmSeat(size: number, badge: number): { left: number; top: number } {
-  return { left: -badge * 0.4, top: size - badge };
+  return { left: -badge * 0.3, top: size - badge };
 }
 
 function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }) {

@@ -114,6 +114,8 @@ export async function activateSignup(
         name: row.name,
         passwordHash: row.passwordHash,
         emailVerifiedAt: new Date(),
+        // أوّلُ لحظةٍ في الحساب: «انضم فلان إلى آثار مومنتس».
+        moments: { create: { kind: "JOINED" } },
       },
       select: { id: true },
     }),

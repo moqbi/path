@@ -226,11 +226,22 @@ export async function createMoment(userId: string, input: MomentInput) {
  */
 async function markCity(userId: string, city: string | null, was: string | null) {
   if (!city || city === was) return false;
-  await prisma.$transaction([
-    prisma.user.update({ where: { id: userId }, data: { city } }),
-    prisma.moment.create({ data: { authorId: userId, kind: "CITY", text: city } }),
-  ]);
-  return true;
+  /*
+     **والتبديلُ شرطيٌّ في القاعدة لا في الذاكرة**: فتحُ التطبيق يرسل
+     طلبين في اللحظة نفسها (الإقلاع، ثمّ العودة من الخلفيّة) — وكلاهما
+     قرأ المدينة القديمة قبل أن يكتب الآخر، فكُتبت «وصل إلى جدة» مرّتين.
+     فالمدينةُ تُبدَّل بشرط أنّها لم تُبدَّل بعد، ولا تُكتب اللحظة إلا
+     لمن بدّلها فعلاً.
+  */
+  return prisma.$transaction(async (tx) => {
+    const changed = await tx.user.updateMany({
+      where: { id: userId, OR: [{ city: null }, { city: { not: city } }] },
+      data: { city },
+    });
+    if (changed.count === 0) return false;
+    await tx.moment.create({ data: { authorId: userId, kind: "CITY", text: city } });
+    return true;
+  });
 }
 
 /**
@@ -387,6 +398,9 @@ export async function addComment(userId: string, momentId: string, body: string)
           isPlus: true,
           avatarMediaId: true,
           tag: { select: { name: true, bg: true, fg: true } },
+          // الإطارُ والتميمة مع صورة المعلّق كما في كلّ مكانٍ تظهر فيه صورته.
+          frame: { select: { spec: true, mediaId: true, frameHole: true } },
+          charm: { select: { spec: true, mediaId: true } },
         },
       },
     },

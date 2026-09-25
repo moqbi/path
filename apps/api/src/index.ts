@@ -20,6 +20,7 @@ import { coinRoutes, plusRoutes, storeRoutes } from "./routes/v1/store";
 import { contentRoutes, moderationRoutes, reportRoutes } from "./routes/v1/reports";
 import { webhookRoutes } from "./routes/v1/webhooks";
 import { dripPlusCredit } from "./services/billing";
+import { expirePlus } from "./services/plus";
 import { storyRoutes } from "./routes/v1/stories";
 import { siteRoutes } from "./routes/v1/site";
 import { placeRoutes } from "./routes/v1/places";
@@ -65,6 +66,17 @@ app.use(
 );
 if (!isProd) app.use("*", logger());
 
+/*
+   ردودُ الواجهة لا تُخبّأ: بلا ترويسةٍ تقول ذلك قد يحتفظ مخبأُ النظام في
+   آبل (`NSURLCache`) بجوابٍ قديم ويعيده، فيُسحب الخطّ الزمنيّ ويُسمع
+   التحديث ولا يتغيّر شيء حتى يُغلق التطبيق. والملفّاتُ وحدها تُخبّأ —
+   وترويستُها تُكتب في بابها فتعلو هذه.
+*/
+app.use("/v1/*", async (c, next) => {
+  await next();
+  if (!c.res.headers.has("Cache-Control")) c.header("Cache-Control", "no-store");
+});
+
 app.get("/health", (c) => c.json({ ok: true, at: new Date().toISOString() }));
 
 /**
@@ -83,6 +95,18 @@ setInterval(
     void dripPlusCredit().catch((error) => console.error("✗ رصيد آثار+", error));
   },
   SWEEP_MINUTES * 60_000,
+).unref();
+
+/*
+   وانتهاءُ آثار+ كل خمس دقائق: منحُ اللوحة ونزعُها لا يصلهما حدثٌ من
+   RevenueCat، فالكنسُ هو من يُنهيهما — وربعُ ساعةٍ يتحرّك فيها وجهٌ
+   بعد انتهاء اشتراك صاحبه طويلة. والاستعلامُ سطرٌ واحد.
+*/
+setInterval(
+  () => {
+    void expirePlus().catch((error) => console.error("✗ انتهاء آثار+", error));
+  },
+  5 * 60_000,
 ).unref();
 
 /*

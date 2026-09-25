@@ -7,6 +7,7 @@ import { AthrMark } from "../../components/brand";
 import { StoreGrid } from "../../components/store-grid";
 import { FlameIcon, InfoIcon, SparkIcon } from "../../components/icons";
 import { useStore, type StoreItem } from "../../lib/queries";
+import { usePullRefresh } from "../../lib/refresh";
 import { coinText } from "../../lib/format";
 import { colors } from "../../theme/tokens";
 
@@ -34,6 +35,7 @@ export default function Store() {
   // حشوةُ الحافّة العليا في الرأس الداكن نفسه — انظر `components/screen-header.tsx`.
   const insets = useSafeAreaInsets();
   const store = useStore();
+  const pullRefresh = usePullRefresh(store.refetch);
   const [slug, setSlug] = useState("");
   const data = store.data;
 
@@ -120,7 +122,7 @@ export default function Store() {
         <ScrollView
           contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 28 }}
           refreshControl={
-            <RefreshControl refreshing={store.isRefetching} onRefresh={() => void store.refetch()} tintColor={colors.clay} />
+            <RefreshControl {...pullRefresh} tintColor={colors.clay} />
           }
         >
           {category ? (

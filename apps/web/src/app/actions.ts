@@ -1432,8 +1432,14 @@ export async function revokePlus(userId: string): Promise<void> {
   const admin = await requireAdmin();
   await prisma.user.update({
     where: { id: userId },
-    // والختم يُنسى: من عاد بعدها يبدأ دورةً جديدة لا يكمل ما انقطع.
-    data: { isPlus: false, plusUntil: null, plusCreditAt: null },
+    /*
+       النزعُ انتهاءٌ الآن لا إطفاءُ حقل: `plusUntil` يصير ماضياً، فيقرؤه
+       الويب منتهياً في الحال (`currentUser`)، ويُكمله كنسُ الخادم
+       (`endPlus`) خلال دقائق: تثبيتُ الصورة المتحرّكة، ونزعُ أصناف
+       المشتركين، ونسيانُ ختم الرصيد، ونافذةُ «انتهى اشتراكك». وإطفاءُ
+       `isPlus` هنا كان يُخرجه من الكنس فلا يُنهى شيءٌ من ذلك.
+    */
+    data: { plusUntil: new Date(Date.now() - 1000) },
   });
   await prisma.moderationLog.create({
     data: { adminId: admin.id, action: "PLUS_REVOKED", targetId: userId, ownerId: userId },

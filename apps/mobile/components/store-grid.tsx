@@ -6,6 +6,7 @@ import { MediaImage } from "./media-image";
 import { firstColor, frameInset } from "./avatar";
 import { CheckIcon, LockIcon } from "./icons";
 import { api } from "../lib/api";
+import { useSession } from "../lib/session";
 import { keys, type StoreItem } from "../lib/queries";
 import { ar, coinText } from "../lib/format";
 import { colors } from "../theme/tokens";
@@ -183,6 +184,13 @@ export function StoreGrid({
   const [showing, setShowing] = useState(false);
 
   const refresh = () => {
+    /*
+       وصاحبُ الجلسة نفسه يُعاد سؤاله: الصورةُ والإطار والتميمة في كل
+       شاشةٍ تُرسم من `useSession` لا من ذاكرة الاستعلامات، فكان «ألبسه»
+       يُحفظ على الخادم ولا يتغيّر شيءٌ على الشاشة حتى تُفتح «إكسسواراتي»
+       — وهي التي كانت تسأل.
+    */
+    void useSession.getState().refresh();
     void client.invalidateQueries({ queryKey: keys.store });
     void client.invalidateQueries({ queryKey: keys.me });
     void client.invalidateQueries({ queryKey: ["me"] });
@@ -377,17 +385,48 @@ export function StoreGrid({
                   </Text>
                   <Text style={{ color: colors.muted, fontSize: 12.5, lineHeight: 21, textAlign: "center", marginTop: 6 }}>
                     {said.ok
-                      ? "صار لك — البسه من إكسسواراتك في «أنا»."
+                      ? chosen.kind === "BUNDLE"
+                        ? "ما فيها صار لك — تلبسه من إكسسواراتك في «أنا»."
+                        : "صار لك — تلبسه الآن أو من إكسسواراتك في «أنا»."
                       : "اشحن نقاطك من زرّ الرصيد في أعلى المتجر ثم أعِد المحاولة."}
                   </Text>
+                  {/* ما اشتُري يُلبَس من مكانه: لا رحلةَ إلى «أنا» ليلبس ما رآه للتوّ. */}
+                  {said.ok && chosen.kind !== "BUNDLE" ? (
+                    <Pressable
+                      disabled={wear.isPending}
+                      onPress={() => {
+                        wear.mutate(chosen.id);
+                        setSaid(null);
+                        setOpen(null);
+                      }}
+                      style={{ height: 46, borderRadius: 12, backgroundColor: colors.clay, alignItems: "center", justifyContent: "center", marginTop: 16 }}
+                    >
+                      <Text style={{ color: colors.onBrand, fontSize: 13.5, fontWeight: "700" }}>ألبسه الآن</Text>
+                    </Pressable>
+                  ) : null}
                   <Pressable
                     onPress={() => {
                       setSaid(null);
                       setOpen(null);
                     }}
-                    style={{ height: 46, borderRadius: 12, backgroundColor: colors.clay, alignItems: "center", justifyContent: "center", marginTop: 16 }}
+                    style={{
+                      height: 46,
+                      borderRadius: 12,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginTop: said.ok && chosen.kind !== "BUNDLE" ? 8 : 16,
+                      backgroundColor: said.ok && chosen.kind !== "BUNDLE" ? colors.chip : colors.clay,
+                    }}
                   >
-                    <Text style={{ color: colors.onBrand, fontSize: 13.5, fontWeight: "700" }}>تمام</Text>
+                    <Text
+                      style={{
+                        color: said.ok && chosen.kind !== "BUNDLE" ? colors.ink2 : colors.onBrand,
+                        fontSize: 13.5,
+                        fontWeight: "700",
+                      }}
+                    >
+                      {said.ok && chosen.kind !== "BUNDLE" ? "لاحقاً" : "تمام"}
+                    </Text>
                   </Pressable>
                 </View>
               </View>

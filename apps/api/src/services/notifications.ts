@@ -175,21 +175,6 @@ async function derive(userId: string, limit: number): Promise<Note[]> {
       orderBy: { createdAt: "desc" },
       take: 8,
     }),
-    /*
-      جديدُ المتجر: خبرٌ لا فعل — ويُشتقّ من `createdAt` كبقيّته لا من
-      جدولٍ يُكتب لكل مستخدمٍ عند كل إضافة. والمخفيُّ لا يُخبَر عنه،
-      وما يُكتسب بالوقت كذلك: ليس وصولاً جديداً إلى المتجر.
-    */
-    prisma.storeItem.findMany({
-      where: {
-        hidden: false,
-        earnedAfterDays: null,
-        createdAt: { gt: new Date(Date.now() - NEW_ITEM_DAYS * 86_400_000) },
-      },
-      select: { id: true, name: true, spec: true, mediaId: true, createdAt: true, limited: true },
-      orderBy: { createdAt: "desc" },
-      take: 8,
-    }),
   ]);
 
   const notes: Note[] = [

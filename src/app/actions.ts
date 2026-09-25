@@ -1824,7 +1824,8 @@ export async function cancelPlus(): Promise<void> {
   const user = await requireUser();
   await prisma.user.update({
     where: { id: user.id },
-    data: { isPlus: false, plusUntil: null },
+    // انتهاءٌ الآن يُكمله كنسُ الخادم (`endPlus`) — انظر `revokePlus` في اللوحة.
+    data: { plusUntil: new Date(Date.now() - 1000) },
   });
   revalidatePath("/me");
   revalidatePath("/subscribe");

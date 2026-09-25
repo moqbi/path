@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { View, Pressable, ScrollView, ActivityIndicator, PanResponder, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Pressable, ScrollView, ActivityIndicator, PanResponder, KeyboardAvoidingView, Platform, Image } from "react-native";
 import { Text, TextInput } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import * as Picker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { ScreenHeader } from "../../components/screen-header";
+import { Sheet } from "../../components/sheet";
 import { COVER_HEIGHT, CoverLayer, coverFrame } from "../../components/cover";
 import { Avatar, type Frame } from "../../components/avatar";
 import { CameraIcon, CheckIcon, CloseIcon } from "../../components/icons";
@@ -95,14 +96,11 @@ export default function EditProfile() {
           contentContainerStyle={{ paddingBottom: 40, direction: "rtl" }}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={{ color: colors.muted, fontSize: 11.5, paddingHorizontal: 20, paddingTop: 14, textAlign: "right" }}>
-            الغلاف والصورة وبياناتك في مكانٍ واحد
-          </Text>
-
-          <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600", paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8, textAlign: "right" }}>
-            الغلاف
-          </Text>
-
+          {/*
+            الغلافُ ملاصقٌ للرأس بلا سطرين فوقه: «الغلاف والصورة وبياناتك في
+            مكانٍ واحد» ثمّ «الغلاف» كانا يفصلانه عن الرأس بشريطٍ من الورق
+            يُقرأ تشوّهاً — والغلافُ يقول نفسه.
+          */}
           <CoverEditor
             mediaId={me.coverMediaId}
             spec={me.background?.spec ?? null}
@@ -602,6 +600,7 @@ function AvatarEditor({
   onChanged: () => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
+  const [chosen, setChosen] = useState<Picker.ImagePickerAsset | null>(null);
   const setError = onError;
 
   async function pick() {
@@ -611,8 +610,21 @@ function AvatarEditor({
 
     const result = await Picker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.9 });
     if (result.canceled || !result.assets[0]) return;
-    const asset = result.assets[0];
+    // لا رفعَ قبل أن يراها: الاختيارُ يفتح معاينةً فيها «اعتمدها».
+    setChosen(result.assets[0]);
+  }
 
+  /**
+   * صورةُ العرض تُراجَع قبل أن تُعتمد — **بقرار المالك**: وجهُك يراه كلُّ
+   * من في دائرتك، وضغطةٌ في الألبوم على غير المقصود كانت تنشره في الحال.
+   * والمعاينةُ دائرةٌ بمقاسها الحقيقيّ في الملف لا مربّعُ الألبوم، فيُرى
+   * ما سيُقصّ منها. ولا `allowsEditing` من النظام: قصُّه يُسطّح الصورة
+   * المتحرّكة إطاراً واحداً (القاعدة ٨٢).
+   */
+  async function confirm() {
+    const asset = chosen;
+    if (!asset) return;
+    setChosen(null);
     setBusy(true);
     try {
       const uploaded = await uploadFile(asset.uri, asset.mimeType ?? "image/jpeg", "AVATAR", asset);
@@ -659,6 +671,35 @@ function AvatarEditor({
         </Pressable>
       </View>
 
+      {chosen ? (
+        <Sheet title="صورتك الجديدة" onClose={() => setChosen(null)}>
+          <View style={{ alignItems: "center", paddingVertical: 12 }}>
+            <Image
+              source={{ uri: chosen.uri }}
+              style={{ width: 160, height: 160, borderRadius: 80, backgroundColor: colors.chip }}
+              resizeMode="cover"
+            />
+            <Text style={{ color: colors.muted, fontSize: 12, marginTop: 10, textAlign: "center" }}>
+              هكذا تظهر لدائرتك.
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => void confirm()}
+            style={{ height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay, marginTop: 8 }}
+          >
+            <Text style={{ color: colors.onBrand, fontSize: 14, fontWeight: "700" }}>اعتمدها</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              setChosen(null);
+              void pick();
+            }}
+            style={{ height: 46, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.chip, marginTop: 8 }}
+          >
+            <Text style={{ color: colors.ink2, fontSize: 13.5, fontWeight: "600" }}>اختر غيرها</Text>
+          </Pressable>
+        </Sheet>
+      ) : null}
     </View>
   );
 }

@@ -22,6 +22,8 @@ export function SwipeRow({
   secondLabel,
   surface,
   width = REVEAL,
+  lead,
+  radius = 0,
   children,
 }: {
   onDelete: () => void | Promise<void>;
@@ -37,10 +39,17 @@ export function SwipeRow({
   surface?: string;
   /** عرضُ الزرّ المكشوف — «حذف بصلاحية الإشراف» أطولُ من «حذف». */
   width?: number;
+  /**
+   * فعلٌ لا يقطع يسبق الفعلين: «محادثة» في صفّ الصديق. يجلس أبعدَ عن
+   * الصفّ، وبلونٍ غير لون القطع — فلا يُضغط «إزالة» وهو يريد الكلام.
+   */
+  lead?: { label: string; run: () => void | Promise<void> };
+  /** انحناءُ الحواف حين يكون الصفّ قالباً لا سطراً. */
+  radius?: number;
   children: React.ReactNode;
 }) {
   const second = onSecond && secondLabel ? { run: onSecond, label: secondLabel } : null;
-  const reveal = second ? width * 2 : width;
+  const reveal = width * (1 + (second ? 1 : 0) + (lead ? 1 : 0));
 
   const [busy, setBusy] = useState(false);
   /*
@@ -96,8 +105,17 @@ export function SwipeRow({
   }
 
   return (
-    <View style={{ position: "relative", overflow: "hidden" }}>
+    <View style={{ position: "relative", overflow: "hidden", borderRadius: radius }}>
       <View style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: reveal, flexDirection: "row" }}>
+        {lead ? (
+          <Pressable
+            disabled={busy}
+            onPress={() => fire(lead.run)}
+            style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 8, backgroundColor: colors.clay, opacity: busy ? 0.6 : 1 }}
+          >
+            <Text style={{ color: colors.onBrand, fontSize: 13, fontWeight: "700" }}>{lead.label}</Text>
+          </Pressable>
+        ) : null}
         {second ? (
           <Pressable
             disabled={busy}

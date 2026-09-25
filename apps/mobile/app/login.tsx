@@ -14,10 +14,10 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   appleReady,
   finishGoogle,
-  finishSnap,
   googleReady,
   signInWithApple,
   snapReady,
+  promptSnapLogin,
   useGoogle,
   useSnap,
 } from "../lib/providers";
@@ -215,7 +215,7 @@ export default function Login() {
      فيتحقّق منه ويُصدر جلستنا.
   */
   const [, googleAnswer, promptGoogle] = useGoogle();
-  const [snapRequest, snapAnswer, promptSnap] = useSnap();
+  const [snapRequest] = useSnap();
 
   useEffect(() => {
     if (googleAnswer?.type !== "success") return;
@@ -224,8 +224,8 @@ export default function Login() {
 
     setPending(true);
     finishGoogle(idToken)
-      .then((user) => {
-        adopt(user);
+      .then(async (user) => {
+        await adopt(user);
         router.replace("/");
       })
       .catch((problem: unknown) =>
@@ -234,23 +234,6 @@ export default function Login() {
       .finally(() => setPending(false));
   }, [googleAnswer, adopt, router]);
 
-  useEffect(() => {
-    if (snapAnswer?.type !== "success") return;
-    const code = snapAnswer.params?.code;
-    const verifier = snapRequest?.codeVerifier;
-    if (!code || !verifier) return;
-
-    setPending(true);
-    finishSnap(code, verifier)
-      .then((user) => {
-        adopt(user);
-        router.replace("/");
-      })
-      .catch((problem: unknown) =>
-        setError(problem instanceof Error ? problem.message : "تعذّر الدخول بسناب"),
-      )
-      .finally(() => setPending(false));
-  }, [snapAnswer, snapRequest, adopt, router]);
 
   /** ما يجري عند ضغط زرّ مزوّد. */
   async function withProvider(key: string) {
@@ -262,7 +245,18 @@ export default function Login() {
         setNotice("الدخول بسناب غير مفعّل في هذه النسخة.");
         return;
       }
-      await promptSnap();
+      setPending(true);
+      try {
+        const user = await promptSnapLogin(snapRequest);
+        if (user) {
+          await adopt(user);
+          router.replace("/");
+        }
+      } catch (problem) {
+        setError(problem instanceof Error ? problem.message : "تعذّر الدخول بسناب");
+      } finally {
+        setPending(false);
+      }
       return;
     }
 
@@ -277,7 +271,7 @@ export default function Login() {
 
     setPending(true);
     try {
-      adopt(await signInWithApple());
+      await adopt(await signInWithApple());
       router.replace("/");
     } catch (problem) {
       // إلغاءُ المستخدم ليس خطأً يُعرض: أغلق النافذة وانتهى.

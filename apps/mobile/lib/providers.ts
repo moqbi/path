@@ -2,6 +2,7 @@ import { Platform } from "react-native";
 import * as AppleAuth from "expo-apple-authentication";
 import * as Google from "expo-auth-session/providers/google";
 import * as AuthSession from "expo-auth-session";
+import * as WebBrowser from "expo-web-browser";
 import { api, saveTokens } from "./api";
 import type { Me } from "./session";
 import { appUrl } from "@athar/shared";
@@ -142,6 +143,34 @@ export function useSnap() {
     },
     SNAP,
   );
+}
+
+/**
+ * يفتح صفحةَ سناب وينتظر العودة **بمخطّط التطبيق** لا بعنوان العودة.
+ *
+ * `promptAsync` تنتظر عودةً بمخطّط `redirectUri` نفسه — وهو هنا
+ * `https` — ونافذةُ الدخول في آبل (`ASWebAuthenticationSession`) لا
+ * تلتقط عودةَ `https` إلا بنطاقٍ مربوط. وصفحتُنا ترتدّ إلى `athar://snap`،
+ * فكانت النافذة تبقى مفتوحةً على «نرجعك إلى آثار» أو تُغلق بلا جواب،
+ * ويُقرأ ذلك «زرّ سناب لا يعمل». فتُفتح هنا بمخطّط التطبيق، ويُفحص ما
+ * عاد بـ`parseReturnUrl` — ومعه مطابقةُ الحارس (`state`).
+ *
+ * ويردّ `null` حين يُلغي المستخدم: الإلغاء ليس خطأً يُعرض.
+ */
+export async function promptSnapLogin(request: AuthSession.AuthRequest | null): Promise<Me | null> {
+  if (!request) throw new Error("لحظة… نجهّز الدخول بسناب، جرّب ثانيةً");
+  const url = request.url ?? (await request.makeAuthUrlAsync(SNAP));
+  const result = await WebBrowser.openAuthSessionAsync(url, "athar://snap");
+  if (result.type !== "success") return null;
+
+  const parsed = request.parseReturnUrl(result.url);
+  if (parsed.type !== "success") {
+    const reason = parsed.type === "error" ? parsed.error?.message : null;
+    throw new Error(reason || "تعذّر الدخول بسناب");
+  }
+  const code = parsed.params.code;
+  if (!code || !request.codeVerifier) throw new Error("ما وصل رمزٌ من سناب");
+  return finishSnap(code, request.codeVerifier);
 }
 
 /**

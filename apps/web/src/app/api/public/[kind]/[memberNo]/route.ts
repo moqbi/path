@@ -11,6 +11,10 @@ import { getObject } from "@/lib/storage";
  * صاحبه وغلافه. فلا يُفتح به ملفُّ لحظةٍ ولا قصةٍ ولا رسالة مهما عُرف
  * معرّفه.
  *
+ * ومعهما **الإطار والتميمة الملبوسان**: رسمُ صنفِ متجرٍ يُعرض للجميع
+ * أصلاً (القاعدة ٢٣ب)، ويُقرأ هنا من رقم العضوية أيضاً لا من معرّفه —
+ * فلا يصير هذا البابُ طريقاً إلى ملفٍّ غيرهما.
+ *
  * وما يُقدَّم هنا هو بعينه ما تعرضه الصفحة العامة `/u/[memberNo]`: من
  * أعطى رابطه أعطى وجهه. ولا يُكشف شيءٌ زائد.
  *
@@ -22,7 +26,7 @@ export async function GET(
   { params }: { params: Promise<{ kind: string; memberNo: string }> },
 ) {
   const { kind, memberNo } = await params;
-  if (kind !== "avatar" && kind !== "cover") {
+  if (kind !== "avatar" && kind !== "cover" && kind !== "frame" && kind !== "charm") {
     return new NextResponse("غير موجود", { status: 404 });
   }
 
@@ -33,9 +37,21 @@ export async function GET(
 
   const person = await prisma.user.findUnique({
     where: { memberNo: number },
-    select: { avatarMediaId: true, coverMediaId: true },
+    select: {
+      avatarMediaId: true,
+      coverMediaId: true,
+      frame: { select: { mediaId: true } },
+      charm: { select: { mediaId: true } },
+    },
   });
-  const mediaId = kind === "avatar" ? person?.avatarMediaId : person?.coverMediaId;
+  const mediaId =
+    kind === "avatar"
+      ? person?.avatarMediaId
+      : kind === "cover"
+        ? person?.coverMediaId
+        : kind === "frame"
+          ? person?.frame?.mediaId
+          : person?.charm?.mediaId;
   if (!mediaId) return new NextResponse("غير موجود", { status: 404 });
 
   const media = await prisma.media.findUnique({

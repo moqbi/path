@@ -9,6 +9,7 @@ import { ScreenHeader } from "../../components/screen-header";
 import { ReactionGlyph } from "../../components/reactions";
 import { MessageIcon, SparkIcon, StoreIcon, TagIcon, WithIcon } from "../../components/icons";
 import { useNotes, type Note } from "../../lib/queries";
+import { usePullRefresh } from "../../lib/refresh";
 import { dayLabel, relative } from "../../lib/format";
 import { colors } from "../../theme/tokens";
 
@@ -34,12 +35,19 @@ const FILTERS = [
   { key: "reactions", label: "التفاعلات" },
   { key: "tags", label: "الإشارات" },
   { key: "messages", label: "الرسائل" },
+  /*
+    «آثار»: ما يأتي من التطبيق نفسه لا من صديق — جديدُ المتجر وما كان
+    لفترةٍ محدودة، وما يُضاف بعدها من أخبار. خبرُ المتجر بين تفاعلات
+    الأصدقاء يُقرأ إعلاناً في غير مكانه.
+  */
+  { key: "athar", label: "آثار" },
 ] as const;
 
 const OF: Record<string, Note["kind"][]> = {
   reactions: ["REACTION", "COMMENT"],
   tags: ["TAG"],
   messages: ["MESSAGE"],
+  athar: ["STORE"],
 };
 
 /** لون دائرة النوع: التفاعل كهرماني، الإشارة مرجانية، الصداقة خضراء. */
@@ -101,6 +109,7 @@ function KindBadge({ note }: { note: Note }) {
  */
 export default function Notifications() {
   const notes = useNotes();
+  const pullRefresh = usePullRefresh(notes.refetch);
   const router = useRouter();
   const [filter, setFilter] = useState<string>("");
 
@@ -167,8 +176,7 @@ export default function Notifications() {
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 90, flexGrow: 1 }}
         refreshControl={
           <RefreshControl
-            refreshing={notes.isRefetching}
-            onRefresh={() => void notes.refetch()}
+            {...pullRefresh}
             tintColor={colors.clay}
           />
         }

@@ -2,10 +2,20 @@ import { prisma } from "@athar/db";
 import { BIO_MAX, type NotifyInput } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { dropMedia } from "./media";
+import { endPlus } from "./plus";
 import { tellSupport } from "./support-mail";
 
 /** الحساب كما يقرؤه صاحبه: كل ما تعرضه شاشة «الملف الشخصي» وتحريرها. */
 export async function me(userId: string) {
+  /*
+     اشتراكٌ تجاوز موعده يُنهى هنا قبل أن يُقرأ: الكنسُ يجري كل بضع دقائق،
+     ومن انتهى اشتراكه وفتح التطبيق يرى ذلك في الحال لا بعد الكنس.
+  */
+  const lapsed = await prisma.user.count({
+    where: { id: userId, isPlus: true, plusUntil: { lt: new Date() } },
+  });
+  if (lapsed) await endPlus(userId);
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -23,6 +33,7 @@ export async function me(userId: string) {
       suspendedReason: true,
       isPlus: true,
       plusUntil: true,
+      plusEndedAt: true,
       coins: true,
       createdAt: true,
       avatarMediaId: true,

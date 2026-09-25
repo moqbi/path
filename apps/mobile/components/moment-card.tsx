@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { Avatar, firstColor } from "./avatar";
 import { MediaImage } from "./media-image";
 import { viewPhoto } from "./photo-viewer";
+import { AthrMark } from "./brand";
 import { PinIcon, PlayIcon, WithIcon, SunIcon, MoonIcon, PlaneIcon, GiftIcon, SparkIcon } from "./icons";
 import { MomentBar } from "./moment-bar";
 import { Bubble, CommentList, Reactors } from "./reactors";
@@ -22,7 +23,7 @@ export const SPINE_W = 56;
  * بإطار. والتفريق في العرض لا في الخادم.
  */
 const EVENTS = new Set([
-  "CITY", "PLACE", "SLEEP", "WAKE", "MUSIC", "FRIEND_ADDED", "GIFT_SENT", "GIFT_GOT",
+  "CITY", "PLACE", "SLEEP", "WAKE", "MUSIC", "FRIEND_ADDED", "GIFT_SENT", "GIFT_GOT", "JOINED",
 ]);
 
 const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
@@ -34,6 +35,7 @@ const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
   FRIEND_ADDED: { bg: colors.goldSoft, ink: colors.goldInk },
   GIFT_SENT: { bg: colors.claySoft, ink: colors.clayInk },
   GIFT_GOT: { bg: colors.claySoft, ink: colors.clayInk },
+  JOINED: { bg: colors.night, ink: "#f7f5ef" },
 };
 
 function EventIcon({ kind }: { kind: string }) {
@@ -45,6 +47,7 @@ function EventIcon({ kind }: { kind: string }) {
     : kind === "MUSIC" ? <PlayIcon size={14} color={style.ink} />
     : kind === "FRIEND_ADDED" ? <WithIcon size={15} color={style.ink} />
     : kind === "GIFT_SENT" || kind === "GIFT_GOT" ? <GiftIcon size={15} color={style.ink} />
+    : kind === "JOINED" ? <AthrMark size={20} />
     : <PinIcon size={16} color={style.ink} />;
 
   return (
@@ -79,6 +82,8 @@ function eventText(moment: Moment, withNames: string[]) {
       return { title: `أهديت ${withNames[0] ?? "صديقاً"} ${moment.text ?? "هدية"}`, subtitle: null };
     case "GIFT_GOT":
       return { title: `وصلتك هدية من ${withNames[0] ?? "صديق"}: ${moment.text ?? "هدية"}`, subtitle: null };
+    case "JOINED":
+      return { title: `انضم ${moment.author.name} إلى آثار مومنتس`, subtitle: null };
     case "MUSIC":
       return {
         title: `يسمع ${moment.musicTitle ?? "أغنية"}${moment.musicArtist ? ` لـ${moment.musicArtist}` : ""}`,

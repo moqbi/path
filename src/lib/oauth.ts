@@ -236,6 +236,8 @@ export async function upsertIdentity(identity: Identity) {
           email: identity.email,
         },
       },
+      // أوّلُ لحظةٍ في الحساب: «انضم فلان إلى آثار مومنتس».
+      moments: { create: { kind: "JOINED" } },
     },
     select: { id: true, email: true, name: true },
   });

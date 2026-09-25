@@ -1,8 +1,8 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { View, SectionList, ActivityIndicator, Pressable, Animated, Easing, PanResponder } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { MomentCard, SPINE_W } from "../../components/moment-card";
 import { SPINE_X } from "../../components/spine";
 import { COVER_HEIGHT, CoverLayer } from "../../components/cover";
@@ -11,7 +11,8 @@ import { AthrMark } from "../../components/brand";
 import { MessageIcon, RefreshIcon, SparkIcon, StarIcon } from "../../components/icons";
 import { ComposerFan } from "../../components/composer-fan";
 import { Tour } from "../../components/tour";
-import { useCircle, useFeed, useTogether, type Moment } from "../../lib/queries";
+import { PlusEnded } from "../../components/plus-ended";
+import { useCircle, useFeed, useTogether, useUnreadDm, type Moment } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { ar, dayLabel, membership, MONTHS } from "../../lib/format";
 import { playRefresh } from "../../lib/sound";
@@ -48,6 +49,15 @@ export default function Timeline() {
   const feed = useFeed(view === "private" ? "private" : "");
   const together = useTogether(withId);
   const circle = useCircle();
+  const unread = useUnreadDm();
+  const unreadCount = unread.data?.unread ?? 0;
+  // العودةُ من محادثةٍ قُرئت تُعيد العدّ: الخطّ الزمنيّ لا يُفكّ من الشجرة.
+  const recount = unread.refetch;
+  useFocusEffect(
+    useCallback(() => {
+      void recount();
+    }, [recount]),
+  );
 
   const lensMoments = useMemo(
     () =>
@@ -88,7 +98,14 @@ export default function Timeline() {
   const atTop = useRef(true);
   const [pulling, setPulling] = useState(false);
 
-  const reload = () => (view === "together" ? together.refetch() : feed.refetch());
+  const refreshMe = useSession((s) => s.refresh);
+  // والتحديث يسأل عن صاحب الشاشة أيضاً: غلافُه وإطارُه وتميمتُه منه.
+  const reload = () =>
+    Promise.all([
+      view === "together" ? together.refetch() : feed.refetch(),
+      refreshMe(),
+      unread.refetch(),
+    ]);
 
   /*
     `PanResponder` يُبنى مرّةً واحدة، فما يُغلق عليه يبقى من أوّل رسم.
@@ -99,7 +116,7 @@ export default function Timeline() {
   latest.current = reload;
 
   const settle = () =>
-    Animated.spring(pull, { toValue: 0, useNativeDriver: true, bounciness: 6, speed: 14 }).start();
+    Animated.spring(pull, { toValue: 0, useNativeDriver: false, bounciness: 6, speed: 14 }).start();
 
   const grip = useRef(
     PanResponder.create({
@@ -133,14 +150,14 @@ export default function Timeline() {
             toValue: 1,
             duration: 750,
             easing: Easing.linear,
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
         );
         turn.start();
         Animated.timing(pull, {
           toValue: PULL_TRIP,
           duration: 140,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }).start();
 
         void Promise.resolve(latest.current()).finally(() => {
@@ -208,6 +225,29 @@ export default function Timeline() {
             style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
           >
             <MessageIcon size={21} color={colors.chromeInk} />
+            {/* عددُ الرسائل التي لم تُقرأ — لا نقطةٌ صمّاء: الرقم يقول كم ينتظر. */}
+            {unreadCount > 0 ? (
+              <View
+                style={{
+                  position: "absolute",
+                  top: 2,
+                  right: 0,
+                  minWidth: 18,
+                  height: 18,
+                  paddingHorizontal: 4,
+                  borderRadius: 9,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: colors.live,
+                  borderWidth: 1.5,
+                  borderColor: colors.chrome,
+                }}
+              >
+                <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700", lineHeight: 13 }}>
+                  {unreadCount > 99 ? "+٩٩" : ar(unreadCount)}
+                </Text>
+              </View>
+            ) : null}
           </Pressable>
         </View>
       </View>
@@ -216,14 +256,38 @@ export default function Timeline() {
         الغلافُ واللحظات في طبقةٍ واحدة تنزل بالسحب: هما ما يتحرّك،
         والرأس والشريط السفلي ثابتان.
       */}
-      <Animated.View
-        style={{ flex: 1, transform: [{ translateY: pull }] }}
-        {...grip.panHandlers}
-      >
+      <Animated.View style={{ flex: 1 }} {...grip.panHandlers}>
 
         {/* الغلاف: صورتك على محور الخيط، والمدّة تحت الاسم، والتحديث مقابله. */}
-        <View style={{ height: COVER, overflow: "hidden" }}>
-          <CoverLayer mediaId={me.coverMediaId} spec={me.background?.spec} height={COVER} x={me.coverX} y={me.coverY} zoom={me.coverZoom} />
+        <Animated.View style={{ height: Animated.add(COVER, pull), overflow: "hidden" }}>
+          {/*
+            السحبُ يمدّ الغلاف ولا يُنزله: كان الغلافُ واللحظات ينزلان معاً
+            فيبقى فوقهما فراغٌ بلون الورق. الآن يطول الإطارُ بمقدار السحب
+            وتكبر الصورةُ فيه من أعلاها — فلا يظهر شيءٌ ليس غلافاً.
+          */}
+          <Animated.View
+            style={{
+              height: COVER,
+              transform: [
+                {
+                  translateY: pull.interpolate({
+                    inputRange: [0, PULL_MAX],
+                    outputRange: [0, PULL_MAX / 2],
+                    extrapolate: "clamp",
+                  }),
+                },
+                {
+                  scale: pull.interpolate({
+                    inputRange: [0, PULL_MAX],
+                    outputRange: [1, (COVER + PULL_MAX) / COVER],
+                    extrapolate: "clamp",
+                  }),
+                },
+              ],
+            }}
+          >
+            <CoverLayer mediaId={me.coverMediaId} spec={me.background?.spec} height={COVER} x={me.coverX} y={me.coverY} zoom={me.coverZoom} />
+          </Animated.View>
 
           <View
             style={{
@@ -247,7 +311,11 @@ export default function Timeline() {
               />
             </View>
 
-            <View style={{ flex: 1, paddingBottom: 6 }}>
+            {/*
+              الاسم أبعدُ عن الصورة (`marginRight`): التميمةُ تجلس يسارها
+              وأغلبُها خارجها (القاعدة ٥٩)، فكانت تلامس الاسم.
+            */}
+            <View style={{ flex: 1, paddingBottom: 6, marginRight: 10 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <Text
                   style={{
@@ -284,7 +352,7 @@ export default function Timeline() {
                   toValue: 1,
                   duration: 750,
                   easing: Easing.linear,
-                  useNativeDriver: true,
+                  useNativeDriver: false,
                 }),
               );
               turn.start();
@@ -342,7 +410,7 @@ export default function Timeline() {
               backgroundColor: "rgba(255,255,255,.75)",
             }}
           />
-        </View>
+        </Animated.View>
 
         <SectionList
           sections={days}
@@ -416,6 +484,7 @@ export default function Timeline() {
 
       <ComposerFan />
       <Tour />
+      <PlusEnded />
     </SafeAreaView>
   );
 }

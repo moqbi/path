@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { AvatarMenu } from "../../../components/avatar-menu";
-import { CoverLayer } from "../../../components/cover";
+import { COVER_HEIGHT, CoverLayer } from "../../../components/cover";
 import { MediaImage } from "../../../components/media-image";
 import { MomentCard } from "../../../components/moment-card";
 import { ScreenHeader } from "../../../components/screen-header";
@@ -107,7 +107,12 @@ export default function Profile() {
 
   return (
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
-      <ScreenHeader title={who?.name ?? "ملف"} />
+      {/*
+        زرُّ رجوعٍ فوقه — **بقرار المالك**، ونقضاً للقاعدة ٤٢: الملفُّ يُفتح
+        من صفّ صديق أو تعليقٍ أو لحظة، ومن فتحه يريد أن يعود حيث كان لا إلى
+        رأس التبويب. والوجهةُ المكتوبة للفتح المباشر وحده (القاعدة ٧٧).
+      */}
+      <ScreenHeader title={who?.name ?? "ملف"} back="/circle" />
 
       {person.isLoading ? (
         <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
@@ -146,8 +151,9 @@ export default function Profile() {
                 تحت قناع الذوبان نفسه. وصورةٌ عاريةٌ في مربّعٍ رماديّ تنتهي
                 بحدٍّ حادّ، فيبدو الملف صفحةً من تطبيقٍ آخر.
               */}
-              <View style={{ height: 120, marginHorizontal: -20, overflow: "hidden" }}>
-                <CoverLayer mediaId={who.coverMediaId} spec={null} height={120} x={who.coverX} y={who.coverY} zoom={who.coverZoom} />
+              {/* بمقاس غلاف اللحظات و«أنا» (`COVER_HEIGHT`): كان ١٢٠ فيُقرأ ملفاً أصغر. */}
+              <View style={{ height: COVER_HEIGHT, marginHorizontal: -20, overflow: "hidden" }}>
+                <CoverLayer mediaId={who.coverMediaId} spec={null} height={COVER_HEIGHT} x={who.coverX} y={who.coverY} zoom={who.coverZoom} />
               </View>
 
               <View style={{ alignItems: "center", marginTop: -32, paddingHorizontal: 16, marginBottom: 14 }}>
@@ -160,7 +166,8 @@ export default function Profile() {
                   frameItem={who.frame}
                   charmItem={who.charm}
                 />
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 }}>
+                {/* أبعدُ عن الصورة: التميمةُ تتدلّى من ركنها الأيسر الأسفل. */}
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 14 }}>
                   <Text style={{ color: colors.ink, fontSize: 17, fontWeight: "700", writingDirection: "auto" }}>
                     {who.name}
                   </Text>

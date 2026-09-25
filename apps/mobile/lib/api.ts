@@ -95,6 +95,12 @@ export async function api<T>(path: string, init: RequestInit = {}, retry = true)
   if (token && !access) setAccess(token);
 
   const response = await fetch(`${BASE}${path}`, {
+    /*
+       بلا مخبأ: `no-store` يجعل `fetch` يُلحق بالطلب ختماً زمنياً فلا
+       يُعاد جوابٌ قديم من مخبأ النظام — كان السحبُ للتحديث يدور ولا يأتي
+       بجديد حتى يُغلق التطبيق. والخادمُ يقولها أيضاً في ترويسته.
+    */
+    cache: "no-store",
     ...init,
     headers: {
       ...(init.body instanceof FormData ? {} : { "content-type": "application/json" }),

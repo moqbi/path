@@ -1,4 +1,5 @@
 import { prisma } from "@athar/db";
+import { endPlus } from "./plus";
 import { PLUS_COINS, PLUS_ENTITLEMENT } from "@athar/shared";
 import { env } from "../env";
 
@@ -123,6 +124,7 @@ export async function applyEvent(event: RevenueCatEvent): Promise<{ ok: string }
       where: { id: { in: from } },
       data: { isPlus: false, plusUntil: null },
     });
+    for (const id of from) await endPlus(id).catch(() => {});
   }
 
   await prisma.$transaction(async (tx) => {
@@ -161,6 +163,9 @@ export async function applyEvent(event: RevenueCatEvent): Promise<{ ok: string }
       },
     });
   });
+
+  // وما انتهى يُنهى كلُّه: الصورة المتحرّكة، وأصناف المشتركين، ونافذة التجديد.
+  if (!active) await endPlus(userId);
 
   return { ok: active ? "فُعّل آثار+" : "أُوقف آثار+" };
 }

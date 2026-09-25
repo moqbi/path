@@ -70,6 +70,8 @@ export type Moment = {
       avatarMediaId: string | null;
       isPlus?: boolean;
       tag?: { name: string; bg: string; fg: string } | null;
+      frame?: { spec: string; mediaId: string | null; frameHole?: number | null } | null;
+      charm?: { spec: string; mediaId: string | null } | null;
     };
   }[];
   _count: { views: number; comments: number; reactions: number };
@@ -154,6 +156,17 @@ export const useNoteCount = () =>
   useQuery({
     queryKey: keys.noteCount,
     queryFn: () => api<{ unseen: number }>("/v1/notifications/count"),
+    refetchInterval: 60_000,
+  });
+
+/**
+ * عددُ الرسائل غير المقروءة — لشارة المحادثات في رأس اللحظات.
+ * ومفتاحُه تحت `["dm"]`، فكلُّ إبطالٍ للمحادثات بعد قراءةٍ يُعيد عدّه.
+ */
+export const useUnreadDm = () =>
+  useQuery({
+    queryKey: [...keys.dm, "unread"],
+    queryFn: () => api<{ unread: number }>("/v1/dm/unread"),
     refetchInterval: 60_000,
   });
 

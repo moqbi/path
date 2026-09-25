@@ -40,6 +40,8 @@ export type Me = {
   suspendedUntil: string | null;
   suspendedReason: string | null;
   isPlus: boolean;
+  /** متى انتهى آخرُ اشتراكٍ في آثار+ — منه تُعرض نافذة التجديد مرّةً. */
+  plusEndedAt?: string | null;
   coins: number;
   createdAt: string;
   avatarMediaId: string | null;
@@ -77,7 +79,7 @@ type State = {
   restore: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   /** جلسةٌ صدرت من بابٍ آخر (مزوّد): يُعتمد صاحبُها كما هو. */
-  adopt: (user: Me) => void;
+  adopt: (user: Me) => Promise<void>;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
 };
@@ -108,13 +110,20 @@ export const useSession = create<State>((set) => ({
   },
 
   /*
-     الدخولُ بمزوّدٍ يحفظ التوكن بنفسه (`lib/providers.ts`)، فلا يبقى
-     إلّا اعتمادُ صاحبه هنا — وبلا سؤالٍ ثانٍ عن `/v1/me`: الخادمُ ردّه
-     مع الجلسة.
+     الدخولُ بمزوّدٍ يحفظ التوكن بنفسه (`lib/providers.ts`)، ثمّ يُسأل
+     `/v1/me` كما في الدخول بالبريد. ما يردّه بابُ المزوّد صفُّ الحساب
+     خاماً — `frameId` لا الإطار، ولا تميمة ولا ثيم — فكان من خرج ودخل
+     بقوقل أو آبل يرى إكسسواراته منزوعةً وغلافَه غائباً حتى يلبس شيئاً
+     فيُعاد الجلب. ما لبسه محفوظٌ على الخادم، والعرضُ هو الذي نقص.
   */
-  adopt(user) {
+  async adopt(user) {
     void startBilling(user.id).catch(() => {});
-    set({ me: user, ready: true });
+    try {
+      const full = await api<{ user: Me }>("/v1/me");
+      set({ me: full.user, ready: true });
+    } catch {
+      set({ me: user, ready: true });
+    }
   },
 
   async signIn(email, password) {

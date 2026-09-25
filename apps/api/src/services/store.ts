@@ -1,5 +1,6 @@
 import { env } from "../env";
 import { prisma } from "@athar/db";
+import { endPlus } from "./plus";
 import { PLUS_COINS } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { circleIds } from "./visibility";
@@ -319,10 +320,9 @@ export async function subscribe(userId: string, plan: "MONTHLY" | "YEARLY") {
 }
 
 export async function cancelPlus(userId: string) {
-  await prisma.user.update({
-    where: { id: userId },
-    data: { isPlus: false, plusUntil: null },
-  });
+  await prisma.user.update({ where: { id: userId }, data: { plusUntil: null } });
+  // كلُّ ما يخصّ الاشتراك ينتهي معه في مكانٍ واحد (`services/plus.ts`).
+  await endPlus(userId);
   return { ok: true };
 }
 

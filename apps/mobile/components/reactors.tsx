@@ -114,13 +114,19 @@ export function CommentList({
       {comments.map((comment) => {
         const mine = comment.user.id === viewerId;
         const row = (
-        <View key={comment.id} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+        <View key={comment.id} style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
           <Pressable
             onPress={() =>
               router.push((comment.user.id === viewerId ? "/me" : `/u/${comment.user.id}`) as never)
             }
           >
-            <Avatar name={comment.user.name} size={size} mediaId={comment.user.avatarMediaId} />
+            <Avatar
+              name={comment.user.name}
+              size={size}
+              mediaId={comment.user.avatarMediaId}
+              frame={comment.user.frame ?? null}
+              charm={comment.user.charm ?? null}
+            />
           </Pressable>
 
           <View style={{ flex: 1, paddingTop: 1 }}>

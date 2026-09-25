@@ -11,6 +11,7 @@ import {
   WithIcon,
 } from "@/components/icons";
 import { MomentBar } from "@/components/moment-bar";
+import { AthrMark } from "@/components/brand";
 import { Photo } from "@/components/photo";
 import { Reactors } from "@/components/reactions";
 import { CommentList } from "@/components/comments";
@@ -34,6 +35,7 @@ export const EVENTS = new Set([
   "FRIEND_ADDED",
   "GIFT_SENT",
   "GIFT_GOT",
+  "JOINED",
 ]);
 
 const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
@@ -45,6 +47,7 @@ const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
   FRIEND_ADDED: { bg: "var(--color-gold-soft)", ink: "var(--color-gold-ink)" },
   GIFT_SENT: { bg: "var(--color-clay-soft)", ink: "var(--color-clay-ink)" },
   GIFT_GOT: { bg: "var(--color-clay-soft)", ink: "var(--color-clay-ink)" },
+  JOINED: { bg: "var(--color-night)", ink: "#f7f5ef" },
 };
 
 function EventIcon({ kind }: { kind: string }) {
@@ -62,6 +65,8 @@ function EventIcon({ kind }: { kind: string }) {
       <WithIcon size={16} />
     ) : kind === "GIFT_SENT" || kind === "GIFT_GOT" ? (
       <GiftIcon size={16} />
+    ) : kind === "JOINED" ? (
+      <AthrMark size={20} />
     ) : (
       <PinIcon size={16} />
     );
@@ -205,6 +210,10 @@ export function EventLine({
       <>
         وصلتك هدية من <span className="font-bold">{withNames[0] ?? "صديق"}</span>:{" "}
         <span className="font-bold">{moment.text ?? "هدية"}</span>
+      </>
+    ) : kind === "JOINED" ? (
+      <>
+        انضم <span className="font-bold">{moment.author.name}</span> إلى آثار مومنتس
       </>
     ) : kind === "MUSIC" ? (
       <>

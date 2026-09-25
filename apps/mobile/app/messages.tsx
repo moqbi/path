@@ -10,6 +10,7 @@ import { Ticks, receiptOf } from "../components/receipt";
 import { CameraIcon, MicIcon } from "../components/icons";
 import { api } from "../lib/api";
 import { keys } from "../lib/queries";
+import { usePullRefresh } from "../lib/refresh";
 import { useSession } from "../lib/session";
 import { ar, presence, relative } from "../lib/format";
 import { NameTag } from "../components/name-tag";
@@ -79,6 +80,7 @@ export default function Messages() {
   });
 
   /** حذف المحادثة: تُكشف بالسحب كما في الويب، لا بزرٍّ دائمٍ في الصفّ. */
+  const pullRefresh = usePullRefresh(list.refetch);
   const drop = useMutation({
     mutationFn: (id: string) => api(`/v1/dm/${id}`, { method: "DELETE" }),
     onSuccess: async () => client.invalidateQueries({ queryKey: keys.dm }),
@@ -93,7 +95,7 @@ export default function Messages() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingVertical: 8, flexGrow: 1 }}
         refreshControl={
-          <RefreshControl refreshing={list.isRefetching} onRefresh={() => void list.refetch()} tintColor={colors.clay} />
+          <RefreshControl {...pullRefresh} tintColor={colors.clay} />
         }
         renderItem={({ item }) => (
           <SwipeRow onDelete={() => void drop.mutate(item.id)}>

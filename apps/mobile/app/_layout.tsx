@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from "react";
-import { I18nManager, Platform, View, ActivityIndicator } from "react-native";
+import { AppState, I18nManager, Platform, View, ActivityIndicator } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as Notifications from "expo-notifications";
 import { enablePush } from "../lib/push";
@@ -111,6 +111,18 @@ function Gate() {
   useEffect(() => {
     if (!me) return;
     return watchCity();
+  }, [me?.id]);
+
+  /*
+    والعودةُ من الخلفيّة تسأل عن صاحب الجلسة: اشتراكٌ انتهى وهو مغلق،
+    أو صنفٌ أُهدي إليه، يُرى حين يعود لا حين يُغلق التطبيق ويفتحه.
+  */
+  useEffect(() => {
+    if (!me) return;
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") void useSession.getState().refresh();
+    });
+    return () => sub.remove();
   }, [me?.id]);
 
   /*

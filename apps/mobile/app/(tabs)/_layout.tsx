@@ -96,6 +96,11 @@ export default function TabsLayout() {
   return (
     <View style={{ flex: 1 }}>
       <Tabs
+        /*
+          الرجوعُ بتاريخ التنقّل لا إلى أوّل تبويب: ملفُّ الصديق شاشةٌ في
+          هذا المكدّس، وزرُّ رجوعه كان سيسقط على «اللحظات» مهما فُتح من مكان.
+        */
+        backBehavior="history"
         screenOptions={{
           headerShown: false,
           tabBarActiveTintColor: colors.clayInk,

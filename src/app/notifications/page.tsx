@@ -15,12 +15,15 @@ const FILTERS = [
   { key: "reactions", label: "التفاعلات" },
   { key: "tags", label: "الإشارات" },
   { key: "messages", label: "الرسائل" },
+  // «آثار»: ما يأتي من التطبيق لا من صديق — جديدُ المتجر وأخباره.
+  { key: "athar", label: "آثار" },
 ] as const;
 
 const OF: Record<string, NoteKind[]> = {
   reactions: ["REACTION", "COMMENT"],
   tags: ["TAG"],
   messages: ["MESSAGE"],
+  athar: ["STORE"],
 };
 
 /** لون دائرة النوع: التفاعل كهرماني، الإشارة مرجانية، الصداقة خضراء. */
