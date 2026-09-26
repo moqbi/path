@@ -1,6 +1,7 @@
 import { View, Pressable, ScrollView } from "react-native";
 import { Text } from "./type";
 import { useRouter } from "expo-router";
+import { Spot } from "./spot";
 import { Avatar } from "./avatar";
 import { PlusIcon } from "./icons";
 import { colors } from "../theme/tokens";
@@ -18,6 +19,8 @@ export function StoryStrip({ rings, meId }: { rings: StoryRing[]; meId: string }
   const others = rings.filter((ring) => ring.userId !== meId);
 
   return (
+    // هدفُ الجولة: شريطُ القصص كلُّه.
+    <Spot id="stories">
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
@@ -51,6 +54,7 @@ export function StoryStrip({ rings, meId }: { rings: StoryRing[]; meId: string }
         <Ring key={ring.userId} ring={ring} label={ring.name} />
       ))}
     </ScrollView>
+    </Spot>
   );
 }
 

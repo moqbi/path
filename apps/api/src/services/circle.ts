@@ -1,4 +1,5 @@
 import { prisma } from "@athar/db";
+import { forgetNotifications } from "./notifications";
 import { push } from "./push";
 import { CIRCLE_CAP } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
@@ -149,7 +150,8 @@ export async function userProfile(viewerId: string, id: string) {
       تعرضه. ومعرّفات الأصناف لا أكثر: لا سعرَ ولا تاريخَ شراء.
     */
     const owns = await prisma.purchase.findMany({
-      where: { userId: id },
+      // ما انتهت مدّتُه لا يُعدّ مِلكاً: يُهدى له من جديد.
+      where: { userId: id, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
       select: { itemId: true },
     });
     return {
@@ -249,6 +251,8 @@ export async function requestFriend(userId: string, targetId: string) {
     update: {},
   });
 
+  // الطلبُ يصل في الحال لا بعد انقضاء خبيئة إشعارات صاحبه.
+  forgetNotifications(targetId);
   const who = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
   void push({
     userId: targetId,
@@ -285,10 +289,21 @@ export async function acceptFriend(userId: string, friendshipId: string) {
   await prisma.$transaction([
     prisma.friendship.update({ where: { id: friendshipId }, data: { status: "ACCEPTED" } }),
     prisma.moment.create({
-      data: { authorId: userId, kind: "FRIEND_ADDED", text: other?.name ?? null },
+      // والصديقُ إشارةٌ لا نصٌّ وحده: اسمُه في السطر رابطٌ إلى ملفّه.
+      data: {
+        authorId: userId,
+        kind: "FRIEND_ADDED",
+        text: other?.name ?? null,
+        tags: { create: { userId: friendship.requesterId } },
+      },
     }),
     prisma.moment.create({
-      data: { authorId: friendship.requesterId, kind: "FRIEND_ADDED", text: me?.name ?? null },
+      data: {
+        authorId: friendship.requesterId,
+        kind: "FRIEND_ADDED",
+        text: me?.name ?? null,
+        tags: { create: { userId } },
+      },
     }),
   ]);
 

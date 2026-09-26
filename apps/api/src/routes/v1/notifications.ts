@@ -19,4 +19,19 @@ export const notificationRoutes = new Hono()
     async (c) => c.json({ notes: await notes.notifications(me(c), c.req.valid("query").limit) }),
   )
 
-  .get("/count", async (c) => c.json({ unseen: await notes.unseenCount(me(c)) }));
+  .get("/count", async (c) => c.json({ unseen: await notes.unseenCount(me(c)) }))
+
+  // الحذفُ من كل مكان: الخادمُ والويبُ يستثنيان ما حُذف من الاشتقاق نفسه.
+  .delete("/", async (c) => {
+    await notes.clearAll(me(c));
+    return c.json({ ok: true });
+  })
+
+  .delete(
+    "/:id",
+    zValidator("param", z.object({ id: z.string().min(1).max(80) })),
+    async (c) => {
+      await notes.dismiss(me(c), c.req.valid("param").id);
+      return c.json({ ok: true });
+    },
+  );

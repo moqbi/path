@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ScreenHeader } from "../components/screen-header";
-import { BookIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, StoreIcon } from "../components/icons";
+import { BookIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, StoreIcon, WithIcon } from "../components/icons";
 import { TagPill } from "../components/name-tag";
 import { SUPPORTER_TAG } from "@athar/shared";
 import { api } from "../lib/api";
@@ -37,6 +37,12 @@ const PERKS = [
     title: "أرشيف بلا نهاية",
     body: "المجاني يحفظ ٦ أشهر · أنت تحفظ كل شي وتصدّره",
     icon: <BookIcon size={18} color={colors.gold} />,
+  },
+  {
+    // **بقرار المالك**: الأثرُ المشترك من مزايا الاشتراك.
+    title: "آثارنا",
+    body: "كلُّ لحظةٍ جمعتك بصديقٍ بالإشارة «مع» — في خطٍّ واحد لكما",
+    icon: <WithIcon size={18} color={colors.gold} />,
   },
   {
     title: "دوائر منفصلة",

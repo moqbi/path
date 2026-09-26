@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { View, Pressable, Image, Animated, Easing, Dimensions } from "react-native";
 import { Text } from "./type";
 import { useRouter } from "expo-router";
+import { create } from "zustand";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { playClose, playOpen } from "../lib/sound";
@@ -42,10 +43,10 @@ const ICON = 24;
 const RIGHT = 28;
 
 /**
- * ورسمُ الزرّ ٢٤ كأصنافه — **بقرار المالك**. مربّعُه يبقى ٥٦ فلا يتغيّر
- * مدار القوس ولا تصغر مساحةُ اللمس، ويصغر الرسمُ وحده.
+ * ورسمُ الزرّ ٣٢ — **بقرار المالك** (كان ٢٤ فصغر عن أن يُرى زرّاً أوّلاً).
+ * مربّعُه يبقى ٥٦ فلا يتغيّر مدار القوس ولا تصغر مساحةُ اللمس.
  */
-const PLUS = 24;
+const PLUS = 32;
 /** هامشٌ يبقى من الحافة اليسرى حتى لا يلامس القرصُ الحافّة. */
 const EDGE = 10;
 
@@ -73,10 +74,18 @@ const ART = {
   wake: require("../assets/composer/wake.png"),
 };
 
+/**
+ * حالُ القوس خارج المكوّن: الجولةُ تفتحه لتضع دائرتها على كلّ صنفٍ فيه،
+ * ثمّ تُغلقه — وحالٌ محلّيّة لا يبلغها أحدٌ من خارجها.
+ */
+export const useFan = create<{ open: boolean }>(() => ({ open: false }));
+
 export function ComposerFan() {
   const router = useRouter();
   const client = useQueryClient();
-  const [open, setOpen] = useState(false);
+  const open = useFan((state) => state.open);
+  const setOpen = (next: boolean | ((was: boolean) => boolean)) =>
+    useFan.setState({ open: typeof next === "function" ? next(useFan.getState().open) : next });
   const [busy, setBusy] = useState<string | null>(null);
   const progress = useRef(new Animated.Value(0)).current;
 
@@ -165,6 +174,7 @@ export function ComposerFan() {
                 ],
               }}
             >
+              <Spot id={`fan.${item.key}`}>
               <Pressable
                 accessibilityLabel={item.label}
                 disabled={busy !== null}
@@ -192,6 +202,7 @@ export function ComposerFan() {
                   resizeMode="contain"
                 />
               </Pressable>
+              </Spot>
             </Animated.View>
           );
         })}

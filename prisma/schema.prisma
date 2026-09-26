@@ -29,6 +29,8 @@ enum MomentKind {
   GIFT_GOT
   /// «انضم فلان إلى آثار مومنتس» — أوّلُ لحظةٍ في الحساب، تُكتب مع إنشائه.
   JOINED
+  /// «تهانينا — حصلت على وسم كذا من الإدارة»: تُكتب حين يمنح المشرفُ وسماً.
+  TAG_GRANTED
 }
 
 enum UserRole {
@@ -41,6 +43,8 @@ enum UserRole {
 enum AdminScope {
   NONE
   STORE
+  /// البلاغاتُ ورسائلُ الدعم وحدها: يتابعها ويردّ عليها، ولا يمسّ غيرها.
+  REPORTS
   ALL
 }
 
@@ -98,6 +102,12 @@ model User {
   /// معرّف قصير يظهر تحت الاسم: @mohammed.
   handle       String? @unique
   city         String?
+  /// آخرُ مدينةٍ قرأها الجهاز — منها تُقاس «وصل إلى…» لا من `city`:
+  /// الأخيرة يكتبها صاحبها بيده أحياناً، فالمقارنةُ بها كانت تكتب لحظة
+  /// وصولٍ مع كل دخولٍ وتمحو ما كتبه.
+  lastCity     String?
+  /// كتب صاحبُ الحساب مدينته بيده — فلا يكتب فوقها التحديدُ التلقائيّ.
+  cityLocked   Boolean   @default(false)
   bio          String?
 
   /// اشتراك «آثار+». الصلاحية تُقرأ من plusUntil، وisPlus مشتقة منها عند الكتابة.
@@ -127,6 +137,9 @@ model User {
   /// متى انتهى آخرُ اشتراكٍ في آثار+ — تُكتب عند إنهائه (`endPlus`)، ومنها
   /// تعرف الشاشة أن تعرض «انتهى اشتراكك» مرّةً لكل انتهاء.
   plusEndedAt DateTime?
+  /// «احذف الكل» في الإشعارات: ما قبل هذا الوقت لا يُعرض بعده في أيّ مكان.
+  notesClearedAt DateTime?
+  dismissedNotes NoteDismissal[]
 
   /// رصيد الكوينز. عملة المتجر الوحيدة: كل ما فيه يُشترى بها، ولا
   /// يُشترى شيءٌ بالريال مباشرةً. و١٠٠٠ كوينز = ٣٠ ر.س.
@@ -462,6 +475,31 @@ model Tag {
 
 /// تصنيف في المتجر: اسمه ومعرّفه وترتيبه. يُضاف ويُعاد ترتيبه من اللوحة،
 /// فالمتجر يكبر بلا نشر نسخة جديدة.
+/// مجموعةٌ داخل نوعٍ واحد: «مجموعة الورود» تمائم، «مجموعة النخيل» إطارات.
+/// غيرُ التصنيف: التصنيفُ شريحةٌ في أعلى المتجر، والمجموعةُ قسمٌ داخل نوعه.
+model StoreCollection {
+  id        String        @id @default(cuid())
+  name      String
+  kind      StoreItemKind
+  sortOrder Int           @default(0)
+  createdAt DateTime      @default(now())
+
+  items StoreItem[]
+}
+
+/// مدّةٌ وسعرُها لصنفٍ واحد.
+model StoreItemPlan {
+  id         String @id @default(cuid())
+  itemId     String
+  days       Int
+  priceCoins Int
+  sortOrder  Int    @default(0)
+
+  item StoreItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, days])
+}
+
 model StoreCategory {
   id        String  @id @default(cuid())
   name      String
@@ -513,6 +551,13 @@ model StoreItem {
 
   categoryId String?
   category   StoreCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  /// المجموعةُ داخل نوعه: «مجموعة الورود» في التمائم. وبلا مجموعةٍ يقع في
+  /// «التمائم الأخرى». وحذفُ المجموعة لا يحذف أصنافها (`SetNull`).
+  collectionId String?
+  collection   StoreCollection? @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+  /// مُدَدُ الشراء وأسعارُها — «يوم بـ٢٥، خمسة أيام بـ٥٠، شهر بـ١٥٠». وبلا
+  /// مُددٍ يُشترى مرّةً ويبقى (`priceCoins`).
+  plans        StoreItemPlan[]
 
   purchases      Purchase[]
   /// ما تحتويه هذه الحزمة، وفي أيّ حزمةٍ يقع هذا الصنف.
@@ -547,6 +592,9 @@ model Purchase {
   paidCoins  Int
   /// من أهداه إن كان هدية — والدافع هو المُهدي لا المالك.
   giftedById String?
+  /// نهايةُ مدّة الشراء — فارغٌ يعني مِلكاً دائماً. وبعدها يُنزع إن كان
+  /// ملبوساً ولا يُعدّ مملوكاً، ويُشترى ثانيةً فيُمدَّد من حيث انتهى.
+  expiresAt  DateTime?
   createdAt  DateTime @default(now())
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1002,4 +1050,17 @@ model AuthIdentity {
 
   @@unique([provider, subject])
   @@index([userId])
+}
+
+/// إشعارٌ حذفه صاحبُه بالسحب. الإشعاراتُ تُشتقّ ولا تُخزَّن (القاعدة ٢٥)،
+/// فالمحذوفُ لا صفَّ له يُمحى — يُحفظ معرّفُه المشتقّ ليُستثنى من الاشتقاق
+/// في الخادم والويب معاً. و«احذف الكل» ختمٌ على الحساب لا ألفُ صفّ.
+model NoteDismissal {
+  userId    String
+  noteId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, noteId])
 }

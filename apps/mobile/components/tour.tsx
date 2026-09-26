@@ -3,56 +3,66 @@ import { View, Pressable, Modal, Animated, Easing, Dimensions } from "react-nati
 import Svg, { Path } from "react-native-svg";
 import { Text } from "./type";
 import { measureSpot, type Rect } from "./spot";
+import { useRouter } from "expo-router";
+import { useFan } from "./composer-fan";
 import { getItem, setItem } from "../lib/store";
 import { colors } from "../theme/tokens";
 
 /**
- * الجولة تُعرض مرّةً لكل جهاز. والمفتاحُ بنسخةٍ (`v2`): من رأى النافذة
- * القديمة يرى الجولة مرّةً — هي شيءٌ آخر لا الشيءُ نفسه مكرّراً.
+ * الجولة تُعرض مرّةً لكل جهاز. والمفتاحُ بنسخةٍ (`v3`): الجولةُ الجديدة
+ * شيءٌ آخر، فمن رأى القديمة يراها مرّةً.
  */
-const KEY = "athr:tour:v2";
+const KEY = "athr:tour:v3";
+
+type Step = {
+  /** هدفُ الدائرة — فارغٌ لخطوةٍ تُقرأ وحدها بلا هدف (الخاتمة). */
+  spot?: string;
+  title: string;
+  body: string;
+  /** شاشةٌ تُفتح قبل القياس: الهدفُ فيها لا في الخطّ الزمنيّ. */
+  route?: string;
+  /** قوسُ النشر مفتوحٌ في هذه الخطوة: أهدافُها أصنافُه. */
+  fan?: boolean;
+};
 
 /**
- * خطواتُ الجولة: هدفٌ على الشاشة وسطران عنه.
- *
- * بالترتيب الذي تُقرأ به الشاشة: اللحظات، ثمّ بابُها المخفيّ، ثمّ زرُّ
- * النشر، ثمّ بقيّةُ التبويبات من اليمين إلى اليسار.
+ * خطواتُ الجولة — **بترتيب المالك**: النشرُ وكلُّ زرٍّ في قوسه، ثمّ الضغطُ
+ * المطوّل على «اللحظات»، ثمّ آثار+، فالمحادثات، فالأصدقاء والقصص، فبقيّةُ
+ * التبويبات حتى «أنا» وأزرارها، ثمّ كيف يُضاف الأصدقاء.
  */
-const STEPS: { spot: string; title: string; body: string }[] = [
+const STEPS: Step[] = [
+  { spot: "compose", route: "/", title: "انشر لحظة", body: "من الزائد تنشر لحظاتك. اضغطه فينفتح قوسٌ فيه ما تنشره." },
+  { spot: "fan.write", route: "/", fan: true, title: "اكتب", body: "خاطرةٌ قصيرة — حتى ٢٥٠ حرفاً — ومعها من كان معك." },
+  { spot: "fan.photo", route: "/", fan: true, title: "صورة", body: "من الكاميرا أو ألبومك، ومعها المكان إن شئت." },
+  { spot: "fan.place", route: "/", fan: true, title: "مكان", body: "أين أنت الآن: تختار من الأماكن حولك، لا تكتب اسماً." },
+  { spot: "fan.music", route: "/", fan: true, title: "أغنية", body: "ما تسمعه الآن، برابطه يُشغَّل من لحظتك." },
+  { spot: "fan.sleep", route: "/", fan: true, title: "نوم", body: "ضغطةٌ واحدة: «نمت» — ودائرتك تعرف أنّك نائم." },
+  { spot: "fan.wake", route: "/", fan: true, title: "صحيت", body: "وضغطةٌ في الصباح: «صحيت» والساعةُ معها." },
   {
     spot: "tab.index",
-    title: "اللحظات",
-    body: "خطّك الزمنيّ: لحظاتك ولحظات أصدقائك، الأحدث أولاً — بلا خوارزميةٍ ترتّبها.",
+    route: "/",
+    title: "اضغط «اللحظات» مطوّلاً",
+    body: "يفتح بابين: لحظاتك الخاصة التي لا يراها غيرك، و«آثارنا» — ما جمعك بصديقٍ بالإشارة (من مزايا آثار+).",
   },
-  {
-    spot: "tab.index",
-    title: "اضغط عليه مطوّلاً",
-    body: "ضغطةٌ مطوّلة على «اللحظات» تفتح بابين: لحظاتك الخاصة التي لا يراها غيرك، و«آثارنا» — ما بينك وبين كل صديق.",
-  },
-  {
-    spot: "compose",
-    title: "انشر لحظة",
-    body: "الزائد يفتح قوساً: خاطرة، صورة، مكان، أغنية، نوم، صحو. وعند النشر تختار من يرى: كل دائرتك، أو تصنيفاً منها، أو أشخاصاً بأعيانهم.",
-  },
+  { spot: "header.plus", route: "/", title: "آثار+", body: "اشتراكٌ بمزايا لك وحدك: نجمةٌ ووسمُ «داعم»، وإيموجي حرّ، وآثارنا، ونقاطٌ شهرية." },
+  { spot: "header.chats", route: "/", title: "المحادثات", body: "رسائلك مع أصدقائك، والرقمُ عليها ما لم تقرأه بعد." },
   {
     spot: "tab.circle",
+    route: "/circle",
     title: "الأصدقاء",
-    body: "دائرتك: مئةٌ وخمسون لا أكثر، ولا يُشترى مقعدٌ فيها. لا بحث ولا استكشاف — تُضيف من أعطاك رابط ملفه، ومن المقترحين من أصدقاء أصدقائك. ومنها محادثاتك.",
+    body: "دائرتك: ١٥٠ لا أكثر، متصلٌ وغيرُ متصل. اسحب صديقاً إلى اليمين لمحادثة أو إزالة أو حظر.",
   },
+  { spot: "stories", route: "/circle", title: "القصص", body: "صورةٌ أو مقطعٌ يراه أصدقاؤك يوماً ثمّ يذهب. الحلقةُ الملوّنة: فيها ما لم تره." },
+  { spot: "tab.notifications", route: "/notifications", title: "الإشعارات", body: "من تفاعل وعلّق وأضافك وأهداك، وأخبارُ آثار. اسحب إشعاراً لتحذفه." },
+  { spot: "tab.store", route: "/store", title: "المتجر", body: "تمائمُ وإطاراتٌ وثيمات بالنقاط — كلُّ صنفٍ يُرى قبل شرائه، ولكلٍّ مُدَدُه." },
+  { spot: "tab.me", route: "/me", title: "أنا", body: "ملفّك: الغلافُ والصورة والنبذة ولحظاتك." },
+  { spot: "me.edit", route: "/me", title: "تعديل الملف", body: "صورتك وغلافُك واسمك ونبذتك ومدينتك." },
+  { spot: "me.accessories", route: "/me", title: "إكسسواراتي", body: "ما اشتريته أو أُهدي إليك — تلبسه وتنزعه من هنا." },
+  { spot: "me.settings", route: "/me", title: "الإعدادات", body: "الحساب والتنبيهات والخصوصية: من يرى لحظاتك ومن يتفاعل معك." },
   {
-    spot: "tab.notifications",
-    title: "الإشعارات",
-    body: "من تفاعل مع لحظتك، ومن علّق، ومن أضافك أو أهداك — ونقطةٌ على الجرس حين يجدّ شيء.",
-  },
-  {
-    spot: "tab.store",
-    title: "المتجر",
-    body: "إطاراتٌ وتمائمُ وثيماتٌ تُلبسها ملفّك، بالنقاط. كلُّ صنفٍ يُرى قبل شرائه — ولا صناديقَ عشوائية.",
-  },
-  {
-    spot: "tab.me",
-    title: "أنا",
-    body: "ملفّك: الغلافُ والصورة والنبذة وما تلبسه. ومنه الإعدادات والخصوصية، ومشاركةُ رابط ملفّك.",
+    route: "/",
+    title: "كيف تضيف أصدقاءك؟",
+    body: "لا بحث في آثار. شارك رابط ملفّك من «أنا» ومن يفتحه يضيفك، أو أضف من ظهر في لحظات أصدقائك، أو من «مقترحون» في تبويب الأصدقاء.",
   },
 ];
 
@@ -71,6 +81,7 @@ const PAD = 14;
  * تحتها يُرى بألوانه لا مغطّىً بطبقةٍ فاتحة.
  */
 export function Tour() {
+  const router = useRouter();
   const [step, setStep] = useState<number | null>(null);
   const [hole, setHole] = useState<Rect | null>(null);
   const fade = useRef(new Animated.Value(0)).current;
@@ -88,8 +99,16 @@ export function Tour() {
     if (step === null) return;
     let alive = true;
     fade.setValue(0);
-    const id = STEPS[step].spot;
-    void measureSpot(id).then((rect) => {
+    const current = STEPS[step];
+    const id = current.spot ?? "";
+    /*
+      الخطوةُ تفتح شاشتها وقوسَها أوّلاً ثمّ تقيس: الهدفُ في تبويبٍ آخر أو
+      داخل القوس، ولا يُقاس قبل أن يُرسم ويقف (القوسُ يطير ٤٢٠ مللي).
+    */
+    if (current.route) router.navigate(current.route as never);
+    useFan.setState({ open: Boolean(current.fan) });
+    const settle = new Promise((done) => setTimeout(done, current.fan || current.route ? 520 : 60));
+    void settle.then(() => (id ? measureSpot(id) : null)).then((rect) => {
       if (!alive) return;
       // التبويبُ أيقونةٌ وتحتها اسمُه: الدائرةُ تحتضن الاثنين لا الأيقونة وحدها.
       setHole(rect && id.startsWith("tab.") ? { ...rect, height: rect.height + 16 } : rect);
@@ -120,6 +139,8 @@ export function Tour() {
 
   async function close() {
     await setItem(KEY, "1");
+    useFan.setState({ open: false });
+    router.navigate("/" as never);
     setStep(null);
   }
 
@@ -161,7 +182,7 @@ export function Tour() {
       <Animated.View style={{ flex: 1, opacity: fade }}>
         {/* تعتيمٌ خفيف لا ظلام: الشاشةُ تبقى مقروءةً حول الدائرة. */}
         <Svg width={screen.width} height={screen.height} style={{ position: "absolute" }}>
-          <Path d={veil} fill="rgba(14,26,36,0.62)" fillRule="evenodd" />
+          <Path d={veil} fill="rgba(8,14,20,0.74)" fillRule="evenodd" />
         </Svg>
 
         {circle ? (
@@ -182,53 +203,49 @@ export function Tour() {
           />
         ) : null}
 
+        {/*
+          لا نافذةَ بيضاء: السطران يطفوان على التعتيم نفسه بجانب الدائرة —
+          **بقرار المالك** — فتبقى الشاشةُ هي الشرح، والكلامُ همسٌ فوقها.
+        */}
         <View
           style={{
             position: "absolute",
-            left: 20,
-            right: 20,
+            left: 24,
+            right: 24,
             ...cardStyle,
-            borderRadius: 20,
-            backgroundColor: colors.card,
-            padding: 18,
-            shadowColor: "#0E1A24",
-            shadowOpacity: 0.25,
-            shadowRadius: 16,
-            shadowOffset: { width: 0, height: 6 },
-            elevation: 10,
           }}
         >
-          <Text face="display" style={{ color: colors.ink, fontSize: 17, fontWeight: "700", marginBottom: 6 }}>
+          <Text face="display" style={{ color: "#fff", fontSize: 19, fontWeight: "700", marginBottom: 6, textAlign: "right" }}>
             {current.title}
           </Text>
-          <Text style={{ color: colors.ink2, fontSize: 13.5, lineHeight: 23 }}>{current.body}</Text>
+          <Text style={{ color: "rgba(255,255,255,.9)", fontSize: 14, lineHeight: 24, textAlign: "right" }}>{current.body}</Text>
 
           <View style={{ flexDirection: "row", alignItems: "center", marginTop: 16 }}>
             {/* نقاطُ الخطوات: أين أنت منها. */}
-            <View style={{ flex: 1, flexDirection: "row", gap: 5 }}>
+            <View style={{ flex: 1, flexDirection: "row", flexWrap: "wrap", gap: 4 }}>
               {STEPS.map((_, index) => (
                 <View
                   key={index}
                   style={{
-                    width: index === step ? 16 : 6,
-                    height: 6,
+                    width: index === step ? 14 : 5,
+                    height: 5,
                     borderRadius: 3,
-                    backgroundColor: index === step ? colors.clay : colors.line,
+                    backgroundColor: index === step ? colors.gold : "rgba(255,255,255,.35)",
                   }}
                 />
               ))}
             </View>
 
             {last ? null : (
-              <Pressable onPress={() => void close()} hitSlop={10} style={{ paddingHorizontal: 12, height: 40, justifyContent: "center" }}>
-                <Text style={{ color: colors.muted, fontSize: 13 }}>تخطَّ</Text>
+              <Pressable onPress={() => void close()} hitSlop={10} style={{ paddingHorizontal: 12, height: 38, justifyContent: "center" }}>
+                <Text style={{ color: "rgba(255,255,255,.75)", fontSize: 13 }}>تخطَّ</Text>
               </Pressable>
             )}
             <Pressable
               onPress={() => (last ? void close() : setStep(step + 1))}
-              style={{ height: 40, paddingHorizontal: 20, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
+              style={{ height: 38, paddingHorizontal: 18, borderRadius: 999, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: "#fff" }}
             >
-              <Text style={{ color: colors.onBrand, fontSize: 13.5, fontWeight: "700" }}>
+              <Text style={{ color: "#fff", fontSize: 13.5, fontWeight: "700" }}>
                 {last ? "ابدأ" : "التالي"}
               </Text>
             </Pressable>

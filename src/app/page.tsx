@@ -39,6 +39,8 @@ export default async function TimelinePage({
   const params = await searchParams;
   const view = params.view === "private" || params.view === "together" ? params.view : "";
   const withId = view === "together" ? (params.with ?? "") : "";
+  // «آثارنا» من مزايا آثار+ — من اختارها بلا اشتراكٍ يُؤخذ إلى صفحته.
+  if (view === "together" && !user.isPlus) redirect("/subscribe");
 
   const [unread, ids] = await Promise.all([
     unreadCount(user.id),

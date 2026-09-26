@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { View, FlatList, Pressable, ActivityIndicator, RefreshControl } from "react-native";
-import { Text } from "../components/type";
+import { Text, TextInput } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
@@ -7,9 +8,9 @@ import { Avatar } from "../components/avatar";
 import { SwipeRow } from "../components/swipe-row";
 import { ScreenHeader } from "../components/screen-header";
 import { Ticks, receiptOf } from "../components/receipt";
-import { CameraIcon, MicIcon } from "../components/icons";
+import { CameraIcon, MicIcon, SearchIcon } from "../components/icons";
 import { api } from "../lib/api";
-import { keys } from "../lib/queries";
+import { keys, useCircle } from "../lib/queries";
 import { usePullRefresh } from "../lib/refresh";
 import { useSession } from "../lib/session";
 import { ar, presence, relative } from "../lib/format";
@@ -86,12 +87,83 @@ export default function Messages() {
     onSuccess: async () => client.invalidateQueries({ queryKey: keys.dm }),
   });
 
+  /*
+    البحثُ باسم الصديق — **بقرار المالك**: في المحادثات القائمة أوّلاً، ثمّ
+    في أصدقائك ممّن لا محادثةَ معهم فتُبدأ من هنا. والبحثُ في دائرتك
+    وحدها: لا بابَ منه إلى من ليس فيها (القاعدة ٢٠).
+  */
+  const [query, setQuery] = useState("");
+  const circle = useCircle();
+  const needle = query.trim().toLowerCase();
+  const conversations = (list.data?.conversations ?? []).filter(
+    (row) => !needle || row.other.name.toLowerCase().includes(needle),
+  );
+  const talking = new Set((list.data?.conversations ?? []).map((row) => row.other.id));
+  const others = needle
+    ? (circle.data?.members ?? []).filter(
+        (person) => !talking.has(person.id) && person.name.toLowerCase().includes(needle),
+      )
+    : [];
+  const start = useMutation({
+    mutationFn: (id: string) => api<{ id: string }>(`/v1/dm/with/${id}`, { method: "POST" }),
+    onSuccess: (row) => router.push(`/dm/${row.id}` as never),
+  });
+
   return (
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
       <ScreenHeader title="المحادثات" back="/" />
 
+      <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            height: 42,
+            paddingHorizontal: 12,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: colors.line,
+            backgroundColor: colors.card,
+          }}
+        >
+          <SearchIcon size={17} color={colors.muted} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="ابحث باسم صديق"
+            placeholderTextColor={colors.faint}
+            returnKeyType="search"
+            style={{ flex: 1, color: colors.ink, fontSize: 14, textAlign: "right" }}
+          />
+        </View>
+      </View>
+
       <FlatList
-        data={list.data?.conversations ?? []}
+        keyboardShouldPersistTaps="handled"
+        data={conversations}
+        ListFooterComponent={
+          others.length > 0 ? (
+            <View style={{ paddingTop: 8 }}>
+              <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600", paddingHorizontal: 20, paddingBottom: 4 }}>
+                أصدقاء بلا محادثة
+              </Text>
+              {others.map((person) => (
+                <Pressable
+                  key={person.id}
+                  onPress={() => start.mutate(person.id)}
+                  style={{ flexDirection: "row", alignItems: "center", gap: 11, paddingHorizontal: 20, paddingVertical: 10 }}
+                >
+                  <Avatar name={person.name} size={40} mediaId={person.avatarMediaId} frame={person.frame} charm={person.charm} />
+                  <Text numberOfLines={1} style={{ flex: 1, color: colors.ink, fontSize: 14, fontWeight: "600", writingDirection: "auto" }}>
+                    {person.name}
+                  </Text>
+                  <Text style={{ color: colors.clayInk, fontSize: 12.5, fontWeight: "700" }}>ابدأ محادثة</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null
+        }
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingVertical: 8, flexGrow: 1 }}
         refreshControl={
@@ -139,6 +211,12 @@ export default function Messages() {
         ListEmptyComponent={
           list.isLoading ? (
             <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
+          ) : needle ? (
+            others.length > 0 ? null : (
+              <Text style={{ color: colors.muted, fontSize: 13.5, textAlign: "center", marginTop: 40 }}>
+                لا أحد بهذا الاسم في دائرتك.
+              </Text>
+            )
           ) : (
             <View style={{ marginTop: 50, paddingHorizontal: 40 }}>
               <Text style={{ color: colors.muted, fontSize: 13.5, textAlign: "center", lineHeight: 24 }}>

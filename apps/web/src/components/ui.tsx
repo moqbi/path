@@ -55,8 +55,12 @@ export type Frame =
 export function frameZoom(frame: NonNullable<Frame>): number {
   const hole = frame.frameHole ?? 0;
   if (hole < 20 || hole > 99) return 1;
-  return 100 / hole;
+  // والحلقةُ تركب حافّةَ الوجه قليلاً (٥٪) لا تلامسها: الحافّتان متطابقتين
+  // تتركان خيطاً شفّافاً بينهما، وحلقةٌ غيرُ مستديرةٍ تمامًا تترك فراغاً.
+  return (100 / hole) * HOLE_OVERLAP;
 }
+
+const HOLE_OVERLAP = 0.95;
 
 /**
  * خلفية صنف المتجر: صورته إن رُفعت، وإلا قيمة `spec` كما هي.
@@ -224,7 +228,7 @@ const CHARM_RATIO = 0.5;
  * لا يغطّيها.
  */
 function charmSeat(size: number, badge: number): { left: number; top: number } {
-  return { left: -badge * 0.3, top: size - badge };
+  return { left: -badge * 0.3, top: size - badge * 0.8 };
 }
 
 function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }) {

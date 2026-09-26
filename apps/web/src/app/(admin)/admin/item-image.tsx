@@ -1,6 +1,6 @@
 "use client";
 
-import { clearItemImage, setItemImage } from "@/app/actions";
+import { clearItemImage, setFrameHole, setItemImage } from "@/app/actions";
 import { ImagePicker } from "@/components/image-picker";
 import { CameraIcon, CloseIcon } from "@/components/icons";
 import { itemPaint } from "@/components/ui";
@@ -22,12 +22,15 @@ export function ItemImage({
   mediaId,
   kind,
   mime,
+  hole,
 }: {
   itemId: string;
   mediaId: string | null;
   kind: string;
   /** صيغة المحفوظ: تميمةٌ بغير PNG فقدت شفافيتها ويجب رفعها ثانيةً. */
   mime?: string | null;
+  /** فراغُ الإطار المحفوظ ٪ — يُقاس عند الرفع ويُصحَّح هنا باليد. */
+  hole?: number | null;
 }) {
   const charm = kind === "CHARM";
   const frame = kind === "FRAME";
@@ -95,6 +98,37 @@ export function ItemImage({
         </form>
       ) : null}
     </div>
+
+    {/*
+      فراغُ الإطار باليد: القياسُ الآليّ عند الرفع يُخطئ في رسمٍ وسطُه غيرُ
+      شفّافٍ تماماً (ظلٌّ أو توهّج) فلا يُحفظ شيء، ويُرسم الإطارُ كلُّه في
+      مربّع الوجه فتظهر الصورةُ حول حلقته. والرقم: قطرُ الدائرة الشفّافة
+      في الوسط ÷ عرضُ اللوحة × ١٠٠ — لوحةٌ ١٠٢٤ فراغُها ٣٧٠ = ٣٦.
+    */}
+    {frame && mediaId ? (
+      <form action={setFrameHole.bind(null, itemId)} className="mt-2 flex items-center gap-2">
+        <label className="grow text-[11.5px] text-muted">
+          فراغ الإطار ٪ (قطر الوسط الشفّاف ÷ عرض الصورة × ١٠٠)
+          <input
+            name="hole"
+            type="number"
+            min={20}
+            max={99}
+            defaultValue={hole ?? ""}
+            placeholder="لم يُقَس"
+            className="mt-1 block w-full rounded-xl border border-line bg-card px-3 text-[13px]"
+            style={{ height: 40 }}
+          />
+        </label>
+        <button
+          type="submit"
+          className="mt-5 rounded-xl border border-line px-3 text-[12px] font-semibold text-ink-2"
+          style={{ height: 40 }}
+        >
+          احفظ
+        </button>
+      </form>
+    ) : null}
     </>
   );
 }

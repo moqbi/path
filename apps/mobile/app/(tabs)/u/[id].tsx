@@ -1,10 +1,13 @@
-import { View, FlatList, Pressable, ActivityIndicator } from "react-native";
+import { useState } from "react";
+import { View, Pressable, ActivityIndicator, Animated, RefreshControl } from "react-native";
 import { Text } from "../../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { AvatarMenu } from "../../../components/avatar-menu";
-import { COVER_HEIGHT, CoverLayer } from "../../../components/cover";
+import { frameBleed } from "../../../components/avatar";
+import { COVER_HEIGHT, CoverLayer, StretchCover, useStretch } from "../../../components/cover";
+import { playRefresh } from "../../../lib/sound";
 import { MediaImage } from "../../../components/media-image";
 import { MomentCard } from "../../../components/moment-card";
 import { ScreenHeader } from "../../../components/screen-header";
@@ -61,7 +64,17 @@ type Person = {
  * والشعار يبقى في الرأس ثم يأتي الاسم: كان الاسم يحلّ محلّ الشعار فتبدو
  * كل صفحةٍ تطبيقاً آخر.
  */
-export default function Profile() {
+/*
+  الشاشةُ تُبنى من جديد لكل ملفّ: هي شاشةٌ واحدة في مكدّس التبويبات
+  تتبدّل معاملُها ولا تُفكّ، فكانت حالةُ «أُرسل الطلب» لملفٍّ تبقى على
+  الملفّ التالي فيتعطّل زرُّ «أضفه» حتى يُغلق التطبيق.
+*/
+export default function ProfileScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  return <Profile key={id} />;
+}
+
+function Profile() {
   const me = useSession((state) => state.me);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -105,6 +118,15 @@ export default function Profile() {
 
   const who = person.data?.person;
 
+  // السحبُ من أعلى يمدّ الغلاف ويُعيد جلب الملف ولحظاته — كاللحظات و«أنا».
+  const { y: scrollY, onScroll } = useStretch();
+  const [refreshing, setRefreshing] = useState(false);
+  const reload = () => {
+    playRefresh();
+    setRefreshing(true);
+    void Promise.all([person.refetch(), moments.refetch()]).finally(() => setRefreshing(false));
+  };
+
   return (
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
       {/*
@@ -121,7 +143,10 @@ export default function Profile() {
           لا يوجد هذا الحساب.
         </Text>
       ) : (
-        <FlatList
+        <Animated.FlatList
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} tintColor="#fff" />}
           data={moments.data?.moments ?? []}
           keyExtractor={(item) => item.id}
           /*
@@ -152,8 +177,10 @@ export default function Profile() {
                 بحدٍّ حادّ، فيبدو الملف صفحةً من تطبيقٍ آخر.
               */}
               {/* بمقاس غلاف اللحظات و«أنا» (`COVER_HEIGHT`): كان ١٢٠ فيُقرأ ملفاً أصغر. */}
-              <View style={{ height: COVER_HEIGHT, marginHorizontal: -20, overflow: "hidden" }}>
-                <CoverLayer mediaId={who.coverMediaId} spec={null} height={COVER_HEIGHT} x={who.coverX} y={who.coverY} zoom={who.coverZoom} />
+              <View style={{ marginHorizontal: -20 }}>
+                <StretchCover y={scrollY} height={COVER_HEIGHT}>
+                  <CoverLayer mediaId={who.coverMediaId} spec={null} height={COVER_HEIGHT} x={who.coverX} y={who.coverY} zoom={who.coverZoom} />
+                </StretchCover>
               </View>
 
               <View style={{ alignItems: "center", marginTop: -32, paddingHorizontal: 16, marginBottom: 14 }}>
@@ -167,7 +194,7 @@ export default function Profile() {
                   charmItem={who.charm}
                 />
                 {/* أبعدُ عن الصورة: التميمةُ تتدلّى من ركنها الأيسر الأسفل. */}
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 14 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 14 + frameBleed(78, who.frame) }}>
                   <Text style={{ color: colors.ink, fontSize: 17, fontWeight: "700", writingDirection: "auto" }}>
                     {who.name}
                   </Text>

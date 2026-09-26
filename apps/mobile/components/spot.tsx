@@ -13,7 +13,16 @@ export type Rect = { x: number; y: number; width: number; height: number };
 
 const spots = new Map<string, View>();
 
-export function Spot({ id, children }: { id: string; children: React.ReactNode }) {
+export function Spot({
+  id,
+  grow = false,
+  children,
+}: {
+  id: string;
+  /** يمتدّ في صفّه كما يمتدّ ما بداخله (`flex: 1`). */
+  grow?: boolean;
+  children: React.ReactNode;
+}) {
   const ref = useRef<View>(null);
   useEffect(() => {
     const node = ref.current;
@@ -23,7 +32,7 @@ export function Spot({ id, children }: { id: string; children: React.ReactNode }
     };
   }, [id]);
   return (
-    <View ref={ref} collapsable={false}>
+    <View ref={ref} collapsable={false} style={grow ? { flex: 1 } : undefined}>
       {children}
     </View>
   );

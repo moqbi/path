@@ -38,6 +38,7 @@ import { SITE_TEXT, siteText, siteImage, type SiteKey } from "@/lib/site";
 import { ItemImage } from "./item-image";
 import { ItemCover } from "./item-cover";
 import { BundleItems } from "./bundle";
+import { CollectionsView, ItemCollection, ItemPlans } from "./store-extras";
 import { coinText, ar, relative, riyals } from "@/lib/format";
 import { parsePalette } from "@/lib/theme";
 
@@ -85,6 +86,7 @@ const KIND_LABEL: Record<string, string> = {
 const STORE_VIEWS = [
   { key: "items", label: "الأصناف" },
   { key: "cats", label: "التصنيفات" },
+  { key: "collections", label: "المجموعات" },
   { key: "packs", label: "باقات النقاط" },
 ] as const;
 
@@ -293,7 +295,9 @@ function StaffRow({
           {person.name}
           {person.role === "ADMIN" ? <Chip gold>مالك</Chip> : null}
           {person.adminScope !== "NONE" ? (
-            <Chip>{person.adminScope === "ALL" ? "اللوحة" : "المتجر"}</Chip>
+            <Chip>
+              {person.adminScope === "ALL" ? "اللوحة" : person.adminScope === "REPORTS" ? "البلاغات" : "المتجر"}
+            </Chip>
           ) : null}
           {person.canModerate ? <Chip live>إشراف</Chip> : null}
         </p>
@@ -321,6 +325,7 @@ function StaffRow({
       >
         <option value="NONE">بلا صلاحية</option>
         <option value="STORE">المتجر فقط</option>
+        <option value="REPORTS">البلاغات والدعم فقط</option>
         <option value="ALL">اللوحة كاملة</option>
       </select>
       <button
@@ -341,8 +346,8 @@ const SECTIONS = [
   { key: "site", label: "الموقع", store: false },
   { key: "team", label: "الصلاحيات", store: false, owner: true },
   { key: "files", label: "الملفات", store: false, owner: true },
-  { key: "support", label: "الدعم", store: false },
-  { key: "reports", label: "البلاغات", store: false },
+  { key: "support", label: "الدعم", store: false, reports: true },
+  { key: "reports", label: "البلاغات", store: false, reports: true },
   { key: "words", label: "الكلمات", store: false },
 ] as const;
 
@@ -352,7 +357,7 @@ export default async function AdminPage({
   searchParams: Promise<{ s?: string; v?: string; q?: string }>;
 }) {
   const { s: raw, v, q } = await searchParams;
-  const view = v === "cats" || v === "packs" ? v : "items";
+  const view = v === "cats" || v === "packs" || v === "collections" ? v : "items";
   const user = await currentUser();
   if (!user) redirect("/login");
 
@@ -386,7 +391,11 @@ export default async function AdminPage({
     );
   }
   const sections = SECTIONS.filter(
-    (item) => (scope === "ALL" || item.store) && (!("owner" in item && item.owner) || owner),
+    (item) =>
+      (scope === "ALL" ||
+        (scope === "STORE" && item.store) ||
+        (scope === "REPORTS" && "reports" in item && item.reports)) &&
+      (!("owner" in item && item.owner) || owner),
   );
   const section = sections.some((item) => item.key === raw) ? raw! : sections[0].key;
 
@@ -873,14 +882,18 @@ export default async function AdminPage({
               >
                 {tab.label}
                 <span className="mr-1.5 text-[11px] opacity-70">
-                  {ar(tab.key === "items" ? items.length : tab.key === "cats" ? categories.length : packs.length)}
+                  {tab.key === "collections"
+                    ? ""
+                    : ar(tab.key === "items" ? items.length : tab.key === "cats" ? categories.length : packs.length)}
                 </span>
               </Link>
             );
           })}
         </div>
 
-        {view === "packs" ? (
+        {view === "collections" ? (
+          <CollectionsView />
+        ) : view === "packs" ? (
           <>
             <p className="mb-3 px-1 text-[11.5px] leading-relaxed text-muted">
               النقاط عملة المتجر: كل ما فيه يُشترى بها. والباقة تُشترى بمالٍ
@@ -1210,7 +1223,15 @@ export default async function AdminPage({
                             mediaId={item.mediaId}
                             kind={item.kind}
                             mime={item.media?.mime ?? null}
+                            hole={item.frameHole}
                           />
+                          {/* المجموعةُ داخل النوع، ومُدَدُ الشراء — للإطار والتميمة والثيم. */}
+                          {item.kind !== "BUNDLE" ? (
+                            <>
+                              <ItemCollection itemId={item.id} kind={item.kind} collectionId={item.collectionId} />
+                              <ItemPlans itemId={item.id} />
+                            </>
+                          ) : null}
                           <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
                             الثيم يُلبَس خلفيةً للتطبيق، والتميمة شعاراً تحت صورة العرض،
                             والإطار حلقةً حولها. التميمة والإطار يُحفظان PNG بشفافيتهما.

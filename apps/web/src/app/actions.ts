@@ -83,7 +83,7 @@ function picture(formData: FormData): { file: File; width: number; height: numbe
  * أصناف المتجر وتصنيفاته وحدها، و«اللوحة» يفتحها كاملةً — عدا منح
  * الصلاحيات نفسها، فتلك للمالك وحده وإلا منح المشرفُ نفسَه ما شاء.
  */
-async function requireAdmin(area: "store" | "panel" = "panel") {
+async function requireAdmin(area: "store" | "reports" | "panel" = "panel") {
   const user = await requireUser();
   const row = await prisma.user.findUnique({
     where: { id: user.id },
@@ -93,7 +93,9 @@ async function requireAdmin(area: "store" | "panel" = "panel") {
   const allowed =
     row.role === "ADMIN" ||
     row.adminScope === "ALL" ||
-    (area === "store" && row.adminScope === "STORE");
+    (area === "store" && row.adminScope === "STORE") ||
+    // «البلاغات» يتابع البلاغاتِ ورسائلَ الدعم ويردّ عليها — لا غير.
+    (area === "reports" && row.adminScope === "REPORTS");
   if (!allowed) throw new Error("هذه الصفحة للمشرفين");
   return user;
 }
@@ -321,6 +323,68 @@ export async function deleteCategory(categoryId: string): Promise<void> {
   revalidatePath("/store");
 }
 
+// ───────────────────────── مجموعات المتجر ومُدَده ─────────────────────────
+
+/** الأرقام كما تُكتب: «٢٥» تُقرأ ٢٥. */
+const digits = (raw: FormDataEntryValue | null) =>
+  Number(String(raw ?? "").replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))).trim());
+
+const COLLECTION_KINDS = ["CHARM", "FRAME", "THEME"] as const;
+
+/**
+ * مجموعةٌ داخل نوعٍ واحد — **بقرار المالك**: «مجموعة الورود» تمائم تُعرض
+ * معاً في المتجر، وما بلا مجموعةٍ يقع في «التمائم الأخرى». غيرُ التصنيف:
+ * التصنيفُ شريحةٌ في أعلى المتجر.
+ */
+export async function createCollection(formData: FormData): Promise<void> {
+  await requireAdmin("store");
+  const name = String(formData.get("name") ?? "").trim().slice(0, 40);
+  const kind = String(formData.get("kind") ?? "");
+  if (!name || !(COLLECTION_KINDS as readonly string[]).includes(kind)) return;
+  await prisma.storeCollection.create({
+    data: { name, kind: kind as (typeof COLLECTION_KINDS)[number], sortOrder: digits(formData.get("sortOrder")) || 0 },
+  });
+  revalidatePath("/admin");
+}
+
+/** حذفُ المجموعة لا يحذف أصنافها: تعود إلى «الأخرى». */
+export async function deleteCollection(collectionId: string): Promise<void> {
+  await requireAdmin("store");
+  await prisma.storeCollection.delete({ where: { id: collectionId } });
+  revalidatePath("/admin");
+}
+
+export async function setItemCollection(itemId: string, formData: FormData): Promise<void> {
+  await requireAdmin("store");
+  const raw = String(formData.get("collectionId") ?? "");
+  await prisma.storeItem.update({ where: { id: itemId }, data: { collectionId: raw || null } });
+  revalidatePath("/admin");
+}
+
+/**
+ * مدّةٌ وسعرُها — **بقرار المالك**: «يوم بـ٢٥، خمسة أيام بـ٥٠، شهر بـ١٥٠».
+ * الصنفُ الذي له مُدَد يُشترى بمدّة، وما انتهت مدّتُه يُنزع ويُشترى ثانيةً.
+ * والمدّةُ نفسُها مرّتين تُحدَّث لا تتكرّر.
+ */
+export async function addItemPlan(itemId: string, formData: FormData): Promise<void> {
+  await requireAdmin("store");
+  const days = Math.round(digits(formData.get("days")));
+  const priceCoins = Math.round(digits(formData.get("priceCoins")));
+  if (!(days >= 1 && days <= 3650) || !(priceCoins >= 1 && priceCoins <= 1_000_000)) return;
+  await prisma.storeItemPlan.upsert({
+    where: { itemId_days: { itemId, days } },
+    create: { itemId, days, priceCoins },
+    update: { priceCoins },
+  });
+  revalidatePath("/admin");
+}
+
+export async function dropItemPlan(planId: string): Promise<void> {
+  await requireAdmin("store");
+  await prisma.storeItemPlan.delete({ where: { id: planId } });
+  revalidatePath("/admin");
+}
+
 // ───────────────────────── باقات النقاط (اللوحة) ─────────────────────────
 
 /**
@@ -493,11 +557,20 @@ export async function setUserTag(userId: string, formData: FormData): Promise<vo
   await requireAdmin();
   const raw = String(formData.get("tagId") ?? "");
   const tagId = raw.length > 0 ? raw : null;
-  if (tagId) {
-    const exists = await prisma.tag.findUnique({ where: { id: tagId }, select: { id: true } });
-    if (!exists) throw new Error("الوسم غير موجود");
-  }
+  const tag = tagId
+    ? await prisma.tag.findUnique({ where: { id: tagId }, select: { id: true, name: true } })
+    : null;
+  if (tagId && !tag) throw new Error("الوسم غير موجود");
+  const before = await prisma.user.findUnique({ where: { id: userId }, select: { tagId: true } });
   await prisma.user.update({ where: { id: userId }, data: { tagId } });
+  /*
+    «تهانينا — حصلت على وسم كذا من الإدارة» في خطّ صاحبه — **بقرار
+    المالك**: الوسمُ يُمنح مرّةً ويُرى في كل مكان، ولحظتُه تقول متى ولماذا.
+    ولا تُكتب لإعادة حفظ الوسم نفسه، ولا لنزعه.
+  */
+  if (tag && before?.tagId !== tag.id) {
+    await prisma.moment.create({ data: { authorId: userId, kind: "TAG_GRANTED", text: tag.name } });
+  }
   revalidateTags();
 }
 
@@ -594,7 +667,7 @@ export async function grantCredit(userId: string, riyals: number): Promise<void>
 export async function setAdminScope(userId: string, formData: FormData): Promise<void> {
   const owner = await requireOwner();
   const raw = String(formData.get("scope") ?? "NONE");
-  const scope = raw === "ALL" || raw === "STORE" ? raw : "NONE";
+  const scope = raw === "ALL" || raw === "STORE" || raw === "REPORTS" ? raw : "NONE";
   /*
     والإشراف على المحتوى صلاحيةٌ ثانية في النموذج نفسه، لا نموذجٌ ثانٍ:
     المالك يقرّر الدرجتين لشخصٍ واحد في نظرةٍ واحدة. وهي **مستقلّة** عن
@@ -699,7 +772,7 @@ export async function replyTicket(
   _prev: AdminResult,
   formData: FormData,
 ): Promise<AdminResult> {
-  await requireAdmin();
+  await requireAdmin("reports");
   const reply = String(formData.get("reply") ?? "").trim().slice(0, 1200);
   if (reply.length < 2) return { error: "اكتب الردّ" };
 
@@ -720,7 +793,7 @@ export async function replyTicket(
 }
 
 export async function closeTicket(ticketId: string): Promise<void> {
-  await requireAdmin();
+  await requireAdmin("reports");
   await prisma.supportTicket.update({ where: { id: ticketId }, data: { closed: true } });
   revalidatePath("/admin");
   revalidatePath("/settings/support");
@@ -746,6 +819,15 @@ export async function setItemImage(itemId: string, formData: FormData): Promise<
   revalidatePath("/admin");
   revalidatePath("/store");
   revalidatePath("/");
+}
+
+/** فراغُ الإطار باليد — حين يُخطئ القياسُ الآليّ أو لا يُحفظ. */
+export async function setFrameHole(itemId: string, formData: FormData): Promise<void> {
+  await requireAdmin("store");
+  const raw = Number(String(formData.get("hole") ?? "").replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))));
+  const hole = Number.isFinite(raw) && raw >= 20 && raw <= 99 ? Math.round(raw) : null;
+  await prisma.storeItem.update({ where: { id: itemId }, data: { frameHole: hole } });
+  revalidatePath("/admin");
 }
 
 /**
@@ -985,7 +1067,7 @@ export async function decideReport(
   reportId: string,
   formData: FormData,
 ): Promise<void> {
-  const admin = await requireAdmin();
+  const admin = await requireAdmin("reports");
   const state = formData.get("state") === "REMOVED" ? "REMOVED" : "KEPT";
 
   const report = await prisma.report.findUnique({ where: { id: reportId } });

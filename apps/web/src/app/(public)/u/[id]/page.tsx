@@ -187,7 +187,7 @@ export default async function SharedProfile({ params }: Props) {
                 width: badge,
                 height: badge,
                 left: -badge * 0.3,
-                top: AVATAR - badge,
+                top: AVATAR - badge * 0.8,
                 zIndex: 2,
                 backgroundImage: `url(${charm})`,
                 backgroundSize: "contain",

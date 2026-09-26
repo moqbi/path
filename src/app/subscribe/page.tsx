@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { cancelPlus, subscribe } from "@/app/actions";
-import { BookIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, StoreIcon } from "@/components/icons";
+import { BookIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, StoreIcon, WithIcon } from "@/components/icons";
 import { TagPill } from "@/components/ui";
 import { SUPPORTER_TAG } from "@/lib/supporter";
 import { ScreenHeader } from "@/components/ui";
@@ -27,6 +27,11 @@ const PERKS = [
     title: "أرشيف بلا نهاية",
     body: "المجاني يحفظ ٦ أشهر · أنت تحفظ كل شي وتصدّره",
     icon: <BookIcon size={18} />,
+  },
+  {
+    title: "آثارنا",
+    body: "كلُّ لحظةٍ جمعتك بصديقٍ بالإشارة «مع» — في خطٍّ واحد لكما",
+    icon: <WithIcon size={18} />,
   },
   {
     title: "دوائر منفصلة",

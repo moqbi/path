@@ -3,6 +3,7 @@ import { BIO_MAX, type NotifyInput } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { dropMedia } from "./media";
 import { endPlus } from "./plus";
+import { cityInput } from "./city-input";
 import { tellSupport } from "./support-mail";
 
 /** الحساب كما يقرؤه صاحبه: كل ما تعرضه شاشة «الملف الشخصي» وتحريرها. */
@@ -122,13 +123,15 @@ export async function saveProfile(
     if (taken) throw badRequest("المعرّف محجوز");
   }
 
+  const current = await prisma.user.findUnique({ where: { id: userId }, select: { city: true } });
   const user = await prisma.user.update({
     where: { id: userId },
     data: {
       name,
       handle: handle || null,
       bio: (input.bio ?? "").trim().slice(0, BIO_MAX) || null,
-      city: (input.city ?? "").trim().slice(0, 40) || null,
+      // ما كتبه بيده يبقى (`cityLocked`)، ولا يكتب فوقه التحديد التلقائيّ.
+      ...(input.city === undefined ? {} : cityInput(input.city, current?.city ?? null)),
     },
     select: { id: true, name: true, handle: true, bio: true, city: true },
   });

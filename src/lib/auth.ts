@@ -114,7 +114,7 @@ export type SessionUser = {
   createdAt: Date;
   role: "USER" | "ADMIN";
   /// مدى صلاحية اللوحة الممنوح لغير المالك.
-  adminScope: "NONE" | "STORE" | "ALL";
+  adminScope: "NONE" | "STORE" | "REPORTS" | "ALL";
   /// صلاحية الإشراف على المحتوى — مستقلّةٌ عن اللوحة، والمالك يملكها دائماً.
   canModerate: boolean;
   /// إيقافٌ مؤقّت قائم — `null` يشمل إيقافاً انقضى.

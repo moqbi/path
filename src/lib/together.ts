@@ -3,20 +3,9 @@ import { prisma } from "@/lib/db";
 import { momentShape } from "@/lib/feed";
 import { visibleWhere } from "@/lib/visibility";
 
-/** اللحظات التي يظهر فيها الاثنان: إشارةٌ من أحدهما، أو تفاعلٌ أو تعليقٌ من الآخر. */
+/** ما جمعهما بالإشارة وحدها — لا التفاعلُ ولا التعليق (بقرار المالك). */
 function involves(authorId: string, otherId: string) {
-  return {
-    AND: [
-      { authorId },
-      {
-        OR: [
-          { tags: { some: { userId: otherId } } },
-          { reactions: { some: { userId: otherId } } },
-          { comments: { some: { userId: otherId } } },
-        ],
-      },
-    ],
-  };
+  return { AND: [{ authorId }, { tags: { some: { userId: otherId } } }] };
 }
 
 /**

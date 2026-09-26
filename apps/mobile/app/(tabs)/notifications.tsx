@@ -1,4 +1,9 @@
 import { useMemo, useState } from "react";
+import { Alert } from "react-native";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { SwipeRow } from "../../components/swipe-row";
+import { api } from "../../lib/api";
+import { keys } from "../../lib/queries";
 import { View, SectionList, Pressable, ScrollView, ActivityIndicator, RefreshControl } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -113,8 +118,37 @@ export default function Notifications() {
   const router = useRouter();
   const [filter, setFilter] = useState<string>("");
 
+  /*
+    الحذفُ — **بقرار المالك**: واحدٌ بالسحب، أو الكلُّ بزرّ. وهو حذفٌ من كل
+    مكان: الخادمُ يستثني ما حُذف من الاشتقاق نفسه، فلا يعود في الويب ولا
+    بعد تحديث. والصفُّ يختفي في الحال ولا ينتظر الجواب.
+  */
+  const client = useQueryClient();
+  const [swiping, setSwiping] = useState(false);
+  const [gone, setGone] = useState<Set<string>>(new Set());
+  const dropOne = useMutation({
+    mutationFn: (id: string) => api(`/v1/notifications/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    onSettled: () => void client.invalidateQueries({ queryKey: keys.notes }),
+  });
+  const dropAll = useMutation({
+    mutationFn: () => api("/v1/notifications", { method: "DELETE" }),
+    onSettled: () => void client.invalidateQueries({ queryKey: keys.notes }),
+  });
+  const askClear = () =>
+    Alert.alert("حذف كل الإشعارات؟", "تُحذف من التطبيق والموقع معاً، ولا تعود.", [
+      { text: "إلغاء", style: "cancel" },
+      {
+        text: "احذف الكل",
+        style: "destructive",
+        onPress: () => {
+          setGone(new Set((notes.data?.notes ?? []).map((note) => note.id)));
+          dropAll.mutate();
+        },
+      },
+    ]);
+
   const days = useMemo(() => {
-    const all = notes.data?.notes ?? [];
+    const all = (notes.data?.notes ?? []).filter((note) => !gone.has(note.id));
     const kinds = filter ? OF[filter] : undefined;
     const shown = kinds ? all.filter((note) => kinds.includes(note.kind)) : all;
 
@@ -126,11 +160,20 @@ export default function Notifications() {
       else out.push({ title: label, data: [note] });
     }
     return out;
-  }, [notes.data, filter]);
+  }, [notes.data, filter, gone]);
 
   return (
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
-      <ScreenHeader title="الإشعارات" />
+      <ScreenHeader
+        title="الإشعارات"
+        right={
+          (notes.data?.notes ?? []).some((note) => !gone.has(note.id)) ? (
+            <Pressable onPress={askClear} hitSlop={8}>
+              <Text style={{ color: colors.chromeMuted, fontSize: 12, fontWeight: "600" }}>حذف الكل</Text>
+            </Pressable>
+          ) : null
+        }
+      />
 
       {/* الشرائح خارج منطقة التمرير: تبقى تحت اليد مهما نزلت القائمة. */}
       <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4 }}>
@@ -173,6 +216,7 @@ export default function Notifications() {
         sections={days}
         keyExtractor={(item) => item.id}
         stickySectionHeadersEnabled={false}
+        scrollEnabled={!swiping}
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 90, flexGrow: 1 }}
         refreshControl={
           <RefreshControl
@@ -198,18 +242,23 @@ export default function Notifications() {
         renderItem={({ item }) => {
           const target = go(item.href);
           return (
+            <View style={{ marginBottom: 8, borderRadius: 16, borderWidth: 1, borderColor: colors.line, overflow: "hidden" }}>
+            <SwipeRow
+              onDelete={() => {
+                setGone((was) => new Set(was).add(item.id));
+                dropOne.mutate(item.id);
+              }}
+              surface={colors.card}
+              onSwiping={setSwiping}
+            >
             <Pressable
               onPress={() => target && router.push(target as never)}
               style={{
                 flexDirection: "row",
                 alignItems: "center",
                 gap: 12,
-                borderRadius: 16,
-                borderWidth: 1,
-                borderColor: colors.line,
                 backgroundColor: colors.card,
                 padding: 12,
-                marginBottom: 8,
               }}
             >
               <View>
@@ -257,6 +306,8 @@ export default function Notifications() {
                 <MediaImage mediaId={item.thumb} style={{ width: 44, height: 44, borderRadius: 12 }} />
               ) : null}
             </Pressable>
+            </SwipeRow>
+            </View>
           );
         }}
         ListEmptyComponent={

@@ -75,8 +75,14 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
 async function derive(userId: string, limit: number): Promise<Note[]> {
   const me = await prisma.user.findUnique({
     where: { id: userId },
-    select: { notifyOnTag: true },
+    select: { notifyOnTag: true, notesClearedAt: true },
   });
+  const dismissed = new Set(
+    (await prisma.noteDismissal.findMany({ where: { userId }, select: { noteId: true } })).map(
+      (row) => row.noteId,
+    ),
+  );
+  const clearedAt = me?.notesClearedAt?.getTime() ?? 0;
   const hidden = new Set(await blockedWith(userId));
 
   const person = { select: { id: true, name: true, avatarMediaId: true } };
@@ -260,6 +266,8 @@ async function derive(userId: string, limit: number): Promise<Note[]> {
   return notes
     // وما لا صاحب له لا يُحجب: خبرُ المتجر ليس من أحد.
     .filter((note) => !note.person || !hidden.has(note.person.id))
+    // وما حذفه صاحبُه لا يعود: بالسحب واحداً، أو بـ«احذف الكل».
+    .filter((note) => note.at.getTime() > clearedAt && !dismissed.has(note.id))
     .sort((a, b) => b.at.getTime() - a.at.getTime())
     .slice(0, limit);
 }
@@ -268,4 +276,23 @@ export async function unseenCount(userId: string): Promise<number> {
   return (await notifications(userId, 40)).filter(
     (note) => Date.now() - note.at.getTime() < 3 * 24 * 60 * 60 * 1000,
   ).length;
+}
+
+/** حذفُ إشعارٍ واحد بالسحب — يُستثنى من الاشتقاق بعدها في كل مكان. */
+export async function dismiss(userId: string, noteId: string): Promise<void> {
+  await prisma.noteDismissal.upsert({
+    where: { userId_noteId: { userId, noteId } },
+    create: { userId, noteId },
+    update: {},
+  });
+  forgetNotifications(userId);
+}
+
+/** «احذف الكل»: ختمٌ واحد، وما حُذف قبله واحداً واحداً لم يعد يلزم. */
+export async function clearAll(userId: string): Promise<void> {
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: userId }, data: { notesClearedAt: new Date() } }),
+    prisma.noteDismissal.deleteMany({ where: { userId } }),
+  ]);
+  forgetNotifications(userId);
 }

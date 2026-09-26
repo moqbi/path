@@ -1,6 +1,6 @@
 import { useRef } from "react";
-import { Modal, Pressable, View, Dimensions, Animated, PanResponder } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Modal, Pressable, View, Dimensions, Animated, PanResponder, Platform } from "react-native";
+import { initialWindowMetrics, useSafeAreaInsets } from "react-native-safe-area-context";
 import { create } from "zustand";
 import { MediaImage } from "./media-image";
 import { CloseIcon } from "./icons";
@@ -24,7 +24,16 @@ const DISMISS = 90;
 
 export function PhotoViewer() {
   const mediaId = useViewer((state) => state.mediaId);
-  const insets = useSafeAreaInsets();
+  /*
+    الحافّةُ العليا من مقاييس الجهاز حين يغيب السياق: النافذةُ تُركَّب في
+    الجذر، وهناك قد يردّ `useSafeAreaInsets` صفراً — فجلس زرُّ الإغلاق تحت
+    شريط الحالة حيث لا تصله الضغطة، وبقي السحبُ وحده يُغلق.
+  */
+  const context = useSafeAreaInsets();
+  const insets = {
+    top: Math.max(context.top, initialWindowMetrics?.insets.top ?? 0, Platform.OS === "ios" ? 44 : 24),
+    bottom: Math.max(context.bottom, initialWindowMetrics?.insets.bottom ?? 0),
+  };
   const screen = Dimensions.get("window");
   const drag = useRef(new Animated.Value(0)).current;
 
@@ -76,11 +85,11 @@ export function PhotoViewer() {
         </Pressable>
       </Animated.View>
 
-      <View style={{ position: "absolute", top: insets.top + 10, right: 16 }} pointerEvents="box-none">
+      <View style={{ position: "absolute", top: insets.top + 12, right: 16, zIndex: 10, elevation: 10 }} pointerEvents="box-none">
         <Pressable
           accessibilityLabel="إغلاق"
           onPress={close}
-          hitSlop={10}
+          hitSlop={16}
           style={{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.14)" }}
         >
           <CloseIcon size={18} color="#fff" />

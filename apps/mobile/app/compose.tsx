@@ -95,7 +95,8 @@ export default function Compose() {
       }
 
       try {
-        const here = await Location.getCurrentPositionAsync({});
+        // دقّةٌ عالية: الافتراضيّ «متوازن» يخطئ مئات الأمتار فتُعرض أماكن الحيّ المجاور.
+        const here = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
         if (!alive) return;
         setFix({ lat: here.coords.latitude, lng: here.coords.longitude });
       } catch {

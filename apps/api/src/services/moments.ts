@@ -1,4 +1,5 @@
 import { prisma } from "@athar/db";
+import { recordCity } from "./city";
 import type { MomentInput } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { reverseGeocode } from "../lib/places";
@@ -212,7 +213,7 @@ export async function createMoment(userId: string, input: MomentInput) {
   await attachViewers(moment.id, seen.viewers);
   await attachTags(moment.id, userId, input.with ?? []);
 
-  await markCity(userId, where.placeCity, me.city);
+  await markCity(userId, where.placeCity);
 
   return { id: moment.id };
 }
@@ -224,24 +225,8 @@ export async function createMoment(userId: string, input: MomentInput) {
  * يُكتب له شيء، ومن تغيّرت كُتبت مرّةً واحدة — الصفُّ والحدث في معاملةٍ
  * واحدة فلا تبقى لحظةٌ بلا مدينةٍ محفوظة ولا مدينةٌ بلا لحظة.
  */
-async function markCity(userId: string, city: string | null, was: string | null) {
-  if (!city || city === was) return false;
-  /*
-     **والتبديلُ شرطيٌّ في القاعدة لا في الذاكرة**: فتحُ التطبيق يرسل
-     طلبين في اللحظة نفسها (الإقلاع، ثمّ العودة من الخلفيّة) — وكلاهما
-     قرأ المدينة القديمة قبل أن يكتب الآخر، فكُتبت «وصل إلى جدة» مرّتين.
-     فالمدينةُ تُبدَّل بشرط أنّها لم تُبدَّل بعد، ولا تُكتب اللحظة إلا
-     لمن بدّلها فعلاً.
-  */
-  return prisma.$transaction(async (tx) => {
-    const changed = await tx.user.updateMany({
-      where: { id: userId, OR: [{ city: null }, { city: { not: city } }] },
-      data: { city },
-    });
-    if (changed.count === 0) return false;
-    await tx.moment.create({ data: { authorId: userId, kind: "CITY", text: city } });
-    return true;
-  });
+async function markCity(userId: string, city: string | null) {
+  return recordCity(userId, city);
 }
 
 /**
@@ -261,7 +246,7 @@ export async function checkInCity(userId: string, lat: number, lng: number) {
   if (!me) throw notFound("لا حساب");
 
   const place = await reverseGeocode(lat, lng);
-  const wrote = await markCity(userId, place.city, me.city);
+  const wrote = await markCity(userId, place.city);
   return { city: place.city, wrote };
 }
 

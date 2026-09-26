@@ -136,8 +136,8 @@ export default async function FriendProfilePage({
     // أصناف المتجر كلها تُقرأ هنا لتُعرض في نافذة الإهداء بلا مغادرة الملف:
     // الإطار والثيم والتميمة كلّها تُهدى.
     prisma.storeItem.findMany({ orderBy: { sortOrder: "asc" } }),
-    prisma.purchase.findMany({ where: { userId: id }, select: { itemId: true } }),
-    prisma.purchase.findMany({ where: { userId: viewer.id }, select: { itemId: true } }),
+    prisma.purchase.findMany({ where: { userId: id, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, select: { itemId: true } }),
+    prisma.purchase.findMany({ where: { userId: viewer.id, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, select: { itemId: true } }),
   ]);
 
   const joined = `${MONTHS[person.createdAt.getMonth()]} ${ar(person.createdAt.getFullYear())}`;

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { View } from "react-native";
+import { useRef, useState } from "react";
+import { Animated, View } from "react-native";
 import { MediaImage } from "./media-image";
 import { firstColor } from "./avatar";
 import { colors } from "../theme/tokens";
@@ -125,6 +125,70 @@ function CoverImage({
           }}
         />
       </View>
+    </View>
+  );
+}
+
+/** أقصى ما يُحسب من السحب — ما بعده لا يزيد الغلافَ طولاً. */
+const STRETCH_MAX = 320;
+
+/**
+ * موضعُ التمرير لشاشةٍ غلافُها داخل القائمة («أنا» وملف الصديق).
+ *
+ * `onScroll` على الخيط الأصليّ، فالغلافُ يتبع الإصبع بلا تأخّر.
+ */
+export function useStretch() {
+  const y = useRef(new Animated.Value(0)).current;
+  const onScroll = Animated.event([{ nativeEvent: { contentOffset: { y } } }], {
+    useNativeDriver: true,
+  });
+  return { y, onScroll };
+}
+
+/**
+ * غلافٌ يطول بالسحب ولا يترك فراغاً فوقه — كغلاف «اللحظات».
+ *
+ * كان السحبُ من أعلى في «أنا» وملف الصديق يُنزل القائمة كلّها فيظهر فوق
+ * الغلاف شريطٌ بلون الورق. هنا يُحسب ما تجاوزته القائمةُ فوق أعلاها (`d`)
+ * ويُمدّ الغلافُ بقدره: يكبر حول وسطه بنسبة `(H + d) / H` ويرتفع `d / 2`،
+ * فتبقى حافّتُه العليا على أعلى الشاشة وحافّتُه السفلى في مكانها.
+ * والحاويةُ لا تقصّ (`overflow` مرئيّ) — وإلّا قُصّ ما طال.
+ */
+export function StretchCover({
+  y,
+  height,
+  children,
+}: {
+  y: Animated.Value;
+  height: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={{ height, zIndex: 0 }}>
+      <Animated.View
+        style={{
+          height,
+          overflow: "hidden",
+          transform: [
+            {
+              translateY: y.interpolate({
+                inputRange: [-STRETCH_MAX, 0, 1],
+                outputRange: [-STRETCH_MAX / 2, 0, 0],
+                extrapolate: "clamp",
+              }),
+            },
+            {
+              scale: y.interpolate({
+                inputRange: [-STRETCH_MAX, 0, 1],
+                outputRange: [(height + STRETCH_MAX) / height, 1, 1],
+                extrapolate: "clamp",
+              }),
+            },
+          ],
+        }}
+      >
+        {children}
+      </Animated.View>
     </View>
   );
 }

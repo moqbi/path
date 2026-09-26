@@ -97,6 +97,12 @@ export async function momentById(id: string) {
     where: { id },
     select: {
       ...momentShape,
+      /*
+        صفحةُ اللحظة تقرأ تعليقاتها كلّها: الخطُّ الزمنيّ يعرض ثلاثةً
+        ويقول «اقرأ ٧ تعليقات أخرى» — فكانت الصفحةُ تفتح على الثلاثة
+        نفسها، لأنّ الشكلَ المشترك يأخذ ثلاثةً لا غير.
+      */
+      comments: { ...momentShape.comments, take: 100 },
       views: {
         select: { user: { select: { id: true, name: true } }, seenAt: true },
         orderBy: { seenAt: "desc" },

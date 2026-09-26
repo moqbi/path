@@ -3,12 +3,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { Text } from "./type";
 import { useRouter } from "expo-router";
-import { Avatar } from "./avatar";
+import { Avatar, frameBleed } from "./avatar";
 import { ReactionGlyph } from "./reactions";
 import { NameTag } from "./name-tag";
 import { SwipeRow } from "./swipe-row";
 import { colors } from "../theme/tokens";
-import { relative } from "../lib/format";
+import { ar, relative } from "../lib/format";
 import type { Moment } from "../lib/queries";
 
 /**
@@ -119,6 +119,8 @@ export function CommentList({
             onPress={() =>
               router.push((comment.user.id === viewerId ? "/me" : `/u/${comment.user.id}`) as never)
             }
+            // الإطارُ يخرج عن مربّع الصورة، والصفُّ يقصّ ما خرج (يُسحب للحذف).
+            style={{ margin: frameBleed(size, comment.user.frame ?? null) }}
           >
             <Avatar
               name={comment.user.name}
@@ -189,6 +191,7 @@ export function Bubble({
   viewerId: string;
   moderate?: boolean;
 }) {
+  const router = useRouter();
   const hasComments = moment.comments.length > 0;
   const hasReactions = moment.reactions.length > 0;
   if (!hasComments && !hasReactions) return null;
@@ -210,6 +213,17 @@ export function Bubble({
         <View style={{ height: 1, backgroundColor: colors.line, marginVertical: 10 }} />
       ) : null}
       <CommentList comments={moment.comments} viewerId={viewerId} moderate={moderate} />
+      {/*
+        الخطُّ الزمنيّ يحمل ثلاثةَ تعليقات، وما زاد بابُه صفحةُ اللحظة —
+        كان الباقي يختفي بلا أثرٍ يقول إنّ هناك غيرها.
+      */}
+      {moment._count.comments > moment.comments.length ? (
+        <Pressable onPress={() => router.push(`/m/${moment.id}` as never)} style={{ marginTop: 8 }}>
+          <Text style={{ color: colors.clayInk, fontSize: 12, fontWeight: "600" }}>
+            كل التعليقات ({ar(moment._count.comments)})
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }

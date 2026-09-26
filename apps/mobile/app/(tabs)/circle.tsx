@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { View, FlatList, Pressable, ScrollView, ActivityIndicator, RefreshControl } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Avatar } from "../../components/avatar";
 import { SwipeRow } from "../../components/swipe-row";
@@ -34,15 +34,35 @@ type Tab = (typeof TABS)[number]["key"];
 
 type Member = NonNullable<ReturnType<typeof useCircle>["data"]>["members"][number];
 type Suggested = NonNullable<ReturnType<typeof useSuggestions>["data"]>["people"][number];
-type Row = Member | Suggested;
+/** رأسُ قسمٍ في «أصدقائي»: متصلٌ أو غير متصل، يُطوى ويُفتح. */
+type Head = { id: string; head: "online" | "offline"; count: number };
+type Row = Member | Suggested | Head;
+
+/** متصلٌ من ظهر في آخر ثلاث دقائق — العتبةُ نفسها في `presence()`. */
+const onlineNow = (lastSeenAt: string | null) =>
+  Boolean(lastSeenAt) && Date.now() - new Date(lastSeenAt as string).getTime() < 3 * 60_000;
 
 export default function Circle() {
   const [tab, setTab] = useState<Tab>("friends");
   /* التصنيفُ المختار في «تصنيفاتي» — الفراغُ يعني «الكل». */
   const [groupFilter, setGroupFilter] = useState("");
+  /* صفٌّ يُسحب يوقف تمرير القائمة: وإلّا تحرّكت الشاشةُ كلّها مع الإصبع. */
+  const [swiping, setSwiping] = useState(false);
+  /* قسما «أصدقائي» — ما طُوي منهما يبقى رأسُه وحده. */
+  const [folded, setFolded] = useState<{ online: boolean; offline: boolean }>({ online: false, offline: false });
   const circle = useCircle();
   const suggested = useSuggestions();
   const rings = useRings();
+  /*
+    الطلباتُ الواردة تُسأل عنها مع كل دخولٍ إلى التبويب: كانت الذاكرةُ
+    تُبقي ما جُلب قبل نصف دقيقة، فيصل الطلبُ متأخّراً وكأنّه لم يُرسل.
+  */
+  const refetchCircle = circle.refetch;
+  useFocusEffect(
+    useCallback(() => {
+      void refetchCircle();
+    }, [refetchCircle]),
+  );
   const pullRefresh = usePullRefresh(() => Promise.all([circle.refetch(), suggested.refetch(), rings.refetch()]));
   const router = useRouter();
   const client = useQueryClient();
@@ -98,6 +118,22 @@ export default function Circle() {
 
   const data = circle.data;
   const groups = data?.groups ?? [];
+
+  /*
+    «أصدقائي» قسمان — **بقرار المالك**: متصلٌ الآن، ثمّ غيرُ متصل، ولكلٍّ
+    رأسٌ يُطوى ويُفتح. من يبحث عمّن يكلّمه الآن لا يمرّ بمئةٍ وخمسين.
+  */
+  const members = data?.members ?? [];
+  const online = members.filter((member) => onlineNow(member.lastSeenAt));
+  const offline = members.filter((member) => !onlineNow(member.lastSeenAt));
+  const sectioned: Row[] = members.length
+    ? [
+        { id: "head-online", head: "online", count: online.length },
+        ...(folded.online ? [] : online),
+        { id: "head-offline", head: "offline", count: offline.length },
+        ...(folded.offline ? [] : offline),
+      ]
+    : [];
   const people = suggested.data?.people ?? [];
 
   return (
@@ -121,11 +157,14 @@ export default function Circle() {
         data={
           (tab === "suggested"
             ? people
-            : tab === "groups" && groupFilter
-              ? (data?.members ?? []).filter((member) => member.groupId === groupFilter)
-              : (data?.members ?? [])) as Row[]
+            : tab === "groups"
+              ? groupFilter
+                ? (data?.members ?? []).filter((member) => member.groupId === groupFilter)
+                : (data?.members ?? [])
+              : sectioned) as Row[]
         }
         keyExtractor={(item) => item.id}
+        scrollEnabled={!swiping}
         contentContainerStyle={{ paddingBottom: 24, flexGrow: 1 }}
         refreshControl={
           <RefreshControl
@@ -268,6 +307,30 @@ export default function Circle() {
           </>
         }
         renderItem={({ item }) => {
+          if ("head" in item) {
+            const open = !folded[item.head];
+            return (
+              <Pressable
+                onPress={() => setFolded((was) => ({ ...was, [item.head]: !was[item.head] }))}
+                style={{ flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 16, marginTop: 14, marginBottom: 2 }}
+              >
+                <View
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: item.head === "online" ? colors.live : colors.faint,
+                  }}
+                />
+                <Text style={{ flex: 1, color: colors.ink, fontSize: 13.5, fontWeight: "700" }}>
+                  {item.head === "online" ? "متصل" : "غير متصل"} ({ar(item.count)})
+                </Text>
+                <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600" }}>
+                  {open ? "إخفاء" : "إظهار"}
+                </Text>
+              </Pressable>
+            );
+          }
           if (tab === "suggested") {
             const person = item as Suggested;
             return (
@@ -378,6 +441,7 @@ export default function Circle() {
             onSecond={() => void ban.mutate(friend.id)}
             secondLabel="حظر"
             lead={{ label: "محادثة", run: () => void talk.mutate(friend.id) }}
+            onSwiping={setSwiping}
             surface={colors.card}
             width={76}
           >

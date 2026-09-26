@@ -24,6 +24,7 @@ export function SwipeRow({
   width = REVEAL,
   lead,
   radius = 0,
+  onSwiping,
   children,
 }: {
   onDelete: () => void | Promise<void>;
@@ -46,6 +47,11 @@ export function SwipeRow({
   lead?: { label: string; run: () => void | Promise<void> };
   /** انحناءُ الحواف حين يكون الصفّ قالباً لا سطراً. */
   radius?: number;
+  /**
+   * يُخبر القائمةَ أنّ صفّاً يُسحب فتقف عن التمرير: تمريرُ آبل الأصليّ
+   * يأخذ ما مال من السحبة رأسياً فتتحرّك الشاشةُ كلّها مع الصفّ.
+   */
+  onSwiping?: (active: boolean) => void;
   children: React.ReactNode;
 }) {
   const second = onSecond && secondLabel ? { run: onSecond, label: secondLabel } : null;
@@ -61,6 +67,8 @@ export function SwipeRow({
   */
   const [revealed, setRevealed] = useState(false);
   const shift = useRef(new Animated.Value(0)).current;
+  const swiping = useRef(onSwiping);
+  swiping.current = onSwiping;
   const open = useRef(false);
   const from = useRef(0);
 
@@ -80,7 +88,10 @@ export function SwipeRow({
       */
       onMoveShouldSetPanResponderCapture: (_event, gesture) =>
         Math.abs(gesture.dx) > 6 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
+      // ولا يتنازل عن السحبة للقائمة وهي جارية.
+      onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: () => {
+        swiping.current?.(true);
         from.current = open.current ? reveal : 0;
         // الدرع يُنصب مع أوّل حركة لا بعد الإفلات: الضغطة التي تختم
         // السحبة تصل إلى الرابط قبل أن يتحرّك شيء إن تأخّر.
@@ -91,10 +102,14 @@ export function SwipeRow({
         shift.setValue(Math.max(0, Math.min(reveal, from.current + gesture.dx)));
       },
       onPanResponderRelease: (_event, gesture) => {
+        swiping.current?.(false);
         const at = Math.max(0, Math.min(reveal, from.current + gesture.dx));
         settle(at > reveal / 2 ? reveal : 0);
       },
-      onPanResponderTerminate: () => settle(open.current ? reveal : 0),
+      onPanResponderTerminate: () => {
+        swiping.current?.(false);
+        settle(open.current ? reveal : 0);
+      },
     }),
   ).current;
 

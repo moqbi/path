@@ -36,8 +36,14 @@ const NEW_ITEM_DAYS = 3;
 export async function notifications(userId: string, limit = 40): Promise<Note[]> {
   const me = await prisma.user.findUnique({
     where: { id: userId },
-    select: { notifyOnTag: true },
+    select: { notifyOnTag: true, notesClearedAt: true },
   });
+  // ما حذفه صاحبُه في التطبيق لا يعود هنا (الحذفُ «من كل مكان»).
+  const dismissed = new Set(
+    (await prisma.noteDismissal.findMany({ where: { userId }, select: { noteId: true } })).map(
+      (row) => row.noteId,
+    ),
+  );
   const hidden = new Set(await blockedWith(userId));
 
   const person = { select: { id: true, name: true, avatarMediaId: true } };
@@ -224,6 +230,10 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
   return notes
     // وما لا صاحب له لا يُحجب: خبرُ المتجر ليس من أحد.
     .filter((note) => !note.person || !hidden.has(note.person.id))
+    .filter(
+      (note) =>
+        note.at.getTime() > (me?.notesClearedAt?.getTime() ?? 0) && !dismissed.has(note.id),
+    )
     .sort((a, b) => b.at.getTime() - a.at.getTime())
     .slice(0, limit);
 }

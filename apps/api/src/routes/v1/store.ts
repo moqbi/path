@@ -19,15 +19,25 @@ export const storeRoutes = new Hono()
   .get("/", async (c) => c.json(await store.storefront(me(c))))
   .get("/mine", async (c) => c.json({ items: await store.myItems(me(c)) }))
 
-  .post("/:id/buy", zValidator("param", byId), async (c) =>
-    c.json(await store.buy(me(c), c.req.valid("param").id)),
-  )
+  // والمدّةُ اختياريّةٌ في الطلب: صنفٌ بلا مُددٍ يُشترى بلا `plan`.
+  // والجسمُ يُقرأ بيدنا لا بمدقّق: نسخُ التطبيق القديمة ترسل الطلب بلا جسمٍ
+  // أصلاً، ومدقّقُ JSON يردّها بـ٤٠٠ قبل أن يصل الشراء.
+  .post("/:id/buy", zValidator("param", byId), async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const plan = z.object({ plan: cuid.optional() }).safeParse(body);
+    return c.json(
+      await store.buy(me(c), c.req.valid("param").id, plan.success ? plan.data.plan : undefined),
+    );
+  })
 
   .post(
     "/:id/gift",
     zValidator("param", byId),
-    zValidator("json", z.object({ to: cuid })),
-    async (c) => c.json(await store.gift(me(c), c.req.valid("param").id, c.req.valid("json").to)),
+    zValidator("json", z.object({ to: cuid, plan: cuid.optional() })),
+    async (c) => {
+      const body = c.req.valid("json");
+      return c.json(await store.gift(me(c), c.req.valid("param").id, body.to, body.plan));
+    },
   )
 
   .post("/:id/equip", zValidator("param", byId), async (c) =>

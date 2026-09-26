@@ -115,64 +115,146 @@ type PhotonFeature = {
 /** مفاتيح الأماكن التي يقصدها الناس: مقهى ومطعم ومتجر — لا شوارع ولا مبانٍ. */
 const POI_KEYS = new Set(["amenity", "shop", "leisure", "tourism", "healthcare", "office", "craft"]);
 
+/** نصفُ قطر البحث — **بقرار المالك**: كلُّ ما على الخريطة في كيلومتر. */
+const RADIUS_M = 1000;
+
 /**
- * الأماكن حول المستخدم من OpenStreetMap عبر Photon.
+ * خوادمُ Overpass العامة — تُسأل معاً ويُؤخذ أوّلُ جواب.
  *
- * `reverseGeocode` تردّ أقرب عنوان — وغالباً شارعاً — وهذا لا يقول أين
- * أنت: في المقهى أم في المطعم المجاور. فهنا نسأل عن المعالم المسمّاة
- * حولك مرتّبةً بالأقرب، ويختار صاحبها بنفسه.
- *
- * ولماذا Photon لا Overpass: الأخير يمهل ثم يردّ ٥٠٤ من خوادمه العامة،
- * وهذا طلبٌ واحد سريع بلا لغةٍ محدّدة (`lang=ar` يرفضه) ولا وسوم.
- *
- * الفشل يردّ قائمةً فارغة: الواجهة تُبقي «أقرب عنوان» فلا يتعطّل النشر.
+ * الواحدُ منها يمهل أحياناً ثمّ يردّ ٥٠٤ (وهذا ما أبعده من قبل)، لكنّ
+ * ثلاثةً معاً نادراً ما تمهل كلُّها. وPhoton يبقى احتياطاً لا بديلاً:
+ * `reverse` عنده يردّ **أقرب خمسين شيئاً** — بيوتاً وشوارع — فإذا صُفّي
+ * منها ما هو مكان بقيت أماكنُ على مئتين وتسعمئة متر وغاب المقهى المجاور.
  */
-export async function nearbyPlaces(
-  lat: number,
-  lng: number,
-  limit = 50,
-): Promise<NearbyPlace[]> {
+const OVERPASS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+];
+
+type OverpassElement = {
+  type: string;
+  id: number;
+  lat?: number;
+  lon?: number;
+  center?: { lat: number; lon: number };
+  tags?: Record<string, string>;
+};
+
+/** ما لا يُقصد ولا يُنشر عنه: مواقفُ ومقاعدُ وصناديق. */
+const SKIP_VALUES = new Set([
+  "parking", "parking_space", "parking_entrance", "bench", "waste_basket", "bicycle_parking",
+  "vending_machine", "recycling", "toilets", "atm", "post_box", "telephone", "drinking_water",
+  "shelter", "loading_dock", "motorcycle_parking",
+]);
+
+async function overpass(lat: number, lng: number): Promise<NearbyPlace[]> {
+  const query = `[out:json][timeout:8];nwr(around:${RADIUS_M},${lat},${lng})[name][~"^(amenity|shop|leisure|tourism|healthcare|office|craft|sport)$"~"."];out center 300;`;
+  const ask = (endpoint: string) =>
+    fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        "User-Agent": "ATHAR-Moments/0.1",
+      },
+      body: `data=${encodeURIComponent(query)}`,
+      signal: AbortSignal.timeout(9000),
+    }).then(async (response) => {
+      if (!response.ok) throw new Error(String(response.status));
+      return (await response.json()) as { elements?: OverpassElement[] };
+    });
+
+  const data = await Promise.any(OVERPASS.map(ask));
+  const places: NearbyPlace[] = [];
+  for (const element of data.elements ?? []) {
+    const tags = element.tags ?? {};
+    const name = (tags["name:ar"] || tags.name || "").trim();
+    if (!name) continue;
+    const pointLat = element.lat ?? element.center?.lat;
+    const pointLng = element.lon ?? element.center?.lon;
+    if (pointLat === undefined || pointLng === undefined) continue;
+
+    const value =
+      tags.amenity ?? tags.shop ?? tags.leisure ?? tags.tourism ?? tags.healthcare ?? tags.office ?? tags.craft ?? tags.sport ?? "";
+    if (SKIP_VALUES.has(value)) continue;
+
+    places.push({
+      id: `${element.type[0]}${element.id}`,
+      name,
+      kind: KIND_AR[value] ?? null,
+      meters: metersBetween(lat, lng, pointLat, pointLng),
+      lat: pointLat,
+      lng: pointLng,
+    });
+  }
+  return places;
+}
+
+async function photon(lat: number, lng: number): Promise<NearbyPlace[]> {
   const url = new URL("https://photon.komoot.io/reverse");
   url.searchParams.set("lat", String(lat));
   url.searchParams.set("lon", String(lng));
-  url.searchParams.set("limit", String(limit));
+  url.searchParams.set("limit", "50");
+  url.searchParams.set("radius", String(RADIUS_M / 1000));
+  for (const key of POI_KEYS) url.searchParams.append("osm_tag", key);
 
-  try {
-    const response = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; ATHAR-Moments/0.1)" },
-      signal: AbortSignal.timeout(9000),
+  const response = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; ATHAR-Moments/0.1)" },
+    signal: AbortSignal.timeout(9000),
+  });
+  if (!response.ok) return [];
+
+  const data = (await response.json()) as { features?: PhotonFeature[] };
+  const places: NearbyPlace[] = [];
+  for (const feature of data.features ?? []) {
+    const props = feature.properties ?? {};
+    const key = String(props.osm_key ?? "");
+    if (!POI_KEYS.has(key)) continue;
+    const name = String(props.name ?? "").trim();
+    if (!name) continue;
+    const [pointLng, pointLat] = feature.geometry?.coordinates ?? [];
+    if (pointLat === undefined || pointLng === undefined) continue;
+    const value = String(props.osm_value ?? "");
+    if (SKIP_VALUES.has(value)) continue;
+    places.push({
+      id: `${props.osm_type ?? "n"}${props.osm_id ?? name}`,
+      name,
+      kind: KIND_AR[value] ?? null,
+      meters: metersBetween(lat, lng, pointLat, pointLng),
+      lat: pointLat,
+      lng: pointLng,
     });
-    if (!response.ok) return [];
-
-    const data = (await response.json()) as { features?: PhotonFeature[] };
-    const seen = new Set<string>();
-    const places: NearbyPlace[] = [];
-
-    for (const feature of data.features ?? []) {
-      const props = feature.properties ?? {};
-      const key = String(props.osm_key ?? "");
-      if (!POI_KEYS.has(key)) continue;
-
-      const name = String(props.name ?? "").trim();
-      if (!name || seen.has(name)) continue;
-
-      const [pointLng, pointLat] = feature.geometry?.coordinates ?? [];
-      if (pointLat === undefined || pointLng === undefined) continue;
-
-      const value = String(props.osm_value ?? "");
-      seen.add(name);
-      places.push({
-        id: `${props.osm_type ?? "n"}${props.osm_id ?? name}`,
-        name,
-        kind: KIND_AR[value] ?? null,
-        meters: metersBetween(lat, lng, pointLat, pointLng),
-        lat: pointLat,
-        lng: pointLng,
-      });
-    }
-
-    return places.sort((a, b) => a.meters - b.meters).slice(0, 18);
-  } catch {
-    return [];
   }
+  return places;
+}
+
+/**
+ * الأماكن حول المستخدم — كلُّ مكانٍ مسمّى في كيلومتر، الأقربُ أوّلاً.
+ *
+ * `reverseGeocode` تردّ أقرب عنوان — وغالباً شارعاً — وهذا لا يقول أين
+ * أنت: في المقهى أم في المطعم المجاور. فهنا نسأل عن المعالم المسمّاة
+ * حولك (مطاعم ومقاهٍ ومحلّات وخدمات وأسواق)، ويختار صاحبها بنفسه.
+ *
+ * Overpass أوّلاً لأنّه يسأل عن **كلّ** ما في الدائرة لا عن أقرب خمسين
+ * شيئاً، وPhoton احتياطٌ إن أمهلت خوادمُه كلُّها. والفشلان معاً يردّان
+ * قائمةً فارغة: الواجهة تُبقي «أقرب عنوان» فلا يتعطّل النشر.
+ *
+ * والحدُّ ما في الخريطة: OpenStreetMap في المملكة ناقصٌ في أحياءٍ دون
+ * أحياء، فما لم يُرسم فيها لا يظهر هنا.
+ */
+export async function nearbyPlaces(lat: number, lng: number, limit = 80): Promise<NearbyPlace[]> {
+  let places: NearbyPlace[] = [];
+  try {
+    places = await overpass(lat, lng);
+  } catch {
+    places = await photon(lat, lng).catch(() => []);
+  }
+
+  // اسمٌ واحد مرّةً واحدة — الأقربُ منه — فالسلسلةُ لا تملأ القائمة بفروعها.
+  const seen = new Set<string>();
+  return places
+    .filter((place) => place.meters <= RADIUS_M)
+    .sort((a, b) => a.meters - b.meters)
+    .filter((place) => (seen.has(place.name) ? false : (seen.add(place.name), true)))
+    .slice(0, limit);
 }

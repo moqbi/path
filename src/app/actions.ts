@@ -1,5 +1,7 @@
 "use server";
 
+import { recordCity } from "@/lib/city";
+import { cityInput } from "@/lib/city-input";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -499,12 +501,8 @@ export async function postPlace(formData: FormData): Promise<void> {
 
   // الانتقال إلى مدينة أخرى حدثٌ في حياة الدائرة، فيُكتب سطراً مستقلاً.
   // يُشتقّ من التحديد نفسه: لا شاشة له ولا زر، وإلا صار عبئاً على الناشر.
-  if (city && city !== user.city) {
-    await prisma.$transaction([
-      prisma.user.update({ where: { id: user.id }, data: { city } }),
-      prisma.moment.create({ data: { authorId: user.id, kind: "CITY", text: city } }),
-    ]);
-  }
+  // بالمدينة المكتشفة لا المكتوبة، ومرّةً لكل وصول (`lib/city.ts`).
+  await recordCity(user.id, place.city);
 
   await attachTags(moment.id, user.id, formData.getAll("with").map(String));
   revalidatePath("/");
@@ -882,10 +880,20 @@ export async function acceptFriend(friendshipId: string): Promise<void> {
   await prisma.$transaction([
     prisma.friendship.update({ where: { id: friendshipId }, data: { status: "ACCEPTED" } }),
     prisma.moment.create({
-      data: { authorId: user.id, kind: "FRIEND_ADDED", text: other?.name ?? null },
+      data: {
+        authorId: user.id,
+        kind: "FRIEND_ADDED",
+        text: other?.name ?? null,
+        tags: { create: { userId: friendship.requesterId } },
+      },
     }),
     prisma.moment.create({
-      data: { authorId: friendship.requesterId, kind: "FRIEND_ADDED", text: user.name },
+      data: {
+        authorId: friendship.requesterId,
+        kind: "FRIEND_ADDED",
+        text: user.name,
+        tags: { create: { userId: user.id } },
+      },
     }),
   ]);
 
@@ -1193,7 +1201,7 @@ export async function saveProfile(
       name,
       handle: rawHandle || null,
       bio: String(formData.get("bio") ?? "").trim().slice(0, BIO_MAX) || null,
-      city: String(formData.get("city") ?? "").trim().slice(0, 40) || null,
+      ...cityInput(String(formData.get("city") ?? ""), user.city),
     },
   });
 
@@ -1597,10 +1605,16 @@ export async function giftItem(
   if (item.earnedAfterDays !== null) return { error: "هذا الصنف يُكتسب بالوقت، لا يُهدى" };
   if (item.plusOnly && !friend.isPlus) return { error: `${friend.name} ليس مشتركاً في آثار+` };
 
+  if ((await prisma.storeItemPlan.count({ where: { itemId } })) > 0) {
+    return { error: "هذا الصنف بمدّة — أهدِه من التطبيق حيث تُختار المدّة" };
+  }
   const owned = await prisma.purchase.findUnique({
     where: { userId_itemId: { userId: toUserId, itemId } },
   });
-  if (owned) return { error: `${friend.name} يملكه أصلاً` };
+  if (owned && (!owned.expiresAt || owned.expiresAt > new Date())) {
+    return { error: `${friend.name} يملكه أصلاً` };
+  }
+  if (owned) await prisma.purchase.delete({ where: { id: owned.id } });
 
   // الخصم خصمُ المُهدي: هو الدافع، فله سعره هو.
   const price = user.isPlus
@@ -1688,6 +1702,11 @@ async function buyItem(itemId: string): Promise<void> {
     if (days < item.earnedAfterDays) throw new Error("هذا الصنف يُكتسب بالوقت، لا يُشترى");
   }
 
+  // الصنفُ بمُدَدٍ يُشترى من التطبيق: هناك تُختار المدّة وسعرُها.
+  if ((await prisma.storeItemPlan.count({ where: { itemId } })) > 0) {
+    throw new Error("هذا الصنف بمدّة — اختر مدّته واشترِه من التطبيق");
+  }
+
   const price = user.isPlus
     ? Math.round(item.priceCoins * (1 - PLUS_DISCOUNT))
     : item.priceCoins;
@@ -1695,7 +1714,8 @@ async function buyItem(itemId: string): Promise<void> {
   const owned = await prisma.purchase.findUnique({
     where: { userId_itemId: { userId: user.id, itemId } },
   });
-  if (owned) return;
+  if (owned && (!owned.expiresAt || owned.expiresAt > new Date())) return;
+  if (owned) await prisma.purchase.delete({ where: { id: owned.id } });
 
   if (user.coins < price) throw new Error("رصيدك لا يكفي");
 

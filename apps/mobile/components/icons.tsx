@@ -249,3 +249,10 @@ export const BackIcon = ({ size = 20, color = "currentColor" }: Props) => (
     <Path d="M15 5 8 12l7 7" />
   </Svg>
 );
+
+export const ClockIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Circle cx={12} cy={12} r={9} />
+    <Path d="M12 7.5V12l3 2" />
+  </Svg>
+);

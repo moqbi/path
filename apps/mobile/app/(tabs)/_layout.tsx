@@ -11,6 +11,7 @@ import {
   UserIcon,
   WithIcon,
 } from "../../components/icons";
+import { useSession } from "../../lib/session";
 import { useNoteCount } from "../../lib/queries";
 import { Spot } from "../../components/spot";
 import { colors } from "../../theme/tokens";
@@ -265,6 +266,11 @@ export default function TabsLayout() {
             <Pressable
               onPress={() => {
                 setOpen(false);
+                // «آثارنا» من مزايا آثار+ — من اختارها بلا اشتراكٍ يُؤخذ إلى صفحته.
+                if (item.key === "together" && !useSession.getState().me?.isPlus) {
+                  router.push("/subscribe" as never);
+                  return;
+                }
                 router.push(
                   item.key
                     ? ({ pathname: "/", params: { view: item.key } } as never)

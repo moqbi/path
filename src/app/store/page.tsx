@@ -43,7 +43,7 @@ export default async function StorePage({
         },
       },
     }),
-    prisma.purchase.findMany({ where: { userId: user.id }, select: { itemId: true } }),
+    prisma.purchase.findMany({ where: { userId: user.id, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, select: { itemId: true } }),
   ]);
 
   const category = categories.find((row) => row.slug === c) ?? null;

@@ -5,7 +5,7 @@ import { Avatar, firstColor } from "./avatar";
 import { MediaImage } from "./media-image";
 import { viewPhoto } from "./photo-viewer";
 import { AthrMark } from "./brand";
-import { PinIcon, PlayIcon, WithIcon, SunIcon, MoonIcon, PlaneIcon, GiftIcon, SparkIcon } from "./icons";
+import { TagIcon, PinIcon, PlayIcon, WithIcon, SunIcon, MoonIcon, PlaneIcon, GiftIcon, SparkIcon } from "./icons";
 import { MomentBar } from "./moment-bar";
 import { Bubble, CommentList, Reactors } from "./reactors";
 import { colors } from "../theme/tokens";
@@ -23,7 +23,7 @@ export const SPINE_W = 56;
  * بإطار. والتفريق في العرض لا في الخادم.
  */
 const EVENTS = new Set([
-  "CITY", "PLACE", "SLEEP", "WAKE", "MUSIC", "FRIEND_ADDED", "GIFT_SENT", "GIFT_GOT", "JOINED",
+  "CITY", "PLACE", "SLEEP", "WAKE", "MUSIC", "FRIEND_ADDED", "GIFT_SENT", "GIFT_GOT", "JOINED", "TAG_GRANTED",
 ]);
 
 const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
@@ -36,6 +36,7 @@ const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
   GIFT_SENT: { bg: colors.claySoft, ink: colors.clayInk },
   GIFT_GOT: { bg: colors.claySoft, ink: colors.clayInk },
   JOINED: { bg: colors.night, ink: "#f7f5ef" },
+  TAG_GRANTED: { bg: colors.goldSoft, ink: colors.goldInk },
 };
 
 function EventIcon({ kind }: { kind: string }) {
@@ -48,6 +49,7 @@ function EventIcon({ kind }: { kind: string }) {
     : kind === "FRIEND_ADDED" ? <WithIcon size={15} color={style.ink} />
     : kind === "GIFT_SENT" || kind === "GIFT_GOT" ? <GiftIcon size={15} color={style.ink} />
     : kind === "JOINED" ? <AthrMark size={20} />
+    : kind === "TAG_GRANTED" ? <TagIcon size={15} color={style.ink} />
     : <PinIcon size={16} color={style.ink} />;
 
   return (
@@ -67,7 +69,7 @@ function EventIcon({ kind }: { kind: string }) {
 }
 
 /** نصّ الخبر — منقولٌ من الويب لا مترجماً عنه. */
-function eventText(moment: Moment, withNames: string[]) {
+function eventText(moment: Moment, withNames: string[], viewerId = "") {
   switch (moment.kind) {
     case "CITY":
       return { title: `وصل إلى ${moment.text ?? "مدينة"}`, subtitle: null };
@@ -82,6 +84,15 @@ function eventText(moment: Moment, withNames: string[]) {
       return { title: `أهديت ${withNames[0] ?? "صديقاً"} ${moment.text ?? "هدية"}`, subtitle: null };
     case "GIFT_GOT":
       return { title: `وصلتك هدية من ${withNames[0] ?? "صديق"}: ${moment.text ?? "هدية"}`, subtitle: null };
+    case "TAG_GRANTED":
+      // بلسانه لصاحبه، وبالغائب لدائرته — كبقية أسطر الأحداث.
+      return {
+        title:
+          moment.author.id === viewerId
+            ? `تهانينا — حصلت على وسم «${moment.text ?? ""}» من الإدارة`
+            : `تهانينا — حصل على وسم «${moment.text ?? ""}» من الإدارة`,
+        subtitle: null,
+      };
     case "JOINED":
       return { title: `انضم ${moment.author.name} إلى آثار مومنتس`, subtitle: null };
     case "MUSIC":
@@ -153,21 +164,41 @@ export function MomentCard({
   );
 
   if (isEvent) {
-    const { title, subtitle } = eventText(moment, withNames);
+    const { title, subtitle } = eventText(moment, withNames, viewerId);
 
     const line = (
       <Pressable onPress={open} style={{ flexDirection: "row", gap: 10 }}>
         <EventIcon kind={moment.kind} />
         <View style={{ flex: 1, paddingTop: 2 }}>
           <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600", lineHeight: 21 }}>
-            {title}
+            {/*
+              اسمُ الصديق الجديد رابطٌ إلى ملفّه: الإشارةُ تحمل معرّفه، فمن قرأ
+              «أصبح صديق فلان» يصل إلى فلان بضغطة. واللحظاتُ القديمة بلا إشارة
+              تبقى نصّاً.
+            */}
+            {moment.kind === "FRIEND_ADDED" && moment.tags[0] ? (
+              <>
+                {"أصبح صديق "}
+                <Text
+                  onPress={() => router.push(`/u/${moment.tags[0].id}` as never)}
+                  style={{ color: colors.clayInk, fontWeight: "700" }}
+                >
+                  {moment.tags[0].name}
+                </Text>
+              </>
+            ) : (
+              title
+            )}
           </Text>
           {subtitle ? (
             <Text style={{ color: colors.ink2, fontSize: 12, fontWeight: "500", marginTop: 2 }}>
               {subtitle}
             </Text>
           ) : null}
-          {withNames.length > 0 && moment.kind !== "GIFT_SENT" && moment.kind !== "GIFT_GOT" ? (
+          {withNames.length > 0 &&
+          moment.kind !== "GIFT_SENT" &&
+          moment.kind !== "GIFT_GOT" &&
+          moment.kind !== "FRIEND_ADDED" ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 }}>
               <WithIcon size={12} color={colors.ink2} />
               <Text style={{ color: colors.ink2, fontSize: 11.5, fontWeight: "500" }}>

@@ -9,6 +9,7 @@ import {
   PlayIcon,
   GiftIcon,
   WithIcon,
+  TagIcon,
 } from "@/components/icons";
 import { MomentBar } from "@/components/moment-bar";
 import { AthrMark } from "@/components/brand";
@@ -36,6 +37,7 @@ export const EVENTS = new Set([
   "GIFT_SENT",
   "GIFT_GOT",
   "JOINED",
+  "TAG_GRANTED",
 ]);
 
 const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
@@ -48,6 +50,7 @@ const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
   GIFT_SENT: { bg: "var(--color-clay-soft)", ink: "var(--color-clay-ink)" },
   GIFT_GOT: { bg: "var(--color-clay-soft)", ink: "var(--color-clay-ink)" },
   JOINED: { bg: "var(--color-night)", ink: "#f7f5ef" },
+  TAG_GRANTED: { bg: "var(--color-gold-soft)", ink: "var(--color-gold-ink)" },
 };
 
 function EventIcon({ kind }: { kind: string }) {
@@ -67,6 +70,8 @@ function EventIcon({ kind }: { kind: string }) {
       <GiftIcon size={16} />
     ) : kind === "JOINED" ? (
       <AthrMark size={20} />
+    ) : kind === "TAG_GRANTED" ? (
+      <TagIcon size={16} />
     ) : (
       <PinIcon size={16} />
     );
@@ -211,6 +216,10 @@ export function EventLine({
         وصلتك هدية من <span className="font-bold">{withNames[0] ?? "صديق"}</span>:{" "}
         <span className="font-bold">{moment.text ?? "هدية"}</span>
       </>
+    ) : kind === "TAG_GRANTED" ? (
+      <>
+        تهانينا — حصل على وسم <span className="font-bold">«{moment.text ?? ""}»</span> من الإدارة
+      </>
     ) : kind === "JOINED" ? (
       <>
         انضم <span className="font-bold">{moment.author.name}</span> إلى آثار مومنتس
@@ -255,7 +264,7 @@ export function EventLine({
             {subtitle}
           </p>
         ) : null}
-        {withNames.length > 0 && kind !== "GIFT_SENT" && kind !== "GIFT_GOT" ? (
+        {withNames.length > 0 && kind !== "GIFT_SENT" && kind !== "GIFT_GOT" && kind !== "FRIEND_ADDED" ? (
           <p className="mt-0.5 flex items-center gap-1.5 text-[11.5px] font-medium text-ink-2">
             <WithIcon size={12} />
             مع {withNames.join(" و")}

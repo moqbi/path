@@ -44,6 +44,7 @@ export default function Store() {
       <StoreGrid
         items={items}
         owned={data.owned}
+        expires={data.expires ?? {}}
         isPlus={data.isPlus}
         coins={data.coins}
         daysHere={data.daysHere}
@@ -52,6 +53,32 @@ export default function Store() {
     ) : null;
 
   const category = data?.categories.find((row) => row.slug === slug) ?? null;
+
+  /*
+    شرائحُ الأنواع بعد «المميز» — التمائم والإطارات والثيمات — وفي كلٍّ
+    منها أقسامٌ بمجموعاته ثمّ «… الأخرى» لما بلا مجموعة (**بقرار المالك**).
+    وتصنيفاتُ المشرف بعدها كما كانت.
+  */
+  const KINDS = [
+    { slug: "kind:CHARM", name: "التمائم", kinds: ["CHARM"], other: "التمائم الأخرى" },
+    { slug: "kind:FRAME", name: "الإطارات", kinds: ["FRAME"], other: "الإطارات الأخرى" },
+    { slug: "kind:THEME", name: "الثيمات", kinds: ["THEME", "BACKGROUND"], other: "الثيمات الأخرى" },
+  ] as const;
+  const kindTab = KINDS.find((row) => row.slug === slug) ?? null;
+  const grouped = (() => {
+    if (!kindTab || !data) return [];
+    const mine = data.items.filter((item) => (kindTab.kinds as readonly string[]).includes(item.kind));
+    const groups = (data.collections ?? []).filter((one) =>
+      (kindTab.kinds as readonly string[]).includes(one.kind),
+    );
+    const known = new Set(groups.map((one) => one.id));
+    const out = groups
+      .map((one) => ({ title: one.name, items: mine.filter((item) => item.collectionId === one.id) }))
+      .filter((row) => row.items.length > 0);
+    const rest = mine.filter((item) => !item.collectionId || !known.has(item.collectionId));
+    if (rest.length > 0) out.push({ title: out.length > 0 ? kindTab.other : kindTab.name, items: rest });
+    return out;
+  })();
 
   return (
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
@@ -92,7 +119,7 @@ export default function Store() {
       {/* شريط التصنيفات: «المميز» أولاً، ثم ما يضيفه المشرف. */}
       <View style={{ paddingTop: 12, paddingBottom: 4 }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: "row", paddingHorizontal: 20, gap: 8 }}>
-          {[{ slug: "", name: "المميز" }, ...(data?.categories ?? [])].map((chip) => {
+          {[{ slug: "", name: "المميز" }, ...KINDS, ...(data?.categories ?? [])].map((chip) => {
             const on = slug === chip.slug;
             return (
               <Pressable
@@ -125,11 +152,30 @@ export default function Store() {
             <RefreshControl {...pullRefresh} tintColor={colors.clay} />
           }
         >
-          {category ? (
+          {kindTab ? (
+            grouped.length > 0 ? (
+              grouped.map((row) => (
+                <Row key={row.title} title={row.title}>
+                  {grid(row.items)}
+                </Row>
+              ))
+            ) : (
+              <Text style={{ color: colors.muted, fontSize: 13, textAlign: "center", marginTop: 30 }}>
+                ما فيه {kindTab.name} بعد.
+              </Text>
+            )
+          ) : category ? (
             grid((data?.items ?? []).filter((item) => item.categoryId === category.id))
           ) : (
             <>
+              {/* ترتيبُ «المميز» — **بقرار المالك**: الجديد، فالتمائم، فالإطارات، فالثيمات، فالمحدود. */}
               <Row title="وصل حديثاً" flame>{grid(data?.rows.fresh ?? [])}</Row>
+              {(data?.rows.charms?.length ?? 0) > 0 ? (
+                <Row title="التمائم">{grid(data?.rows.charms ?? [])}</Row>
+              ) : null}
+              {(data?.rows.frames?.length ?? 0) > 0 ? (
+                <Row title="الإطارات">{grid(data?.rows.frames ?? [])}</Row>
+              ) : null}
               <Row title="ثيمات آثار">{grid(data?.rows.themes ?? [])}</Row>
               {(data?.rows.bundles?.length ?? 0) > 0 ? (
                 <Row title="باقات">{grid(data?.rows.bundles ?? [])}</Row>

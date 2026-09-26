@@ -183,6 +183,10 @@ export type StoreItem = {
   earnedAfterDays: number | null;
   limited: boolean;
   categoryId: string | null;
+  /** المجموعةُ داخل نوعه — «مجموعة الورود» في التمائم. */
+  collectionId?: string | null;
+  /** مُدَدُ الشراء وأسعارُها — فارغةٌ لصنفٍ يُشترى مرّةً ويبقى. */
+  plans?: { id: string; days: number; priceCoins: number }[];
   palette: string | null;
   /** ما تحمله الحزمة — فارغٌ لما ليس حزمة. */
   holds?: { item: { id: string; name: string; kind: string; spec: string; mediaId: string | null } }[];
@@ -194,9 +198,19 @@ export const useStore = () =>
     queryFn: () =>
       api<{
         categories: { id: string; name: string; slug: string }[];
+        collections?: { id: string; name: string; kind: string }[];
         items: StoreItem[];
         owned: string[];
-        rows: { fresh: StoreItem[]; themes: StoreItem[]; bundles: StoreItem[]; limited: StoreItem[] };
+        /** متى ينتهي ما اشتُري بمدّة — بمعرّف الصنف. */
+        expires?: Record<string, string>;
+        rows: {
+          fresh: StoreItem[];
+          charms?: StoreItem[];
+          frames?: StoreItem[];
+          themes: StoreItem[];
+          bundles: StoreItem[];
+          limited: StoreItem[];
+        };
         coins: number;
         isPlus: boolean;
         daysHere: number;

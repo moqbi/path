@@ -38,7 +38,23 @@ export type Frame =
 export function frameZoom(frame: NonNullable<Frame>): number {
   const hole = frame.frameHole ?? 0;
   if (hole < 20 || hole > 99) return 1;
-  return 100 / hole;
+  // والحلقةُ تركب حافّةَ الوجه قليلاً (٥٪) لا تلامسها: الحافّتان متطابقتين
+  // تتركان خيطاً شفّافاً بينهما، وحلقةٌ غيرُ مستديرةٍ تمامًا تترك فراغاً.
+  return (100 / hole) * HOLE_OVERLAP;
+}
+
+const HOLE_OVERLAP = 0.95;
+
+/**
+ * كم يخرج رسمُ الإطار عن مربّع الصورة من كل جهة.
+ *
+ * الإطارُ المقيس يُكبَّر بمقلوب فراغه، فجناحاه يتجاوزان مربّع الصورة —
+ * وحاويةٌ تقصّ (صفُّ تعليقٍ يُسحب) تقطع ما خرج، ونصٌّ تحته يلتصق به.
+ * فمن يضع صورةً بإطارٍ في مكانٍ ضيّق يترك لها هذا القدر حولها.
+ */
+export function frameBleed(size: number, frame: Frame): number {
+  if (!frame?.mediaId) return 0;
+  return Math.max(0, Math.ceil((size * frameZoom(frame) - size) / 2));
 }
 
 /**
@@ -87,7 +103,7 @@ const CHARM_RATIO = 0.5;
  * لا يغطّيها.
  */
 function charmSeat(size: number, badge: number): { left: number; top: number } {
-  return { left: Math.round(-badge * 0.3), top: Math.round(size - badge) };
+  return { left: Math.round(-badge * 0.3), top: Math.round(size - badge * 0.8) };
 }
 
 export function Avatar({

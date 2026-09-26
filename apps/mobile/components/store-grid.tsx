@@ -8,7 +8,7 @@ import { CheckIcon, LockIcon } from "./icons";
 import { api } from "../lib/api";
 import { useSession } from "../lib/session";
 import { keys, type StoreItem } from "../lib/queries";
-import { ar, coinText } from "../lib/format";
+import { ar, coinText, daysLabel, leftUntil } from "../lib/format";
 import { colors } from "../theme/tokens";
 import { Sheet } from "./sheet";
 
@@ -167,9 +167,12 @@ export function StoreGrid({
   coins,
   daysHere,
   equipped,
+  expires = {},
 }: {
   items: StoreItem[];
   owned: string[];
+  /** متى ينتهي ما اشتُري بمدّة — بمعرّف الصنف. */
+  expires?: Record<string, string>;
   isPlus: boolean;
   coins: number;
   daysHere: number;
@@ -182,6 +185,13 @@ export function StoreGrid({
   /* نتيجةُ الشراء تُقال نافذةً: «تمّ الشراء» أو «رصيدك لا يكفي». */
   const [said, setSaid] = useState<{ ok?: string; error?: string } | null>(null);
   const [showing, setShowing] = useState(false);
+  /*
+    المدّةُ المختارة — **بقرار المالك**: للصنف مُدَدٌ بأسعار («يوم بـ٢٥،
+    خمسة أيام بـ٥٠، شهر بـ١٥٠») تُختار من قائمةٍ منسدلة في بطاقته، ويظهر
+    سعرُها. وما انتهت مدّتُه يختفي من صاحبه ويُشترى ثانيةً.
+  */
+  const [planId, setPlanId] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
 
   const refresh = () => {
     /*
@@ -198,7 +208,11 @@ export function StoreGrid({
   };
 
   const buy = useMutation({
-    mutationFn: (id: string) => api<{ ok: string }>(`/v1/store/${id}/buy`, { method: "POST" }),
+    mutationFn: ({ id, plan }: { id: string; plan?: string }) =>
+      api<{ ok: string }>(`/v1/store/${id}/buy`, {
+        method: "POST",
+        body: JSON.stringify(plan ? { plan } : {}),
+      }),
     onSuccess: (row) => {
       refresh();
       setSaid({ ok: row.ok });
@@ -237,6 +251,10 @@ export function StoreGrid({
   }
 
   const chosen = open;
+  const plans = chosen?.plans ?? [];
+  const plan = plans.find((one) => one.id === planId) ?? plans[0] ?? null;
+  const cost = (item: StoreItem) =>
+    plan && chosen && item.id === chosen.id ? price({ ...item, priceCoins: plan.priceCoins }) : price(item);
 
   return (
     <>
@@ -259,10 +277,52 @@ export function StoreGrid({
               <Text style={{ color: colors.clayInk, fontSize: 14, fontWeight: "600", marginTop: 4 }}>
                 {chosen.earnedAfterDays !== null
                   ? `يُكتسب بعد ${ar(chosen.earnedAfterDays)} يوم`
-                  : coinText(price(chosen))}
+                  : plan
+                    ? `${coinText(cost(chosen))} · ${daysLabel(plan.days)}`
+                    : coinText(price(chosen))}
               </Text>
+              {expires[chosen.id] ? (
+                <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 2 }}>{leftUntil(expires[chosen.id])}</Text>
+              ) : null}
             </View>
           </View>
+
+          {/* القائمةُ المنسدلة للمُدد: المختارةُ ظاهرة، والضغطُ يفتح البقيّة. */}
+          {plans.length > 0 && chosen.earnedAfterDays === null ? (
+            <View style={{ marginTop: 8 }}>
+              <Pressable
+                onPress={() => setPicking((was) => !was)}
+                style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", height: 44, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
+              >
+                <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600" }}>
+                  المدّة: {plan ? daysLabel(plan.days) : ""}
+                </Text>
+                <Text style={{ color: colors.muted, fontSize: 13 }}>{picking ? "▴" : "▾"}</Text>
+              </Pressable>
+              {picking ? (
+                <View style={{ marginTop: 4, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, overflow: "hidden" }}>
+                  {plans.map((one) => {
+                    const on = plan?.id === one.id;
+                    return (
+                      <Pressable
+                        key={one.id}
+                        onPress={() => {
+                          setPlanId(one.id);
+                          setPicking(false);
+                        }}
+                        style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 14, paddingVertical: 11, backgroundColor: on ? colors.claySoft : "transparent" }}
+                      >
+                        <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: on ? "700" : "500" }}>{daysLabel(one.days)}</Text>
+                        <Text style={{ color: colors.clayInk, fontSize: 13, fontWeight: "600" }}>
+                          {coinText(price({ ...chosen, priceCoins: one.priceCoins }))}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : null}
+            </View>
+          ) : null}
 
           <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
             <Pressable
@@ -323,23 +383,36 @@ export function StoreGrid({
             ) : (
               <Pressable
                 disabled={pending}
-                onPress={() => buy.mutate(chosen.id)}
+                onPress={() => buy.mutate({ id: chosen.id, plan: plan?.id })}
                 style={{ flex: 1, height: 48, borderRadius: 12, backgroundColor: colors.clay, alignItems: "center", justifyContent: "center", opacity: pending ? 0.6 : 1 }}
               >
                 <Text style={{ color: colors.onBrand, fontSize: 14, fontWeight: "700" }}>
-                  {pending ? "نشتري…" : `اشترِ بـ${coinText(price(chosen))}`}
+                  {pending ? "نشتري…" : `اشترِ بـ${coinText(cost(chosen))}`}
                 </Text>
               </Pressable>
             )}
           </View>
 
+          {/* ما اشتُري بمدّةٍ يُمدَّد من هنا: المدّةُ الجديدة تُضاف إلى ما بقي. */}
+          {ownedSet.has(chosen.id) && plan && expires[chosen.id] ? (
+            <Pressable
+              disabled={pending}
+              onPress={() => buy.mutate({ id: chosen.id, plan: plan.id })}
+              style={{ height: 46, borderRadius: 12, borderWidth: 1, borderColor: colors.clay, alignItems: "center", justifyContent: "center", marginTop: 8, opacity: pending ? 0.6 : 1 }}
+            >
+              <Text style={{ color: colors.clayInk, fontSize: 13.5, fontWeight: "700" }}>
+                مدّد {daysLabel(plan.days)} بـ{coinText(cost(chosen))}
+              </Text>
+            </Pressable>
+          ) : null}
+
           {/* والرصيد يُقال قبل الضغط لا بعده. */}
           {!ownedSet.has(chosen.id) &&
           chosen.earnedAfterDays === null &&
           !(chosen.plusOnly && !isPlus) &&
-          coins < price(chosen) ? (
+          coins < cost(chosen) ? (
             <Text style={{ color: colors.muted, fontSize: 11.5, textAlign: "center", marginTop: 8 }}>
-              رصيدك {coinText(coins)} — ينقصك {coinText(price(chosen) - coins)}
+              رصيدك {coinText(coins)} — ينقصك {coinText(cost(chosen) - coins)}
             </Text>
           ) : null}
 
@@ -458,6 +531,9 @@ export function StoreGrid({
               disabled={pending}
               onPress={() => {
                 setError(null);
+                // كلُّ بطاقةٍ تبدأ بأقصر مُددها مختارةً، والقائمةُ مطويّة.
+                setPlanId(item.plans?.[0]?.id ?? null);
+                setPicking(false);
                 setOpen(item);
               }}
               style={{
@@ -522,7 +598,10 @@ export function StoreGrid({
                 </View>
               ) : (
                 <Text style={{ color: colors.clayInk, fontSize: 11, fontWeight: "600" }}>
-                  {coinText(price(item))}
+                  {/* بمُدد: أرخصُها «من …» — والمدّةُ تُختار في البطاقة. */}
+                  {item.plans?.length
+                    ? `من ${coinText(price({ ...item, priceCoins: Math.min(...item.plans.map((one) => one.priceCoins)) }))}`
+                    : coinText(price(item))}
                 </Text>
               )}
             </Pressable>

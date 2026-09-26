@@ -4,17 +4,18 @@ import { Text } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { MomentCard, SPINE_W } from "../../components/moment-card";
-import { SPINE_X } from "../../components/spine";
 import { COVER_HEIGHT, CoverLayer } from "../../components/cover";
 import { Avatar } from "../../components/avatar";
 import { AthrMark } from "../../components/brand";
-import { MessageIcon, RefreshIcon, SparkIcon, StarIcon } from "../../components/icons";
+import { ClockIcon, MessageIcon, RefreshIcon, SparkIcon, StarIcon } from "../../components/icons";
 import { ComposerFan } from "../../components/composer-fan";
 import { Tour } from "../../components/tour";
+import { Spot } from "../../components/spot";
 import { PlusEnded } from "../../components/plus-ended";
 import { useCircle, useFeed, useTogether, useUnreadDm, type Moment } from "../../lib/queries";
 import { useSession } from "../../lib/session";
-import { ar, dayLabel, membership, MONTHS } from "../../lib/format";
+import { ar, dayLabel, membership, MONTHS, timeOfDay } from "../../lib/format";
+import { useTabTop } from "../../lib/tab-top";
 import { playRefresh } from "../../lib/sound";
 import { NameTag } from "../../components/name-tag";
 import { colors } from "../../theme/tokens";
@@ -66,7 +67,18 @@ export default function Timeline() {
         : (feed.data?.pages.flatMap((page) => page.moments) ?? []),
     [view, together.data, feed.data],
   );
-  const moments = lensMoments;
+  /*
+    لحظةٌ واحدة مرّةً واحدة، والأحدثُ أوّلاً — مهما جاءت الصفحات.
+    صفحتان تتداخلان بعد تحديثٍ (لحظةٌ نُشرت بين الجلبين) كانتا تُكرّران
+    لحظةً بمفتاحها نفسه، ومفتاحٌ مكرّر في القائمة يُربك رسمها فتتداخل
+    البطاقات ويخرج بعضها عن ترتيبه.
+  */
+  const moments = useMemo(() => {
+    const seen = new Set<string>();
+    return lensMoments
+      .filter((moment) => (seen.has(moment.id) ? false : (seen.add(moment.id), true)))
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
+  }, [lensMoments]);
 
   const friend = circle.data?.members.find((person) => person.id === withId) ?? null;
   const since = together.data?.since ? new Date(together.data.since) : null;
@@ -96,6 +108,33 @@ export default function Timeline() {
   const pull = useRef(new Animated.Value(0)).current;
   const spin = useRef(new Animated.Value(0)).current;
   const atTop = useRef(true);
+
+  /*
+    ساعةُ التمرير — **بقرار المالك**: قرصٌ صغير يسار القائمة فيه ساعةٌ
+    ووقتُ أعلى لحظةٍ ظاهرة، يظهر ما دام الإصبعُ يمرّر ويبهت بعده. من
+    نزل في يومٍ طويل يعرف أين هو منه بلا أن يقرأ بطاقةً بطاقة.
+  */
+  const list = useRef<SectionList<Moment>>(null);
+  const [clock, setClock] = useState<string | null>(null);
+  const clockFade = useRef(new Animated.Value(0)).current;
+  const clockTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showClock = () => {
+    if (clockTimer.current) clearTimeout(clockTimer.current);
+    Animated.timing(clockFade, { toValue: 1, duration: 120, useNativeDriver: true }).start();
+  };
+  const hideClock = () => {
+    if (clockTimer.current) clearTimeout(clockTimer.current);
+    clockTimer.current = setTimeout(() => {
+      Animated.timing(clockFade, { toValue: 0, duration: 260, useNativeDriver: true }).start();
+    }, 700);
+  };
+  const onViewable = useRef(({ viewableItems }: { viewableItems: { item: Moment | undefined }[] }) => {
+    const first = viewableItems.find((row) => row.item && "createdAt" in row.item)?.item;
+    if (first) setClock(timeOfDay(new Date(first.createdAt)));
+  }).current;
+
+  // الضغطةُ على «اللحظات» وهو ظاهرٌ ترجع إلى أعلاه.
+  useTabTop(() => list.current?.getScrollResponder()?.scrollTo({ y: 0, animated: true }));
   const [pulling, setPulling] = useState(false);
 
   const refreshMe = useSession((s) => s.refresh);
@@ -201,6 +240,7 @@ export default function Timeline() {
         </View>
 
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Spot id="header.plus">
           <Pressable
             onPress={() => router.push("/subscribe" as never)}
             style={{
@@ -218,7 +258,9 @@ export default function Timeline() {
             <SparkIcon size={13} color={colors.goldInk} />
             <Text style={{ color: colors.goldInk, fontSize: 12, fontWeight: "700" }}>آثار+</Text>
           </Pressable>
+          </Spot>
 
+          <Spot id="header.chats">
           <Pressable
             onPress={() => router.push("/messages" as never)}
             accessibilityLabel="المحادثات"
@@ -249,6 +291,7 @@ export default function Timeline() {
               </View>
             ) : null}
           </Pressable>
+          </Spot>
         </View>
       </View>
 
@@ -301,41 +344,11 @@ export default function Timeline() {
               paddingBottom: 16,
             }}
           >
-            <View style={{ width: SPINE_W, alignItems: "center" }}>
-              <Avatar
-                name={me.name}
-                size={68}
-                mediaId={me.avatarMediaId}
-                frame={me.frame}
-                charm={me.charm}
-              />
-            </View>
-
             {/*
-              الاسم أبعدُ عن الصورة (`marginRight`): التميمةُ تجلس يسارها
-              وأغلبُها خارجها (القاعدة ٥٩)، فكانت تلامس الاسم.
+              زرُّ التحديث في الطرف الأيمن قبل الصورة — **بقرار المالك** —
+              والصورةُ والاسم يتقدّمان يساراً بعده. فلم تعد الصورة على محور
+              الخيط، فذهب وصلُ الخيط تحتها: خيطٌ ينزل من تحت زرٍّ لا يعني شيئاً.
             */}
-            <View style={{ flex: 1, paddingBottom: 6, marginRight: 10 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Text
-                  style={{
-                    color: "#fff",
-                    fontSize: 14,
-                    fontWeight: "600",
-                    writingDirection: "auto",
-                    // ظلُّ الحرف بدل إعتام الغلاف كلّه.
-                    textShadowColor: "rgba(14,26,36,.62)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
-                  }}
-                >
-                  {me.name}
-                </Text>
-                <NameTag isPlus={me.isPlus} tag={me.tag} size={10} />
-              </View>
-              <Text style={{ color: "rgba(255,255,255,.92)", fontSize: 11.5, textShadowColor: "rgba(14,26,36,.62)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>
-                لك معانا {membership(me.createdAt)}
-              </Text>
-            </View>
-
             <Pressable
               onPress={() => {
               /*
@@ -397,25 +410,57 @@ export default function Timeline() {
                 <RefreshIcon size={17} color="#fff" />
               </Animated.View>
             </Pressable>
+            <View style={{ width: SPINE_W, alignItems: "center" }}>
+              <Avatar
+                name={me.name}
+                size={68}
+                mediaId={me.avatarMediaId}
+                frame={me.frame}
+                charm={me.charm}
+              />
+            </View>
+
+            {/*
+              الاسم أبعدُ عن الصورة (`marginRight`): التميمةُ تجلس يسارها
+              وأغلبُها خارجها (القاعدة ٥٩)، فكانت تلامس الاسم.
+            */}
+            <View style={{ flex: 1, paddingBottom: 6, marginRight: 10 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Text
+                  style={{
+                    color: "#fff",
+                    fontSize: 14,
+                    fontWeight: "600",
+                    writingDirection: "auto",
+                    // ظلُّ الحرف بدل إعتام الغلاف كلّه.
+                    textShadowColor: "rgba(14,26,36,.62)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
+                  }}
+                >
+                  {me.name}
+                </Text>
+                <NameTag isPlus={me.isPlus} tag={me.tag} size={10} />
+              </View>
+              <Text style={{ color: "rgba(255,255,255,.92)", fontSize: 11.5, textShadowColor: "rgba(14,26,36,.62)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>
+                لك معانا {membership(me.createdAt)}
+              </Text>
+            </View>
+
           </View>
 
-          {/* الخيط يبدأ من أسفل الصورة داخل الغلاف نفسه. */}
-          <View
-            style={{
-              position: "absolute",
-              insetInlineStart: SPINE_X,
-              bottom: 0,
-              width: 1,
-              height: 10,
-              backgroundColor: "rgba(255,255,255,.75)",
-            }}
-          />
         </Animated.View>
 
+        <View style={{ flex: 1 }}>
         <SectionList
+          ref={list}
           sections={days}
           keyExtractor={(item) => item.id}
           stickySectionHeadersEnabled={false}
+          onViewableItemsChanged={onViewable}
+          viewabilityConfig={{ itemVisiblePercentThreshold: 30 }}
+          onScrollBeginDrag={showClock}
+          onScrollEndDrag={hideClock}
+          onMomentumScrollBegin={showClock}
+          onMomentumScrollEnd={hideClock}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 90, flexGrow: 1 }}
           style={{ backgroundColor: colors.paper }}
           // موضعُ رأس القائمة وحده هو ما يأذن للسحب أن يلتقط الإيماءة.
@@ -479,6 +524,29 @@ export default function Timeline() {
             ) : null
           }
         />
+
+        {clock ? (
+          <Animated.View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              top: 10,
+              left: 12,
+              opacity: clockFade,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 5,
+              paddingHorizontal: 10,
+              height: 28,
+              borderRadius: 14,
+              backgroundColor: colors.chrome,
+            }}
+          >
+            <ClockIcon size={14} color={colors.chromeInk} />
+            <Text style={{ color: colors.chromeInk, fontSize: 11.5, fontWeight: "700" }}>{clock}</Text>
+          </Animated.View>
+        ) : null}
+        </View>
 
       </Animated.View>
 
