@@ -11,7 +11,7 @@ import { Bubble, CommentList, Reactors } from "./reactors";
 import { colors } from "../theme/tokens";
 import { openIn } from "../lib/browse";
 import { ar, relative, timeOfDay } from "../lib/format";
-import type { Moment } from "../lib/queries";
+import { useCircle, type Moment } from "../lib/queries";
 
 /** عمود الصور على محور الخط: نفس ٥٦ التي في الويب (`w-14`). */
 export const SPINE_W = 56;
@@ -134,6 +134,7 @@ export function MomentCard({
   here?: boolean;
 }) {
   const router = useRouter();
+  const circle = useCircle();
   const withNames = moment.tags.map((t) => t.name);
   const open = () => {
     if (!here) router.push(`/m/${moment.id}` as never);
@@ -165,6 +166,25 @@ export function MomentCard({
 
   if (isEvent) {
     const { title, subtitle } = eventText(moment, withNames, viewerId);
+    /*
+      اسمُ الطرف الآخر رابطٌ إلى ملفّه — في «أصبح صديق فلان» و«أهديت فلاناً»
+      و«وصلتك هدية من فلان». الطرفُ إشارةٌ على اللحظة (معرّفُه معها)، وما
+      كُتب قبل أن تُحفظ الإشارة يُعرف من دائرتك بالاسم نفسه.
+    */
+    const other =
+      moment.tags[0] ??
+      (moment.kind === "FRIEND_ADDED" && moment.text
+        ? (circle.data?.members ?? []).find((person) => person.name === moment.text) ?? null
+        : null);
+    const linked = other
+      ? moment.kind === "FRIEND_ADDED"
+        ? { before: "أصبح صديق ", id: other.id, name: other.name, after: "" }
+        : moment.kind === "GIFT_SENT"
+          ? { before: "أهديت ", id: other.id, name: other.name, after: ` ${moment.text ?? "هدية"}` }
+          : moment.kind === "GIFT_GOT"
+            ? { before: "وصلتك هدية من ", id: other.id, name: other.name, after: `: ${moment.text ?? "هدية"}` }
+            : null
+      : null;
 
     const line = (
       <Pressable onPress={open} style={{ flexDirection: "row", gap: 10 }}>
@@ -176,15 +196,16 @@ export function MomentCard({
               «أصبح صديق فلان» يصل إلى فلان بضغطة. واللحظاتُ القديمة بلا إشارة
               تبقى نصّاً.
             */}
-            {moment.kind === "FRIEND_ADDED" && moment.tags[0] ? (
+            {linked ? (
               <>
-                {"أصبح صديق "}
+                {linked.before}
                 <Text
-                  onPress={() => router.push(`/u/${moment.tags[0].id}` as never)}
+                  onPress={() => router.push(`/u/${linked.id}` as never)}
                   style={{ color: colors.clayInk, fontWeight: "700" }}
                 >
-                  {moment.tags[0].name}
+                  {linked.name}
                 </Text>
+                {linked.after}
               </>
             ) : (
               title

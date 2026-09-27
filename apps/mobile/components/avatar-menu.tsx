@@ -10,6 +10,8 @@ import { keys, useStore } from "../lib/queries";
 import { coinText } from "../lib/format";
 import { colors } from "../theme/tokens";
 import { Sheet } from "./sheet";
+import { viewPhoto } from "./photo-viewer";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 /** صنفٌ يلبسه صاحب الملف — إطارٌ أو تميمة — كما يُعرض في المتجر. */
 export type WornItem = {
@@ -54,6 +56,7 @@ export function AvatarMenu({
   charmItem: WornItem;
 }) {
   const [view, setView] = useState<"none" | "menu" | "photo" | "frame" | "charm">("none");
+  const insets = useSafeAreaInsets();
   const close = () => setView("none");
 
   return (
@@ -68,7 +71,24 @@ export function AvatarMenu({
 
       {view === "menu" ? (
         <Sheet onClose={close} title={name}>
-          <Row label="عرض صورة الملف الشخصي" onPress={() => setView("photo")} />
+          <Row
+            label="عرض صورة الملف الشخصي"
+            onPress={() => {
+              /*
+                الصورةُ في نافذة الصور العامّة (`viewPhoto`): زرُّ إغلاقها تحت
+                شريط الحالة لا فوقه، وتُغلق بالسحب إلى أسفل. وكانت هنا نافذةٌ
+                ثانية زرُّها على بُعد ١٦ من أعلى الشاشة — تحت الجزيرة الديناميكية
+                حيث لا تصله الضغطة. والتأخيرُ حتى تُغلق هذه النافذة: آبل لا تعرض
+                نافذةً وأختُها تُغلق (القاعدة ١٢٦).
+              */
+              if (mediaId) {
+                setView("none");
+                setTimeout(() => viewPhoto(mediaId), 380);
+              } else {
+                setView("photo");
+              }
+            }}
+          />
           {charmItem ? (
             <Row
               label="عرض معلومات التميمة"
@@ -117,7 +137,7 @@ export function AvatarMenu({
               style={{
                 position: "absolute",
                 left: 16,
-                top: 16,
+                top: insets.top + 12,
                 width: 40,
                 height: 40,
                 borderRadius: 20,

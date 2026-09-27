@@ -67,6 +67,9 @@ export const profileRoutes = new Hono()
     return c.json(await push.registerDevice(me(c), token, platform));
   })
 
+  /** تنبيهٌ تجريبيّ إلى أجهزتي — يردّ جواب الخدمة لكل جهاز. */
+  .post("/devices/test", async (c) => c.json(await push.testPush(me(c))))
+
   .delete("/devices", zValidator("json", z.object({ token: z.string().min(10).max(300) })), async (c) =>
     c.json(await push.forgetDevice(me(c), c.req.valid("json").token)),
   )

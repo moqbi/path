@@ -119,7 +119,17 @@ export default function Store() {
       {/* شريط التصنيفات: «المميز» أولاً، ثم ما يضيفه المشرف. */}
       <View style={{ paddingTop: 12, paddingBottom: 4 }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: "row", paddingHorizontal: 20, gap: 8 }}>
-          {[{ slug: "", name: "المميز" }, ...KINDS, ...(data?.categories ?? [])].map((chip) => {
+          {/*
+            تصنيفُ المشرف الذي يحمل اسمَ نوعٍ («التمائم») لا يُعرض ثانيةً بجانب
+            شريحة النوع نفسها: شريحتان باسمٍ واحد تُقرآن خطأً.
+          */}
+          {[
+            { slug: "", name: "المميز" },
+            ...KINDS,
+            ...(data?.categories ?? []).filter(
+              (row) => !KINDS.some((kind) => kind.name === row.name.trim()),
+            ),
+          ].map((chip) => {
             const on = slug === chip.slug;
             return (
               <Pressable

@@ -376,15 +376,18 @@ export default function Timeline() {
               });
             }}
               accessibilityLabel="تحديث الخط الزمني"
+              // ٢٤×٢٤ — **بقرار المالك** (كان ٣٦ فيُقرأ أكبر من الصورة جنبه)،
+              // ومساحةُ اللمس أوسعُ منه بـ`hitSlop` فلا يصغر الإصبعُ معه.
+              hitSlop={12}
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
+                width: 24,
+                height: 24,
+                borderRadius: 12,
                 alignItems: "center",
                 justifyContent: "center",
                 // قرصٌ داكن لا شفّاف: بلا درعٍ كان الأبيضُ يذوب في غلافٍ فاتح.
                 backgroundColor: "rgba(14,26,36,.38)",
-                marginBottom: 4,
+                marginBottom: 8,
               }}
             >
               {/*
@@ -407,7 +410,7 @@ export default function Timeline() {
                   ],
                 }}
               >
-                <RefreshIcon size={17} color="#fff" />
+                <RefreshIcon size={14} color="#fff" />
               </Animated.View>
             </Pressable>
             <View style={{ width: SPINE_W, alignItems: "center" }}>

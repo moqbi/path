@@ -118,21 +118,33 @@ export async function push(message: PushMessage): Promise<void> {
   }
 }
 
+type Ticket = { status: string; message?: string; details?: { error?: string } };
+
 /** يرسل الدفعة ويمسح ما ردّته الخدمةُ «جهازٌ لم يعد مسجّلاً». */
-async function deliver(messages: Record<string, unknown>[]): Promise<void> {
+async function deliver(messages: Record<string, unknown>[]): Promise<Ticket[]> {
   const response = await fetch(ENDPOINT, {
     method: "POST",
     headers: { "content-type": "application/json", accept: "application/json" },
     body: JSON.stringify(messages),
   });
   if (!response.ok) {
-    console.error("[push] ردّت الخدمة", response.status);
-    return;
+    const text = await response.text().catch(() => "");
+    console.error("[push] ردّت الخدمة", response.status, text.slice(0, 500));
+    return [{ status: "error", message: `HTTP ${response.status} ${text.slice(0, 200)}` }];
   }
 
-  const payload = (await response.json()) as {
-    data?: { status: string; details?: { error?: string } }[];
-  };
+  const payload = (await response.json()) as { data?: Ticket[] };
+
+  /*
+     كلُّ تذكرةٍ خاطئة تُكتب في السجلّ باسمها: `InvalidCredentials` تعني
+     مفتاح APNs غير مرفوعٍ لهذا المعرّف، و`MismatchSenderId` مفتاح FCM.
+     وكانت تُبلع كلُّها إلا «غير مسجّل»، فلا يُعرف لماذا لم يصل شيء.
+  */
+  for (const ticket of payload.data ?? []) {
+    if (ticket.status !== "ok") {
+      console.error("[push] رُفضت", ticket.details?.error ?? "", ticket.message ?? "");
+    }
+  }
 
   /*
      الرمزُ يموت حين يُحذف التطبيق أو تُلغى صلاحيتُه، والخدمةُ تقولها
@@ -147,6 +159,33 @@ async function deliver(messages: Record<string, unknown>[]): Promise<void> {
   if (dead.length) {
     await prisma.deviceToken.deleteMany({ where: { token: { in: dead } } });
   }
+  return payload.data ?? [];
+}
+
+/**
+ * تنبيهٌ تجريبيّ لصاحب الجلسة — بلا أبواب التفضيل والوضع الهادئ.
+ *
+ * يردّ ما قالته خدمة Expo لكل جهاز، فيُعرف من الشاشة نفسها أين انقطع
+ * الطريق: لا جهاز مسجّل، أو مفتاح آبل ناقص، أو وصل.
+ */
+export async function testPush(userId: string) {
+  const devices = await prisma.deviceToken.findMany({ where: { userId }, select: { token: true, platform: true } });
+  if (devices.length === 0) return { devices: 0, results: [] as string[] };
+  const tickets = await deliver(
+    devices.map((device) => ({
+      to: device.token,
+      title: "آثار مومنتس",
+      body: "تنبيهٌ تجريبيّ — التنبيهات تعمل",
+      sound: "default",
+      data: {},
+    })),
+  );
+  return {
+    devices: devices.length,
+    results: tickets.map((ticket) =>
+      ticket.status === "ok" ? "ok" : `${ticket.details?.error ?? "error"}: ${ticket.message ?? ""}`.trim(),
+    ),
+  };
 }
 
 /** تسجيلُ جهازٍ لصاحب الجلسة — والرمزُ ينتقل إليه إن كان لغيره. */
