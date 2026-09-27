@@ -1,5 +1,5 @@
 import { prisma } from "@athar/db";
-import { forgetNotifications } from "./notifications";
+import { forgetAllNotifications, forgetNotifications } from "./notifications";
 
 /**
  * تنبيهاتُ الجهاز عبر خدمة Expo.
@@ -116,6 +116,52 @@ export async function push(message: PushMessage): Promise<void> {
     // تنبيهٌ لم يخرج لا يُسقط الفعل الذي معه.
     console.error("[push] تعذّر الإرسال", problem);
   }
+}
+
+/**
+ * خبرٌ للجميع — صنفٌ جديد في المتجر.
+ *
+ * لا `push()` لكلّ حساب: ذاك استعلامٌ لكل واحد. هنا صفحاتٌ من خمسمئة
+ * حسابٍ فتح التنبيه ولديه جهاز، يُستثنى منها من في وضعه الهادئ، وتُرسل
+ * دفعاتٍ من مئة — أقصى ما تقبله خدمة Expo في الطلب الواحد.
+ */
+export async function broadcast(kind: PushKind, title: string, body: string, path?: string): Promise<number> {
+  // التبويبُ يُشتقّ من القاعدة، وخبيئتُه لا تعرف بالخبر حتى تُنسى.
+  forgetAllNotifications();
+
+  let cursor: string | undefined;
+  let sent = 0;
+  for (;;) {
+    const users = await prisma.user.findMany({
+      where: { [GATE[kind]]: true, devices: { some: {} } },
+      select: { id: true, quietFrom: true, quietTo: true, devices: { select: { token: true } } },
+      orderBy: { id: "asc" },
+      take: 500,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    });
+    if (users.length === 0) break;
+    cursor = users[users.length - 1].id;
+
+    const messages = users
+      .filter((user) => !inQuietHours(user.quietFrom, user.quietTo))
+      .flatMap((user) =>
+        user.devices.map((device) => ({
+          to: device.token,
+          title,
+          body,
+          sound: "default",
+          data: path ? { path } : {},
+        })),
+      );
+    for (let index = 0; index < messages.length; index += 100) {
+      await deliver(messages.slice(index, index + 100)).catch((problem) =>
+        console.error("[push] دفعةٌ لم تخرج", problem),
+      );
+    }
+    sent += messages.length;
+    if (users.length < 500) break;
+  }
+  return sent;
 }
 
 type Ticket = { status: string; message?: string; details?: { error?: string } };

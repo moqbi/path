@@ -548,6 +548,10 @@ model StoreItem {
   /// مخفيٌّ عن المتجر بيد المشرف — ولا يُنزع ممّن اشتراه: ما دُفع ثمنه
   /// يبقى في إكسسواراته ويُلبَس. بابُ الموسميّ: يُرفع ويُنزل بلا حذف.
   hidden    Boolean  @default(false)
+  /// متى نُبِّه الناسُ به — مرّةً لكل صنف حين يصير ظاهراً. فارغٌ = لم يُعلَن
+  /// بعد: الكنسُ يلتقطه ويختمه (`announceStore`). والصنفُ المخفيّ لا يُعلَن
+  /// حتى يُرفع، فالموسميُّ يُعلَن يوم يُعرض لا يوم أُعدّ.
+  announcedAt DateTime?
 
   categoryId String?
   category   StoreCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)

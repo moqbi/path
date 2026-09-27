@@ -21,6 +21,7 @@ import { contentRoutes, moderationRoutes, reportRoutes } from "./routes/v1/repor
 import { webhookRoutes } from "./routes/v1/webhooks";
 import { dripPlusCredit } from "./services/billing";
 import { expirePlus } from "./services/plus";
+import { announceStore } from "./services/store-news";
 import { expireRentals } from "./services/store";
 import { storyRoutes } from "./routes/v1/stories";
 import { siteRoutes } from "./routes/v1/site";
@@ -108,6 +109,8 @@ setInterval(
     void expirePlus().catch((error) => console.error("✗ انتهاء آثار+", error));
     // وما اشتُري بمدّةٍ وانتهت يُنزع ممّن يلبسه.
     void expireRentals().catch((error) => console.error("✗ انتهاء المدد", error));
+    // وجديدُ المتجر: ما رُفع من اللوحة يُقرع به جرسٌ مرّةً واحدة.
+    void announceStore().catch((error) => console.error("✗ إعلان المتجر", error));
   },
   5 * 60_000,
 ).unref();

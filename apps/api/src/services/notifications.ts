@@ -57,6 +57,11 @@ export function forgetNotifications(userId: string): void {
   cache.delete(userId);
 }
 
+/** يُنسى ما خُبّئ للجميع — خبرٌ يخصّ الناس كلَّهم (صنفٌ جديد في المتجر). */
+export function forgetAllNotifications(): void {
+  cache.clear();
+}
+
 export async function notifications(userId: string, limit = 40): Promise<Note[]> {
   const fresh = cache.get(userId);
   if (fresh && Date.now() - fresh.at < CACHE_MS) return fresh.notes.slice(0, limit);
