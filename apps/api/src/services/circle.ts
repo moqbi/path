@@ -257,8 +257,8 @@ export async function requestFriend(userId: string, targetId: string) {
   void push({
     userId: targetId,
     kind: "FRIEND",
-    title: who?.name ?? "طلب صداقة",
-    body: "يبغى يكون من دائرتك",
+    title: "طلب صداقة جديد",
+    body: `${who?.name ?? "شخص"} يبغى يكون من دائرتك`,
     path: "/circle",
   });
 

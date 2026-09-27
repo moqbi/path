@@ -599,6 +599,17 @@ export default function Login() {
                 </Text>
               </BrandButton>
 
+              {/* خطأُ المزوّد يُقرأ هنا: كان يُكتب في نموذج البريد وحده، فيُرى
+                  زرُّ سناب «لا يضغط» وهو يفشل بصمت. */}
+              {error ? (
+                <Text
+                  accessibilityRole="alert"
+                  style={{ fontSize: 12.5, fontWeight: "500", color: "#ff9d84", textAlign: "center" }}
+                >
+                  {error}
+                </Text>
+              ) : null}
+
               {notice ? (
                 <Text
                   accessibilityRole="text"

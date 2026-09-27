@@ -89,8 +89,8 @@ async function attachTags(momentId: string, authorId: string, userIds: string[])
     void push({
       userId: row.userId,
       kind: "TAG",
-      title: who?.name ?? "صديقك",
-      body: "أشار إليك في لحظة",
+      title: "إشارة جديدة",
+      body: `${who?.name ?? "صديقك"} أشار إليك في لحظته`,
       path: `/m/${momentId}`,
     });
   }
@@ -356,8 +356,8 @@ export async function react(
     void push({
       userId: moment.authorId,
       kind: "REACTION",
-      title: who?.name ?? "صديقك",
-      body: "تفاعل مع لحظتك",
+      title: "تفاعل جديد على لحظتك",
+      body: `${who?.name ?? "صديقك"} تفاعل مع لحظتك`,
       path: `/m/${momentId}`,
     });
   }
@@ -395,7 +395,7 @@ export async function addComment(userId: string, momentId: string, body: string)
     void push({
       userId: moment.authorId,
       kind: "COMMENT",
-      title: comment.user.name,
+      title: `تعليق جديد على لحظتك من ${comment.user.name}`,
       body: comment.body.slice(0, 120),
       path: `/m/${momentId}`,
     });

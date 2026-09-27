@@ -129,20 +129,18 @@ function snapRedirect(): string {
   return site || AuthSession.makeRedirectUri({ scheme: "athar", path: "snap" });
 }
 
-export function useSnap() {
-  const clientId = process.env.EXPO_PUBLIC_SNAP_CLIENT_ID ?? "";
-  const redirectUri = snapRedirect();
+function snapConfig(): AuthSession.AuthRequestConfig {
+  return {
+    clientId: process.env.EXPO_PUBLIC_SNAP_CLIENT_ID ?? "",
+    scopes: SNAP_SCOPES,
+    redirectUri: snapRedirect(),
+    responseType: "code",
+    usePKCE: true,
+  };
+}
 
-  return AuthSession.useAuthRequest(
-    {
-      clientId,
-      scopes: SNAP_SCOPES,
-      redirectUri,
-      responseType: "code",
-      usePKCE: true,
-    },
-    SNAP,
-  );
+export function useSnap() {
+  return AuthSession.useAuthRequest(snapConfig(), SNAP);
 }
 
 /**
@@ -158,7 +156,11 @@ export function useSnap() {
  * ويردّ `null` حين يُلغي المستخدم: الإلغاء ليس خطأً يُعرض.
  */
 export async function promptSnapLogin(request: AuthSession.AuthRequest | null): Promise<Me | null> {
-  if (!request) throw new Error("لحظة… نجهّز الدخول بسناب، جرّب ثانيةً");
+  /*
+    الطلبُ يُبنى هنا إن لم يجهز الخطّاف بعد — ضغطةٌ في أوّل ثانيةٍ من
+    فتح الشاشة كانت تسقط على «نجهّز» فلا يُفتح شيء.
+  */
+  if (!request) request = new AuthSession.AuthRequest(snapConfig());
   const url = request.url ?? (await request.makeAuthUrlAsync(SNAP));
   const result = await WebBrowser.openAuthSessionAsync(url, "athar://snap");
   if (result.type !== "success") return null;

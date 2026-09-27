@@ -215,7 +215,8 @@ export async function send(
   void push({
     userId: to,
     kind: "DM",
-    title: who?.name ?? "رسالة جديدة",
+    // العنوانُ يقول ما جرى ومن فعله، والمتنُ ما قيل (القاعدة ١٦٨).
+    title: `رسالة جديدة من ${who?.name ?? "صديقك"}`,
     // ولا يُكتب متنُ الرسالة الصوتية ولا الصورة: نوعُها خبرُها.
     body:
       input.kind === "TEXT"
