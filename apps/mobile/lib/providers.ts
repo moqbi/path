@@ -111,8 +111,25 @@ const SNAP_SCOPES = [
   "https://auth.snapchat.com/oauth2/api/user.external_id",
 ];
 
+/**
+ * معرّفُ العميل يسأل الخادمَ أوّلاً (`/v1/auth/providers`): تطبيقُ سناب قد
+ * يبقى قيد مراجعتها بعد نشر نسختنا، فيُفتح بمعرّفٍ لم يُعتمد ويردّ «Failed
+ * to load authorization data». والخادمُ يبدّله بلا بناء. وما في البناء
+ * احتياطٌ لخادمٍ قديمٍ لا يعرف البابَ.
+ */
+let snapClient: string = process.env.EXPO_PUBLIC_SNAP_CLIENT_ID ?? "";
+
+export async function loadProviders(): Promise<void> {
+  try {
+    const answer = await api<{ snap: string | null }>("/v1/auth/providers");
+    snapClient = answer.snap ?? "";
+  } catch {
+    // خادمٌ بلا البابِ بعد: يبقى ما في البناء.
+  }
+}
+
 export function snapReady(): boolean {
-  return Boolean(process.env.EXPO_PUBLIC_SNAP_CLIENT_ID);
+  return Boolean(snapClient);
 }
 
 /**
@@ -131,7 +148,7 @@ function snapRedirect(): string {
 
 function snapConfig(): AuthSession.AuthRequestConfig {
   return {
-    clientId: process.env.EXPO_PUBLIC_SNAP_CLIENT_ID ?? "",
+    clientId: snapClient,
     scopes: SNAP_SCOPES,
     redirectUri: snapRedirect(),
     responseType: "code",
@@ -160,7 +177,8 @@ export async function promptSnapLogin(request: AuthSession.AuthRequest | null): 
     الطلبُ يُبنى هنا إن لم يجهز الخطّاف بعد — ضغطةٌ في أوّل ثانيةٍ من
     فتح الشاشة كانت تسقط على «نجهّز» فلا يُفتح شيء.
   */
-  if (!request) request = new AuthSession.AuthRequest(snapConfig());
+  // وطلبٌ بُني قبل جواب الخادم يحمل معرّفاً قديماً: يُعاد بناؤه.
+  if (!request || request.clientId !== snapClient) request = new AuthSession.AuthRequest(snapConfig());
   const url = request.url ?? (await request.makeAuthUrlAsync(SNAP));
   const result = await WebBrowser.openAuthSessionAsync(url, "athar://snap");
   if (result.type !== "success") return null;
@@ -180,7 +198,7 @@ export async function promptSnapLogin(request: AuthSession.AuthRequest | null): 
  * «من صاحبُه؟» — فلا يُصدَّق ما يقوله التطبيق عن نفسه.
  */
 export async function finishSnap(code: string, verifier: string): Promise<Me> {
-  const clientId = process.env.EXPO_PUBLIC_SNAP_CLIENT_ID ?? "";
+  const clientId = snapClient;
   const redirectUri = snapRedirect();
 
   const token = await AuthSession.exchangeCodeAsync(

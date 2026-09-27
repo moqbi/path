@@ -84,4 +84,11 @@ export const authRoutes = new Hono()
     return c.json({ ok: true });
   })
 
+  /*
+     معرّفُ عميل سناب من بيئة الخادم لا من البناء: تطبيقُ سناب قد يبقى
+     «قيد المراجعة» بعد نشر نسختنا، ومعرّفٌ مدموجٌ في النسخة لا يُبدَّل إلا
+     ببناءٍ ومراجعةِ آبل. فارغٌ = الزرّ يختفي.
+  */
+  .get("/providers", (c) => c.json({ snap: process.env.SNAP_CLIENT_ID || null }))
+
   .get("/me", requireAuth, async (c) => c.json({ user: await auth.profile(me(c)) }));

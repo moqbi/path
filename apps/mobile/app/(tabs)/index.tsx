@@ -9,7 +9,6 @@ import { Avatar } from "../../components/avatar";
 import { AthrMark } from "../../components/brand";
 import { ClockIcon, MessageIcon, RefreshIcon, SparkIcon, StarIcon } from "../../components/icons";
 import { ComposerFan } from "../../components/composer-fan";
-import { Tour } from "../../components/tour";
 import { Spot } from "../../components/spot";
 import { PlusEnded } from "../../components/plus-ended";
 import { useCircle, useFeed, useTogether, useUnreadDm, type Moment } from "../../lib/queries";
@@ -554,7 +553,6 @@ export default function Timeline() {
       </Animated.View>
 
       <ComposerFan />
-      <Tour />
       <PlusEnded />
     </SafeAreaView>
   );

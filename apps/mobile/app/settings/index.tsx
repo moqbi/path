@@ -11,6 +11,7 @@ import { Sheet } from "../../components/sheet";
 import { openIn } from "../../lib/browse";
 import { api } from "../../lib/api";
 import { testPush } from "../../lib/push";
+import { startTour } from "../../components/tour";
 import { keys } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { SITE_URL, hasSite } from "@athar/shared";
@@ -250,6 +251,16 @@ export default function Settings() {
           note="مشكلة أو اقتراح أو بلاغ — نردّ عليك داخل التطبيق"
           right={<InfoIcon size={18} color={colors.clayInk} />}
           onPress={() => router.push("/settings/support" as never)}
+        />
+
+        <Link
+          title="الجولة التعريفية"
+          note="أعد جولة الأزرار من أوّلها"
+          right={<InfoIcon size={18} color={colors.clayInk} />}
+          onPress={() => {
+            router.navigate("/" as never);
+            setTimeout(startTour, 400);
+          }}
         />
 
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16 }}>

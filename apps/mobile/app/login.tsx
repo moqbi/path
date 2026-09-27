@@ -20,6 +20,7 @@ import {
   promptSnapLogin,
   useGoogle,
   useSnap,
+  loadProviders,
 } from "../lib/providers";
 import { AthrMark, AthrWordmark, TAGLINE_AR, TAGLINE_EN } from "../components/brand";
 import { BackIcon } from "../components/icons";
@@ -216,6 +217,11 @@ export default function Login() {
   */
   const [, googleAnswer, promptGoogle] = useGoogle();
   const [snapRequest] = useSnap();
+  // زرُّ سناب يتبع الخادم: يظهر حين يكون لها معرّفٌ معتمد، ويختفي حين لا.
+  const [snapOn, setSnapOn] = useState(snapReady());
+  useEffect(() => {
+    void loadProviders().then(() => setSnapOn(snapReady()));
+  }, []);
 
   useEffect(() => {
     if (googleAnswer?.type !== "success") return;
@@ -570,7 +576,9 @@ export default function Login() {
           ) : (
             <View style={{ gap: 10 }}>
               <View style={{ flexDirection: "row", gap: 10 }}>
-                {PROVIDERS.filter((provider) => provider.key !== "apple" || appleReady()).map((provider) => (
+                {PROVIDERS.filter(
+                  (provider) => (provider.key !== "apple" || appleReady()) && (provider.key !== "snap" || snapOn),
+                ).map((provider) => (
                   <Pressable
                     key={provider.key}
                     accessibilityRole="button"

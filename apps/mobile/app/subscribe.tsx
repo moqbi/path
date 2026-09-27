@@ -101,6 +101,8 @@ export default function Subscribe() {
   const [chosen, setChosen] = useState<string | null>(null);
   // نافذةُ النتيجة (القاعدة ٩٣ب): «تمّ» تُقرأ ولا تُستنتج من رجوعٍ صامت.
   const [welcome, setWelcome] = useState<null | { live: boolean }>(null);
+  // والفشلُ نافذةٌ كذلك: سطرٌ صغير أسفل الشاشة لا يُرى، فيُقرأ «لا شيء حدث».
+  const [failure, setFailure] = useState<string | null>(null);
 
   // باقاتُ المتجر بأسعاره — تُقرأ مرّةً عند فتح الشاشة.
   useEffect(() => {
@@ -128,7 +130,7 @@ export default function Subscribe() {
       const live = await waitForPlus(done, () => Boolean(useSession.getState().me?.isPlus));
       setWelcome({ live });
     },
-    onError: (problem) => setNote(problem instanceof Error ? problem.message : "تعذّر الشراء"),
+    onError: (problem) => setFailure(problem instanceof Error ? problem.message : "تعذّر الشراء"),
     onSettled: () => setChosen(null),
   });
 
@@ -138,6 +140,7 @@ export default function Subscribe() {
       await done();
       setNote(active ? "استُعيد اشتراكك" : "لا مشترياتٍ لهذا الحساب");
     },
+    onError: (problem) => setFailure(problem instanceof Error ? problem.message : "تعذّرت الاستعادة"),
   });
 
   /* تفعيلٌ بلا دفع — للتجربة وحدها، ومغلقٌ على الخادم ما لم يُفتح هناك. */
@@ -328,6 +331,20 @@ export default function Subscribe() {
               style={{ alignSelf: "stretch", height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
             >
               <Text style={{ color: colors.onBrand, fontSize: 14.5, fontWeight: "700" }}>تمام</Text>
+            </Pressable>
+          </View>
+        </Sheet>
+      ) : null}
+
+      {failure ? (
+        <Sheet title="لم يكتمل الشراء" onClose={() => setFailure(null)}>
+          <View style={{ alignItems: "center", gap: 12, paddingVertical: 8 }}>
+            <Text style={{ color: colors.ink, fontSize: 14, lineHeight: 24, textAlign: "center" }}>{failure}</Text>
+            <Pressable
+              onPress={() => setFailure(null)}
+              style={{ alignSelf: "stretch", height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
+            >
+              <Text style={{ color: colors.onBrand, fontSize: 14.5, fontWeight: "700" }}>حسناً</Text>
             </Pressable>
           </View>
         </Sheet>

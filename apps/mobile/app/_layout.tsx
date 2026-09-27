@@ -20,6 +20,7 @@ import { markFirstSeen } from "../lib/rate";
 import { watchCity } from "../lib/arrive";
 import { Suspended } from "../components/suspended";
 import { PhotoViewer } from "../components/photo-viewer";
+import { Tour } from "../components/tour";
 import { applyTheme, colors, themeStore } from "../theme/tokens";
 
 /**
@@ -208,6 +209,8 @@ function Gate() {
     />
     {/* نافذةُ الصورة هنا لا في البطاقة: لا جدَّ لها يلتقط سحبتها. */}
     <PhotoViewer />
+    {/* الجولةُ طبقةٌ فوق المكدّس كلّه، لمن دخل وحده. */}
+    {me ? <Tour key={me.id} /> : null}
     </>
   );
 }

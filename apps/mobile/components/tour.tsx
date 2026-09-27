@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { View, Pressable, Modal, Animated, Easing, Dimensions } from "react-native";
+import { View, Pressable, Animated, Easing, BackHandler, useWindowDimensions } from "react-native";
+import { create } from "zustand";
 import Svg, { Path } from "react-native-svg";
 import { Text } from "./type";
 import { measureSpot, type Rect } from "./spot";
@@ -66,6 +67,27 @@ const STEPS: Step[] = [
   },
 ];
 
+/**
+ * خطوةُ الجولة في مخزنٍ لا في حالة المكوّن: «أعد الجولة» في الإعدادات
+ * يبدؤها من شاشةٍ أخرى.
+ */
+const useTour = create<{ step: number | null }>(() => ({ step: null }));
+
+/** يبدأ الجولةَ من أوّلها — من الإعدادات لمن تخطّاها أو فاتته. */
+export function startTour() {
+  useTour.setState({ step: 0 });
+}
+
+/** يقيس الهدف، ويعيد المحاولة: تبويبٌ فُتح للتوّ قد لا يكون رُسم بعد. */
+async function measureSoon(id: string): Promise<Rect | null> {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const rect = await measureSpot(id);
+    if (rect) return rect;
+    await new Promise((done) => setTimeout(done, 200));
+  }
+  return null;
+}
+
 /** حولَ الهدف فراغٌ يتنفّس فيه — الدائرة لا تلتصق بحوافّه. */
 const PAD = 14;
 
@@ -82,17 +104,34 @@ const PAD = 14;
  */
 export function Tour() {
   const router = useRouter();
-  const [step, setStep] = useState<number | null>(null);
+  const step = useTour((state) => state.step);
+  const setStep = (next: number | null) => useTour.setState({ step: next });
+  const screen = useWindowDimensions();
   const [hole, setHole] = useState<Rect | null>(null);
   const fade = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
     void getItem(KEY).then((seen) => {
-      // مهلةٌ قصيرة: الشريطُ السفليّ يُرسم بعد الشاشة، ولا دائرة بلا هدف.
-      if (seen !== "1") setTimeout(() => setStep(0), 700);
+      /*
+        مهلةٌ تسبق الجولة: نافذةُ إذن التنبيهات تُطلب مع الدخول، والشريطُ
+        السفليّ يُرسم بعد الشاشة — ولا دائرة بلا هدف.
+      */
+      if (seen !== "1") timer = setTimeout(() => startTour(), 1800);
     });
+    return () => clearTimeout(timer);
   }, []);
+
+  // زرُّ الرجوع في أندرويد يُغلقها كما كانت النافذة تُغلق.
+  useEffect(() => {
+    if (step === null) return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      void close();
+      return true;
+    });
+    return () => sub.remove();
+  }, [step]);
 
   // كلُّ خطوةٍ تقيس هدفها ساعتها، ثمّ تظهر.
   useEffect(() => {
@@ -108,7 +147,7 @@ export function Tour() {
     if (current.route) router.navigate(current.route as never);
     useFan.setState({ open: Boolean(current.fan) });
     const settle = new Promise((done) => setTimeout(done, current.fan || current.route ? 520 : 60));
-    void settle.then(() => (id ? measureSpot(id) : null)).then((rect) => {
+    void settle.then(() => (id ? measureSoon(id) : null)).then((rect) => {
       if (!alive) return;
       // التبويبُ أيقونةٌ وتحتها اسمُه: الدائرةُ تحتضن الاثنين لا الأيقونة وحدها.
       setHole(rect && id.startsWith("tab.") ? { ...rect, height: rect.height + 16 } : rect);
@@ -146,7 +185,6 @@ export function Tour() {
 
   if (step === null) return null;
 
-  const screen = Dimensions.get("window");
   const current = STEPS[step];
   const last = step === STEPS.length - 1;
 
@@ -178,7 +216,12 @@ export function Tour() {
     : { top: screen.height / 2 - 110 };
 
   return (
-    <Modal transparent animationType="none" onRequestClose={() => void close()} statusBarTranslucent>
+    /*
+      طبقةٌ في الجذر لا `Modal`: آبل تعرض نافذةً واحدة فوق الشاشة، فإن
+      كانت نافذةُ إذن التنبيهات قائمةً ساعةَ تُطلب الجولة سقط عرضُها بصمت
+      (القاعدة ١٢٦) — والجولةُ «لا تعمل». والطبقةُ لا تنتظر أحداً.
+    */
+    <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000, elevation: 1000 }}>
       <Animated.View style={{ flex: 1, opacity: fade }}>
         {/* تعتيمٌ خفيف لا ظلام: الشاشةُ تبقى مقروءةً حول الدائرة. */}
         <Svg width={screen.width} height={screen.height} style={{ position: "absolute" }}>
@@ -252,6 +295,6 @@ export function Tour() {
           </View>
         </View>
       </Animated.View>
-    </Modal>
+    </View>
   );
 }
