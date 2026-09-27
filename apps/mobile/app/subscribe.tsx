@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ScreenHeader } from "../components/screen-header";
+import { Sheet } from "../components/sheet";
 import { BookIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, StoreIcon, WithIcon } from "../components/icons";
 import { TagPill } from "../components/name-tag";
 import { SUPPORTER_TAG } from "@athar/shared";
@@ -96,6 +97,10 @@ export default function Subscribe() {
 
   const [offers, setOffers] = useState<Plan[] | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  // الباقةُ التي ضُغطت: تُضاء وحدها وعليها دوّارة، فيُعرف أنّ الضغطة وصلت.
+  const [chosen, setChosen] = useState<string | null>(null);
+  // نافذةُ النتيجة (القاعدة ٩٣ب): «تمّ» تُقرأ ولا تُستنتج من رجوعٍ صامت.
+  const [welcome, setWelcome] = useState<null | { live: boolean }>(null);
 
   // باقاتُ المتجر بأسعاره — تُقرأ مرّةً عند فتح الشاشة.
   useEffect(() => {
@@ -115,15 +120,16 @@ export default function Subscribe() {
     mutationFn: async (planId: string) => {
       const result = await buy(planId);
       if (result.cancelled) return;
-      if (!result.active) throw new Error("لم يكتمل الشراء");
+      /*
+        دفعٌ لم يُلغَ دفعٌ تمّ: `active` يقول هل ربط RevenueCat الاستحقاقَ
+        بالمنتج، لا هل خُصم المال — ونقصُ ذلك الربط كان يُقرأ «لم يكتمل»
+        والمبلغ قد خرج. والخادمُ هو من يقول «فعّال».
+      */
       const live = await waitForPlus(done, () => Boolean(useSession.getState().me?.isPlus));
-      if (!live) {
-        setNote("تمّ الشراء — التفعيل خلال دقيقة. اسحب للتحديث إن تأخّر.");
-        return;
-      }
-      router.back();
+      setWelcome({ live });
     },
     onError: (problem) => setNote(problem instanceof Error ? problem.message : "تعذّر الشراء"),
+    onSettled: () => setChosen(null),
   });
 
   const recover = useMutation({
@@ -193,21 +199,29 @@ export default function Subscribe() {
         ) : offers && offers.length > 0 ? (
           <View style={{ gap: 12, paddingTop: 8 }}>
             <View style={{ flexDirection: "row", gap: 10 }}>
-              {offers.map((offer) => (
+              {offers.map((offer) => {
+                const picked = chosen === offer.id;
+                return (
                 <Pressable
                   key={offer.id}
-                  onPress={() => act.mutate(offer.id)}
+                  onPress={() => {
+                    setNote(null);
+                    setChosen(offer.id);
+                    act.mutate(offer.id);
+                  }}
                   disabled={act.isPending}
-                  style={{
+                  style={({ pressed }) => ({
                     flex: 1,
                     borderRadius: 16,
-                    borderWidth: offer.yearly ? 1.5 : 1,
-                    borderColor: offer.yearly ? colors.gold : colors.line,
-                    backgroundColor: offer.yearly ? colors.goldSoft : "transparent",
+                    borderWidth: picked ? 2 : offer.yearly ? 1.5 : 1,
+                    borderColor: picked ? colors.clay : offer.yearly ? colors.gold : colors.line,
+                    backgroundColor: picked || offer.yearly ? colors.goldSoft : "transparent",
                     paddingVertical: 16,
                     paddingHorizontal: 12,
                     alignItems: "center",
-                  }}
+                    opacity: chosen && !picked ? 0.45 : 1,
+                    transform: [{ scale: pressed || picked ? 0.97 : 1 }],
+                  })}
                 >
                   <Text style={{ color: offer.yearly ? colors.goldInk : colors.muted, fontSize: 11.5, marginBottom: 6 }}>
                     {offer.yearly ? "سنوي" : "شهري"}
@@ -217,8 +231,10 @@ export default function Subscribe() {
                   <Text style={{ color: colors.ink, fontSize: 22, fontWeight: "700", writingDirection: "auto" }}>
                     {offer.price}
                   </Text>
+                  {picked ? <ActivityIndicator color={colors.clay} style={{ marginTop: 8 }} /> : null}
                 </Pressable>
-              ))}
+                );
+              })}
             </View>
 
             {/* المتجر التجريبي يُقال صراحةً: شراءٌ وهميّ لا يُحسب. */}
@@ -286,6 +302,36 @@ export default function Subscribe() {
         </Text>
 
       </ScrollView>
+
+      {welcome ? (
+        <Sheet
+          title={welcome.live ? "أهلاً بك في آثار+" : "تمّ الشراء"}
+          onClose={() => {
+            setWelcome(null);
+            if (welcome.live) router.back();
+          }}
+        >
+          <View style={{ alignItems: "center", gap: 12, paddingVertical: 8 }}>
+            <View style={{ width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", backgroundColor: colors.goldSoft }}>
+              <SparkIcon size={26} color={colors.gold} />
+            </View>
+            <Text style={{ color: colors.ink, fontSize: 14, lineHeight: 24, textAlign: "center" }}>
+              {welcome.live
+                ? "اشتراكك فعّال الآن — النجمة ووسم «داعم» بجانب اسمك، و١٠٠٠ نقطة في رصيدك."
+                : "وصل الدفع، والتفعيل يصل خلال دقيقة. ارجع إلى اللحظات واسحب للتحديث إن تأخّر."}
+            </Text>
+            <Pressable
+              onPress={() => {
+                setWelcome(null);
+                router.back();
+              }}
+              style={{ alignSelf: "stretch", height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
+            >
+              <Text style={{ color: colors.onBrand, fontSize: 14.5, fontWeight: "700" }}>تمام</Text>
+            </Pressable>
+          </View>
+        </Sheet>
+      ) : null}
     </SafeAreaView>
   );
 }

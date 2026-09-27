@@ -97,12 +97,21 @@ export type Plan = {
  * والضريبة والتقريب يختلفان بين بلدٍ وآخر — ورقمٌ مكتوب في الشاشة
  * يخالف ما يُخصم فعلاً سببُ رفضٍ في المراجعة.
  */
+type Package = Awaited<ReturnType<Purchases["getOfferings"]>>["all"][string]["availablePackages"][number];
+
+/*
+  الحزمُ تُحفظ حين تُقرأ لتُشترى منها: كان الشراءُ يسأل المتجرَ عن العروض
+  ثانيةً مع كل ضغطة، فتمضي ثوانٍ بين اللمسة ونافذة آبل بلا أثرٍ على الشاشة.
+*/
+let cached: Package[] = [];
+
 export async function plans(): Promise<Plan[]> {
   const purchases = await load();
   if (!purchases) return [];
 
   const offerings = await purchases.getOfferings();
   const packages = offerings.current?.availablePackages ?? [];
+  cached = packages;
 
   return packages.map((item) => ({
     id: item.identifier,
@@ -116,9 +125,12 @@ export async function buy(planId: string): Promise<{ active: boolean; cancelled:
   const purchases = await load();
   if (!purchases) return { active: false, cancelled: false };
 
-  const offerings = await purchases.getOfferings();
-  const item = offerings.current?.availablePackages.find((one) => one.identifier === planId);
-  if (!item) return { active: false, cancelled: false };
+  let item = cached.find((one) => one.identifier === planId);
+  if (!item) {
+    await plans();
+    item = cached.find((one) => one.identifier === planId);
+  }
+  if (!item) throw new Error("الباقة غير موجودة في المتجر — تحقّق من العرض في RevenueCat");
 
   try {
     const { customerInfo } = await purchases.purchasePackage(item);
