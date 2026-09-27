@@ -149,7 +149,7 @@ const SKIP_VALUES = new Set([
 ]);
 
 async function overpass(lat: number, lng: number): Promise<NearbyPlace[]> {
-  const query = `[out:json][timeout:8];nwr(around:${RADIUS_M},${lat},${lng})[name][~"^(amenity|shop|leisure|tourism|healthcare|office|craft|sport)$"~"."];out center 300;`;
+  const query = `[out:json][timeout:5];nwr(around:${RADIUS_M},${lat},${lng})[name][~"^(amenity|shop|leisure|tourism|healthcare|office|craft|sport)$"~"."];out center 300;`;
   const ask = (endpoint: string) =>
     fetch(endpoint, {
       method: "POST",
@@ -158,7 +158,7 @@ async function overpass(lat: number, lng: number): Promise<NearbyPlace[]> {
         "User-Agent": "ATHAR-Moments/0.1",
       },
       body: `data=${encodeURIComponent(query)}`,
-      signal: AbortSignal.timeout(9000),
+      signal: AbortSignal.timeout(6000),
     }).then(async (response) => {
       if (!response.ok) throw new Error(String(response.status));
       return (await response.json()) as { elements?: OverpassElement[] };
@@ -200,7 +200,7 @@ async function photon(lat: number, lng: number): Promise<NearbyPlace[]> {
 
   const response = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0 (compatible; ATHAR-Moments/0.1)" },
-    signal: AbortSignal.timeout(9000),
+    signal: AbortSignal.timeout(5000),
   });
   if (!response.ok) return [];
 
@@ -229,32 +229,172 @@ async function photon(lat: number, lng: number): Promise<NearbyPlace[]> {
 }
 
 /**
- * الأماكن حول المستخدم — كلُّ مكانٍ مسمّى في كيلومتر، الأقربُ أوّلاً.
+ * قوقل أوّلاً — **بقرار المالك**: «الموقع ما يجيب الأماكن ويأخذ وقتاً».
+ *
+ * والعلّةُ في المصدر لا في الشاشة: OpenStreetMap في المملكة ناقصٌ في
+ * أحياءٍ كاملة — مقاهٍ ومطاعم لم يرسمها أحد — وخوادمُ Overpass العامة
+ * تمهل حتى تسع ثوانٍ قبل أن تردّ. وقوقل يعرف المحلّ الذي فُتح أمس،
+ * ويردّ في أقلّ من ثانية، وباسمه العربيّ ونوعه بالعربية
+ * (`primaryTypeDisplayName`) فلا قاموسَ أنواعٍ نكتبه بأيدينا.
+ *
+ * بابُه `places:searchNearby` (Places API New) بمفتاحٍ على الخادم
+ * (`GOOGLE_PLACES_KEY`) لا في التطبيق: المفتاحُ في الحزمة يقرؤه كلُّ من
+ * فكّها، والنداءُ من عندنا يُبقي إحداثيات الناس بين الخادم وقوقل وحدهما.
+ * وبلا مفتاحٍ يبقى OpenStreetMap كما كان — لا يتعطّل شيء.
+ *
+ * طلبان معاً: الأقربُ (`DISTANCE`) والأشهرُ (`POPULARITY`) في الدائرة
+ * نفسها — الحدُّ عشرون لكلّ طلب، والأقربُ وحده يملأ القائمة بمحلّات
+ * البناية نفسها ويُغيب المقهى المعروف على بعد مئتي متر.
+ */
+const GOOGLE_NEARBY = "https://places.googleapis.com/v1/places:searchNearby";
+const GOOGLE_TEXT = "https://places.googleapis.com/v1/places:searchText";
+const GOOGLE_FIELDS = "places.id,places.displayName,places.location,places.primaryType,places.primaryTypeDisplayName";
+
+/** ما لا يُنشر عنه في قوقل: طرقٌ ومواقفُ وصرّافات ومحطّاتُ نقل. */
+const GOOGLE_SKIP = new Set([
+  "parking", "atm", "bus_stop", "bus_station", "transit_station", "transit_depot", "route",
+  "street_address", "premise", "subpremise", "plus_code", "postal_code", "intersection",
+  "electric_vehicle_charging_station", "public_bathroom", "light_rail_station",
+]);
+
+type GooglePlace = {
+  id?: string;
+  displayName?: { text?: string };
+  location?: { latitude?: number; longitude?: number };
+  primaryType?: string;
+  primaryTypeDisplayName?: { text?: string };
+};
+
+function fromGoogle(lat: number, lng: number, list: GooglePlace[] | undefined): NearbyPlace[] {
+  const places: NearbyPlace[] = [];
+  for (const place of list ?? []) {
+    const name = place.displayName?.text?.trim();
+    const pointLat = place.location?.latitude;
+    const pointLng = place.location?.longitude;
+    if (!name || !place.id || pointLat === undefined || pointLng === undefined) continue;
+    if (place.primaryType && GOOGLE_SKIP.has(place.primaryType)) continue;
+    places.push({
+      id: `g${place.id}`,
+      name,
+      kind: place.primaryTypeDisplayName?.text ?? null,
+      meters: metersBetween(lat, lng, pointLat, pointLng),
+      lat: pointLat,
+      lng: pointLng,
+    });
+  }
+  return places;
+}
+
+async function askGoogle(url: string, key: string, body: unknown): Promise<GooglePlace[]> {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "X-Goog-Api-Key": key,
+      "X-Goog-FieldMask": GOOGLE_FIELDS,
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(4000),
+  });
+  if (!response.ok) {
+    // السببُ في السجلّ: مفتاحٌ مقيّد أو واجهةٌ لم تُفعَّل أو فوترةٌ لم تُربط.
+    console.error("[places] google", response.status, (await response.text().catch(() => "")).slice(0, 300));
+    throw new Error(`google ${response.status}`);
+  }
+  const data = (await response.json()) as { places?: GooglePlace[] };
+  return data.places ?? [];
+}
+
+async function google(lat: number, lng: number, key: string): Promise<NearbyPlace[]> {
+  const circle = { circle: { center: { latitude: lat, longitude: lng }, radius: RADIUS_M } };
+  const ask = (rankPreference: "DISTANCE" | "POPULARITY") =>
+    askGoogle(GOOGLE_NEARBY, key, {
+      maxResultCount: 20,
+      rankPreference,
+      languageCode: "ar",
+      regionCode: "SA",
+      locationRestriction: circle,
+    });
+  // واحدٌ ينجح يكفي: قائمةٌ من عشرين خيرٌ من لا شيء.
+  const [near, known] = await Promise.allSettled([ask("DISTANCE"), ask("POPULARITY")]);
+  if (near.status === "rejected" && known.status === "rejected") throw near.reason;
+  return fromGoogle(lat, lng, [
+    ...(near.status === "fulfilled" ? near.value : []),
+    ...(known.status === "fulfilled" ? known.value : []),
+  ]);
+}
+
+/**
+ * بحثٌ بالاسم حول المستخدم — لما لم يظهر في القائمة: المكانُ الذي أنت
+ * فيه قد يكون أبعدَ من العشرين الأقرب، أو اسمُه بلغةٍ أخرى.
+ * منحازٌ إلى موقعه (`locationBias`) لا محصورٌ فيه، فالاسمُ يجد صاحبه
+ * وإن كان على بعد كيلومترين. وبلا مفتاح قوقل قائمةٌ فارغة.
+ */
+export async function searchPlaces(lat: number, lng: number, text: string): Promise<NearbyPlace[]> {
+  const key = process.env.GOOGLE_PLACES_KEY;
+  const q = text.trim().slice(0, 80);
+  if (!key || q.length < 2) return [];
+  try {
+    const list = await askGoogle(GOOGLE_TEXT, key, {
+      textQuery: q,
+      maxResultCount: 15,
+      languageCode: "ar",
+      regionCode: "SA",
+      locationBias: { circle: { center: { latitude: lat, longitude: lng }, radius: 5000 } },
+    });
+    return fromGoogle(lat, lng, list).sort((a, b) => a.meters - b.meters);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * OpenStreetMap: Overpass وPhoton **معاً** لا واحداً بعد آخر — كان الثاني
+ * لا يُسأل إلا بعد أن تمهل خوادمُ الأوّل تسع ثوانٍ، فتنتظر الشاشةُ ثماني
+ * عشرة ثانيةً لتقول «ما لقينا شيئاً». والأغنى يُؤخذ.
+ */
+async function openStreetMap(lat: number, lng: number): Promise<NearbyPlace[]> {
+  const [full, quick] = await Promise.allSettled([overpass(lat, lng), photon(lat, lng)]);
+  const a = full.status === "fulfilled" ? full.value : [];
+  const b = quick.status === "fulfilled" ? quick.value : [];
+  return a.length >= b.length ? a : b;
+}
+
+/**
+ * الأماكن حول المستخدم — الأقربُ أوّلاً، في كيلومتر.
  *
  * `reverseGeocode` تردّ أقرب عنوان — وغالباً شارعاً — وهذا لا يقول أين
  * أنت: في المقهى أم في المطعم المجاور. فهنا نسأل عن المعالم المسمّاة
- * حولك (مطاعم ومقاهٍ ومحلّات وخدمات وأسواق)، ويختار صاحبها بنفسه.
+ * حولك، ويختار صاحبها بنفسه.
  *
- * Overpass أوّلاً لأنّه يسأل عن **كلّ** ما في الدائرة لا عن أقرب خمسين
- * شيئاً، وPhoton احتياطٌ إن أمهلت خوادمُه كلُّها. والفشلان معاً يردّان
- * قائمةً فارغة: الواجهة تُبقي «أقرب عنوان» فلا يتعطّل النشر.
- *
- * والحدُّ ما في الخريطة: OpenStreetMap في المملكة ناقصٌ في أحياءٍ دون
- * أحياء، فما لم يُرسم فيها لا يظهر هنا.
+ * قوقل إن كان له مفتاح، وOpenStreetMap إن لم يكن أو فشل. والفشلان معاً
+ * قائمةٌ فارغة: الواجهة تُبقي «أقرب عنوان» فلا يتعطّل النشر.
  */
-export async function nearbyPlaces(lat: number, lng: number, limit = 80): Promise<NearbyPlace[]> {
+export async function nearbyPlaces(
+  lat: number,
+  lng: number,
+  limit = 60,
+): Promise<{ places: NearbyPlace[]; source: "google" | "osm" }> {
+  const key = process.env.GOOGLE_PLACES_KEY;
   let places: NearbyPlace[] = [];
-  try {
-    places = await overpass(lat, lng);
-  } catch {
-    places = await photon(lat, lng).catch(() => []);
+  let source: "google" | "osm" = "osm";
+  if (key) {
+    places = await google(lat, lng, key).catch(() => []);
+    if (places.length) source = "google";
   }
+  if (!places.length) places = await openStreetMap(lat, lng).catch(() => []);
 
-  // اسمٌ واحد مرّةً واحدة — الأقربُ منه — فالسلسلةُ لا تملأ القائمة بفروعها.
-  const seen = new Set<string>();
-  return places
-    .filter((place) => place.meters <= RADIUS_M)
-    .sort((a, b) => a.meters - b.meters)
-    .filter((place) => (seen.has(place.name) ? false : (seen.add(place.name), true)))
-    .slice(0, limit);
+  // المعرّفُ مرّةً واحدة (الطلبان يتقاطعان)، والاسمُ مرّةً — الأقربُ منه —
+  // فالسلسلةُ لا تملأ القائمة بفروعها.
+  const ids = new Set<string>();
+  const names = new Set<string>();
+  return {
+    source,
+    places: places
+      .filter((place) => place.meters <= RADIUS_M)
+      .sort((a, b) => a.meters - b.meters)
+      .filter((place) => (ids.has(place.id) ? false : (ids.add(place.id), true)))
+      .filter((place) => (names.has(place.name) ? false : (names.add(place.name), true)))
+      .slice(0, limit),
+  };
 }

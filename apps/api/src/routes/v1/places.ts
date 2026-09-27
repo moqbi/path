@@ -1,8 +1,9 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { requireActive, requireAuth, me } from "../../middleware/auth";
-import { nearbyPlaces } from "../../lib/places";
+import { nearbyPlaces, searchPlaces } from "../../lib/places";
 import { checkInCity } from "../../services/moments";
+import { rateLimit } from "../../middleware/rate-limit";
 
 /**
  * الأماكن حول المستخدم.
@@ -21,13 +22,24 @@ const query = z.object({
 
 export const placeRoutes = new Hono()
   .use("*", requireAuth)
+  // كلُّ بحثٍ نداءٌ مدفوعٌ عند قوقل: عشرون في الدقيقة تكفي إصبعاً يكتب.
+  .use("/search", rateLimit(20, 60))
 
   .get("/nearby", async (c) => {
     const parsed = query.safeParse({ lat: c.req.query("lat"), lng: c.req.query("lng") });
     if (!parsed.success) return c.json({ places: [] });
 
-    const places = await nearbyPlaces(parsed.data.lat, parsed.data.lng);
-    return c.json({ places });
+    // `source` تقرؤه الشاشة لتنسب القائمة إلى قوقل كما تشترط شروطُه.
+    return c.json(await nearbyPlaces(parsed.data.lat, parsed.data.lng));
+  })
+
+  // بحثٌ بالاسم لما لم يظهر في القائمة — قوقل وحده، وبلا مفتاحٍ فارغ.
+  .get("/search", async (c) => {
+    const parsed = query.safeParse({ lat: c.req.query("lat"), lng: c.req.query("lng") });
+    const text = c.req.query("q") ?? "";
+    if (!parsed.success) return c.json({ places: [], source: "google" });
+    const places = await searchPlaces(parsed.data.lat, parsed.data.lng, text);
+    return c.json({ places, source: "google" });
   })
 
   /*
