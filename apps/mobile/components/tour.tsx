@@ -12,8 +12,13 @@ import { colors } from "../theme/tokens";
 /**
  * الجولة تُعرض مرّةً لكل جهاز. والمفتاحُ بنسخةٍ (`v3`): الجولةُ الجديدة
  * شيءٌ آخر، فمن رأى القديمة يراها مرّةً.
+ *
+ * و**نقاطٌ لا نقطتان رأسيّتان**: المخزنُ الآمن لا يقبل في المفتاح إلا
+ * الحروفَ والأرقام و`.` و`-` و`_`، ويرمي على غيرها. فكان `athr:tour:v3`
+ * يُسقط القراءةَ فلا تبدأ الجولةُ وحدها، ويُسقط الكتابةَ في `close()` قبل
+ * أن تُغلق — فـ«تخطَّ» و«ابدأ» لا يفعلان شيئاً.
  */
-const KEY = "athr:tour:v3";
+const KEY = "athr.tour.v3";
 
 type Step = {
   /** هدفُ الدائرة — فارغٌ لخطوةٍ تُقرأ وحدها بلا هدف (الخاتمة). */
@@ -113,7 +118,7 @@ export function Tour() {
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
-    void getItem(KEY).then((seen) => {
+    void getItem(KEY).catch(() => null).then((seen) => {
       /*
         مهلةٌ تسبق الجولة: نافذةُ إذن التنبيهات تُطلب مع الدخول، والشريطُ
         السفليّ يُرسم بعد الشاشة — ولا دائرة بلا هدف.
@@ -127,7 +132,7 @@ export function Tour() {
   useEffect(() => {
     if (step === null) return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      void close();
+      close();
       return true;
     });
     return () => sub.remove();
@@ -176,11 +181,12 @@ export function Tour() {
     return () => loop.stop();
   }, [step, pulse]);
 
-  async function close() {
-    await setItem(KEY, "1");
+  // الإغلاقُ أوّلاً ثمّ الحفظ: مخزنٌ يفشل لا يحبس الشاشة تحت الجولة.
+  function close() {
+    setStep(null);
     useFan.setState({ open: false });
     router.navigate("/" as never);
-    setStep(null);
+    void setItem(KEY, "1").catch(() => {});
   }
 
   if (step === null) return null;
@@ -280,12 +286,12 @@ export function Tour() {
             </View>
 
             {last ? null : (
-              <Pressable onPress={() => void close()} hitSlop={10} style={{ paddingHorizontal: 12, height: 38, justifyContent: "center" }}>
+              <Pressable onPress={() => close()} hitSlop={10} style={{ paddingHorizontal: 12, height: 38, justifyContent: "center" }}>
                 <Text style={{ color: "rgba(255,255,255,.75)", fontSize: 13 }}>تخطَّ</Text>
               </Pressable>
             )}
             <Pressable
-              onPress={() => (last ? void close() : setStep(step + 1))}
+              onPress={() => (last ? close() : setStep(step + 1))}
               style={{ height: 38, paddingHorizontal: 18, borderRadius: 999, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: "#fff" }}
             >
               <Text style={{ color: "#fff", fontSize: 13.5, fontWeight: "700" }}>
