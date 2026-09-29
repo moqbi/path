@@ -105,3 +105,29 @@ export const socialLinks = cache(async function socialLinks() {
     .findMany({ where: { hidden: false }, orderBy: { sortOrder: "asc" } })
     .catch(() => []);
 });
+
+/**
+ * لقطاتُ «من داخل التطبيق» الظاهرة، مرتّبة. وبلا صفٍّ واحد — قاعدةٌ جديدة
+ * أو قبل أن يرفع المشرف شيئاً — اللقطاتُ الثلاث المحفوظة مع الكود.
+ * والصورةُ من البابِ العامّ لصور الموقع (`/api/site-media`) لا من
+ * `/api/media` الذي يشترط جلسة: زائرُ الهبوط لا جلسةَ له.
+ */
+export type Shot = { id: string; label: string; src: string };
+
+export const DEFAULT_SHOTS: Shot[] = [
+  { id: "timeline", label: "الخط الزمني", src: "/shots/timeline.webp" },
+  { id: "circle", label: "الدائرة", src: "/shots/circle.webp" },
+  { id: "profile", label: "الملف الشخصي", src: "/shots/profile.webp" },
+];
+
+export const siteShots = cache(async function siteShots(): Promise<Shot[]> {
+  const rows = await prisma.siteShot
+    .findMany({
+      where: { hidden: false },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      select: { id: true, label: true, mediaId: true },
+    })
+    .catch(() => []);
+  if (rows.length === 0) return DEFAULT_SHOTS;
+  return rows.map((row) => ({ id: row.id, label: row.label, src: `/api/site-media/${row.mediaId}` }));
+});

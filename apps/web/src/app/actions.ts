@@ -8,7 +8,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { createSession, destroySession, requireUser, verifyPassword } from "@/lib/auth";
 import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
-import { dropMedia, migrateToCloud, storeUpload } from "@/lib/media";
+import { dropMedia, migrateToCloud, storeSiteShot, storeUpload } from "@/lib/media";
 import { cloudReady, probeBucket } from "@/lib/storage";
 import { forgetWords } from "@/lib/moderation";
 import { SUSPEND_HOURS } from "@/lib/suspend";
@@ -1330,6 +1330,97 @@ export async function clearSiteImage(key: string): Promise<void> {
   if (!row) return;
   await prisma.siteImage.delete({ where: { key } });
   await dropMedia([row.mediaId]);
+  revalidatePath("/", "layout");
+  revalidatePath("/admin");
+}
+
+// ── لقطات «من داخل التطبيق» ──
+
+const shotLabel = z.string().trim().min(1, "اكتب اسم الشاشة").max(40, "الاسم طويل");
+
+/**
+ * لقطةٌ جديدة لصفحة الهبوط. تقبل المتحرّكة (GIF أو WebP) بملفها
+ * (`storeSiteShot`)، وتُضاف في آخر الصفّ.
+ */
+export async function addSiteShot(formData: FormData): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  const label = shotLabel.safeParse(formData.get("label"));
+  if (!label.success) return { error: label.error.issues[0]?.message ?? "اسم غير صالح" };
+  const file = formData.get("image");
+  if (!(file instanceof File) || file.size === 0) return { error: "ما وصلت الصورة" };
+
+  try {
+    const media = await storeSiteShot(
+      admin.id,
+      file,
+      Number(formData.get("width") ?? 0),
+      Number(formData.get("height") ?? 0),
+    );
+    const last = await prisma.siteShot.aggregate({ _max: { sortOrder: true } });
+    await prisma.siteShot.create({
+      data: { label: label.data, mediaId: media.id, sortOrder: (last._max.sortOrder ?? 0) + 1 },
+    });
+  } catch (problem) {
+    return { error: problem instanceof Error ? problem.message : "تعذّر رفع اللقطة" };
+  }
+  revalidatePath("/", "layout");
+  revalidatePath("/admin");
+  return { ok: "أُضيفت" };
+}
+
+/** اسمُها وترتيبُها وإخفاؤها. */
+export async function updateSiteShot(
+  id: string,
+  _prev: AdminResult,
+  formData: FormData,
+): Promise<AdminResult> {
+  await requireAdmin();
+  const label = shotLabel.safeParse(formData.get("label"));
+  if (!label.success) return { error: label.error.issues[0]?.message ?? "اسم غير صالح" };
+  const order = z.coerce.number().int().min(0).max(999).safeParse(formData.get("sortOrder") || 0);
+  if (!order.success) return { error: "الترتيب رقمٌ من ٠ إلى ٩٩٩" };
+
+  await prisma.siteShot.updateMany({
+    where: { id },
+    data: { label: label.data, sortOrder: order.data, hidden: formData.get("hidden") === "on" },
+  });
+  revalidatePath("/", "layout");
+  revalidatePath("/admin");
+  return { ok: "حُفظ" };
+}
+
+/** تبديلُ صورتها — والقديمةُ تذهب بملفّها (القاعدة ١٠٤). */
+export async function replaceSiteShot(id: string, formData: FormData): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  const file = formData.get("image");
+  if (!(file instanceof File) || file.size === 0) return { error: "ما وصلت الصورة" };
+  const row = await prisma.siteShot.findUnique({ where: { id }, select: { mediaId: true } });
+  if (!row) return { error: "اللقطة غير موجودة" };
+
+  try {
+    const media = await storeSiteShot(
+      admin.id,
+      file,
+      Number(formData.get("width") ?? 0),
+      Number(formData.get("height") ?? 0),
+    );
+    await prisma.siteShot.update({ where: { id }, data: { mediaId: media.id } });
+  } catch (problem) {
+    return { error: problem instanceof Error ? problem.message : "تعذّر رفع اللقطة" };
+  }
+  await dropMedia([row.mediaId]);
+  revalidatePath("/", "layout");
+  revalidatePath("/admin");
+  return { ok: "بُدّلت" };
+}
+
+export async function deleteSiteShot(id: string): Promise<void> {
+  await requireAdmin();
+  const row = await prisma.siteShot.findUnique({ where: { id }, select: { mediaId: true } });
+  if (!row) return;
+  // الصفُّ يذهب مع ملفّه بـ`Cascade`، والكائنُ في السحابة يُمسح بيده.
+  await dropMedia([row.mediaId]);
+  await prisma.siteShot.deleteMany({ where: { id } });
   revalidatePath("/", "layout");
   revalidatePath("/admin");
 }

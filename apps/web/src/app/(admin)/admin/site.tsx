@@ -11,6 +11,7 @@ import {
   type AdminResult,
 } from "@/app/actions";
 import { ImagePicker } from "@/components/image-picker";
+import { SiteShots } from "./site-shots";
 import { CameraIcon, CloseIcon } from "@/components/icons";
 import { SocialIcon } from "@/components/social";
 import { PLATFORMS } from "@/lib/platforms";
@@ -113,7 +114,7 @@ function HeroImage({ mediaId }: { mediaId: string | null }) {
         className="mb-2.5 h-28 w-full rounded-xl"
         style={{
           background: mediaId
-            ? `center / cover no-repeat url(/api/media/${mediaId})`
+            ? `center / cover no-repeat url(/api/site-media/${mediaId})`
             : "linear-gradient(135deg,#0e1a24,#7a4a3e,#c9743f)",
         }}
       />
@@ -387,11 +388,13 @@ export function SitePanel({
   defaults,
   heroMediaId,
   links,
+  shots,
 }: {
   text: Record<string, string>;
   defaults: Record<string, string>;
   heroMediaId: string | null;
   links: { id: string; platform: string; url: string; sortOrder: number; hidden: boolean }[];
+  shots: { id: string; label: string; mediaId: string; sortOrder: number; hidden: boolean }[];
 }) {
   return (
     <>
@@ -403,6 +406,8 @@ export function SitePanel({
       </p>
 
       <HeroImage mediaId={heroMediaId} />
+
+      <SiteShots shots={shots} />
 
       {GROUPS.map((group) => (
         <section key={group.title} className="mb-6">

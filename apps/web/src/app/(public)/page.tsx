@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { AthrMark, AthrWordmark } from "@/components/brand";
 import { HeroArt } from "./hero-art";
-import { lines, siteImage, siteText, storeUrl } from "@/lib/site";
+import { lines, siteImage, siteShots, siteText, storeUrl } from "@/lib/site";
+import { ShotsCarousel } from "./shots-carousel";
 
 /*
   أربع مزايا لا أكثر: ما يفعله المستخدم في التطبيق كل يوم.
@@ -49,17 +50,6 @@ const FEATURES = [
       </>
     ),
   },
-] as const;
-
-/*
-  لقطاتٌ حقيقية من التطبيق — **بقرار المالك**: كانت شاشاتٍ مرسومةً بعناصر
-  الصفحة (`shots.tsx`)، والرسمُ يُقرأ نموذجاً لا تطبيقاً. وشريطُ الحالة
-  مقصوصٌ منها: ساعةُ جهازٍ وشبكتُه وبطاريّتُه لا تخصّ التطبيق.
-*/
-const SHOTS = [
-  { key: "timeline", label: "الخط الزمني", src: "/shots/timeline.webp" },
-  { key: "circle", label: "الدائرة", src: "/shots/circle.webp" },
-  { key: "profile", label: "الملف الشخصي", src: "/shots/profile.webp" },
 ] as const;
 
 /**
@@ -166,6 +156,8 @@ function FeatureIcon({ children }: { children: React.ReactNode }) {
 export default async function LandingPage() {
   const text = await siteText();
   const hero = await siteImage("hero");
+  // اللقطاتُ من اللوحة، وبلا صفٍّ فيها الثلاثُ الأصليّة (`DEFAULT_SHOTS`).
+  const shots = await siteShots();
   const ios = storeUrl(text["store.ios"]);
   const android = storeUrl(text["store.android"]);
 
@@ -183,7 +175,7 @@ export default async function LandingPage() {
             <div
               aria-hidden
               className="hero-photo"
-              style={{ backgroundImage: `url(/api/media/${hero})` }}
+              style={{ backgroundImage: `url(/api/site-media/${hero})` }}
             />
             <div aria-hidden className="hero-veil" />
           </>
@@ -266,22 +258,7 @@ export default async function LandingPage() {
         <h2 className="section-title">{text["shots.title"]}</h2>
         <p className="section-sub">{text["shots.sub"]}</p>
 
-        <div className="no-bar mt-10 flex justify-start gap-6 overflow-x-auto pb-4 sm:justify-center">
-          {SHOTS.map((shot, index) => (
-            <figure
-              key={shot.key}
-              className="flex shrink-0 flex-col items-center gap-3"
-              // الأوسطُ أعلى قليلاً: ثلاثةُ هواتف في صفٍّ مستوٍ تُقرأ رفّاً لا عرضاً.
-              style={{ marginTop: index === 1 ? 0 : 28 }}
-            >
-              <div className="phone phone-shot">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={shot.src} alt={`لقطة من ${shot.label} في آثار مومنتس`} loading="lazy" />
-              </div>
-              <figcaption className="text-[12.5px] font-bold text-ink-2">{shot.label}</figcaption>
-            </figure>
-          ))}
-        </div>
+        <ShotsCarousel shots={shots} />
       </section>
 
       {/* ───────────── الخصوصية ───────────── */}

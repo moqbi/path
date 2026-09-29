@@ -738,6 +738,8 @@ model Media {
 
   /// صورةُ موقعٍ عامّة إن كانت — الرأس مثلاً.
   siteImage SiteImage? @relation("SiteImage")
+  /// لقطةٌ من داخل التطبيق في صفحة الهبوط.
+  siteShot  SiteShot?  @relation("SiteShot")
 
   @@index([ownerId, createdAt])
   @@index([ready, createdAt])
@@ -869,6 +871,26 @@ model SiteImage {
   media   Media  @relation("SiteImage", fields: [mediaId], references: [id], onDelete: Cascade)
 
   updatedAt DateTime @updatedAt
+}
+
+/**
+ * لقطاتُ «من داخل التطبيق» في صفحة الهبوط — تُرفع وتُرتَّب وتُخفى من
+ * لوحة الموقع بلا نشر نسخة، وتقبل الصورة المتحرّكة (GIF أو WebP) لتُري
+ * التطبيق وهو يُستعمل. وبلا صفٍّ واحد تُعرض اللقطاتُ الثلاث المحفوظة مع
+ * الكود (`public/shots`) — قاعدةٌ جديدة لا تعرض قسماً فارغاً.
+ */
+model SiteShot {
+  id        String  @id @default(cuid())
+  /// ما يُكتب تحت الهاتف: «الخط الزمني».
+  label     String
+  mediaId   String  @unique
+  media     Media   @relation("SiteShot", fields: [mediaId], references: [id], onDelete: Cascade)
+  sortOrder Int     @default(0)
+  hidden    Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([hidden, sortOrder])
 }
 
 /**

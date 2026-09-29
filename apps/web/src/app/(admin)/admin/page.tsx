@@ -401,7 +401,7 @@ export default async function AdminPage({
 
   const [
     items, tags, people, categories, tickets, reports, bannedWords, packs,
-    userCount, staff, site, heroMediaId, socials, logs, found,
+    userCount, staff, site, heroMediaId, socials, logs, found, shots,
   ] = await Promise.all([
     prisma.storeItem.findMany({
       orderBy: { sortOrder: "asc" },
@@ -544,6 +544,13 @@ export default async function AdminPage({
             adminScope: true,
             canModerate: true,
           },
+        })
+      : Promise.resolve([]),
+    // لقطاتُ «من داخل التطبيق» في صفحة الهبوط.
+    scope === "ALL"
+      ? prisma.siteShot.findMany({
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+          select: { id: true, label: true, mediaId: true, sortOrder: true, hidden: true },
         })
       : Promise.resolve([]),
   ]);
@@ -1543,6 +1550,7 @@ export default async function AdminPage({
             defaults={SITE_TEXT as unknown as Record<string, string>}
             heroMediaId={heroMediaId}
             links={socials}
+            shots={shots}
           />
         ) : null}
 
