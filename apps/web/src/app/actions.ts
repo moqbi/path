@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { mailReply, tellSupport } from "@/lib/support-mail";
 import { readTicketFiles, saveTicketFiles } from "@/lib/ticket-files";
+import { BETA_DEVICES, CONTACT_REASONS, TOPIC_LABEL, type ContactReason } from "@/lib/topics";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -1155,7 +1156,23 @@ export async function openPublicTicket(
   _prev: AdminResult,
   formData: FormData,
 ): Promise<AdminResult> {
-  return sendPublicTicket(formData, null);
+  // سببُ التواصل من قائمةٍ مغلقة: ما لم يكن فيها لا يُكتب في القاعدة.
+  const reason = String(formData.get("reason") ?? "");
+  if (!CONTACT_REASONS.some((item) => item.key === reason)) return { error: "اختر سبب التواصل" };
+  return sendPublicTicket(formData, reason as ContactReason);
+}
+
+/**
+ * «انضمّ إلى فريق التجربة» — من ذيل الموقع. اسمٌ وبريدٌ ونوعُ الجهاز:
+ * دعوةُ TestFlight تُرسَل إلى بريد آبل، ونسخةُ أندرويد التجريبية إلى بريد
+ * قوقل — فالجهازُ يقول أيَّ دعوةٍ تُرسَل. ولا مرفقات.
+ */
+export async function joinBeta(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  const device = String(formData.get("device") ?? "");
+  if (!(BETA_DEVICES as readonly string[]).includes(device)) return { error: "اختر جهازك" };
+  const note = String(formData.get("body") ?? "").trim().slice(0, 600);
+  const body = `الجهاز: ${device}${note ? `\n\n${note}` : ""}`;
+  return sendPublicTicket(formData, "beta", body);
 }
 
 /**
@@ -1170,11 +1187,16 @@ export async function applyForJob(
   return sendPublicTicket(formData, "careers");
 }
 
-async function sendPublicTicket(formData: FormData, topic: "careers" | null): Promise<AdminResult> {
+async function sendPublicTicket(
+  formData: FormData,
+  topic: ContactReason | "careers" | "beta",
+  body?: string,
+): Promise<AdminResult> {
   const parsed = publicMessage.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
-    body: formData.get("body"),
+    // طلبُ التجربة يُكتب متنُه هنا (الجهاز وملاحظته): لا فقرةَ يُطلب من صاحبه كتابتُها.
+    body: body ?? formData.get("body"),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات ناقصة" };
 
@@ -1202,7 +1224,7 @@ async function sendPublicTicket(formData: FormData, topic: "careers" | null): Pr
   // خبرٌ إلى صندوق الدعم، ومعه بريدُ صاحبه فيُردّ عليه منه مباشرةً.
   const extra = read.files.length ? `\n\n(${read.files.length} مرفق — في اللوحة)` : "";
   void tellSupport({
-    from: topic === "careers" ? `طلب وظيفة — ${parsed.data.name}` : parsed.data.name,
+    from: `${TOPIC_LABEL[topic] ?? "رسالة"} — ${parsed.data.name}`,
     body: parsed.data.body + extra,
     replyTo: parsed.data.email,
   });
@@ -1211,7 +1233,9 @@ async function sendPublicTicket(formData: FormData, topic: "careers" | null): Pr
     ok:
       topic === "careers"
         ? "وصلنا طلبك — نقرؤه ونردّ على بريدك إن كان مناسباً"
-        : "وصلتنا رسالتك — نردّ على بريدك",
+        : topic === "beta"
+          ? "سجّلناك — تصلك الدعوة على بريدك حين تُفتح نسخةٌ تجريبية"
+          : "وصلتنا رسالتك — نردّ على بريدك",
   };
 }
 

@@ -32,6 +32,7 @@ import { itemPaint, ScreenHeader, TagPill } from "@/components/ui";
 import { Saver } from "./saver";
 import { AdminEmail } from "./email";
 import { SitePanel } from "./site";
+import { TOPIC_LABEL } from "@/lib/topics";
 import { Suspend } from "./suspend";
 import { PlusGrant } from "./plus";
 import { SITE_TEXT, siteText, siteImage, type SiteKey } from "@/lib/site";
@@ -1664,7 +1665,11 @@ export default async function AdminPage({
                         <span dir="auto" className="flex items-center gap-1.5 truncate text-[13px] font-semibold">
                           {ticket.user?.name ?? ticket.name ?? "زائر"}
                           {ticket.user ? null : <Chip gold>من الموقع</Chip>}
-                          {ticket.topic === "careers" ? <Chip gold>طلب وظيفة</Chip> : null}
+                          {ticket.topic && TOPIC_LABEL[ticket.topic] ? (
+                            <Chip gold={ticket.topic !== "complaint" && ticket.topic !== "report"} live={ticket.topic === "report"}>
+                              {TOPIC_LABEL[ticket.topic]}
+                            </Chip>
+                          ) : null}
                           {ticket.files.length ? <Chip>{ar(ticket.files.length)} مرفق</Chip> : null}
                           {ticket.closed ? <Chip>مغلقة</Chip> : ticket.reply ? <Chip>رُدّ</Chip> : <Chip live>جديدة</Chip>}
                         </span>

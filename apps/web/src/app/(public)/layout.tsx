@@ -23,7 +23,10 @@ const COLUMNS = [
   },
   {
     title: "التواصل",
-    links: [{ href: "/contact", label: "اتصل بنا" }],
+    links: [
+      { href: "/contact", label: "اتصل بنا" },
+      { href: "/beta", label: "انضم إلى فريق التجربة" },
+    ],
   },
 ];
 
