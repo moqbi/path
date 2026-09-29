@@ -1,4 +1,4 @@
-import { letterHtml, sendMail } from "./mail";
+import { escapeHtml, letterHtml, sendMail } from "./mail";
 
 /**
  * بريدُ الدعم: خبرٌ إلينا حين تصل رسالة، وردٌّ إلى من لا شاشةَ له.
@@ -28,7 +28,7 @@ export async function tellSupport(input: {
     text: `${input.from}${input.replyTo ? ` <${input.replyTo}>` : ""}\n\n${input.body}`,
     html: letterHtml({
       title: "رسالة دعم جديدة",
-      intro: `من: ${input.from}${input.replyTo ? ` (${input.replyTo})` : ""}<br><br>${input.body.replace(/</g, "&lt;").replace(/\n/g, "<br>")}`,
+      intro: `من: ${escapeHtml(input.from)}${input.replyTo ? ` (${escapeHtml(input.replyTo)})` : ""}<br><br>${escapeHtml(input.body).replace(/\n/g, "<br>")}`,
       button: "افتح اللوحة",
       url: `${process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? ""}/admin?s=support`,
       note: "الردّ يُكتب من اللوحة، ومنها يصل صاحبَه.",
@@ -49,7 +49,7 @@ export async function mailReply(input: {
     text: `${input.reply}\n\n— على سؤالك: ${input.question}`,
     html: letterHtml({
       title: `${input.name ? `أهلاً ${input.name}` : "أهلاً بك"}`,
-      intro: `${input.reply.replace(/</g, "&lt;").replace(/\n/g, "<br>")}<br><br><span style="color:#8a9199">على سؤالك: ${input.question.slice(0, 300).replace(/</g, "&lt;")}</span>`,
+      intro: `${escapeHtml(input.reply).replace(/\n/g, "<br>")}<br><br><span style="color:#8a9199">على سؤالك: ${escapeHtml(input.question.slice(0, 300))}</span>`,
       button: "افتح آثار",
       url: process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "",
       note: "إن بقي عندك سؤال، اكتب إلينا مرّةً أخرى من صفحة «تواصل معنا».",

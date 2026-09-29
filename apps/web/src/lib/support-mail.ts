@@ -66,7 +66,7 @@ export async function mailReply(input: {
     subject: "ردٌّ على رسالتك — آثار مومنتس",
     text: `${input.reply}\n\n— على سؤالك: ${input.question}`,
     html: letterHtml({
-      title: input.name ? `أهلاً ${esc(input.name)}` : "أهلاً بك",
+      title: input.name ? `أهلاً ${input.name}` : "أهلاً بك",
       intro: `${paragraph(input.reply)}<br><br><span style="color:#8a9199">على سؤالك: ${esc(input.question.slice(0, 300))}</span>`,
       button: "افتح آثار",
       url: process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "",

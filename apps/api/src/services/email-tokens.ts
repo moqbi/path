@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "@athar/db";
 import { SITE_URL, appUrl } from "@athar/shared";
-import { letterHtml, sendMail } from "./mail";
+import { escapeHtml, letterHtml, sendMail } from "./mail";
 
 /**
  * رموزُ البريد: تأكيدُ العنوان وإعادةُ ضبط كلمة المرور.
@@ -118,7 +118,7 @@ export async function sendReset(userId: string, email: string, name: string): Pr
     text: `${name} — اضبط كلمة مرورك من هذا الرابط: ${url}`,
     html: letterHtml({
       title: "إعادة ضبط كلمة المرور",
-      intro: `${name}، اضغط الزرّ لتختار كلمة مرورٍ جديدة. الرابط يعمل ساعةً واحدة ومرّةً واحدة.`,
+      intro: `${escapeHtml(name)}، اضغط الزرّ لتختار كلمة مرورٍ جديدة. الرابط يعمل ساعةً واحدة ومرّةً واحدة.`,
       button: "اضبط كلمة المرور",
       url,
       note: "إن لم تطلب أنت هذا، تجاهل الرسالة — كلمةُ مرورك كما هي ولا أحد يستطيع تغييرها بلا هذا الرابط.",

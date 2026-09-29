@@ -1,5 +1,6 @@
 "use server";
 
+import { clear, clientIp, hit, TOO_MANY } from "@/lib/rate-limit";
 import { recordCity } from "@/lib/city";
 import { cityInput } from "@/lib/city-input";
 import { revalidatePath } from "next/cache";
@@ -68,8 +69,13 @@ export async function signUp(
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
   }
+  // كلُّ تسجيلٍ رسالةُ تأكيدٍ تخرج إلى عنوانٍ يكتبه الزائر.
+  if (!hit(`signup:ip:${await clientIp()}`, 5, 60 * 60_000)) return { error: TOO_MANY };
   return requestSignup(parsed.data);
 }
+
+/** تجزئةٌ لا تطابق شيئاً: يُفحص بها حين لا حساب، فيبقى وقتُ الردّ واحداً. */
+const DUMMY_HASH = `${"0".repeat(32)}:${"0".repeat(128)}`;
 
 export async function signIn(
   _previous: { error?: string } | null,
@@ -83,16 +89,22 @@ export async function signIn(
     return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
   }
 
+  // عشرُ محاولاتٍ لكل عنوان وخمسٌ لكل بريد في ربع ساعة.
+  const byMail = `login:mail:${parsed.data.email}`;
+  if (!hit(`login:ip:${await clientIp()}`, 10, 15 * 60_000) || !hit(byMail, 5, 15 * 60_000)) {
+    return { error: TOO_MANY };
+  }
+
   const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
   // رسالة واحدة للحالتين حتى لا يكشف النموذج أي البُرد مسجَّلة.
   // ومن دخل بمزوّدٍ ولم يضع كلمةً بعد لا كلمةَ له تُطابَق — والرسالةُ
   // واحدةٌ في الحالين، فلا يُعرف من الشاشة أيُّ بريدٍ مسجّل ولا كيف دخل.
-  const ok =
-    user && user.passwordHash
-      ? await verifyPassword(parsed.data.password, user.passwordHash)
-      : false;
-  if (!user || !ok) return { error: "البريد أو كلمة المرور غير صحيحة" };
+  // والوقتُ واحدٌ أيضاً: scrypt يجري وإن لم يوجد الحساب، فلا تقول الساعةُ
+  // ما تخفيه الرسالة.
+  const ok = await verifyPassword(parsed.data.password, user?.passwordHash ?? DUMMY_HASH);
+  if (!user || !user.passwordHash || !ok) return { error: "البريد أو كلمة المرور غير صحيحة" };
 
+  clear(byMail);
   await createSession(user.id);
   redirect("/");
 }
@@ -111,6 +123,7 @@ export async function requestReset(
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const said = { ok: "إن كان هذا البريد مسجّلاً عندنا فقد أرسلنا إليه رابطاً. تحقّق من بريدك." };
   if (!email.includes("@")) return { error: "اكتب بريداً صحيحاً" };
+  if (!hit(`reset:ip:${await clientIp()}`, 5, 60 * 60_000)) return { error: TOO_MANY };
 
   const user = await prisma.user.findUnique({
     where: { email },
@@ -1103,7 +1116,8 @@ export async function saveNotifications(formData: FormData): Promise<void> {
  * بضغطتين. والجديدة تُكتب مرّتين، فخطأٌ في حرفٍ واحد يُقفل الحساب على
  * من كتبه.
  *
- * ولا تُبطَل الجلسات القائمة: من غيّر كلمته من جهازه لا يُخرَج منه.
+ * ومن غيّر كلمته من متصفّحه لا يُخرَج منه — تُعاد جلسته ببصمة الجديدة —
+ * وتخرج متصفّحاته الأخرى. وأجهزةُ الجوّال تبقى: جلستُها توكن تجديدٍ مستقلّ.
  */
 export async function changePassword(
   _prev: AdminResult,
@@ -1135,6 +1149,9 @@ export async function changePassword(
     where: { id: user.id },
     data: { passwordHash: await hashPassword(next) },
   });
+  // الجلسةُ تحمل بصمةَ الكلمة: تُعاد لهذا المتصفّح فلا يُخرَج منه صاحبُه،
+  // وما سواه من متصفّحاتٍ يخرج — ومن غيّر كلمته لشكٍّ يريد ذلك.
+  await createSession(user.id);
 
   return { ok: "تم تغيير كلمة المرور" };
 }

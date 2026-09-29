@@ -29,6 +29,45 @@ const nextConfig: NextConfig = {
     «Body exceeded 1 MB limit» في سجلّ الخادم وحده. وفيديو القصة تسعة
     ميغا، فالحدّ يتّسع له ولمغلّفه.
   */
+  /* «X-Powered-By: Next.js» يقول للماسح أيَّ ثغراتٍ يجرّب أوّلاً. */
+  poweredByHeader: false,
+
+  /*
+    ترويساتُ الحماية هنا لا في Caddy وحده: تشغيلٌ بلا Caddy كان يخرج بلا
+    شيء، وCaddy يكتب فوقها بالقيم نفسها. `frame-ancestors 'none'` يمنع
+    وضعَ التطبيق في إطارٍ يخدع صاحبه بضغطة، و`form-action 'self'` يمنع
+    نموذجاً محقوناً من الإرسال خارج النطاق. ولا `script-src`: Next يحقن
+    نصوصاً في السطر، وسياسةٌ تكسرها أسوأ من غيابها. و`/api` خارج السياسة
+    لأنّ ملفّاته تكتب سياستها بنفسها (`lib/served.ts` بـ`sandbox`).
+    والكاميرا والميكروفون والموقع **لهذا النطاق**: القصّةُ والصوتُ واللحظةُ
+    تطلبها — `()` كان سيُطفئها.
+  */
+  async headers() {
+    return [
+      {
+        source: "/((?!api/).*)",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'",
+          },
+        ],
+      },
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(self), microphone=(self), geolocation=(self), payment=()",
+          },
+        ],
+      },
+    ];
+  },
+
   experimental: {
     serverActions: { bodySizeLimit: "16mb" },
   },
