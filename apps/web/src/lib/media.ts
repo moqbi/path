@@ -63,9 +63,14 @@ export async function storeUpload(
   height: number,
   allowAnimated = false,
 ) {
-  const mime = baseMime(file.type);
-  if (!ALLOWED.has(mime)) throw new Error("يُقبل JPEG أو PNG أو WebP فقط");
+  if (!ALLOWED.has(baseMime(file.type))) throw new Error("يُقبل JPEG أو PNG أو WebP فقط");
   const bytes = new Uint8Array(await file.arrayBuffer());
+  /*
+    والنوعُ يُؤخذ من البايتات لا من `type`: ذاك يكتبه المرسل، فملفُّ HTML
+    يُرفع بـ«image/png» ويُقدَّم بها — والصيغةُ الحقيقية هي ما يُحفظ.
+  */
+  const mime = sniffImage(bytes);
+  if (!mime || !ALLOWED.has(mime)) throw new Error("يُقبل JPEG أو PNG أو WebP فقط");
   return keep(ownerId, mime, bytes, width, height, allowAnimated);
 }
 

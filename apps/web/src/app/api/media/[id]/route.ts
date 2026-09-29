@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { SERVED_GUARD, servedType } from "@/lib/served";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { canSeeMedia } from "@/lib/visibility";
@@ -43,7 +44,8 @@ export async function GET(
       return new NextResponse("غير موجود", { status: upstream.status === 404 ? 404 : 502 });
     }
     const pass = new Headers();
-    pass.set("Content-Type", media.mime);
+    pass.set("Content-Type", servedType(media.mime));
+    for (const [name, value] of Object.entries(SERVED_GUARD)) pass.set(name, value);
     pass.set("Cache-Control", "private, max-age=31536000, immutable");
     pass.set("Accept-Ranges", "bytes");
     for (const name of ["content-length", "content-range", "etag"]) {
@@ -56,7 +58,8 @@ export async function GET(
   if (!media.bytes) return new NextResponse("غير موجود", { status: 404 });
   const bytes = new Uint8Array(media.bytes);
   const headers = {
-    "Content-Type": media.mime,
+    "Content-Type": servedType(media.mime),
+    ...SERVED_GUARD,
     "Cache-Control": "private, max-age=31536000, immutable",
     "Accept-Ranges": "bytes",
   };

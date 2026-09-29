@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { SERVED_GUARD, servedType } from "@/lib/served";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getObject } from "@/lib/storage";
@@ -27,12 +28,17 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   if (!file) return missing();
 
   const headers = new Headers({
-    "Content-Type": file.mime,
+    "Content-Type": servedType(file.mime),
+    ...SERVED_GUARD,
     "Cache-Control": "private, no-store",
     // الصورُ تُعرض في مكانها، والـPDF يُفتح في المتصفّح باسمه كما رُفع.
     "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(file.name)}`,
-    "X-Content-Type-Options": "nosniff",
   });
+  // عارضُ PDF في كروم يرفض أن يُفتح تحت `sandbox`، فيُنزع له وحده —
+  // والنوعُ من البايتات عند الرفع (`lib/ticket-files.ts`) فلا يكون صفحة.
+  if (servedType(file.mime) === "application/pdf") {
+    headers.delete("Content-Security-Policy");
+  }
 
   if (file.key) {
     const upstream = await getObject(file.key);

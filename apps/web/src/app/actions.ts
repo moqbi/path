@@ -12,6 +12,7 @@ import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
 import { dropMedia, migrateToCloud, storeSiteShot, storeUpload } from "@/lib/media";
 import { cloudReady, probeBucket } from "@/lib/storage";
 import { forgetWords } from "@/lib/moderation";
+import { clear, clientIp, hit, TOO_MANY } from "@/lib/rate-limit";
 import { SUSPEND_HOURS } from "@/lib/suspend";
 import { isPlusDays, PLUS_COINS, PLUS_LABEL } from "@/lib/plus";
 import { SITE_TEXT, type SiteKey } from "@/lib/site";
@@ -47,16 +48,22 @@ export async function signIn(
     return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
   }
 
+  // عشرُ محاولاتٍ لكل عنوان وخمسٌ لكل بريد في ربع ساعة: الثانيةُ تحرس
+  // حسابَ المالك ممّن يبدّل عنوانه، والأولى تحرس الكلَّ ممّن يبدّل البريد.
+  const ip = await clientIp();
+  const byMail = `login:mail:${parsed.data.email}`;
+  if (!hit(`login:ip:${ip}`, 10, 15 * 60_000) || !hit(byMail, 5, 15 * 60_000)) {
+    return { error: TOO_MANY };
+  }
+
   const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
   // رسالة واحدة للحالتين حتى لا يكشف النموذج أي البُرد مسجَّلة.
   // ومن دخل بمزوّدٍ ولا كلمةَ له لا يدخل من هنا — واللوحةُ للمالك أصلاً.
-  const ok =
-    user && user.passwordHash
-      ? await verifyPassword(parsed.data.password, user.passwordHash)
-      : false;
+  const ok = await checkPassword(parsed.data.password, user?.passwordHash ?? null);
   if (!user || !ok) return { error: "البريد أو كلمة المرور غير صحيحة" };
 
-  await createSession(user.id);
+  clear(byMail);
+  await createSession(user.id, user.passwordHash);
   redirect("/admin");
 }
 
@@ -111,6 +118,16 @@ async function requireOwner() {
   });
   if (row?.role !== "ADMIN") throw new Error("هذا للمالك وحده");
   return user;
+}
+
+/**
+ * كلمةُ المرور بوقتٍ واحد وُجد الحسابُ أو لم يوجد: scrypt يأخذ عشرات
+ * المللي، فردٌّ فوريّ لبريدٍ غير مسجَّل كان يقول بساعته ما تخفيه رسالتُه.
+ */
+const DUMMY_HASH = `${"0".repeat(32)}:${"0".repeat(128)}`;
+async function checkPassword(password: string, stored: string | null): Promise<boolean> {
+  const ok = await verifyPassword(password, stored ?? DUMMY_HASH);
+  return Boolean(stored) && ok;
 }
 
 /** يقرأ ألوان الثيم من النموذج، ويردّ `null` إن لم تُطلب أو نقصت. */
@@ -891,6 +908,8 @@ export async function storageState(): Promise<{
   inDb: number;
   dbBytes: number;
 }> {
+  // إجراءُ خادمٍ يُنادى بـPOST من أيّ أحد: اسمُ الدلو وأحجامُ القاعدة للمالك وحده.
+  await requireOwner();
   await requireOwner();
 
   const [inCloud, inDb, sum] = await Promise.all([
@@ -1200,6 +1219,9 @@ async function sendPublicTicket(
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات ناقصة" };
 
+  // الحدُّ لكل بريدٍ يُتجاوز ببريدٍ جديد في كل مرّة؛ فمعه حدٌّ لكل عنوان.
+  if (!hit(`ticket:ip:${await clientIp()}`, 5, 60 * 60_000)) return { error: TOO_MANY };
+
   // المرفقات تُفحص قبل أن يُكتب شيء: رسالةٌ بلا مرفقاتها نصفُ رسالة.
   const read = await readTicketFiles(formData, topic === "careers");
   if ("error" in read) return { error: read.error };
@@ -1255,6 +1277,12 @@ export async function deleteAccountFromWeb(
   const password = String(formData.get("password") ?? "");
   if (formData.get("sure") !== "on") return { error: "أكّد أنّك تريد الحذف" };
 
+  // بابٌ يقول «صحيحة» أو «غير صحيحة» لأيّ بريد عرّافُ كلماتِ مرور إن لم يُحدّ.
+  const ip = await clientIp();
+  if (!hit(`delete:ip:${ip}`, 5, 15 * 60_000) || !hit(`delete:mail:${email}`, 5, 60 * 60_000)) {
+    return { error: TOO_MANY };
+  }
+
   const user = await prisma.user.findUnique({
     where: { email },
     select: { id: true, passwordHash: true },
@@ -1265,8 +1293,7 @@ export async function deleteAccountFromWeb(
      التطبيق حيث جلستُه هي دليلُه — وجوجل بلاي تطلب طريقاً من خارج
      التطبيق، وهو قائمٌ لمن له كلمة.
   */
-  const ok =
-    user && user.passwordHash ? await verifyPassword(password, user.passwordHash) : false;
+  const ok = await checkPassword(password, user?.passwordHash ?? null);
   if (!user || !ok) return { error: "البريد أو كلمة المرور غير صحيحة" };
 
   // ملفاته تُجمَع قبل حذفه: الصفوف تذهب بـ`Cascade`، وكائنات السحابة لا

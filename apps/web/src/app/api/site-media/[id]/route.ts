@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { SERVED_GUARD, servedType } from "@/lib/served";
 import { prisma } from "@/lib/db";
 import { getObject } from "@/lib/storage";
 
@@ -26,9 +27,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (!media) return missing();
 
   const headers = new Headers({
-    "Content-Type": media.mime,
+    "Content-Type": servedType(media.mime),
+    ...SERVED_GUARD,
     "Cache-Control": "public, max-age=86400",
-    "X-Content-Type-Options": "nosniff",
   });
 
   if (media.key) {

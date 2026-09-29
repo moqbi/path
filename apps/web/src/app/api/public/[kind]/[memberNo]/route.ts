@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { SERVED_GUARD, servedType } from "@/lib/served";
 import { prisma } from "@/lib/db";
 import { getObject } from "@/lib/storage";
 
@@ -67,7 +68,8 @@ export async function GET(
     if (!upstream.ok) return new NextResponse("غير موجود", { status: 404 });
 
     const headers = new Headers();
-    headers.set("Content-Type", media.mime);
+    headers.set("Content-Type", servedType(media.mime));
+    for (const [name, value] of Object.entries(SERVED_GUARD)) headers.set(name, value);
     headers.set("Cache-Control", cache);
     const length = upstream.headers.get("content-length");
     if (length) headers.set("Content-Length", length);
@@ -78,6 +80,6 @@ export async function GET(
 
   return new NextResponse(new Uint8Array(media.bytes), {
     status: 200,
-    headers: { "Content-Type": media.mime, "Cache-Control": cache },
+    headers: { "Content-Type": servedType(media.mime), ...SERVED_GUARD, "Cache-Control": cache },
   });
 }
