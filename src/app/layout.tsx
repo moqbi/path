@@ -5,6 +5,10 @@ import { currentUser } from "@/lib/auth";
 import { parsePalette, themeVars, veilOf } from "@/lib/theme";
 import { NavProbe } from "@/components/nav";
 import { BASE, asset } from "@/lib/base";
+import { isDesktopRequest } from "@/lib/device";
+import { FriendsPanel } from "@/components/desk/friends-panel";
+import { MePanel } from "@/components/desk/me-panel";
+import { DeskRefresh } from "@/components/desk/refresh";
 
 export const metadata: Metadata = {
   title: "آثار مومنتس · ATHAR Moments",
@@ -39,6 +43,26 @@ export default async function RootLayout({
   const palette = parsePalette(theme?.palette);
   // حجابٌ خفيف: يكفي لقراءة النصّ ولا يطمس الصورة. أعلى من هذا كان يخفيها.
   const veil = veilOf(palette);
+  // سطح المكتب ثلاثة أعمدة (`.desk`)، والجوّال الهيكلُ وحده كما هو.
+  const desk = user ? await isDesktopRequest() : false;
+
+  const shell = (
+    <div
+      className="shell"
+      style={{
+        ...(palette ? themeVars(palette) : null),
+        ...(image
+          ? { backgroundImage: `${veil}, ${image}`, backgroundSize: "cover", backgroundPosition: "center" }
+          : theme
+            ? { backgroundImage: `${veil}, ${theme.spec}` }
+            : null),
+      }}
+    >
+      <NavProbe />
+      {children}
+    </div>
+  );
+
   return (
     <html lang="ar" dir="rtl">
       <head>
@@ -51,20 +75,27 @@ export default async function RootLayout({
         />
       </head>
       <body>
-        <div
-          className="shell"
-          style={{
-            ...(palette ? themeVars(palette) : null),
-            ...(image
-              ? { backgroundImage: `${veil}, ${image}`, backgroundSize: "cover", backgroundPosition: "center" }
-              : theme
-                ? { backgroundImage: `${veil}, ${theme.spec}` }
-                : null),
-          }}
-        >
-          <NavProbe />
-          {children}
-        </div>
+        {desk && user ? (
+          /*
+            ثلاثة أعمدة على سطح المكتب — **بقرار المالك**: الأصدقاء يميناً،
+            والخطّ الزمنيّ في الوسط، و«أنا» مع الإشعارات يساراً. والوسطُ هو
+            الهيكلُ نفسه بكلّ صفحاته، فما يُفتح فيه يُفتح كما على الجوّال.
+            وتحت ١٢٠٠ بكسل يختفي العمودان ويعود الهيكلُ وحده.
+          */
+          // ألوانُ الثيم على الأعمدة الثلاثة لا على الوسط وحده.
+          <div className="desk" style={palette ? themeVars(palette) : undefined}>
+            <aside className="desk-side desk-side-start" aria-label="الأصدقاء">
+              <FriendsPanel userId={user.id} />
+            </aside>
+            {shell}
+            <aside className="desk-side desk-side-end" aria-label="أنا والإشعارات">
+              <MePanel user={user} />
+            </aside>
+            <DeskRefresh />
+          </div>
+        ) : (
+          shell
+        )}
       </body>
     </html>
   );

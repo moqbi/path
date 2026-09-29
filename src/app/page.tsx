@@ -162,6 +162,36 @@ export default async function TimelinePage({
         */}
         {user.email && !user.emailVerifiedAt ? <VerifyBanner email={user.email} /> : null}
 
+        {/*
+           العدساتُ الثلاث ظاهرةً على سطح المكتب — **بقرار المالك**. على
+           الجوّال بابُها الضغطُ المطوّل على «اللحظات» (القاعدة ٣٢)، والفأرةُ
+           لا تضغط مطوّلاً: بابٌ لا يُكتشف بالفأرة ليس باباً.
+        */}
+        <nav className="desk-only mb-3 gap-1 rounded-2xl border border-line bg-card p-1">
+          {[
+            { key: "", label: "اللحظات", href: "/" },
+            { key: "private", label: "اللحظات الخاصة", href: "/?view=private" },
+            { key: "together", label: "آثارنا", href: user.isPlus ? "/?view=together" : "/subscribe" },
+          ].map((lens) => {
+            const on = view === lens.key;
+            return (
+              <Link
+                key={lens.key || "all"}
+                href={lens.href}
+                aria-current={on ? "page" : undefined}
+                className="flex h-10 grow items-center justify-center gap-1 rounded-xl text-[13px] font-semibold"
+                style={{
+                  background: on ? "var(--color-clay)" : "transparent",
+                  color: on ? "var(--color-on-brand)" : "var(--color-ink-2)",
+                }}
+              >
+                {lens.label}
+                {lens.key === "together" && !user.isPlus ? <SparkIcon size={12} /> : null}
+              </Link>
+            );
+          })}
+        </nav>
+
         {view === "private" ? (
           <p className="mb-1 text-[11.5px] leading-relaxed text-muted">
             ما نُشر لتصنيفٍ من أصدقائك أو لأشخاص بأعيانهم — غيرهم لا يراها أصلاً.
