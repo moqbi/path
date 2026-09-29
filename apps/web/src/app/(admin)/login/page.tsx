@@ -15,7 +15,7 @@ export default async function LoginPage() {
 
   return (
     <div className="screen">
-      <main className="scroll-area flex flex-col justify-center px-6">
+      <main className="scroll-area admin-narrow flex flex-col justify-center px-6">
         <SignInForm />
       </main>
     </div>

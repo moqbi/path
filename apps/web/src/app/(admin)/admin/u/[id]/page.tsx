@@ -82,7 +82,7 @@ export default async function ModeratedProfile({
     <div className="screen">
       <ScreenHeader title="لحظات حساب" back="/admin?s=users" />
 
-      <main className="scroll-area px-5 pb-10 pt-4">
+      <main className="scroll-area admin-narrow px-5 pb-10 pt-4">
         <div className="mb-4 rounded-2xl border border-line bg-card p-4">
           <p dir="auto" className="text-[15px] font-bold">
             {person.name}

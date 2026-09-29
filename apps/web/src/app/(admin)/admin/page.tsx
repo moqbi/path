@@ -580,8 +580,8 @@ export default async function AdminPage({
         }
       />
 
-      <main className="scroll-area px-5 py-5">
-        <div className="mb-6 grid grid-cols-4 gap-2">
+      <main className="scroll-area admin-main px-5 py-5">
+        <div className="admin-stats mb-6 grid grid-cols-4 gap-2">
           {[
             { value: userCount, label: "مستخدم" },
             { value: items.length, label: "صنف" },
@@ -599,13 +599,15 @@ export default async function AdminPage({
         </div>
 
         {/* أقسام بدل جدارٍ واحد: قسمٌ في الشاشة لا ثلاثة فوق بعضها. */}
-        <div className="no-bar mb-5 flex gap-2 overflow-x-auto">
+        {/* وعلى الشاشة العريضة عمودٌ جانبيّ ثابت (`.admin-nav`). */}
+        <nav className="admin-nav no-bar mb-5 flex gap-2 overflow-x-auto">
           {sections.map((item) => {
             const on = section === item.key;
             return (
               <Link
                 key={item.key}
                 href={`/admin?s=${item.key}`}
+                aria-current={on ? "page" : undefined}
                 className="shrink-0 rounded-full px-4 py-2 text-[12.5px] font-semibold"
                 style={{
                   background: on ? "var(--color-clay)" : "var(--color-card)",
@@ -617,8 +619,9 @@ export default async function AdminPage({
               </Link>
             );
           })}
-        </div>
+        </nav>
 
+        <div className="admin-section min-w-0">
         {section === "tags" ? (
         <>
         <h2 className="mb-1 text-[15px] font-bold">الوسوم</h2>
@@ -1957,6 +1960,7 @@ export default async function AdminPage({
             </div>
           </>
         ) : null}
+        </div>
       </main>
     </div>
   );
