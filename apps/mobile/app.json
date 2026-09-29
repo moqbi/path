@@ -16,7 +16,10 @@
         "NSPhotoLibraryUsageDescription": "لاختيار صورة من ألبومك.",
         "NSLocationWhenInUseUsageDescription": "لتحديد المكان الذي تنشر منه لحظتك.",
         "ITSAppUsesNonExemptEncryption": false,
-        "CFBundleAllowMixedLocalizations": true
+        "CFBundleDevelopmentRegion": "ar",
+        "CFBundleLocalizations": [
+          "ar"
+        ]
       },
       "usesAppleSignIn": true
     },
@@ -59,6 +62,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#0E1A24"
     },
-    "owner": "i.moh57"
+    "owner": "i.moh57",
+    "locales": {
+      "ar": "./locales/ar.json"
+    }
   }
 }

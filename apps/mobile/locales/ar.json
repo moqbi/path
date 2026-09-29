@@ -1,0 +1,9 @@
+{
+  "ios": {
+    "NSMicrophoneUsageDescription": "لتسجيل الرسائل الصوتية في محادثاتك.",
+    "NSCameraUsageDescription": "لالتقاط صورة أو فيديو لقصتك ولحظاتك.",
+    "NSPhotoLibraryUsageDescription": "لاختيار صورة من ألبومك.",
+    "NSLocationWhenInUseUsageDescription": "لتحديد المكان الذي تنشر منه لحظتك.",
+    "CFBundleDisplayName": "آثار مومنتس"
+  }
+}
