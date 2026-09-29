@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { View, Pressable, ActivityIndicator, Dimensions } from "react-native";
+import { View, Pressable, ActivityIndicator, Dimensions, ScrollView } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Avatar } from "../../components/avatar";
 import { ReportButton } from "../../components/report-sheet";
+import { Sheet } from "../../components/sheet";
 import { Filtered } from "../../components/filtered";
 import { StoryVideo } from "../../components/story-video";
 import { CloseIcon, EyeIcon } from "../../components/icons";
@@ -29,6 +30,15 @@ type Story = {
   _count: { views: number };
 };
 
+type Viewer = {
+  id: string;
+  name: string;
+  avatarMediaId: string | null;
+  frame: { spec: string; mediaId: string | null; frameHole: number | null } | null;
+  charm: { spec: string; mediaId: string | null } | null;
+  seenAt: string;
+};
+
 /**
  * عارض القصص.
  *
@@ -44,8 +54,13 @@ export default function StoryViewer() {
 
   const [index, setIndex] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [paused, setPaused] = useState(false);
+  const [held, setHeld] = useState(false);
+  // من شاهدها: نافذةٌ فوق القصة، والعدُّ يقف ما دامت مفتوحة.
+  const [watching, setWatching] = useState(false);
+  const paused = held || watching;
   const started = useRef(Date.now());
+  // الوقفةُ لا تبدأ الشريحة من أوّلها: ما مضى منها يُحفظ ويُستأنف منه.
+  const elapsed = useRef(0);
 
   const feed = useQuery({
     queryKey: ["stories", id],
@@ -57,6 +72,12 @@ export default function StoryViewer() {
   const mine = id === me?.id;
   const video = story?.media.mime.startsWith("video/") ?? false;
   const span = video && story?.seconds ? story.seconds * 1000 : SLIDE_MS;
+
+  const viewers = useQuery({
+    queryKey: ["story-viewers", story?.id],
+    queryFn: () => api<{ viewers: Viewer[] }>(`/v1/stories/${story!.id}/viewers`),
+    enabled: watching && mine && Boolean(story),
+  });
 
   const remove = useMutation({
     mutationFn: (storyId: string) => api(`/v1/stories/${storyId}`, { method: "DELETE" }),
@@ -73,14 +94,16 @@ export default function StoryViewer() {
   }, [story]);
 
   useEffect(() => {
-    started.current = Date.now();
+    elapsed.current = 0;
     setProgress(0);
   }, [index]);
 
   useEffect(() => {
     if (paused || !story) return;
+    started.current = Date.now() - elapsed.current;
     const tick = setInterval(() => {
-      const done = (Date.now() - started.current) / span;
+      elapsed.current = Date.now() - started.current;
+      const done = elapsed.current / span;
       if (done >= 1) {
         if (index + 1 < stories.length) setIndex(index + 1);
         else router.back();
@@ -144,15 +167,15 @@ export default function StoryViewer() {
       <Pressable
         accessibilityLabel="السابق"
         style={{ position: "absolute", top: 0, bottom: 0, right: 0, width: "50%" }}
-        onPressIn={() => setPaused(true)}
-        onPressOut={() => setPaused(false)}
+        onPressIn={() => setHeld(true)}
+        onPressOut={() => setHeld(false)}
         onPress={() => step(index - 1)}
       />
       <Pressable
         accessibilityLabel="التالي"
         style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: "50%" }}
-        onPressIn={() => setPaused(true)}
-        onPressOut={() => setPaused(false)}
+        onPressIn={() => setHeld(true)}
+        onPressOut={() => setHeld(false)}
         onPress={() => step(index + 1)}
       />
 
@@ -201,12 +224,18 @@ export default function StoryViewer() {
       {mine ? (
         <SafeAreaView edges={["bottom"]} pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <EyeIcon size={15} color="rgba(255,255,255,.85)" />
-              <Text style={{ color: "rgba(255,255,255,.85)", fontSize: 12 }}>
-                {ar(story._count.views)}
+            {/* العدّادُ بابُ القائمة: من نشر قصّةً يسأل «مَن» قبل «كم». */}
+            <Pressable
+              accessibilityLabel="من شاهدها"
+              onPress={() => setWatching(true)}
+              hitSlop={10}
+              style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: "rgba(255,255,255,.16)" }}
+            >
+              <EyeIcon size={15} color="#fff" />
+              <Text style={{ color: "#fff", fontSize: 12, fontWeight: "600" }}>
+                {story._count.views > 0 ? `شاهدها ${ar(story._count.views)}` : "لم يشاهدها أحد بعد"}
               </Text>
-            </View>
+            </Pressable>
 
             <Pressable
               onPress={() => remove.mutate(story.id)}
@@ -216,6 +245,45 @@ export default function StoryViewer() {
             </Pressable>
           </View>
         </SafeAreaView>
+      ) : null}
+
+      {watching && mine ? (
+        <Sheet title="من شاهد قصّتك" onClose={() => setWatching(false)}>
+          {viewers.isLoading ? (
+            <ActivityIndicator color={colors.clay} style={{ marginVertical: 24 }} />
+          ) : (viewers.data?.viewers.length ?? 0) === 0 ? (
+            <Text style={{ textAlign: "center", color: colors.muted, fontSize: 13, marginVertical: 24 }}>
+              لم يشاهدها أحدٌ من أصدقائك بعد.
+            </Text>
+          ) : (
+            <ScrollView style={{ maxHeight: Dimensions.get("window").height * 0.5 }}>
+              {viewers.data!.viewers.map((person) => (
+                <Pressable
+                  key={person.id}
+                  onPress={() => {
+                    setWatching(false);
+                    router.push(`/u/${person.id}`);
+                  }}
+                  style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 9 }}
+                >
+                  <Avatar
+                    name={person.name}
+                    size={40}
+                    mediaId={person.avatarMediaId}
+                    frame={person.frame}
+                    charm={person.charm}
+                  />
+                  <Text style={{ flex: 1, fontSize: 14, fontWeight: "600", color: colors.ink }} numberOfLines={1}>
+                    {person.name}
+                  </Text>
+                  <Text style={{ fontSize: 11.5, color: colors.faint }}>
+                    {relative(new Date(person.seenAt))}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          )}
+        </Sheet>
       ) : null}
     </View>
   );

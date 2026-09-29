@@ -163,7 +163,7 @@ export default function Notifications() {
   }, [notes.data, filter, gone]);
 
   return (
-    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       <ScreenHeader
         title="الإشعارات"
         right={

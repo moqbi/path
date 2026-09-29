@@ -110,7 +110,7 @@ export default function Messages() {
   });
 
   return (
-    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       <ScreenHeader title="المحادثات" back="/" />
 
       <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>

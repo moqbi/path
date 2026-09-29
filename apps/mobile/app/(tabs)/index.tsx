@@ -212,7 +212,7 @@ export default function Timeline() {
   if (!me) return null;
 
   return (
-    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       {/*
         الرأس: العلامة ثم ATHAR، و«آثار+» قبل الرسائل.
 
@@ -454,6 +454,11 @@ export default function Timeline() {
         <View style={{ flex: 1 }}>
         <SectionList
           ref={list}
+          // حقلُ التعليق داخل القائمة: آبل تُزيح المحتوى بقدر الكيبورد وتُظهر
+          // الحقلَ المركَّز فوقه، فيرى الكاتبُ ما يكتب.
+          automaticallyAdjustKeyboardInsets
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
           sections={days}
           keyExtractor={(item) => item.id}
           stickySectionHeadersEnabled={false}
@@ -464,7 +469,7 @@ export default function Timeline() {
           onMomentumScrollBegin={showClock}
           onMomentumScrollEnd={hideClock}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 90, flexGrow: 1 }}
-          style={{ backgroundColor: colors.paper }}
+          style={{ backgroundColor: colors.ground }}
           // موضعُ رأس القائمة وحده هو ما يأذن للسحب أن يلتقط الإيماءة.
           scrollEventThrottle={16}
           onScroll={(event) => {

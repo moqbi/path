@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ReportButton } from "../../components/report-sheet";
-import { View, FlatList, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
+import { View, FlatList, Pressable, ActivityIndicator } from "react-native";
 import { Text, TextInput } from "../../components/type";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Picker from "expo-image-picker";
@@ -14,6 +14,7 @@ import { Ticks, receiptOf } from "../../components/receipt";
 import { CameraIcon, CloseIcon, MicIcon, PlayIcon } from "../../components/icons";
 import { api, baseUrl, currentAccess } from "../../lib/api";
 import { uploadFile } from "../../lib/upload";
+import { useKeyboardInset } from "../../lib/keyboard";
 import { keys } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { ar, timeOfDay } from "../../lib/format";
@@ -100,6 +101,22 @@ export default function Conversation() {
   const me = useSession((s) => s.me);
   const client = useQueryClient();
   const router = useRouter();
+
+  const insets = useSafeAreaInsets();
+  const keyboard = useKeyboardInset();
+  const list = useRef<FlatList<Line>>(null);
+  /*
+    القائمةُ تلتصق بآخرها ما دام صاحبُها عنده: عند الفتح، وبعد الإرسال،
+    وحين يصعد الكيبورد — كانت تبقى حيث هي فيُكتب السطرُ ويُرسل ولا يُرى.
+    ومن صعد يقرأ قديماً لا يُسحب إلى الأسفل برسالةٍ وصلت.
+  */
+  const pinned = useRef(true);
+  const toEnd = (animated = true) => {
+    if (pinned.current) requestAnimationFrame(() => list.current?.scrollToEnd({ animated }));
+  };
+  useEffect(() => {
+    if (keyboard > 0) toEnd();
+  }, [keyboard]);
 
   const [body, setBody] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
@@ -241,6 +258,7 @@ export default function Conversation() {
     await dropTape();
     try {
       const mediaId = await uploadFile(uri, "audio/mp4", "VOICE");
+      pinned.current = true;
       send.mutate({ kind: "VOICE", mediaId, seconds: length });
     } catch (problem) {
       setError(problem instanceof Error ? problem.message : "تعذّر الإرسال");
@@ -259,6 +277,7 @@ export default function Conversation() {
 
     try {
       const mediaId = await uploadFile(asset.uri, asset.mimeType ?? "image/jpeg", "MESSAGE", asset);
+      pinned.current = true;
       send.mutate({ kind: "PHOTO", mediaId });
     } catch (problem) {
       setError(problem instanceof Error ? problem.message : "تعذّر الإرسال");
@@ -269,7 +288,7 @@ export default function Conversation() {
   const lines = thread.data?.messages ?? [];
 
   return (
-    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       <ScreenHeader
         title={other?.name ?? "محادثة"}
         back="/messages"
@@ -277,12 +296,19 @@ export default function Conversation() {
         onTitlePress={other ? () => router.push(`/u/${other.id}` as never) : undefined}
       />
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={{ flex: 1 }}
-      >
+      {/* يصعد كلُّه بارتفاع الكيبورد (`useKeyboardInset`) لا بحسابٍ يُخطئ بقدر الرأس. */}
+      <View style={{ flex: 1, paddingBottom: keyboard }}>
         <FlatList
+          ref={list}
           data={lines}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          onContentSizeChange={() => toEnd(false)}
+          onScroll={(event) => {
+            const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+            pinned.current = contentSize.height - contentOffset.y - layoutMeasurement.height < 120;
+          }}
+          scrollEventThrottle={64}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 14, gap: 8 }}
           ListEmptyComponent={
@@ -380,7 +406,7 @@ export default function Conversation() {
         />
 
         {/* سطر الإرسال: نصّ، وصورة، وصوت. */}
-        <View style={{ paddingHorizontal: 20, paddingBottom: 18, paddingTop: 10 }}>
+        <View style={{ paddingHorizontal: 20, paddingBottom: keyboard ? 10 : Math.max(insets.bottom, 18), paddingTop: 10 }}>
           {error ? (
             <Text accessibilityRole="alert" style={{ color: colors.live, fontSize: 11.5, textAlign: "center", marginBottom: 8 }}>
               {error}
@@ -470,6 +496,8 @@ export default function Conversation() {
                   const text = body.trim();
                   if (!text) return;
                   setBody("");
+                  // من أرسل يريد أن يرى ما أرسل.
+                  pinned.current = true;
                   send.mutate({ kind: "TEXT", body: text });
                 }}
                 style={{ height: 48, paddingHorizontal: 20, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
@@ -485,7 +513,7 @@ export default function Conversation() {
             </Text>
           ) : null}
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 }

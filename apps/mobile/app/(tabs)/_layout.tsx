@@ -104,6 +104,9 @@ export default function TabsLayout() {
         backBehavior="history"
         screenOptions={{
           headerShown: false,
+          // الشاشةُ على أرضيّتها — شفّافةً حين يلبس صاحبُها ثيماً بصورة، فتُرى
+          // الصورةُ المرسومة في الجذر خلفها. وبلا هذا يرسم المتصفّح أرضيته الرمادية.
+          sceneStyle: { backgroundColor: colors.ground },
           tabBarActiveTintColor: colors.clayInk,
           tabBarInactiveTintColor: colors.muted,
           /*

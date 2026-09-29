@@ -17,7 +17,7 @@ import {
 } from "@/lib/auth";
 import { assertRoomForBoth, circleIds } from "@/lib/circle";
 import { STORY_HOURS, STORY_SECONDS } from "@/lib/stories";
-import { canInteract, canSeeMoment } from "@/lib/visibility";
+import { canInteract, canSeeMoment, visibleAuthors } from "@/lib/visibility";
 import { reverseGeocode } from "@/lib/places";
 import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
 import { consume, sendReset, sendVerify } from "@/lib/email-tokens";
@@ -643,6 +643,13 @@ export async function postStory(
 /** إيصال مشاهدة القصة — منه تُطفأ حلقتها. */
 export async function seeStory(storyId: string): Promise<void> {
   const user = await requireUser();
+  // الإيصالُ لمن يرى القصّة فعلاً، ولا يُكتب لصاحبها.
+  const story = await prisma.story.findFirst({
+    where: { id: storyId, expiresAt: { gt: new Date() } },
+    select: { authorId: true },
+  });
+  if (!story || story.authorId === user.id) return;
+  if (!(await visibleAuthors(user.id)).includes(story.authorId)) return;
   await prisma.storyView.upsert({
     where: { storyId_userId: { storyId, userId: user.id } },
     create: { storyId, userId: user.id },
@@ -652,7 +659,14 @@ export async function seeStory(storyId: string): Promise<void> {
 
 export async function deleteStory(storyId: string): Promise<void> {
   const user = await requireUser();
-  await prisma.story.deleteMany({ where: { id: storyId, authorId: user.id } });
+  const story = await prisma.story.findFirst({
+    where: { id: storyId, authorId: user.id },
+    select: { id: true, mediaId: true },
+  });
+  if (!story) return;
+  await prisma.story.delete({ where: { id: story.id } });
+  // وملفُّها معها (القاعدة ١٠٤): حذفُ الصفّ وحده يُبقي بكسلاتها في السحابة.
+  await dropMedia([story.mediaId]);
   revalidatePath("/circle");
 }
 

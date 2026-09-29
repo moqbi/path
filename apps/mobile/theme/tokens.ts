@@ -6,6 +6,13 @@
  */
 const DEFAULTS = {
   paper: "#eae5d9",
+  /**
+   * أرضيةُ الشاشة نفسها — `paper` ما لم يكن للثيم صورة، وشفّافةٌ إن كانت:
+   * الصورةُ وحجابُها مرسومان في الجذر خلف الشاشات كلّها (القاعدة ٤٧)، وأرضيةٌ
+   * مصمتة في كل شاشة كانت تحجبها — «صورة الثيم ما تظهر على الجوال».
+   * و`paper` يبقى لما يُرسم على الورق داخل الشاشة من حقولٍ وأقراص.
+   */
+  ground: "#eae5d9",
   card: "#fdfcf8",
   chip: "#ded8c9",
 
@@ -122,10 +129,13 @@ export const themeStore = {
  * وما عدا السبعة يُشتقّ هنا كما يُشتقّ هناك. ويبقى المرجانيّ
  * (`live`, `brand2`) على حاله: دلالتُه ثابتة لا تتبع ثيماً (القاعدة ٧).
  */
-export function applyTheme(raw: string | null | undefined): void {
+export function applyTheme(raw: string | null | undefined, image = false): void {
   const p = parsePalette(raw);
+  const paper = p?.paper ?? DEFAULTS.paper;
+  const ground = image ? "transparent" : paper;
   const next = p
     ? {
+        ground,
         paper: p.paper,
         card: p.card,
         chip: mix(p.ink, p.paper, 10),
@@ -155,7 +165,7 @@ export function applyTheme(raw: string | null | undefined): void {
         night: p.chrome,
         night2: mix(p.chromeInk, p.chrome, 10),
       }
-    : DEFAULTS;
+    : { ...DEFAULTS, ground };
 
   // لا إعادةَ بناءٍ بلا تغيير: الجذر يقرأ هذا الرقم مع كلّ تحديثٍ لـ`me`.
   const same = (Object.keys(next) as (keyof typeof next)[]).every((k) => colors[k] === next[k]);
@@ -164,6 +174,17 @@ export function applyTheme(raw: string | null | undefined): void {
   Object.assign(colors, DEFAULTS, next);
   version += 1;
   for (const fn of watchers) fn();
+}
+
+/**
+ * حجابُ صورة الثيم: أرضيةُ الثيم بشفافية ٧٠٪ — نسبةُ الويب نفسها (`veilOf`)،
+ * تُبقي النصّ مقروءاً ولا تطمس الصورة.
+ */
+export function veil(): string {
+  const hex = colors.paper.replace("#", "");
+  const full = hex.length === 3 ? hex.split("").map((c) => c + c).join("") : hex.slice(0, 6);
+  const n = parseInt(full, 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},0.7)`;
 }
 
 /** توقيع العلامة: كهرماني ← مرجاني. لا يُستعمل إلا حيث يستحق. */

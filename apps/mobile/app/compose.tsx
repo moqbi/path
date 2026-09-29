@@ -14,6 +14,7 @@ import { uploadFile } from "../lib/upload";
 import { maybeAskToRate } from "../lib/rate";
 import { useCircle } from "../lib/queries";
 import { ar } from "../lib/format";
+import { appleNearby, appleSearch } from "../lib/apple-places";
 import { SourceSheet } from "../components/source-sheet";
 import { takeShot } from "../lib/capture";
 import { colors } from "../theme/tokens";
@@ -74,8 +75,8 @@ export default function Compose() {
   const [around, setAround] = useState<NearbyPlace[]>([]);
   const [asking2, setAsking2] = useState(false);
   const [chosen, setChosen] = useState<string | null>(null);
-  // من قوقل؟ — شروطُه تطلب نسبةَ القائمة إليه حين تُعرض بلا خريطته.
-  const [fromGoogle, setFromGoogle] = useState(false);
+  // من أين جاءت القائمة؟ — تُنسب إلى مصدرها حين تُعرض بلا خريطته.
+  const [source, setSource] = useState<string>("osm");
   // بحثٌ بالاسم لما لم يظهر في القائمة.
   const [query, setQuery] = useState("");
   const [found, setFound] = useState<NearbyPlace[] | null>(null);
@@ -156,11 +157,21 @@ export default function Compose() {
     }
     let alive = true;
     setAsking2(true);
-    api<{ places: NearbyPlace[]; source?: string }>(`/v1/places/nearby?lat=${fix.lat}&lng=${fix.lng}`)
+    /*
+      خرائطُ آبل أوّلاً على الآيفون (`lib/apple-places.ts`)، والخادمُ حين لا
+      وحدةَ أو تفشل أو لا تجد شيئاً — فلا تبقى القائمةُ فارغةً لعطلٍ في طرف.
+    */
+    const fromServer = () =>
+      api<{ places: NearbyPlace[]; source?: string }>(`/v1/places/nearby?lat=${fix.lat}&lng=${fix.lng}`).then(
+        (row) => ({ places: row.places, source: row.source ?? "osm" }),
+      );
+    appleNearby(fix.lat, fix.lng)
+      .catch(() => null)
+      .then((apple) => (apple && apple.length > 0 ? { places: apple, source: "apple" } : fromServer()))
       .then((row) => {
         if (!alive) return;
         setAround(row.places);
-        setFromGoogle(row.source === "google");
+        setSource(row.source);
       })
       .catch(() => alive && setAround([]))
       .finally(() => alive && setAsking2(false));
@@ -169,7 +180,7 @@ export default function Compose() {
     };
   }, [fix]);
 
-  // البحثُ بعد أن يقف الإصبع — كلُّ حرفٍ نداءٌ مدفوعٌ عند قوقل.
+  // البحثُ بعد أن يقف الإصبع — لا نداءَ مع كل حرف.
   useEffect(() => {
     const q = query.trim();
     if (!fix || q.length < 2) {
@@ -178,10 +189,14 @@ export default function Compose() {
     }
     let alive = true;
     const timer = setTimeout(() => {
-      api<{ places: NearbyPlace[] }>(
-        `/v1/places/search?lat=${fix.lat}&lng=${fix.lng}&q=${encodeURIComponent(q)}`,
-      )
-        .then((row) => alive && setFound(row.places))
+      const fromServer = () =>
+        api<{ places: NearbyPlace[] }>(
+          `/v1/places/search?lat=${fix.lat}&lng=${fix.lng}&q=${encodeURIComponent(q)}`,
+        ).then((row) => row.places);
+      appleSearch(q, fix.lat, fix.lng)
+        .catch(() => null)
+        .then((apple) => (apple ? apple : fromServer()))
+        .then((places) => alive && setFound(places))
         .catch(() => alive && setFound([]));
     }, 450);
     return () => {
@@ -298,7 +313,7 @@ export default function Compose() {
   });
 
   return (
-    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       {/* الرأس كبقية الشاشات: العلامة ثم فاصل ثم «لحظة» — لا اسم نوعٍ عارٍ. */}
       <ScreenHeader title="لحظة" back="/" />
 
@@ -486,9 +501,9 @@ export default function Compose() {
                 )
               ) : null}
 
-              {fix && fromGoogle ? (
+              {fix && (source === "google" || source === "apple") ? (
                 <Text style={{ color: colors.faint, fontSize: 10.5, paddingHorizontal: 14, paddingBottom: 10, textAlign: "left" }}>
-                  Google Maps
+                  {source === "apple" ? "Apple Maps" : "Google Maps"}
                 </Text>
               ) : null}
             </View>

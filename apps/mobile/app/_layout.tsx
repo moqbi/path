@@ -1,5 +1,6 @@
 import { useEffect, useSyncExternalStore } from "react";
-import { AppState, I18nManager, Platform, View, ActivityIndicator } from "react-native";
+import { AppState, I18nManager, Platform, View, ActivityIndicator, StyleSheet } from "react-native";
+import { MediaImage } from "../components/media-image";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as Notifications from "expo-notifications";
 import { enablePush } from "../lib/push";
@@ -21,7 +22,7 @@ import { watchCity } from "../lib/arrive";
 import { Suspended } from "../components/suspended";
 import { PhotoViewer } from "../components/photo-viewer";
 import { Tour } from "../components/tour";
-import { applyTheme, colors, themeStore } from "../theme/tokens";
+import { applyTheme, colors, themeStore, veil } from "../theme/tokens";
 
 /**
  * العربية من اليمين — قراراً لا إعداداً، وفي البيئات الثلاث معاً.
@@ -145,9 +146,10 @@ function Gate() {
     تتبدّل — والمكوّنات تقرأ المرجع نفسه فلا تعرف أنّ شيئاً جرى.
   */
   const skin = useSyncExternalStore(themeStore.subscribe, themeStore.get, themeStore.get);
+  const backdrop = me?.background?.mediaId ?? null;
   useEffect(() => {
-    applyTheme(me?.background?.palette ?? null);
-  }, [me?.background?.palette]);
+    applyTheme(me?.background?.palette ?? null, Boolean(backdrop));
+  }, [me?.background?.palette, backdrop]);
 
   /*
     وضغطةُ التنبيه تفتح موضعَه: رسالةً أو لحظةً أو الأصدقاء. ومن فتح
@@ -191,6 +193,17 @@ function Gate() {
   */
   return (
     <>
+    {/*
+      صورةُ الثيم خلف الشاشات كلّها وفوقها حجابٌ من أرضيته (٧٠٪) — كما تُلبَس
+      على `.shell` في الويب (القاعدة ٤٧). والشاشاتُ تُرسم على `colors.ground`
+      الشفّافة حين تكون صورة، فتُرى من تحتها.
+    */}
+    {backdrop ? (
+      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+        <MediaImage mediaId={backdrop} style={StyleSheet.absoluteFill} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: veil() }]} />
+      </View>
+    ) : null}
     <Stack
       // مفتاحُ الثيم: تبديلُه يُعيد بناء المكدّس بألوانه الجديدة.
       key={skin}
@@ -204,7 +217,7 @@ function Gate() {
           والمعاينة على الويب تعرضها صحيحة، فلا يُكشف إلا على جهاز.
           وتكراره هنا لا يضرّ حيث وصلت الوراثة، ويحسمها حيث لم تصل.
         */
-        contentStyle: { backgroundColor: colors.paper, direction: "rtl" },
+        contentStyle: { backgroundColor: colors.ground, direction: "rtl" },
       }}
     />
     {/* نافذةُ الصورة هنا لا في البطاقة: لا جدَّ لها يلتقط سحبتها. */}

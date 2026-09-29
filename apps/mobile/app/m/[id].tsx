@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { View, ScrollView, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
+import { View, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useKeyboardInset } from "../../lib/keyboard";
 import { Text, TextInput } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
@@ -26,10 +27,11 @@ export default function MomentPage() {
   const comment = useComment(id);
   const [body, setBody] = useState("");
   const insets = useSafeAreaInsets();
+  const keyboard = useKeyboardInset();
 
   if (moment.isLoading) {
     return (
-      <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
+      <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
         <ScreenHeader title="لحظة" back="/" />
         <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
       </SafeAreaView>
@@ -39,7 +41,7 @@ export default function MomentPage() {
   const data = moment.data?.moment;
   if (!data) {
     return (
-      <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
+      <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
         <ScreenHeader title="لحظة" back="/" />
         <Text style={{ color: colors.muted, fontSize: 13.5, textAlign: "center", marginTop: 50 }}>
           اللحظة غير موجودة.
@@ -49,18 +51,15 @@ export default function MomentPage() {
   }
 
   return (
-    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       <ScreenHeader title="لحظة" back="/" />
 
       {/*
         حقلُ التعليق **خارج** التمرير ومثبّتٌ في أسفل الشاشة، ويصعد مع
-        الكيبورد (`KeyboardAvoidingView`). كان داخل التمرير تحت البطاقة
+        الكيبورد بارتفاعه (`useKeyboardInset`). كان داخل التمرير تحت البطاقة
         مباشرةً، فيجلس في منتصف الشاشة كأنّ كيبورداً مفتوحاً تحته.
       */}
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <View style={{ flex: 1, paddingBottom: keyboard }}>
       <ScrollView
         style={{ flex: 1 }}
         keyboardShouldPersistTaps="handled"
@@ -88,7 +87,8 @@ export default function MomentPage() {
             gap: 8,
             paddingHorizontal: 14,
             paddingTop: 10,
-            paddingBottom: Math.max(insets.bottom, 12),
+            // والكيبورد مفتوحٌ لا حاجة لهامش الشريط السفليّ: الكيبورد يغطّيه.
+            paddingBottom: keyboard ? 10 : Math.max(insets.bottom, 12),
             borderTopWidth: 1,
             borderTopColor: colors.line,
             backgroundColor: colors.paper,
@@ -132,7 +132,7 @@ export default function MomentPage() {
             <Text style={{ color: colors.onBrand, fontSize: 13, fontWeight: "700" }}>أرسل</Text>
           </Pressable>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 }

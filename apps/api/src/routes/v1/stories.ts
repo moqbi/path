@@ -24,6 +24,11 @@ export const storyRoutes = new Hono()
     c.json({ stories: await stories.storiesOf(me(c), c.req.valid("param").id) }),
   )
 
+  /** من شاهد قصّتي — لصاحبها وحده. */
+  .get("/:id/viewers", zValidator("param", byId), async (c) =>
+    c.json({ viewers: await stories.viewers(me(c), c.req.valid("param").id) }),
+  )
+
   .post("/:id/seen", zValidator("param", byId), async (c) =>
     c.json(await stories.see(me(c), c.req.valid("param").id)),
   )

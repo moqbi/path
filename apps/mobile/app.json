@@ -15,7 +15,8 @@
         "NSCameraUsageDescription": "لالتقاط صورة أو فيديو لقصتك ولحظاتك.",
         "NSPhotoLibraryUsageDescription": "لاختيار صورة من ألبومك.",
         "NSLocationWhenInUseUsageDescription": "لتحديد المكان الذي تنشر منه لحظتك.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleAllowMixedLocalizations": true
       },
       "usesAppleSignIn": true
     },

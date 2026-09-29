@@ -137,7 +137,7 @@ export default function Circle() {
   const people = suggested.data?.people ?? [];
 
   return (
-    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       <ScreenHeader
         title="الأصدقاء"
         right={

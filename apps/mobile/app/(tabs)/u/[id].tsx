@@ -128,7 +128,7 @@ function Profile() {
   };
 
   return (
-    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       {/*
         زرُّ رجوعٍ فوقه — **بقرار المالك**، ونقضاً للقاعدة ٤٢: الملفُّ يُفتح
         من صفّ صديق أو تعليقٍ أو لحظة، ومن فتحه يريد أن يعود حيث كان لا إلى
@@ -145,6 +145,11 @@ function Profile() {
       ) : (
         <Animated.FlatList
           onScroll={onScroll}
+          // حقلُ التعليق داخل القائمة: آبل تُزيح المحتوى بقدر الكيبورد وتُظهر
+          // الحقلَ المركَّز فوقه، فيرى الكاتبُ ما يكتب.
+          automaticallyAdjustKeyboardInsets
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
           scrollEventThrottle={16}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} tintColor="#fff" />}
           data={moments.data?.moments ?? []}

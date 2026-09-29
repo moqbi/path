@@ -113,7 +113,28 @@ export async function storiesOf(viewerId: string, authorId: string) {
       createdAt: true,
       media: { select: { mime: true } },
       author: { select: { id: true, name: true, avatarMediaId: true } },
-      _count: { select: { views: true } },
+      // مشاهداتُ غير صاحبها — كالخادم.
+      _count: { select: { views: { where: { userId: { not: authorId } } } } },
     },
   });
+}
+
+/** من شاهد قصص صاحبها — لكل قصّةٍ قائمتُها، الأحدثُ أوّلاً وبلاه هو. */
+export async function viewersOf(ownerId: string, storyIds: string[]) {
+  const rows = await prisma.storyView.findMany({
+    where: { storyId: { in: storyIds }, userId: { not: ownerId }, story: { authorId: ownerId } },
+    orderBy: { seenAt: "desc" },
+    select: {
+      storyId: true,
+      seenAt: true,
+      user: { select: { id: true, name: true, avatarMediaId: true } },
+    },
+  });
+  const out = new Map<string, { id: string; name: string; avatarMediaId: string | null; seenAt: string }[]>();
+  for (const row of rows) {
+    const list = out.get(row.storyId) ?? [];
+    list.push({ ...row.user, seenAt: row.seenAt.toISOString() });
+    out.set(row.storyId, list);
+  }
+  return out;
 }

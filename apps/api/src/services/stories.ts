@@ -85,9 +85,43 @@ export async function storiesOf(viewerId: string, authorId: string) {
       createdAt: true,
       media: { select: { mime: true } },
       author: { select: { id: true, name: true, avatarMediaId: true } },
-      _count: { select: { views: true } },
+      // مشاهداتُ غير صاحبها: صاحبُ القصة يفتحها فيُكتب له إيصالٌ كغيره.
+      _count: { select: { views: { where: { userId: { not: authorId } } } } },
     },
   });
+}
+
+/**
+ * من شاهد قصّتي — لصاحبها وحده.
+ *
+ * الأحدثُ أوّلاً، وبلا صاحبها. والقصّةُ لغير صاحبها «غير موجودة» لا
+ * «ممنوعة» (القاعدة ٢٣ب): من يسأل عن مشاهدي قصّة غيره لا يُقال له إنّها قائمة.
+ */
+export async function viewers(userId: string, storyId: string) {
+  const story = await prisma.story.findFirst({
+    where: { id: storyId, authorId: userId },
+    select: { id: true },
+  });
+  if (!story) throw notFound("القصة غير موجودة");
+
+  const rows = await prisma.storyView.findMany({
+    where: { storyId, userId: { not: userId } },
+    orderBy: { seenAt: "desc" },
+    take: 200,
+    select: {
+      seenAt: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          avatarMediaId: true,
+          frame: { select: { spec: true, mediaId: true, frameHole: true } },
+          charm: { select: { spec: true, mediaId: true } },
+        },
+      },
+    },
+  });
+  return rows.map((row) => ({ ...row.user, seenAt: row.seenAt }));
 }
 
 /** نشر قصة: تُعرض لأصدقائك يوماً ثم تذهب. */
@@ -124,6 +158,18 @@ export async function post(
 
 /** إيصال مشاهدة — منه تُطفأ حلقتها. */
 export async function see(userId: string, storyId: string) {
+  /*
+    الإيصالُ لمن يرى القصّة فعلاً، ولا يُكتب لصاحبها: كان أيُّ حسابٍ يعرف
+    معرّفها يدخل قائمةَ مشاهديها، وكان صاحبُها يُعدّ من مشاهديه.
+  */
+  const story = await prisma.story.findFirst({
+    where: { id: storyId, expiresAt: { gt: new Date() } },
+    select: { authorId: true },
+  });
+  if (!story || story.authorId === userId) return { ok: true };
+  const authors = await visibleAuthors(userId);
+  if (!authors.includes(story.authorId)) return { ok: true };
+
   await prisma.storyView.upsert({
     where: { storyId_userId: { storyId, userId } },
     create: { storyId, userId },

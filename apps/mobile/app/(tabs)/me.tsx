@@ -146,7 +146,7 @@ export default function Me() {
   const s = stats.data;
 
   return (
-    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       {/* الرأس: العلامة، ففاصل، فاسم الشاشة — والمشاركة في الطرف المقابل. */}
       <View
         style={{
@@ -200,6 +200,11 @@ export default function Me() {
 
       <Animated.SectionList
         ref={list as never}
+        // حقلُ التعليق داخل القائمة: آبل تُزيح المحتوى بقدر الكيبورد وتُظهر
+        // الحقلَ المركَّز فوقه، فيرى الكاتبُ ما يكتب.
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
         sections={days}
         keyExtractor={(item) => item.id}
         stickySectionHeadersEnabled={false}
