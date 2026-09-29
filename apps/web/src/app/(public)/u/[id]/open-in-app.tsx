@@ -7,7 +7,7 @@ import { useState } from "react";
  *
  * ومن لم يُنزّله: المتصفّح لا يعرف `athar://` فيبقى في الصفحة. فإن بقيت
  * الصفحةُ ظاهرةً بعد لحظة — لم ينتقل شيء — يُرسَل إلى المتجر إن كان رابطُه
- * مضبوطاً، وإلّا قيل له إنّ التطبيق لم يُنشر بعد. والتطبيقُ إن فُتح أخفى
+ * مضبوطاً، وإلّا قيل له أن يحمّله من متجر جهازه. والتطبيقُ إن فُتح أخفى
  * الصفحةَ (`visibilitychange`) فلا يُفتح المتجرُ فوقه.
  *
  * وهذا بابُ ما بعد «حمّل»: الروابطُ العامّة (`https://…/u/1`) لا تفتح
@@ -31,7 +31,7 @@ export function OpenInApp({ userId, store }: { userId: string; store: string | n
       document.removeEventListener("visibilitychange", gone);
       if (left) return;
       if (store) window.location.href = store;
-      else setSaid("التطبيق لم يُنشر في المتجر بعد — قريباً.");
+      else setSaid("لم يُفتح التطبيق — حمّله من متجر جهازك ثمّ افتح الرابط ثانيةً.");
     }, 1400);
   }
 

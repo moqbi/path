@@ -252,9 +252,8 @@ export default async function SharedProfile({ params }: Props) {
 }
 
 /**
- * زرُّ المتجر: رابطُه من اللوحة (`store.ios` و`store.android`)، وبلا رابطٍ
- * يقول «قريباً» ولا يفتح شيئاً — زرٌّ إلى صفحةٍ لا وجود لها أسوأ من زرٍّ
- * يقول إنّه لم يُفتح بعد.
+ * زرُّ المتجر: رابطُه من اللوحة (`store.ios` و`store.android`). وبلا رابطٍ
+ * يبقى زرّاً بلا رابط — بلا «قريباً» بقرار المالك: التطبيقُ في المتجر.
  */
 function StoreButton({ store, href }: { store: string; href: string | null }) {
   if (href) {
@@ -274,7 +273,6 @@ function StoreButton({ store, href }: { store: string; href: string | null }) {
       aria-disabled="true"
     >
       {store}
-      <span className="text-[11px] text-faint">قريباً</span>
     </span>
   );
 }

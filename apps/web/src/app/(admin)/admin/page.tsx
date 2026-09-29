@@ -461,7 +461,10 @@ export default async function AdminPage({
       ? prisma.supportTicket.findMany({
           orderBy: [{ closed: "asc" }, { createdAt: "desc" }],
           take: 60,
-          include: { user: { select: { name: true, memberNo: true } } },
+          include: {
+            user: { select: { name: true, memberNo: true } },
+            files: { select: { id: true, name: true, mime: true, size: true } },
+          },
         })
       : Promise.resolve([]),
     // المفتوحة أولاً كالرسائل: ما ينتظر حكماً قبل ما حُكم فيه.
@@ -1653,6 +1656,8 @@ export default async function AdminPage({
                         <span dir="auto" className="flex items-center gap-1.5 truncate text-[13px] font-semibold">
                           {ticket.user?.name ?? ticket.name ?? "زائر"}
                           {ticket.user ? null : <Chip gold>من الموقع</Chip>}
+                          {ticket.topic === "careers" ? <Chip gold>طلب وظيفة</Chip> : null}
+                          {ticket.files.length ? <Chip>{ar(ticket.files.length)} مرفق</Chip> : null}
                           {ticket.closed ? <Chip>مغلقة</Chip> : ticket.reply ? <Chip>رُدّ</Chip> : <Chip live>جديدة</Chip>}
                         </span>
                         <span className="mt-0.5 block truncate text-[11.5px] text-muted">
@@ -1678,6 +1683,43 @@ export default async function AdminPage({
                       <p dir="auto" className="mb-3 whitespace-pre-wrap text-[12.5px] leading-relaxed text-ink">
                         {ticket.body}
                       </p>
+
+                      {/*
+                        المرفقات: الصورُ مصغّرةً تُفتح كاملةً بالضغط، والـPDF
+                        سطرٌ باسمه. وكلُّها من بابٍ لا يفتحه إلا المشرف.
+                      */}
+                      {ticket.files.length ? (
+                        <div className="mb-3 flex flex-wrap gap-2">
+                          {ticket.files.map((file) => (
+                            <a
+                              key={file.id}
+                              href={`/api/ticket-file/${file.id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-2 rounded-xl border border-line bg-paper p-1.5 pe-3 text-[11.5px] font-semibold text-ink"
+                            >
+                              {file.mime.startsWith("image/") ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={`/api/ticket-file/${file.id}`}
+                                  alt=""
+                                  className="h-12 w-12 rounded-lg object-cover"
+                                />
+                              ) : (
+                                <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-card text-[10px] font-bold text-clay-ink">
+                                  PDF
+                                </span>
+                              )}
+                              <span dir="auto" className="max-w-[160px] truncate">
+                                {file.name}
+                              </span>
+                              <span className="text-[10px] font-normal text-faint">
+                                {ar(Math.max(1, Math.round(file.size / 1024)))} ك.ب
+                              </span>
+                            </a>
+                          ))}
+                        </div>
+                      ) : null}
 
                       <Saver action={replyTicket.bind(null, ticket.id)} className="flex flex-col gap-2">
                         <textarea

@@ -303,6 +303,26 @@ function NewSocial() {
 
 /** أقسام الصفحة كما تُقرأ من أعلى إلى أسفل — لا كما تُخزَّن مفاتيحُها. */
 const GROUPS: { title: string; note?: string; fields: { key: string; label: string; note?: string; multiline?: boolean }[] }[] = [
+  /*
+    روابطُ التحميل أوّلاً: هي ما يتغيّر يوم النشر، وتقرؤها أزرارُ الهبوط
+    وزرُّ «حمّل التطبيق» في رأس الموقع وصفحةُ المشاركة `/u` معاً.
+  */
+  {
+    title: "روابط تحميل التطبيق",
+    note: "أزرار المتجرين في الموقع كلّه تفتح هذه الروابط. يبدأ الرابط بـhttps://",
+    fields: [
+      {
+        key: "store.ios",
+        label: "رابط App Store",
+        note: "مثل https://apps.apple.com/app/id6814671198",
+      },
+      {
+        key: "store.android",
+        label: "رابط Google Play",
+        note: "مثل https://play.google.com/store/apps/details?id=app.athar.mobile",
+      },
+    ],
+  },
   {
     title: "الرأس",
     note: "أوّل ما يُرى: الشعار ثم العبارة ثم المتن.",
@@ -349,12 +369,6 @@ const GROUPS: { title: string; note?: string; fields: { key: string; label: stri
       { key: "download.title", label: "العنوان" },
       { key: "download.body", label: "المتن", multiline: true },
       { key: "download.cta", label: "نصّ الزرّ" },
-      {
-        key: "store.ios",
-        label: "رابط App Store",
-        note: "أو رابط TestFlight العامّ قبل النشر. فارغٌ = «قريباً». يبدأ بـhttps://",
-      },
-      { key: "store.android", label: "رابط Google Play", note: "فارغٌ = «قريباً»." },
     ],
   },
   {

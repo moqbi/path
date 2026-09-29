@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { mailReply, tellSupport } from "@/lib/support-mail";
+import { readTicketFiles, saveTicketFiles } from "@/lib/ticket-files";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -1154,6 +1155,22 @@ export async function openPublicTicket(
   _prev: AdminResult,
   formData: FormData,
 ): Promise<AdminResult> {
+  return sendPublicTicket(formData, null);
+}
+
+/**
+ * طلبُ وظيفة من صفحة الوظائف — رسالةٌ من الموقع كرسالة الدعم، ومعها
+ * `topic = careers` فلا يُخلط طلبُ عملٍ بشكوى في اللوحة، وتُقبل معه ملفّاتُ
+ * PDF (سيرةٌ ذاتية أو أعمال) إلى جانب الصور.
+ */
+export async function applyForJob(
+  _prev: AdminResult,
+  formData: FormData,
+): Promise<AdminResult> {
+  return sendPublicTicket(formData, "careers");
+}
+
+async function sendPublicTicket(formData: FormData, topic: "careers" | null): Promise<AdminResult> {
   const parsed = publicMessage.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
@@ -1161,23 +1178,41 @@ export async function openPublicTicket(
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات ناقصة" };
 
+  // المرفقات تُفحص قبل أن يُكتب شيء: رسالةٌ بلا مرفقاتها نصفُ رسالة.
+  const read = await readTicketFiles(formData, topic === "careers");
+  if ("error" in read) return { error: read.error };
+
   // ثلاثُ رسائل مفتوحة من بريدٍ واحد تكفي: تكرارها يُغرق اللوحة ولا يُسرّع الردّ.
   const open = await prisma.supportTicket.count({
     where: { email: parsed.data.email, closed: false },
   });
   if (open >= 3) return { error: "عندك رسائل لم يُردّ عليها بعد — انتظر الردّ" };
 
-  await prisma.supportTicket.create({
-    data: { name: parsed.data.name, email: parsed.data.email, body: parsed.data.body },
+  const ticket = await prisma.supportTicket.create({
+    data: { name: parsed.data.name, email: parsed.data.email, body: parsed.data.body, topic },
   });
+  try {
+    await saveTicketFiles(ticket.id, read.files);
+  } catch {
+    // مرفقٌ لم يُحفظ: تُمحى الرسالة كلُّها ويُقال له أن يعيد — لا نصفَ رسالة.
+    await prisma.supportTicket.delete({ where: { id: ticket.id } }).catch(() => {});
+    return { error: "تعذّر رفع المرفقات — أعد المحاولة" };
+  }
+
   // خبرٌ إلى صندوق الدعم، ومعه بريدُ صاحبه فيُردّ عليه منه مباشرةً.
+  const extra = read.files.length ? `\n\n(${read.files.length} مرفق — في اللوحة)` : "";
   void tellSupport({
-    from: parsed.data.name,
-    body: parsed.data.body,
+    from: topic === "careers" ? `طلب وظيفة — ${parsed.data.name}` : parsed.data.name,
+    body: parsed.data.body + extra,
     replyTo: parsed.data.email,
   });
   revalidatePath("/admin");
-  return { ok: "وصلتنا رسالتك — نردّ على بريدك" };
+  return {
+    ok:
+      topic === "careers"
+        ? "وصلنا طلبك — نقرؤه ونردّ على بريدك إن كان مناسباً"
+        : "وصلتنا رسالتك — نردّ على بريدك",
+  };
 }
 
 /**

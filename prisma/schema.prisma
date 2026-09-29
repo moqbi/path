@@ -760,6 +760,11 @@ model SupportTicket {
   email String?
 
   body      String
+  /// من أين كُتبت: فارغٌ لرسالةٍ عادية، و`careers` لطلب وظيفة من صفحة
+  /// الوظائف — يُعرض وسماً في اللوحة فلا يُخلط طلبُ عملٍ بشكوى.
+  topic     String?
+  /// مرفقاتُها: صورٌ لرسالة الدعم، وصورٌ أو PDF لطلب الوظيفة.
+  files     TicketFile[]
   /// ردّ المشرف — فارغٌ حتى يُردّ.
   reply     String?
   repliedAt DateTime?
@@ -770,6 +775,27 @@ model SupportTicket {
   @@index([userId, createdAt])
   @@index([closed, createdAt])
   @@index([email, createdAt])
+}
+
+/// مرفقُ رسالة دعمٍ أو طلبِ وظيفة.
+///
+/// جدولٌ مستقلّ لا `Media`: `Media` يشترط صاحباً (`ownerId`)، ورسالةُ الموقع
+/// بلا حساب. ولا يُقرأ إلا من اللوحة (`/api/ticket-file/[id]`) — سيرةُ
+/// متقدّمٍ أو صورةُ مشكلةٍ لا تُفتح برابطٍ يُنسخ.
+model TicketFile {
+  id       String        @id @default(cuid())
+  ticketId String
+  ticket   SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  /// اسمُ الملف كما رفعه صاحبه — يُعرض في اللوحة ويُنزَّل به.
+  name     String
+  mime     String
+  size     Int
+  /// مفتاحُه في R2 — أو البايتات في القاعدة حين لا دلوَ مربوط (القاعدة ١٠٢).
+  key      String?
+  bytes    Bytes?
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
 }
 
 /// جلسةُ تجديد. يُخزَّن ملخّص التوكن لا التوكن: قاعدةٌ تُسرَّق لا تعطي

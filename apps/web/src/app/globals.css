@@ -352,6 +352,97 @@ h3 {
   margin-bottom: 6px;
 }
 
+/*
+ * صفحاتُ الموقع الداخلية: رأسٌ داكنٌ في الوسط، ثمّ بطاقاتٌ على الورق.
+ *
+ * كانت كلُّ صفحةٍ عموداً واحداً من النصّ ملتصقاً بالحافّة اليمنى بلا
+ * حاوية — يُقرأ مقالاً منسوخاً لا صفحةً من منتج. الآن لكلّ صفحةٍ رأسُها
+ * (`.page-hero`)، ولكلّ قسمٍ بطاقتُه (`.doc-card`) برقمٍ أو أيقونة.
+ */
+.page-hero {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-chrome);
+  color: var(--color-chrome-ink);
+  text-align: center;
+  padding: 56px 20px 64px;
+}
+
+.page-hero::before {
+  content: "";
+  position: absolute;
+  inset: auto -20% -60% -20%;
+  height: 120%;
+  background: radial-gradient(closest-side, rgba(246, 185, 59, 0.14), transparent 70%);
+  pointer-events: none;
+}
+
+.page-hero > * {
+  position: relative;
+}
+
+.page-body {
+  width: 100%;
+  max-width: 880px;
+  margin-inline: auto;
+  padding: 0 20px 64px;
+  margin-top: -28px;
+  position: relative;
+}
+
+.doc-card {
+  border: 1px solid var(--color-line);
+  background: var(--color-card);
+  border-radius: 20px;
+  padding: 22px 22px 20px;
+  box-shadow: 0 1px 2px rgba(14, 26, 36, 0.04);
+}
+
+@media (min-width: 640px) {
+  .doc-card {
+    padding: 28px 30px 26px;
+  }
+}
+
+.doc-card p,
+.doc-card li {
+  font-size: 14.5px;
+  line-height: 1.95;
+  color: var(--color-ink-2);
+}
+
+.doc-card p + p {
+  margin-top: 10px;
+}
+
+.doc-card ul {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.doc-card li {
+  position: relative;
+  padding-inline-start: 18px;
+}
+
+.doc-card li::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 2px;
+  top: 0.8em;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-gold);
+}
+
+.doc-card a {
+  font-weight: 600;
+  color: var(--color-clay-ink);
+}
+
 /* رأس الموقع وذيله داكنان كشريطَي التطبيق — العلامة تسكن الداكن. */
 .site-head {
   position: sticky;
@@ -491,6 +582,19 @@ h3 {
   background: #0e1a24;
   box-shadow: 0 18px 40px rgba(14, 26, 36, 0.16);
   overflow: hidden;
+}
+
+/* لقطةٌ حقيقية: الصورة تملأ الشاشة من أعلاها، وهاتفُها أعرض قليلاً. */
+.phone-shot {
+  width: 220px;
+}
+
+.phone-shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  display: block;
 }
 
 .phone > * {
