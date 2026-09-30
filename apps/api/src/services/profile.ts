@@ -2,7 +2,7 @@ import { prisma } from "@athar/db";
 import { BIO_MAX, type NotifyInput } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { dropMedia } from "./media";
-import { endPlus } from "./plus";
+import { endPlus, lapsedNow } from "./plus";
 import { cityInput } from "./city-input";
 import { tellSupport } from "./support-mail";
 import { readTicketFiles, saveTicketFiles } from "./ticket-files";
@@ -13,10 +13,8 @@ export async function me(userId: string) {
      اشتراكٌ تجاوز موعده يُنهى هنا قبل أن يُقرأ: الكنسُ يجري كل بضع دقائق،
      ومن انتهى اشتراكه وفتح التطبيق يرى ذلك في الحال لا بعد الكنس.
   */
-  const lapsed = await prisma.user.count({
-    where: { id: userId, isPlus: true, plusUntil: { lt: new Date() } },
-  });
-  if (lapsed) await endPlus(userId);
+  // والمشترك من المتجر ينتظر حدثَ الانتهاء لا موعدَه (`lapsedNow`، القاعدة ١٩٦).
+  if ((await lapsedNow([userId])).length > 0) await endPlus(userId);
 
   const user = await prisma.user.findUnique({
     where: { id: userId },

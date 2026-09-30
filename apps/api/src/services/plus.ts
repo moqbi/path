@@ -110,14 +110,54 @@ async function freeze(ownerId: string, mediaId: string): Promise<string | null> 
   return row.id;
 }
 
+/**
+ * مهلةُ المشترك من المتجر بعد `plusUntil` قبل أن يُنهى بلا حدث (القاعدة ١٩٦).
+ *
+ * آبل تجدّد في لحظة الانتهاء نفسها، وحدثُ التجديد من RevenueCat يصلنا بعدها
+ * بثوانٍ أو دقائق — وفي تلك الفجوة كان الكنسُ (كل خمس دقائق) و`me()` يريان
+ * `plusUntil` ماضياً فيُنهيان الاشتراك، و`endPlus` يثبّت الصورة المتحرّكة
+ * **بلا رجعة**: يعود الاشتراكُ مع الحدث وتبقى الصورةُ ثابتة. فالمشترك من
+ * المتجر يُنهيه حدثُ `EXPIRATION` نفسه، والكنسُ بعد يومين شبكةُ أمانٍ لحدثٍ
+ * ضاع — لا سابقٌ للحدث.
+ */
+const STORE_GRACE_MS = 2 * 86_400_000;
+
+/**
+ * من تجاوز `plusUntil` وحقّ إنهاؤه الآن: منحُ اللوحة ينتهي في موعده (لا حدثَ
+ * يُنهيه)، ومن اشترك من المتجر ينتظر مهلته.
+ */
+export async function lapsedNow(ids: string[]): Promise<string[]> {
+  if (ids.length === 0) return [];
+  const rows = await prisma.user.findMany({
+    where: { id: { in: ids }, isPlus: true, plusUntil: { lt: new Date() } },
+    select: { id: true, plusUntil: true },
+  });
+  if (rows.length === 0) return [];
+  const billed = new Set(
+    (
+      await prisma.billingEvent.findMany({
+        where: { appUserId: { in: rows.map((row) => row.id) } },
+        select: { appUserId: true },
+        distinct: ["appUserId"],
+      })
+    ).map((row) => row.appUserId),
+  );
+  const edge = Date.now() - STORE_GRACE_MS;
+  return rows
+    .filter((row) => !billed.has(row.id) || row.plusUntil!.getTime() < edge)
+    .map((row) => row.id);
+}
+
 /** الكنس: من تجاوز `plusUntil` ولم يُنهَ بعد — منحُ اللوحة لا يصله حدثٌ ينهيه. */
 export async function expirePlus(limit = 100): Promise<number> {
   const rows = await prisma.user.findMany({
     where: { isPlus: true, plusUntil: { lt: new Date() } },
     select: { id: true },
+    orderBy: { plusUntil: "asc" },
     take: limit,
   });
-  for (const row of rows) await endPlus(row.id);
-  if (rows.length > 0) console.log(`↓ انتهى آثار+ لـ${rows.length}`);
-  return rows.length;
+  const ids = await lapsedNow(rows.map((row) => row.id));
+  for (const id of ids) await endPlus(id);
+  if (ids.length > 0) console.log(`↓ انتهى آثار+ لـ${ids.length}`);
+  return ids.length;
 }
