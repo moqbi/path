@@ -24,7 +24,7 @@ const MAX_SIDE = 1600;
  * **والمتحرّكة تُرفع كما هي**: التصغيرُ يرسم الإطار الأوّل وحده فيقتلها
  * (القاعدة ٨٢)، وحدُّها ٣٢٠×٣٢٠ أصلاً فلا تحتاجه.
  */
-async function shrink(
+export async function shrink(
   uri: string,
   mime: string,
   size: { width: number; height: number },

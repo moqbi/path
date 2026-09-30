@@ -11,6 +11,7 @@ import {
   privacyInput,
   profileInput,
 } from "@athar/shared";
+import { badRequest } from "../../lib/errors";
 import { zValidator } from "../../lib/validate";
 import { requireAuth, me } from "../../middleware/auth";
 import * as profile from "../../services/profile";
@@ -111,10 +112,41 @@ export const profileRoutes = new Hono()
   /** الدعم داخل التطبيق: الرسالة تُحفظ والردّ يُقرأ في مكانه. */
   .get("/support", async (c) => c.json(await profile.tickets(me(c))))
 
+  /*
+    الرسالة بسببها ومرفقاتها: `multipart/form-data` (نصٌّ وسببٌ وحتى ثلاث صور)،
+    و`json` يبقى لنسخةٍ قديمة من التطبيق ما زالت ترسل النصَّ وحده.
+  */
+  .post("/support", async (c) => {
+    const type = c.req.header("content-type") ?? "";
+    if (type.includes("multipart/form-data")) {
+      const form = await c.req.parseBody({ all: true });
+      const raw = form["files"];
+      const files = (Array.isArray(raw) ? raw : raw ? [raw] : []).filter(
+        (entry): entry is File => typeof entry !== "string",
+      );
+      const topic = typeof form["topic"] === "string" && form["topic"] ? form["topic"] : null;
+      const body = typeof form["body"] === "string" ? form["body"] : "";
+      return c.json(await profile.openTicket(me(c), body, topic, files), 201);
+    }
+    const parsed = z
+      .object({ body: z.string().trim().min(5).max(1200), topic: z.string().max(20).optional() })
+      .safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) throw badRequest("اكتب رسالتك");
+    return c.json(await profile.openTicket(me(c), parsed.data.body, parsed.data.topic ?? null), 201);
+  })
+
+  /** الانضمامُ إلى فريق التجربة — نموذجُ `/beta` في الموقع نفسه. */
   .post(
-    "/support",
-    zValidator("json", z.object({ body: z.string().trim().min(5).max(1200) })),
-    async (c) => c.json(await profile.openTicket(me(c), c.req.valid("json").body), 201),
+    "/beta",
+    zValidator(
+      "json",
+      z.object({
+        email: z.string().trim().email().max(200),
+        device: z.enum(["iPhone", "Android"]),
+        note: z.string().max(600).optional(),
+      }),
+    ),
+    async (c) => c.json(await profile.joinBeta(me(c), c.req.valid("json")), 201),
   )
 
   /** حذف الحساب — بكلمة المرور، وآخر ما في الملف. */

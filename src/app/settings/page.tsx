@@ -4,7 +4,7 @@ import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { createGroup, deleteGroup, savePrivacy } from "@/app/actions";
 import { ScreenHeader } from "@/components/ui";
-import { BookIcon, LifeIcon, ShieldIcon } from "@/components/icons";
+import { BookIcon, LifeIcon, ShieldIcon, SparkIcon } from "@/components/icons";
 import { DeleteAccount } from "@/app/me/delete";
 import { ChangeEmail } from "@/app/settings/email";
 import { ChangePassword } from "@/app/settings/password";
@@ -271,6 +271,22 @@ export default async function SettingsPage() {
           </span>
           <span className="shrink-0 text-clay-ink">
             <LifeIcon size={18} />
+          </span>
+        </Link>
+
+        {/* فريقُ التجربة — نموذجُ `/beta` في الموقع نفسه، من داخل التطبيق. */}
+        <Link
+          href="/settings/beta"
+          className="-mt-3 mb-6 flex items-center justify-between rounded-2xl border border-line bg-card p-4"
+        >
+          <span>
+            <span className="block text-[13.5px] font-semibold">انضم إلى فريق التجارب</span>
+            <span className="block text-[11.5px] text-muted">
+              جرّب النسخ الجديدة قبل الجميع عبر TestFlight أو Google Play
+            </span>
+          </span>
+          <span className="shrink-0 text-clay-ink">
+            <SparkIcon size={18} />
           </span>
         </Link>
 

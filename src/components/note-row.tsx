@@ -5,6 +5,7 @@ import { Avatar, itemPaint } from "@/components/ui";
 import { MessageIcon, SparkIcon, StoreIcon, TagIcon, WithIcon } from "@/components/icons";
 import { relative } from "@/lib/format";
 import { BASE } from "@/lib/base";
+import { NoteDismiss } from "@/components/note-dismiss";
 
 /** لون دائرة النوع: التفاعل كهرماني، الإشارة مرجانية، الصداقة خضراء. */
 const KIND_STYLE: Record<NoteKind, { bg: string; ink: string }> = {
@@ -24,10 +25,8 @@ const KIND_STYLE: Record<NoteKind, { bg: string; ink: string }> = {
 export function NoteRow({ note }: { note: Note }) {
   const style = KIND_STYLE[note.kind];
   return (
-    <Link
-      href={note.href}
-      className="flex items-center gap-3 rounded-2xl border border-line bg-card p-3"
-    >
+    <div className="flex items-center gap-1 rounded-2xl border border-line bg-card p-3 ps-3 pe-1">
+    <Link href={note.href} className="flex min-w-0 grow items-center gap-3">
       {/* الصورة ومعها دائرة النوع — من فعل، وماذا فعل. */}
       <span className="relative shrink-0">
         {note.person ? (
@@ -79,5 +78,7 @@ export function NoteRow({ note }: { note: Note }) {
         />
       ) : null}
     </Link>
+    <NoteDismiss id={note.id} />
+    </div>
   );
 }

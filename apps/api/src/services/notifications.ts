@@ -36,6 +36,12 @@ export type Note = {
  */
 /** عمرُ خبر المتجر: ثلاثة أيام كنافذة «الجديد» في عدّاد التبويب. */
 const NEW_ITEM_DAYS = 3;
+/**
+ * عمرُ الإشعار ١٥ يوماً — **بقرار المالك**: ما مضى عليه أكثرُ يختفي من كل
+ * مكانٍ وحده. ولأنّها تُشتقّ (القاعدة ٢٥) فلا صفَّ يُمحى: شرطٌ في الاشتقاق
+ * نفسه في الخادم والويب، فلا يعود بتحديثٍ ولا يبقى في مكانٍ دون آخر.
+ */
+const NOTE_DAYS = 15;
 
 /**
  * خبيئةٌ قصيرة للاشتقاق.
@@ -80,7 +86,7 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
 async function derive(userId: string, limit: number): Promise<Note[]> {
   const me = await prisma.user.findUnique({
     where: { id: userId },
-    select: { notifyOnTag: true, notesClearedAt: true },
+    select: { notifyOnTag: true, notesClearedAt: true, createdAt: true },
   });
   const dismissed = new Set(
     (await prisma.noteDismissal.findMany({ where: { userId }, select: { noteId: true } })).map(
@@ -180,7 +186,15 @@ async function derive(userId: string, limit: number): Promise<Note[]> {
       where: {
         hidden: false,
         earnedAfterDays: null,
-        createdAt: { gt: new Date(Date.now() - NEW_ITEM_DAYS * 86_400_000) },
+        /*
+          ولا ما سبق الحساب: من سجّل اليوم لم يفُته شيء، وخبرُ صنفٍ رُفع قبل
+          وجوده لا يُقرأ «جديداً» عنده.
+        */
+        createdAt: {
+          gt: new Date(
+            Math.max(Date.now() - NEW_ITEM_DAYS * 86_400_000, me?.createdAt.getTime() ?? 0),
+          ),
+        },
       },
       select: { id: true, name: true, spec: true, mediaId: true, createdAt: true, limited: true },
       orderBy: { createdAt: "desc" },
@@ -272,7 +286,9 @@ async function derive(userId: string, limit: number): Promise<Note[]> {
     // وما لا صاحب له لا يُحجب: خبرُ المتجر ليس من أحد.
     .filter((note) => !note.person || !hidden.has(note.person.id))
     // وما حذفه صاحبُه لا يعود: بالسحب واحداً، أو بـ«احذف الكل».
-    .filter((note) => note.at.getTime() > clearedAt && !dismissed.has(note.id))
+    .filter(
+      (note) => note.at.getTime() > Math.max(clearedAt, Date.now() - NOTE_DAYS * 86_400_000) && !dismissed.has(note.id),
+    )
     .sort((a, b) => b.at.getTime() - a.at.getTime())
     .slice(0, limit);
 }

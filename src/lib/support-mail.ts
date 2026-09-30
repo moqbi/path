@@ -20,7 +20,11 @@ export async function tellSupport(input: {
   replyTo?: string | null;
 }): Promise<void> {
   const inbox = process.env.SUPPORT_EMAIL;
-  if (!inbox) return;
+  if (!inbox) {
+    // بلا صندوقٍ لا يخرج خبر — والسطرُ يقول لماذا لم يصل (القاعدة ١١٩د).
+    console.warn("SUPPORT_EMAIL غير مضبوط — رسالة الدعم حُفظت في اللوحة ولم يخرج بريد");
+    return;
+  }
 
   await sendMail({
     to: inbox,

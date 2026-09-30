@@ -6,7 +6,7 @@ import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ScreenHeader } from "../../components/screen-header";
-import { BookIcon, CheckIcon, InfoIcon, ShieldIcon } from "../../components/icons";
+import { BookIcon, CheckIcon, InfoIcon, ShieldIcon, SparkIcon } from "../../components/icons";
 import { Sheet } from "../../components/sheet";
 import { openIn } from "../../lib/browse";
 import { api } from "../../lib/api";
@@ -251,6 +251,13 @@ export default function Settings() {
           note="مشكلة أو اقتراح أو بلاغ — نردّ عليك داخل التطبيق"
           right={<InfoIcon size={18} color={colors.clayInk} />}
           onPress={() => router.push("/settings/support" as never)}
+        />
+
+        <Link
+          title="انضم إلى فريق التجارب"
+          note="جرّب النسخ الجديدة قبل الجميع عبر TestFlight أو Google Play"
+          right={<SparkIcon size={18} color={colors.clayInk} />}
+          onPress={() => router.push("/settings/beta" as never)}
         />
 
         <Link

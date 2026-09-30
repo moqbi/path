@@ -4,6 +4,8 @@ import { clear, clientIp, hit, TOO_MANY } from "@/lib/rate-limit";
 import { recordCity } from "@/lib/city";
 import { cityInput } from "@/lib/city-input";
 import { revalidatePath } from "next/cache";
+import { BETA_DEVICES, CONTACT_REASONS, TOPIC_LABEL } from "@/lib/topics";
+import { readTicketFiles, saveTicketFiles } from "@/lib/ticket-files";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -869,16 +871,63 @@ export async function openTicket(_prev: AdminResult, formData: FormData): Promis
   const body = String(formData.get("body") ?? "").trim().slice(0, 1200);
   if (body.length < 5) return { error: "اكتب رسالتك" };
 
+  // سببُ التواصل قائمةٌ مغلقة (القاعدة ١٨٠ب): قيمةٌ مزوّرة تُردّ لا تُكتب.
+  const topic = String(formData.get("topic") ?? "");
+  if (!CONTACT_REASONS.some((reason) => reason.key === topic)) return { error: "اختر سبب التواصل" };
+
   // رسالةٌ مفتوحة واحدة تكفي: تكرارها يُغرق اللوحة ولا يُسرّع الردّ.
-  const open = await prisma.supportTicket.count({ where: { userId: user.id, closed: false } });
+  const open = await prisma.supportTicket.count({
+    where: { userId: user.id, closed: false, NOT: { topic: "beta" } },
+  });
   if (open >= 3) return { error: "عندك رسائل مفتوحة — انتظر الردّ عليها" };
 
-  await prisma.supportTicket.create({ data: { userId: user.id, body } });
+  // المرفقات تُفحص قبل أن يُكتب شيء — صورٌ وحدها في رسالة الدعم.
+  const read = await readTicketFiles(formData, false);
+  if ("error" in read) return { error: read.error };
+
+  const ticket = await prisma.supportTicket.create({ data: { userId: user.id, body, topic } });
+  try {
+    await saveTicketFiles(ticket.id, read.files);
+  } catch {
+    // مرفقٌ لم يُحفظ يمحو الرسالة كلَّها — لا نصفَ رسالة (القاعدة ١٧٩).
+    await prisma.supportTicket.delete({ where: { id: ticket.id } });
+    return { error: "تعذّر رفع المرفقات — حاول مرّةً أخرى" };
+  }
+
   // خبرٌ إلى صندوق الدعم: لوحةٌ لا يفتحها أحدٌ تترك سؤالاً أسبوعاً.
-  void tellSupport({ from: `${user.name} (#${user.memberNo})`, body });
+  void tellSupport({
+    from: `${user.name} (#${user.memberNo}) — ${TOPIC_LABEL[topic]}`,
+    body: read.files.length ? `${body}\n\n[${read.files.length} مرفق — في اللوحة]` : body,
+    replyTo: user.email,
+  });
   revalidatePath("/settings/support");
-  revalidatePath("/admin");
   return { ok: "وصلتنا رسالتك — نردّ عليك هنا" };
+}
+
+/**
+ * الانضمامُ إلى فريق التجربة من داخل التطبيق — نموذجُ `/beta` في الموقع
+ * نفسه: بريدٌ وجهاز، والدعوةُ تُرسل بيدٍ من TestFlight وGoogle Play.
+ * وطلبٌ مفتوحٌ واحد يكفي: إعادتُه لا تُسرّع الدعوة.
+ */
+export async function joinBetaFromApp(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  const user = await requireUser();
+  const device = String(formData.get("device") ?? "");
+  if (!(BETA_DEVICES as readonly string[]).includes(device)) return { error: "اختر جهازك" };
+  const email = String(formData.get("email") ?? "").trim().slice(0, 200);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "اكتب بريداً صحيحاً" };
+  const note = String(formData.get("body") ?? "").trim().slice(0, 600);
+
+  const pending = await prisma.supportTicket.count({
+    where: { userId: user.id, topic: "beta", closed: false },
+  });
+  if (pending > 0) return { ok: "طلبك وصلنا — ننتظر دعوتك قريباً" };
+
+  const body = `الجهاز: ${device}\nالبريد: ${email}${note ? `\n\n${note}` : ""}`;
+  await prisma.supportTicket.create({
+    data: { userId: user.id, topic: "beta", body, name: user.name, email },
+  });
+  void tellSupport({ from: `${user.name} (#${user.memberNo}) — فريق التجربة`, body, replyTo: email });
+  return { ok: "وصلنا طلبك — تصلك الدعوة على بريدك" };
 }
 
 // ───────────────────────────── الدائرة ─────────────────────────────
@@ -1814,7 +1863,7 @@ export async function equip(itemId: string): Promise<void> {
 
   const purchase = await prisma.purchase.findUnique({
     where: { userId_itemId: { userId: user.id, itemId } },
-    include: { item: { select: { kind: true } } },
+    include: { item: { select: { kind: true, coverMediaId: true } } },
   });
   if (!purchase) throw new Error("لا تملك هذا الصنف");
 
@@ -1827,9 +1876,47 @@ export async function equip(itemId: string): Promise<void> {
 
   await prisma.user.update({ where: { id: user.id }, data: field });
 
+  /*
+    لبسُ الثيم يلبس غلافه — **بقرار المالك**: كان الغلافُ يُنسخ عند الشراء
+    وحده، فمن اشترى الثيمَ قبل أن يُرفع غلافُه لم يتغيّر غلافُه أبداً.
+    وحين يتبدّل الثيمُ فقط: إعادةُ لبس الثيم نفسه لا تمحو غلافاً اختاره
+    صاحبُه بعده من «تعديل الملف».
+  */
+  if (purchase.item.kind !== "FRAME" && purchase.item.kind !== "CHARM" && user.backgroundId !== itemId) {
+    await wearItemCover(purchase.item.coverMediaId, user.id);
+  }
+
   revalidatePath("/me");
   revalidatePath("/store");
   revalidatePath("/");
+}
+
+/**
+ * حذفُ إشعارٍ واحد — الصفُّ نفسه الذي يكتبه التطبيق (`NoteDismissal`)، فما
+ * حُذف هنا لا يعود في الجوّال ولا العكس (القاعدة ٢٥ب). والمعرّفُ يُفحص
+ * شكلُه: حرفُ النوع ثمّ شرطةٌ ثمّ معرّف — لا نصٌّ حرٌّ يُكتب في القاعدة.
+ */
+export async function dismissNote(noteId: string): Promise<void> {
+  const user = await requireUser();
+  if (!/^[a-z]-[A-Za-z0-9_-]{1,64}$/.test(noteId)) return;
+  await prisma.noteDismissal.upsert({
+    where: { userId_noteId: { userId: user.id, noteId } },
+    create: { userId: user.id, noteId },
+    update: {},
+  });
+  revalidatePath("/notifications");
+  revalidatePath("/", "layout");
+}
+
+/** «احذف الكل»: ختمٌ واحد، وما حُذف قبله واحداً واحداً لم يعد يلزم. */
+export async function clearNotes(): Promise<void> {
+  const user = await requireUser();
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: user.id }, data: { notesClearedAt: new Date() } }),
+    prisma.noteDismissal.deleteMany({ where: { userId: user.id } }),
+  ]);
+  revalidatePath("/notifications");
+  revalidatePath("/", "layout");
 }
 
 export async function unequip(kind: "FRAME" | "BACKGROUND" | "CHARM"): Promise<void> {

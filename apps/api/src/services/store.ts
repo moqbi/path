@@ -329,10 +329,13 @@ export async function gift(userId: string, itemId: string, toUserId: string, pla
 
 /** اللبس: ما لا تملكه لا تلبسه. */
 export async function equip(userId: string, itemId: string) {
-  const purchase = await prisma.purchase.findUnique({
-    where: { userId_itemId: { userId, itemId } },
-    select: { expiresAt: true, item: { select: { kind: true } } },
-  });
+  const [purchase, me] = await Promise.all([
+    prisma.purchase.findUnique({
+      where: { userId_itemId: { userId, itemId } },
+      select: { expiresAt: true, item: { select: { kind: true, coverMediaId: true } } },
+    }),
+    prisma.user.findUnique({ where: { id: userId }, select: { backgroundId: true } }),
+  ]);
   if (!purchase) throw forbidden("لا تملك هذا الصنف");
   if (purchase.expiresAt && purchase.expiresAt <= new Date()) throw forbidden("انتهت مدّة هذا الصنف");
 
@@ -344,6 +347,15 @@ export async function equip(userId: string, itemId: string) {
         : { backgroundId: itemId };
 
   await prisma.user.update({ where: { id: userId }, data: field });
+
+  /*
+    لبسُ الثيم يلبس غلافه — **بقرار المالك**: كان الغلافُ يُنسخ عند الشراء
+    وحده، فمن اشترى الثيمَ قبل أن يُرفع غلافُه لم يتغيّر غلافُه أبداً.
+    وحين يتبدّل الثيمُ فقط: إعادةُ لبسه لا تمحو غلافاً اختاره صاحبُه بعده.
+  */
+  if (purchase.item.kind !== "FRAME" && purchase.item.kind !== "CHARM" && me?.backgroundId !== itemId) {
+    await wearItemCover(purchase.item.coverMediaId, userId);
+  }
   return { ok: true };
 }
 

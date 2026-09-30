@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { notifications, type NoteKind } from "@/lib/notifications";
 import { NoteRow } from "@/components/note-row";
+import { ClearNotes } from "@/components/note-dismiss";
 import { Empty } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import { AthrPageMark } from "@/components/brand";
@@ -48,8 +49,9 @@ export default async function NotificationsPage({
   return (
     <div className="screen">
       {/* الإعدادات تُفتح من تبويب «أنا»، فلا ترس هنا. */}
-      <header className="chrome flex items-center px-5 pb-3 pt-4">
+      <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
         <AthrPageMark label="الإشعارات" />
+        {all.length > 0 ? <ClearNotes /> : null}
       </header>
 
       <div className="shrink-0 px-5 pb-1 pt-3">

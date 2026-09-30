@@ -5,6 +5,7 @@ import { ScreenHeader } from "@/components/ui";
 import { InfoIcon } from "@/components/icons";
 import { relative } from "@/lib/format";
 import { TicketForm } from "./form";
+import { TOPIC_LABEL } from "@/lib/topics";
 
 /**
  * الدعم الفني: رسالةٌ تُكتب هنا وتُقرأ هنا.
@@ -21,6 +22,7 @@ export default async function SupportPage() {
     where: { userId: user.id },
     orderBy: { createdAt: "desc" },
     take: 20,
+    include: { _count: { select: { files: true } } },
   });
 
   return (
@@ -55,7 +57,15 @@ export default async function SupportPage() {
                     >
                       {ticket.closed ? "مغلقة" : ticket.reply ? "رُدّ عليها" : "بانتظار الردّ"}
                     </span>
+                    {ticket.topic && TOPIC_LABEL[ticket.topic] ? (
+                      <span className="text-[10.5px] font-semibold text-ink-2">
+                        {TOPIC_LABEL[ticket.topic]}
+                      </span>
+                    ) : null}
                     <span className="text-[10.5px] text-faint">{relative(ticket.createdAt)}</span>
+                    {ticket._count.files ? (
+                      <span className="text-[10.5px] text-faint">· {ticket._count.files} صورة</span>
+                    ) : null}
                   </div>
                   <p dir="auto" className="whitespace-pre-wrap text-[13px] leading-relaxed text-ink">
                     {ticket.body}

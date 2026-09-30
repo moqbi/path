@@ -1,26 +1,64 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { openTicket } from "@/app/actions";
+import { FilesField } from "@/components/files-field";
+import { CONTACT_REASONS } from "@/lib/topics";
 
-/** نموذج الرسالة: يُفرَّغ بعد الإرسال حتى لا تُرسل مرتين بالغلط. */
+const FIELD =
+  "w-full rounded-xl border border-line bg-paper px-4 text-[13px] text-ink outline-none placeholder:text-faint focus:border-clay";
+
+/**
+ * نموذج الرسالة: سببُها ثمّ نصُّها ثمّ صورٌ إن لزم — كنموذج الموقع
+ * (القاعدة ١٨٠ب). ويُفرَّغ بعد الإرسال حتى لا تُرسل مرتين بالغلط.
+ */
 export function TicketForm() {
   const [state, action, pending] = useActionState(openTicket, null);
-  const form = useRef<HTMLFormElement>(null);
+  const [topic, setTopic] = useState("");
+  const [body, setBody] = useState("");
 
   useEffect(() => {
-    if (state?.ok) form.current?.reset();
+    if (state?.ok) {
+      setTopic("");
+      setBody("");
+    }
   }, [state]);
 
   return (
-    <form ref={form} action={action}>
+    <form action={action} className="flex flex-col gap-2.5">
+      <select
+        name="topic"
+        required
+        value={topic}
+        onChange={(event) => setTopic(event.target.value)}
+        className={FIELD}
+        style={{ height: 46 }}
+        aria-label="سبب التواصل"
+      >
+        <option value="" disabled>
+          سبب التواصل…
+        </option>
+        {CONTACT_REASONS.map((item) => (
+          <option key={item.key} value={item.key}>
+            {item.label}
+          </option>
+        ))}
+      </select>
       <textarea
         name="body"
         required
         rows={4}
         maxLength={1200}
+        value={body}
+        onChange={(event) => setBody(event.target.value)}
         placeholder="اكتب رسالتك…"
-        className="mb-2.5 w-full resize-none rounded-xl border border-line bg-paper px-4 py-3 text-[13px] text-ink outline-none placeholder:text-faint focus:border-clay"
+        className={`${FIELD} resize-none py-3`}
+      />
+      <FilesField
+        accept="image/jpeg,image/png,image/webp"
+        label="صور (اختياري)"
+        hint="حتى ٣ صور، ٥ ميغا لكلٍّ — لقطةُ شاشةٍ تشرح المشكلة أسرع من فقرة."
+        resetKey={state}
       />
       <button
         type="submit"
@@ -31,11 +69,11 @@ export function TicketForm() {
         {pending ? "نرسل…" : "أرسل"}
       </button>
       {state?.error ? (
-        <p className="mt-2 text-[12px]" style={{ color: "var(--color-live)" }}>
+        <p className="text-[12px]" style={{ color: "var(--color-live)" }}>
           {state.error}
         </p>
       ) : null}
-      {state?.ok ? <p className="mt-2 text-[12px] text-clay-ink">{state.ok}</p> : null}
+      {state?.ok ? <p className="text-[12px] text-clay-ink">{state.ok}</p> : null}
     </form>
   );
 }

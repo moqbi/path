@@ -5,6 +5,7 @@ import { dropMedia } from "./media";
 import { endPlus } from "./plus";
 import { cityInput } from "./city-input";
 import { tellSupport } from "./support-mail";
+import { readTicketFiles, saveTicketFiles } from "./ticket-files";
 
 /** الحساب كما يقرؤه صاحبه: كل ما تعرضه شاشة «الملف الشخصي» وتحريرها. */
 export async function me(userId: string) {
@@ -413,31 +414,114 @@ export async function deleteAccount(userId: string, password: string) {
 
 // ───────────────────────────── الدعم ─────────────────────────────
 
+/**
+ * سببُ التواصل قائمةٌ مغلقة كالموقع (القاعدة ١٨٠ب): اقتراح أو شكوى أو بلاغ،
+ * و`beta` لطلب الانضمام إلى فريق التجربة. قيمةٌ خارجها تُردّ لا تُكتب.
+ */
+export const TICKET_TOPICS = ["suggestion", "complaint", "report"] as const;
+const TOPIC_LABEL: Record<string, string> = {
+  suggestion: "اقتراح",
+  complaint: "شكوى",
+  report: "بلاغ",
+  beta: "فريق التجربة",
+};
+
 /** رسائلي إلى الدعم وردودها. */
 export async function tickets(userId: string) {
   const rows = await prisma.supportTicket.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
     take: 30,
-    select: { id: true, body: true, reply: true, repliedAt: true, closed: true, createdAt: true },
+    select: {
+      id: true,
+      body: true,
+      topic: true,
+      reply: true,
+      repliedAt: true,
+      closed: true,
+      createdAt: true,
+      _count: { select: { files: true } },
+    },
   });
-  return { tickets: rows };
+  return {
+    tickets: rows.map(({ _count, ...row }) => ({ ...row, files: _count.files })),
+  };
 }
 
-/** فتح رسالة — وثلاثٌ مفتوحة تكفي: تكرارها يُغرق اللوحة ولا يُسرّع الردّ. */
-export async function openTicket(userId: string, body: string) {
+/**
+ * فتح رسالة — وثلاثٌ مفتوحة تكفي: تكرارها يُغرق اللوحة ولا يُسرّع الردّ.
+ * ومعها سببُها ومرفقاتُها (صورٌ حتى ثلاث بخمسة ميغا — القاعدة ١٧٩)، والمرفقاتُ
+ * تُفحص قبل أن يُكتب شيء: رسالةٌ بلا مرفقاتها نصفُ رسالة.
+ */
+export async function openTicket(
+  userId: string,
+  body: string,
+  topic: string | null = null,
+  picked: File[] = [],
+) {
   const text = body.trim().slice(0, 1200);
   if (text.length < 5) throw badRequest("اكتب رسالتك");
+  if (topic !== null && !(TICKET_TOPICS as readonly string[]).includes(topic)) {
+    throw badRequest("اختر سبب التواصل");
+  }
 
-  const open = await prisma.supportTicket.count({ where: { userId, closed: false } });
+  const open = await prisma.supportTicket.count({
+    where: { userId, closed: false, NOT: { topic: "beta" } },
+  });
   if (open >= 3) throw badRequest("عندك رسائل مفتوحة — انتظر الردّ عليها");
+
+  const read = await readTicketFiles(picked);
+  if ("error" in read) throw badRequest(read.error);
+
+  const row = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { name: true, memberNo: true, email: true },
+  });
+  const ticket = await prisma.supportTicket.create({ data: { userId, body: text, topic } });
+  try {
+    await saveTicketFiles(ticket.id, read.files);
+  } catch {
+    // مرفقٌ لم يُحفظ يمحو الرسالة كلَّها — لا نصفَ رسالة (القاعدة ١٧٩).
+    await prisma.supportTicket.delete({ where: { id: ticket.id } });
+    throw badRequest("تعذّر رفع المرفقات — حاول مرّةً أخرى");
+  }
+
+  // خبرٌ إلى صندوق الدعم: لوحةٌ لا يفتحها أحدٌ تترك سؤالاً أسبوعاً.
+  void tellSupport({
+    from: `${row?.name ?? "مستخدم"} (#${row?.memberNo ?? "?"})${topic ? ` — ${TOPIC_LABEL[topic]}` : ""}`,
+    body: read.files.length ? `${text}\n\n[${read.files.length} مرفق — في اللوحة]` : text,
+    replyTo: row?.email ?? null,
+  });
+  return { ok: "وصلتنا رسالتك — نردّ عليك هنا" };
+}
+
+/**
+ * الانضمامُ إلى فريق التجربة من داخل التطبيق — نموذجُ الموقع نفسه (`/beta`):
+ * بريدٌ وجهاز، والدعوةُ تُرسل بيدٍ من TestFlight وGoogle Play (القاعدة ١٨٠ب).
+ * وطلبٌ واحدٌ مفتوح يكفي: إعادتُه لا تُسرّع الدعوة.
+ */
+export async function joinBeta(
+  userId: string,
+  input: { email: string; device: "iPhone" | "Android"; note?: string },
+) {
+  const pending = await prisma.supportTicket.count({
+    where: { userId, topic: "beta", closed: false },
+  });
+  if (pending > 0) return { ok: "طلبك وصلنا — ننتظر دعوتك قريباً" };
 
   const row = await prisma.user.findUnique({
     where: { id: userId },
     select: { name: true, memberNo: true },
   });
-  await prisma.supportTicket.create({ data: { userId, body: text } });
-  // خبرٌ إلى صندوق الدعم: لوحةٌ لا يفتحها أحدٌ تترك سؤالاً أسبوعاً.
-  void tellSupport({ from: `${row?.name ?? "مستخدم"} (#${row?.memberNo ?? "?"})`, body: text });
-  return { ok: "وصلتنا رسالتك — نردّ عليك هنا" };
+  const note = input.note?.trim().slice(0, 600) ?? "";
+  const body = `الجهاز: ${input.device}\nالبريد: ${input.email}${note ? `\n\n${note}` : ""}`;
+  await prisma.supportTicket.create({
+    data: { userId, topic: "beta", body, name: row?.name ?? null, email: input.email },
+  });
+  void tellSupport({
+    from: `${row?.name ?? "مستخدم"} (#${row?.memberNo ?? "?"}) — فريق التجربة`,
+    body,
+    replyTo: input.email,
+  });
+  return { ok: "وصلنا طلبك — تصلك الدعوة على بريدك" };
 }
