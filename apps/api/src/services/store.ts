@@ -4,7 +4,7 @@ import { endPlus } from "./plus";
 import { PLUS_COINS } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { circleIds } from "./visibility";
-import { wearItemCover } from "./media";
+import { dropMedia, wearItemCover } from "./media";
 
 /**
  * المتجر كما يُعرض: تصنيفاتٌ ثم صفوف.
@@ -236,9 +236,9 @@ export async function buy(userId: string, itemId: string, planId?: string) {
   ]);
 
   // وغلافُ الثيم يُلبَس معه — خارج المعاملة: النسخ قد يمرّ بالسحابة.
-  await wearItemCover(item.coverMediaId, userId);
+  await wearItemCover(item.coverMediaId, userId, item.id);
   for (const one of inside) {
-    if (!already.has(one.id)) await wearItemCover(one.coverMediaId, userId);
+    if (!already.has(one.id)) await wearItemCover(one.coverMediaId, userId, one.id);
   }
 
   return { ok: `اشتريت ${item.name}`, expiresAt };
@@ -354,7 +354,7 @@ export async function equip(userId: string, itemId: string) {
     وحين يتبدّل الثيمُ فقط: إعادةُ لبسه لا تمحو غلافاً اختاره صاحبُه بعده.
   */
   if (purchase.item.kind !== "FRAME" && purchase.item.kind !== "CHARM" && me?.backgroundId !== itemId) {
-    await wearItemCover(purchase.item.coverMediaId, userId);
+    await wearItemCover(purchase.item.coverMediaId, userId, itemId);
   }
   return { ok: true };
 }
@@ -442,6 +442,24 @@ export async function expireRentals(): Promise<number> {
       prisma.user.updateMany({ where: { id: row.userId, backgroundId: row.itemId }, data: { backgroundId: null } }),
     ]);
     stripped += a.count + b.count + c.count;
+
+    /*
+      وغلافُ الثيم يذهب مع مدّته — **بقرار المالك** (القاعدة ١٩٣): ما جاء من
+      الثيم يُنزع ببكسلاته (القاعدة ١٠٤)، وما رفعه صاحبُه بعده لا يُمسّ —
+      `coverItemId` يُمسح عند كل رفعٍ يدويّ فلا يطابق.
+    */
+    const worn = await prisma.user.findFirst({
+      where: { id: row.userId, coverItemId: row.itemId },
+      select: { coverMediaId: true },
+    });
+    if (worn) {
+      await prisma.user.update({
+        where: { id: row.userId },
+        data: { coverMediaId: null, coverItemId: null, coverY: 50, coverX: 50, coverZoom: 100 },
+      });
+      if (worn.coverMediaId) await dropMedia([worn.coverMediaId]).catch(() => undefined);
+      stripped += 1;
+    }
   }
   if (stripped > 0) console.log(`↓ نُزع ${stripped} صنفاً انتهت مدّته`);
   return stripped;

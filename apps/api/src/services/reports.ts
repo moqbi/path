@@ -39,13 +39,74 @@ async function subject(target: Target, targetId: string) {
   if (target === "MESSAGE") {
     const row = await prisma.message.findUnique({
       where: { id: targetId },
-      select: { senderId: true, body: true },
+      select: {
+        senderId: true,
+        body: true,
+        conversationId: true,
+        createdAt: true,
+        conversation: { select: { aId: true, bId: true } },
+      },
     });
-    return row ? { ownerId: row.senderId, snippet: row.body || null } : null;
+    return row
+      ? {
+          ownerId: row.senderId,
+          snippet: row.body || null,
+          chat: { id: row.conversationId, at: row.createdAt, people: [row.conversation.aId, row.conversation.bId] },
+        }
+      : null;
   }
 
   const row = await prisma.user.findUnique({ where: { id: targetId }, select: { id: true } });
   return row ? { ownerId: row.id, snippet: null } : null;
+}
+
+/** كم رسالةً قبل المُبلَّغ عنها وبعدها تُنسخ معها. */
+const AROUND = 10;
+
+/**
+ * سياقُ رسالةٍ مُبلَّغٍ عنها (القاعدة ١٩٥): ما قبلها وما بعدها من المحادثة
+ * نفسها، منسوخاً من القاعدة لا من شاشة المُبلِّغ — لقطةُ الشاشة تُزوَّر،
+ * وهذه لا. ويُنسخ مرّةً عند البلاغ: المحادثات تُكنس بعد ثلاثين يوماً،
+ * وما يأتي بعد البلاغ ليس ممّا أُبلغ عنه.
+ */
+async function messageContext(chat: { id: string; at: Date }, targetId: string) {
+  const pick = {
+    id: true,
+    senderId: true,
+    body: true,
+    kind: true,
+    createdAt: true,
+    editedAt: true,
+    sender: { select: { name: true, memberNo: true } },
+  } as const;
+  const [before, after] = await Promise.all([
+    prisma.message.findMany({
+      where: { conversationId: chat.id, createdAt: { lte: chat.at }, id: { not: targetId } },
+      orderBy: { createdAt: "desc" },
+      take: AROUND,
+      select: pick,
+    }),
+    prisma.message.findMany({
+      where: { conversationId: chat.id, createdAt: { gte: chat.at } },
+      orderBy: { createdAt: "asc" },
+      take: AROUND + 1,
+      select: pick,
+    }),
+  ]);
+  const rows = [...before.reverse(), ...after];
+  return {
+    messages: rows.map((row) => ({
+      id: row.id,
+      senderId: row.senderId,
+      name: row.sender.name,
+      memberNo: row.sender.memberNo,
+      body: row.body.slice(0, 2000),
+      kind: row.kind,
+      at: row.createdAt.toISOString(),
+      edited: Boolean(row.editedAt),
+      reported: row.id === targetId,
+    })),
+  };
 }
 
 export async function open(
@@ -56,12 +117,23 @@ export async function open(
   if (!found) throw notFound("ما عاد موجوداً");
   if (found.ownerId === reporterId) throw badRequest("هذا منك أنت");
 
+  // الرسالة يُبلغ عنها طرفُ محادثتها وحده: غيرُه لا يقرؤها أصلاً، ومعرّفٌ
+  // مُخمَّن لا يصير باباً يُنسخ به كلامُ اثنين إلى اللوحة.
+  const chat = "chat" in found ? found.chat : undefined;
+  if (chat && !chat.people.includes(reporterId)) throw notFound("ما عاد موجوداً");
+
   /*
     بلاغٌ واحد لكل شيء من كل شخص.
 
     تكرارُه لا يُسرّع المراجعة ويُغرق اللوحة، والقيد في القاعدة لا في
     الشاشة — فالتكرار يُبتلع ويُردّ «وصلنا بلاغك».
   */
+  const exists = await prisma.report.findUnique({
+    where: { reporterId_target_targetId: { reporterId, target: input.target, targetId: input.targetId } },
+    select: { id: true },
+  });
+  const context = chat && !exists ? await messageContext(chat, input.targetId) : undefined;
+
   await prisma.report.upsert({
     where: {
       reporterId_target_targetId: {
@@ -79,6 +151,7 @@ export async function open(
       reason: input.reason,
       note: input.note?.trim() || null,
       snippet: found.snippet?.slice(0, 500) ?? null,
+      ...(context ? { context } : {}),
     },
   });
 
@@ -99,6 +172,7 @@ export async function list(state: "OPEN" | "KEPT" | "REMOVED" = "OPEN") {
       reason: true,
       note: true,
       snippet: true,
+      context: true,
       state: true,
       createdAt: true,
       reporter: { select: { id: true, name: true, memberNo: true } },

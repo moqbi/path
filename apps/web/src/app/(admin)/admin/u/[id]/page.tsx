@@ -4,7 +4,8 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { currentUser } from "@/lib/auth";
 import { ScreenHeader } from "@/components/ui";
-import { ar, dayLabel, timeOfDay } from "@/lib/format";
+import { ar, dayLabel, relative, timeOfDay } from "@/lib/format";
+import { linkedAccounts } from "@/lib/linked";
 import { RemoveMoment } from "./remove";
 
 export const metadata: Metadata = { title: "لحظات حساب · لوحة التحكم" };
@@ -58,6 +59,8 @@ export default async function ModeratedProfile({
     },
   });
   if (!person) notFound();
+
+  const { linked, crowded } = await linkedAccounts(id);
 
   const moments = await prisma.moment.findMany({
     where: { authorId: id },
@@ -115,6 +118,66 @@ export default async function ModeratedProfile({
             يُسجَّل باسمك.
           </p>
         </div>
+
+        {/*
+          الحسابات المرتبطة (القاعدة ١٩٤): من يتهرّب من إيقافٍ بحسابٍ ثانٍ
+          يُعرف بجهازه. قرينةٌ تُقرأ قبل الحكم لا حكمٌ بنفسها.
+        */}
+        <section className="mb-4 rounded-2xl border border-line bg-card p-4">
+          <p className="text-[13.5px] font-bold">الحسابات المرتبطة</p>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-faint">
+            من دخل من الجهاز نفسه أو الشبكة نفسها في آخر ٩٠ يوماً. الجهاز قرينةٌ
+            قويّة، والشبكة ضعيفة — بيتٌ أو مقهى أو شبكةُ جوّال.
+          </p>
+          {linked.length === 0 ? (
+            <p className="mt-3 text-[12.5px] text-muted">لا حسابات مرتبطة.</p>
+          ) : (
+            <div className="mt-3 flex flex-col gap-1.5">
+              {linked.map((other) => (
+                <Link
+                  key={other.id}
+                  href={`/admin/u/${other.id}`}
+                  className="flex items-center justify-between gap-3 rounded-xl px-3 py-2"
+                  style={{ background: "var(--color-chip)" }}
+                >
+                  <span className="min-w-0">
+                    <span dir="auto" className="block truncate text-[13px] font-semibold">
+                      {other.name}
+                    </span>
+                    <span className="block text-[11px] text-muted">
+                      عضو رقم {ar(other.memberNo)} · آخر ظهور {relative(other.lastAt)}
+                      {other.suspendedUntil && other.suspendedUntil > new Date() ? " · موقوف" : ""}
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 gap-1">
+                    {other.device ? (
+                      <span
+                        className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                        style={{ background: "var(--color-live-soft)", color: "var(--color-live)" }}
+                      >
+                        الجهاز نفسه
+                      </span>
+                    ) : null}
+                    {other.ips > 0 ? (
+                      <span
+                        className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                        style={{ background: "var(--color-card)", color: "var(--color-muted)" }}
+                      >
+                        {other.ips === 1 ? "الشبكة نفسها" : `${ar(other.ips)} شبكات مشتركة`}
+                      </span>
+                    ) : null}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
+          {crowded > 0 ? (
+            <p className="mt-2 text-[10.5px] text-faint">
+              تُرك {ar(crowded)} {crowded === 1 ? "عنوانٌ مزدحم" : "عناوين مزدحمة"} — يدخل منها
+              أكثرُ من ١٢ حساباً فلا تقول شيئاً.
+            </p>
+          ) : null}
+        </section>
 
         {moments.length === 0 ? (
           <p className="py-10 text-center text-[13px] text-muted">لا لحظات في هذا الحساب.</p>

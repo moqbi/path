@@ -154,6 +154,10 @@ model User {
   /// صورة العرض والغلاف — ملفات مرفوعة يملكها المستخدم.
   avatarMediaId String? @unique
   coverMediaId  String? @unique
+  /// صنفُ المتجر الذي جاء منه الغلافُ الحاليّ (ثيمٌ لُبس غلافُه) — فارغٌ لغلافٍ
+  /// رفعه صاحبه. به يُعرف أنّ انتهاء مدّة الثيم يأخذ غلافه معه، ولا يمسّ
+  /// غلافاً اختاره صاحبُه بعده (القاعدة ١٩٣).
+  coverItemId   String?
   /// موضع الغلاف عمودياً (٪): يضبطه صاحبه بسحب الصورة.
   coverY        Int     @default(50)
   /// موضعُ الغلاف أفقياً (٪) — كـ`coverY`. والتكبيرُ نسبةٌ من ١٠٠ إلى ٣٠٠:
@@ -244,6 +248,7 @@ model User {
   momentsSeenBy MomentViewer[]
   blocksMade    Block[]        @relation("Blocker")
   blocksGot     Block[]        @relation("Blocked")
+  accessEvents AccessEvent[]
 }
 
 /// قصة: صورة تُعرض لأصدقائك يوماً ثم تذهب.
@@ -327,6 +332,26 @@ model Block {
 /// عضوية الدائرة. صفٌّ واحد لكل علاقة، والاتجاه لا يعني شيئاً بعد القبول.
 /// سقف الـ١٥٠ يُفرض في طبقة التطبيق (lib/circle.ts) لأنه قيد على المجموع
 /// وليس على الصف الواحد — Postgres لا يعبّر عنه بقيد إعلاني.
+/// من أين دخل الحساب: عنوانٌ وجهاز — لكشف الحسابات المرتبطة في اللوحة
+/// (القاعدة ١٩٤). صفٌّ لكل ثلاثيّة (حساب، عنوان، جهاز) يُحدَّث ولا يتكاثر،
+/// ويُكنس بعد تسعين يوماً. والفراغُ نصٌّ فارغ لا `null`: قيدُ الفرادة في
+/// Postgres يعدّ كلَّ `null` مختلفاً فيتكاثر الصفّ.
+model AccessEvent {
+  id      String   @id @default(cuid())
+  userId  String
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ip      String   @default("")
+  device  String   @default("")
+  firstAt DateTime @default(now())
+  lastAt  DateTime @default(now())
+  hits    Int      @default(1)
+
+  @@unique([userId, ip, device])
+  @@index([ip])
+  @@index([device])
+  @@index([lastAt])
+}
+
 model Friendship {
   id          String           @id @default(cuid())
   requesterId String
@@ -954,6 +979,12 @@ model Report {
 
   /// نسخةٌ من المتن وقت البلاغ: المحتوى قد يُحذف قبل أن يُقرأ البلاغ.
   snippet String?
+
+  /// سياقُ البلاغ على رسالة: ما قبلها وما بعدها من المحادثة نفسها، منسوخاً
+  /// من الخادم وقت البلاغ — لا لقطةَ شاشةٍ يرفعها المُبلِّغ فتُزوَّر، ولا
+  /// بابَ للمشرف إلى المحادثات كلّها (القاعدة ١٩٥). والمحادثات تُكنس بعد
+  /// ثلاثين يوماً (القاعدة ٨٣)، فالنسخةُ هي الدليلُ الباقي.
+  context Json?
 
   state     ReportState @default(OPEN)
   handledAt DateTime?

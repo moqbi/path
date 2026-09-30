@@ -42,6 +42,7 @@ import { BundleItems } from "./bundle";
 import { CollectionsView, ItemCollection, ItemPlans } from "./store-extras";
 import { coinText, ar, relative, riyals } from "@/lib/format";
 import { parsePalette } from "@/lib/theme";
+import { ReportContext } from "./report-context";
 
 const FIELD =
   "rounded-xl border border-line bg-card px-4 text-[13.5px] text-ink outline-none focus:border-clay";
@@ -457,8 +458,9 @@ export default async function AdminPage({
       orderBy: { sortOrder: "asc" },
       include: { _count: { select: { items: true } } },
     }),
-    // المفتوحة أولاً: ما يحتاج ردّاً قبل ما رُدّ عليه.
-    scope === "ALL"
+    // المفتوحة أولاً: ما يحتاج ردّاً قبل ما رُدّ عليه. وممنوحُ البلاغات
+    // والدعم (`REPORTS`) يقرؤهما — كان القسمان يظهران له فارغين.
+    scope === "ALL" || scope === "REPORTS"
       ? prisma.supportTicket.findMany({
           orderBy: [{ closed: "asc" }, { createdAt: "desc" }],
           take: 60,
@@ -469,7 +471,7 @@ export default async function AdminPage({
         })
       : Promise.resolve([]),
     // المفتوحة أولاً كالرسائل: ما ينتظر حكماً قبل ما حُكم فيه.
-    scope === "ALL"
+    scope === "ALL" || scope === "REPORTS"
       ? prisma.report.findMany({
           orderBy: [{ state: "asc" }, { createdAt: "desc" }],
           take: 80,
@@ -1817,6 +1819,15 @@ export default async function AdminPage({
                     ) : null}
                     {report.note ? (
                       <p className="mt-1.5 text-[11.5px] leading-relaxed text-ink-2">«{report.note}»</p>
+                    ) : null}
+                    <ReportContext context={report.context} />
+                    {user.canModerate && report.reportedId ? (
+                      <Link
+                        href={`/admin/u/${report.reportedId}`}
+                        className="mt-2 inline-block text-[11.5px] font-semibold text-clay-ink"
+                      >
+                        افتح حسابه والحسابات المرتبطة به
+                      </Link>
                     ) : null}
 
                     {report.state === "OPEN" ? (

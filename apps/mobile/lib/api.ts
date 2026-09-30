@@ -1,3 +1,4 @@
+import { randomUUID } from "expo-crypto";
 import { deleteItem, getItem, setItem } from "./store";
 
 /**
@@ -90,6 +91,24 @@ async function renew(): Promise<boolean> {
   }
 }
 
+/**
+ * معرّفُ هذا الجهاز لتطبيقنا — عشوائيٌّ يُولَد مرّةً ويُحفظ في المخزن الآمن،
+ * ويُرسل مع كل طلب (`x-device-id`) لكشف الحسابات المرتبطة في اللوحة
+ * (القاعدة ١٩٤). لا يُشتقّ من عتاد الجهاز ولا يعرفه تطبيقٌ غيرنا، وعلى
+ * الآيفون يبقى في سلسلة المفاتيح بعد حذف التطبيق — فالحسابُ الثاني بعد
+ * إعادة التثبيت يُعرف أنّه من الجهاز نفسه.
+ */
+const DEVICE = "athr.device";
+let device: string | null = null;
+async function deviceId(): Promise<string> {
+  if (device) return device;
+  const saved = await getItem(DEVICE).catch(() => null);
+  if (saved) return (device = saved);
+  const fresh = randomUUID();
+  await setItem(DEVICE, fresh).catch(() => undefined);
+  return (device = fresh);
+}
+
 export async function api<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
   const token = access ?? (await getItem(ACCESS));
   if (token && !access) setAccess(token);
@@ -105,6 +124,7 @@ export async function api<T>(path: string, init: RequestInit = {}, retry = true)
     headers: {
       ...(init.body instanceof FormData ? {} : { "content-type": "application/json" }),
       ...(token ? { authorization: `Bearer ${token}` } : {}),
+      "x-device-id": await deviceId(),
       ...init.headers,
     },
   });

@@ -266,7 +266,7 @@ export async function clearCover(userId: string) {
     where: { id: userId },
     select: { coverMediaId: true },
   });
-  await prisma.user.update({ where: { id: userId }, data: { coverMediaId: null } });
+  await prisma.user.update({ where: { id: userId }, data: { coverMediaId: null, coverItemId: null } });
   if (user?.coverMediaId) await dropMedia([user.coverMediaId]);
   return { ok: true };
 }
@@ -359,7 +359,7 @@ export async function setPicture(
     data:
       which === "avatar"
         ? { avatarMediaId: media.id }
-        : { coverMediaId: media.id, coverY: 50, coverX: 50, coverZoom: 100 },
+        : { coverMediaId: media.id, coverItemId: null, coverY: 50, coverX: 50, coverZoom: 100 },
   });
 
   const old = which === "avatar" ? before?.avatarMediaId : before?.coverMediaId;

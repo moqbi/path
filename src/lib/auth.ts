@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import { prisma } from "@/lib/db";
 import { deliverTo } from "@/lib/dm";
+import { clientIp } from "@/lib/rate-limit";
 
 const scrypt = promisify(scryptCallback) as (
   password: string,
@@ -119,6 +120,20 @@ async function touch(id: string, lastSeenAt: Date | null) {
   if (lastSeenAt && Date.now() - lastSeenAt.getTime() < 60_000) return;
   try {
     await prisma.user.update({ where: { id }, data: { lastSeenAt: new Date() } });
+  } catch {}
+  /*
+    ومن أين دخل — لكشف الحسابات المرتبطة في اللوحة (القاعدة ١٩٤). على الويب
+    العنوانُ وحده: لا معرّفَ جهازٍ في المتصفّح إلا بتتبّعٍ لا نريده.
+  */
+  try {
+    const ip = (await clientIp()).slice(0, 64);
+    if (ip && ip !== "local") {
+      await prisma.accessEvent.upsert({
+        where: { userId_ip_device: { userId: id, ip, device: "" } },
+        create: { userId: id, ip },
+        update: { lastAt: new Date(), hits: { increment: 1 } },
+      });
+    }
   } catch {}
   // حضوره يعني أنّ ما أُرسل إليه قد وصله، فيرى المرسل الصحّين.
   await deliverTo(id);

@@ -587,7 +587,7 @@ export async function setCover(formData: FormData): Promise<string | void> {
     const media = await storeUpload(user.id, file, width, height);
     await prisma.user.update({
       where: { id: user.id },
-      data: { coverMediaId: media.id, coverY: 50, coverX: 50, coverZoom: 100 },
+      data: { coverMediaId: media.id, coverItemId: null, coverY: 50, coverX: 50, coverZoom: 100 },
     });
   } catch (problem) {
     return problem instanceof Error ? problem.message : "تعذّر حفظ الصورة";
@@ -682,7 +682,7 @@ export async function setCoverPosition(y: number): Promise<void> {
 
 export async function clearCover(): Promise<void> {
   const user = await requireUser();
-  await prisma.user.update({ where: { id: user.id }, data: { coverMediaId: null } });
+  await prisma.user.update({ where: { id: user.id }, data: { coverMediaId: null, coverItemId: null } });
   revalidatePath("/me");
   revalidatePath("/");
 }
@@ -1636,7 +1636,11 @@ async function bundleContents(bundleId: string) {
  * لأنّ صورةً لم تُنسخ خسارةٌ لا مقابل لها — فالفشل يُبتلع ويبقى
  * الصنف مملوكاً.
  */
-async function wearItemCover(coverMediaId: string | null, userId: string): Promise<void> {
+async function wearItemCover(
+  coverMediaId: string | null,
+  userId: string,
+  itemId: string | null = null,
+): Promise<void> {
   if (!coverMediaId) return;
   try {
     const copy = await copyMedia(coverMediaId, userId);
@@ -1647,7 +1651,8 @@ async function wearItemCover(coverMediaId: string | null, userId: string): Promi
     });
     await prisma.user.update({
       where: { id: userId },
-      data: { coverMediaId: copy.id, coverY: 50, coverX: 50, coverZoom: 100 },
+      // ومعه مصدرُه: انتهاءُ مدّة الثيم يأخذ غلافَه (القاعدة ١٩٣).
+      data: { coverMediaId: copy.id, coverItemId: itemId, coverY: 50, coverX: 50, coverZoom: 100 },
     });
     // غلافُه السابق يذهب هو وبكسلاته: صفٌّ لا يشير إليه شيء (القاعدة ١٠٤).
     if (old?.coverMediaId) await dropMedia([old.coverMediaId]);
@@ -1833,10 +1838,10 @@ async function buyItem(itemId: string): Promise<void> {
       ),
   ]);
 
-  await wearItemCover(item.coverMediaId, user.id);
+  await wearItemCover(item.coverMediaId, user.id, item.id);
   // وغلافُ ثيمٍ داخل الحزمة يُلبَس كما لو اشتُري وحده.
   for (const one of inside) {
-    if (!already.has(one.id)) await wearItemCover(one.coverMediaId, user.id);
+    if (!already.has(one.id)) await wearItemCover(one.coverMediaId, user.id, one.id);
   }
 
   revalidatePath("/store");
@@ -1883,7 +1888,7 @@ export async function equip(itemId: string): Promise<void> {
     صاحبُه بعده من «تعديل الملف».
   */
   if (purchase.item.kind !== "FRAME" && purchase.item.kind !== "CHARM" && user.backgroundId !== itemId) {
-    await wearItemCover(purchase.item.coverMediaId, user.id);
+    await wearItemCover(purchase.item.coverMediaId, user.id, itemId);
   }
 
   revalidatePath("/me");
