@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import { View, ScrollView, Pressable, ActivityIndicator, Platform } from "react-native";
 import { Text } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -8,8 +8,9 @@ import { ScreenHeader } from "../components/screen-header";
 import { Sheet } from "../components/sheet";
 import { BookIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, StoreIcon, WithIcon } from "../components/icons";
 import { TagPill } from "../components/name-tag";
-import { SUPPORTER_TAG } from "@athar/shared";
+import { SITE_URL, SUPPORTER_TAG, hasSite } from "@athar/shared";
 import { api } from "../lib/api";
+import { openIn } from "../lib/browse";
 import { billingReady, buy, openManage, plans, restore, testStore, type Plan } from "../lib/billing";
 import { useSession } from "../lib/session";
 import { colors } from "../theme/tokens";
@@ -81,6 +82,22 @@ const PERKS = [
  * ثوانٍ في العادة. ولذلك نسأل عن الحساب بضع مرّاتٍ متباعدة بدل أن
  * نُصدّق الجهاز ونفتح المزايا بأنفسنا.
  */
+/** رابطُ صفحةٍ قانونية في متصفّحٍ داخل التطبيق (القاعدة ٦٢). */
+function Legal({ title, path }: { title: string; path: string }) {
+  return (
+    <Pressable
+      onPress={() => {
+        if (hasSite()) void openIn(`${SITE_URL}${path}`);
+      }}
+      hitSlop={8}
+    >
+      <Text style={{ color: colors.clayInk, fontSize: 12, fontWeight: "600", textDecorationLine: "underline" }}>
+        {title}
+      </Text>
+    </Pressable>
+  );
+}
+
 async function waitForPlus(ask: () => Promise<void>, isPlus: () => boolean) {
   for (const wait of [0, 1500, 3000, 5000]) {
     if (wait) await new Promise((done) => setTimeout(done, wait));
@@ -226,14 +243,26 @@ export default function Subscribe() {
                     transform: [{ scale: pressed || picked ? 0.97 : 1 }],
                   })}
                 >
+                  {/*
+                    اسمُ الاشتراك ومدّتُه وسعرُه معاً على البطاقة — شرطُ آبل
+                    (3.1.2): «سنوي» وحدها لا تقول ما يُشترى ولا كم يدوم.
+                  */}
                   <Text style={{ color: offer.yearly ? colors.goldInk : colors.muted, fontSize: 11.5, marginBottom: 6 }}>
-                    {offer.yearly ? "سنوي" : "شهري"}
+                    {offer.yearly ? "آثار+ سنوي · سنة" : "آثار+ شهري · شهر"}
                   </Text>
                   {/* السعر كما يقوله المتجر: بعملة المشتري وبضريبة بلده. */}
                   {/* `writingDirection` بدل `dir`: النصّ سعرٌ قد يبدأ برمز عملة لاتيني. */}
                   <Text style={{ color: colors.ink, fontSize: 22, fontWeight: "700", writingDirection: "auto" }}>
                     {offer.price}
                   </Text>
+                  <Text style={{ color: colors.muted, fontSize: 11, marginTop: 4 }}>
+                    {offer.yearly ? "كل سنة" : "كل شهر"}
+                  </Text>
+                  {offer.perMonth ? (
+                    <Text style={{ color: colors.faint, fontSize: 10.5, marginTop: 2, writingDirection: "auto" }}>
+                      {`يعادل ${offer.perMonth} شهرياً`}
+                    </Text>
+                  ) : null}
                   {picked ? <ActivityIndicator color={colors.clay} style={{ marginTop: 8 }} /> : null}
                 </Pressable>
                 );
@@ -300,9 +329,22 @@ export default function Subscribe() {
           </Text>
         ) : null}
 
-        <Text style={{ color: colors.faint, fontSize: 10.5, lineHeight: 22, textAlign: "center", paddingTop: 20 }}>
-          يتجدّد تلقائياً حتى تُلغيه من متجرك · تُخصم القيمة من حساب المتجر
+        {/*
+          نصُّ التجديد وبابا الشروط والخصوصية على شاشة الشراء نفسها — شرطُ
+          آبل (3.1.2)، وبغيابهما رُدّت النسخة: سطرٌ مختصر لا يقول متى يُخصم
+          ولا كيف يُلغى، وروابطُ في الإعدادات لا يراها من يشتري.
+        */}
+        <Text style={{ color: colors.muted, fontSize: 11, lineHeight: 21, textAlign: "center", paddingTop: 20 }}>
+          {`اشتراك آثار+ يتجدّد تلقائياً بالسعر نفسه في نهاية كل مدّة (شهر أو سنة) ما لم يُلغَ قبل انتهائها بـ٢٤ ساعة على الأقل. يُخصم المبلغ من حساب ${
+            Platform.OS === "ios" ? "Apple ID" : "Google Play"
+          } عند تأكيد الشراء، ويمكنك إدارة الاشتراك وإلغاؤه من إعدادات حسابك في ${
+            Platform.OS === "ios" ? "App Store" : "Google Play"
+          }.`}
         </Text>
+        <View style={{ flexDirection: "row", justifyContent: "center", gap: 18, paddingTop: 12 }}>
+          <Legal title="شروط الاستخدام" path="/terms" />
+          <Legal title="سياسة الخصوصية" path="/privacy" />
+        </View>
 
       </ScrollView>
 

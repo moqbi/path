@@ -88,6 +88,12 @@ export type Plan = {
   /** السعر بعملة المشتري وبصيغة متجره — لا نكتبه نحن. */
   price: string;
   yearly: boolean;
+  /**
+   * ما يعادل الشهر في السنويّ («٨٫٣٣ ر.س»)، كما يحسبه المتجر.
+   * آبل تطلب أن يُعرض السعرُ والمدّةُ معاً (3.1.2) — وسعرُ الشهر في
+   * باقةٍ سنوية يُقال بجانب سعرها لا بدلاً منه.
+   */
+  perMonth: string | null;
 };
 
 /**
@@ -117,6 +123,7 @@ export async function plans(): Promise<Plan[]> {
     id: item.identifier,
     price: item.product.priceString,
     yearly: item.packageType === "ANNUAL",
+    perMonth: item.packageType === "ANNUAL" ? (item.product.pricePerMonthString ?? null) : null,
   }));
 }
 
