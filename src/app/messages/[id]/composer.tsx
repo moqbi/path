@@ -28,10 +28,16 @@ export function Composer({
   conversationId,
   isPlus,
   maxSeconds,
+  onSent,
+  compact = false,
 }: {
   conversationId: string;
   isPlus: boolean;
   maxSeconds: number;
+  /** بعد كل إرسال — عمودُ الأصدقاء على سطح المكتب يُعيد جلب المحادثة به. */
+  onSent?: () => void;
+  /** أضيقُ حشوةً — لعمود سطح المكتب. */
+  compact?: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [seconds, setSeconds] = useState(0);
@@ -89,6 +95,7 @@ export function Composer({
       start(async () => {
         const said = await sendVoice(conversationId, data);
         if (said.error) setError(said.error);
+        else onSent?.();
       });
     };
 
@@ -111,7 +118,7 @@ export function Composer({
   }
 
   return (
-    <div className="shrink-0 px-5 pb-8 pt-3">
+    <div className={compact ? "shrink-0 px-3 pb-3 pt-2" : "shrink-0 px-5 pb-8 pt-3"}>
       {error ? (
         <p role="alert" className="mb-2 text-center text-[11.5px]" style={{ color: "var(--color-live)" }}>
           {error}
@@ -148,15 +155,23 @@ export function Composer({
           </button>
         </div>
       ) : (
-        <form action={sendMessage.bind(null, conversationId)} className="flex items-center gap-2">
+        <form
+          action={async (data) => {
+            await sendMessage(conversationId, data);
+            onSent?.();
+          }}
+          className={`flex items-center ${compact ? "gap-1.5" : "gap-2"}`}
+        >
           <input
             name="body"
             required
             maxLength={2000}
             autoComplete="off"
             placeholder="اكتب رسالة…"
-            className="grow rounded-full border border-line bg-card px-5 text-[13.5px] text-ink outline-none placeholder:text-faint focus:border-clay"
-            style={{ height: 48 }}
+            className={`min-w-0 grow rounded-full border border-line bg-card text-[13.5px] text-ink outline-none placeholder:text-faint focus:border-clay ${
+              compact ? "px-3.5" : "px-5"
+            }`}
+            style={{ height: compact ? 42 : 48 }}
           />
 
           <ImagePicker
@@ -168,9 +183,14 @@ export function Composer({
               data.set("image", file);
               data.set("width", String(width));
               data.set("height", String(height));
-              return sendPhoto(conversationId, data).then((said) => said.error ?? undefined);
+              return sendPhoto(conversationId, data).then((said) => {
+                if (!said.error) onSent?.();
+                return said.error ?? undefined;
+              });
             }}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-card text-ink-2"
+            className={`flex shrink-0 items-center justify-center rounded-full border border-line bg-card text-ink-2 ${
+              compact ? "h-10 w-10" : "h-11 w-11"
+            }`}
           >
             <CameraIcon size={19} />
           </ImagePicker>
@@ -180,15 +200,17 @@ export function Composer({
             aria-label="رسالة صوتية"
             disabled={pending}
             onClick={() => void begin()}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-card text-ink-2 disabled:opacity-50"
+            className={`flex shrink-0 items-center justify-center rounded-full border border-line bg-card text-ink-2 disabled:opacity-50 ${
+              compact ? "h-10 w-10" : "h-11 w-11"
+            }`}
           >
             <MicIcon size={19} />
           </button>
 
           <button
             type="submit"
-            className="brand-gradient shrink-0 rounded-full px-5 text-[13.5px] font-bold"
-            style={{ height: 48, color: "var(--color-on-brand)" }}
+            className={`brand-gradient shrink-0 rounded-full text-[13.5px] font-bold ${compact ? "px-3.5" : "px-5"}`}
+            style={{ height: compact ? 42 : 48, color: "var(--color-on-brand)" }}
           >
             إرسال
           </button>

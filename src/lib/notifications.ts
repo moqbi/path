@@ -54,7 +54,7 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
 
   const person = { select: { id: true, name: true, avatarMediaId: true } };
 
-  const [reactions, comments, tags, friendships, messages, gifts, fresh] = await Promise.all([
+  const [reactions, comments, tags, friendships, messages, gifts, fresh, grants] = await Promise.all([
     prisma.reaction.findMany({
       where: { moment: { authorId: userId }, userId: { not: userId } },
       select: {
@@ -159,6 +159,13 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
       orderBy: { createdAt: "desc" },
       take: 8,
     }),
+    // نقاطٌ منحتها الإدارة (القاعدة ١٩٨) — خبرٌ من التطبيق لا من صديق.
+    prisma.coinGrant.findMany({
+      where: { userId },
+      select: { id: true, coins: true, note: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    }),
   ]);
 
   const notes: Note[] = [
@@ -231,6 +238,14 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
       href: "/store",
       item: { spec: row.spec, mediaId: row.mediaId },
     })),
+    ...grants.map((row) => ({
+      // `k-` لا `c-`: الأخيرةُ للتعليقات.
+      id: `k-${row.id}`,
+      kind: "STORE" as const,
+      at: row.createdAt,
+      text: grantText(row.coins, row.note),
+      href: "/store",
+    })),
     ...messages.map((row) => ({
       id: `m-${row.id}`,
       kind: "MESSAGE" as const,
@@ -258,4 +273,10 @@ export async function unseenCount(userId: string): Promise<number> {
   return (await notifications(userId, 40)).filter(
     (note) => Date.now() - note.at.getTime() < 3 * 24 * 60 * 60 * 1000,
   ).length;
+}
+
+/** «لأنك تستحق! تمّ منحك ٥٠٠ نقطة من قبل الإدارة» — بنصّ المالك (القاعدة ١٩٨). */
+export function grantText(coins: number, note: string | null): string {
+  const n = coins.toLocaleString("ar-SA");
+  return `لأنك تستحق! تمّ منحك ${n} نقطة من قبل الإدارة${note ? ` — ${note}` : ""}`;
 }

@@ -321,3 +321,16 @@ export async function logs(limit = 100) {
   });
   return { logs: rows };
 }
+
+/**
+ * سجلُّ الإشراف يعيش ستّين يوماً — **بقرار المالك** (القاعدة ١٩٩): ما مضى
+ * عليه أكثرُ يُحذف من القاعدة، فلا يبقى في اللوحة ولا في نسخةٍ احتياطيّة
+ * تالية. ويجري مع كنس الخمس دقائق.
+ */
+export const MODERATION_LOG_DAYS = 60;
+
+export async function sweepModerationLog(): Promise<void> {
+  await prisma.moderationLog.deleteMany({
+    where: { createdAt: { lt: new Date(Date.now() - MODERATION_LOG_DAYS * 86_400_000) } },
+  });
+}

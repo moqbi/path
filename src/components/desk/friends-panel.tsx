@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { unreadCount } from "@/lib/dm";
 import { CIRCLE_CAP, circleIds } from "@/lib/circle";
-import { startConversation } from "@/app/actions";
 import { Avatar, NameTag } from "@/components/ui";
-import { MessageIcon } from "@/components/icons";
+import { DeskChatButton, FriendsDesk } from "./friends-desk";
 import { ar, presence } from "@/lib/format";
 
 const ONLINE_MS = 3 * 60_000;
@@ -18,7 +18,7 @@ const ONLINE_MS = 3 * 60_000;
  */
 export async function FriendsPanel({ userId }: { userId: string }) {
   const ids = await circleIds(userId);
-  const [members, pending] = await Promise.all([
+  const [members, pending, unread] = await Promise.all([
     prisma.user.findMany({
       where: { id: { in: ids } },
       select: {
@@ -33,6 +33,7 @@ export async function FriendsPanel({ userId }: { userId: string }) {
       },
     }),
     prisma.friendship.count({ where: { addresseeId: userId, status: "PENDING" } }),
+    unreadCount(userId),
   ]);
 
   const now = Date.now();
@@ -44,6 +45,7 @@ export async function FriendsPanel({ userId }: { userId: string }) {
   const live = ordered.filter((m) => online(m.lastSeenAt)).length;
 
   return (
+    <FriendsDesk>
     <section className="desk-panel">
       <header className="desk-panel-head">
         <div className="min-w-0">
@@ -55,9 +57,16 @@ export async function FriendsPanel({ userId }: { userId: string }) {
             {live ? ` · ${ar(live)} متصل الآن` : ""}
           </p>
         </div>
-        <Link href="/circle" className="shrink-0 text-[12px] font-semibold text-clay-ink">
-          إدارة الدائرة
-        </Link>
+        <div className="flex shrink-0 items-center gap-3">
+          {/* والمحادثاتُ هنا لا في عمود «أنا» (القاعدة ٢٠٠). */}
+          <Link href="/messages" className="flex items-center gap-1 text-[12px] font-semibold text-clay-ink">
+            المحادثات
+            {unread > 0 ? <span className="desk-tab-badge">{ar(unread)}</span> : null}
+          </Link>
+          <Link href="/circle" className="text-[12px] font-semibold text-clay-ink">
+            إدارة الدائرة
+          </Link>
+        </div>
       </header>
 
       {pending > 0 ? (
@@ -109,20 +118,13 @@ export async function FriendsPanel({ userId }: { userId: string }) {
                     </span>
                   </span>
                 </Link>
-                <form action={startConversation.bind(null, member.id)} className="shrink-0">
-                  <button
-                    type="submit"
-                    aria-label={`محادثة مع ${member.name}`}
-                    className="desk-icon-btn"
-                  >
-                    <MessageIcon size={17} />
-                  </button>
-                </form>
+                <DeskChatButton friendId={member.id} name={member.name} />
               </div>
             );
           })
         )}
       </div>
     </section>
+    </FriendsDesk>
   );
 }

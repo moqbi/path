@@ -373,6 +373,11 @@ h3 {
     display: flex;
   }
 
+  /* تبويباتٌ لها عمودُها على سطح المكتب (القاعدة ٢٠٠). */
+  .desk .desk-hide {
+    display: none;
+  }
+
   .desk-side {
     display: flex;
     min-width: 0;

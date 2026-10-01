@@ -20,16 +20,19 @@ export type PushKind =
   | "TAG"
   | "REACTION"
   | "COMMENT"
-  | "STORE";
+  | "STORE"
+  /** منحٌ من الإدارة — يخصّ صاحبه وحده، فلا مفتاحَ يُطفئه (القاعدة ١٩٨). */
+  | "GRANT";
 
 /** أيُّ حقلٍ في `User` يحرس هذا النوع. */
-const GATE: Record<PushKind, string> = {
+const GATE: Record<PushKind, string | null> = {
   DM: "notifyDm",
   FRIEND: "notifyFriend",
   TAG: "notifyOnTag",
   REACTION: "notifyReaction",
   COMMENT: "notifyComment",
   STORE: "notifyStoreNew",
+  GRANT: null,
 };
 
 /**
@@ -98,7 +101,8 @@ export async function push(message: PushMessage): Promise<void> {
     });
     if (!user) return;
 
-    const allowed = (user as unknown as Record<string, boolean>)[GATE[message.kind]];
+    const gate = GATE[message.kind];
+    const allowed = gate ? (user as unknown as Record<string, boolean>)[gate] : true;
     if (allowed === false) return;
     if (inQuietHours(user.quietFrom, user.quietTo)) return;
     if (user.devices.length === 0) return;
@@ -133,7 +137,7 @@ export async function broadcast(kind: PushKind, title: string, body: string, pat
   let sent = 0;
   for (;;) {
     const users = await prisma.user.findMany({
-      where: { [GATE[kind]]: true, devices: { some: {} } },
+      where: { ...(GATE[kind] ? { [GATE[kind]!]: true } : null), devices: { some: {} } },
       select: { id: true, quietFrom: true, quietTo: true, devices: { select: { token: true } } },
       orderBy: { id: "asc" },
       take: 500,

@@ -21,6 +21,8 @@ import { contentRoutes, moderationRoutes, reportRoutes } from "./routes/v1/repor
 import { webhookRoutes } from "./routes/v1/webhooks";
 import { dripPlusCredit } from "./services/billing";
 import { expirePlus } from "./services/plus";
+import { sweepModerationLog } from "./services/reports";
+import { pushCoinGrants } from "./services/coin-grants";
 import { announceStore } from "./services/store-news";
 import { expireRentals } from "./services/store";
 import { sweepAccess } from "./services/access";
@@ -114,6 +116,10 @@ setInterval(
     void announceStore().catch((error) => console.error("✗ إعلان المتجر", error));
     // وسجلُّ الدخول الأقدم من تسعين يوماً يُكنس (القاعدة ١٩٤).
     void sweepAccess().catch((error) => console.error("✗ كنس سجلّ الدخول", error));
+    // وسجلُّ الإشراف بعد ستّين يوماً (القاعدة ١٩٩).
+    void sweepModerationLog().catch((error) => console.error("✗ كنس سجلّ الإشراف", error));
+    // ونقاطُ الإدارة الممنوحة: جرسٌ لكل منح (القاعدة ١٩٨).
+    void pushCoinGrants().catch((error) => console.error("✗ تنبيه النقاط الممنوحة", error));
   },
   5 * 60_000,
 ).unref();

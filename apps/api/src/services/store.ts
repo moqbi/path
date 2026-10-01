@@ -91,9 +91,29 @@ export async function storefront(userId: string) {
   const charms = items.filter((item) => item.kind === "CHARM" && !item.limited);
   const frames = items.filter((item) => item.kind === "FRAME" && !item.limited);
 
+  /*
+    المجموعةُ المختلطة (القاعدة ١٩٧) تُرسَل مرّةً لكل نوعٍ فيها، بالمعرّف نفسه
+    ونوعِ تلك الشريحة: الشاشاتُ تختار مجموعاتِ الشريحة بنوعها ثمّ أصنافَها
+    بمعرّفها، فتظهر المختلطةُ قسماً في كل شريحةٍ بأصنافها — بلا بناءٍ جديد
+    للجوّال.
+  */
+  const SHELF: Record<string, "CHARM" | "FRAME" | "THEME"> = {
+    CHARM: "CHARM",
+    FRAME: "FRAME",
+    THEME: "THEME",
+    BACKGROUND: "THEME",
+  };
+  const shelves = collections.flatMap((one) => {
+    if (one.kind) return [one];
+    const kinds = new Set(
+      items.filter((item) => item.collectionId === one.id && SHELF[item.kind]).map((item) => SHELF[item.kind]),
+    );
+    return [...kinds].map((kind) => ({ ...one, kind }));
+  });
+
   return {
     categories,
-    collections,
+    collections: shelves,
     items,
     owned,
     expires,

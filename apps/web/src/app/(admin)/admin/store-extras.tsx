@@ -7,6 +7,7 @@ import {
   setItemCollection,
 } from "@/app/actions";
 import { ar, coinText } from "@/lib/format";
+import { SaveForm } from "./saver";
 
 const INPUT =
   "block w-full rounded-xl border border-line bg-card px-3 text-[13px] text-ink outline-none";
@@ -37,13 +38,14 @@ export async function ItemCollection({
   const normalized = kind === "BACKGROUND" ? "THEME" : kind;
   if (!KIND_NAME[normalized]) return null;
   const collections = await prisma.storeCollection.findMany({
-    where: { kind: normalized as "CHARM" | "FRAME" | "THEME" },
+    // مجموعاتُ نوعه، والمختلطةُ معها (القاعدة ١٩٧).
+    where: { OR: [{ kind: normalized as "CHARM" | "FRAME" | "THEME" }, { kind: null }] },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-    select: { id: true, name: true },
+    select: { id: true, name: true, kind: true },
   });
 
   return (
-    <form action={setItemCollection.bind(null, itemId)} className="mt-3 flex items-end gap-2">
+    <SaveForm action={setItemCollection.bind(null, itemId)} className="mt-3 flex items-end gap-2">
       <label className="grow text-[11.5px] text-muted">
         المجموعة
         <select name="collectionId" defaultValue={collectionId ?? ""} className={`${INPUT} mt-1`} style={{ height: 40 }}>
@@ -51,6 +53,7 @@ export async function ItemCollection({
           {collections.map((one) => (
             <option key={one.id} value={one.id}>
               {one.name}
+              {one.kind ? "" : " (مختلطة)"}
             </option>
           ))}
         </select>
@@ -58,7 +61,7 @@ export async function ItemCollection({
       <button type="submit" className="rounded-xl border border-line px-3 text-[12px] font-semibold text-ink-2" style={{ height: 40 }}>
         احفظ
       </button>
-    </form>
+    </SaveForm>
   );
 }
 
@@ -116,8 +119,9 @@ export async function CollectionsView() {
   return (
     <>
       <p className="mb-3 px-1 text-[11.5px] leading-relaxed text-muted">
-        المجموعة تجمع أصنافاً من نوعٍ واحد تحت اسم — «مجموعة الورود» في التمائم. في المتجر تُعرض كلُّ
-        مجموعةٍ قسماً، وما بلا مجموعةٍ تحت «التمائم الأخرى». والصنفُ يُضمّ إليها من صفحة تعديله.
+        المجموعة تجمع أصنافاً تحت اسم — «مجموعة الورود» في التمائم. في المتجر تُعرض كلُّ مجموعةٍ قسماً،
+        وما بلا مجموعةٍ تحت «التمائم الأخرى». و**المختلطة** تجمع تميمةً وإطاراً وثيماً معاً: تظهر قسماً في
+        شريحة كلّ نوعٍ فيها بأصنافه. والصنفُ يُضمّ إليها من صفحة تعديله.
       </p>
       <form action={createCollection} className="mb-4 flex flex-wrap items-end gap-2 rounded-2xl border border-line bg-card p-3">
         <label className="grow text-[11.5px] text-muted">
@@ -127,6 +131,7 @@ export async function CollectionsView() {
         <label className="text-[11.5px] text-muted">
           النوع
           <select name="kind" className={`${INPUT} mt-1`} style={{ height: 42 }}>
+            <option value="MIXED">مختلطة (تمائم وإطارات وثيمات)</option>
             <option value="CHARM">تمائم</option>
             <option value="FRAME">إطارات</option>
             <option value="THEME">ثيمات</option>
@@ -146,7 +151,7 @@ export async function CollectionsView() {
             <div>
               <p className="text-[13.5px] font-semibold">{one.name}</p>
               <p className="text-[11.5px] text-muted">
-                {KIND_NAME[one.kind] ?? one.kind} · {ar(one._count.items)} أصناف · ترتيب {ar(one.sortOrder)}
+                {one.kind ? (KIND_NAME[one.kind] ?? one.kind) : "مختلطة"} · {ar(one._count.items)} أصناف · ترتيب {ar(one.sortOrder)}
               </p>
             </div>
             <form action={deleteCollection.bind(null, one.id)}>

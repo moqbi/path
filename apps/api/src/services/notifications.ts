@@ -98,7 +98,7 @@ async function derive(userId: string, limit: number): Promise<Note[]> {
 
   const person = { select: { id: true, name: true, avatarMediaId: true } };
 
-  const [reactions, comments, tags, friendships, messages, gifts, fresh] = await Promise.all([
+  const [reactions, comments, tags, friendships, messages, gifts, fresh, grants] = await Promise.all([
     prisma.reaction.findMany({
       where: { moment: { authorId: userId }, userId: { not: userId } },
       select: {
@@ -200,6 +200,13 @@ async function derive(userId: string, limit: number): Promise<Note[]> {
       orderBy: { createdAt: "desc" },
       take: 8,
     }),
+    // نقاطٌ منحتها الإدارة (القاعدة ١٩٨) — خبرٌ من التطبيق لا من صديق.
+    prisma.coinGrant.findMany({
+      where: { userId },
+      select: { id: true, coins: true, note: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    }),
   ]);
 
   const notes: Note[] = [
@@ -272,6 +279,14 @@ async function derive(userId: string, limit: number): Promise<Note[]> {
       href: "store",
       item: { spec: row.spec, mediaId: row.mediaId },
     })),
+    ...grants.map((row) => ({
+      // `k-` لا `c-`: الأخيرةُ للتعليقات.
+      id: `k-${row.id}`,
+      kind: "STORE" as const,
+      at: row.createdAt,
+      text: grantText(row.coins, row.note),
+      href: "store",
+    })),
     ...messages.map((row) => ({
       id: `m-${row.id}`,
       kind: "MESSAGE" as const,
@@ -316,4 +331,10 @@ export async function clearAll(userId: string): Promise<void> {
     prisma.noteDismissal.deleteMany({ where: { userId } }),
   ]);
   forgetNotifications(userId);
+}
+
+/** «لأنك تستحق! تمّ منحك ٥٠٠ نقطة من قبل الإدارة» — بنصّ المالك (القاعدة ١٩٨). */
+export function grantText(coins: number, note: string | null): string {
+  const n = coins.toLocaleString("ar-SA");
+  return `لأنك تستحق! تمّ منحك ${n} نقطة من قبل الإدارة${note ? ` — ${note}` : ""}`;
 }

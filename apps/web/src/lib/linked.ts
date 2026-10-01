@@ -96,3 +96,14 @@ export async function linkedAccounts(userId: string): Promise<{ linked: Linked[]
     );
   return { linked, crowded: crowdedIps.size };
 }
+
+/**
+ * الحسابات المرتبطة لصفوف قائمة الحسابات معاً — كلُّ صفٍّ يحمل قرينته في
+ * مكانه (القاعدة ١١٥: ما يُفعَل بالحساب يُفعَل في صفّه) لا في صفحةٍ ثانية.
+ */
+export async function linkedMany(ids: string[]): Promise<Map<string, Linked[]>> {
+  const pairs = await Promise.all(
+    ids.map(async (id) => [id, (await linkedAccounts(id)).linked] as const),
+  );
+  return new Map(pairs);
+}

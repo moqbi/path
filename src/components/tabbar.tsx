@@ -20,6 +20,13 @@ const TABS = [
   { href: "/me", label: "أنا", Icon: UserIcon },
 ];
 
+/**
+ * ما له عمودٌ على سطح المكتب لا يتكرّر في شريط الوسط — **بقرار المالك**
+ * (القاعدة ٢٠٠): الأصدقاءُ يميناً، و«أنا» والإشعاراتُ يساراً. وعلى الجوّال
+ * والنافذةِ الضيّقة يبقى الشريطُ خمسةً كما كان.
+ */
+const DESK_ELSEWHERE = new Set(["/circle", "/notifications", "/me"]);
+
 /** الضغطة المطوّلة: نصف ثانية تقريباً، وأي تحريك للإصبع يلغيها. */
 const HOLD_MS = 450;
 
@@ -163,7 +170,9 @@ export function TabBarNav({
                 onPointerLeave={moments ? release : undefined}
                 onPointerCancel={moments ? release : undefined}
                 onContextMenu={moments ? (event) => event.preventDefault() : undefined}
-                className="flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 py-1"
+                className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 py-1${
+                  DESK_ELSEWHERE.has(href) ? " desk-hide" : ""
+                }`}
                 style={{
                   color: on ? "var(--color-clay-ink)" : "var(--color-muted)",
                   touchAction: "manipulation",

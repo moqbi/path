@@ -359,9 +359,15 @@ export async function createCollection(formData: FormData): Promise<void> {
   await requireAdmin("store");
   const name = String(formData.get("name") ?? "").trim().slice(0, 40);
   const kind = String(formData.get("kind") ?? "");
-  if (!name || !(COLLECTION_KINDS as readonly string[]).includes(kind)) return;
+  // و«مختلطة» نوعٌ فارغ: تميمةٌ وإطارٌ وثيمٌ في مجموعةٍ واحدة (القاعدة ١٩٧).
+  const mixed = kind === "MIXED";
+  if (!name || (!mixed && !(COLLECTION_KINDS as readonly string[]).includes(kind))) return;
   await prisma.storeCollection.create({
-    data: { name, kind: kind as (typeof COLLECTION_KINDS)[number], sortOrder: digits(formData.get("sortOrder")) || 0 },
+    data: {
+      name,
+      kind: mixed ? null : (kind as (typeof COLLECTION_KINDS)[number]),
+      sortOrder: digits(formData.get("sortOrder")) || 0,
+    },
   });
   revalidatePath("/admin");
 }
@@ -1684,6 +1690,84 @@ export async function grantPlus(
 
   revalidatePath("/admin");
   return { ok: `مُنح ${PLUS_LABEL[days]}` };
+}
+
+/** أقصى ما يُمنح في المرّة الواحدة — زلّةُ إصبعٍ بصفرٍ زائد لا تصير مليوناً. */
+const GRANT_MAX = 50_000;
+
+function grantInput(formData: FormData): { coins: number; note: string | null } | string {
+  const coins = digits(formData.get("coins"));
+  if (!Number.isInteger(coins) || coins < 1) return "اكتب عدد النقاط";
+  if (coins > GRANT_MAX) return `أقصى المنح ${GRANT_MAX.toLocaleString("ar-SA")} نقطة في المرّة`;
+  const note = String(formData.get("note") ?? "").trim().slice(0, 80) || null;
+  return { coins, note };
+}
+
+/**
+ * منحُ نقاطٍ من الإدارة — **بقرار المالك** (القاعدة ١٩٨): مكافأةُ المختبرين بعد
+ * كل اختبار. يُودَع الرصيد ويُكتب `CoinGrant` في معاملةٍ واحدة — فلا رصيدَ بلا
+ * سجلّ يقول من أين جاء — ومنه يُشتقّ الإشعار، ويقرع الخادمُ الجرسَ مع كنسه.
+ */
+export async function grantCoins(
+  userId: string,
+  _prev: AdminResult,
+  formData: FormData,
+): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  const input = grantInput(formData);
+  if (typeof input === "string") return { error: input };
+
+  const target = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+  if (!target) return { error: "لا يوجد هذا الحساب" };
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: userId }, data: { coins: { increment: input.coins } } }),
+    prisma.coinGrant.create({ data: { userId, coins: input.coins, note: input.note, byId: admin.id } }),
+    prisma.moderationLog.create({
+      data: {
+        adminId: admin.id,
+        action: "COINS_GRANTED",
+        targetId: userId,
+        ownerId: userId,
+        snippet: `${input.coins} نقطة${input.note ? ` — ${input.note}` : ""}`,
+      },
+    }),
+  ]);
+
+  revalidatePath("/admin");
+  return { ok: `مُنح ${input.coins.toLocaleString("ar-SA")} نقطة` };
+}
+
+/** المنحُ نفسه لكل من يحمل وسماً — المختبرون كلّهم بضغطةٍ لا واحداً واحداً. */
+export async function grantCoinsToTag(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  const input = grantInput(formData);
+  if (typeof input === "string") return { error: input };
+  const tagId = String(formData.get("tagId") ?? "");
+  const tag = tagId ? await prisma.tag.findUnique({ where: { id: tagId }, select: { name: true } }) : null;
+  if (!tag) return { error: "اختر الوسم" };
+
+  const people = await prisma.user.findMany({ where: { tagId }, select: { id: true } });
+  if (people.length === 0) return { error: `لا أحد يحمل وسم «${tag.name}»` };
+  const ids = people.map((person) => person.id);
+
+  await prisma.$transaction([
+    prisma.user.updateMany({ where: { id: { in: ids } }, data: { coins: { increment: input.coins } } }),
+    prisma.coinGrant.createMany({
+      data: ids.map((userId) => ({ userId, coins: input.coins, note: input.note, byId: admin.id })),
+    }),
+    prisma.moderationLog.create({
+      data: {
+        adminId: admin.id,
+        action: "COINS_GRANTED",
+        targetId: tagId,
+        snippet: `${input.coins} نقطة لكل من يحمل «${tag.name}» (${ids.length})${input.note ? ` — ${input.note}` : ""}`,
+      },
+    }),
+  ]);
+
+  revalidatePath("/admin");
+  return { ok: `مُنح ${input.coins.toLocaleString("ar-SA")} نقطة لـ${ids.length.toLocaleString("ar-SA")} حساب` };
 }
 
 /** نزعُه قبل انقضائه — ويُسجَّل كما سُجّل منحُه. */

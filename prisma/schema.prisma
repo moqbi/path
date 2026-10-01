@@ -249,6 +249,8 @@ model User {
   blocksMade    Block[]        @relation("Blocker")
   blocksGot     Block[]        @relation("Blocked")
   accessEvents AccessEvent[]
+  coinGrants      CoinGrant[] @relation("CoinGrantTo")
+  coinGrantsGiven CoinGrant[] @relation("CoinGrantBy")
 }
 
 /// قصة: صورة تُعرض لأصدقائك يوماً ثم تذهب.
@@ -505,7 +507,9 @@ model Tag {
 model StoreCollection {
   id        String        @id @default(cuid())
   name      String
-  kind      StoreItemKind
+  /// نوعُ أصنافها — وفارغٌ لمجموعةٍ مختلطة (تمائم وإطارات وثيمات معاً): تُعرض
+  /// قسماً في شريحة كلّ نوعٍ فيها بأصناف ذلك النوع (القاعدة ١٩٧).
+  kind      StoreItemKind?
   sortOrder Int           @default(0)
   createdAt DateTime      @default(now())
 
@@ -1146,4 +1150,22 @@ model NoteDismissal {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, noteId])
+}
+
+/// نقاطٌ منحتها الإدارة — مكافأةُ المختبرين ونحوها (القاعدة ١٩٨). الصفُّ سجلٌّ
+/// يُجيب «من أين هذه النقاط» ومنه يُشتقّ الإشعار، و`pushedAt` يختمه الكنسُ حين
+/// يُرسل التنبيه فلا يُقرع مرّتين.
+model CoinGrant {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation("CoinGrantTo", fields: [userId], references: [id], onDelete: Cascade)
+  coins     Int
+  note      String?
+  byId      String?
+  by        User?     @relation("CoinGrantBy", fields: [byId], references: [id], onDelete: SetNull)
+  createdAt DateTime  @default(now())
+  pushedAt  DateTime?
+
+  @@index([userId, createdAt])
+  @@index([pushedAt])
 }

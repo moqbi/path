@@ -193,6 +193,24 @@ export function EventLine({
 }) {
   const { kind } = moment;
 
+  /*
+    اسمُ الطرف الآخر رابطٌ إلى ملفّه — كالجوّال (القاعدة ١٦٥): «أصبح صديق فلان»
+    و«أهديت فلاناً» و«وصلتك هدية من فلان». الطرفُ إشارةٌ على اللحظة (معرّفُه
+    معها)، وما كُتب قبل الإشارة يبقى نصّاً.
+  */
+  const other =
+    kind === "FRIEND_ADDED" || kind === "GIFT_SENT" || kind === "GIFT_GOT"
+      ? (moment.tags[0]?.user ?? null)
+      : null;
+  const who = (fallback: string) =>
+    other ? (
+      <Link href={`/u/${other.id}`} className="font-bold text-clay-ink hover:underline">
+        {other.name}
+      </Link>
+    ) : (
+      <span className="font-bold">{fallback}</span>
+    );
+
   const title =
     kind === "CITY" ? (
       <>
@@ -204,16 +222,16 @@ export function EventLine({
       <span className="font-bold">صحيت</span>
     ) : kind === "FRIEND_ADDED" ? (
       <>
-        أصبح صديق <span className="font-bold">{moment.text ?? "أحدهم"}</span>
+        أصبح صديق {who(moment.text ?? "أحدهم")}
       </>
     ) : kind === "GIFT_SENT" ? (
       <>
-        أهديت <span className="font-bold">{withNames[0] ?? "صديقاً"}</span>{" "}
+        أهديت {who(withNames[0] ?? "صديقاً")}{" "}
         <span className="font-bold">{moment.text ?? "هدية"}</span>
       </>
     ) : kind === "GIFT_GOT" ? (
       <>
-        وصلتك هدية من <span className="font-bold">{withNames[0] ?? "صديق"}</span>:{" "}
+        وصلتك هدية من {who(withNames[0] ?? "صديق")}:{" "}
         <span className="font-bold">{moment.text ?? "هدية"}</span>
       </>
     ) : kind === "TAG_GRANTED" ? (
@@ -281,7 +299,8 @@ export function EventLine({
         رابط — وهو غير جائز في HTML، وكان يُصلَح بمعالج ضغطٍ يوقف الصعود،
         ومكوّن الخادم لا يملك أن يمرّر معالجاً فيسقط العرض كلّه.
       */}
-      {href ? (
+      {/* ورابطُ الاسم لا يُلفّ برابطٍ ثانٍ — رابطٌ داخل رابطٍ لا يجوز في HTML. */}
+      {href && !other ? (
         <Link href={href} className="flex min-w-0 grow items-start gap-2.5">
           {body}
         </Link>

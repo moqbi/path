@@ -34,6 +34,8 @@ type Item = {
 /** قرصُ الصنف ورسمُه: الرسم ٣٢ والقرص يلبسه بحشوةٍ لا يزيد. */
 const DISC = 44;
 const ICON = 32;
+/** رسمُ زرّ النشر — **بقرار المالك** ٣٢ كالجوّال. */
+const PLUS = 32;
 
 const RADIUS = 246;
 const TOP = 88;
@@ -129,7 +131,11 @@ export function ComposerFan() {
       />
 
       <div className="shell-fixed z-30">
-        <div className="relative mb-[86px] ml-5 h-14 w-14">
+        {/*
+          `mr-5` لا `ml-5`: الصندوقُ في RTL يجلس على الحافّة اليمنى، والهامشُ
+          الأيسر لا يحرّكه — فكان الزرّ لاصقاً بطرف العمود (بقرار المالك).
+        */}
+        <div className="relative mb-[86px] mr-5 h-14 w-14">
           {items.map((item, index) => {
             // الأوّل في الأعلى والأخير في الأسفل، وما بينهما بالتساوي.
             const angle = TOP - ((TOP - BOTTOM) * index) / (items.length - 1);
@@ -206,16 +212,23 @@ export function ComposerFan() {
                  قرصٌ ملوّن برأسه، فلا قرصَ داكنٌ تحته يُقرأ حلقةً حوله —
                  ويُستبدل بتبديل الملف كبقية رسوم القائمة.
               */
-              boxShadow: "0 8px 24px rgba(14,26,36,.35)",
               borderRadius: "9999px",
               transform: open ? "rotate(135deg)" : "rotate(0deg)",
               transition: "transform 380ms cubic-bezier(.18,1.3,.42,1)",
             }}
           >
+            {/*
+              الرسمُ ٣٢ — **بقرار المالك** كالجوّال (`PLUS`، القاعدة ٥١) —
+              ومربّعُ اللمس يبقى ٥٦ فلا يصغر مدارُ القوس ولا مساحةُ الإصبع.
+              والظلُّ على الرسم لا على المربّع، وإلا رُسمت هالةٌ بحجم ٥٦.
+            */}
             <span
               aria-hidden="true"
-              className="block h-full w-full rounded-full"
+              className="block rounded-full"
               style={{
+                width: PLUS,
+                height: PLUS,
+                boxShadow: "0 6px 16px rgba(14,26,36,.35)",
                 backgroundImage: `url(${asset("/composer/plus.png")})`,
                 backgroundSize: "contain",
                 backgroundPosition: "center",

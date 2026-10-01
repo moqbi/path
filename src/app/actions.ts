@@ -25,7 +25,7 @@ import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
 import { consume, sendReset, sendVerify } from "@/lib/email-tokens";
 import { readIdentity, upsertIdentity } from "@/lib/oauth";
 import { mailReply, tellSupport } from "@/lib/support-mail";
-import { deliverTo, openConversation, VOICE_SECONDS } from "@/lib/dm";
+import { conversationFor, deliverTo, openConversation, VOICE_SECONDS } from "@/lib/dm";
 import { copyMedia, dropMedia, migrateToCloud, storeClip, storeUpload } from "@/lib/media";
 import { cloudReady, probeBucket } from "@/lib/storage";
 import { isSupportedMusicUrl, resolveTrack } from "@/lib/music-link";
@@ -1420,6 +1420,38 @@ export async function startConversation(otherId: string): Promise<void> {
 
   const id = await openConversation(user.id, otherId);
   redirect(`/messages/${id}`);
+}
+
+/**
+ * المحادثة داخل عمود الأصدقاء على سطح المكتب — **بقرار المالك**: تُفتح في
+ * العمود نفسه بزرّ رجوع لا في الوسط. يردّ ما يرسمه العمود، ويختم القراءة
+ * كما تختمها صفحةُ المحادثة. والدائرةُ شرطٌ كما في `startConversation`.
+ */
+export async function deskChat(otherId: string) {
+  const user = await requireUser();
+  const circle = await circleIds(user.id);
+  if (!circle.includes(otherId)) return { error: "المحادثة بعد قبول الإضافة" } as const;
+  const id = await openConversation(user.id, otherId);
+  return deskThread(id);
+}
+
+/** سطورُ محادثةٍ للعمود — ويُعاد جلبُها بعد كل إرسالٍ وكل بضع ثوانٍ. */
+export async function deskThread(conversationId: string) {
+  const user = await requireUser();
+  const conversation = await conversationFor(user.id, conversationId);
+  if (!conversation) return { error: "المحادثة غير موجودة" } as const;
+  await prisma.message.updateMany({
+    where: { conversationId, senderId: { not: user.id }, readAt: null },
+    data: { readAt: new Date(), deliveredAt: new Date() },
+  });
+  const me = await prisma.user.findUnique({ where: { id: user.id }, select: { isPlus: true } });
+  return {
+    id: conversation.id,
+    meId: user.id,
+    isPlus: Boolean(me?.isPlus),
+    other: { id: conversation.other.id, name: conversation.other.name },
+    lines: conversation.messages,
+  } as const;
 }
 
 /** يتحقق أنّ المحادثة لي ثم يردّ معرّفها — كل إرسالٍ يمرّ عليه. */

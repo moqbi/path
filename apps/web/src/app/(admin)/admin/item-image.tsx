@@ -1,6 +1,7 @@
 "use client";
 
 import { clearItemImage, setFrameHole, setItemImage } from "@/app/actions";
+import { SaveForm } from "./saver";
 import { ImagePicker } from "@/components/image-picker";
 import { CameraIcon, CloseIcon } from "@/components/icons";
 import { itemPaint } from "@/components/ui";
@@ -106,7 +107,7 @@ export function ItemImage({
       في الوسط ÷ عرضُ اللوحة × ١٠٠ — لوحةٌ ١٠٢٤ فراغُها ٣٧٠ = ٣٦.
     */}
     {frame && mediaId ? (
-      <form action={setFrameHole.bind(null, itemId)} className="mt-2 flex items-center gap-2">
+      <SaveForm action={setFrameHole.bind(null, itemId)} className="mt-2 flex items-center gap-2">
         <label className="grow text-[11.5px] text-muted">
           فراغ الإطار ٪ (قطر الوسط الشفّاف ÷ عرض الصورة × ١٠٠)
           <input
@@ -127,7 +128,7 @@ export function ItemImage({
         >
           احفظ
         </button>
-      </form>
+      </SaveForm>
     ) : null}
     </>
   );

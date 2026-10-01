@@ -3,10 +3,9 @@ import type { SessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { circleIds } from "@/lib/circle";
 import { notifications, unseenCount } from "@/lib/notifications";
-import { unreadCount } from "@/lib/dm";
 import { NoteRow } from "@/components/note-row";
 import { Avatar, coverStyle, NameTag } from "@/components/ui";
-import { GearIcon, MessageIcon, SparkIcon, StoreIcon, UserIcon } from "@/components/icons";
+import { GearIcon, SparkIcon, StoreIcon, UserIcon } from "@/components/icons";
 import { ar, membership } from "@/lib/format";
 import { PanelTabs } from "./panel-tabs";
 
@@ -19,12 +18,12 @@ import { PanelTabs } from "./panel-tabs";
  * لا نسخةٌ ثانيةٌ منها هنا.
  */
 export async function MePanel({ user }: { user: SessionUser }) {
-  const [ids, moments, notes, fresh, unread] = await Promise.all([
+  // والمحادثاتُ في عمود الأصدقاء لا هنا (القاعدة ٢٠٠).
+  const [ids, moments, notes, fresh] = await Promise.all([
     circleIds(user.id),
     prisma.moment.count({ where: { authorId: user.id } }),
     notifications(user.id, 30),
     unseenCount(user.id),
-    unreadCount(user.id),
   ]);
 
   const me = (
@@ -82,7 +81,6 @@ export async function MePanel({ user }: { user: SessionUser }) {
       <nav className="mt-3 overflow-hidden rounded-2xl border border-line bg-card">
         {[
           { href: "/me", label: "ملفّي", icon: <UserIcon size={18} />, count: 0 },
-          { href: "/messages", label: "المحادثات", icon: <MessageIcon size={18} />, count: unread },
           { href: "/store", label: "المتجر", icon: <StoreIcon size={18} />, count: 0 },
           {
             href: "/subscribe",

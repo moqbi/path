@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
+  grantCoinsToTag,
   closeTicket,
   createCategory,
   createStoreItem,
@@ -35,6 +36,7 @@ import { SitePanel } from "./site";
 import { TOPIC_LABEL } from "@/lib/topics";
 import { Suspend } from "./suspend";
 import { PlusGrant } from "./plus";
+import { CoinsGrant } from "./coins";
 import { SITE_TEXT, siteText, siteImage, type SiteKey } from "@/lib/site";
 import { ItemImage } from "./item-image";
 import { ItemCover } from "./item-cover";
@@ -43,6 +45,7 @@ import { CollectionsView, ItemCollection, ItemPlans } from "./store-extras";
 import { coinText, ar, relative, riyals } from "@/lib/format";
 import { parsePalette } from "@/lib/theme";
 import { ReportContext } from "./report-context";
+import { linkedMany, type Linked } from "@/lib/linked";
 
 const FIELD =
   "rounded-xl border border-line bg-card px-4 text-[13.5px] text-ink outline-none focus:border-clay";
@@ -341,6 +344,17 @@ function StaffRow({
   );
 }
 
+/** ما جرى في سجلّ الإشراف — كان كلُّ صفٍّ يُقرأ «حذف لحظةً» أيّاً كان. */
+const LOG_ACTION: Record<string, string> = {
+  MOMENT_REMOVED: "حذف لحظةً",
+  COMMENT_REMOVED: "حذف تعليقاً",
+  PLUS_GRANTED: "منح آثار+",
+  PLUS_REVOKED: "أوقف آثار+",
+  USER_SUSPENDED: "أوقف حساباً",
+  USER_RESTORED: "رفع الإيقاف",
+  COINS_GRANTED: "منح نقاطاً",
+};
+
 const SECTIONS = [
   { key: "tags", label: "الوسوم", store: false },
   { key: "users", label: "الحسابات", store: false },
@@ -519,6 +533,8 @@ export default async function AdminPage({
     // سجلّ الإشراف: يُقرأ مع البلاغات، فهما بابا التصرّف في المحتوى.
     scope === "ALL"
       ? prisma.moderationLog.findMany({
+          // ستّون يوماً ثمّ يُحذف من القاعدة (القاعدة ١٩٩) — والشرطُ هنا يسبق الكنس.
+          where: { createdAt: { gte: new Date(Date.now() - 60 * 86_400_000) } },
           orderBy: { createdAt: "desc" },
           take: 60,
           include: {
@@ -557,6 +573,12 @@ export default async function AdminPage({
         })
       : Promise.resolve([]),
   ]);
+
+  // الحسابات المرتبطة لكل صفٍّ ظاهر — لمن يملك الإشراف (القاعدة ١٩٤).
+  const linked =
+    section === "users" && user.canModerate
+      ? await linkedMany(people.map((person) => person.id))
+      : new Map<string, Linked[]>();
 
   // الأصناف مرصوفة تحت تصنيفاتها كما تُرى في المتجر، وما بلا تصنيف في آخرها.
   const groups = [
@@ -771,6 +793,48 @@ export default async function AdminPage({
           {" "}امنح وسماً لحساب أو انزعه. الرقم على اليمين رقم العضوية.
           {owner ? " وتغييرُ البريد لك وحدك: من يبدّل بريد حسابٍ ينقله إلى عنوانه." : ""}
         </p>
+        {/*
+          منحُ النقاط لكل من يحمل وسماً (القاعدة ١٩٨) — مكافأةُ المختبرين بعد كل
+          اختبارٍ بضغطةٍ واحدة، لا حساباً حساباً.
+        */}
+        {scope === "ALL" && tags.length > 0 ? (
+          <details className="mb-3 rounded-2xl border border-line bg-card">
+            <summary className="cursor-pointer px-3.5 py-3 text-[13px] font-semibold">
+              امنح نقاطاً لكل من يحمل وسماً
+            </summary>
+            <Saver action={grantCoinsToTag} className="flex flex-wrap items-end gap-2 border-t border-line p-3.5">
+              <label className="flex flex-col gap-1 text-[11px] text-muted">
+                الوسم
+                <select name="tagId" required className="h-10 rounded-xl border border-line bg-paper px-2 text-[12px] text-ink outline-none">
+                  {tags.map((tag) => (
+                    <option key={tag.id} value={tag.id}>
+                      {tag.name} ({ar(tag._count.users)})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-[11px] text-muted">
+                النقاط
+                <input name="coins" inputMode="numeric" required className="h-10 w-[96px] rounded-xl border border-line bg-paper px-2 text-[12px] text-ink outline-none" />
+              </label>
+              <label className="flex min-w-0 grow flex-col gap-1 text-[11px] text-muted">
+                السبب (اختياري)
+                <input name="note" maxLength={80} placeholder="مكافأة اختبار النسخة ١٨" className="h-10 w-full rounded-xl border border-line bg-paper px-2 text-[12px] text-ink outline-none" />
+              </label>
+              <button
+                type="submit"
+                className="h-10 shrink-0 rounded-xl px-4 text-[12px] font-bold"
+                style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+              >
+                أودِع للجميع
+              </button>
+              <p className="w-full text-[11px] leading-relaxed text-muted">
+                يصل كلَّ واحدٍ منهم تنبيه «لأنك تستحق — تمّ منحك … نقطة من قبل الإدارة».
+              </p>
+            </Saver>
+          </details>
+        ) : null}
+
         {people.length === 0 ? (
           <p className="mb-7 rounded-2xl border border-line bg-card p-5 text-center text-[12.5px] text-muted">
             لا حساب بهذا البحث.
@@ -836,6 +900,36 @@ export default async function AdminPage({
                 </Link>
               ) : null}
 
+              {/*
+                الحسابات المرتبطة في صفّه (القاعدة ١٩٤): من شاركه جهازاً أو
+                شبكة. قرينةٌ لا دليل — والجهازُ أقوى من الشبكة.
+              */}
+              {(linked.get(person.id)?.length ?? 0) > 0 ? (
+                <div className="border-t border-line px-3 py-2.5">
+                  <p className="mb-1.5 text-[11.5px] font-semibold text-ink-2">
+                    حسابات مرتبطة ({ar(linked.get(person.id)!.length)})
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {linked.get(person.id)!.map((other) => (
+                      <Link
+                        key={other.id}
+                        href={`/admin?s=users&q=${other.memberNo}`}
+                        className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                        style={{
+                          background: other.device ? "var(--color-live-soft)" : "var(--color-chip)",
+                          color: other.device ? "var(--color-live)" : "var(--color-ink-2)",
+                        }}
+                        title={other.device ? "الجهاز نفسه" : "الشبكة نفسها"}
+                      >
+                        <bdi>{other.name}</bdi> ({ar(other.memberNo)}) ·{" "}
+                        {other.device ? "الجهاز نفسه" : "الشبكة نفسها"}
+                        {other.suspendedUntil && other.suspendedUntil > new Date() ? " · موقوف" : ""}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               {owner ? <AdminEmail userId={person.id} current={person.email} /> : null}
 
               {/*
@@ -852,6 +946,9 @@ export default async function AdminPage({
 
               {/* ومنحُ آثار+ حيث يُقرأ الحساب لا في شاشةٍ تعرض الناس كلَّهم. */}
               {scope === "ALL" ? <PlusGrant userId={person.id} until={person.plusUntil} /> : null}
+
+              {/* ومنحُ النقاط بجانبه — مكافأةُ المختبرين (القاعدة ١٩٨). */}
+              {scope === "ALL" ? <CoinsGrant userId={person.id} /> : null}
 
               {/*
                 وفتحُ الحساب للمالك وحده: بطاقتُه ولحظاتُه العامّة تُقرأ
@@ -1870,7 +1967,7 @@ export default async function AdminPage({
             <h2 className="mb-1 text-[15px] font-bold">سجلّ الإشراف</h2>
             <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
               كلّ حذفٍ جرى من صفحة حساب: من حذف، ومِن حساب مَن، ومتى، وما كان
-              المتن. والصفّ يبقى وإن ذهب المحتوى.
+              المتن. والصفّ يبقى وإن ذهب المحتوى — ستّين يوماً ثمّ يُحذف.
             </p>
             {logs.length === 0 ? (
               <p className="mb-7 rounded-2xl border border-line bg-card p-5 text-center text-[12.5px] text-muted">
@@ -1881,8 +1978,9 @@ export default async function AdminPage({
                 {logs.map((row) => (
                   <div key={row.id} className="rounded-2xl border border-line bg-card p-3">
                     <p className="text-[12px]">
-                      <span className="font-semibold">{row.admin.name}</span> حذف لحظةً
-                      {row.owner ? ` من حساب ${row.owner.name} (${ar(row.owner.memberNo)})` : ""}
+                      <span className="font-semibold">{row.admin.name}</span>{" "}
+                      {LOG_ACTION[row.action] ?? row.action}
+                      {row.owner ? ` — ${row.owner.name} (${ar(row.owner.memberNo)})` : ""}
                     </p>
                     <p className="text-[10.5px] text-faint">{relative(row.createdAt)}</p>
                     {row.snippet ? (
