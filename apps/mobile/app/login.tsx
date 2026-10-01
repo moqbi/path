@@ -25,6 +25,8 @@ import {
 import { AthrMark, AthrWordmark, TAGLINE_AR, TAGLINE_EN } from "../components/brand";
 import { BackIcon } from "../components/icons";
 import { api } from "../lib/api";
+import { openIn } from "../lib/browse";
+import { SITE_URL, hasSite } from "@athar/shared";
 import { useSession } from "../lib/session";
 import { brandGradient, colors } from "../theme/tokens";
 
@@ -572,6 +574,7 @@ export default function Login() {
                   {newcomer ? "عندي حساب — سجّل دخولي" : "ما عندي حساب — أنشئ واحداً"}
                 </Text>
               </Pressable>
+              <Consent />
             </View>
           ) : (
             <View style={{ gap: 10 }}>
@@ -636,11 +639,38 @@ export default function Login() {
                   {notice}
                 </Text>
               ) : null}
+              <Consent />
             </View>
           )}
         </Animated.View>
       </View>
     </View>
+  );
+}
+
+/**
+ * الموافقةُ على الشروط تحت أبواب الدخول كلّها — شرطُ آبل 1.2 لكل تطبيقٍ فيه
+ * محتوى يكتبه الناس: يوافق المستخدم على شروطٍ تقول صراحةً إنّه لا تسامح مع
+ * المحتوى المسيء ولا مع المسيئين. والبابُ واحد للبريد والمزوّدين: كلُّها
+ * تُنشئ حساباً لمن لا حسابَ له.
+ */
+function Consent() {
+  const link = (title: string, path: string) => (
+    <Text
+      accessibilityRole="link"
+      onPress={() => {
+        if (hasSite()) void openIn(`${SITE_URL}${path}`);
+      }}
+      style={{ color: "#f7f5ef", fontWeight: "700", textDecorationLine: "underline" }}
+    >
+      {title}
+    </Text>
+  );
+  return (
+    <Text style={{ marginTop: 6, fontSize: 11.5, lineHeight: 19, color: "rgba(247,245,239,.72)", textAlign: "center" }}>
+      بالمتابعة أنت توافق على {link("شروط الاستخدام", "/terms")} و{link("سياسة الخصوصية", "/privacy")}.
+      {"\n"}لا تسامح مع المحتوى المسيء أو المستخدمين المسيئين.
+    </Text>
   );
 }
 

@@ -7,12 +7,12 @@ import { dropMedia } from "./media";
  * البلاغات: بابٌ للمستخدم، وبابٌ للمشرف.
  *
  * شرط متجر آبل أن يكون الإبلاغ على **كل** منشور لا على الحساب وحده،
- * ولذلك الهدف أربعةٌ: لحظة، وقصة، ورسالة، وشخص.
+ * ولذلك الهدف خمسةٌ: لحظة، وقصة، ورسالة، وتعليق، وشخص.
  *
  * والمراجعة يدويّة: لا يُحذف محتوى ببلاغٍ واحد — وإلا صار الإبلاغ
  * سلاحاً يُسكت به الناس بعضهم. المشرف يقرأ ويقرّر.
  */
-export type Target = "MOMENT" | "STORY" | "MESSAGE" | "USER";
+export type Target = "MOMENT" | "STORY" | "MESSAGE" | "COMMENT" | "USER";
 
 const REASONS = ["SPAM", "HATE", "SEXUAL", "VIOLENCE", "SELF_HARM", "OTHER"] as const;
 export type Reason = (typeof REASONS)[number];
@@ -34,6 +34,14 @@ async function subject(target: Target, targetId: string) {
       select: { authorId: true },
     });
     return row ? { ownerId: row.authorId, snippet: null } : null;
+  }
+
+  if (target === "COMMENT") {
+    const row = await prisma.comment.findUnique({
+      where: { id: targetId },
+      select: { userId: true, body: true },
+    });
+    return row ? { ownerId: row.userId, snippet: row.body } : null;
   }
 
   if (target === "MESSAGE") {
@@ -204,6 +212,8 @@ export async function decide(
       await prisma.story.deleteMany({ where: { id: report.targetId } });
     } else if (report.target === "MESSAGE") {
       await prisma.message.deleteMany({ where: { id: report.targetId } });
+    } else if (report.target === "COMMENT") {
+      await prisma.comment.deleteMany({ where: { id: report.targetId } });
     }
   }
 

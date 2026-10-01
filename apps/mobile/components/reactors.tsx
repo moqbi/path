@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { View, Pressable } from "react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
@@ -7,6 +8,7 @@ import { Avatar, frameBleed } from "./avatar";
 import { ReactionGlyph } from "./reactions";
 import { NameTag } from "./name-tag";
 import { SwipeRow } from "./swipe-row";
+import { ReportSheet } from "./report-sheet";
 import { colors } from "../theme/tokens";
 import { ar, relative } from "../lib/format";
 import type { Moment } from "../lib/queries";
@@ -91,6 +93,8 @@ export function CommentList({
 }) {
   const router = useRouter();
   const client = useQueryClient();
+  // التعليقُ المفتوحُ للإبلاغ — شرطُ آبل (1.2): الإبلاغُ على كلّ محتوى يكتبه الناس.
+  const [reporting, setReporting] = useState<string | null>(null);
   const refresh = () => {
     void client.invalidateQueries({ queryKey: ["feed"] });
     void client.invalidateQueries({ queryKey: ["moment"] });
@@ -114,7 +118,13 @@ export function CommentList({
       {comments.map((comment) => {
         const mine = comment.user.id === viewerId;
         const row = (
-        <View key={comment.id} style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+        <Pressable
+          key={comment.id}
+          // ضغطةٌ مطوّلة على تعليق غيرك تفتح الإبلاغ — والسحبُ يكشفه أيضاً.
+          onLongPress={mine || moderate ? undefined : () => setReporting(comment.id)}
+          delayLongPress={350}
+          style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}
+        >
           <Pressable
             onPress={() =>
               router.push((comment.user.id === viewerId ? "/me" : `/u/${comment.user.id}`) as never)
@@ -155,7 +165,7 @@ export function CommentList({
             </View>
             <Text style={{ color: colors.ink2, fontSize: 12.5, lineHeight: 21 }}>{comment.body}</Text>
           </View>
-        </View>
+        </Pressable>
         );
 
         /*
@@ -164,7 +174,19 @@ export function CommentList({
           صاحبُ التعليق يحذف تعليقه وحده، والمشرفُ تعليقَ غيره. والسحبةُ ثمّ
           الضغطةُ على الزرّ المكشوف خطوتان — وهما السؤالُ قبل الحذف.
         */
-        if (!mine && !moderate) return row;
+        if (!mine && !moderate) {
+          return (
+            <SwipeRow
+              key={comment.id}
+              surface={colors.card}
+              width={72}
+              confirmLabel="بلاغ"
+              onDelete={() => setReporting(comment.id)}
+            >
+              {row}
+            </SwipeRow>
+          );
+        }
         return (
           <SwipeRow
             key={comment.id}
@@ -177,6 +199,9 @@ export function CommentList({
           </SwipeRow>
         );
       })}
+      {reporting ? (
+        <ReportSheet target="COMMENT" targetId={reporting} onClose={() => setReporting(null)} />
+      ) : null}
     </View>
   );
 }

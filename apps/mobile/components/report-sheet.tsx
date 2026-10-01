@@ -13,7 +13,7 @@ import { colors } from "../theme/tokens";
  * حذفَ تلقائيّ ببلاغٍ واحد: الإبلاغ الذي يحذف يصير سلاحاً يُسكت به
  * الناسُ بعضهم.
  */
-export type ReportTarget = "MOMENT" | "STORY" | "MESSAGE" | "USER";
+export type ReportTarget = "MOMENT" | "STORY" | "MESSAGE" | "COMMENT" | "USER";
 
 const REASONS: { key: string; label: string }[] = [
   { key: "SPAM", label: "إزعاج أو إعلان" },
@@ -66,7 +66,7 @@ export function ReportButton({
   );
 }
 
-function ReportSheet({
+export function ReportSheet({
   target,
   targetId,
   onClose,

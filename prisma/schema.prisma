@@ -859,6 +859,7 @@ enum ReportTarget {
   MOMENT
   STORY
   MESSAGE
+  COMMENT
   USER
 }
 

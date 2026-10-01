@@ -1108,6 +1108,8 @@ export async function decideReport(
       await prisma.story.deleteMany({ where: { id: report.targetId } });
     } else if (report.target === "MESSAGE") {
       await prisma.message.deleteMany({ where: { id: report.targetId } });
+    } else if (report.target === "COMMENT") {
+      await prisma.comment.deleteMany({ where: { id: report.targetId } });
     }
   }
 

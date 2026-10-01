@@ -214,6 +214,7 @@ const REPORT_TARGET: Record<string, string> = {
   MOMENT: "لحظة",
   STORY: "قصة",
   MESSAGE: "رسالة",
+  COMMENT: "تعليق",
   USER: "حساب",
 };
 

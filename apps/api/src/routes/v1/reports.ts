@@ -8,7 +8,7 @@ import * as feed from "../../services/feed";
 import * as reports from "../../services/reports";
 
 const reportInput = z.object({
-  target: z.enum(["MOMENT", "STORY", "MESSAGE", "USER"]),
+  target: z.enum(["MOMENT", "STORY", "MESSAGE", "COMMENT", "USER"]),
   targetId: cuid,
   reason: z.enum(["SPAM", "HATE", "SEXUAL", "VIOLENCE", "SELF_HARM", "OTHER"]),
   note: z.string().trim().max(500).optional(),
