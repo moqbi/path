@@ -256,6 +256,16 @@ export const UserMinusIcon = ({ size = 20, color = "currentColor" }: Props) => (
   </Svg>
 );
 
+/** حذفُ محادثة: سلّةٌ بغطاءٍ وخطّين — كأيقونات صفّ الصديق (القاعدة ٢٠٣). */
+export const TrashIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M4 6.5h16" />
+    <Path d="M9 6.5V4.5h6v2" />
+    <Path d="M6.5 6.5l1 13h9l1-13" />
+    <Path d="M10 10.5v5.5M14 10.5v5.5" />
+  </Svg>
+);
+
 /**
  * شارةُ التوثيق — **بقرار المالك** بدل النجمة بجانب الاسم: ختمٌ مسنّن،
  * وفي وسطه دائرةٌ وعلامةُ صحٍّ بالأبيض. والنجمةُ (`SparkIcon`) تبقى رمزَ

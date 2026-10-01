@@ -8,7 +8,7 @@ import { Avatar } from "../components/avatar";
 import { SwipeRow } from "../components/swipe-row";
 import { ScreenHeader } from "../components/screen-header";
 import { Ticks, receiptOf } from "../components/receipt";
-import { CameraIcon, MicIcon, SearchIcon } from "../components/icons";
+import { CameraIcon, MicIcon, SearchIcon, TrashIcon } from "../components/icons";
 import { api } from "../lib/api";
 import { keys, useCircle } from "../lib/queries";
 import { usePullRefresh } from "../lib/refresh";
@@ -170,7 +170,11 @@ export default function Messages() {
           <RefreshControl {...pullRefresh} tintColor={colors.clay} />
         }
         renderItem={({ item }) => (
-          <SwipeRow onDelete={() => void drop.mutate(item.id)}>
+          <SwipeRow
+            onDelete={() => void drop.mutate(item.id)}
+            confirmLabel="حذف المحادثة"
+            icons={{ delete: <TrashIcon size={22} color="#fff" /> }}
+          >
           <Pressable
             onPress={() => router.push(`/dm/${item.id}` as never)}
             style={{ flexDirection: "row", alignItems: "center", gap: 11, paddingHorizontal: 20, paddingVertical: 11 }}
