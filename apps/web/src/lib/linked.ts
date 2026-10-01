@@ -24,7 +24,14 @@ export type Linked = {
   lastAt: Date;
 };
 
-export async function linkedAccounts(userId: string): Promise<{ linked: Linked[]; crowded: number }> {
+export type LinkedResult = {
+  linked: Linked[];
+  crowded: number;
+  /** ما سُجّل له هو — صفرٌ يعني لا دخولَ مسجَّلاً بعد، لا «لا ارتباط». */
+  seen: { ips: number; devices: number };
+};
+
+export async function linkedAccounts(userId: string): Promise<LinkedResult> {
   const since = new Date(Date.now() - DAYS * 86_400_000);
   const mine = await prisma.accessEvent.findMany({
     where: { userId, lastAt: { gte: since } },
@@ -32,17 +39,21 @@ export async function linkedAccounts(userId: string): Promise<{ linked: Linked[]
   });
   const ips = [...new Set(mine.map((row) => row.ip).filter(Boolean))];
   const devices = [...new Set(mine.map((row) => row.device).filter(Boolean))];
-  if (ips.length === 0 && devices.length === 0) return { linked: [], crowded: 0 };
+  const seen = { ips: ips.length, devices: devices.length };
+  if (ips.length === 0 && devices.length === 0) return { linked: [], crowded: 0, seen };
 
   // العناوين المزدحمة تُعرف بعدد أصحابها قبل أن تُقرأ صفوفُها.
-  const counts = ips.length
-    ? await prisma.accessEvent.groupBy({
-        by: ["ip"],
+  // وتُعدّ الحساباتُ لا الصفوف: حسابٌ بجهازين على شبكةٍ واحدة صفّان لا شخصان.
+  const pairs = ips.length
+    ? await prisma.accessEvent.findMany({
         where: { ip: { in: ips }, lastAt: { gte: since } },
-        _count: { userId: true },
+        select: { ip: true, userId: true },
+        distinct: ["ip", "userId"],
       })
     : [];
-  const crowdedIps = new Set(counts.filter((row) => row._count.userId > CROWDED).map((row) => row.ip));
+  const perIp = new Map<string, number>();
+  for (const row of pairs) perIp.set(row.ip, (perIp.get(row.ip) ?? 0) + 1);
+  const crowdedIps = new Set([...perIp].filter(([, count]) => count > CROWDED).map(([ip]) => ip));
   const quietIps = ips.filter((ip) => !crowdedIps.has(ip));
 
   const others = await prisma.accessEvent.findMany({
@@ -94,16 +105,14 @@ export async function linkedAccounts(userId: string): Promise<{ linked: Linked[]
       (a, b) =>
         Number(b.device) - Number(a.device) || b.ips - a.ips || b.lastAt.getTime() - a.lastAt.getTime(),
     );
-  return { linked, crowded: crowdedIps.size };
+  return { linked, crowded: crowdedIps.size, seen };
 }
 
 /**
  * الحسابات المرتبطة لصفوف قائمة الحسابات معاً — كلُّ صفٍّ يحمل قرينته في
  * مكانه (القاعدة ١١٥: ما يُفعَل بالحساب يُفعَل في صفّه) لا في صفحةٍ ثانية.
  */
-export async function linkedMany(ids: string[]): Promise<Map<string, Linked[]>> {
-  const pairs = await Promise.all(
-    ids.map(async (id) => [id, (await linkedAccounts(id)).linked] as const),
-  );
-  return new Map(pairs);
+export async function linkedMany(ids: string[]): Promise<Map<string, LinkedResult>> {
+  const rows = await Promise.all(ids.map(async (id) => [id, await linkedAccounts(id)] as const));
+  return new Map(rows);
 }

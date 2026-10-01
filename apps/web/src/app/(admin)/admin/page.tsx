@@ -45,7 +45,7 @@ import { CollectionsView, ItemCollection, ItemPlans } from "./store-extras";
 import { coinText, ar, relative, riyals } from "@/lib/format";
 import { parsePalette } from "@/lib/theme";
 import { ReportContext } from "./report-context";
-import { linkedMany, type Linked } from "@/lib/linked";
+import { linkedMany, type LinkedResult } from "@/lib/linked";
 
 const FIELD =
   "rounded-xl border border-line bg-card px-4 text-[13.5px] text-ink outline-none focus:border-clay";
@@ -344,6 +344,50 @@ function StaffRow({
   );
 }
 
+/**
+ * الحسابات المرتبطة في صفّ الحساب (القاعدة ١٩٤) — ظاهرةٌ دائماً بحالها:
+ * كان القسمُ يختفي حين لا ارتباط، فلا يُعرف أهو «لا ارتباط» أم «لا بيانات».
+ */
+function LinkedRow({ result }: { result: LinkedResult }) {
+  const { linked, seen, crowded } = result;
+  return (
+    <div className="border-t border-line px-3 py-2.5">
+      <p className="text-[11.5px] font-semibold text-ink-2">
+        الحسابات المرتبطة{linked.length > 0 ? ` (${ar(linked.length)})` : ""}
+      </p>
+      {seen.ips + seen.devices === 0 ? (
+        <p className="mt-0.5 text-[11px] text-faint">
+          لا دخولَ مسجَّلاً له بعد — يُسجَّل من أوّل استعمالٍ بعد نشر الميزة.
+        </p>
+      ) : linked.length === 0 ? (
+        <p className="mt-0.5 text-[11px] text-faint">
+          لا حسابات مرتبطة — دخل من {ar(seen.ips)} شبكة
+          {seen.devices > 0 ? ` و${ar(seen.devices)} جهاز` : " (من الويب أو نسخةٍ قبل معرّف الجهاز)"}
+          {crowded > 0 ? ` · تُرك ${ar(crowded)} عنوانٌ مزدحم` : ""}.
+        </p>
+      ) : (
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {linked.map((other) => (
+            <Link
+              key={other.id}
+              href={`/admin?s=users&q=${other.memberNo}`}
+              className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+              style={{
+                background: other.device ? "var(--color-live-soft)" : "var(--color-chip)",
+                color: other.device ? "var(--color-live)" : "var(--color-ink-2)",
+              }}
+            >
+              <bdi>{other.name}</bdi> ({ar(other.memberNo)}) ·{" "}
+              {other.device ? "الجهاز نفسه" : "الشبكة نفسها"}
+              {other.suspendedUntil && other.suspendedUntil > new Date() ? " · موقوف" : ""}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** ما جرى في سجلّ الإشراف — كان كلُّ صفٍّ يُقرأ «حذف لحظةً» أيّاً كان. */
 const LOG_ACTION: Record<string, string> = {
   MOMENT_REMOVED: "حذف لحظةً",
@@ -578,7 +622,7 @@ export default async function AdminPage({
   const linked =
     section === "users" && user.canModerate
       ? await linkedMany(people.map((person) => person.id))
-      : new Map<string, Linked[]>();
+      : new Map<string, LinkedResult>();
 
   // الأصناف مرصوفة تحت تصنيفاتها كما تُرى في المتجر، وما بلا تصنيف في آخرها.
   const groups = [
@@ -904,30 +948,8 @@ export default async function AdminPage({
                 الحسابات المرتبطة في صفّه (القاعدة ١٩٤): من شاركه جهازاً أو
                 شبكة. قرينةٌ لا دليل — والجهازُ أقوى من الشبكة.
               */}
-              {(linked.get(person.id)?.length ?? 0) > 0 ? (
-                <div className="border-t border-line px-3 py-2.5">
-                  <p className="mb-1.5 text-[11.5px] font-semibold text-ink-2">
-                    حسابات مرتبطة ({ar(linked.get(person.id)!.length)})
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {linked.get(person.id)!.map((other) => (
-                      <Link
-                        key={other.id}
-                        href={`/admin?s=users&q=${other.memberNo}`}
-                        className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold"
-                        style={{
-                          background: other.device ? "var(--color-live-soft)" : "var(--color-chip)",
-                          color: other.device ? "var(--color-live)" : "var(--color-ink-2)",
-                        }}
-                        title={other.device ? "الجهاز نفسه" : "الشبكة نفسها"}
-                      >
-                        <bdi>{other.name}</bdi> ({ar(other.memberNo)}) ·{" "}
-                        {other.device ? "الجهاز نفسه" : "الشبكة نفسها"}
-                        {other.suspendedUntil && other.suspendedUntil > new Date() ? " · موقوف" : ""}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
+              {linked.has(person.id) ? (
+                <LinkedRow result={linked.get(person.id)!} />
               ) : null}
 
               {owner ? <AdminEmail userId={person.id} current={person.email} /> : null}
