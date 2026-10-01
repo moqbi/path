@@ -22,6 +22,8 @@ const shape = {
   imageSpec: true,
   mediaId: true,
   commentsLocked: true,
+  // «خاصة»: من يرى اللحظة يُقال له إنّها لم تُوجَّه إلى الدائرة كلّها.
+  audience: true,
   createdAt: true,
   author: {
     select: {

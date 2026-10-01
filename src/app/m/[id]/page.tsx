@@ -69,6 +69,11 @@ export default async function MomentPage({
                 <p className="text-[11px] text-faint">
                   {timeOfDay(moment.createdAt)}
                   {moment.placeCity ? ` · ${moment.placeCity}` : null}
+                  {moment.audience !== "CIRCLE" ? (
+                    <span className="ms-1.5 inline-flex items-center gap-0.5 font-bold" style={{ color: "var(--color-clay-ink)" }}>
+                      · <LockIcon size={10} /> خاصة
+                    </span>
+                  ) : null}
                 </p>
               </div>
             </div>

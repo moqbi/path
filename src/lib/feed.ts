@@ -18,6 +18,8 @@ export const momentShape = {
   imageSpec: true,
   mediaId: true,
   commentsLocked: true,
+  // «خاصة»: من يرى اللحظة يُقال له إنّها لم تُوجَّه إلى الدائرة كلّها.
+  audience: true,
   media: { select: { width: true, height: true } },
   lat: true,
   lng: true,

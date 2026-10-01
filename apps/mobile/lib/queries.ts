@@ -47,6 +47,8 @@ export type Moment = {
   mediaId: string | null;
   /** قفلُ التعليقات بيد صاحبها — اختياريٌّ لخادمٍ أقدم لا يرسله. */
   commentsLocked?: boolean;
+  /** الجمهور: الدائرة كلّها، أو تصنيف، أو أشخاصٌ بأعيانهم — اختياريٌّ لخادمٍ أقدم. */
+  audience?: "CIRCLE" | "GROUP" | "PICKED";
   createdAt: string;
   author: Person;
   tags: { id: string; name: string }[];

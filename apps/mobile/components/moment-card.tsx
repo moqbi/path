@@ -5,7 +5,7 @@ import { Avatar, firstColor } from "./avatar";
 import { MediaImage } from "./media-image";
 import { viewPhoto } from "./photo-viewer";
 import { AthrMark } from "./brand";
-import { TagIcon, PinIcon, PlayIcon, WithIcon, SunIcon, MoonIcon, PlaneIcon, GiftIcon, SparkIcon } from "./icons";
+import { TagIcon, PinIcon, PlayIcon, WithIcon, SunIcon, MoonIcon, PlaneIcon, GiftIcon, SparkIcon, LockIcon } from "./icons";
 import { MomentBar } from "./moment-bar";
 import { Bubble, CommentList, Reactors } from "./reactors";
 import { colors } from "../theme/tokens";
@@ -161,6 +161,29 @@ export function MomentCard({
       <Text style={{ color: colors.muted, fontSize: 10, fontWeight: "600" }}>
         {timeOfDay(new Date(moment.createdAt))}
       </Text>
+      {/*
+        «خاصة» تحت الساعة — يراها صاحبُها ومن اختارهم، فيعرف كلٌّ منهم أنّ
+        اللحظة لم تُوجَّه إلى الدائرة كلّها (القاعدة ٢٠٦).
+      */}
+      {moment.audience && moment.audience !== "CIRCLE" ? (
+        <View
+          accessibilityLabel="لحظة خاصة"
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 2,
+            paddingHorizontal: 6,
+            paddingVertical: 1,
+            borderRadius: 999,
+            borderWidth: 1,
+            borderColor: colors.line,
+            backgroundColor: colors.card,
+          }}
+        >
+          <LockIcon size={10} color={colors.clayInk} />
+          <Text style={{ color: colors.clayInk, fontSize: 9.5, fontWeight: "700" }}>خاصة</Text>
+        </View>
+      ) : null}
     </View>
   );
 

@@ -10,6 +10,7 @@ import {
   GiftIcon,
   WithIcon,
   TagIcon,
+  LockIcon,
 } from "@/components/icons";
 import { MomentBar } from "@/components/moment-bar";
 import { AthrMark } from "@/components/brand";
@@ -94,6 +95,7 @@ function Spine({
   mediaId,
   charm,
   at,
+  hidden = false,
 }: {
   authorId: string;
   viewerId: string;
@@ -102,6 +104,8 @@ function Spine({
   mediaId?: string | null;
   charm?: { spec: string; mediaId: string | null } | null;
   at: Date;
+  /** لحظةٌ لتصنيفٍ أو لأشخاصٍ بأعيانهم — لا للدائرة كلّها. */
+  hidden?: boolean;
 }) {
   return (
     <div className="flex w-14 shrink-0 flex-col items-center gap-1.5">
@@ -112,6 +116,20 @@ function Spine({
         <Avatar name={name} size={46} frame={frame} mediaId={mediaId} charm={charm} />
       </Link>
       <span className="text-[10px] font-semibold text-muted">{timeOfDay(at)}</span>
+      {/*
+        «خاصة» تحت الساعة — يراها صاحبُها ومن اختارهم، فيعرف كلٌّ منهم أنّ
+        اللحظة لم تُوجَّه إلى الدائرة كلّها (القاعدة ٢٠٦).
+      */}
+      {hidden ? (
+        <span
+          title="لحظة خاصة"
+          className="flex items-center gap-0.5 rounded-full border border-line bg-card px-1.5 py-px text-[9.5px] font-bold"
+          style={{ color: "var(--color-clay-ink)" }}
+        >
+          <LockIcon size={10} />
+          خاصة
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -174,6 +192,7 @@ function Row({
         mediaId={moment.author.avatarMediaId}
         charm={moment.author.charm}
         at={moment.createdAt}
+        hidden={moment.audience !== "CIRCLE"}
       />
       <div className="min-w-0 grow">{children}</div>
     </article>
