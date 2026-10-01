@@ -132,6 +132,15 @@ export const VerifiedIcon = ({ size = 20, className }: IconProps) => (
   </svg>
 );
 
+/** اللحظةُ الخاصّة: عينٌ يقطعها خطّ — لا تُرى إلا لمن اختارهم صاحبُها. والقفلُ لقفل التعليقات. */
+export const PrivateIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M3 12s3.3-6 9-6 9 6 9 6-3.3 6-9 6-9-6-9-6Z" />
+    <path d="M12 9.4a2.6 2.6 0 1 1 0 5.2 2.6 2.6 0 0 1 0-5.2Z" />
+    <path d="M4 4l16 16" />
+  </svg>
+);
+
 export const CheckIcon = ({ size = 20, className }: IconProps) => (
   <svg {...base(size)} className={className} strokeWidth={2}>
     <path d="M5 12.5 10 17.5 19 7" />

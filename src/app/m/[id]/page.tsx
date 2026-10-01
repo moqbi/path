@@ -7,7 +7,7 @@ import { Avatar, NameTag, ScreenHeader } from "@/components/ui";
 import { SeenTracker } from "@/components/interactive";
 import { Reactions, Reactors } from "@/components/reactions";
 import { AuthorPanel } from "@/components/author-panel";
-import { LockIcon } from "@/components/icons";
+import { LockIcon, PrivateIcon } from "@/components/icons";
 import { CommentList } from "@/components/comments";
 import { EVENTS, EventLine } from "@/components/moment-card";
 import { Photo } from "@/components/photo";
@@ -71,7 +71,7 @@ export default async function MomentPage({
                   {moment.placeCity ? ` · ${moment.placeCity}` : null}
                   {moment.audience !== "CIRCLE" ? (
                     <span className="ms-1.5 inline-flex items-center gap-0.5 font-bold" style={{ color: "var(--color-clay-ink)" }}>
-                      · <LockIcon size={10} /> خاصة
+                      · <PrivateIcon size={11} /> خاصة
                     </span>
                   ) : null}
                 </p>

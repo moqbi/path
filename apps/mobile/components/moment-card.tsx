@@ -5,7 +5,7 @@ import { Avatar, firstColor } from "./avatar";
 import { MediaImage } from "./media-image";
 import { viewPhoto } from "./photo-viewer";
 import { AthrMark } from "./brand";
-import { TagIcon, PinIcon, PlayIcon, WithIcon, SunIcon, MoonIcon, PlaneIcon, GiftIcon, SparkIcon, LockIcon } from "./icons";
+import { TagIcon, PinIcon, PlayIcon, WithIcon, SunIcon, MoonIcon, PlaneIcon, GiftIcon, SparkIcon, PrivateIcon } from "./icons";
 import { MomentBar } from "./moment-bar";
 import { Bubble, CommentList, Reactors } from "./reactors";
 import { colors } from "../theme/tokens";
@@ -180,7 +180,7 @@ export function MomentCard({
             backgroundColor: colors.card,
           }}
         >
-          <LockIcon size={10} color={colors.clayInk} />
+          <PrivateIcon size={11} color={colors.clayInk} />
           <Text style={{ color: colors.clayInk, fontSize: 9.5, fontWeight: "700" }}>خاصة</Text>
         </View>
       ) : null}

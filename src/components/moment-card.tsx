@@ -10,7 +10,7 @@ import {
   GiftIcon,
   WithIcon,
   TagIcon,
-  LockIcon,
+  PrivateIcon,
 } from "@/components/icons";
 import { MomentBar } from "@/components/moment-bar";
 import { AthrMark } from "@/components/brand";
@@ -126,7 +126,7 @@ function Spine({
           className="flex items-center gap-0.5 rounded-full border border-line bg-card px-1.5 py-px text-[9.5px] font-bold"
           style={{ color: "var(--color-clay-ink)" }}
         >
-          <LockIcon size={10} />
+          <PrivateIcon size={11} />
           خاصة
         </span>
       ) : null}
