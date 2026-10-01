@@ -134,7 +134,12 @@ export default async function MessagesPage({
         {threads.length > 0 ? (
           <div className="mb-4 overflow-hidden rounded-2xl border border-line bg-card">
             {threads.map((conversation, index) => (
-              <SwipeRow key={conversation.id} onDelete={deleteConversation.bind(null, conversation.id)}>
+              <SwipeRow
+                key={conversation.id}
+                onDelete={deleteConversation.bind(null, conversation.id)}
+                confirmLabel="حذف المحادثة"
+                icons="trash"
+              >
                 <Link
                   href={`/messages/${conversation.id}`}
                   className="flex items-center gap-3 p-3"

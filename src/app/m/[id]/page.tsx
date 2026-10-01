@@ -6,7 +6,7 @@ import { addComment } from "@/app/actions";
 import { Avatar, NameTag, ScreenHeader } from "@/components/ui";
 import { SeenTracker } from "@/components/interactive";
 import { Reactions, Reactors } from "@/components/reactions";
-import { AuthorPanel } from "@/components/author-panel";
+import { AuthorSummary } from "@/components/author-panel";
 import { LockIcon, PrivateIcon } from "@/components/icons";
 import { CommentList } from "@/components/comments";
 import { EVENTS, EventLine } from "@/components/moment-card";
@@ -119,7 +119,7 @@ export default async function MomentPage({
           <div className="px-4 py-3.5">
             {moment.author.id === user.id ? (
               <div className="mb-3">
-                <AuthorPanel momentId={moment.id} locked={moment.commentsLocked} />
+                <AuthorSummary momentId={moment.id} locked={moment.commentsLocked} />
               </div>
             ) : moment.reactions.length > 0 ? (
               <div className="mb-3">

@@ -6,6 +6,7 @@ import { Text } from "./type";
 import { useRouter } from "expo-router";
 import { Avatar, frameBleed } from "./avatar";
 import { ReactionGlyph } from "./reactions";
+import { FlagIcon, ShieldIcon, TrashIcon } from "./icons";
 import { NameTag } from "./name-tag";
 import { SwipeRow } from "./swipe-row";
 import { ReportSheet } from "./report-sheet";
@@ -234,7 +235,8 @@ export function CommentList({
               key={comment.id}
               surface={colors.card}
               width={72}
-              confirmLabel="بلاغ"
+              confirmLabel="بلاغ عن التعليق"
+              icons={{ delete: <FlagIcon size={22} color="#fff" /> }}
               onDelete={() => setReporting(comment.id)}
             >
               {row}
@@ -245,8 +247,10 @@ export function CommentList({
           <SwipeRow
             key={comment.id}
             surface={colors.card}
-            width={mine ? 72 : 118}
-            confirmLabel={mine ? "حذف" : "حذف بصلاحية"}
+            width={72}
+            confirmLabel={mine ? "حذف التعليق" : "حذف بصلاحية الإشراف"}
+            /* المشرفُ بدرعٍ لا بسلّة: يحذف بصلاحيةٍ تُسجَّل باسمه لا بملكية. */
+            icons={{ delete: mine ? <TrashIcon size={22} color="#fff" /> : <ShieldIcon size={22} color="#fff" /> }}
             onDelete={() => drop.mutateAsync({ id: comment.id, mine }).then(() => undefined)}
           >
             {row}

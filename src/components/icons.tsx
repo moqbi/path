@@ -119,6 +119,16 @@ export const UserMinusIcon = ({ size = 20, className }: IconProps) => (
   </svg>
 );
 
+/** حذفُ محادثة: سلّةٌ بغطاءٍ وخطّين — نسخةُ الجوّال. */
+export const TrashIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M4 6.5h16" />
+    <path d="M9 6.5V4.5h6v2" />
+    <path d="M6.5 6.5l1 13h9l1-13" />
+    <path d="M10 10.5v5.5M14 10.5v5.5" />
+  </svg>
+);
+
 /**
  * شارةُ التوثيق — **بقرار المالك** بدل النجمة بجانب الاسم: ختمٌ مسنّن،
  * وفي وسطه دائرةٌ وعلامةُ صحٍّ بالأبيض. والنجمةُ (`SparkIcon`) تبقى رمزَ

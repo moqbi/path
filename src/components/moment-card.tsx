@@ -16,6 +16,7 @@ import { MomentBar } from "@/components/moment-bar";
 import { AthrMark } from "@/components/brand";
 import { Photo } from "@/components/photo";
 import { Reactors } from "@/components/reactions";
+import { AuthorFaces } from "@/components/author-panel";
 import { CommentList } from "@/components/comments";
 import { ar, relative, timeOfDay } from "@/lib/format";
 import type { FeedMoment } from "@/lib/feed";
@@ -162,6 +163,20 @@ function Comments({ moment, viewerId }: { moment: FeedMoment; viewerId: string }
 function Bubble({ moment, viewerId }: { moment: FeedMoment; viewerId: string }) {
   const hasComments = moment.comments.length > 0;
   const hasReactions = moment.reactions.length > 0;
+  // لصاحبها صفُّ من شاهد ومن تفاعل (القاعدة ٢٠٢) — لا يُعرف عددُه قبل الجلب،
+  // فالقالبُ يُرسم له بالتعليقات وحدها حين لا يتفاعل أحد.
+  if (moment.author.id === viewerId) {
+    return (
+      <div className="mt-2 flex flex-col gap-2.5 empty:hidden">
+        <AuthorFaces momentId={moment.id} />
+        {hasComments ? (
+          <div className="rounded-2xl border border-line bg-card px-3 py-2.5">
+            <Comments moment={moment} viewerId={viewerId} />
+          </div>
+        ) : null}
+      </div>
+    );
+  }
   if (!hasComments && !hasReactions) return null;
 
   return (
@@ -427,7 +442,8 @@ export function MomentCard({
         <div style={{ height: 132, background: moment.imageSpec }} />
       ) : null}
 
-      <div className="px-4 pt-3">
+      {/* بلا صورةٍ يبدأ النصّ من أعلى البطاقة ويترك يسارَه لزرّ التفاعل الطافي. */}
+      <div className={moment.mediaId || moment.imageSpec ? "px-4 pt-3" : "min-h-[50px] pl-[52px] pr-4 pt-3.5"}>
         {moment.text ? (
           <p dir="auto" className="mb-2 text-[13.5px] leading-relaxed text-ink">{moment.text}</p>
         ) : null}
@@ -463,27 +479,29 @@ export function MomentCard({
           moderate={moderate && moment.author.id !== viewerId}
           locked={moment.commentsLocked}
           inset
-          panelFirst
-          head={<span className="block" style={{ height: 2 }} />}
           extra={
-            <>
-              {opens ? (
-                <Link href={`/m/${moment.id}`} className="block">
-                  {head}
-                </Link>
-              ) : (
-                head
-              )}
-
-              <div className="px-4 pb-3 pt-2">
-                {moment.reactions.length > 0 ? <Reactors reactions={moment.reactions} viewerId={viewerId} /> : null}
-                {moment.comments.length > 0 ? (
-                  <div className="mt-2.5 border-t border-line pt-2.5">
-                    <Comments moment={moment} viewerId={viewerId} />
-                  </div>
-                ) : null}
-              </div>
-            </>
+            opens ? (
+              <Link href={`/m/${moment.id}`} className="block">
+                {head}
+              </Link>
+            ) : (
+              head
+            )
+          }
+          footer={
+            <div className="px-4 pb-3 pt-2">
+              {moment.author.id === viewerId ? (
+                /* لصاحبها صفٌّ واحد: من تفاعل ومن شاهد باهتاً (القاعدة ٢٠٢). */
+                <AuthorFaces momentId={moment.id} />
+              ) : moment.reactions.length > 0 ? (
+                <Reactors reactions={moment.reactions} viewerId={viewerId} />
+              ) : null}
+              {moment.comments.length > 0 ? (
+                <div className="mt-2.5 border-t border-line pt-2.5">
+                  <Comments moment={moment} viewerId={viewerId} />
+                </div>
+              ) : null}
+            </div>
           }
         />
       </div>

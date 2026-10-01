@@ -25,7 +25,7 @@ export function MomentBar({
   head,
   extra,
   inset = false,
-  panelFirst = false,
+  footer,
   locked = false,
 }: {
   momentId: string;
@@ -50,8 +50,11 @@ export function MomentBar({
   extra?: React.ReactNode;
   /** داخل بطاقة: الزرّ واللوحة يأخذان حشوة البطاقة والصورة تبقى سائبة. */
   inset?: boolean;
-  /** اللوحة تحت الزرّ مباشرة لا تحت المحتوى — حين يكون الزرّ في الأعلى. */
-  panelFirst?: boolean;
+  /**
+   * ما تحت اللوحة: الوجوه والتعليقات. اللوحةُ تُفتح بين المتن وبينه —
+   * **بقرار المالك**، كالجوّال: كانت فوق النصّ ويتكرّر صفُّ وجوهها تحتها.
+   */
+  footer?: React.ReactNode;
   /** التعليقاتُ مقفلة بيد صاحبها: يبقى التفاعل، ويذهب الحقل. */
   locked?: boolean;
 }) {
@@ -60,6 +63,9 @@ export function MomentBar({
   const [asking, setAsking] = useState(false);
   const [popped, setPopped] = useState(false);
   const [body, setBody] = useState("");
+  // القفلُ هنا لا في لوحة صاحبها: يُرى على الزرّ نفسه قبل أن يُفتح.
+  const [isLocked, setLocked] = useState(locked);
+  useEffect(() => setLocked(locked), [locked]);
   const [pending, start] = useTransition();
   const root = useRef<HTMLDivElement>(null);
   const faces = facesFor(momentKind);
@@ -140,17 +146,13 @@ export function MomentBar({
   }
 
   return (
-    <div ref={root} className={head ? "" : "mt-2"} onClick={contain}>
-      {/* في RTL يضع `justify-end` الزرَّ في الطرف الأيسر من المنشور. */}
-      <div
-        className={`${head ? "flex items-start gap-2" : "flex justify-end"} ${
-          inset ? "px-3 pb-2 pt-2.5" : ""
-        }`}
-      >
-        {head ? <div className="min-w-0 grow">{head}</div> : null}
+    <div ref={root} className={head ? "" : inset ? "relative" : "mt-2"} onClick={contain}>
+      {inset ? (
+        /* في البطاقة الزرُّ يطفو في ركنها فيبدأ المتنُ من أعلاها — بقرار المالك. */
+        <div className="absolute left-3 top-2.5 z-10">
         <button
           type="button"
-          aria-label="تفاعل"
+          aria-label={isLocked ? "تفاعل — التعليقات مقفلة" : "تفاعل"}
           aria-expanded={open}
           onClick={(event) => {
             stop(event);
@@ -164,29 +166,81 @@ export function MomentBar({
             width: 30,
             height: 30,
             // أرضيةٌ صلبة لا شفافة: فوق صورة الثيم كان الزرّ يكاد يختفي.
-            background: mine ? "var(--color-clay-soft)" : "var(--color-card)",
-            borderColor: mine ? "var(--color-clay)" : "var(--color-line)",
+            background: mine || isLocked ? "var(--color-clay-soft)" : "var(--color-card)",
+            borderColor: mine || isLocked ? "var(--color-clay)" : "var(--color-line)",
             boxShadow: "0 1px 3px rgba(14,26,36,.10)",
           }}
         >
-          <span
-            style={{
-              transform: popped ? "scale(1.4)" : "scale(1)",
-              transition: "transform 400ms cubic-bezier(.18,1.5,.4,1)",
-              opacity: mine ? 1 : 0.72,
-              filter: mine ? "none" : "grayscale(.7)",
-            }}
-          >
-            <ReactionGlyph kind={mine?.kind ?? "SMILE"} emoji={mine?.emoji} size={20} />
-          </span>
+          {/* التعليقاتُ مقفلة: الزرّ نفسه يقولها — بقرار المالك. */}
+          {isLocked ? (
+            <span style={{ color: "var(--color-clay-ink)" }}>
+              <LockIcon size={15} />
+            </span>
+          ) : (
+            <span
+              style={{
+                transform: popped ? "scale(1.4)" : "scale(1)",
+                transition: "transform 400ms cubic-bezier(.18,1.5,.4,1)",
+                opacity: mine ? 1 : 0.72,
+                filter: mine ? "none" : "grayscale(.7)",
+              }}
+            >
+              <ReactionGlyph kind={mine?.kind ?? "SMILE"} emoji={mine?.emoji} size={20} />
+            </span>
+          )}
         </button>
-      </div>
+        </div>
+      ) : (
+        /* في RTL يضع `justify-end` الزرَّ في الطرف الأيسر من المنشور. */
+        <div className={head ? "flex items-start gap-2" : "flex justify-end"}>
+          {head ? <div className="min-w-0 grow">{head}</div> : null}
+        <button
+          type="button"
+          aria-label={isLocked ? "تفاعل — التعليقات مقفلة" : "تفاعل"}
+          aria-expanded={open}
+          onClick={(event) => {
+            stop(event);
+            setBoard(false);
+            setOpen((v) => !v);
+          }}
+          // دائرة بحجم الوجه لا أكبر: الإطار الواسع كان يبدو زرّاً غريباً
+          // ملتصقاً بالصورة تحته.
+          className="flex items-center justify-center rounded-full border"
+          style={{
+            width: 30,
+            height: 30,
+            // أرضيةٌ صلبة لا شفافة: فوق صورة الثيم كان الزرّ يكاد يختفي.
+            background: mine || isLocked ? "var(--color-clay-soft)" : "var(--color-card)",
+            borderColor: mine || isLocked ? "var(--color-clay)" : "var(--color-line)",
+            boxShadow: "0 1px 3px rgba(14,26,36,.10)",
+          }}
+        >
+          {/* التعليقاتُ مقفلة: الزرّ نفسه يقولها — بقرار المالك. */}
+          {isLocked ? (
+            <span style={{ color: "var(--color-clay-ink)" }}>
+              <LockIcon size={15} />
+            </span>
+          ) : (
+            <span
+              style={{
+                transform: popped ? "scale(1.4)" : "scale(1)",
+                transition: "transform 400ms cubic-bezier(.18,1.5,.4,1)",
+                opacity: mine ? 1 : 0.72,
+                filter: mine ? "none" : "grayscale(.7)",
+              }}
+            >
+              <ReactionGlyph kind={mine?.kind ?? "SMILE"} emoji={mine?.emoji} size={20} />
+            </span>
+          )}
+        </button>
+        </div>
+      )}
 
-      {panelFirst ? null : extra}
+      {extra}
 
       {open ? (
         <div className={`mt-2 flex flex-col gap-2 ${inset ? "px-3" : ""}`}>
-          {author ? <AuthorPanel momentId={momentId} locked={locked} /> : null}
+          {author ? <AuthorPanel momentId={momentId} locked={isLocked} onLocked={setLocked} /> : null}
           <div className={`flex items-center gap-0.5 ${author ? "!hidden" : ""}`}>
             {faces.map((kind, index) => (
               <button
@@ -308,7 +362,7 @@ export function MomentBar({
             </div>
           ) : null}
 
-          {locked && !author ? (
+          {isLocked && !author ? (
             <p className="flex h-9 items-center gap-1.5 text-[12px] font-semibold text-muted">
               <LockIcon size={14} />
               أقفل صاحبُ اللحظة التعليقات
@@ -351,7 +405,7 @@ export function MomentBar({
         </div>
       ) : null}
 
-      {panelFirst ? extra : null}
+      {footer}
     </div>
   );
 }

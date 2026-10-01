@@ -12,7 +12,7 @@ import { Avatar, firstColor } from "../../components/avatar";
 import { MediaImage } from "../../components/media-image";
 import { ScreenHeader } from "../../components/screen-header";
 import { ReactionGlyph } from "../../components/reactions";
-import { MessageIcon, SparkIcon, StoreIcon, TagIcon, WithIcon } from "../../components/icons";
+import { MessageIcon, SparkIcon, StoreIcon, TagIcon, WithIcon, TrashIcon } from "../../components/icons";
 import { useNotes, type Note } from "../../lib/queries";
 import { usePullRefresh } from "../../lib/refresh";
 import { dayLabel, relative } from "../../lib/format";
@@ -250,6 +250,8 @@ export default function Notifications() {
               }}
               surface={colors.card}
               onSwiping={setSwiping}
+              confirmLabel="حذف الإشعار"
+              icons={{ delete: <TrashIcon size={22} color="#fff" /> }}
             >
             <Pressable
               onPress={() => target && router.push(target as never)}

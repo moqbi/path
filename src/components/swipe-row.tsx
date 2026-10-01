@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { BlockIcon, CloseIcon, UserMinusIcon } from "@/components/icons";
+import { BlockIcon, CloseIcon, TrashIcon, UserMinusIcon } from "@/components/icons";
 
 const REVEAL = 88;
 
@@ -27,9 +27,10 @@ export function SwipeRow({
   secondLabel?: string;
   /**
    * أيقوناتٌ بدل الكلمات في صفّ الصديق — **بقرار المالك**، كالجوّال:
-   * «إزالة» شخصٌ بعلامة طرح، و«حظر» دائرةٌ يقطعها خطّ. والكلمةُ اسمُ الزرّ.
+   * «إزالة» شخصٌ بعلامة طرح، و«حظر» دائرةٌ يقطعها خطّ. و`"trash"` سلّةٌ
+   * لحذف المحادثة. والكلمةُ اسمُ الزرّ عند قارئ الشاشة.
    */
-  icons?: boolean;
+  icons?: boolean | "trash";
   children: React.ReactNode;
 }) {
   const [offset, setOffset] = useState(0);
@@ -71,7 +72,9 @@ export function SwipeRow({
           className="flex grow items-center justify-center gap-1.5 px-2 text-[13px] font-bold disabled:opacity-60"
           style={{ background: "var(--color-live)", color: "#fff" }}
         >
-          {icons ? (
+          {icons === "trash" ? (
+            <TrashIcon size={22} />
+          ) : icons ? (
             <UserMinusIcon size={22} />
           ) : (
             <>

@@ -266,6 +266,14 @@ export const TrashIcon = ({ size = 20, color = "currentColor" }: Props) => (
   </Svg>
 );
 
+/** البلاغ: رايةٌ على سارية. */
+export const FlagIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M5.5 21V4" />
+    <Path d="M5.5 4.5h11l-2 4 2 4h-11" />
+  </Svg>
+);
+
 /**
  * شارةُ التوثيق — **بقرار المالك** بدل النجمة بجانب الاسم: ختمٌ مسنّن،
  * وفي وسطه دائرةٌ وعلامةُ صحٍّ بالأبيض. والنجمةُ (`SparkIcon`) تبقى رمزَ
