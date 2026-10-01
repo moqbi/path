@@ -139,13 +139,26 @@ function Spine({
  * التعليقات داخل الخط الزمني.
  * تُعرض ثلاثة، وما زاد يُقرأ بفتح اللحظة — فلا تبتلع لحظةٌ واحدة الشاشة.
  */
-function Comments({ moment, viewerId }: { moment: FeedMoment; viewerId: string }) {
+function Comments({
+  moment,
+  viewerId,
+  moderate = false,
+}: {
+  moment: FeedMoment;
+  viewerId: string;
+  moderate?: boolean;
+}) {
   if (moment.comments.length === 0) return null;
   const hidden = moment._count.comments - moment.comments.length;
 
   return (
     <div className="flex flex-col gap-2">
-      <CommentList comments={moment.comments} viewerId={viewerId} />
+      <CommentList
+        comments={moment.comments}
+        viewerId={viewerId}
+        momentAuthorId={moment.author.id}
+        moderate={moderate}
+      />
       {hidden > 0 ? (
         <Link href={`/m/${moment.id}`} className="text-[11.5px] font-semibold text-clay-ink">
           اقرأ {ar(hidden)} تعليقاً آخر
@@ -160,7 +173,15 @@ function Comments({ moment, viewerId }: { moment: FeedMoment; viewerId: string }
  * الحدث نفسه سطرٌ عارٍ، وما يجتمع حوله من ناس يجلس في قالبٍ أبيض تحته —
  * فيُقرأ الفرق بين ما قاله صاحبه وما ردّ به الناس.
  */
-function Bubble({ moment, viewerId }: { moment: FeedMoment; viewerId: string }) {
+function Bubble({
+  moment,
+  viewerId,
+  moderate = false,
+}: {
+  moment: FeedMoment;
+  viewerId: string;
+  moderate?: boolean;
+}) {
   const hasComments = moment.comments.length > 0;
   const hasReactions = moment.reactions.length > 0;
   // لصاحبها صفُّ من شاهد ومن تفاعل (القاعدة ٢٠٢) — لا يُعرف عددُه قبل الجلب،
@@ -171,7 +192,7 @@ function Bubble({ moment, viewerId }: { moment: FeedMoment; viewerId: string }) 
         <AuthorFaces momentId={moment.id} />
         {hasComments ? (
           <div className="rounded-2xl border border-line bg-card px-3 py-2.5">
-            <Comments moment={moment} viewerId={viewerId} />
+            <Comments moment={moment} viewerId={viewerId} moderate={moderate} />
           </div>
         ) : null}
       </div>
@@ -183,7 +204,7 @@ function Bubble({ moment, viewerId }: { moment: FeedMoment; viewerId: string }) 
     <div className="mt-2 rounded-2xl border border-line bg-card px-3 py-2.5">
       {hasReactions ? <Reactors reactions={moment.reactions} viewerId={viewerId} /> : null}
       {hasReactions && hasComments ? <div className="my-2.5 h-px bg-line" /> : null}
-      <Comments moment={moment} viewerId={viewerId} />
+      <Comments moment={moment} viewerId={viewerId} moderate={moderate} />
     </div>
   );
 }
@@ -425,7 +446,7 @@ export function MomentCard({
                   <Photo mediaId={moment.mediaId} height={190} rounded />
                 </div>
               ) : null}
-              <Bubble moment={moment} viewerId={viewerId} />
+              <Bubble moment={moment} viewerId={viewerId} moderate={moderate} />
             </>
           }
         />
@@ -498,7 +519,7 @@ export function MomentCard({
               ) : null}
               {moment.comments.length > 0 ? (
                 <div className="mt-2.5 border-t border-line pt-2.5">
-                  <Comments moment={moment} viewerId={viewerId} />
+                  <Comments moment={moment} viewerId={viewerId} moderate={moderate} />
                 </div>
               ) : null}
             </div>

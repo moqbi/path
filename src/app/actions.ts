@@ -2197,3 +2197,92 @@ export async function changeEmail(_prev: AdminResult, formData: FormData): Promi
 // ───────────────────────── الإيقاف المؤقّت ─────────────────────────
 
 
+
+// ───────────────────────────── التعليقات: حذفٌ وبلاغ ─────────────────────────────
+
+/**
+ * حذفُ تعليقي — أو تعليقٍ على لحظتي — كبابِ الخادم (`deleteComment`) حرفاً
+ * بحرف. يُكشف بالسحب كالجوّال (القاعدة ١٣٨)، ويردّ الخطأ نصّاً (القاعدة ٩٠).
+ */
+export async function deleteMyComment(commentId: string): Promise<{ error?: string }> {
+  const user = await requireUser();
+  const comment = await prisma.comment.findUnique({
+    where: { id: commentId },
+    select: { userId: true, momentId: true, moment: { select: { authorId: true } } },
+  });
+  if (!comment) return { error: "التعليق غير موجود" };
+  if (comment.userId !== user.id && comment.moment.authorId !== user.id) {
+    return { error: "التعليق غير موجود" };
+  }
+  await prisma.comment.delete({ where: { id: commentId } });
+  revalidatePath("/");
+  revalidatePath(`/m/${comment.momentId}`);
+  return {};
+}
+
+/**
+ * حذفُ المشرف تعليقَ غيره — بابٌ ثانٍ لا توسعةٌ لباب صاحبه (القاعدة ١٣٦)،
+ * ومعه سطرٌ في السجلّ باسمه.
+ */
+export async function removeCommentAsAdmin(commentId: string): Promise<{ error?: string }> {
+  const admin = await requireModerator();
+  const comment = await prisma.comment.findUnique({
+    where: { id: commentId },
+    select: { id: true, userId: true, body: true, momentId: true },
+  });
+  if (!comment) return { error: "التعليق غير موجود" };
+  await prisma.moderationLog.create({
+    data: {
+      adminId: admin.id,
+      action: "COMMENT_REMOVED",
+      targetId: comment.id,
+      ownerId: comment.userId,
+      snippet: comment.body.slice(0, 200),
+    },
+  });
+  await prisma.comment.delete({ where: { id: comment.id } });
+  revalidatePath("/");
+  revalidatePath(`/m/${comment.momentId}`);
+  return {};
+}
+
+const REPORT_REASONS = ["SPAM", "HATE", "SEXUAL", "VIOLENCE", "SELF_HARM", "OTHER"] as const;
+
+/**
+ * بلاغٌ عن تعليق (القاعدة ٢٠٧) — كبابِ الخادم: بلاغٌ واحد من كل شخص على كل
+ * تعليق، ولا يُبلغ أحدٌ عن نفسه، ولا عن تعليقٍ على لحظةٍ لا يراها («غير
+ * موجود» لا «ممنوع» — القاعدة ٢٣ب). والمتنُ يُنسخ وقتها: التعليقُ قد يُحذف
+ * قبل أن يُقرأ البلاغ.
+ */
+export async function reportComment(
+  commentId: string,
+  reason: string,
+  note?: string,
+): Promise<{ ok?: string; error?: string }> {
+  const user = await requireUser();
+  if (!(REPORT_REASONS as readonly string[]).includes(reason)) return { error: "اختر سبباً" };
+  if (!hit(`report:${user.id}`, 20, 60 * 60_000)) return { error: TOO_MANY };
+
+  const comment = await prisma.comment.findUnique({
+    where: { id: commentId },
+    select: { userId: true, body: true, momentId: true },
+  });
+  if (!comment || !(await canSeeMoment(user.id, comment.momentId))) return { error: "ما عاد موجوداً" };
+  if (comment.userId === user.id) return { error: "هذا منك أنت" };
+
+  const clean = note?.trim().slice(0, 500) || null;
+  await prisma.report.upsert({
+    where: { reporterId_target_targetId: { reporterId: user.id, target: "COMMENT", targetId: commentId } },
+    update: { reason: reason as (typeof REPORT_REASONS)[number], note: clean },
+    create: {
+      target: "COMMENT",
+      targetId: commentId,
+      reporterId: user.id,
+      reportedId: comment.userId,
+      reason: reason as (typeof REPORT_REASONS)[number],
+      note: clean,
+      snippet: comment.body.slice(0, 500),
+    },
+  });
+  return { ok: "وصلنا بلاغك. نقرأه ونتصرّف." };
+}

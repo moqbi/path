@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Avatar, NameTag } from "@/components/ui";
 import { relative } from "@/lib/format";
+import { CommentSwipe } from "@/components/comment-swipe";
 
 /**
  * التعليقات: كلّ تعليق في فقاعته — صورة صاحبه، ثم اسمه ووقته، ثم نصّه.
@@ -28,10 +29,16 @@ export function CommentList({
   comments,
   viewerId,
   size = 26,
+  momentAuthorId,
+  moderate = false,
 }: {
   comments: CommentShape[];
   viewerId: string;
   size?: number;
+  /** صاحبُ اللحظة يحذف ما كُتب عليها كما يحذف صاحبُ التعليق. */
+  momentAuthorId?: string;
+  /** صلاحية الإشراف: يحذف تعليقَ غيره بالسحب، ويُسجَّل باسمه. */
+  moderate?: boolean;
 }) {
   if (comments.length === 0) return null;
 
@@ -41,7 +48,13 @@ export function CommentList({
         const href = comment.user.id === viewerId ? "/me" : `/u/${comment.user.id}`;
 
         return (
-          <li key={comment.id} className="flex items-start gap-2">
+          <li key={comment.id}>
+           <CommentSwipe
+            commentId={comment.id}
+            mine={comment.user.id === viewerId || momentAuthorId === viewerId}
+            moderate={moderate}
+           >
+           <div className="flex items-start gap-2 py-0.5">
             <Link href={href} aria-label={`ملف ${comment.user.name}`} className="shrink-0">
               <Avatar
                 name={comment.user.name}
@@ -68,6 +81,8 @@ export function CommentList({
                 {comment.body}
               </p>
             </div>
+           </div>
+           </CommentSwipe>
           </li>
         );
       })}

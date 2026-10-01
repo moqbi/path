@@ -148,7 +148,13 @@ export default async function MomentPage({
                 ما علّق أحد بعد. اكتب أول سطر.
               </p>
             ) : (
-              <CommentList comments={moment.comments} viewerId={user.id} size={30} />
+              <CommentList
+                comments={moment.comments}
+                viewerId={user.id}
+                size={30}
+                momentAuthorId={moment.author.id}
+                moderate={user.canModerate}
+              />
             )}
           </section>
         </article>

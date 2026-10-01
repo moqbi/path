@@ -129,6 +129,14 @@ export const TrashIcon = ({ size = 20, className }: IconProps) => (
   </svg>
 );
 
+/** البلاغ: رايةٌ على سارية — نسخةُ الجوّال. */
+export const FlagIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M5.5 21V4" />
+    <path d="M5.5 4.5h11l-2 4 2 4h-11" />
+  </svg>
+);
+
 /**
  * شارةُ التوثيق — **بقرار المالك** بدل النجمة بجانب الاسم: ختمٌ مسنّن،
  * وفي وسطه دائرةٌ وعلامةُ صحٍّ بالأبيض. والنجمةُ (`SparkIcon`) تبقى رمزَ

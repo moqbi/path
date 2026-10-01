@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { BlockIcon, CloseIcon, TrashIcon, UserMinusIcon } from "@/components/icons";
+import { BlockIcon, CloseIcon, FlagIcon, ShieldIcon, TrashIcon, UserMinusIcon } from "@/components/icons";
 
 const REVEAL = 88;
 
@@ -18,6 +18,7 @@ export function SwipeRow({
   onSecond,
   secondLabel,
   icons = false,
+  surface = "var(--color-paper)",
   children,
 }: {
   onDelete: () => void | Promise<void>;
@@ -30,7 +31,9 @@ export function SwipeRow({
    * «إزالة» شخصٌ بعلامة طرح، و«حظر» دائرةٌ يقطعها خطّ. و`"trash"` سلّةٌ
    * لحذف المحادثة. والكلمةُ اسمُ الزرّ عند قارئ الشاشة.
    */
-  icons?: boolean | "trash";
+  icons?: boolean | "trash" | "flag" | "shield";
+  /** لونُ ما يُزاح — الورقُ في القوائم، والبطاقةُ في التعليقات. */
+  surface?: string;
   children: React.ReactNode;
 }) {
   const [offset, setOffset] = useState(0);
@@ -74,6 +77,10 @@ export function SwipeRow({
         >
           {icons === "trash" ? (
             <TrashIcon size={22} />
+          ) : icons === "flag" ? (
+            <FlagIcon size={22} />
+          ) : icons === "shield" ? (
+            <ShieldIcon size={22} />
           ) : icons ? (
             <UserMinusIcon size={22} />
           ) : (
@@ -136,7 +143,7 @@ export function SwipeRow({
           WebkitUserSelect: "none",
           transform: `translateX(${offset}px)`,
           transition: origin.current ? "none" : "transform 220ms cubic-bezier(.2,.8,.3,1)",
-          background: "var(--color-paper)",
+          background: surface,
         }}
       >
         {children}
