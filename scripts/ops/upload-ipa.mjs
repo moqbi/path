@@ -24,6 +24,29 @@ if (!file || !appId || !version || !build || !keyId || !issuer || !keyPath) {
   process.exit(1);
 }
 
+/*
+  فحصٌ قبل أن نسأل أبل: ٤٠١ منها لا يقول أيُّ الثلاثة خطأ. رقمُ المفتاح عشرُ
+  خاناتٍ حروفاً كبيرةً وأرقاماً، ورقمُ الإصدار UUID، والملفّ مفتاحٌ خاصّ.
+  ومفتاحٌ «فرديّ» (Individual) لا رقمَ إصدارٍ له: يُوقَّع بـ`sub: user` بدل `iss`.
+*/
+const individual = issuer === "individual";
+if (!/^[A-Z0-9]{10}$/.test(keyId)) {
+  console.error(`✗ ASC_KEY_ID ليس رقمَ مفتاح (عشر خانات A-Z و0-9) — طوله ${keyId.length}.`);
+  process.exit(1);
+}
+if (!individual && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(issuer)) {
+  console.error(`✗ ASC_ISSUER_ID ليس بصيغة xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx — طوله ${issuer.length}.`);
+  process.exit(1);
+}
+{
+  const pem = readFileSync(keyPath, "utf8");
+  if (!pem.includes("BEGIN PRIVATE KEY") || !pem.includes("END PRIVATE KEY")) {
+    console.error("✗ ملفّ المفتاح لا يبدأ بـ BEGIN PRIVATE KEY أو لا ينتهي بـ END PRIVATE KEY.");
+    process.exit(1);
+  }
+  }
+console.log(`ساعة الخادم (UTC): ${new Date().toISOString()} — يجب أن تطابق الوقت الحقيقيّ بدقائق.`);
+
 const API = "https://api.appstoreconnect.apple.com";
 const b64url = (buf) => Buffer.from(buf).toString("base64url");
 
@@ -31,7 +54,11 @@ const b64url = (buf) => Buffer.from(buf).toString("base64url");
 function token() {
   const now = Math.floor(Date.now() / 1000);
   const head = b64url(JSON.stringify({ alg: "ES256", kid: keyId, typ: "JWT" }));
-  const body = b64url(JSON.stringify({ iss: issuer, iat: now, exp: now + 1100, aud: "appstoreconnect-v1" }));
+  // `iat` قبل دقيقة: ساعةُ خادمٍ متقدّمةٌ قليلاً تجعل التوكن «من المستقبل» فيُردّ ٤٠١.
+  const claims = individual
+    ? { sub: "user", iat: now - 60, exp: now + 1100, aud: "appstoreconnect-v1" }
+    : { iss: issuer, iat: now - 60, exp: now + 1100, aud: "appstoreconnect-v1" };
+  const body = b64url(JSON.stringify(claims));
   const signer = createSign("SHA256");
   signer.update(`${head}.${body}`);
   const sig = signer.sign({ key: readFileSync(keyPath, "utf8"), dsaEncoding: "ieee-p1363" });
@@ -47,6 +74,13 @@ async function asc(method, path, body) {
   const text = await res.text();
   if (!res.ok) throw new Error(`${method} ${path} → ${res.status}\n${text}`);
   return text ? JSON.parse(text) : {};
+}
+
+// فحصُ الدخول وحده قبل أيّ رفع: يقرأ التطبيق نفسه.
+if (process.env.CHECK_ONLY) {
+  const app = await asc("GET", `/v1/apps/${appId}?fields[apps]=name,bundleId`);
+  console.log(`✓ الدخول سليم — ${app.data.attributes.name} (${app.data.attributes.bundleId})`);
+  process.exit(0);
 }
 
 const size = statSync(file).size;
