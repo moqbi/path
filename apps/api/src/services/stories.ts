@@ -1,5 +1,6 @@
 import { prisma } from "@athar/db";
-import { STORY_HOURS, STORY_SECONDS } from "@athar/shared";
+import { STORY_HOURS, STORY_SECONDS, type StoryText } from "@athar/shared";
+import { guard } from "../lib/moderation";
 import { badRequest, notFound } from "../lib/errors";
 import { visibleAuthors } from "./visibility";
 import { dropMedia } from "./media";
@@ -82,6 +83,7 @@ export async function storiesOf(viewerId: string, authorId: string) {
       caption: true,
       filter: true,
       seconds: true,
+      texts: true,
       createdAt: true,
       media: { select: { mime: true } },
       author: { select: { id: true, name: true, avatarMediaId: true } },
@@ -127,8 +129,11 @@ export async function viewers(userId: string, storyId: string) {
 /** نشر قصة: تُعرض لأصدقائك يوماً ثم تذهب. */
 export async function post(
   userId: string,
-  input: { mediaId: string; filter?: string; seconds?: number },
+  input: { mediaId: string; filter?: string; seconds?: number; texts?: StoryText[] },
 ) {
+  // ما يُكتب على القصة يمرّ بالقائمة نفسها التي تمرّ بها اللحظةُ والتعليق.
+  for (const item of input.texts ?? []) await guard(item.t);
+
   const media = await prisma.media.findFirst({
     where: { id: input.mediaId, ownerId: userId, ready: true },
     select: { id: true, mime: true },
@@ -149,6 +154,7 @@ export async function post(
       mediaId: media.id,
       filter: input.filter?.slice(0, 20) || null,
       seconds,
+      texts: input.texts?.length ? input.texts : undefined,
       expiresAt: new Date(Date.now() + STORY_HOURS * 60 * 60 * 1000),
     },
     select: { id: true },

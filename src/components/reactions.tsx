@@ -166,7 +166,8 @@ export function Reactions({
             boxShadow: "0 10px 30px rgba(14,26,36,.18)",
           }}
         >
-          <div className="flex items-center gap-0.5">
+          {/* صاحبُها لا يتفاعل مع لحظته: لوحتُه فوق (القاعدة ٢٠٢)، وهنا الحذفُ وحده. */}
+          <div className={`flex items-center gap-0.5 ${author ? "!hidden" : ""}`}>
             {faces.map((kind, index) => (
               <button
                 key={kind}

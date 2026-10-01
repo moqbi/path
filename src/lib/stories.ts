@@ -110,6 +110,7 @@ export async function storiesOf(viewerId: string, authorId: string) {
       caption: true,
       filter: true,
       seconds: true,
+      texts: true,
       createdAt: true,
       media: { select: { mime: true } },
       author: { select: { id: true, name: true, avatarMediaId: true } },

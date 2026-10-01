@@ -12,7 +12,8 @@ import { FILTERS } from "../../lib/filters";
 import { api } from "../../lib/api";
 import { uploadFile } from "../../lib/upload";
 import { ar } from "../../lib/format";
-import { STORY_SECONDS } from "@athar/shared";
+import { STORY_SECONDS, STORY_TEXTS, type StoryText } from "@athar/shared";
+import { EditableTexts, TextEditor, freshText } from "../../components/story-texts";
 import { SourceSheet } from "../../components/source-sheet";
 import { takeShot } from "../../lib/capture";
 import { colors } from "../../theme/tokens";
@@ -43,9 +44,18 @@ export default function NewStory() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
+  const [texts, setTexts] = useState<StoryText[]>([]);
+  // ما يُحرَّر الآن: نصٌّ قائم برقمه، أو «جديد»، أو لا شيء.
+  const [editing, setEditing] = useState<number | "new" | null>(null);
+  const [dragging, setDragging] = useState(false);
 
   const screen = Dimensions.get("window");
-  const previewHeight = Math.min(420, screen.height * 0.46);
+  /*
+    اللوحةُ بنسبة الشاشة نفسها: النصُّ يُحفظ بموضعه نسبةً منها، والعارضُ
+    يرسمه نسبةً من الشاشة كلّها — لوحةٌ بنسبةٍ أخرى تُزيحه عن مكانه.
+  */
+  const previewHeight = Math.min(520, screen.height * 0.58);
+  const previewWidth = Math.min(screen.width - 40, (previewHeight * screen.width) / screen.height);
 
   /* العودة من الكاميرا — صورةً كانت أو مقطعاً. */
   useFocusEffect(() => {
@@ -112,6 +122,7 @@ export default function NewStory() {
           mediaId,
           filter: filter || undefined,
           seconds: draft.video ? draft.seconds : undefined,
+          texts: texts.length ? texts : undefined,
         }),
       });
       await client.invalidateQueries({ queryKey: ["stories"] });
@@ -127,9 +138,11 @@ export default function NewStory() {
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       <ScreenHeader title="قصة" back="/circle" />
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 16 }}>
+      <ScrollView scrollEnabled={!dragging} contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 16 }}>
         <View
           style={{
+            alignSelf: "center",
+            width: previewWidth,
             height: previewHeight,
             borderRadius: 18,
             borderWidth: 1,
@@ -144,25 +157,63 @@ export default function NewStory() {
           {draft ? (
             draft.video ? (
               /* المقطع يُشغَّل ويُعاد قبل أن يُرسل — لا صورةٌ ساكنة منه. */
-              <StoryVideo source={draft.uri} local width={screen.width - 42} height={previewHeight} />
+              <StoryVideo source={draft.uri} local width={previewWidth} height={previewHeight} />
             ) : !filter ? (
               <Image source={{ uri: draft.uri }} style={{ width: "100%", height: "100%" }} resizeMode="contain" />
             ) : (
-              <LocalFiltered uri={draft.uri} filter={filter} width={screen.width - 42} height={previewHeight} />
+              <LocalFiltered uri={draft.uri} filter={filter} width={previewWidth} height={previewHeight} />
             )
           ) : (
             <Text style={{ color: "rgba(255,255,255,.6)", fontSize: 12.5 }}>ما اخترت شي بعد</Text>
           )}
+
+          {draft ? (
+            <EditableTexts
+              texts={texts}
+              width={previewWidth}
+              height={previewHeight}
+              onChange={(index, next) => setTexts((all) => all.map((item, i) => (i === index ? next : item)))}
+              onEdit={(index) => setEditing(index)}
+              onActive={setDragging}
+            />
+          ) : null}
         </View>
 
-        <Pressable
-          onPress={() => setAsking(true)}
-          style={{ height: 46, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, marginBottom: 14 }}
-        >
-          <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600" }}>
-            {draft ? "غيّر" : "صورة أو فيديو"}
+        <View style={{ flexDirection: "row", gap: 10, marginBottom: 14 }}>
+          <Pressable
+            onPress={() => setAsking(true)}
+            style={{ flex: 1, height: 46, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
+          >
+            <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600" }}>
+              {draft ? "غيّر" : "صورة أو فيديو"}
+            </Text>
+          </Pressable>
+          {draft ? (
+            <Pressable
+              accessibilityLabel="أضف نصاً"
+              disabled={texts.length >= STORY_TEXTS}
+              onPress={() => setEditing("new")}
+              style={{
+                flex: 1,
+                height: 46,
+                borderRadius: 12,
+                alignItems: "center",
+                justifyContent: "center",
+                borderWidth: 1,
+                borderColor: colors.line,
+                backgroundColor: colors.card,
+                opacity: texts.length >= STORY_TEXTS ? 0.45 : 1,
+              }}
+            >
+              <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "700" }}>Aa  نص</Text>
+            </Pressable>
+          ) : null}
+        </View>
+        {texts.length ? (
+          <Text style={{ color: colors.faint, fontSize: 11, textAlign: "center", marginTop: -6, marginBottom: 12 }}>
+            اسحب النصّ لتحريكه، وكبّره بإصبعين، واضغطه لتعديله
           </Text>
-        </Pressable>
+        ) : null}
 
         {draft && draft.video ? (
           <Text style={{ color: colors.muted, fontSize: 11.5, lineHeight: 21 }}>
@@ -231,6 +282,30 @@ export default function NewStory() {
           )}
         </Pressable>
       </View>
+
+      {editing !== null ? (
+        <TextEditor
+          initial={editing === "new" ? freshText() : texts[editing]!}
+          onDone={(next) => {
+            if (editing === "new") {
+              if (next) setTexts((all) => [...all, next]);
+            } else {
+              setTexts((all) =>
+                next ? all.map((item, i) => (i === editing ? next : item)) : all.filter((_, i) => i !== editing),
+              );
+            }
+            setEditing(null);
+          }}
+          onDelete={
+            editing === "new"
+              ? undefined
+              : () => {
+                  setTexts((all) => all.filter((_, i) => i !== editing));
+                  setEditing(null);
+                }
+          }
+        />
+      ) : null}
 
       {/*
         القصة تقبل الاثنين، فبابا الكاميرا اثنان: صورةٌ ومقطع. وسؤالٌ

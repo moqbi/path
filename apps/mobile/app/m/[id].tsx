@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { markSeen } from "../../lib/seen";
 import { View, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useKeyboardInset } from "../../lib/keyboard";
@@ -10,6 +11,7 @@ import { ScreenHeader } from "../../components/screen-header";
 import { useComment, useMoment } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { colors } from "../../theme/tokens";
+import { LockIcon } from "../../components/icons";
 
 /**
  * صفحة اللحظة: بطاقةٌ واحدة ثمّ حقلُ التعليق.
@@ -28,6 +30,8 @@ export default function MomentPage() {
   const [body, setBody] = useState("");
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboardInset();
+
+  useEffect(() => markSeen([id]), [id]);
 
   if (moment.isLoading) {
     return (
@@ -81,6 +85,25 @@ export default function MomentPage() {
         </View>
       </ScrollView>
 
+        {/* قفلُ التعليقات يُغلق الحقلَ في وجه غير صاحبها ويقول ذلك. */}
+        {data.commentsLocked && data.author.id !== me?.id ? (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              paddingTop: 12,
+              paddingBottom: Math.max(insets.bottom, 12),
+              borderTopWidth: 1,
+              borderTopColor: colors.line,
+              backgroundColor: colors.paper,
+            }}
+          >
+            <LockIcon size={14} color={colors.muted} />
+            <Text style={{ color: colors.muted, fontSize: 12.5, fontWeight: "600" }}>أقفل صاحبُ اللحظة التعليقات</Text>
+          </View>
+        ) : (
         <View
           style={{
             flexDirection: "row",
@@ -132,6 +155,7 @@ export default function MomentPage() {
             <Text style={{ color: colors.onBrand, fontSize: 13, fontWeight: "700" }}>أرسل</Text>
           </Pressable>
         </View>
+        )}
       </View>
     </SafeAreaView>
   );

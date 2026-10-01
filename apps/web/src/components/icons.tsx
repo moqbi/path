@@ -124,6 +124,19 @@ export const BackIcon = ({ size = 20, className }: IconProps) => (
  * كانت تاجاً، والتاج يُقرأ رتبةً على الناس. والنجمة تُقرأ في كل لغة
  * ولا تحتاج ترجمةً بجانب اسمٍ لاتيني.
  */
+/**
+ * شارةُ التوثيق — **بقرار المالك** بدل النجمة بجانب الاسم: ختمٌ مسنّن،
+ * وفي وسطه دائرةٌ وعلامةُ صحٍّ بالأبيض. والنجمةُ (`SparkIcon`) تبقى رمزَ
+ * آثار+ نفسه في المتجر والاشتراك (القاعدة ٧٦).
+ */
+export const VerifiedIcon = ({ size = 20, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden>
+    <path d="M12 2.3Q13.96-.37 15 2.77Q17.69.84 17.7 4.15Q20.86 3.14 19.85 6.3Q23.16 6.31 21.23 9Q24.37 10.04 21.7 12Q24.37 13.96 21.23 15Q23.16 17.69 19.85 17.7Q20.86 20.86 17.7 19.85Q17.69 23.16 15 21.23Q13.96 24.37 12 21.7Q10.04 24.37 9 21.23Q6.31 23.16 6.3 19.85Q3.14 20.86 4.15 17.7Q.84 17.69 2.77 15Q-.37 13.96 2.3 12Q-.37 10.04 2.77 9Q.84 6.31 4.15 6.3Q3.14 3.14 6.3 4.15Q6.31.84 9 2.77Q10.04-.37 12 2.3Z" fill="currentColor" />
+    <circle cx="12" cy="12" r="6.6" fill="none" stroke="#fff" strokeWidth={1.2} />
+    <path d="M9.2 12.2l2 2 3.8-4.1" fill="none" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 export const SparkIcon = ({ size = 20, className }: IconProps) => (
   <svg
     width={size}

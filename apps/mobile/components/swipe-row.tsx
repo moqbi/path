@@ -25,6 +25,7 @@ export function SwipeRow({
   lead,
   radius = 0,
   onSwiping,
+  icons,
   children,
 }: {
   onDelete: () => void | Promise<void>;
@@ -52,6 +53,11 @@ export function SwipeRow({
    * يأخذ ما مال من السحبة رأسياً فتتحرّك الشاشةُ كلّها مع الصفّ.
    */
   onSwiping?: (active: boolean) => void;
+  /**
+   * أيقوناتٌ بدل الكلمات — **بقرار المالك** في صفّ الصديق: ثلاثةُ أزرارٍ
+   * بكلماتها تملأ نصفَ الصفّ. والكلمةُ تبقى اسماً للزرّ عند قارئ الشاشة.
+   */
+  icons?: { delete: React.ReactNode; second?: React.ReactNode; lead?: React.ReactNode };
   children: React.ReactNode;
 }) {
   const second = onSecond && secondLabel ? { run: onSecond, label: secondLabel } : null;
@@ -126,28 +132,37 @@ export function SwipeRow({
           <Pressable
             disabled={busy}
             onPress={() => fire(lead.run)}
+            accessibilityLabel={lead.label}
             style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 8, backgroundColor: colors.clay, opacity: busy ? 0.6 : 1 }}
           >
-            <Text style={{ color: colors.onBrand, fontSize: 13, fontWeight: "700" }}>{lead.label}</Text>
+            {icons?.lead ?? <Text style={{ color: colors.onBrand, fontSize: 13, fontWeight: "700" }}>{lead.label}</Text>}
           </Pressable>
         ) : null}
         {second ? (
           <Pressable
             disabled={busy}
             onPress={() => fire(second.run)}
+            accessibilityLabel={second.label}
             style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 8, backgroundColor: colors.night, opacity: busy ? 0.6 : 1 }}
           >
-            <Text style={{ color: "#f7f5ef", fontSize: 13, fontWeight: "700" }}>{second.label}</Text>
+            {icons?.second ?? <Text style={{ color: "#f7f5ef", fontSize: 13, fontWeight: "700" }}>{second.label}</Text>}
           </Pressable>
         ) : null}
 
         <Pressable
           disabled={busy}
           onPress={() => fire(onDelete)}
+          accessibilityLabel={confirmLabel}
           style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 8, backgroundColor: colors.live, opacity: busy ? 0.6 : 1 }}
         >
-          <CloseIcon size={16} color="#fff" />
-          <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>{confirmLabel}</Text>
+          {icons ? (
+            icons.delete
+          ) : (
+            <>
+              <CloseIcon size={16} color="#fff" />
+              <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>{confirmLabel}</Text>
+            </>
+          )}
         </Pressable>
       </View>
 

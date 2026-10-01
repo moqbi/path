@@ -6,7 +6,7 @@ import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ScreenHeader } from "../components/screen-header";
 import { Sheet } from "../components/sheet";
-import { BookIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, StoreIcon, WithIcon } from "../components/icons";
+import { BookIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, StoreIcon, VerifiedIcon, WithIcon } from "../components/icons";
 import { TagPill } from "../components/name-tag";
 import { SITE_URL, SUPPORTER_TAG, hasSite } from "@athar/shared";
 import { api } from "../lib/api";
@@ -21,9 +21,9 @@ const PERKS = [
     الشيءُ نفسه كما يظهر في الخطّ الزمنيّ لا أيقونةٌ عنه.
   */
   {
-    title: "نجمة التوثيق",
+    title: "شارة التوثيق",
     body: "بجانب اسمك في كل مكان — في اللحظات والتعليقات والأصدقاء",
-    icon: <SparkIcon size={18} color={colors.clay} />,
+    icon: <VerifiedIcon size={18} color={colors.clay} />,
   },
   {
     title: "وسم «داعم»",

@@ -264,6 +264,8 @@ model Story {
   filter    String?
   /// مدّة الفيديو بالثواني — فارغة في الصور.
   seconds   Int?
+  /// النصوصُ فوقها (`StoryText[]`): موضعٌ نسبيّ ومقاسٌ ولون — لا تُحرق في الصورة.
+  texts     Json?
   createdAt DateTime @default(now())
   expiresAt DateTime
 
@@ -399,6 +401,9 @@ model Moment {
   audience        Audience     @default(CIRCLE)
   audienceGroupId String?
   audienceGroup   FriendGroup? @relation("MomentGroup", fields: [audienceGroupId], references: [id], onDelete: SetNull)
+
+  /// قفلُ التعليقات بيد صاحبها — التفاعلُ يبقى مفتوحاً (القاعدة ٣).
+  commentsLocked Boolean @default(false)
 
   createdAt DateTime @default(now())
 

@@ -21,6 +21,7 @@ const shape = {
   musicThumb: true,
   imageSpec: true,
   mediaId: true,
+  commentsLocked: true,
   createdAt: true,
   author: {
     select: {

@@ -1,17 +1,17 @@
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { cancelPlus, subscribe } from "@/app/actions";
-import { BookIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, StoreIcon, WithIcon } from "@/components/icons";
+import { BookIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, StoreIcon, VerifiedIcon, WithIcon } from "@/components/icons";
 import { TagPill } from "@/components/ui";
 import { SUPPORTER_TAG } from "@/lib/supporter";
 import { ScreenHeader } from "@/components/ui";
 
 const PERKS = [
-  // كما في الجوّال: النجمةُ والوسمُ أوّلاً، مرسومَين كما يظهران بجانب الاسم.
+  // كما في الجوّال: الشارةُ والوسمُ أوّلاً، مرسومَين كما يظهران بجانب الاسم.
   {
-    title: "نجمة التوثيق",
+    title: "شارة التوثيق",
     body: "بجانب اسمك في كل مكان — في اللحظات والتعليقات والأصدقاء",
-    icon: <SparkIcon size={18} />,
+    icon: <VerifiedIcon size={18} />,
   },
   {
     title: "وسم «داعم»",

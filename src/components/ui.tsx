@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { SUPPORTER_TAG } from "@/lib/supporter";
 import { initial } from "@/lib/format";
-import { SparkIcon } from "@/components/icons";
+import { VerifiedIcon } from "@/components/icons";
 import { AthrPageMark } from "@/components/brand";
 import { BackButton, BackSwipe } from "@/components/nav";
 import { BASE } from "@/lib/base";
@@ -456,7 +456,7 @@ export function NameTag({
     <>
       {isPlus ? (
         <span className="shrink-0 text-gold" aria-label="مشترك في آثار+" title="مشترك في آثار+">
-          <SparkIcon size={Math.round(size * 1.25)} />
+          <VerifiedIcon size={Math.round(size * 1.35)} />
         </span>
       ) : null}
       {/* وسمُ المشرف يسبق، وإلّا «داعم» لكل مشترك (`SUPPORTER_TAG`). */}

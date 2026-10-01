@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
+import { markSeen } from "../../lib/seen";
 import { View, SectionList, ActivityIndicator, Pressable, Animated, Easing, PanResponder } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -130,6 +131,8 @@ export default function Timeline() {
   const onViewable = useRef(({ viewableItems }: { viewableItems: { item: Moment | undefined }[] }) => {
     const first = viewableItems.find((row) => row.item && "createdAt" in row.item)?.item;
     if (first) setClock(timeOfDay(new Date(first.createdAt)));
+    // وما مرّ على الشاشة يُكتب «شافها» — منه لوحةُ صاحب اللحظة.
+    markSeen(viewableItems.flatMap((row) => (row.item && "createdAt" in row.item ? [row.item.id] : [])));
   }).current;
 
   // الضغطةُ على «اللحظات» وهو ظاهرٌ ترجع إلى أعلاه.

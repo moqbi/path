@@ -231,6 +231,44 @@ export const LockIcon = ({ size = 20, color = "currentColor" }: Props) => (
   </Svg>
 );
 
+/** القفلُ مفتوحاً: التعليقاتُ مفتوحة، والضغطُ يُقفلها. */
+export const UnlockIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M6.5 10.5h11a1.5 1.5 0 0 1 1.5 1.5v6.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 18.5V12a1.5 1.5 0 0 1 1.5-1.5Z" />
+    <Path d="M8.5 10.5V8a3.5 3.5 0 0 1 6.8-1.2" />
+  </Svg>
+);
+
+/** الحظر: دائرةٌ يقطعها خطّ. */
+export const BlockIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M12 3.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17Z" />
+    <Path d="M6 6l12 12" />
+  </Svg>
+);
+
+/** إزالةُ صديق: رأسٌ وكتفان وعلامةُ طرح. */
+export const UserMinusIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M10 4a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z" />
+    <Path d="M3.5 19.5c.6-3.3 3.2-5.5 6.5-5.5s5.9 2.2 6.5 5.5" />
+    <Path d="M16 8.5h5" />
+  </Svg>
+);
+
+/**
+ * شارةُ التوثيق — **بقرار المالك** بدل النجمة بجانب الاسم: ختمٌ مسنّن،
+ * وفي وسطه دائرةٌ وعلامةُ صحٍّ بالأبيض. والنجمةُ (`SparkIcon`) تبقى رمزَ
+ * آثار+ نفسه في المتجر والاشتراك (القاعدة ٧٦).
+ */
+export const VerifiedIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24">
+    <Path d="M12 2.3Q13.96-.37 15 2.77Q17.69.84 17.7 4.15Q20.86 3.14 19.85 6.3Q23.16 6.31 21.23 9Q24.37 10.04 21.7 12Q24.37 13.96 21.23 15Q23.16 17.69 19.85 17.7Q20.86 20.86 17.7 19.85Q17.69 23.16 15 21.23Q13.96 24.37 12 21.7Q10.04 24.37 9 21.23Q6.31 23.16 6.3 19.85Q3.14 20.86 4.15 17.7Q.84 17.69 2.77 15Q-.37 13.96 2.3 12Q-.37 10.04 2.77 9Q.84 6.31 4.15 6.3Q3.14 3.14 6.3 4.15Q6.31.84 9 2.77Q10.04-.37 12 2.3Z" fill={color} />
+    <Circle cx="12" cy="12" r="6.6" fill="none" stroke="#fff" strokeWidth={1.2} />
+    <Path d="M9.2 12.2l2 2 3.8-4.1" fill="none" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
 export const PlusIcon = ({ size = 20, color = "currentColor" }: Props) => (
   <Svg {...stroke(size, color)}>
     <Path d="M12 5v14M5 12h14" strokeWidth={2} />

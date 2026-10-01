@@ -298,7 +298,7 @@ async function assertCanInteract(userId: string, momentId: string) {
 
   const moment = await prisma.moment.findUnique({
     where: { id: momentId },
-    select: { authorId: true, kind: true },
+    select: { authorId: true, kind: true, commentsLocked: true },
   });
   if (!moment) throw notFound("اللحظة غير موجودة");
   if (!(await canInteract(userId, moment.authorId))) {
@@ -369,6 +369,10 @@ export async function react(
 export async function addComment(userId: string, momentId: string, body: string) {
   await guard(body);
   const moment = await assertCanInteract(userId, momentId);
+  // القفلُ بيد صاحبها، ولا يُقفل عليه هو: يردّ على ما سبق القفل.
+  if (moment.commentsLocked && moment.authorId !== userId) {
+    throw forbidden("أقفل صاحبُ اللحظة التعليقات");
+  }
 
   const comment = await prisma.comment.create({
     data: { momentId, userId, body: body.trim().slice(0, 500) },
@@ -429,4 +433,69 @@ export async function markSeen(userId: string, momentId: string) {
     update: {},
   });
   return { ok: true };
+}
+
+/** «شافها» لدفعةٍ ممّا مرّ على الشاشة — الخطّ الزمنيّ لا يُفتح لحظةً لحظة. */
+export async function markSeenMany(userId: string, ids: string[]) {
+  for (const id of [...new Set(ids)].slice(0, 50)) await markSeen(userId, id);
+  return { ok: true };
+}
+
+/**
+ * لوحةُ صاحب اللحظة: من شاهدها ومن تفاعل منهم وبماذا، وقفلُ التعليقات.
+ *
+ * لصاحبها وحده، ولغيره «غير موجودة» (القاعدة ٢٣ب). والمشاهدُ هو من مرّت
+ * اللحظةُ على شاشته — وصاحبُها لا يُعدّ من مشاهديه. ومن تفاعل ولم تُسجَّل
+ * مشاهدتُه (نسخةٌ قديمة لا ترسلها) يُعدّ مشاهداً: التفاعلُ دليلُ الرؤية.
+ */
+export async function audience(userId: string, momentId: string) {
+  const moment = await prisma.moment.findUnique({
+    where: { id: momentId },
+    select: { authorId: true, commentsLocked: true },
+  });
+  if (!moment || moment.authorId !== userId) throw notFound("اللحظة غير موجودة");
+
+  const person = {
+    id: true,
+    name: true,
+    avatarMediaId: true,
+    // بلا تميمة: ركنُ الوجه هنا لشارة التفاعل (القاعدة ٤٧).
+    frame: { select: { spec: true, mediaId: true, frameHole: true } },
+  } as const;
+
+  const [views, reactions] = await Promise.all([
+    prisma.view.findMany({
+      where: { momentId, userId: { not: userId } },
+      orderBy: { seenAt: "desc" },
+      take: 300,
+      select: { seenAt: true, user: { select: person } },
+    }),
+    prisma.reaction.findMany({
+      where: { momentId, userId: { not: userId } },
+      orderBy: { createdAt: "desc" },
+      select: { kind: true, emoji: true, createdAt: true, user: { select: person } },
+    }),
+  ]);
+
+  const seen = new Set(views.map((v) => v.user.id));
+  // من تفاعل أوّلاً، ثمّ من شاهد بلا تفاعل — الأحدثُ أوّلاً في كلٍّ.
+  const people = [
+    ...reactions.map((r) => ({ user: r.user, reaction: { kind: r.kind, emoji: r.emoji } })),
+    ...views
+      .filter((v) => !reactions.some((r) => r.user.id === v.user.id))
+      .map((v) => ({ user: v.user, reaction: null })),
+  ];
+  const count = seen.size + reactions.filter((r) => !seen.has(r.user.id)).length;
+
+  return { commentsLocked: moment.commentsLocked, views: count, people };
+}
+
+/** قفلُ التعليقات وفتحُها — لصاحب اللحظة وحده. */
+export async function lockComments(userId: string, momentId: string, locked: boolean) {
+  const done = await prisma.moment.updateMany({
+    where: { id: momentId, authorId: userId },
+    data: { commentsLocked: locked },
+  });
+  if (done.count === 0) throw notFound("اللحظة غير موجودة");
+  return { commentsLocked: locked };
 }

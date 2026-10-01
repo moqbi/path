@@ -7,6 +7,7 @@ import { deleteStory, seeStory } from "@/app/actions";
 import { Avatar } from "@/components/ui";
 import { CloseIcon, EyeIcon } from "@/components/icons";
 import { filterCss } from "@/components/story-composer";
+import { StoryTexts, type StoryText } from "@/components/story-texts";
 import { ar, relative } from "@/lib/format";
 import { BASE } from "@/lib/base";
 
@@ -23,6 +24,7 @@ type Story = {
   video: boolean;
   seconds: number | null;
   filter: string | null;
+  texts: StoryText[] | null;
 };
 
 /**
@@ -116,6 +118,8 @@ export function StoryViewer({
             style={{ objectFit: "contain", filter: filterCss(story.filter) }}
           />
         )}
+
+        <StoryTexts texts={story.texts} />
 
         {/* نصفان للتنقّل: يمينٌ يرجع ويسارٌ يتقدّم، والضغط المطوّل يوقف. */}
         <button

@@ -6,6 +6,8 @@ import { addComment } from "@/app/actions";
 import { Avatar, NameTag, ScreenHeader } from "@/components/ui";
 import { SeenTracker } from "@/components/interactive";
 import { Reactions, Reactors } from "@/components/reactions";
+import { AuthorPanel } from "@/components/author-panel";
+import { LockIcon } from "@/components/icons";
 import { CommentList } from "@/components/comments";
 import { EVENTS, EventLine } from "@/components/moment-card";
 import { Photo } from "@/components/photo";
@@ -110,7 +112,11 @@ export default async function MomentPage({
           <div className="h-px bg-line" />
 
           <div className="px-4 py-3.5">
-            {moment.reactions.length > 0 ? (
+            {moment.author.id === user.id ? (
+              <div className="mb-3">
+                <AuthorPanel momentId={moment.id} locked={moment.commentsLocked} />
+              </div>
+            ) : moment.reactions.length > 0 ? (
               <div className="mb-3">
                 <Reactors reactions={moment.reactions} viewerId={user.id} />
               </div>
@@ -143,6 +149,12 @@ export default async function MomentPage({
         </article>
       </main>
 
+      {moment.commentsLocked && moment.author.id !== user.id ? (
+        <p className="flex items-center justify-center gap-1.5 px-5 pb-8 pt-3 text-[12.5px] font-semibold text-muted">
+          <LockIcon size={14} />
+          أقفل صاحبُ اللحظة التعليقات
+        </p>
+      ) : (
       <form action={commentOn} className="flex items-center gap-2 px-5 pb-8 pt-3">
         <input
           name="body"
@@ -160,6 +172,7 @@ export default async function MomentPage({
           إرسال
         </button>
       </form>
+      )}
     </div>
   );
 }

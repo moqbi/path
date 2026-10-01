@@ -284,6 +284,7 @@ export function MomentCard({
             isPlus={isPlus}
             author={moment.author.id === viewerId}
             moderate={moderate && moment.author.id !== viewerId}
+          locked={moment.commentsLocked ?? false}
             head={line}
             extra={
               <>
@@ -362,6 +363,7 @@ export function MomentCard({
           isPlus={isPlus}
           author={moment.author.id === viewerId}
           moderate={moderate && moment.author.id !== viewerId}
+          locked={moment.commentsLocked ?? false}
           inset
           panelFirst
           extra={

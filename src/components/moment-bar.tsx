@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { addComment, deleteMoment, react, removeMomentAsAdmin } from "@/app/actions";
+import { addComment, deleteMoment, markSeenMany, react, removeMomentAsAdmin } from "@/app/actions";
+import { AuthorPanel } from "@/components/author-panel";
 import { LockIcon } from "@/components/icons";
 import { CUSTOM, EmojiBoard, facesFor, ReactionGlyph } from "@/components/reactions";
 
@@ -25,6 +26,7 @@ export function MomentBar({
   extra,
   inset = false,
   panelFirst = false,
+  locked = false,
 }: {
   momentId: string;
   /** نوع اللحظة: منه يُعرف هل يُعرض وجه النوم. */
@@ -50,6 +52,8 @@ export function MomentBar({
   inset?: boolean;
   /** اللوحة تحت الزرّ مباشرة لا تحت المحتوى — حين يكون الزرّ في الأعلى. */
   panelFirst?: boolean;
+  /** التعليقاتُ مقفلة بيد صاحبها: يبقى التفاعل، ويذهب الحقل. */
+  locked?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [board, setBoard] = useState(false);
@@ -59,6 +63,28 @@ export function MomentBar({
   const [pending, start] = useTransition();
   const root = useRef<HTMLDivElement>(null);
   const faces = facesFor(momentKind);
+
+  // ما ظهر نصفُه على الشاشة ثانيةً يُكتب «شافها» — منه لوحةُ صاحب اللحظة.
+  useEffect(() => {
+    if (author || !root.current) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const watch = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          timer = setTimeout(() => {
+            watch.disconnect();
+            seenQueue(momentId);
+          }, 1000);
+        } else if (timer) clearTimeout(timer);
+      },
+      { threshold: 0.5 },
+    );
+    watch.observe(root.current);
+    return () => {
+      if (timer) clearTimeout(timer);
+      watch.disconnect();
+    };
+  }, [author, momentId]);
 
   // ضغطةٌ خارج الشريط تطويه — ما لم يكن هناك تعليق نصف مكتوب يضيع.
   useEffect(() => {
@@ -143,7 +169,8 @@ export function MomentBar({
 
       {open ? (
         <div className={`mt-2 flex flex-col gap-2 ${inset ? "px-3" : ""}`}>
-          <div className="flex items-center gap-0.5">
+          {author ? <AuthorPanel momentId={momentId} locked={locked} /> : null}
+          <div className={`flex items-center gap-0.5 ${author ? "!hidden" : ""}`}>
             {faces.map((kind, index) => (
               <button
                 key={kind}
@@ -211,7 +238,7 @@ export function MomentBar({
             )}
           </div>
 
-          {board ? (
+          {board && !author ? (
             <EmojiBoard onPick={(emoji) => choose("CUSTOM", emoji)} stop={stop} />
           ) : null}
 
@@ -264,6 +291,12 @@ export function MomentBar({
             </div>
           ) : null}
 
+          {locked && !author ? (
+            <p className="flex h-9 items-center gap-1.5 text-[12px] font-semibold text-muted">
+              <LockIcon size={14} />
+              أقفل صاحبُ اللحظة التعليقات
+            </p>
+          ) : (
           <form
             action={() => {
               const text = body.trim();
@@ -297,10 +330,31 @@ export function MomentBar({
               </button>
             ) : null}
           </form>
+          )}
         </div>
       ) : null}
 
       {panelFirst ? extra : null}
     </div>
   );
+}
+
+/*
+  «شافها» دفعةً: تمريرةٌ تمرّ على عشر لحظات لا تُرسل عشرة إجراءات.
+  وما أُرسل في هذه الصفحة لا يُعاد.
+*/
+const sentSeen = new Set<string>();
+let seenBatch: string[] = [];
+let seenTimer: ReturnType<typeof setTimeout> | null = null;
+function seenQueue(id: string) {
+  if (sentSeen.has(id)) return;
+  sentSeen.add(id);
+  seenBatch.push(id);
+  if (seenTimer) return;
+  seenTimer = setTimeout(() => {
+    const batch = seenBatch.slice(0, 50);
+    seenBatch = seenBatch.slice(50);
+    seenTimer = null;
+    void markSeenMany(batch).catch(() => batch.forEach((id) => sentSeen.delete(id)));
+  }, 1200);
 }

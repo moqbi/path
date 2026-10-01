@@ -45,6 +45,8 @@ export type Moment = {
   musicThumb: string | null;
   imageSpec: string | null;
   mediaId: string | null;
+  /** قفلُ التعليقات بيد صاحبها — اختياريٌّ لخادمٍ أقدم لا يرسله. */
+  commentsLocked?: boolean;
   createdAt: string;
   author: Person;
   tags: { id: string; name: string }[];
@@ -277,6 +279,45 @@ export function useComment(momentId: string) {
     onSettled: () => {
       void client.invalidateQueries({ queryKey: keys.moment(momentId) });
       void client.invalidateQueries({ queryKey: ["feed"] });
+    },
+  });
+}
+
+/** لوحةُ صاحب اللحظة: من شاهد ومن تفاعل، وقفلُ التعليقات. */
+export type Audience = {
+  commentsLocked: boolean;
+  views: number;
+  people: {
+    user: {
+      id: string;
+      name: string;
+      avatarMediaId: string | null;
+      frame: { spec: string; mediaId: string | null; frameHole?: number | null } | null;
+    };
+    reaction: { kind: string; emoji: string | null } | null;
+  }[];
+};
+
+export const useAudience = (momentId: string, enabled: boolean) =>
+  useQuery({
+    queryKey: ["audience", momentId],
+    queryFn: () => api<Audience>(`/v1/moments/${momentId}/audience`),
+    enabled,
+  });
+
+export function useLockComments(momentId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (locked: boolean) =>
+      api(`/v1/moments/${momentId}/comments-lock`, { method: "POST", body: JSON.stringify({ locked }) }),
+    onMutate: (locked) => {
+      client.setQueryData<Audience>(["audience", momentId], (old) => (old ? { ...old, commentsLocked: locked } : old));
+    },
+    onSettled: () => {
+      void client.invalidateQueries({ queryKey: ["audience", momentId] });
+      void client.invalidateQueries({ queryKey: keys.moment(momentId) });
+      void client.invalidateQueries({ queryKey: ["feed"] });
+      void client.invalidateQueries({ queryKey: ["me", "moments"] });
     },
   });
 }

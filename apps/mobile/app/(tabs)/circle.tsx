@@ -1,3 +1,4 @@
+import { BlockIcon, MessageIcon, UserMinusIcon } from "../../components/icons";
 import { useCallback, useState } from "react";
 import { View, FlatList, Pressable, ScrollView, ActivityIndicator, RefreshControl } from "react-native";
 import { Text } from "../../components/type";
@@ -443,7 +444,12 @@ export default function Circle() {
             lead={{ label: "محادثة", run: () => void talk.mutate(friend.id) }}
             onSwiping={setSwiping}
             surface={colors.card}
-            width={76}
+            width={60}
+            icons={{
+              lead: <MessageIcon size={22} color={colors.onBrand} />,
+              second: <BlockIcon size={22} color="#f7f5ef" />,
+              delete: <UserMinusIcon size={22} color="#fff" />,
+            }}
           >
           <Pressable
             onPress={() => router.push(`/u/${friend.id}` as never)}

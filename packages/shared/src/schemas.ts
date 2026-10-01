@@ -1,5 +1,12 @@
 import { z } from "zod";
-import { MOMENT_TEXT_MAX, STORY_SECONDS, VOICE_SECONDS } from "./constants";
+import {
+  MOMENT_TEXT_MAX,
+  STORY_SECONDS,
+  STORY_TEXT_COLORS,
+  STORY_TEXT_MAX,
+  STORY_TEXTS,
+  VOICE_SECONDS,
+} from "./constants";
 
 /**
  * مخطّطات الإدخال.
@@ -53,10 +60,26 @@ export const voiceInput = z.object({
   seconds: z.coerce.number().int().min(1).max(VOICE_SECONDS.plus),
 });
 
+/**
+ * نصٌّ على القصة: موضعُه نسبةٌ من لوحتها (٠–١) لا بكسلات، ومقاسُه بنقاطِ
+ * شاشةٍ عرضُها ٣٩٠ (`STORY_TEXT_BASE`) — فيقع في المكان نفسه بالمقاس نفسه
+ * على أيّ جهاز. واللونُ من لوحةٍ مغلقة: حقلٌ حرّ يقبل أيّ شيء.
+ */
+export const storyText = z.object({
+  t: z.string().trim().min(1).max(STORY_TEXT_MAX),
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  size: z.number().min(14).max(72),
+  color: z.enum(STORY_TEXT_COLORS),
+  /** شريطٌ داكن خلف النصّ — يُقرأ فوق صورةٍ فاتحة. */
+  bg: z.boolean().optional(),
+});
+
 export const storyInput = z.object({
   mediaId: cuid,
   filter: z.string().max(20).optional(),
   seconds: z.coerce.number().int().min(1).max(STORY_SECONDS).optional(),
+  texts: z.array(storyText).max(STORY_TEXTS).optional(),
 });
 
 /** طلب رفع ملف: النوع والحجم يُفحصان قبل أن يُعطى رابطٌ مؤقّت. */

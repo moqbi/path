@@ -1,6 +1,6 @@
 import { View } from "react-native";
 import { Text } from "./type";
-import { SparkIcon } from "./icons";
+import { VerifiedIcon } from "./icons";
 import { SUPPORTER_TAG } from "@athar/shared";
 import { colors } from "../theme/tokens";
 
@@ -30,7 +30,7 @@ export function NameTag({
   return (
     <>
       {isPlus ? (
-        <SparkIcon size={Math.round(size * 1.25)} color={colors.clay} />
+        <VerifiedIcon size={Math.round(size * 1.35)} color={colors.clay} />
       ) : null}
       <TagPill tag={tag ?? (isPlus ? SUPPORTER_TAG : null)} size={size} />
     </>

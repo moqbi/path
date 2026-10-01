@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { SUPPORTER_TAG } from "@athar/shared";
 import { initial } from "@/lib/format";
-import { SparkIcon } from "@/components/icons";
+import { VerifiedIcon } from "@/components/icons";
 import { AthrPageMark } from "@/components/brand";
 import { BackButton, BackSwipe } from "@/components/nav";
 
@@ -409,7 +409,7 @@ export function Empty({
  * والوسم صفة عليه لا عنوان فوقه.
  */
 /**
- * ما يلي الاسم: نجمةُ المشترك ثم وسمه الممنوح.
+ * ما يلي الاسم: شارةُ توثيق المشترك ثم وسمه الممنوح.
  *
  * الاشتراك كان وسماً نصّياً يُمنح تلقائياً («داعم»)، فصار نجمةً: أصغر،
  * ولا يزاحم وسماً حقيقياً منحه المشرف، ولا يحتاج ترجمةً حين يكون الاسم
@@ -429,7 +429,7 @@ export function NameTag({
     <>
       {isPlus ? (
         <span className="shrink-0 text-gold" aria-label="مشترك في آثار+" title="مشترك في آثار+">
-          <SparkIcon size={Math.round(size * 1.25)} />
+          <VerifiedIcon size={Math.round(size * 1.35)} />
         </span>
       ) : null}
       <TagPill tag={tag ?? (isPlus ? SUPPORTER_TAG : null)} size={size} />

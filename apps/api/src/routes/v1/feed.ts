@@ -66,6 +66,23 @@ export const momentRoutes = new Hono()
     c.json(await moments.postMark(me(c), c.req.valid("json").kind), 201),
   )
 
+  /** ما مرّ على الشاشة من الخطّ الزمنيّ، دفعةً واحدة. */
+  .post("/seen", zValidator("json", z.object({ ids: z.array(cuid).max(50) })), async (c) =>
+    c.json(await moments.markSeenMany(me(c), c.req.valid("json").ids)),
+  )
+
+  .get("/:id/audience", zValidator("param", byId), async (c) =>
+    c.json(await moments.audience(me(c), c.req.valid("param").id)),
+  )
+
+  .post(
+    "/:id/comments-lock",
+    zValidator("param", byId),
+    zValidator("json", z.object({ locked: z.boolean() })),
+    async (c) =>
+      c.json(await moments.lockComments(me(c), c.req.valid("param").id, c.req.valid("json").locked)),
+  )
+
   .get("/:id", zValidator("param", byId), async (c) =>
     c.json({ moment: await feed.momentById(me(c), c.req.valid("param").id) }),
   )

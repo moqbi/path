@@ -219,7 +219,20 @@ function Gate() {
         */
         contentStyle: { backgroundColor: colors.ground, direction: "rtl" },
       }}
-    />
+    >
+      {/*
+        القصةُ طبقةٌ شفّافة فوق ما قبلها: سحبُها إلى أسفل يكشف الشاشةَ التي
+        فُتحت منها تحتها — شاشةٌ عاديّة تحتها أرضيةٌ مصمتة لا شيء.
+      */}
+      <Stack.Screen
+        name="stories/[id]"
+        options={{
+          presentation: "transparentModal",
+          animation: "fade",
+          contentStyle: { backgroundColor: "transparent", direction: "rtl" },
+        }}
+      />
+    </Stack>
     {/* نافذةُ الصورة هنا لا في البطاقة: لا جدَّ لها يلتقط سحبتها. */}
     <PhotoViewer />
     {/* الجولةُ طبقةٌ فوق المكدّس كلّه، لمن دخل وحده. */}

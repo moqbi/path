@@ -4,10 +4,12 @@ import { Text, TextInput } from "./type";
 import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ReactionGlyph, facesFor, CUSTOM, EMOJI_GROUPS } from "./reactions";
-import { LockIcon } from "./icons";
+import { EyeIcon, LockIcon, UnlockIcon } from "./icons";
+import { Avatar } from "./avatar";
+import { ar } from "../lib/format";
 import { ReportButton } from "./report-sheet";
 import { api } from "../lib/api";
-import { keys, useComment, useReact } from "../lib/queries";
+import { useAudience, useComment, useLockComments, useReact } from "../lib/queries";
 import { colors } from "../theme/tokens";
 
 type Mine = { kind: string; emoji: string | null } | null;
@@ -44,6 +46,7 @@ export function MomentBar({
   extra,
   inset = false,
   panelFirst = false,
+  locked = false,
 }: {
   momentId: string;
   momentKind?: string;
@@ -55,6 +58,8 @@ export function MomentBar({
   extra?: React.ReactNode;
   inset?: boolean;
   panelFirst?: boolean;
+  /** التعليقاتُ مقفلة بيد صاحبها: يبقى التفاعل، ويذهب الحقل. */
+  locked?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [board, setBoard] = useState(false);
@@ -66,6 +71,9 @@ export function MomentBar({
   const react = useReact(momentId);
   const comment = useComment(momentId);
   const faces = facesFor(momentKind);
+  const audience = useAudience(momentId, author && open);
+  const lock = useLockComments(momentId);
+  const isLocked = author ? (audience.data?.commentsLocked ?? locked) : locked;
 
   /* صاحبُها من بابه، والمشرفُ من بابه — لا بابَ واحد يقبل الاثنين. */
   const remove = useMutation({
@@ -155,6 +163,18 @@ export function MomentBar({
             والالتفاف لا التمرير: ما يُمرَّر إليه يحتاج أن يُكتشف، وهذا
             بابُ ميزةٍ مدفوعة لا يُخبّأ.
           */}
+          {author ? (
+            <AuthorPanel
+              loading={audience.isLoading}
+              data={audience.data}
+              locked={isLocked}
+              onLock={() => lock.mutate(!isLocked)}
+              onOpen={(id) => {
+                setOpen(false);
+                router.push(`/u/${id}` as never);
+              }}
+            />
+          ) : (
           <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 2 }}>
             {faces.map((kind) => (
               <Pressable
@@ -201,8 +221,9 @@ export function MomentBar({
               </Pressable>
             )}
           </View>
+          )}
 
-          {board ? (
+          {board && !author ? (
             <ScrollView
               /*
                 لوحةٌ تنزل داخل قائمةٍ تنزل: أندرويد يعطي الإيماءة للأعلى
@@ -283,6 +304,15 @@ export function MomentBar({
             </View>
           ) : null}
 
+          {isLocked && !author ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 6, height: 36 }}>
+                <LockIcon size={14} color={colors.muted} />
+                <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600" }}>أقفل صاحبُ اللحظة التعليقات</Text>
+              </View>
+              {moderate ? null : <ReportButton target="MOMENT" targetId={momentId} />}
+            </View>
+          ) : (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <TextInput
               value={body}
@@ -340,10 +370,119 @@ export function MomentBar({
             */}
             {author || moderate ? null : <ReportButton target="MOMENT" targetId={momentId} />}
           </View>
+          )}
         </View>
       ) : null}
 
       {panelFirst ? extra : null}
+    </View>
+  );
+}
+
+/**
+ * لوحةُ صاحب اللحظة — **بقرار المالك**: لا وجوهَ تفاعلٍ يضغطها على لحظته،
+ * بل ما يريد أن يعرفه عنها. قفلُ التعليقات، وعددُ من شاهدها، ثمّ وجوهُهم
+ * صفّاً يُمرَّر أفقياً: من تفاعل بصورته كاملةً وشارةِ تفاعله، ومن شاهد ولم
+ * يتفاعل بصورةٍ باهتة. والضغطُ على وجهٍ يفتح ملفّه.
+ */
+function AuthorPanel({
+  loading,
+  data,
+  locked,
+  onLock,
+  onOpen,
+}: {
+  loading: boolean;
+  data: import("../lib/queries").Audience | undefined;
+  locked: boolean;
+  onLock: () => void;
+  onOpen: (userId: string) => void;
+}) {
+  const people = data?.people ?? [];
+  return (
+    <View style={{ gap: 8 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <Pressable
+          accessibilityRole="switch"
+          accessibilityState={{ checked: locked }}
+          accessibilityLabel={locked ? "افتح التعليقات" : "أقفل التعليقات"}
+          onPress={onLock}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            height: 32,
+            paddingHorizontal: 11,
+            borderRadius: 999,
+            borderWidth: 1,
+            borderColor: locked ? colors.clay : colors.line,
+            backgroundColor: locked ? colors.claySoft : colors.card,
+          }}
+        >
+          {locked ? <LockIcon size={15} color={colors.clayInk} /> : <UnlockIcon size={15} color={colors.muted} />}
+          <Text style={{ color: locked ? colors.clayInk : colors.muted, fontSize: 11.5, fontWeight: "700" }}>
+            {locked ? "التعليقات مقفلة" : "التعليقات مفتوحة"}
+          </Text>
+        </Pressable>
+
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+          <EyeIcon size={15} color={colors.muted} />
+          <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600" }}>
+            {data ? `${ar(data.views)} مشاهدة` : "…"}
+          </Text>
+        </View>
+      </View>
+
+      {loading ? (
+        <ActivityIndicator size="small" color={colors.clay} style={{ alignSelf: "flex-start", marginVertical: 8 }} />
+      ) : people.length === 0 ? (
+        <Text style={{ color: colors.faint, fontSize: 11.5, paddingVertical: 6 }}>لم يشاهدها أحدٌ بعد.</Text>
+      ) : (
+        <ScrollView
+          horizontal
+          nestedScrollEnabled
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ flexDirection: "row", gap: 10, paddingVertical: 4, direction: "rtl" }}
+        >
+          {people.map(({ user, reaction }) => (
+            <Pressable
+              key={user.id}
+              accessibilityLabel={reaction ? `${user.name} تفاعل` : `${user.name} شاهد`}
+              onPress={() => onOpen(user.id)}
+              style={{ width: 52, alignItems: "center", gap: 4 }}
+            >
+              <View style={{ opacity: reaction ? 1 : 0.4 }}>
+                <Avatar name={user.name} mediaId={user.avatarMediaId} frame={user.frame} size={44} />
+              </View>
+              {reaction ? (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 28,
+                    left: 0,
+                    width: 22,
+                    height: 22,
+                    borderRadius: 11,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: colors.card,
+                    borderWidth: 1,
+                    borderColor: colors.line,
+                  }}
+                >
+                  <ReactionGlyph kind={reaction.kind} emoji={reaction.emoji} size={15} />
+                </View>
+              ) : null}
+              <Text
+                numberOfLines={1}
+                style={{ color: reaction ? colors.ink : colors.faint, fontSize: 10.5, maxWidth: 52 }}
+              >
+                {user.name}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
     </View>
   );
 }

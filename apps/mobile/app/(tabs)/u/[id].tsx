@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { markSeen } from "../../../lib/seen";
 import { View, Pressable, ActivityIndicator, Animated, RefreshControl } from "react-native";
 import { Text } from "../../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -154,6 +155,8 @@ function Profile() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} tintColor="#fff" />}
           data={moments.data?.moments ?? []}
           keyExtractor={(item) => item.id}
+          onViewableItemsChanged={onViewable}
+          viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
           /*
             والحذف داخل لوحة التفاعل لا زرّاً تحت البطاقة: البلاغ يصل على
             منشور، فيفتحه المشرف حيث يقرؤه الناس ويحكم في مكانه — ومعه
@@ -326,3 +329,7 @@ function Profile() {
     </SafeAreaView>
   );
 }
+
+/** ما مرّ على الشاشة من لحظاته يُكتب «شافها» (`lib/seen.ts`). */
+const onViewable = ({ viewableItems }: { viewableItems: { item: { id: string } | null }[] }) =>
+  markSeen(viewableItems.flatMap((row) => (row.item ? [row.item.id] : [])));

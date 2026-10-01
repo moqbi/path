@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { storiesOf, viewersOf } from "@/lib/stories";
+import type { StoryText } from "@/components/story-texts";
 import { StoryViewer } from "./viewer";
 
 /** مشاهدة قصص شخص: شاشة كاملة، شريحة تلو أخرى. */
@@ -32,6 +33,7 @@ export default async function StoriesPage({ params }: { params: Promise<{ id: st
         video: story.media.mime.startsWith("video/"),
         seconds: story.seconds,
         filter: story.filter,
+        texts: Array.isArray(story.texts) ? (story.texts as StoryText[]) : null,
       }))}
     />
   );

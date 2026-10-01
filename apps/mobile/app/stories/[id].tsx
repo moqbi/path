@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { View, Pressable, ActivityIndicator, Dimensions, ScrollView } from "react-native";
+import { View, Pressable, ActivityIndicator, Dimensions, ScrollView, Animated, PanResponder } from "react-native";
+import type { StoryText } from "@athar/shared";
+import { StoryTexts } from "../../components/story-texts";
 import { Text } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -24,6 +26,7 @@ type Story = {
   caption: string | null;
   filter: string | null;
   seconds: number | null;
+  texts?: StoryText[] | null;
   createdAt: string;
   media: { mime: string };
   author: { id: string; name: string; avatarMediaId: string | null };
@@ -45,6 +48,10 @@ type Viewer = {
  * شريط تقدّم لكل شريحة، ولمسةٌ على النصف الأيمن ترجع وعلى الأيسر تتقدّم
  * (وهو المعتاد في RTL)، والضغط المطوّل يوقف العدّ — من يقرأ تعليقاً على
  * صورة لا يجب أن تُسحب من تحته.
+ *
+ * **والسحبُ إيماءتان — بقرار المالك**: إلى أسفل تُغلق، والقصّةُ تتبع الإصبع
+ * وتصغر وتنكشف الشاشةُ تحتها، فإن لم تبلغ الحدّ عادت مكانها. وإلى أعلى
+ * تفتح «من شاهدها» لصاحبها. والسحبُ يوقف العدّ كالضغط المطوّل.
  */
 export default function StoryViewer() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -57,7 +64,8 @@ export default function StoryViewer() {
   const [held, setHeld] = useState(false);
   // من شاهدها: نافذةٌ فوق القصة، والعدُّ يقف ما دامت مفتوحة.
   const [watching, setWatching] = useState(false);
-  const paused = held || watching;
+  const [dragging, setDragging] = useState(false);
+  const paused = held || watching || dragging;
   const started = useRef(Date.now());
   // الوقفةُ لا تبدأ الشريحة من أوّلها: ما مضى منها يُحفظ ويُستأنف منه.
   const elapsed = useRef(0);
@@ -116,6 +124,49 @@ export default function StoryViewer() {
 
   const screen = Dimensions.get("window");
 
+  const drop = useRef(new Animated.Value(0)).current;
+  // ما يتغيّر بين رسمٍ ورسم يُقرأ من مرجع: المستجيبُ يُبنى مرّةً واحدة.
+  const live = useRef({ mine, watching, close: () => router.back(), open: () => setWatching(true) });
+  live.current = { mine, watching, close: () => router.back(), open: () => setWatching(true) };
+
+  const pan = useRef(
+    PanResponder.create({
+      // رأسيّةٌ صريحة وحدها تُلتقط — النقرةُ والضغطُ المطوّل يبقيان للنصفين.
+      onMoveShouldSetPanResponderCapture: (_e, g) =>
+        !live.current.watching && Math.abs(g.dy) > 12 && Math.abs(g.dy) > Math.abs(g.dx) * 1.3,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: () => setDragging(true),
+      onPanResponderMove: (_e, g) => {
+        // إلى أعلى مقاومةٌ خفيفة تقول إنّ هناك شيئاً، لا تحريكٌ كامل.
+        drop.setValue(g.dy > 0 ? g.dy : g.dy * 0.25);
+      },
+      onPanResponderRelease: (_e, g) => {
+        if (g.dy > 120 || g.vy > 0.9) {
+          Animated.timing(drop, { toValue: screen.height, duration: 200, useNativeDriver: true }).start(() =>
+            live.current.close(),
+          );
+          return;
+        }
+        Animated.spring(drop, { toValue: 0, useNativeDriver: true, bounciness: 6 }).start();
+        setDragging(false);
+        if ((g.dy < -70 || g.vy < -0.9) && live.current.mine) live.current.open();
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(drop, { toValue: 0, useNativeDriver: true }).start();
+        setDragging(false);
+      },
+    }),
+  ).current;
+
+  const sink = {
+    transform: [
+      { translateY: drop.interpolate({ inputRange: [-200, 0, screen.height], outputRange: [-50, 0, screen.height * 0.6] }) },
+      { scale: drop.interpolate({ inputRange: [0, screen.height], outputRange: [1, 0.72], extrapolate: "clamp" }) },
+    ],
+    borderRadius: drop.interpolate({ inputRange: [0, 80], outputRange: [0, 24], extrapolate: "clamp" }),
+  };
+  const veil = drop.interpolate({ inputRange: [0, screen.height * 0.6], outputRange: [1, 0], extrapolate: "clamp" });
+
   if (feed.isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: "#0b1219", alignItems: "center", justifyContent: "center" }}>
@@ -145,7 +196,10 @@ export default function StoryViewer() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#0b1219" }}>
+    <View style={{ flex: 1 }}>
+      {/* الأرضيةُ تبهت مع السحب فتنكشف الشاشةُ تحت القصّة. */}
+      <Animated.View pointerEvents="none" style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, backgroundColor: "#0b1219", opacity: veil }} />
+    <Animated.View {...pan.panHandlers} style={[{ flex: 1, backgroundColor: "#0b1219", overflow: "hidden" }, sink]}>
       {/* المقطع يُشغَّل، والصورة تُرسم بفلترها. و`<Image>` لا يفكّ MP4. */}
       {video ? (
         <StoryVideo
@@ -162,6 +216,9 @@ export default function StoryViewer() {
           height={screen.height}
         />
       )}
+
+      {/* نصوصُها فوقها بموضعها ومقاسها — لا محروقةً في الصورة. */}
+      <StoryTexts texts={story.texts} width={screen.width} height={screen.height} />
 
       {/* نصفان للتنقّل: يمينٌ يرجع ويسارٌ يتقدّم، والضغط المطوّل يوقف. */}
       <Pressable
@@ -246,6 +303,7 @@ export default function StoryViewer() {
           </View>
         </SafeAreaView>
       ) : null}
+    </Animated.View>
 
       {watching && mine ? (
         <Sheet title="من شاهد قصّتك" onClose={() => setWatching(false)}>

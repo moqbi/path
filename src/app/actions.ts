@@ -1378,10 +1378,94 @@ export async function markSeen(momentId: string): Promise<void> {
   });
 }
 
+/** «شافها» لما مرّ على الشاشة من الخطّ الزمنيّ — دفعةً، ولا يُعدّ صاحبها. */
+export async function markSeenMany(ids: string[]): Promise<void> {
+  const user = await requireUser();
+  for (const momentId of [...new Set(ids)].slice(0, 50)) {
+    if (typeof momentId !== "string" || !(await canSee(user.id, momentId))) continue;
+    await prisma.view.upsert({
+      where: { momentId_userId: { momentId, userId: user.id } },
+      create: { momentId, userId: user.id },
+      update: {},
+    });
+  }
+}
+
+export type AudienceView = {
+  commentsLocked: boolean;
+  views: number;
+  people: {
+    user: {
+      id: string;
+      name: string;
+      avatarMediaId: string | null;
+      frame: { spec: string; mediaId: string | null; frameHole: number | null } | null;
+    };
+    reaction: { kind: string; emoji: string | null } | null;
+  }[];
+};
+
+/**
+ * لوحةُ صاحب اللحظة: من شاهد ومن تفاعل، وقفلُ التعليقات — نسخةُ
+ * `audience` في الخادم. لصاحبها وحده، ولغيره «غير موجودة».
+ */
+export async function momentAudience(momentId: string): Promise<AudienceView | { error: string }> {
+  const user = await requireUser();
+  const moment = await prisma.moment.findUnique({
+    where: { id: momentId },
+    select: { authorId: true, commentsLocked: true },
+  });
+  if (!moment || moment.authorId !== user.id) return { error: "اللحظة غير موجودة" };
+
+  const person = {
+    id: true,
+    name: true,
+    avatarMediaId: true,
+    frame: { select: { spec: true, mediaId: true, frameHole: true } },
+  } as const;
+  const [views, reactions] = await Promise.all([
+    prisma.view.findMany({
+      where: { momentId, userId: { not: user.id } },
+      orderBy: { seenAt: "desc" },
+      take: 300,
+      select: { user: { select: person } },
+    }),
+    prisma.reaction.findMany({
+      where: { momentId, userId: { not: user.id } },
+      orderBy: { createdAt: "desc" },
+      select: { kind: true, emoji: true, user: { select: person } },
+    }),
+  ]);
+  const reacted = new Set(reactions.map((r) => r.user.id));
+  const seen = new Set(views.map((v) => v.user.id));
+  return {
+    commentsLocked: moment.commentsLocked,
+    views: seen.size + reactions.filter((r) => !seen.has(r.user.id)).length,
+    people: [
+      ...reactions.map((r) => ({ user: r.user, reaction: { kind: r.kind as string, emoji: r.emoji } })),
+      ...views.filter((v) => !reacted.has(v.user.id)).map((v) => ({ user: v.user, reaction: null })),
+    ],
+  };
+}
+
+/** قفلُ التعليقات وفتحُها — لصاحب اللحظة وحده. */
+export async function setCommentsLock(momentId: string, locked: boolean): Promise<{ error?: string }> {
+  const user = await requireUser();
+  const done = await prisma.moment.updateMany({
+    where: { id: momentId, authorId: user.id },
+    data: { commentsLocked: Boolean(locked) },
+  });
+  if (done.count === 0) return { error: "اللحظة غير موجودة" };
+  revalidatePath("/");
+  revalidatePath(`/m/${momentId}`);
+  return {};
+}
+
 export async function addComment(momentId: string, formData: FormData): Promise<void> {
   const user = await requireUser();
   if (!(await canSee(user.id, momentId))) throw new Error("غير مصرح");
-  await assertCanInteract(user.id, momentId);
+  const moment = await assertCanInteract(user.id, momentId);
+  if (moment.commentsLocked && moment.authorId !== user.id) throw new Error("أقفل صاحبُ اللحظة التعليقات");
 
   const body = String(formData.get("body") ?? "").trim();
   if (!body) return;
@@ -1401,12 +1485,13 @@ async function canSee(userId: string, momentId: string): Promise<boolean> {
 async function assertCanInteract(userId: string, momentId: string) {
   const moment = await prisma.moment.findUnique({
     where: { id: momentId },
-    select: { authorId: true },
+    select: { authorId: true, commentsLocked: true },
   });
   if (!moment) throw new Error("اللحظة غير موجودة");
   if (!(await canInteract(userId, moment.authorId))) {
     throw new Error("صاحب اللحظة حصر التفاعل في تصنيف من أصدقائه");
   }
+  return moment;
 }
 
 // ───────────────────────────── المحادثات الخاصة ─────────────────────────────

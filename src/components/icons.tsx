@@ -94,6 +94,44 @@ export const LockIcon = ({ size = 20, className }: IconProps) => (
   </svg>
 );
 
+/** القفلُ مفتوحاً: التعليقاتُ مفتوحة. */
+export const UnlockIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <rect x="5" y="10.5" width="14" height="9.5" rx="2.4" />
+    <path d="M8.4 10.5V8a3.6 3.6 0 0 1 7-1.2" />
+  </svg>
+);
+
+/** الحظر: دائرةٌ يقطعها خطّ. */
+export const BlockIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M6 6l12 12" />
+  </svg>
+);
+
+/** إزالةُ صديق: رأسٌ وكتفان وعلامةُ طرح. */
+export const UserMinusIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <circle cx="10" cy="7.5" r="3.5" />
+    <path d="M3.5 19.5c.6-3.3 3.2-5.5 6.5-5.5s5.9 2.2 6.5 5.5" />
+    <path d="M16 8.5h5" />
+  </svg>
+);
+
+/**
+ * شارةُ التوثيق — **بقرار المالك** بدل النجمة بجانب الاسم: ختمٌ مسنّن،
+ * وفي وسطه دائرةٌ وعلامةُ صحٍّ بالأبيض. والنجمةُ (`SparkIcon`) تبقى رمزَ
+ * آثار+ نفسه في المتجر والاشتراك (القاعدة ٧٦).
+ */
+export const VerifiedIcon = ({ size = 20, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden>
+    <path d="M12 2.3Q13.96-.37 15 2.77Q17.69.84 17.7 4.15Q20.86 3.14 19.85 6.3Q23.16 6.31 21.23 9Q24.37 10.04 21.7 12Q24.37 13.96 21.23 15Q23.16 17.69 19.85 17.7Q20.86 20.86 17.7 19.85Q17.69 23.16 15 21.23Q13.96 24.37 12 21.7Q10.04 24.37 9 21.23Q6.31 23.16 6.3 19.85Q3.14 20.86 4.15 17.7Q.84 17.69 2.77 15Q-.37 13.96 2.3 12Q-.37 10.04 2.77 9Q.84 6.31 4.15 6.3Q3.14 3.14 6.3 4.15Q6.31.84 9 2.77Q10.04-.37 12 2.3Z" fill="currentColor" />
+    <circle cx="12" cy="12" r="6.6" fill="none" stroke="#fff" strokeWidth={1.2} />
+    <path d="M9.2 12.2l2 2 3.8-4.1" fill="none" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 export const CheckIcon = ({ size = 20, className }: IconProps) => (
   <svg {...base(size)} className={className} strokeWidth={2}>
     <path d="M5 12.5 10 17.5 19 7" />

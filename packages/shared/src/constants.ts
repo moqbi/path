@@ -24,6 +24,30 @@ export const VOICE_SECONDS = { free: 20, plus: 120 } as const;
 export const STORY_HOURS = 24;
 export const STORY_SECONDS = 30;
 
+/** نصوصُ القصة: خمسةٌ على الأكثر، و١٢٠ حرفاً لكلٍّ — سطرٌ يُقرأ لا مقال. */
+export const STORY_TEXTS = 5;
+export const STORY_TEXT_MAX = 120;
+/** عرضُ الشاشة الذي يُقاس به مقاسُ النصّ — يُكبَّر ويُصغَّر بنسبته على كل جهاز. */
+export const STORY_TEXT_BASE = 390;
+export const STORY_TEXT_COLORS = [
+  "#FFFFFF",
+  "#0E1A24",
+  "#F6B93B",
+  "#FF7A5A",
+  "#E84393",
+  "#6C5CE7",
+  "#0984E3",
+  "#00B894",
+] as const;
+export type StoryText = {
+  t: string;
+  x: number;
+  y: number;
+  size: number;
+  color: (typeof STORY_TEXT_COLORS)[number];
+  bg?: boolean;
+};
+
 /** المحادثات تُكنس بعد هذه المدّة — من القاعدة والسحابة معاً. */
 export const MESSAGE_KEEP_DAYS = 30;
 
