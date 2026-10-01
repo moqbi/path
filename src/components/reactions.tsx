@@ -106,8 +106,18 @@ export function Reactions({
     const onDown = (event: PointerEvent) => {
       if (!root.current?.contains(event.target as Node)) setOpen(false);
     };
+    // والتمريرُ يطويها كما في شريط الخطّ الزمنيّ.
+    const onScroll = (event: Event) => {
+      if (!root.current?.contains(event.target as Node)) setOpen(false);
+    };
     document.addEventListener("pointerdown", onDown);
-    return () => document.removeEventListener("pointerdown", onDown);
+    document.addEventListener("wheel", onScroll, { passive: true });
+    document.addEventListener("touchmove", onScroll, { passive: true });
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("wheel", onScroll);
+      document.removeEventListener("touchmove", onScroll);
+    };
   }, [open]);
 
   function choose(kind: string, emoji?: string) {

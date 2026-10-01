@@ -411,7 +411,7 @@ export function Empty({
 /**
  * ما يلي الاسم: شارةُ توثيق المشترك ثم وسمه الممنوح.
  *
- * الاشتراك كان وسماً نصّياً يُمنح تلقائياً («داعم»)، فصار نجمةً: أصغر،
+ * الاشتراك كان وسماً نصّياً يُمنح تلقائياً («داعم»)، فصار شارةَ توثيق: أصغر،
  * ولا يزاحم وسماً حقيقياً منحه المشرف، ولا يحتاج ترجمةً حين يكون الاسم
  * لاتينياً. والوسم الممنوح يبقى كما هو بجانبها.
  */
@@ -429,7 +429,7 @@ export function NameTag({
     <>
       {isPlus ? (
         <span className="shrink-0 text-gold" aria-label="مشترك في آثار+" title="مشترك في آثار+">
-          <VerifiedIcon size={Math.round(size * 1.35)} />
+          <VerifiedIcon size={Math.min(24, Math.max(16, Math.round(size * 1.6)))} />
         </span>
       ) : null}
       <TagPill tag={tag ?? (isPlus ? SUPPORTER_TAG : null)} size={size} />

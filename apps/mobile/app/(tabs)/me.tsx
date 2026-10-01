@@ -1,4 +1,5 @@
 import { SITE_URL, hasSite } from "@athar/shared";
+import { scrolled } from "../../lib/scrolled";
 import { useMemo, useRef, useState } from "react";
 import { View, SectionList, Pressable, ActivityIndicator, Alert, Share, Animated, RefreshControl } from "react-native";
 import { Text } from "../../components/type";
@@ -210,6 +211,7 @@ export default function Me() {
         stickySectionHeadersEnabled={false}
         contentContainerStyle={{ paddingBottom: 30 }}
         onScroll={onScroll}
+        onScrollBeginDrag={scrolled}
         scrollEventThrottle={16}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} tintColor="#fff" />}
         ListHeaderComponent={

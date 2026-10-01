@@ -94,8 +94,25 @@ export function MomentBar({
       if (body.trim().length > 0) return;
       setOpen(false);
     };
+    /*
+      والتمريرُ يطويه كذلك — من مرّر عن لوحةٍ لا يريدها. والمسموعُ عجلةُ
+      الفأرة وحركةُ الإصبع لا حدثُ `scroll`: تركيزُ حقل التعليق عند الفتح
+      يمرّر الصفحة إليه، فكانت اللوحة ستُطوى لحظةَ تُفتح. وما داخلها (صفُّ
+      الوجوه) لا يُحسب.
+    */
+    const onScroll = (event: Event) => {
+      if (root.current?.contains(event.target as Node)) return;
+      if (body.trim().length > 0) return;
+      setOpen(false);
+    };
     document.addEventListener("pointerdown", onDown);
-    return () => document.removeEventListener("pointerdown", onDown);
+    document.addEventListener("wheel", onScroll, { passive: true });
+    document.addEventListener("touchmove", onScroll, { passive: true });
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("wheel", onScroll);
+      document.removeEventListener("touchmove", onScroll);
+    };
   }, [open, body]);
 
   // البطاقة قد تكون رابطاً، فيجب أن يقف الحدث هنا وإلا فُتحت اللحظة.

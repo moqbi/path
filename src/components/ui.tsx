@@ -456,7 +456,7 @@ export function NameTag({
     <>
       {isPlus ? (
         <span className="shrink-0 text-gold" aria-label="مشترك في آثار+" title="مشترك في آثار+">
-          <VerifiedIcon size={Math.round(size * 1.35)} />
+          <VerifiedIcon size={Math.min(24, Math.max(16, Math.round(size * 1.6)))} />
         </span>
       ) : null}
       {/* وسمُ المشرف يسبق، وإلّا «داعم» لكل مشترك (`SUPPORTER_TAG`). */}

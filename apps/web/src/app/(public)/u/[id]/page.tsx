@@ -199,7 +199,7 @@ export default async function SharedProfile({ params }: Props) {
           ) : null}
         </span>
 
-        {/* النجمةُ ووسمُ «داعم» من `NameTag` نفسه — لا رسمٌ ثانٍ لهما هنا. */}
+        {/* شارةُ التوثيق ووسمُ «داعم» من `NameTag` نفسه — لا رسمٌ ثانٍ لهما هنا. */}
         <h1 className="mt-3 flex items-center justify-center gap-2 text-[21px] font-bold">
           <span dir="auto">{person.name}</span>
           <NameTag isPlus={person.isPlus} tag={person.tag} size={11} />

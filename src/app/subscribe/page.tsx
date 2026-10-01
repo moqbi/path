@@ -11,7 +11,7 @@ const PERKS = [
   {
     title: "شارة التوثيق",
     body: "بجانب اسمك في كل مكان — في اللحظات والتعليقات والأصدقاء",
-    icon: <VerifiedIcon size={18} />,
+    icon: <VerifiedIcon size={24} />,
   },
   {
     title: "وسم «داعم»",

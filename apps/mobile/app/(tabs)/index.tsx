@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
+import { scrolled } from "../../lib/scrolled";
 import { markSeen } from "../../lib/seen";
 import { View, SectionList, ActivityIndicator, Pressable, Animated, Easing, PanResponder } from "react-native";
 import { Text } from "../../components/type";
@@ -467,7 +468,10 @@ export default function Timeline() {
           stickySectionHeadersEnabled={false}
           onViewableItemsChanged={onViewable}
           viewabilityConfig={{ itemVisiblePercentThreshold: 30 }}
-          onScrollBeginDrag={showClock}
+          onScrollBeginDrag={() => {
+            showClock();
+            scrolled();
+          }}
           onScrollEndDrag={hideClock}
           onMomentumScrollBegin={showClock}
           onMomentumScrollEnd={hideClock}

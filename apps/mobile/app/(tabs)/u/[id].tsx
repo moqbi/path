@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { scrolled } from "../../../lib/scrolled";
 import { markSeen } from "../../../lib/seen";
 import { View, Pressable, ActivityIndicator, Animated, RefreshControl } from "react-native";
 import { Text } from "../../../components/type";
@@ -146,6 +147,7 @@ function Profile() {
       ) : (
         <Animated.FlatList
           onScroll={onScroll}
+          onScrollBeginDrag={scrolled}
           // حقلُ التعليق داخل القائمة: آبل تُزيح المحتوى بقدر الكيبورد وتُظهر
           // الحقلَ المركَّز فوقه، فيرى الكاتبُ ما يكتب.
           automaticallyAdjustKeyboardInsets

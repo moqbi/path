@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { onScrolled } from "../lib/scrolled";
 import { View, Pressable, ScrollView, ActivityIndicator } from "react-native";
 import { Text, TextInput } from "./type";
 import { useRouter } from "expo-router";
@@ -74,6 +75,22 @@ export function MomentBar({
   const audience = useAudience(momentId, author && open);
   const lock = useLockComments(momentId);
   const isLocked = author ? (audience.data?.commentsLocked ?? locked) : locked;
+
+  /*
+    التمريرُ يطوي اللوحة (القاعدة ١٩) — ما لم يكن فيها تعليقٌ نصفُ مكتوب
+    يضيع بانزلاق إصبع.
+  */
+  const draft = useRef(body);
+  draft.current = body;
+  useEffect(() => {
+    if (!open) return;
+    return onScrolled(() => {
+      if (draft.current.trim()) return;
+      setOpen(false);
+      setBoard(false);
+      setAsking(false);
+    });
+  }, [open]);
 
   /* صاحبُها من بابه، والمشرفُ من بابه — لا بابَ واحد يقبل الاثنين. */
   const remove = useMutation({

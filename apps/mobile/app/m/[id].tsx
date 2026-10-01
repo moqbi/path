@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { scrolled } from "../../lib/scrolled";
 import { markSeen } from "../../lib/seen";
 import { View, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -65,6 +66,7 @@ export default function MomentPage() {
       */}
       <View style={{ flex: 1, paddingBottom: keyboard }}>
       <ScrollView
+        onScrollBeginDrag={scrolled}
         style={{ flex: 1 }}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingTop: 12, paddingBottom: 24 }}
