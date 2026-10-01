@@ -7,7 +7,7 @@ import { viewPhoto } from "./photo-viewer";
 import { AthrMark } from "./brand";
 import { TagIcon, PinIcon, PlayIcon, WithIcon, SunIcon, MoonIcon, PlaneIcon, GiftIcon, SparkIcon, PrivateIcon } from "./icons";
 import { MomentBar } from "./moment-bar";
-import { Bubble, CommentList, Reactors } from "./reactors";
+import { AuthorFaces, Bubble, CommentList, Reactors } from "./reactors";
 import { colors } from "../theme/tokens";
 import { openIn } from "../lib/browse";
 import { ar, relative, timeOfDay } from "../lib/format";
@@ -339,7 +339,19 @@ export function MomentCard({
         <View style={{ height: 132, backgroundColor: firstColor(moment.imageSpec, colors.chip) }} />
       ) : null}
 
-      <Pressable onPress={open} style={{ paddingHorizontal: 14, paddingTop: 10 }}>
+      {/*
+        بلا صورةٍ في الرأس يبدأ النصّ من أعلى البطاقة، ويترك يسارَه لزرّ
+        التفاعل الطافي في الركن — كان الزرّ صفّاً وحده فوق النصّ.
+      */}
+      <Pressable
+        onPress={open}
+        style={{
+          paddingRight: 14,
+          paddingLeft: moment.mediaId || moment.imageSpec ? 14 : 52,
+          paddingTop: moment.mediaId || moment.imageSpec ? 10 : 14,
+          minHeight: moment.mediaId || moment.imageSpec ? undefined : 50,
+        }}
+      >
         {moment.text ? (
           <Text style={{ color: colors.ink, fontSize: 13.5, lineHeight: 23, marginBottom: 8 }}>
             {moment.text}
@@ -378,7 +390,7 @@ export function MomentCard({
           overflow: "hidden",
         }}
       >
-        {/* زرّ التفاعل في أعلى البطاقة: يُلمس قبل القراءة لا بعدها. */}
+        {/* زرّ التفاعل في ركن البطاقة: يُلمس قبل القراءة لا بعدها. */}
         <MomentBar
           momentId={moment.id}
           momentKind={moment.kind}
@@ -388,37 +400,37 @@ export function MomentCard({
           moderate={moderate && moment.author.id !== viewerId}
           locked={moment.commentsLocked ?? false}
           inset
-          panelFirst
-          extra={
-            <>
-              {head}
-              <View style={{ paddingHorizontal: 14, paddingBottom: 12, paddingTop: 8 }}>
-                {moment.reactions.length > 0 ? (
-                  <>
-                    <Reactors reactions={moment.reactions} viewerId={viewerId} />
-                    {/* الخادمُ يرسل اثني عشر وجهاً بسقف، والباقي عددٌ:
-                        ثلاثةُ آلاف صفٍّ في تمريرةٍ واحدة ثمنٌ بلا مقابل. */}
-                    {moment._count.reactions > moment.reactions.length ? (
-                      <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 4 }}>
-                        و{ar(moment._count.reactions - moment.reactions.length)} غيرهم
+          extra={head}
+          footer={
+            <View style={{ paddingHorizontal: 14, paddingBottom: 12, paddingTop: 8 }}>
+              {moment.author.id === viewerId ? (
+                /* لصاحبها صفٌّ واحد: من تفاعل ومن شاهد باهتاً (القاعدة ٢٠٢). */
+                <AuthorFaces momentId={moment.id} />
+              ) : moment.reactions.length > 0 ? (
+                <>
+                  <Reactors reactions={moment.reactions} viewerId={viewerId} />
+                  {/* الخادمُ يرسل اثني عشر وجهاً بسقف، والباقي عددٌ:
+                      ثلاثةُ آلاف صفٍّ في تمريرةٍ واحدة ثمنٌ بلا مقابل. */}
+                  {moment._count.reactions > moment.reactions.length ? (
+                    <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 4 }}>
+                      و{ar(moment._count.reactions - moment.reactions.length)} غيرهم
+                    </Text>
+                  ) : null}
+                </>
+              ) : null}
+              {moment.comments.length > 0 ? (
+                <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 10 }}>
+                  <CommentList comments={moment.comments} viewerId={viewerId} moderate={moderate} />
+                  {moment._count.comments > moment.comments.length ? (
+                    <Pressable onPress={open} style={{ marginTop: 8 }}>
+                      <Text style={{ color: colors.clayInk, fontSize: 12, fontWeight: "600" }}>
+                        كل التعليقات ({ar(moment._count.comments)})
                       </Text>
-                    ) : null}
-                  </>
-                ) : null}
-                {moment.comments.length > 0 ? (
-                  <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 10 }}>
-                    <CommentList comments={moment.comments} viewerId={viewerId} moderate={moderate} />
-                    {moment._count.comments > moment.comments.length ? (
-                      <Pressable onPress={open} style={{ marginTop: 8 }}>
-                        <Text style={{ color: colors.clayInk, fontSize: 12, fontWeight: "600" }}>
-                          كل التعليقات ({ar(moment._count.comments)})
-                        </Text>
-                      </Pressable>
-                    ) : null}
-                  </View>
-                ) : null}
-              </View>
-            </>
+                    </Pressable>
+                  ) : null}
+                </View>
+              ) : null}
+            </View>
           }
         />
       </View>

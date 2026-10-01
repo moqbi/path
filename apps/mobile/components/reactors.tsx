@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, Pressable } from "react-native";
+import { View, Pressable, ScrollView } from "react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { Text } from "./type";
@@ -11,7 +11,7 @@ import { SwipeRow } from "./swipe-row";
 import { ReportSheet } from "./report-sheet";
 import { colors } from "../theme/tokens";
 import { ar, relative } from "../lib/format";
-import type { Moment } from "../lib/queries";
+import { useAudience, type Moment } from "../lib/queries";
 
 /**
  * من تفاعل: صورته وعليها وجهُه.
@@ -67,6 +67,60 @@ export function Reactors({
         <Text style={{ color: colors.muted, fontSize: 11.5 }}>+{reactions.length - 6}</Text>
       ) : null}
     </View>
+  );
+}
+
+/**
+ * وجوهُ لحظتي — لصاحبها وحده، **بقرار المالك**: صفٌّ واحد تحت البطاقة
+ * يُرى بلا ضغطة ويُمرَّر أفقياً. من تفاعل بصورته كاملةً وشارةِ تفاعله، ومن
+ * شاهد ولم يتفاعل باهتاً. وهو بدلُ `Reactors` لا إضافةٌ إليه: صفّان
+ * يتكرّر فيهما المتفاعلون يُقرآن قائمتين.
+ */
+export function AuthorFaces({ momentId }: { momentId: string }) {
+  const router = useRouter();
+  const audience = useAudience(momentId, true);
+  const people = audience.data?.people ?? [];
+  if (people.length === 0) return null;
+
+  return (
+    <ScrollView
+      horizontal
+      nestedScrollEnabled
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ flexDirection: "row", gap: 10, paddingTop: 4, direction: "rtl" }}
+    >
+      {people.map(({ user, reaction }) => (
+        <Pressable
+          key={user.id}
+          accessibilityLabel={reaction ? `${user.name} تفاعل` : `${user.name} شاهد`}
+          onPress={() => router.push(`/u/${user.id}` as never)}
+          style={{ width: 32, height: 32 }}
+        >
+          <View style={{ opacity: reaction ? 1 : 0.38 }}>
+            <Avatar name={user.name} mediaId={user.avatarMediaId} size={32} />
+          </View>
+          {reaction ? (
+            <View
+              style={{
+                position: "absolute",
+                top: -3,
+                insetInlineStart: -3,
+                width: 20,
+                height: 20,
+                borderRadius: 10,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: colors.card,
+                borderWidth: 1,
+                borderColor: colors.line,
+              }}
+            >
+              <ReactionGlyph kind={reaction.kind} emoji={reaction.emoji} size={13} />
+            </View>
+          ) : null}
+        </Pressable>
+      ))}
+    </ScrollView>
   );
 }
 
@@ -217,8 +271,11 @@ export function Bubble({
   moderate?: boolean;
 }) {
   const router = useRouter();
+  const mine = moment.author.id === viewerId;
+  const audience = useAudience(moment.id, mine);
   const hasComments = moment.comments.length > 0;
-  const hasReactions = moment.reactions.length > 0;
+  // لصاحبها: من شاهد يكفي ليُرسم القالب — المشاهدون صفُّه وإن لم يتفاعل أحد.
+  const hasReactions = mine ? (audience.data?.people.length ?? 0) > 0 : moment.reactions.length > 0;
   if (!hasComments && !hasReactions) return null;
 
   return (
@@ -233,7 +290,9 @@ export function Bubble({
         paddingVertical: 10,
       }}
     >
-      {hasReactions ? <Reactors reactions={moment.reactions} viewerId={viewerId} /> : null}
+      {hasReactions ? (
+        mine ? <AuthorFaces momentId={moment.id} /> : <Reactors reactions={moment.reactions} viewerId={viewerId} />
+      ) : null}
       {hasReactions && hasComments ? (
         <View style={{ height: 1, backgroundColor: colors.line, marginVertical: 10 }} />
       ) : null}

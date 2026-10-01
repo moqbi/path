@@ -64,7 +64,9 @@ app.use(
     // وPUT معها: البريد والخصوصية والغلاف وصورة العرض كلّها `PUT`،
     // فكان المتصفّح يردّ طلبها في الفحص المبدئي قبل أن يصل الخادم.
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowHeaders: ["Authorization", "Content-Type"],
+    // ومعرّفُ الجهاز (القاعدة ١٩٤): بدونه يردّ المتصفّح كلَّ طلبٍ من معاينة
+    // الويب في الفحص المبدئي — الجوّالُ الأصليّ لا يمرّ بـCORS فلا يُرى فيه.
+    allowHeaders: ["Authorization", "Content-Type", "X-Device-Id"],
     maxAge: 600,
     credentials: false,
   }),

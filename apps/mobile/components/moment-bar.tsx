@@ -6,7 +6,6 @@ import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ReactionGlyph, facesFor, CUSTOM, EMOJI_GROUPS } from "./reactions";
 import { EyeIcon, LockIcon, UnlockIcon } from "./icons";
-import { Avatar } from "./avatar";
 import { ar } from "../lib/format";
 import { ReportButton } from "./report-sheet";
 import { api } from "../lib/api";
@@ -46,7 +45,7 @@ export function MomentBar({
   head,
   extra,
   inset = false,
-  panelFirst = false,
+  footer,
   locked = false,
 }: {
   momentId: string;
@@ -58,7 +57,12 @@ export function MomentBar({
   head?: React.ReactNode;
   extra?: React.ReactNode;
   inset?: boolean;
-  panelFirst?: boolean;
+  /**
+   * ما تحت اللوحة: الوجوه والتعليقات. اللوحةُ تُفتح بين المتن وبينه —
+   * **بقرار المالك**: كانت تُفتح في أعلى البطاقة فوق النصّ، وصفُّ وجوهها
+   * يتكرّر مع صفّ الوجوه تحتها.
+   */
+  footer?: React.ReactNode;
   /** التعليقاتُ مقفلة بيد صاحبها: يبقى التفاعل، ويذهب الحقل. */
   locked?: boolean;
 }) {
@@ -72,7 +76,7 @@ export function MomentBar({
   const react = useReact(momentId);
   const comment = useComment(momentId);
   const faces = facesFor(momentKind);
-  const audience = useAudience(momentId, author && open);
+  const audience = useAudience(momentId, author);
   const lock = useLockComments(momentId);
   const isLocked = author ? (audience.data?.commentsLocked ?? locked) : locked;
 
@@ -117,7 +121,7 @@ export function MomentBar({
 
   const button = (
     <Pressable
-      accessibilityLabel="تفاعل"
+      accessibilityLabel={isLocked ? "تفاعل — التعليقات مقفلة" : "تفاعل"}
       onPress={() => {
         setBoard(false);
         setOpen((v) => !v);
@@ -130,43 +134,52 @@ export function MomentBar({
         justifyContent: "center",
         borderWidth: 1,
         // أرضيةٌ صلبة لا شفافة: فوق صورة الثيم كان الزرّ يكاد يختفي.
-        backgroundColor: mine ? colors.claySoft : colors.card,
-        borderColor: mine ? colors.clay : colors.line,
+        backgroundColor: mine || isLocked ? colors.claySoft : colors.card,
+        borderColor: mine || isLocked ? colors.clay : colors.line,
       }}
     >
-      <View style={{ opacity: mine ? 1 : 0.72 }}>
-        <ReactionGlyph kind={mine?.kind ?? "SMILE"} emoji={mine?.emoji} size={20} />
-      </View>
+      {/* التعليقاتُ مقفلة: الزرّ نفسه يقولها قبل أن يُفتح — بقرار المالك. */}
+      {isLocked ? (
+        <LockIcon size={15} color={colors.clayInk} />
+      ) : (
+        <View style={{ opacity: mine ? 1 : 0.72 }}>
+          <ReactionGlyph kind={mine?.kind ?? "SMILE"} emoji={mine?.emoji} size={20} />
+        </View>
+      )}
     </Pressable>
   );
 
   return (
     <View style={head ? undefined : { marginTop: 8 }}>
-      {/* الزرّ في الطرف الأيسر من المنشور — كما في الويب. */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: head ? "flex-start" : "center",
-          justifyContent: head ? "flex-start" : "flex-end",
-          gap: head ? 8 : 0,
-          paddingHorizontal: inset ? 12 : 0,
-          paddingTop: inset ? 10 : 0,
-          paddingBottom: inset ? 8 : 0,
-        }}
-      >
-        {head ? <View style={{ flex: 1 }}>{head}</View> : null}
-        {button}
-      </View>
+      {inset ? (
+        /*
+          في البطاقة الزرُّ يطفو في ركنها — **بقرار المالك**: كان صفّاً
+          وحده فوق المتن، فيبدأ النصّ بعد فراغٍ بارتفاع الزرّ. والمتنُ
+          يترك له مكانه (`paddingLeft` في البطاقة).
+        */
+        <View style={{ position: "absolute", top: 10, left: 12, zIndex: 2 }}>{button}</View>
+      ) : (
+        /* الزرّ في الطرف الأيسر من المنشور — كما في الويب. */
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: head ? "flex-start" : "center",
+            justifyContent: head ? "flex-start" : "flex-end",
+            gap: head ? 8 : 0,
+          }}
+        >
+          {head ? <View style={{ flex: 1 }}>{head}</View> : null}
+          {button}
+        </View>
+      )}
 
-      {panelFirst ? null : extra}
+      {extra}
 
       {open ? (
         <View
           style={{
             marginTop: 8,
-            // واللوحةُ فوق الصورة حين `panelFirst`، فلها مسافةٌ من تحتها
-            // كما لها من فوقها — كان حقلُ التعليق ملاصقاً لحافّة الصورة.
-            marginBottom: panelFirst ? 12 : 0,
+            marginBottom: inset ? 4 : 0,
             gap: 8,
             paddingHorizontal: inset ? 12 : 0,
           }}
@@ -181,16 +194,7 @@ export function MomentBar({
             بابُ ميزةٍ مدفوعة لا يُخبّأ.
           */}
           {author ? (
-            <AuthorPanel
-              loading={audience.isLoading}
-              data={audience.data}
-              locked={isLocked}
-              onLock={() => lock.mutate(!isLocked)}
-              onOpen={(id) => {
-                setOpen(false);
-                router.push(`/u/${id}` as never);
-              }}
-            />
+            <AuthorPanel data={audience.data} locked={isLocked} onLock={() => lock.mutate(!isLocked)} />
           ) : (
           <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 2 }}>
             {faces.map((kind) => (
@@ -340,6 +344,8 @@ export function MomentBar({
               accessibilityLabel="تعليق"
               style={{
                 flex: 1,
+                // بلا `minWidth: 0` يأخذ الحقلُ عرضَه الافتراضيّ فيخرج عن حافّة البطاقة.
+                minWidth: 0,
                 height: 36,
                 borderRadius: 999,
                 borderWidth: 1,
@@ -391,115 +397,57 @@ export function MomentBar({
         </View>
       ) : null}
 
-      {panelFirst ? extra : null}
+      {footer}
     </View>
   );
 }
 
 /**
  * لوحةُ صاحب اللحظة — **بقرار المالك**: لا وجوهَ تفاعلٍ يضغطها على لحظته،
- * بل ما يريد أن يعرفه عنها. قفلُ التعليقات، وعددُ من شاهدها، ثمّ وجوهُهم
- * صفّاً يُمرَّر أفقياً: من تفاعل بصورته كاملةً وشارةِ تفاعله، ومن شاهد ولم
- * يتفاعل بصورةٍ باهتة. والضغطُ على وجهٍ يفتح ملفّه.
+ * بل قفلُ التعليقات وعددُ من شاهدها. ووجوهُ المشاهدين ليست هنا: صفٌّ واحد
+ * تحت البطاقة ظاهرٌ بلا ضغطة (`AuthorFaces`)، من تفاعل بصورته ومن شاهد
+ * باهتاً — كان صفّاً ثانياً في اللوحة يكرّر ما تحتها.
  */
 function AuthorPanel({
-  loading,
   data,
   locked,
   onLock,
-  onOpen,
 }: {
-  loading: boolean;
   data: import("../lib/queries").Audience | undefined;
   locked: boolean;
   onLock: () => void;
-  onOpen: (userId: string) => void;
 }) {
-  const people = data?.people ?? [];
   return (
-    <View style={{ gap: 8 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-        <Pressable
-          accessibilityRole="switch"
-          accessibilityState={{ checked: locked }}
-          accessibilityLabel={locked ? "افتح التعليقات" : "أقفل التعليقات"}
-          onPress={onLock}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 6,
-            height: 32,
-            paddingHorizontal: 11,
-            borderRadius: 999,
-            borderWidth: 1,
-            borderColor: locked ? colors.clay : colors.line,
-            backgroundColor: locked ? colors.claySoft : colors.card,
-          }}
-        >
-          {locked ? <LockIcon size={15} color={colors.clayInk} /> : <UnlockIcon size={15} color={colors.muted} />}
-          <Text style={{ color: locked ? colors.clayInk : colors.muted, fontSize: 11.5, fontWeight: "700" }}>
-            {locked ? "التعليقات مقفلة" : "التعليقات مفتوحة"}
-          </Text>
-        </Pressable>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+      <Pressable
+        accessibilityRole="switch"
+        accessibilityState={{ checked: locked }}
+        accessibilityLabel={locked ? "افتح التعليقات" : "أقفل التعليقات"}
+        onPress={onLock}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 6,
+          height: 32,
+          paddingHorizontal: 11,
+          borderRadius: 999,
+          borderWidth: 1,
+          borderColor: locked ? colors.clay : colors.line,
+          backgroundColor: locked ? colors.claySoft : colors.card,
+        }}
+      >
+        {locked ? <LockIcon size={15} color={colors.clayInk} /> : <UnlockIcon size={15} color={colors.muted} />}
+        <Text style={{ color: locked ? colors.clayInk : colors.muted, fontSize: 11.5, fontWeight: "700" }}>
+          {locked ? "التعليقات مقفلة" : "التعليقات مفتوحة"}
+        </Text>
+      </Pressable>
 
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-          <EyeIcon size={15} color={colors.muted} />
-          <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600" }}>
-            {data ? `${ar(data.views)} مشاهدة` : "…"}
-          </Text>
-        </View>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+        <EyeIcon size={15} color={colors.muted} />
+        <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600" }}>
+          {data ? `${ar(data.views)} مشاهدة` : "…"}
+        </Text>
       </View>
-
-      {loading ? (
-        <ActivityIndicator size="small" color={colors.clay} style={{ alignSelf: "flex-start", marginVertical: 8 }} />
-      ) : people.length === 0 ? (
-        <Text style={{ color: colors.faint, fontSize: 11.5, paddingVertical: 6 }}>لم يشاهدها أحدٌ بعد.</Text>
-      ) : (
-        <ScrollView
-          horizontal
-          nestedScrollEnabled
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ flexDirection: "row", gap: 10, paddingVertical: 4, direction: "rtl" }}
-        >
-          {people.map(({ user, reaction }) => (
-            <Pressable
-              key={user.id}
-              accessibilityLabel={reaction ? `${user.name} تفاعل` : `${user.name} شاهد`}
-              onPress={() => onOpen(user.id)}
-              style={{ width: 52, alignItems: "center", gap: 4 }}
-            >
-              <View style={{ opacity: reaction ? 1 : 0.4 }}>
-                <Avatar name={user.name} mediaId={user.avatarMediaId} frame={user.frame} size={44} />
-              </View>
-              {reaction ? (
-                <View
-                  style={{
-                    position: "absolute",
-                    top: 28,
-                    left: 0,
-                    width: 22,
-                    height: 22,
-                    borderRadius: 11,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: colors.card,
-                    borderWidth: 1,
-                    borderColor: colors.line,
-                  }}
-                >
-                  <ReactionGlyph kind={reaction.kind} emoji={reaction.emoji} size={15} />
-                </View>
-              ) : null}
-              <Text
-                numberOfLines={1}
-                style={{ color: reaction ? colors.ink : colors.faint, fontSize: 10.5, maxWidth: 52 }}
-              >
-                {user.name}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-      )}
     </View>
   );
 }
