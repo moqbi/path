@@ -9,7 +9,16 @@ import { deleteAccount } from "@/app/actions";
  * مطويٌّ فلا يُضغط بالخطأ، ومكتوبٌ فيه ما يذهب قبل أن يذهب، وكلمة المرور
  * شرطٌ لأن جهازاً مفتوحاً في يد غيرك لا يجب أن يمحو حسابك بضغطتين.
  */
-export function DeleteAccount() {
+export function DeleteAccount({
+  hasPassword,
+  answer,
+  hasEmail,
+}: {
+  hasPassword: boolean;
+  /** ما يُكتب للتأكيد حين لا كلمة: البريدُ، أو الاسمُ لمن لا بريدَ له. */
+  answer: string;
+  hasEmail: boolean;
+}) {
   const [error, action, pending] = useActionState(deleteAccount, null);
 
   return (
@@ -24,16 +33,23 @@ export function DeleteAccount() {
       <form action={action} className="flex flex-col gap-3 border-t border-line p-4">
         <p className="text-[12.5px] leading-relaxed text-muted">
           يذهب حسابك ومعه كل ما فيه: لحظاتك وصورك ومحادثاتك وتفاعلاتك وتعليقاتك
-          وأصدقاؤك. لا نُبقي نسخة ولا يمكن التراجع. اكتب كلمة مرورك لتأكيد أنك أنت.
+          وأصدقاؤك. لا نُبقي نسخة ولا يمكن التراجع.{" "}
+          {/* من دخل بمزوّدٍ بلا كلمة يكتب بريده وهو مكتوبٌ أمامه — لا «كلمة مرور» لا يملكها. */}
+          {hasPassword ? "اكتب كلمة مرورك لتأكيد أنك أنت." : hasEmail ? "اكتب بريدك للتأكيد:" : "اكتب اسمك للتأكيد:"}
         </p>
+        {hasPassword ? null : (
+          <p dir="auto" className="select-all text-[13px] font-semibold text-ink">
+            {answer}
+          </p>
+        )}
 
         <input
           name="password"
-          type="password"
+          type={hasPassword ? "password" : "text"}
           required
-          autoComplete="current-password"
-          placeholder="كلمة المرور"
-          aria-label="كلمة المرور"
+          autoComplete={hasPassword ? "current-password" : "off"}
+          placeholder={hasPassword ? "كلمة المرور" : hasEmail ? "البريد" : "الاسم"}
+          aria-label={hasPassword ? "كلمة المرور" : hasEmail ? "البريد" : "الاسم"}
           className="rounded-xl border border-line bg-paper px-4 text-[13.5px] text-ink outline-none focus:border-clay"
           style={{ height: 48 }}
         />

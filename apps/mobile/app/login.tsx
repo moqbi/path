@@ -23,7 +23,7 @@ import {
   loadProviders,
 } from "../lib/providers";
 import { AthrMark, AthrWordmark, TAGLINE_AR, TAGLINE_EN } from "../components/brand";
-import { BackIcon } from "../components/icons";
+import { BackIcon, CheckIcon } from "../components/icons";
 import { api } from "../lib/api";
 import { openIn } from "../lib/browse";
 import { SITE_URL, hasSite } from "@athar/shared";
@@ -201,6 +201,9 @@ export default function Login() {
      إلى شاشةٍ أخرى ثمّ يُعاد. وحقلُ الاسم يظهر مع الإنشاء وحده.
   */
   const [newcomer, setNewcomer] = useState(false);
+  // الموافقةُ علامةٌ يضعها المستخدم بيده — **بقرار المالك** — لا سطرٌ يُقرأ ويُتجاوز.
+  const [agreed, setAgreed] = useState(false);
+  const NEED_CONSENT = "ضع علامة الموافقة على الشروط أولاً";
   const [sent, setSent] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -247,6 +250,10 @@ export default function Login() {
   async function withProvider(key: string) {
     setError(null);
     setNotice(null);
+    if (!agreed) {
+      setError(NEED_CONSENT);
+      return;
+    }
 
     if (key === "snap") {
       if (!snapReady()) {
@@ -331,6 +338,10 @@ export default function Login() {
 
   async function submit() {
     if (pending) return;
+    if (!agreed) {
+      setError(NEED_CONSENT);
+      return;
+    }
     setPending(true);
     setError(null);
     try {
@@ -574,7 +585,7 @@ export default function Login() {
                   {newcomer ? "عندي حساب — سجّل دخولي" : "ما عندي حساب — أنشئ واحداً"}
                 </Text>
               </Pressable>
-              <Consent />
+              <Consent agreed={agreed} onToggle={() => { setAgreed((was) => !was); setError(null); }} />
             </View>
           ) : (
             <View style={{ gap: 10 }}>
@@ -639,7 +650,7 @@ export default function Login() {
                   {notice}
                 </Text>
               ) : null}
-              <Consent />
+              <Consent agreed={agreed} onToggle={() => { setAgreed((was) => !was); setError(null); }} />
             </View>
           )}
         </Animated.View>
@@ -654,7 +665,7 @@ export default function Login() {
  * المحتوى المسيء ولا مع المسيئين. والبابُ واحد للبريد والمزوّدين: كلُّها
  * تُنشئ حساباً لمن لا حسابَ له.
  */
-function Consent() {
+function Consent({ agreed, onToggle }: { agreed: boolean; onToggle: () => void }) {
   const link = (title: string, path: string) => (
     <Text
       accessibilityRole="link"
@@ -667,10 +678,34 @@ function Consent() {
     </Text>
   );
   return (
-    <Text style={{ marginTop: 6, fontSize: 11.5, lineHeight: 19, color: "rgba(247,245,239,.72)", textAlign: "center" }}>
-      بالمتابعة أنت توافق على {link("شروط الاستخدام", "/terms")} و{link("سياسة الخصوصية", "/privacy")}.
-      {"\n"}لا تسامح مع المحتوى المسيء أو المستخدمين المسيئين.
-    </Text>
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: agreed }}
+      accessibilityLabel="أوافق على شروط الاستخدام وسياسة الخصوصية"
+      onPress={onToggle}
+      hitSlop={6}
+      style={{ marginTop: 6, flexDirection: "row", alignItems: "flex-start", gap: 10 }}
+    >
+      <View
+        style={{
+          width: 22,
+          height: 22,
+          marginTop: 1,
+          borderRadius: 6,
+          borderWidth: 1.5,
+          borderColor: agreed ? colors.clay : "rgba(247,245,239,.6)",
+          backgroundColor: agreed ? colors.clay : "transparent",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {agreed ? <CheckIcon size={14} color={colors.onBrand} /> : null}
+      </View>
+      <Text style={{ flex: 1, minWidth: 0, fontSize: 11.5, lineHeight: 19, color: "rgba(247,245,239,.78)", textAlign: "right" }}>
+        أوافق على {link("شروط الاستخدام", "/terms")} و{link("سياسة الخصوصية", "/privacy")}، ولا تسامح مع المحتوى
+        المسيء أو المستخدمين المسيئين.
+      </Text>
+    </Pressable>
   );
 }
 

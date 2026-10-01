@@ -149,9 +149,22 @@ export const profileRoutes = new Hono()
     async (c) => c.json(await profile.joinBeta(me(c), c.req.valid("json")), 201),
   )
 
-  /** حذف الحساب — بكلمة المرور، وآخر ما في الملف. */
+  /**
+   * حذف الحساب — بكلمة المرور، أو بالبريد لمن لا كلمةَ له، أو بآبل من
+   * جديد لمن رُبط بها (ومعه رمزُ تفويضٍ يُلغى به الربط). وآخر ما في الملف.
+   */
   .post(
     "/delete",
-    zValidator("json", z.object({ password: z.string().min(1).max(200) })),
-    async (c) => c.json(await profile.deleteAccount(me(c), c.req.valid("json").password)),
+    zValidator(
+      "json",
+      z
+        .object({
+          password: z.string().min(1).max(200).optional(),
+          apple: z
+            .object({ idToken: z.string().min(20).max(4000), code: z.string().min(10).max(1000) })
+            .optional(),
+        })
+        .refine((body) => body.password || body.apple, { message: "التأكيد مطلوب" }),
+    ),
+    async (c) => c.json(await profile.deleteAccount(me(c), c.req.valid("json"))),
   );

@@ -82,7 +82,7 @@ export default async function SettingsPage() {
             </Link>
 
             {/* حذف الحساب هنا يُبحث عنه، لا في أسفل الملف. */}
-            <DeleteAccount />
+            <DeleteAccount hasPassword={hasPassword} answer={user.email ?? user.name} hasEmail={Boolean(user.email)} />
           </div>
         </Section>
 

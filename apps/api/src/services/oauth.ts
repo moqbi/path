@@ -31,6 +31,8 @@ export type Identity = {
   /** آبل لا تعطي الاسم إلا مرّةً واحدة وقت أوّل موافقة، فيأتي من الجهاز. */
   name: string | null;
   emailVerified: boolean;
+  /** معرّفُ عميلنا الذي صدر له الرمز — يُوقَّع به سرُّ العميل عند إلغاء ربط آبل. */
+  audience?: string;
 };
 
 /** يتحقّق من رمز آبل ويردّ هويّةً. */
@@ -51,6 +53,7 @@ async function readApple(idToken: string, name: string | null): Promise<Identity
     name,
     // آبل تقولها نصّاً أحياناً («true») لا قيمةً منطقية.
     emailVerified: payload.email_verified === true || payload.email_verified === "true",
+    audience: Array.isArray(payload.aud) ? payload.aud[0] : payload.aud,
   };
 }
 

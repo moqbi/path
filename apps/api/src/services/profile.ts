@@ -373,26 +373,45 @@ export async function setPicture(
  * حذفه — الصفوف تذهب بـ`Cascade` وكائنات السحابة لا تذهب معها، فتبقى
  * بكسلاته بعد ذهاب حسابه.
  */
-export async function deleteAccount(userId: string, password: string) {
+export async function deleteAccount(
+  userId: string,
+  input: { password?: string; apple?: { idToken: string; code: string } },
+) {
   const { verifyPassword } = await import("./auth");
 
   const row = await prisma.user.findUnique({
     where: { id: userId },
     select: { email: true, name: true, passwordHash: true },
   });
-  /*
-     ومن دخل بمزوّدٍ ولا كلمةَ له يكتب **بريده** بدلها: لا بدّ من شيءٍ
-     يعرفه هو ولا يعرفه من التقط جهازه المفتوح.
-  */
   if (!row) throw notFound("لا يوجد هذا الحساب");
+
   /*
-     ومن لا كلمةَ له ولا بريد (دخل بسناب ولم يربط بريداً) يكتب **اسمه**:
-     شيءٌ يعرفه هو، ولا بدّ من حاجزٍ قبل آخر خطوة.
+     ثلاثة أبوابٍ للتأكيد، وكلّها شيءٌ يملكه صاحبُ الحساب لا من التقط
+     جهازه المفتوح:
+     ١. **آبل من جديد** — لمن رُبط حسابُه بها: وجهُه أو بصمتُه على نافذة
+        النظام، ومعها رمزُ تفويضٍ يُلغى به الربطُ عند آبل (شرطُ 5.1.1(v)).
+        وكان هذا الحسابُ يُسأل «كلمة المرور» وهو بلا كلمة، فلا يُحذف.
+     ٢. كلمة المرور لمن له كلمة.
+     ٣. البريدُ — أو الاسمُ لمن لا بريدَ له — لمن لا كلمةَ له.
   */
-  const answer = (row.email ?? row.name).toLowerCase();
-  const confirmed = row.passwordHash
-    ? await verifyPassword(password, row.passwordHash)
-    : password.trim().toLowerCase() === answer;
+  let confirmed = false;
+  let appleClient: string | null = null;
+  if (input.apple) {
+    const { readIdentity } = await import("./oauth");
+    const identity = await readIdentity("APPLE", input.apple.idToken, null);
+    const linked = await prisma.authIdentity.findFirst({
+      where: { userId, provider: "APPLE", subject: identity.subject },
+      select: { id: true },
+    });
+    if (!linked) throw forbidden("حساب آبل هذا غير مربوط بحسابك");
+    confirmed = true;
+    appleClient = identity.audience ?? null;
+  } else if (row.passwordHash) {
+    confirmed = await verifyPassword(input.password ?? "", row.passwordHash);
+  } else {
+    const answer = (row.email ?? row.name).toLowerCase();
+    confirmed = (input.password ?? "").trim().toLowerCase() === answer;
+  }
   if (!confirmed) {
     throw forbidden(
       row.passwordHash
@@ -401,6 +420,12 @@ export async function deleteAccount(userId: string, password: string) {
           ? "اكتب بريدك كما هو للتأكيد"
           : "اكتب اسمك كما هو للتأكيد",
     );
+  }
+
+  // الإلغاءُ قبل الحذف ولا يوقفه: فشلُه سطرٌ في السجلّ لا حسابٌ عالق.
+  if (input.apple && appleClient) {
+    const { revokeApple } = await import("./apple-revoke");
+    await revokeApple(input.apple.code, appleClient);
   }
 
   const files = await prisma.media.findMany({ where: { ownerId: userId }, select: { id: true } });

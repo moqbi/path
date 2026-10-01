@@ -74,6 +74,19 @@ export async function signInWithApple(): Promise<Me> {
 }
 
 /**
+ * تأكيدٌ بآبل قبل حذف الحساب: نافذةُ النظام من جديد بلا نطاقات، فيعود
+ * رمزُ هويّةٍ يُثبت الصاحب ورمزُ تفويضٍ يُلغى به الربطُ عند آبل.
+ * والإلغاءُ من المستخدم يُرمى كما هو (`ERR_REQUEST_CANCELED`).
+ */
+export async function confirmWithApple(): Promise<{ idToken: string; code: string }> {
+  const credential = await AppleAuth.signInAsync({ requestedScopes: [] });
+  if (!credential.identityToken || !credential.authorizationCode) {
+    throw new Error("ما وصل رمزٌ من آبل");
+  }
+  return { idToken: credential.identityToken, code: credential.authorizationCode };
+}
+
+/**
  * قوقل: الخطّافُ يفتح صفحةَ المزوّد ويردّ الرمز.
  *
  * `useIdTokenAuthRequest` لا `useAuthRequest`: نريد **رمز هويّةٍ
