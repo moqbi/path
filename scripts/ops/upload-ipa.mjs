@@ -15,8 +15,23 @@
 import { createHash, createSign } from "node:crypto";
 import { readFileSync, statSync, openSync, readSync, closeSync } from "node:fs";
 
+import { createInterface } from "node:readline/promises";
+
 const [file, appId, version, build] = process.argv.slice(2);
-const { ASC_KEY_ID: keyId, ASC_ISSUER_ID: issuer, ASC_KEY_PATH: keyPath } = process.env;
+
+/*
+  ما لم يُعطَ في البيئة يُسأل عنه في الطرفية — نسخُ أمرٍ فيه «ضع_رقمك_هنا»
+  ثمّ تشغيلُه كما هو أسهلُ من تعديله، فيصل المثالُ إلى أبل بدل الرقم.
+*/
+async function ask(label) {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const answer = (await rl.question(label)).trim().replace(/^['"]|['"]$/g, "");
+  rl.close();
+  return answer;
+}
+const keyId = process.env.ASC_KEY_ID || (await ask("الصق Key ID (عشر خانات) ثمّ Enter: "));
+const issuer = process.env.ASC_ISSUER_ID || (await ask("الصق Issuer ID (أعلى صفحة المفاتيح) ثمّ Enter: "));
+const keyPath = process.env.ASC_KEY_PATH || `${process.env.HOME}/keys/AuthKey.p8`;
 if (!file || !appId || !version || !build || !keyId || !issuer || !keyPath) {
   console.error(
     "الاستعمال:\n  ASC_KEY_ID=… ASC_ISSUER_ID=… ASC_KEY_PATH=…/AuthKey.p8 \\\n  node upload-ipa.mjs <ملف.ipa> <ASC App ID> <الإصدار> <رقم البناء>",
