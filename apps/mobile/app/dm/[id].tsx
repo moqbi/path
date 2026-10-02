@@ -12,7 +12,7 @@ import { viewPhoto } from "../../components/photo-viewer";
 import { MediaImage } from "../../components/media-image";
 import { ScreenHeader } from "../../components/screen-header";
 import { Ticks, receiptOf } from "../../components/receipt";
-import { CameraIcon, CloseIcon, MicIcon, PlayIcon } from "../../components/icons";
+import { CameraIcon, CloseIcon, MicIcon, PauseIcon, PlayIcon } from "../../components/icons";
 import { api, baseUrl, currentAccess } from "../../lib/api";
 import { uploadFile } from "../../lib/upload";
 import { useKeyboardInset } from "../../lib/keyboard";
@@ -37,35 +37,91 @@ type Line = {
 const clock = (seconds: number) =>
   `${ar(Math.floor(seconds / 60))}:${ar(String(seconds % 60).padStart(2, "0"))}`;
 
-/** فقاعة صوت: زرُّ تشغيلٍ وشريطٌ ومدّة — لا مشغّلُ نظامٍ عارٍ. */
-function Voice({ mediaId, seconds, mine }: { mediaId: string; seconds: number; mine: boolean }) {
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const [playing, setPlaying] = useState(false);
+/**
+ * المقطعُ الذي يُسمع الآن — واحدٌ في المحادثة كلّها: تشغيلُ مقطعٍ يوقف
+ * ما قبله، فلا يتكلّم اثنان فوق بعض.
+ */
+let speaking: (() => void) | null = null;
 
-  useEffect(() => () => void sound?.unloadAsync(), [sound]);
+/**
+ * فقاعة صوت: زرُّ تشغيلٍ وشريطٌ ومدّة — لا مشغّلُ نظامٍ عارٍ.
+ *
+ * والزرُّ يقول ما يجري (القاعدة ٢٢٢): دوّارةٌ وهو يُجلب، ثمّ إيقافٌ مؤقّتٌ
+ * وهو يُسمع، والشريطُ يمتلئ والوقتُ يعدّ ما مضى. كان «تشغيل» ثابتاً فلا
+ * يُعرف أبدأ المقطعُ أم لا. وبانتهائه يعود إلى أوّله فيُعاد بضغطة.
+ */
+function Voice({ mediaId, seconds, mine }: { mediaId: string; seconds: number; mine: boolean }) {
+  const sound = useRef<Audio.Sound | null>(null);
+  const [state, setState] = useState<"idle" | "loading" | "playing" | "paused">("idle");
+  const [at, setAt] = useState(0);
+  const [length, setLength] = useState(seconds * 1000);
+
+  useEffect(
+    () => () => {
+      void sound.current?.unloadAsync();
+      if (speaking === pause) speaking = null;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  function pause() {
+    void sound.current?.pauseAsync();
+    setState("paused");
+  }
 
   async function toggle() {
-    if (sound) {
-      if (playing) await sound.pauseAsync();
-      else await sound.playAsync();
-      setPlaying(!playing);
+    if (state === "loading") return;
+    if (state === "playing") {
+      pause();
+      if (speaking === pause) speaking = null;
       return;
     }
-    const token = currentAccess();
-    const { sound: made } = await Audio.Sound.createAsync(
-      { uri: `${baseUrl}/v1/media/${mediaId}`, headers: { authorization: `Bearer ${token}` } },
-      { shouldPlay: true },
-    );
-    made.setOnPlaybackStatusUpdate((status) => {
-      if (status.isLoaded && status.didJustFinish) setPlaying(false);
-    });
-    setSound(made);
-    setPlaying(true);
+    if (speaking && speaking !== pause) speaking();
+    speaking = pause;
+
+    if (sound.current) {
+      await sound.current.playAsync();
+      setState("playing");
+      return;
+    }
+    setState("loading");
+    try {
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true });
+      const { sound: made } = await Audio.Sound.createAsync(
+        { uri: `${baseUrl}/v1/media/${mediaId}`, headers: { authorization: `Bearer ${currentAccess()}` } },
+        { shouldPlay: true, progressUpdateIntervalMillis: 200 },
+      );
+      made.setOnPlaybackStatusUpdate((status) => {
+        if (!status.isLoaded) return;
+        setAt(status.positionMillis);
+        if (status.durationMillis) setLength(status.durationMillis);
+        if (status.didJustFinish) {
+          void made.setPositionAsync(0);
+          void made.pauseAsync();
+          setAt(0);
+          setState("idle");
+          if (speaking === pause) speaking = null;
+        }
+      });
+      sound.current = made;
+      setState("playing");
+    } catch {
+      setState("idle");
+      if (speaking === pause) speaking = null;
+    }
   }
+
+  const ink = mine ? colors.onBrand : colors.ink2;
+  const started = state === "playing" || state === "paused";
+  const progress = started && length > 0 ? Math.min(1, at / length) : 0;
+  const shown = started ? Math.floor(at / 1000) : seconds;
 
   return (
     <Pressable
-      onPress={toggle}
+      onPress={() => void toggle()}
+      accessibilityRole="button"
+      accessibilityLabel={state === "playing" ? "إيقاف مؤقّت" : "تشغيل الرسالة الصوتية"}
       style={{
         flexDirection: "row",
         alignItems: "center",
@@ -80,12 +136,18 @@ function Voice({ mediaId, seconds, mine }: { mediaId: string; seconds: number; m
       }}
     >
       <View style={{ width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: mine ? "rgba(14,26,36,.18)" : colors.chip }}>
-        <PlayIcon size={13} color={mine ? colors.onBrand : colors.ink2} />
+        {state === "loading" ? (
+          <ActivityIndicator size="small" color={ink} />
+        ) : state === "playing" ? (
+          <PauseIcon size={13} color={ink} />
+        ) : (
+          <PlayIcon size={13} color={ink} />
+        )}
       </View>
-      <View style={{ width: 90, height: 3, borderRadius: 2, backgroundColor: mine ? "rgba(14,26,36,.25)" : colors.line }} />
-      <Text style={{ color: mine ? colors.onBrand : colors.ink2, fontSize: 12, fontWeight: "600" }}>
-        {clock(seconds)}
-      </Text>
+      <View style={{ width: 90, height: 3, borderRadius: 2, overflow: "hidden", backgroundColor: mine ? "rgba(14,26,36,.25)" : colors.line }}>
+        <View style={{ width: `${progress * 100}%`, height: 3, borderRadius: 2, backgroundColor: ink }} />
+      </View>
+      <Text style={{ color: ink, fontSize: 12, fontWeight: "600" }}>{clock(shown)}</Text>
     </Pressable>
   );
 }
@@ -233,14 +295,19 @@ export default function Conversation() {
   async function hearTape() {
     if (!tape) return;
     if (heard.current) {
+      // إيقافٌ مؤقّتٌ يُستأنف من حيث وقف، والانتهاءُ يُرجعه إلى أوّله.
       if (hearing) await heard.current.pauseAsync();
-      else await heard.current.replayAsync();
+      else await heard.current.playAsync();
       setHearing(!hearing);
       return;
     }
     const { sound } = await Audio.Sound.createAsync({ uri: tape.uri }, { shouldPlay: true });
     sound.setOnPlaybackStatusUpdate((status) => {
-      if (status.isLoaded && status.didJustFinish) setHearing(false);
+      if (status.isLoaded && status.didJustFinish) {
+        void sound.setPositionAsync(0);
+        void sound.pauseAsync();
+        setHearing(false);
+      }
     });
     heard.current = sound;
     setHearing(true);
@@ -435,7 +502,7 @@ export default function Conversation() {
                 style={{ width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: colors.chip }}
               >
                 {hearing ? (
-                  <View style={{ width: 11, height: 11, borderRadius: 2, backgroundColor: colors.ink2 }} />
+                  <PauseIcon size={13} color={colors.ink2} />
                 ) : (
                   <PlayIcon size={13} color={colors.ink2} />
                 )}
