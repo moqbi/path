@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useBarSpace } from "../../../components/glass-bar";
 import { scrolled } from "../../../lib/scrolled";
 import { markSeen } from "../../../lib/seen";
 import { View, Pressable, ActivityIndicator, Animated, RefreshControl } from "react-native";
@@ -103,6 +104,8 @@ function ByNumber({ memberNo }: { memberNo: string }) {
 }
 
 function Profile() {
+  // المحتوى يمرّ تحت الشريط الزجاجيّ، وآخرُه يُقرأ فوقه (القاعدة ٢٢٨).
+  const barSpace = useBarSpace();
   const me = useSession((state) => state.me);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -213,7 +216,7 @@ function Profile() {
             اللحظات تحتاج حشوة الخطّ الزمني نفسها: بدونها تلتصق البطاقات
             بالحافتين ويمشي عمود الصور خارج الخيط، فتُقرأ الصفحة مكسورة.
           */
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: barSpace + 8 }}
           ListHeaderComponent={
             <>
               {/*

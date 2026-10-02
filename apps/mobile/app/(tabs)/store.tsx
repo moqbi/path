@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useBarSpace } from "../../components/glass-bar";
 import { View, ScrollView, Pressable, ActivityIndicator, RefreshControl } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -31,6 +32,8 @@ function Row({ title, flame = false, children }: { title: string; flame?: boolea
  * المحدودة — صفوفٌ تُشتقّ من الأصناف لا تُرصف يدوياً.
  */
 export default function Store() {
+  // المحتوى يمرّ تحت الشريط الزجاجيّ، وآخرُه يُقرأ فوقه (القاعدة ٢٢٨).
+  const barSpace = useBarSpace();
   const router = useRouter();
   // حشوةُ الحافّة العليا في الرأس الداكن نفسه — انظر `components/screen-header.tsx`.
   const insets = useSafeAreaInsets();
@@ -157,7 +160,7 @@ export default function Store() {
         <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
       ) : (
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 28 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: barSpace + 8 }}
           refreshControl={
             <RefreshControl {...pullRefresh} tintColor={colors.clay} />
           }
