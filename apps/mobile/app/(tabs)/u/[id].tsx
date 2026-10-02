@@ -21,6 +21,7 @@ import { ar, membership } from "../../../lib/format";
 import { useSession } from "../../../lib/session";
 import { NameTag } from "../../../components/name-tag";
 import { colors } from "../../../theme/tokens";
+import { EdgeBack } from "../../../components/edge-back";
 
 type Person = {
   id: string;
@@ -130,6 +131,8 @@ function Profile() {
   };
 
   return (
+    // السحبُ من الحافّة رجوع (القاعدة ٢١٧): الملفُّ داخل التبويبات بلا إيماءةٍ أصليّة.
+    <EdgeBack fallback="/circle">
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       {/*
         زرُّ رجوعٍ فوقه — **بقرار المالك**، ونقضاً للقاعدة ٤٢: الملفُّ يُفتح
@@ -329,6 +332,7 @@ function Profile() {
         />
       )}
     </SafeAreaView>
+    </EdgeBack>
   );
 }
 

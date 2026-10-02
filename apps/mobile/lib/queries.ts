@@ -340,6 +340,8 @@ export type StoryRing = {
   frame: { spec: string; mediaId: string | null; frameHole?: number | null } | null;
   fresh: boolean;
   count: number;
+  /** فيها قصّةٌ خاصّة — قفلٌ على الحلقة (القاعدة ٢١٩). اختياريٌّ لخادمٍ أقدم. */
+  private?: boolean;
 };
 
 export const useRings = () =>

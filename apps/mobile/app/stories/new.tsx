@@ -17,6 +17,9 @@ import { EditableTexts, TextEditor, freshText } from "../../components/story-tex
 import { SourceSheet } from "../../components/source-sheet";
 import { takeShot } from "../../lib/capture";
 import { colors } from "../../theme/tokens";
+import { LockIcon } from "../../components/icons";
+import { PeopleSheet, PickerButton, type Friend } from "../../components/people-sheet";
+import { useCircle } from "../../lib/queries";
 
 /** أقصى مدّة لفيديو القصة — نفس حدّ الخادم. */
 
@@ -42,6 +45,15 @@ export default function NewStory() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [filter, setFilter] = useState("");
   const [busy, setBusy] = useState(false);
+  /*
+    مين يشوفها (القاعدة ٢١٩): دائرتُك كلّها، أو أشخاصٌ تختارهم فتصير خاصّةً
+    بقفلٍ عليها. والاختيارُ في نافذة البحث نفسها التي في «مع مين؟» (القاعدة ٦٧).
+  */
+  const circle = useCircle();
+  const friends: Friend[] = circle.data?.members ?? [];
+  const [only, setOnly] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [choosing, setChoosing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
   const [texts, setTexts] = useState<StoryText[]>([]);
@@ -111,6 +123,10 @@ export default function NewStory() {
 
   async function publish() {
     if (!draft || busy) return;
+    if (only && picked.length === 0) {
+      setError("اختر مين يشوفها، أو خلّها لأصدقائك كلهم.");
+      return;
+    }
     setBusy(true);
     setError(null);
 
@@ -123,6 +139,7 @@ export default function NewStory() {
           filter: filter || undefined,
           seconds: draft.video ? draft.seconds : undefined,
           texts: texts.length ? texts : undefined,
+          audience: only ? picked : undefined,
         }),
       });
       await client.invalidateQueries({ queryKey: ["stories"] });
@@ -260,6 +277,49 @@ export default function NewStory() {
       </ScrollView>
 
       <View style={{ paddingHorizontal: 20, paddingBottom: 26 }}>
+        <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
+          {[
+            { key: false, label: "أصدقائي كلهم" },
+            { key: true, label: "قصة خاصة" },
+          ].map((option) => {
+            const on = only === option.key;
+            return (
+              <Pressable
+                key={option.label}
+                onPress={() => {
+                  setOnly(option.key);
+                  if (option.key && picked.length === 0) setChoosing(true);
+                }}
+                style={{
+                  flex: 1,
+                  height: 40,
+                  borderRadius: 999,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  borderWidth: 1,
+                  borderColor: on ? colors.clay : colors.line,
+                  backgroundColor: on ? colors.claySoft : colors.card,
+                }}
+              >
+                {option.key ? <LockIcon size={14} color={on ? colors.clayInk : colors.muted} /> : null}
+                <Text style={{ color: on ? colors.clayInk : colors.ink2, fontSize: 13, fontWeight: on ? "700" : "500" }}>
+                  {option.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {only ? (
+          <View style={{ marginBottom: 10 }}>
+            <PickerButton
+              label={picked.length ? `يشوفها ${ar(picked.length)} من أصدقائك` : "اختر مين يشوفها"}
+              count={picked.length}
+              onOpen={() => setChoosing(true)}
+            />
+          </View>
+        ) : null}
         <Text style={{ color: colors.faint, fontSize: 11, textAlign: "center", marginBottom: 12 }}>
           تذهب بعد ٢٤ ساعة — من كل مكان
         </Text>
@@ -282,6 +342,16 @@ export default function NewStory() {
           )}
         </Pressable>
       </View>
+
+      {choosing ? (
+        <PeopleSheet
+          title="مين يشوف القصة؟"
+          friends={friends}
+          picked={picked}
+          onToggle={(id) => setPicked((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]))}
+          onClose={() => setChoosing(false)}
+        />
+      ) : null}
 
       {editing !== null ? (
         <TextEditor

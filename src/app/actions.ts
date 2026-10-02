@@ -18,7 +18,7 @@ import {
   verifyPassword,
 } from "@/lib/auth";
 import { assertRoomForBoth, circleIds } from "@/lib/circle";
-import { STORY_HOURS, STORY_SECONDS } from "@/lib/stories";
+import { STORY_HOURS, STORY_SECONDS, storyVisibleTo } from "@/lib/stories";
 import { canInteract, canSeeMoment, visibleAuthors } from "@/lib/visibility";
 import { reverseGeocode } from "@/lib/places";
 import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
@@ -659,7 +659,7 @@ export async function seeStory(storyId: string): Promise<void> {
   const user = await requireUser();
   // الإيصالُ لمن يرى القصّة فعلاً، ولا يُكتب لصاحبها.
   const story = await prisma.story.findFirst({
-    where: { id: storyId, expiresAt: { gt: new Date() } },
+    where: { id: storyId, expiresAt: { gt: new Date() }, ...storyVisibleTo(user.id) },
     select: { authorId: true },
   });
   if (!story || story.authorId === user.id) return;

@@ -69,6 +69,7 @@ export async function list(userId: string) {
       a: { select: PERSON },
       b: { select: PERSON },
       messages: { select: MESSAGE, orderBy: { createdAt: "desc" }, take: 1 },
+      pins: { where: { userId }, select: { createdAt: true } },
       _count: {
         select: { messages: { where: { senderId: { not: userId }, readAt: null } } },
       },
@@ -76,15 +77,44 @@ export async function list(userId: string) {
     orderBy: { updatedAt: "desc" },
   });
 
-  return {
-    conversations: rows.map((row) => ({
-      id: row.id,
-      updatedAt: row.updatedAt,
-      other: row.a.id === userId ? row.b : row.a,
-      last: row.messages[0] ?? null,
-      unseen: row._count.messages,
-    })),
-  };
+  const conversations = rows.map((row) => ({
+    id: row.id,
+    updatedAt: row.updatedAt,
+    other: row.a.id === userId ? row.b : row.a,
+    last: row.messages[0] ?? null,
+    unseen: row._count.messages,
+    /** مفضّلةٌ مثبّتةٌ أعلى القائمة (القاعدة ٢٢٠). */
+    pinned: row.pins.length > 0,
+    pinnedAt: row.pins[0]?.createdAt ?? null,
+  }));
+  // المفضّلةُ أوّلاً بترتيب تثبيتها، ثمّ البقيّةُ بآخر رسالة كما كانت.
+  conversations.sort((a, b) => {
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+    if (a.pinnedAt && b.pinnedAt) return a.pinnedAt.getTime() - b.pinnedAt.getTime();
+    return 0;
+  });
+  return { conversations };
+}
+
+/** حدُّ المفضّلة — ثلاثٌ تبقى أعلى القائمة، وما زاد قائمةٌ ثانية لا مفضّلة. */
+export const PIN_MAX = 3;
+
+/** تثبيتُ محادثةٍ مفضّلةً أو فكُّه (القاعدة ٢٢٠). والحدُّ يُفحص هنا لا في الشاشة وحدها. */
+export async function pin(userId: string, conversationId: string, on: boolean) {
+  await mine(userId, conversationId);
+  if (!on) {
+    await prisma.conversationPin.deleteMany({ where: { userId, conversationId } });
+    return { pinned: false };
+  }
+  const already = await prisma.conversationPin.findUnique({
+    where: { userId_conversationId: { userId, conversationId } },
+    select: { userId: true },
+  });
+  if (already) return { pinned: true };
+  const count = await prisma.conversationPin.count({ where: { userId } });
+  if (count >= PIN_MAX) throw badRequest("المفضّلة ثلاث محادثات بالكثير");
+  await prisma.conversationPin.create({ data: { userId, conversationId } });
+  return { pinned: true };
 }
 
 /** يثبت أن المستخدم طرفٌ في المحادثة، ويردّ الطرفين. */

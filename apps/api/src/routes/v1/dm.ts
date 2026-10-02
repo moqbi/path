@@ -59,6 +59,13 @@ export const dmRoutes = new Hono()
     return c.json({ read: result.read });
   })
 
+  .post("/:id/pin", zValidator("param", byId), async (c) =>
+    c.json(await dm.pin(me(c), c.req.valid("param").id, true)),
+  )
+  .delete("/:id/pin", zValidator("param", byId), async (c) =>
+    c.json(await dm.pin(me(c), c.req.valid("param").id, false)),
+  )
+
   .delete("/:id", zValidator("param", byId), async (c) => {
     const result = await dm.remove(me(c), c.req.valid("param").id);
     pushBoth(me(c), result.to, "conversation:gone", { conversationId: result.conversationId });

@@ -9,7 +9,8 @@ import { Avatar } from "../components/avatar";
 import { SwipeRow } from "../components/swipe-row";
 import { ScreenHeader } from "../components/screen-header";
 import { Ticks, receiptOf } from "../components/receipt";
-import { CameraIcon, MicIcon, PlusIcon, SearchIcon, TrashIcon, WithIcon } from "../components/icons";
+import { CameraIcon, MicIcon, PlusIcon, SearchIcon, StarIcon, TrashIcon, WithIcon } from "../components/icons";
+import { Modal } from "react-native";
 import type { GroupRow } from "../lib/groups";
 import { api } from "../lib/api";
 import { keys, useCircle } from "../lib/queries";
@@ -43,7 +44,12 @@ type Row = {
     readAt: string | null;
   } | null;
   unseen: number;
+  /** مفضّلةٌ مثبّتةٌ أعلى القائمة (القاعدة ٢٢٠) — اختياريٌّ لخادمٍ أقدم. */
+  pinned?: boolean;
 };
+
+/** حدُّ المفضّلة — كالخادم (`PIN_MAX`). */
+const PIN_MAX = 3;
 
 /** خلاصةُ آخر رسالة: الصوت والصورة يُقالان لا يُتركان فارغين. */
 function Last({ row, meId }: { row: Row; meId: string }) {
@@ -91,6 +97,27 @@ export default function Messages() {
   });
 
   const pullRefresh = usePullRefresh(() => Promise.all([list.refetch(), groupList.refetch()]));
+  /*
+    المفضّلة (القاعدة ٢٢٠): نجمةٌ بجانب الحذف في السحبة، تثبّت المحادثة أعلى
+    القائمة أو تفكّها. وثلاثٌ حدّاً — والرابعةُ تفتح نافذةً في وسط الشاشة تقول
+    ما يجري وما يُفعل، قبل أن يُسأل الخادم: الشاشةُ تعرف كم مثبّتاً عندها.
+  */
+  const [pinFull, setPinFull] = useState(false);
+  const pinned = (list.data?.conversations ?? []).filter((row) => row.pinned).length;
+  const togglePin = useMutation({
+    mutationFn: (row: Row) =>
+      api(`/v1/dm/${row.id}/pin`, { method: row.pinned ? "DELETE" : "POST" }),
+    onSuccess: async () => client.invalidateQueries({ queryKey: keys.dm }),
+    onError: () => setPinFull(true),
+  });
+  const pin = (row: Row) => {
+    if (!row.pinned && pinned >= PIN_MAX) {
+      setPinFull(true);
+      return;
+    }
+    togglePin.mutate(row);
+  };
+
   const drop = useMutation({
     mutationFn: (id: string) => api(`/v1/dm/${id}`, { method: "DELETE" }),
     onSuccess: async () => client.invalidateQueries({ queryKey: keys.dm }),
@@ -243,7 +270,12 @@ export default function Messages() {
           <SwipeRow
             onDelete={() => void drop.mutate(item.id)}
             confirmLabel="حذف المحادثة"
-            icons={{ delete: <TrashIcon size={22} color="#fff" /> }}
+            onSecond={() => pin(item)}
+            secondLabel={item.pinned ? "شيلها من المفضّلة" : "أضفها للمفضّلة"}
+            icons={{
+              delete: <TrashIcon size={22} color="#fff" />,
+              second: <StarIcon size={22} color={item.pinned ? colors.gold : "#fff"} />,
+            }}
           >
           <Pressable
             onPress={() => router.push(`/dm/${item.id}` as never)}
@@ -265,6 +297,7 @@ export default function Messages() {
                   {item.other.name}
                 </Text>
                 <NameTag isPlus={item.other.isPlus} tag={item.other.tag} size={10} />
+                {item.pinned ? <StarIcon size={12} color={colors.gold} /> : null}
                 <Text style={{ color: colors.faint, fontSize: 10.5 }}>
                   {item.last ? relative(new Date(item.last.createdAt)) : presence(item.other.lastSeenAt)}
                 </Text>
@@ -300,6 +333,34 @@ export default function Messages() {
           )
         }
       />
+      {/* المفضّلةُ ملأى: نافذةٌ في الوسط تقول الحدَّ وما يُفعل — بلهجتنا. */}
+      <Modal visible={pinFull} transparent animationType="fade" onRequestClose={() => setPinFull(false)}>
+        <Pressable
+          onPress={() => setPinFull(false)}
+          style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 32, backgroundColor: "rgba(14,26,36,.55)" }}
+        >
+          <Pressable
+            onPress={() => undefined}
+            style={{ width: "100%", maxWidth: 340, borderRadius: 22, padding: 24, alignItems: "center", gap: 12, backgroundColor: colors.card }}
+          >
+            <View style={{ width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", backgroundColor: colors.goldSoft }}>
+              <StarIcon size={28} color={colors.gold} />
+            </View>
+            <Text style={{ color: colors.ink, fontSize: 17, fontWeight: "700", textAlign: "center" }}>
+              المفضّلة فلّت!
+            </Text>
+            <Text style={{ color: colors.ink2, fontSize: 14, lineHeight: 24, textAlign: "center" }}>
+              تقدر تثبّت {ar(PIN_MAX)} محادثات بس. شيل وحدة من المفضّلة، وبعدها ثبّت هذي مكانها.
+            </Text>
+            <Pressable
+              onPress={() => setPinFull(false)}
+              style={{ alignSelf: "stretch", height: 48, marginTop: 6, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
+            >
+              <Text style={{ color: colors.onBrand, fontSize: 15, fontWeight: "700" }}>أبشر</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }

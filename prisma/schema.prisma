@@ -240,6 +240,8 @@ model User {
   groupsMade     ChatGroup[]        @relation("GroupCreator")
   groupSeats     ChatGroupMember[]
   groupMessages  GroupMessage[]
+  storySeats     StoryAudience[] @relation("StoryAudience")
+  conversationPins ConversationPin[] @relation("ConversationPins")
   conversationsB Conversation[] @relation("ConversationB")
   messagesSent   Message[]
 
@@ -271,15 +273,30 @@ model Story {
   seconds   Int?
   /// النصوصُ فوقها (`StoryText[]`): موضعٌ نسبيّ ومقاسٌ ولون — لا تُحرق في الصورة.
   texts     Json?
+  /// قصةٌ خاصّة (القاعدة ٢١٩): لمن اختارهم صاحبُها وحدهم (`StoryAudience`) لا لدائرته كلّها.
+  private   Boolean  @default(false)
   createdAt DateTime @default(now())
   expiresAt DateTime
 
-  author User        @relation("StoryAuthor", fields: [authorId], references: [id], onDelete: Cascade)
-  media  Media       @relation("StoryMedia", fields: [mediaId], references: [id], onDelete: Cascade)
-  views  StoryView[]
+  author   User            @relation("StoryAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  media    Media           @relation("StoryMedia", fields: [mediaId], references: [id], onDelete: Cascade)
+  views    StoryView[]
+  audience StoryAudience[]
 
   @@index([authorId, expiresAt])
   @@index([expiresAt])
+}
+
+/// من خُصّت بهم القصّةُ الخاصّة — صاحبُها يراها دائماً ولا يُكتب هنا.
+model StoryAudience {
+  storyId String
+  userId  String
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user  User  @relation("StoryAudience", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([storyId, userId])
+  @@index([userId])
 }
 
 model StoryView {
@@ -710,9 +727,22 @@ model Conversation {
   a        User      @relation("ConversationA", fields: [aId], references: [id], onDelete: Cascade)
   b        User      @relation("ConversationB", fields: [bId], references: [id], onDelete: Cascade)
   messages Message[]
+  pins     ConversationPin[]
 
   @@unique([aId, bId])
   @@index([updatedAt])
+}
+
+/// محادثةٌ مفضّلة تُثبَّت أعلى القائمة (القاعدة ٢٢٠) — لكلّ طرفٍ مفضّلتُه، وثلاثٌ حدّاً.
+model ConversationPin {
+  userId         String
+  conversationId String
+  createdAt      DateTime @default(now())
+
+  user         User         @relation("ConversationPins", fields: [userId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, conversationId])
 }
 
 enum MessageKind {

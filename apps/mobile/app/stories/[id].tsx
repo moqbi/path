@@ -11,7 +11,7 @@ import { ReportButton } from "../../components/report-sheet";
 import { Sheet } from "../../components/sheet";
 import { Filtered } from "../../components/filtered";
 import { StoryVideo } from "../../components/story-video";
-import { CloseIcon, EyeIcon } from "../../components/icons";
+import { CloseIcon, EyeIcon, LockIcon } from "../../components/icons";
 import { api } from "../../lib/api";
 import { useSession } from "../../lib/session";
 import { ar, relative } from "../../lib/format";
@@ -31,6 +31,8 @@ type Story = {
   media: { mime: string };
   author: { id: string; name: string; avatarMediaId: string | null };
   _count: { views: number };
+  /** خاصّةٌ بمن اختارهم صاحبُها (القاعدة ٢١٩) — اختياريٌّ لخادمٍ أقدم. */
+  private?: boolean;
 };
 
 type Viewer = {
@@ -148,28 +150,39 @@ export default function StoryViewer() {
       },
       onPanResponderRelease: (_e, g) => {
         if (g.dy > 120 || g.vy > 0.9) {
-          Animated.timing(drop, { toValue: screen.height, duration: 200, useNativeDriver: true }).start(() =>
+          Animated.timing(drop, { toValue: screen.height, duration: 220, useNativeDriver: false }).start(() =>
             live.current.close(),
           );
           return;
         }
-        Animated.spring(drop, { toValue: 0, useNativeDriver: true, bounciness: 6 }).start();
+        Animated.spring(drop, { toValue: 0, useNativeDriver: false, bounciness: 6 }).start();
         setDragging(false);
         if ((g.dy < -70 || g.vy < -0.9) && live.current.mine) live.current.open();
       },
       onPanResponderTerminate: () => {
-        Animated.spring(drop, { toValue: 0, useNativeDriver: true }).start();
+        Animated.spring(drop, { toValue: 0, useNativeDriver: false }).start();
         setDragging(false);
       },
     }),
   ).current;
 
+  /*
+    السحبُ إلى أسفل يطوي القصّة دائرةً تحت الإصبع — **بقرار المالك**، كسناب
+    (القاعدة ٢١٨): النافذةُ تقصر حتى تصير مربّعاً (`hole`) وتستدير حوافُّها حتى
+    تصير دائرة، وتصغر وتنزل مع الإصبع، والمحتوى في وسطها لا يُقصّ من أعلاه.
+    وكلُّه بمحرّك جافاسكربت: الارتفاعُ ونصفُ القطر خصائصُ تخطيطٍ لا يحرّكها
+    المحرّكُ الأصليّ، وقيمةٌ واحدة لا تُقسَم بين محرّكين.
+  */
+  const ROUND = screen.height * 0.5;
+  const hole = drop.interpolate({ inputRange: [0, ROUND], outputRange: [screen.height, screen.width], extrapolate: "clamp" });
+  const lift = drop.interpolate({ inputRange: [0, ROUND], outputRange: [0, (screen.width - screen.height) / 2], extrapolate: "clamp" });
   const sink = {
+    height: hole,
+    borderRadius: drop.interpolate({ inputRange: [0, ROUND], outputRange: [0, screen.width / 2], extrapolate: "clamp" }),
     transform: [
-      { translateY: drop.interpolate({ inputRange: [-200, 0, screen.height], outputRange: [-50, 0, screen.height * 0.6] }) },
-      { scale: drop.interpolate({ inputRange: [0, screen.height], outputRange: [1, 0.72], extrapolate: "clamp" }) },
+      { translateY: drop.interpolate({ inputRange: [-200, 0, screen.height], outputRange: [-50, 0, screen.height * 0.7] }) },
+      { scale: drop.interpolate({ inputRange: [0, ROUND, screen.height], outputRange: [1, 0.42, 0.3], extrapolate: "clamp" }) },
     ],
-    borderRadius: drop.interpolate({ inputRange: [0, 80], outputRange: [0, 24], extrapolate: "clamp" }),
   };
   const veil = drop.interpolate({ inputRange: [0, screen.height * 0.6], outputRange: [1, 0], extrapolate: "clamp" });
 
@@ -205,7 +218,9 @@ export default function StoryViewer() {
     <View style={{ flex: 1 }}>
       {/* الأرضيةُ تبهت مع السحب فتنكشف الشاشةُ تحت القصّة. */}
       <Animated.View pointerEvents="none" style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, backgroundColor: "#0b1219", opacity: veil }} />
-    <Animated.View {...pan.panHandlers} style={[{ flex: 1, backgroundColor: "#0b1219", overflow: "hidden" }, sink]}>
+    <View {...pan.panHandlers} style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+    <Animated.View style={[{ width: screen.width, backgroundColor: "#0b1219", overflow: "hidden" }, sink]}>
+    <Animated.View style={{ position: "absolute", left: 0, width: screen.width, height: screen.height, top: lift }}>
       {/* المقطع يُشغَّل، والصورة تُرسم بفلترها. و`<Image>` لا يفكّ MP4. */}
       {video ? (
         <StoryVideo
@@ -265,9 +280,17 @@ export default function StoryViewer() {
               <Text style={{ color: "#fff", fontSize: 13.5, fontWeight: "600" }}>
                 {story.author.name}
               </Text>
-              <Text style={{ color: "rgba(255,255,255,.75)", fontSize: 11 }}>
-                {relative(new Date(story.createdAt))}
-              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                <Text style={{ color: "rgba(255,255,255,.75)", fontSize: 11 }}>
+                  {relative(new Date(story.createdAt))}
+                </Text>
+                {story.private ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                    <LockIcon size={11} color="rgba(255,255,255,.85)" />
+                    <Text style={{ color: "rgba(255,255,255,.85)", fontSize: 11, fontWeight: "600" }}>خاصة</Text>
+                  </View>
+                ) : null}
+              </View>
             </View>
 
             {/* الإبلاغ على القصة نفسها لا على صاحبها وحده — شرط آبل. */}
@@ -310,6 +333,8 @@ export default function StoryViewer() {
         </View>
       ) : null}
     </Animated.View>
+    </Animated.View>
+    </View>
 
       {watching && mine ? (
         <Sheet title="من شاهد قصّتك" onClose={() => setWatching(false)}>

@@ -83,6 +83,8 @@ export const storyInput = z.object({
   filter: z.string().max(20).optional(),
   seconds: z.coerce.number().int().min(1).max(STORY_SECONDS).optional(),
   texts: z.array(storyText).max(STORY_TEXTS).optional(),
+  /** قصّةٌ خاصّة لمن اختارهم صاحبُها وحدهم (القاعدة ٢١٩) — فارغٌ أو غائبٌ: دائرتُه كلّها. */
+  audience: z.array(cuid).max(150).optional(),
 });
 
 /** طلب رفع ملف: النوع والحجم يُفحصان قبل أن يُعطى رابطٌ مؤقّت. */

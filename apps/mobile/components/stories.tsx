@@ -6,6 +6,7 @@ import { Avatar } from "./avatar";
 import { PlusIcon } from "./icons";
 import { colors } from "../theme/tokens";
 import type { StoryRing } from "../lib/queries";
+import { LockIcon } from "./icons";
 
 /**
  * شريط القصص.
@@ -82,6 +83,15 @@ function Ring({ ring, label }: { ring: StoryRing; label: string }) {
         <View style={{ width: "100%", height: "100%", borderRadius: 29, backgroundColor: colors.paper, padding: 2, alignItems: "center", justifyContent: "center" }}>
           <Avatar name={ring.name} size={52} mediaId={ring.avatarMediaId} frame={ring.frame} />
         </View>
+        {/* قصّةٌ خاصّة: قفلٌ على الحلقة (القاعدة ٢١٩). */}
+        {ring.private ? (
+          <View
+            accessibilityLabel="قصة خاصة"
+            style={{ position: "absolute", bottom: -1, left: -1, width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center", backgroundColor: colors.night, borderWidth: 2, borderColor: colors.paper }}
+          >
+            <LockIcon size={11} color="#f7f5ef" />
+          </View>
+        ) : null}
       </View>
       <Text numberOfLines={1} style={{ color: colors.ink2, fontSize: 10.5, textAlign: "center" }}>
         {label}
