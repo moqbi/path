@@ -45,6 +45,7 @@ export const EVENTS = new Set([
   "JOINED",
   "TAG_GRANTED",
   "AVATAR_CHANGED",
+  "COINS_GRANTED",
 ]);
 
 const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
@@ -59,6 +60,7 @@ const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
   JOINED: { bg: "var(--color-night)", ink: "#f7f5ef" },
   TAG_GRANTED: { bg: "var(--color-gold-soft)", ink: "var(--color-gold-ink)" },
   AVATAR_CHANGED: { bg: "var(--color-clay-soft)", ink: "var(--color-clay-ink)" },
+  COINS_GRANTED: { bg: "var(--color-gold-soft)", ink: "var(--color-gold-ink)" },
 };
 
 function EventIcon({ kind }: { kind: string }) {
@@ -82,6 +84,8 @@ function EventIcon({ kind }: { kind: string }) {
       <TagIcon size={16} />
     ) : kind === "AVATAR_CHANGED" ? (
       <CameraIcon size={16} />
+    ) : kind === "COINS_GRANTED" ? (
+      <GiftIcon size={16} />
     ) : (
       <PinIcon size={16} />
     );
@@ -304,6 +308,12 @@ export function EventLine({
     ) : kind === "AVATAR_CHANGED" ? (
       <>
         <span className="font-bold">{moment.author.name}</span> غيّر صورته
+      </>
+    ) : kind === "COINS_GRANTED" ? (
+      // القاعدة ٢٢٤: البطاقةُ هنا لا تعرف قارئها، فبالغائب واسمِه.
+      <>
+        لأنه يستحق — تمّ منح <span className="font-bold">{moment.author.name}</span>{" "}
+        {ar(Number(moment.text) || 0)} نقطة من قبل الإدارة
       </>
     ) : kind === "JOINED" ? (
       <>

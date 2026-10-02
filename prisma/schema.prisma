@@ -33,6 +33,7 @@ enum MomentKind {
   TAG_GRANTED
   /// «غيّر صورته» — تُكتب حين يبدّل صاحبُها صورةَ عرضه، ومعها نسخةٌ منها.
   AVATAR_CHANGED
+  COINS_GRANTED
 }
 
 enum UserRole {

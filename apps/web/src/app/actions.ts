@@ -1725,6 +1725,8 @@ export async function grantCoins(
   await prisma.$transaction([
     prisma.user.update({ where: { id: userId }, data: { coins: { increment: input.coins } } }),
     prisma.coinGrant.create({ data: { userId, coins: input.coins, note: input.note, byId: admin.id } }),
+    // «لأنك تستحق» سطرُ حدثٍ في صفحته (القاعدة ٢٢٤) — والعددُ نصُّه.
+    prisma.moment.create({ data: { authorId: userId, kind: "COINS_GRANTED", text: String(input.coins) } }),
     prisma.moderationLog.create({
       data: {
         adminId: admin.id,
@@ -1757,6 +1759,9 @@ export async function grantCoinsToTag(_prev: AdminResult, formData: FormData): P
     prisma.user.updateMany({ where: { id: { in: ids } }, data: { coins: { increment: input.coins } } }),
     prisma.coinGrant.createMany({
       data: ids.map((userId) => ({ userId, coins: input.coins, note: input.note, byId: admin.id })),
+    }),
+    prisma.moment.createMany({
+      data: ids.map((userId) => ({ authorId: userId, kind: "COINS_GRANTED" as const, text: String(input.coins) })),
     }),
     prisma.moderationLog.create({
       data: {

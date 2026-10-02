@@ -25,7 +25,7 @@ export const SPINE_W = 56;
  * بإطار. والتفريق في العرض لا في الخادم.
  */
 const EVENTS = new Set([
-  "CITY", "PLACE", "SLEEP", "WAKE", "MUSIC", "FRIEND_ADDED", "GIFT_SENT", "GIFT_GOT", "JOINED", "TAG_GRANTED", "AVATAR_CHANGED",
+  "CITY", "PLACE", "SLEEP", "WAKE", "MUSIC", "FRIEND_ADDED", "GIFT_SENT", "GIFT_GOT", "JOINED", "TAG_GRANTED", "AVATAR_CHANGED", "COINS_GRANTED",
 ]);
 
 const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
@@ -40,6 +40,7 @@ const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
   JOINED: { bg: colors.night, ink: "#f7f5ef" },
   TAG_GRANTED: { bg: colors.goldSoft, ink: colors.goldInk },
   AVATAR_CHANGED: { bg: colors.claySoft, ink: colors.clayInk },
+  COINS_GRANTED: { bg: colors.goldSoft, ink: colors.goldInk },
 };
 
 function EventIcon({ kind }: { kind: string }) {
@@ -54,6 +55,7 @@ function EventIcon({ kind }: { kind: string }) {
     : kind === "JOINED" ? <AthrMark size={20} />
     : kind === "TAG_GRANTED" ? <TagIcon size={15} color={style.ink} />
     : kind === "AVATAR_CHANGED" ? <CameraIcon size={16} color={style.ink} />
+    : kind === "COINS_GRANTED" ? <GiftIcon size={15} color={style.ink} />
     : <PinIcon size={16} color={style.ink} />;
 
   return (
@@ -97,6 +99,17 @@ function eventText(moment: Moment, withNames: string[], viewerId = "") {
             : `تهانينا — حصل على وسم «${moment.text ?? ""}» من الإدارة`,
         subtitle: null,
       };
+    case "COINS_GRANTED": {
+      // بلسانه لصاحبه، وبالغائب لدائرته (القاعدة ٢٢٤). والعددُ بأرقامٍ عربيّة.
+      const coins = ar(Number(moment.text) || 0);
+      return {
+        title:
+          moment.author.id === viewerId
+            ? `لأنك تستحق — تمّ منحك ${coins} نقطة من قبل الإدارة`
+            : `لأنه يستحق — تمّ منحه ${coins} نقطة من قبل الإدارة`,
+        subtitle: null,
+      };
+    }
     case "AVATAR_CHANGED":
       // بلسانه لصاحبه، وبالغائب لدائرته (القاعدة ٢١٤).
       return {
