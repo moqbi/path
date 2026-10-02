@@ -69,7 +69,17 @@ export async function circle(userId: string) {
  * وهذا قرار منتَج لا تبسيط: لا اكتشاف عام في آثار، فمن لا يعرفك لا يجدك.
  */
 export async function suggestions(userId: string) {
-  const [ids, blocked] = await Promise.all([circleIds(userId), blockedWith(userId)]);
+  const [all, blocked, open] = await Promise.all([
+    circleIds(userId),
+    blockedWith(userId),
+    prisma.user.findMany({ where: { isOpen: true }, select: { id: true } }),
+  ]);
+  // الحسابُ المفتوح ليس جسراً (القاعدة ٢٢١): آلافٌ أضافوه لا يصيرون «أصدقاء
+  // أصدقاء» بعضهم لبعض — وإلّا صار اقتراحاً لغرباء، وهو الاستكشاف بعينه.
+  // ولا يُقترح على صاحبه أحد.
+  const openIds = new Set(open.map((row) => row.id));
+  if (openIds.has(userId)) return [];
+  const ids = all.filter((id) => !openIds.has(id));
   if (ids.length === 0) return [];
 
   const theirs = await prisma.friendship.findMany({
@@ -208,7 +218,17 @@ async function circleSize(userId: string): Promise<number> {
  * امتلأت دائرته لا يُقبل فيها أحد ولو كان هو المدعوّ.
  */
 async function assertRoomForBoth(a: string, b: string) {
-  const [sizeA, sizeB] = await Promise.all([circleSize(a), circleSize(b)]);
+  // الحسابُ المفتوح لا سقفَ لجانبه (القاعدة ٢٢١): حسابُ الدعم والأخبار يقبل
+  // الآلاف. والطرفُ الآخر يبقى على سقفه — إضافتُه تأخذ خانةً من دائرته.
+  const open = await prisma.user.findMany({
+    where: { id: { in: [a, b] }, isOpen: true },
+    select: { id: true },
+  });
+  const uncapped = new Set(open.map((row) => row.id));
+  const [sizeA, sizeB] = await Promise.all([
+    uncapped.has(a) ? 0 : circleSize(a),
+    uncapped.has(b) ? 0 : circleSize(b),
+  ]);
   if (sizeA >= CIRCLE_CAP || sizeB >= CIRCLE_CAP) {
     throw badRequest(`الدائرة مكتملة — ${CIRCLE_CAP} صديقاً هو السقف`);
   }
@@ -245,11 +265,16 @@ export async function requestFriend(userId: string, targetId: string) {
     return { status: "ACCEPTED" as const };
   }
 
-  await prisma.friendship.upsert({
+  const row = await prisma.friendship.upsert({
     where: { requesterId_addresseeId: { requesterId: userId, addresseeId: targetId } },
     create: { requesterId: userId, addresseeId: targetId },
     update: {},
+    select: { id: true },
   });
+
+  // الحسابُ المفتوح يقبل بنفسه (القاعدة ٢٢١): لا أحدَ يقبل آلاف الطلبات بيده،
+  // وطلبٌ معلّقٌ عند حساب الدعم بابٌ مغلقٌ في وجه من يسأل.
+  if (target.isOpen) return acceptFriend(targetId, row.id);
 
   // الطلبُ يصل في الحال لا بعد انقضاء خبيئة إشعارات صاحبه.
   forgetNotifications(targetId);
@@ -282,29 +307,42 @@ export async function acceptFriend(userId: string, friendshipId: string) {
   await assertRoomForBoth(friendship.requesterId, friendship.addresseeId);
 
   const [me, other] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { name: true } }),
-    prisma.user.findUnique({ where: { id: friendship.requesterId }, select: { name: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { name: true, isOpen: true } }),
+    prisma.user.findUnique({ where: { id: friendship.requesterId }, select: { name: true, isOpen: true } }),
   ]);
+
+  // ولا يُكتب في خطّ الحساب المفتوح «أصبح صديق فلان» لكل من أضافه: آلافُ
+  // الأسطر تدفن أخباره. والسطرُ يبقى في خطّ من أضافه.
+  const lines = [];
+  if (!me?.isOpen) {
+    lines.push(
+      prisma.moment.create({
+        // والصديقُ إشارةٌ لا نصٌّ وحده: اسمُه في السطر رابطٌ إلى ملفّه.
+        data: {
+          authorId: userId,
+          kind: "FRIEND_ADDED",
+          text: other?.name ?? null,
+          tags: { create: { userId: friendship.requesterId } },
+        },
+      }),
+    );
+  }
+  if (!other?.isOpen) {
+    lines.push(
+      prisma.moment.create({
+        data: {
+          authorId: friendship.requesterId,
+          kind: "FRIEND_ADDED",
+          text: me?.name ?? null,
+          tags: { create: { userId } },
+        },
+      }),
+    );
+  }
 
   await prisma.$transaction([
     prisma.friendship.update({ where: { id: friendshipId }, data: { status: "ACCEPTED" } }),
-    prisma.moment.create({
-      // والصديقُ إشارةٌ لا نصٌّ وحده: اسمُه في السطر رابطٌ إلى ملفّه.
-      data: {
-        authorId: userId,
-        kind: "FRIEND_ADDED",
-        text: other?.name ?? null,
-        tags: { create: { userId: friendship.requesterId } },
-      },
-    }),
-    prisma.moment.create({
-      data: {
-        authorId: friendship.requesterId,
-        kind: "FRIEND_ADDED",
-        text: me?.name ?? null,
-        tags: { create: { userId } },
-      },
-    }),
+    ...lines,
   ]);
 
   return { status: "ACCEPTED" as const };

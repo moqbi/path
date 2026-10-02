@@ -223,15 +223,28 @@ export default async function FriendProfilePage({
               </form>
             </div>
             ) : (
-              <form action={requestFriend.bind(null, person.id)} className="pb-1.5">
-                <button
-                  type="submit"
-                  className="brand-gradient rounded-xl px-4 text-[13px] font-bold"
-                  style={{ height: 42, color: "var(--color-on-brand)" }}
-                >
-                  أضفه
-                </button>
-              </form>
+              /* الحسابُ المفتوح: يُضاف فيقبل بنفسه، ويُراسَل بلا إضافة (القاعدة ٢٢١). */
+              <div className="flex items-center gap-2 pb-1.5">
+                <form action={requestFriend.bind(null, person.id)}>
+                  <button
+                    type="submit"
+                    className="brand-gradient rounded-xl px-4 text-[13px] font-bold"
+                    style={{ height: 42, color: "var(--color-on-brand)" }}
+                  >
+                    أضفه
+                  </button>
+                </form>
+                <form action={startConversation.bind(null, person.id)}>
+                  <button
+                    type="submit"
+                    aria-label="محادثة"
+                    className="flex w-11 items-center justify-center rounded-xl border border-line bg-card text-ink-2"
+                    style={{ height: 42 }}
+                  >
+                    <MessageIcon size={17} />
+                  </button>
+                </form>
+              </div>
             )}
           </div>
 

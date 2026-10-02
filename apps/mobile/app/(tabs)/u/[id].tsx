@@ -89,7 +89,14 @@ function Profile() {
 
   /** إضافةُ حسابٍ مفتوح: الطلب نفسه الذي يُرسل من «مقترحون». */
   const add = useMutation({
-    mutationFn: () => api(`/v1/circle/${id}/request`, { method: "POST" }),
+    mutationFn: () => api<{ status: "PENDING" | "ACCEPTED" }>(`/v1/circle/${id}/request`, { method: "POST" }),
+    // الحسابُ المفتوح يقبل في الحال (القاعدة ٢٢١): يُعاد جلبُ الملفّ فتظهر لحظاتُه.
+    onSuccess: (row) => {
+      if (row?.status === "ACCEPTED") {
+        void person.refetch();
+        void moments.refetch();
+      }
+    },
   });
 
   /** المحادثة تُفتح من هنا: تُنشأ إن لم تكن، ثم نذهب إليها. */
@@ -272,11 +279,11 @@ function Profile() {
                     الأصدقاء الثلاثة — لا إهداءَ ولا محادثةَ ولا
                     «آثارنا» قبل أن يَقبل.
                   */
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12 }}>
                   <Pressable
                     onPress={() => add.mutate()}
                     disabled={add.isPending || add.isSuccess}
                     style={{
-                      marginTop: 12,
                       height: 42,
                       paddingHorizontal: 18,
                       borderRadius: 12,
@@ -295,6 +302,17 @@ function Profile() {
                       {add.isSuccess ? "أُرسل الطلب" : "أضفه"}
                     </Text>
                   </Pressable>
+                  {/* والحسابُ المفتوح يُراسَل بلا إضافة (القاعدة ٢٢١) — حسابُ الدعم. */}
+                  {who.isOpen ? (
+                    <Pressable
+                      accessibilityLabel="محادثة"
+                      onPress={() => talk.mutate()}
+                      style={{ width: 44, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
+                    >
+                      <MessageIcon size={17} color={colors.ink2} />
+                    </Pressable>
+                  ) : null}
+                  </View>
                 )}
                 {who.bio ? (
                   <Text style={{ color: colors.ink2, fontSize: 13, textAlign: "center", marginTop: 7, lineHeight: 22 }}>

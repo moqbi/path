@@ -17,9 +17,9 @@ import {
   requireUser,
   verifyPassword,
 } from "@/lib/auth";
-import { assertRoomForBoth, circleIds } from "@/lib/circle";
+import { assertRoomForBoth, canChat, circleIds } from "@/lib/circle";
 import { STORY_HOURS, STORY_SECONDS, storyVisibleTo } from "@/lib/stories";
-import { canInteract, canSeeMoment, visibleAuthors } from "@/lib/visibility";
+import { blockedWith, canInteract, canSeeMoment, visibleAuthors } from "@/lib/visibility";
 import { reverseGeocode } from "@/lib/places";
 import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
 import { consume, sendReset, sendVerify } from "@/lib/email-tokens";
@@ -959,34 +959,35 @@ export async function acceptFriend(friendshipId: string): Promise<void> {
   if (friendship.status === "ACCEPTED") return;
 
   await assertRoomForBoth(friendship.requesterId, friendship.addresseeId);
-
-  const other = await prisma.user.findUnique({
-    where: { id: friendship.requesterId },
-    select: { name: true },
-  });
-
-  await prisma.$transaction([
-    prisma.friendship.update({ where: { id: friendshipId }, data: { status: "ACCEPTED" } }),
-    prisma.moment.create({
-      data: {
-        authorId: user.id,
-        kind: "FRIEND_ADDED",
-        text: other?.name ?? null,
-        tags: { create: { userId: friendship.requesterId } },
-      },
-    }),
-    prisma.moment.create({
-      data: {
-        authorId: friendship.requesterId,
-        kind: "FRIEND_ADDED",
-        text: user.name,
-        tags: { create: { userId: user.id } },
-      },
-    }),
-  ]);
+  await befriend(friendshipId);
 
   revalidatePath("/");
   revalidatePath("/circle");
+}
+
+/**
+ * يقبل الصداقة ويكتب «أصبح صديق فلان» في خطّ كلٍّ منهما — إلّا الحسابَ
+ * المفتوح (القاعدة ٢٢١): آلافُ الأسطر تدفن أخباره، والسطرُ يبقى في خطّ من أضافه.
+ */
+async function befriend(friendshipId: string): Promise<void> {
+  const friendship = await prisma.friendship.findUniqueOrThrow({
+    where: { id: friendshipId },
+    select: {
+      requester: { select: { id: true, name: true, isOpen: true } },
+      addressee: { select: { id: true, name: true, isOpen: true } },
+    },
+  });
+  const { requester, addressee } = friendship;
+  const line = (author: typeof requester, other: typeof requester) =>
+    prisma.moment.create({
+      data: { authorId: author.id, kind: "FRIEND_ADDED", text: other.name, tags: { create: { userId: other.id } } },
+    });
+
+  await prisma.$transaction([
+    prisma.friendship.update({ where: { id: friendshipId }, data: { status: "ACCEPTED" } }),
+    ...(addressee.isOpen ? [] : [line(addressee, requester)]),
+    ...(requester.isOpen ? [] : [line(requester, addressee)]),
+  ]);
 }
 
 /** تُرفض الطلبات بالحذف: لا حالة «مرفوض» تُبقي أثراً لمن رفض من. */
@@ -1036,16 +1037,23 @@ export async function requestFriend(targetId: string): Promise<void> {
   */
   const target = await prisma.user.findUnique({
     where: { id: targetId },
-    select: { id: true },
+    select: { id: true, isOpen: true },
   });
-  if (!target) throw new Error("لا يوجد هذا الحساب");
+  if (!target || (await blockedWith(user.id)).includes(targetId)) throw new Error("لا يوجد هذا الحساب");
 
   await assertRoomForBoth(user.id, targetId);
-  await prisma.friendship.upsert({
+  const row = await prisma.friendship.upsert({
     where: { requesterId_addresseeId: { requesterId: user.id, addresseeId: targetId } },
     create: { requesterId: user.id, addresseeId: targetId },
     update: {},
+    select: { id: true, status: true },
   });
+
+  // الحسابُ المفتوح يقبل بنفسه (القاعدة ٢٢١).
+  if (target.isOpen && row.status === "PENDING") {
+    await befriend(row.id);
+    revalidatePath("/");
+  }
 
   revalidatePath("/circle");
   revalidatePath(`/u/${targetId}`);
@@ -1511,9 +1519,8 @@ async function assertCanInteract(userId: string, momentId: string) {
 export async function startConversation(otherId: string): Promise<void> {
   const user = await requireUser();
 
-  // الخاص للدائرة وحدها: قبل القبول لا محادثة، وإخفاء الزر ليس حماية.
-  const circle = await circleIds(user.id);
-  if (!circle.includes(otherId)) throw new Error("المحادثة بعد قبول الإضافة");
+  // الخاص للدائرة وحدها — إلّا الحسابَ المفتوح (القاعدة ٢٢١) — وإخفاء الزر ليس حماية.
+  if (!(await canChat(user.id, otherId))) throw new Error("المحادثة بعد قبول الإضافة");
 
   const id = await openConversation(user.id, otherId);
   redirect(`/messages/${id}`);
@@ -1526,8 +1533,7 @@ export async function startConversation(otherId: string): Promise<void> {
  */
 export async function deskChat(otherId: string) {
   const user = await requireUser();
-  const circle = await circleIds(user.id);
-  if (!circle.includes(otherId)) return { error: "المحادثة بعد قبول الإضافة" } as const;
+  if (!(await canChat(user.id, otherId))) return { error: "المحادثة بعد قبول الإضافة" } as const;
   const id = await openConversation(user.id, otherId);
   return deskThread(id);
 }
@@ -1559,6 +1565,9 @@ async function myConversation(conversationId: string, userId: string): Promise<v
   });
   if (!conversation) throw new Error("المحادثة غير موجودة");
   if (conversation.aId !== userId && conversation.bId !== userId) throw new Error("غير مصرح");
+  // الحظرُ يقطع المحادثة القائمة أيضاً (القاعدة ٢٤).
+  const other = conversation.aId === userId ? conversation.bId : conversation.aId;
+  if ((await blockedWith(userId)).includes(other)) throw new Error("المحادثة غير موجودة");
 }
 
 /** يرفع طابع المحادثة فتصعد إلى أعلى القائمة. */

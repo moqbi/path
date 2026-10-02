@@ -6,6 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ScreenHeader } from "../../components/screen-header";
+import { SupportLine } from "../../components/support-line";
 import { CameraIcon, CloseIcon, InfoIcon } from "../../components/icons";
 import { api } from "../../lib/api";
 import { relative } from "../../lib/format";
@@ -232,6 +233,7 @@ export default function Support() {
               {said.ok}
             </Text>
           ) : null}
+          <SupportLine />
         </View>
 
         {rows.length > 0 ? (

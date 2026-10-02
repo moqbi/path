@@ -3,7 +3,7 @@ import { push } from "./push";
 import { guard } from "../lib/moderation";
 import { MESSAGE_KEEP_DAYS, VOICE_SECONDS } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
-import { circleIds } from "./visibility";
+import { blockedWith, circleIds } from "./visibility";
 
 /**
  * المحادثات الخاصة.
@@ -42,12 +42,22 @@ const MESSAGE = {
   editedAt: true,
 } as const;
 
-/** المحادثة لا تُفتح إلا بين من قُبلت بينهما الصداقة. */
+/**
+ * المحادثة لا تُفتح إلا بين من قُبلت بينهما الصداقة — إلّا الحسابَ المفتوح
+ * (القاعدة ٢٢١): حسابُ الدعم يُراسَل بلا إضافة، فمن يسأل لا يُطلب منه أن
+ * يصير صديقاً أوّلاً. والحظرُ فوقه في الاتجاهين.
+ */
 export async function open(userId: string, otherId: string) {
   if (userId === otherId) throw badRequest("لا يمكنك محادثة نفسك");
 
   const circle = await circleIds(userId);
-  if (!circle.includes(otherId)) throw forbidden("المحادثة بعد قبول الإضافة");
+  if (!circle.includes(otherId)) {
+    const [other, blocked] = await Promise.all([
+      prisma.user.findUnique({ where: { id: otherId }, select: { isOpen: true } }),
+      blockedWith(userId),
+    ]);
+    if (!other?.isOpen || blocked.includes(otherId)) throw forbidden("المحادثة بعد قبول الإضافة");
+  }
 
   const { aId, bId } = pairKey(userId, otherId);
   const conversation = await prisma.conversation.upsert({
@@ -196,6 +206,12 @@ export async function send(
   input: { kind: "TEXT" | "VOICE" | "PHOTO"; body?: string; mediaId?: string; seconds?: number },
 ) {
   const conversation = await mine(userId, conversationId);
+
+  // الحظرُ يقطع المحادثة القائمة أيضاً (القاعدة ٢٤): المحادثةُ تبقى صفّاً بعد
+  // الحظر، فلولا هذا لبقي المحظورُ يكتب فيها.
+  if ((await blockedWith(userId)).includes(otherSide(conversation, userId))) {
+    throw notFound("المحادثة غير موجودة");
+  }
 
   let body = "";
   let mediaId: string | null = null;

@@ -6,6 +6,9 @@ import { InfoIcon } from "@/components/icons";
 import { relative } from "@/lib/format";
 import { TicketForm } from "./form";
 import { TOPIC_LABEL } from "@/lib/topics";
+import Link from "next/link";
+import { supportAccount } from "@/lib/support-account";
+import { SITE_URL } from "@/lib/site-url";
 
 /**
  * الدعم الفني: رسالةٌ تُكتب هنا وتُقرأ هنا.
@@ -18,12 +21,15 @@ export default async function SupportPage() {
   const user = await currentUser();
   if (!user) redirect("/login");
 
-  const tickets = await prisma.supportTicket.findMany({
-    where: { userId: user.id },
-    orderBy: { createdAt: "desc" },
-    take: 20,
-    include: { _count: { select: { files: true } } },
-  });
+  const [tickets, support] = await Promise.all([
+    prisma.supportTicket.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      include: { _count: { select: { files: true } } },
+    }),
+    supportAccount(),
+  ]);
 
   return (
     <div className="screen">
@@ -36,6 +42,18 @@ export default async function SupportPage() {
             اكتب مشكلتك أو اقتراحك أو بلاغك، ونردّ عليك في هذه الصفحة نفسها.
           </p>
           <TicketForm />
+          {/*
+            خاتمةُ النموذج (القاعدة ٢٢١): حسابُ الدعم والأخبار. الرابطُ يُكتب كما
+            يُشارَك، والضغطةُ تفتح ملفَّه داخل التطبيق — ومنه يُضاف ويُراسَل.
+          */}
+          {support ? (
+            <p className="mt-3 text-[12px] leading-relaxed text-muted">
+              لمتابعة آخر الأخبار والتواصل مع الدعم داخل التطبيق{" "}
+              <Link href={`/u/${support.id}`} dir="ltr" className="font-bold text-clay-ink underline-offset-2 hover:underline">
+                {SITE_URL ? `${SITE_URL}/u/${support.memberNo}` : support.name}
+              </Link>
+            </p>
+          ) : null}
         </div>
 
         {tickets.length > 0 ? (

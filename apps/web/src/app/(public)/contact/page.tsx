@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { ContactForm } from "./form";
 import { DocSection, PageBody, PageHero } from "@/components/page-shell";
+import { SITE_URL, hasSite } from "@athar/shared";
+import { siteText } from "@/lib/site";
 
 export const metadata: Metadata = { title: "تواصل معنا · آثار مومنتس" };
 
@@ -17,7 +19,13 @@ function Icon({ children }: { children: React.ReactNode }) {
  * النموذج في بطاقته — وعمودٌ واحد على الهاتف والنموذجُ أوّلاً: من فتح
  * الصفحة جاء ليكتب.
  */
-export default function ContactPage() {
+export default async function ContactPage() {
+  // حسابُ الدعم والأخبار (القاعدة ٢٢١) — رقمُه من اللوحة، والأرقامُ العربيّة تُحوَّل.
+  const text = await siteText();
+  const digits = text["support.member"].replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660)).trim();
+  const supportNo = /^\d{1,9}$/.test(digits) ? digits : null;
+  const supportPath = supportNo ? `/u/${supportNo}` : null;
+
   return (
     <>
       <PageHero
@@ -33,6 +41,18 @@ export default function ContactPage() {
               اكتب رسالتك
             </h2>
             <ContactForm />
+            {/*
+              خاتمةُ النموذج: صفحةُ حساب الدعم، ومنها «افتح في التطبيق» —
+              فيُضاف ويُراسَل بلا انتظار قبول (القاعدة ٢٢١).
+            */}
+            {supportPath ? (
+              <p className="mt-4 text-[13px] leading-relaxed text-muted">
+                لمتابعة آخر الأخبار والتواصل مع الدعم داخل التطبيق{" "}
+                <a href={supportPath} dir="ltr" className="font-bold text-clay-ink underline-offset-2 hover:underline">
+                  {hasSite() ? `${SITE_URL.replace(/\/+$/, "")}${supportPath}` : supportPath}
+                </a>
+              </p>
+            ) : null}
           </section>
 
           <div className="flex flex-col gap-4">
