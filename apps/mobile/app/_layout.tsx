@@ -165,6 +165,27 @@ function Gate() {
   }, [router]);
 
   /*
+    والتنبيهُ الواصل والتطبيقُ مفتوح يجلب ما نبّه عليه في الحال: المحادثةُ
+    تُجلب كلّ ثماني ثوانٍ، فكانت الرسالةُ تظهر في الشريط ثمّ في المحادثة
+    بعدها. و«dm» يجمع المحادثات وشارتها والمجموعات.
+  */
+  useEffect(() => {
+    const sub = Notifications.addNotificationReceivedListener((notification) => {
+      const path = notification.request.content.data?.path;
+      if (typeof path !== "string") return;
+      if (path.startsWith("/dm/") || path.startsWith("/group/")) {
+        void client.invalidateQueries({ queryKey: ["dm"] });
+      } else if (path.startsWith("/m/")) {
+        void client.invalidateQueries({ queryKey: ["moment", path.slice(3)] });
+        void client.invalidateQueries({ queryKey: ["feed"] });
+        void client.invalidateQueries({ queryKey: ["me", "moments"] });
+      }
+      void client.invalidateQueries({ queryKey: ["notes"] });
+    });
+    return () => sub.remove();
+  }, []);
+
+  /*
     الموقوف مؤقّتاً يرى سبب وقفه لا تطبيقاً يردّ خطأً مع كل ضغطة.
 
     والفحص هنا لا في كل شاشة: الحقل يأتي مع `/v1/me` أصلاً، فلا

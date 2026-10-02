@@ -17,6 +17,7 @@ import { api, baseUrl, currentAccess } from "../../lib/api";
 import { uploadFile } from "../../lib/upload";
 import { useKeyboardInset } from "../../lib/keyboard";
 import { keys } from "../../lib/queries";
+import { useOpenThread } from "../../lib/open-thread";
 import { useSession } from "../../lib/session";
 import { ar } from "../../lib/format";
 import { colors } from "../../theme/tokens";
@@ -161,6 +162,7 @@ function Voice({ mediaId, seconds, mine }: { mediaId: string; seconds: number; m
  */
 export default function Conversation() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  useOpenThread(`/dm/${id}`);
   const me = useSession((s) => s.me);
   const client = useQueryClient();
   const router = useRouter();

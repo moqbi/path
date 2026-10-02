@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Alert } from "react-native";
 import { api } from "./api";
 
 /**
@@ -275,9 +276,21 @@ export function useReact(momentId: string) {
         method: "POST",
         body: JSON.stringify(input),
       }),
+    /*
+      الرفضُ يُقال (القاعدة ٩٠): الخادمُ يردّ تفاعلاً حصره صاحبُ اللحظة في
+      تصنيف، أو إيموجي حرّاً بعد انتهاء آثار+ — وكانت اللوحة تُطوى بصمت
+      فيُقرأ ذلك «ضغطتُ ولم يحدث شيء».
+    */
+    onError: (error) => Alert.alert("ما تمّ التفاعل", error instanceof Error ? error.message : undefined),
+    /*
+      كلُّ قائمةٍ تحمل اللحظة: الخطُّ الزمنيّ، وصفحتُها، وملفُّ الصديق،
+      و«أنا». كان التحديثُ للأوّلين وحدهما، فالتفاعلُ من ملفّ صديقٍ لا يظهر.
+    */
     onSettled: () => {
       void client.invalidateQueries({ queryKey: ["feed"] });
       void client.invalidateQueries({ queryKey: keys.moment(momentId) });
+      void client.invalidateQueries({ queryKey: ["user"] });
+      void client.invalidateQueries({ queryKey: ["me", "moments"] });
     },
   });
 }
@@ -287,9 +300,13 @@ export function useComment(momentId: string) {
   return useMutation({
     mutationFn: (body: string) =>
       api(`/v1/moments/${momentId}/comments`, { method: "POST", body: JSON.stringify({ body }) }),
+    // كالتفاعل: تعليقٌ رُدّ (قفلٌ، أو كلمةٌ ممنوعة) يُقال ولا يختفي بصمت.
+    onError: (error) => Alert.alert("ما أُرسل التعليق", error instanceof Error ? error.message : undefined),
     onSettled: () => {
       void client.invalidateQueries({ queryKey: keys.moment(momentId) });
       void client.invalidateQueries({ queryKey: ["feed"] });
+      void client.invalidateQueries({ queryKey: ["user"] });
+      void client.invalidateQueries({ queryKey: ["me", "moments"] });
     },
   });
 }

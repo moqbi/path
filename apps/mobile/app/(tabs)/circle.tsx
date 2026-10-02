@@ -11,7 +11,7 @@ import { SwipeRow } from "../../components/swipe-row";
 import { ScreenHeader } from "../../components/screen-header";
 import { StoryStrip } from "../../components/stories";
 import { api } from "../../lib/api";
-import { keys, useCircle, useRings, useSuggestions } from "../../lib/queries";
+import { keys, useCircle, useRings } from "../../lib/queries";
 import { usePullRefresh } from "../../lib/refresh";
 import { ar, presence } from "../../lib/format";
 import { useSession } from "../../lib/session";
@@ -25,20 +25,21 @@ import { colors } from "../../theme/tokens";
  * وما بقي من السقف. والسقف مكتوبٌ دائماً: مئةٌ وخمسون قرارُ منتَج يُرى،
  * لا حدٌّ يُكتشف حين يُبلَغ.
  */
-/** أبواب الدائرة الثلاثة — أسماؤها وترتيبها كما في الويب. */
+/**
+ * بابا الدائرة. و«مقترحون» ذهب — **بقرار المالك** (القاعدة ٢٢٧): الإضافةُ برابط
+ * الملف الذي يعطيه صاحبُه، لا بقائمةٍ تعرض أصدقاء الأصدقاء.
+ */
 const TABS = [
   { key: "friends", label: "أصدقائي" },
   { key: "groups", label: "تصنيفاتي" },
-  { key: "suggested", label: "مقترحون" },
 ] as const;
 
 type Tab = (typeof TABS)[number]["key"];
 
 type Member = NonNullable<ReturnType<typeof useCircle>["data"]>["members"][number];
-type Suggested = NonNullable<ReturnType<typeof useSuggestions>["data"]>["people"][number];
 /** رأسُ قسمٍ في «أصدقائي»: متصلٌ أو غير متصل، يُطوى ويُفتح. */
 type Head = { id: string; head: "online" | "offline"; count: number };
-type Row = Member | Suggested | Head;
+type Row = Member | Head;
 
 /** متصلٌ من ظهر في آخر ثلاث دقائق — العتبةُ نفسها في `presence()`. */
 const onlineNow = (lastSeenAt: string | null) =>
@@ -53,7 +54,6 @@ export default function Circle() {
   /* قسما «أصدقائي» — ما طُوي منهما يبقى رأسُه وحده. */
   const [folded, setFolded] = useState<{ online: boolean; offline: boolean }>({ online: false, offline: false });
   const circle = useCircle();
-  const suggested = useSuggestions();
   const rings = useRings();
   /*
     الطلباتُ الواردة تُسأل عنها مع كل دخولٍ إلى التبويب: كانت الذاكرةُ
@@ -65,7 +65,7 @@ export default function Circle() {
       void refetchCircle();
     }, [refetchCircle]),
   );
-  const pullRefresh = usePullRefresh(() => Promise.all([circle.refetch(), suggested.refetch(), rings.refetch()]));
+  const pullRefresh = usePullRefresh(() => Promise.all([circle.refetch(), rings.refetch()]));
   const router = useRouter();
   const client = useQueryClient();
   const me = useSession((state) => state.me);
@@ -110,13 +110,6 @@ export default function Circle() {
     onSuccess: (row) => router.push(`/dm/${row.id}` as never),
   });
 
-  const ask = useMutation({
-    mutationFn: (id: string) => api(`/v1/circle/${id}/request`, { method: "POST" }),
-    onSettled: () => {
-      void client.invalidateQueries({ queryKey: keys.suggestions });
-      void client.invalidateQueries({ queryKey: keys.circle });
-    },
-  });
 
   const data = circle.data;
   const groups = data?.groups ?? [];
@@ -136,7 +129,6 @@ export default function Circle() {
         ...(folded.offline ? [] : offline),
       ]
     : [];
-  const people = suggested.data?.people ?? [];
 
   return (
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
@@ -159,13 +151,11 @@ export default function Circle() {
           الأبواب فوقها ثابتة ويتبدّل ما تحتها — كعدسات الخط الزمني.
         */
         data={
-          (tab === "suggested"
-            ? people
-            : tab === "groups"
-              ? groupFilter
-                ? (data?.members ?? []).filter((member) => member.groupId === groupFilter)
-                : (data?.members ?? [])
-              : sectioned) as Row[]
+          (tab === "groups"
+            ? groupFilter
+              ? (data?.members ?? []).filter((member) => member.groupId === groupFilter)
+              : (data?.members ?? [])
+            : sectioned) as Row[]
         }
         keyExtractor={(item) => item.id}
         scrollEnabled={!swiping}
@@ -178,7 +168,7 @@ export default function Circle() {
         }
         ListHeaderComponent={
           <>
-            {/* الأبواب الثلاثة: أصدقائي، تصنيفاتي، مقترحون. */}
+            {/* البابان: أصدقائي وتصنيفاتي. */}
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -244,16 +234,6 @@ export default function Circle() {
               </View>
             ) : null}
 
-            {tab === "suggested" ? (
-              <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
-                <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "700", marginBottom: 4 }}>
-                  أشخاص قد تعرفهم
-                </Text>
-                <Text style={{ color: colors.muted, fontSize: 11.5, lineHeight: 19 }}>
-                  لا بحث بالاسم ولا بالبريد — من يظهر هنا يجمعك به صديق مشترك.
-                </Text>
-              </View>
-            ) : null}
 
             {tab === "friends" ? (
               <>
@@ -335,48 +315,6 @@ export default function Circle() {
               </Pressable>
             );
           }
-          if (tab === "suggested") {
-            const person = item as Suggested;
-            return (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginHorizontal: 16, marginTop: 8, borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, padding: 12 }}>
-                <Pressable onPress={() => router.push(`/u/${person.id}` as never)}>
-                  <Avatar
-                    name={person.name}
-                    size={44}
-                    mediaId={person.avatarMediaId}
-                    frame={person.frame}
-                    charm={person.charm}
-                  />
-                </Pressable>
-
-                <Pressable style={{ flex: 1, minWidth: 0 }} onPress={() => router.push(`/u/${person.id}` as never)}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <Text
-                      numberOfLines={1}
-                      style={{ color: colors.ink, fontSize: 14, fontWeight: "600", flexShrink: 1, writingDirection: "auto" }}
-                    >
-                      {person.name}
-                    </Text>
-                    <NameTag isPlus={person.isPlus} tag={person.tag} size={10} />
-                  </View>
-                  <Text numberOfLines={1} style={{ color: colors.faint, fontSize: 11.5 }}>
-                    {person.mutual === 1
-                      ? "صديق مشترك واحد"
-                      : `مشترك معك في ${ar(person.mutual)} أصدقاء`}
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => ask.mutate(person.id)}
-                  disabled={ask.isPending}
-                  style={{ height: 40, paddingHorizontal: 14, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
-                >
-                  <Text style={{ color: colors.onBrand, fontSize: 12.5, fontWeight: "700" }}>إضافة</Text>
-                </Pressable>
-              </View>
-            );
-          }
-
           if (tab === "groups") {
             const member = item as Member;
             return (
@@ -434,7 +372,7 @@ export default function Circle() {
             يكشف «حظر» و«إزالة» معاً. وشرط آبل محفوظ: الحظر موجود.
           */
           /*
-            وكلُّ صديقٍ في قالبه كالمقترحين والتصنيفات: صفوفٌ عائمةٌ على
+            وكلُّ صديقٍ في قالبه كالتصنيفات: صفوفٌ عائمةٌ على
             الورق تُقرأ قائمةً واحدة لا أشخاصاً. والسحبُ يكشف «محادثة» مع
             أداتَي القطع — الفعلُ الأكثرُ مع الصديق لا يحتاج فتحَ ملفّه.
           */
@@ -485,19 +423,17 @@ export default function Circle() {
           );
         }}
         ListEmptyComponent={
-          (tab === "suggested" ? suggested.isLoading : circle.isLoading) ? (
+          circle.isLoading ? (
             <View style={{ paddingTop: 60, alignItems: "center" }}>
               <ActivityIndicator color={colors.clay} />
             </View>
           ) : (
-            /* لكل بابٍ فراغُه: «ما فيه مقترحون» في صفحة الأصدقاء لا معنى له. */
+            /* لكل بابٍ فراغُه. */
             <View style={{ paddingTop: 60, paddingHorizontal: 40 }}>
               <Text style={{ color: colors.muted, fontSize: 13.5, textAlign: "center", lineHeight: 24 }}>
-                {tab === "suggested"
-                  ? "ما فيه مقترحون. حين يكبر عدد أصدقائك يظهر هنا من يعرفونهم."
-                  : tab === "groups" && groupFilter
-                    ? "ما في هذا التصنيف أحدٌ بعد. اختر «الكل» وصنّف من شئت."
-                    : "دائرتك فارغة. لا بحث هنا — من يجمعك به صديقٌ مشترك يظهر لك في المقترحين."}
+                {tab === "groups" && groupFilter
+                  ? "ما في هذا التصنيف أحدٌ بعد. اختر «الكل» وصنّف من شئت."
+                  : "دائرتك فارغة. لا بحث هنا — شارك رابط ملفك من «أنا» مع من تعرفهم، ومن يفتحه يضيفك."}
               </Text>
             </View>
           )

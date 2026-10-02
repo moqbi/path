@@ -90,7 +90,9 @@ export async function suggestions(userId: string) {
     select: { requesterId: true, addresseeId: true },
   });
 
-  const mine = new Set([...ids, userId, ...blocked]);
+  // «أصدقائي» كلُّهم لا الجسورُ وحدها: الحسابُ المفتوح يُقصى من الجسور لا من
+  // دائرتي — وكان يُقصى منهما فيُقترح عليّ وهو صديقي.
+  const mine = new Set([...all, userId, ...blocked]);
   const counts = new Map<string, number>();
   for (const row of theirs) {
     for (const id of [row.requesterId, row.addresseeId]) {

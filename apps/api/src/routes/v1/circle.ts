@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { cuid, friendGroupInput, groupInput, pageQuery } from "@athar/shared";
+import { unknownKinds } from "../../lib/client-kinds";
 import { zValidator } from "../../lib/validate";
 import { requireAuth, me } from "../../middleware/auth";
 import * as circle from "../../services/circle";
@@ -94,6 +95,6 @@ export const userRoutes = new Hono()
       const { id } = c.req.valid("param");
       // الملفّ يُفتح أولاً: من لا يُسمح له برؤيته لا يُعطى لحظاته.
       await circle.userProfile(me(c), id);
-      return c.json(await feed.momentsOf(me(c), id, c.req.valid("query")));
+      return c.json(await feed.momentsOf(me(c), id, c.req.valid("query"), unknownKinds(c)));
     },
   );

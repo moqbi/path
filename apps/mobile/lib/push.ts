@@ -3,6 +3,7 @@ import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
 import { api } from "./api";
+import { openThread } from "./open-thread";
 
 /**
  * تنبيهاتُ الجهاز.
@@ -16,14 +17,20 @@ import { api } from "./api";
  * بروتوكولين ولا شهادتين.
  */
 
-/** ما يفعله التطبيق بتنبيهٍ يصل وهو مفتوح: يُعرض ويُسمع. */
+/**
+ * ما يفعله التطبيق بتنبيهٍ يصل وهو مفتوح: يُعرض ويُسمع — إلّا رسالةً في
+ * المحادثة المفتوحة نفسها: صاحبُها يراها تظهر أمامه، وشريطٌ فوقها تكرار.
+ */
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
+  handleNotification: async (notification) => {
+    const here = notification.request.content.data?.path === openThread();
+    return {
+      shouldShowBanner: !here,
+      shouldShowList: !here,
+      shouldPlaySound: !here,
+      shouldSetBadge: false,
+    };
+  },
 });
 
 /** معرّفُ مشروع EAS — منه تُصدر خدمةُ Expo رمزَ الجهاز. */

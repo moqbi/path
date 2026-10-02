@@ -1,4 +1,4 @@
-import { prisma } from "@athar/db";
+import { prisma, type MomentKind } from "@athar/db";
 import { forbidden, notFound } from "../lib/errors";
 import { blockedWith, visibleWhere } from "./visibility";
 
@@ -126,6 +126,12 @@ const cursorOf = (cursor?: string) => ({
   skip: cursor ? 1 : 0,
 });
 
+/**
+ * ما لا يرسمه جوّالٌ قديم يُحجب عنه (`unknownKinds` — القاعدة ٢٢٦). شرطٌ
+ * يُضاف بـ`AND` لا يُدمج في شرط الرؤية فيكتب فوق حقلٍ فيه.
+ */
+const known = (hide: string[]) => (hide.length ? { kind: { notIn: hide as MomentKind[] } } : {});
+
 export type FeedMoment = Awaited<ReturnType<typeof timeline>>["moments"][number];
 
 /**
@@ -134,11 +140,11 @@ export type FeedMoment = Awaited<ReturnType<typeof timeline>>["moments"][number]
  * الترقيم بالرقم يكرّر لحظةً ويُسقط أخرى كلما نُشرت واحدةٌ أثناء التصفّح.
  * والمؤشّر هو معرّف آخر لحظةٍ قُرئت: ما بعده يأتي، ولو نُشر ألفٌ فوقه.
  */
-export async function timeline(userId: string, options: { cursor?: string; limit: number }) {
+export async function timeline(userId: string, options: { cursor?: string; limit: number }, hide: string[] = []) {
   const where = await visibleWhere(userId);
 
   const rows = await prisma.moment.findMany({
-    where,
+    where: { AND: [where, known(hide)] },
     select: shape,
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: options.limit + 1,
@@ -149,11 +155,11 @@ export async function timeline(userId: string, options: { cursor?: string; limit
 }
 
 /** اللحظات الخاصة: ما لم يُنشر للدائرة كلها. */
-export async function privateTimeline(userId: string, options: { cursor?: string; limit: number }) {
+export async function privateTimeline(userId: string, options: { cursor?: string; limit: number }, hide: string[] = []) {
   const where = await visibleWhere(userId);
 
   const rows = await prisma.moment.findMany({
-    where: { ...where, audience: { not: "CIRCLE" } },
+    where: { AND: [where, { audience: { not: "CIRCLE" } }, known(hide)] },
     select: shape,
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: options.limit + 1,
@@ -242,6 +248,7 @@ export async function momentsOf(
   userId: string,
   authorId: string,
   options: { cursor?: string; limit: number },
+  hide: string[] = [],
 ) {
   /*
     والحساب المفتوح بابٌ ثانٍ ظاهرٌ كباب الإشراف: من يزوره يقرأ ما
@@ -260,7 +267,7 @@ export async function momentsOf(
   const where = open ? { audience: "CIRCLE" as const } : await visibleWhere(userId);
 
   const rows = await prisma.moment.findMany({
-    where: { ...where, authorId },
+    where: { AND: [where, { authorId }, known(hide)] },
     select: shape,
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: options.limit + 1,

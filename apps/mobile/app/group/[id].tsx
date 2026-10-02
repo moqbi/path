@@ -14,6 +14,7 @@ import { api } from "../../lib/api";
 import { uploadFile } from "../../lib/upload";
 import { useKeyboardInset } from "../../lib/keyboard";
 import { keys } from "../../lib/queries";
+import { useOpenThread } from "../../lib/open-thread";
 import { useSession } from "../../lib/session";
 import { ar } from "../../lib/format";
 import type { GroupLine, GroupThread } from "../../lib/groups";
@@ -29,6 +30,7 @@ import { colors } from "../../theme/tokens";
  */
 export default function Group() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  useOpenThread(`/group/${id}`);
   const me = useSession((s) => s.me);
   const client = useQueryClient();
   const router = useRouter();
