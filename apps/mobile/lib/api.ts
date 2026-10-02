@@ -125,6 +125,12 @@ export async function api<T>(path: string, init: RequestInit = {}, retry = true)
       ...(init.body instanceof FormData ? {} : { "content-type": "application/json" }),
       ...(token ? { authorization: `Bearer ${token}` } : {}),
       "x-device-id": await deviceId(),
+      /*
+        درجةُ أنواع اللحظات التي يرسمها هذا البناء (القاعدة ٢٢٦): الخادمُ
+        يحجب عن نسخةٍ قديمة ما لا تعرفه، وإلّا رسمته بطاقةً فارغة. نوعٌ جديد
+        يرفعها ويُضاف في `apps/api/src/lib/client-kinds.ts` بدرجته.
+      */
+      "x-moment-kinds": "2",
       ...init.headers,
     },
   });

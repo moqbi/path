@@ -12,6 +12,7 @@ import {
   profileInput,
 } from "@athar/shared";
 import { badRequest } from "../../lib/errors";
+import { unknownKinds } from "../../lib/client-kinds";
 import { zValidator } from "../../lib/validate";
 import { requireAuth, me } from "../../middleware/auth";
 import * as profile from "../../services/profile";
@@ -36,7 +37,7 @@ export const profileRoutes = new Hono()
 
   /** لحظاتي أنا — بلا شرط رؤية: صاحبها يراها كلها. */
   .get("/moments", zValidator("query", pageQuery), async (c) =>
-    c.json(await feed.momentsOf(me(c), me(c), c.req.valid("query"))),
+    c.json(await feed.momentsOf(me(c), me(c), c.req.valid("query"), unknownKinds(c))),
   )
 
   .patch("/", zValidator("json", profileInput), async (c) =>

@@ -8,6 +8,7 @@ import {
   reactionInput,
 } from "@athar/shared";
 import { z } from "zod";
+import { unknownKinds } from "../../lib/client-kinds";
 import { zValidator } from "../../lib/validate";
 import { requireActive, requireAuth, me } from "../../middleware/auth";
 import { rateLimitUser } from "../../middleware/rate-limit";
@@ -21,11 +22,11 @@ export const feedRoutes = new Hono()
   .use("*", requireAuth)
 
   .get("/", zValidator("query", pageQuery), async (c) =>
-    c.json(await feed.timeline(me(c), c.req.valid("query"))),
+    c.json(await feed.timeline(me(c), c.req.valid("query"), unknownKinds(c))),
   )
 
   .get("/private", zValidator("query", pageQuery), async (c) =>
-    c.json(await feed.privateTimeline(me(c), c.req.valid("query"))),
+    c.json(await feed.privateTimeline(me(c), c.req.valid("query"), unknownKinds(c))),
   )
 
   /** «آثارنا»: ما يجمعك بصديقٍ بعينه — ومن ليس في دائرتك لا أثرَ معه. */

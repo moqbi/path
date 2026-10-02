@@ -112,7 +112,7 @@ function Profile() {
     queryFn: () => api<{ person: Person; friend: boolean; owned: string[] }>(`/v1/users/${id}`),
   });
 
-  /** إضافةُ حسابٍ مفتوح: الطلب نفسه الذي يُرسل من «مقترحون». */
+  /** إضافةُ حسابٍ مفتوح: طلبُ الإضافة نفسه. */
   const add = useMutation({
     mutationFn: () => api<{ status: "PENDING" | "ACCEPTED" }>(`/v1/circle/${id}/request`, { method: "POST" }),
     // الحسابُ المفتوح يقبل في الحال (القاعدة ٢٢١): يُعاد جلبُ الملفّ فتظهر لحظاتُه.

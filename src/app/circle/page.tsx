@@ -2,14 +2,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { CIRCLE_CAP, circleIds, suggestions } from "@/lib/circle";
+import { CIRCLE_CAP, circleIds } from "@/lib/circle";
 import { storyRings } from "@/lib/stories";
 import {
   acceptFriend,
   ignoreFriend,
   blockUser,
   removeFriend,
-  requestFriend,
   setFriendGroup,
   startConversation,
 } from "@/app/actions";
@@ -24,7 +23,6 @@ import { ar, presence, relative } from "@/lib/format";
 const TABS = [
   { key: "friends", label: "أصدقائي" },
   { key: "groups", label: "تصنيفاتي" },
-  { key: "suggested", label: "مقترحون" },
 ] as const;
 
 export default async function CirclePage({
@@ -38,9 +36,8 @@ export default async function CirclePage({
   const { t, g } = await searchParams;
   const tab = TABS.some((item) => item.key === t) ? t! : "friends";
 
-  const [ids, suggested, requests, groups, rings] = await Promise.all([
+  const [ids, requests, groups, rings] = await Promise.all([
     circleIds(user.id),
-    suggestions(user.id),
     prisma.friendship.findMany({
       where: { addresseeId: user.id, status: "PENDING" },
       orderBy: { createdAt: "desc" },
@@ -205,8 +202,7 @@ export default async function CirclePage({
             {members.length === 0 ? (
               <Empty
                 title="ما عندك أصدقاء بعد"
-                hint="الإضافة من أصدقاء أصدقائك — افتح «مقترحون»."
-                action={{ href: "/circle?t=suggested", label: "افتح المقترحين" }}
+                hint="لا بحث هنا — شارك رابط ملفك مع من تعرفهم، ومن يفتحه يضيفك."
               />
             ) : (
               <div className="overflow-hidden rounded-2xl border border-line bg-card">
@@ -373,57 +369,6 @@ export default async function CirclePage({
           </>
         ) : null}
 
-        {tab === "suggested" ? (
-          <>
-            <p className="mb-1 text-[13.5px] font-bold">أشخاص قد تعرفهم</p>
-            <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
-              لا بحث بالاسم ولا بالبريد — من يظهر هنا يجمعك به صديق مشترك.
-            </p>
-
-            {suggested.length === 0 ? (
-              <Empty title="ما فيه مقترحون" hint="حين يكبر عدد أصدقائك يظهر هنا من يعرفونهم." />
-            ) : (
-              <div className="flex flex-col gap-2">
-                {suggested.map((person) => (
-                  <div
-                    key={person.id}
-                    className="flex items-center gap-3 rounded-2xl border border-line bg-card p-3"
-                  >
-                    <Link href={`/u/${person.id}`} aria-label={`ملف ${person.name}`} className="shrink-0">
-                      <Avatar
-                        name={person.name}
-                        size={44}
-                        frame={person.frame}
-                        charm={person.charm}
-                        mediaId={person.avatarMediaId}
-                      />
-                    </Link>
-                    <Link href={`/u/${person.id}`} className="min-w-0 grow">
-                      <p className="flex items-center gap-1.5 truncate text-[14px] font-semibold">
-                        {person.name}
-                        <NameTag isPlus={person.isPlus} tag={person.tag} size={10} />
-                      </p>
-                      <p className="truncate text-[11.5px] text-faint">
-                        {person.mutual === 1
-                          ? "صديق مشترك واحد"
-                          : `مشترك معك في ${ar(person.mutual)} أصدقاء`}
-                      </p>
-                    </Link>
-                    <form action={requestFriend.bind(null, person.id)} className="shrink-0">
-                      <button
-                        type="submit"
-                        className="h-10 rounded-xl px-3.5 text-[12.5px] font-bold"
-                        style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
-                      >
-                        إضافة
-                      </button>
-                    </form>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        ) : null}
       </main>
 
       <TabBar active="/circle" />
