@@ -5,7 +5,7 @@ import { Avatar, firstColor } from "./avatar";
 import { MediaImage } from "./media-image";
 import { viewPhoto } from "./photo-viewer";
 import { AthrMark } from "./brand";
-import { TagIcon, PinIcon, PlayIcon, WithIcon, SunIcon, MoonIcon, PlaneIcon, GiftIcon, SparkIcon, PrivateIcon } from "./icons";
+import { CameraIcon, TagIcon, PinIcon, PlayIcon, WithIcon, SunIcon, MoonIcon, PlaneIcon, GiftIcon, SparkIcon, PrivateIcon } from "./icons";
 import { MomentBar } from "./moment-bar";
 import { PHOTO_RATIO } from "./photo-frame";
 import { AuthorFaces, Bubble, CommentList, Reactors } from "./reactors";
@@ -25,7 +25,7 @@ export const SPINE_W = 56;
  * بإطار. والتفريق في العرض لا في الخادم.
  */
 const EVENTS = new Set([
-  "CITY", "PLACE", "SLEEP", "WAKE", "MUSIC", "FRIEND_ADDED", "GIFT_SENT", "GIFT_GOT", "JOINED", "TAG_GRANTED",
+  "CITY", "PLACE", "SLEEP", "WAKE", "MUSIC", "FRIEND_ADDED", "GIFT_SENT", "GIFT_GOT", "JOINED", "TAG_GRANTED", "AVATAR_CHANGED",
 ]);
 
 const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
@@ -39,6 +39,7 @@ const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
   GIFT_GOT: { bg: colors.claySoft, ink: colors.clayInk },
   JOINED: { bg: colors.night, ink: "#f7f5ef" },
   TAG_GRANTED: { bg: colors.goldSoft, ink: colors.goldInk },
+  AVATAR_CHANGED: { bg: colors.claySoft, ink: colors.clayInk },
 };
 
 function EventIcon({ kind }: { kind: string }) {
@@ -52,6 +53,7 @@ function EventIcon({ kind }: { kind: string }) {
     : kind === "GIFT_SENT" || kind === "GIFT_GOT" ? <GiftIcon size={15} color={style.ink} />
     : kind === "JOINED" ? <AthrMark size={20} />
     : kind === "TAG_GRANTED" ? <TagIcon size={15} color={style.ink} />
+    : kind === "AVATAR_CHANGED" ? <CameraIcon size={16} color={style.ink} />
     : <PinIcon size={16} color={style.ink} />;
 
   return (
@@ -93,6 +95,12 @@ function eventText(moment: Moment, withNames: string[], viewerId = "") {
           moment.author.id === viewerId
             ? `تهانينا — حصلت على وسم «${moment.text ?? ""}» من الإدارة`
             : `تهانينا — حصل على وسم «${moment.text ?? ""}» من الإدارة`,
+        subtitle: null,
+      };
+    case "AVATAR_CHANGED":
+      // بلسانه لصاحبه، وبالغائب لدائرته (القاعدة ٢١٤).
+      return {
+        title: moment.author.id === viewerId ? "غيّرت صورتك" : `${moment.author.name} غيّر صورته`,
         subtitle: null,
       };
     case "JOINED":

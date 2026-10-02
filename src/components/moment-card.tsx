@@ -10,6 +10,7 @@ import {
   GiftIcon,
   WithIcon,
   TagIcon,
+  CameraIcon,
   PrivateIcon,
 } from "@/components/icons";
 import { MomentBar } from "@/components/moment-bar";
@@ -43,6 +44,7 @@ export const EVENTS = new Set([
   "GIFT_GOT",
   "JOINED",
   "TAG_GRANTED",
+  "AVATAR_CHANGED",
 ]);
 
 const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
@@ -56,6 +58,7 @@ const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
   GIFT_GOT: { bg: "var(--color-clay-soft)", ink: "var(--color-clay-ink)" },
   JOINED: { bg: "var(--color-night)", ink: "#f7f5ef" },
   TAG_GRANTED: { bg: "var(--color-gold-soft)", ink: "var(--color-gold-ink)" },
+  AVATAR_CHANGED: { bg: "var(--color-clay-soft)", ink: "var(--color-clay-ink)" },
 };
 
 function EventIcon({ kind }: { kind: string }) {
@@ -77,6 +80,8 @@ function EventIcon({ kind }: { kind: string }) {
       <AthrMark size={20} />
     ) : kind === "TAG_GRANTED" ? (
       <TagIcon size={16} />
+    ) : kind === "AVATAR_CHANGED" ? (
+      <CameraIcon size={16} />
     ) : (
       <PinIcon size={16} />
     );
@@ -295,6 +300,10 @@ export function EventLine({
     ) : kind === "TAG_GRANTED" ? (
       <>
         تهانينا — حصل على وسم <span className="font-bold">«{moment.text ?? ""}»</span> من الإدارة
+      </>
+    ) : kind === "AVATAR_CHANGED" ? (
+      <>
+        <span className="font-bold">{moment.author.name}</span> غيّر صورته
       </>
     ) : kind === "JOINED" ? (
       <>

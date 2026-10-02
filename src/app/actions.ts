@@ -27,6 +27,7 @@ import { readIdentity, upsertIdentity } from "@/lib/oauth";
 import { mailReply, tellSupport } from "@/lib/support-mail";
 import { conversationFor, deliverTo, openConversation, VOICE_SECONDS } from "@/lib/dm";
 import { copyMedia, dropMedia, migrateToCloud, storeClip, storeUpload } from "@/lib/media";
+import { announceAvatar } from "@/lib/avatar-moment";
 import { cloudReady, probeBucket } from "@/lib/storage";
 import { isSupportedMusicUrl, resolveTrack } from "@/lib/music-link";
 import { guard } from "@/lib/moderation";
@@ -582,6 +583,8 @@ export async function setAvatar(formData: FormData): Promise<string | void> {
     // صورة العرض المتحركة من مزايا آثار+ — والفحص هنا، فالعميل ليس قيداً.
     const media = await storeUpload(user.id, file, width, height, user.isPlus);
     await prisma.user.update({ where: { id: user.id }, data: { avatarMediaId: media.id } });
+    // «غيّر صورته» لدائرته (القاعدة ٢١٤).
+    await announceAvatar(user.id, media.id);
   } catch (problem) {
     return problem instanceof Error ? problem.message : "تعذّر حفظ الصورة";
   }
