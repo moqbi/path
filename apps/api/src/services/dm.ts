@@ -292,7 +292,9 @@ export async function unreadCount(userId: string) {
       conversation: { OR: [{ aId: userId }, { bId: userId }] },
     },
   });
-  return { unread: count };
+  // والمجموعاتُ في الشارة نفسها (القاعدة ٢١٥): رقمُ المحادثات يقول كم ينتظر.
+  const { unreadCount: groupUnread } = await import("./groups");
+  return { unread: count + (await groupUnread(userId)) };
 }
 
 /**

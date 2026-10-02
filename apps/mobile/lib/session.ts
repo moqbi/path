@@ -36,6 +36,8 @@ export type Me = {
   role: "USER" | "ADMIN";
   /** صلاحية الإشراف على المحتوى: قراءةُ لحظات أيّ حساب بلا صداقة وحذفُها. */
   canModerate: boolean;
+  /** إنشاءُ المحادثات الجماعيّة وإدارتُها — المالك وممنوحُ اللوحة كلّها. */
+  canGroups?: boolean;
   /** إيقافٌ مؤقّت — `null` أو تاريخٌ مضى يعني «غير موقوف». */
   suspendedUntil: string | null;
   suspendedReason: string | null;

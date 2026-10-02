@@ -74,6 +74,8 @@ export async function me(userId: string) {
     ...rest,
     hasPassword: Boolean(passwordHash),
     canModerate: user.role === "ADMIN" || user.canModerate,
+    // إنشاءُ المجموعات وإدارتُها (القاعدة ٢١٥).
+    canGroups: user.role === "ADMIN" || user.adminScope === "ALL",
   };
 }
 

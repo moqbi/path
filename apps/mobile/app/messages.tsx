@@ -9,7 +9,8 @@ import { Avatar } from "../components/avatar";
 import { SwipeRow } from "../components/swipe-row";
 import { ScreenHeader } from "../components/screen-header";
 import { Ticks, receiptOf } from "../components/receipt";
-import { CameraIcon, MicIcon, SearchIcon, TrashIcon } from "../components/icons";
+import { CameraIcon, MicIcon, PlusIcon, SearchIcon, TrashIcon, WithIcon } from "../components/icons";
+import type { GroupRow } from "../lib/groups";
 import { api } from "../lib/api";
 import { keys, useCircle } from "../lib/queries";
 import { usePullRefresh } from "../lib/refresh";
@@ -82,7 +83,14 @@ export default function Messages() {
   });
 
   /** حذف المحادثة: تُكشف بالسحب كما في الويب، لا بزرٍّ دائمٍ في الصفّ. */
-  const pullRefresh = usePullRefresh(list.refetch);
+  /* المجموعات فوق المحادثات (القاعدة ٢١٥): قليلةٌ ومنها يأتي أكثرُ الكلام. */
+  const groupList = useQuery({
+    queryKey: keys.groups,
+    queryFn: () => api<{ groups: GroupRow[] }>("/v1/groups"),
+    refetchInterval: 20_000,
+  });
+
+  const pullRefresh = usePullRefresh(() => Promise.all([list.refetch(), groupList.refetch()]));
   const drop = useMutation({
     mutationFn: (id: string) => api(`/v1/dm/${id}`, { method: "DELETE" }),
     onSuccess: async () => client.invalidateQueries({ queryKey: keys.dm }),
@@ -100,6 +108,9 @@ export default function Messages() {
     (row) => !needle || row.other.name.toLowerCase().includes(needle),
   );
   const talking = new Set((list.data?.conversations ?? []).map((row) => row.other.id));
+  const groups = (groupList.data?.groups ?? []).filter(
+    (row) => !needle || row.name.toLowerCase().includes(needle),
+  );
   const others = needle
     ? (circle.data?.members ?? []).filter(
         (person) => !talking.has(person.id) && person.name.toLowerCase().includes(needle),
@@ -112,7 +123,23 @@ export default function Messages() {
 
   return (
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
-      <ScreenHeader title="المحادثات" back="/" />
+      <ScreenHeader
+        title="المحادثات"
+        back="/"
+        right={
+          // إنشاءُ المجموعة للمشرف وحده (القاعدة ٢١٥).
+          me?.canGroups ? (
+            <Pressable
+              accessibilityLabel="مجموعة جديدة"
+              onPress={() => router.push("/group/manage" as never)}
+              hitSlop={8}
+              style={{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.1)" }}
+            >
+              <PlusIcon size={19} color="#f7f5ef" />
+            </Pressable>
+          ) : undefined
+        }
+      />
 
       <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
         <View
@@ -145,6 +172,46 @@ export default function Messages() {
         onScrollBeginDrag={scrolled}
         keyboardShouldPersistTaps="handled"
         data={conversations}
+        ListHeaderComponent={
+          groups.length > 0 ? (
+            <View style={{ paddingBottom: 4 }}>
+              {groups.map((row) => (
+                <Pressable
+                  key={row.id}
+                  onPress={() => router.push(`/group/${row.id}` as never)}
+                  style={{ flexDirection: "row", alignItems: "center", gap: 11, paddingHorizontal: 20, paddingVertical: 11 }}
+                >
+                  <View style={{ width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center", backgroundColor: colors.claySoft }}>
+                    <WithIcon size={22} color={colors.clayInk} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <Text numberOfLines={1} style={{ color: colors.ink, fontSize: 14, fontWeight: "600", flexShrink: 1, writingDirection: "auto" }}>
+                        {row.name}
+                      </Text>
+                      <Text style={{ color: colors.faint, fontSize: 10.5 }}>
+                        {row.last ? relative(new Date(row.last.createdAt)) : `${ar(row.members)} عضو`}
+                      </Text>
+                    </View>
+                    <Text numberOfLines={1} style={{ color: colors.muted, fontSize: 12 }}>
+                      {row.last
+                        ? `${row.last.senderId === me?.id ? "أنت" : row.last.sender.name}: ${row.last.kind === "PHOTO" ? "صورة" : row.last.body}`
+                        : "لا رسائل بعد"}
+                    </Text>
+                  </View>
+                  {row.unseen > 0 ? (
+                    <View style={{ minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 6, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}>
+                      <Text style={{ color: colors.onBrand, fontSize: 10.5, fontWeight: "700" }}>{ar(row.unseen)}</Text>
+                    </View>
+                  ) : null}
+                </Pressable>
+              ))}
+              {conversations.length > 0 ? (
+                <View style={{ height: 1, backgroundColor: colors.line, marginHorizontal: 20, marginVertical: 4 }} />
+              ) : null}
+            </View>
+          ) : null
+        }
         ListFooterComponent={
           others.length > 0 ? (
             <View style={{ paddingTop: 8 }}>
@@ -218,7 +285,7 @@ export default function Messages() {
         ListEmptyComponent={
           list.isLoading ? (
             <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
-          ) : needle ? (
+          ) : groups.length > 0 ? null : needle ? (
             others.length > 0 ? null : (
               <Text style={{ color: colors.muted, fontSize: 13.5, textAlign: "center", marginTop: 40 }}>
                 لا أحد بهذا الاسم في دائرتك.

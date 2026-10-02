@@ -21,6 +21,9 @@ export const keys = {
   userMoments: (id: string) => ["user", id, "moments"] as const,
   dm: ["dm"] as const,
   thread: (id: string) => ["dm", id] as const,
+  // تحت «dm» لتتحدّث مع المحادثات وشارتها (القاعدة ٢١٥).
+  groups: ["dm", "groups"] as const,
+  group: (id: string) => ["dm", "group", id] as const,
 };
 
 export type Person = {

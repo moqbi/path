@@ -237,6 +237,9 @@ model User {
 
   media          Media[]        @relation("MediaOwner")
   conversationsA Conversation[] @relation("ConversationA")
+  groupsMade     ChatGroup[]        @relation("GroupCreator")
+  groupSeats     ChatGroupMember[]
+  groupMessages  GroupMessage[]
   conversationsB Conversation[] @relation("ConversationB")
   messagesSent   Message[]
 
@@ -740,6 +743,54 @@ model Message {
   @@index([conversationId, createdAt])
 }
 
+/// محادثةٌ جماعيّة ينشئها المشرف (القاعدة ٢١٥) — لجمع المختبرين ونحوهم.
+/// جدولٌ مستقلّ لا توسعةٌ لـ`Conversation`: تلك زوجٌ بإيصالٍ لكل رسالة،
+/// وهذه أعضاءٌ بختم قراءةٍ لكلٍّ منهم.
+model ChatGroup {
+  id          String   @id @default(cuid())
+  name        String
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  createdBy User?             @relation("GroupCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  members   ChatGroupMember[]
+  messages  GroupMessage[]
+
+  @@index([updatedAt])
+}
+
+model ChatGroupMember {
+  groupId    String
+  userId     String
+  /// ما بعده لم يُقرأ — ختمٌ واحد للعضو لا إيصالٌ لكل رسالة.
+  lastReadAt DateTime @default(now())
+  joinedAt   DateTime @default(now())
+
+  group ChatGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, userId])
+  @@index([userId])
+}
+
+model GroupMessage {
+  id        String      @id @default(cuid())
+  groupId   String
+  senderId  String
+  body      String
+  kind      MessageKind @default(TEXT)
+  mediaId   String?     @unique
+  media     Media?      @relation("GroupMessageMedia", fields: [mediaId], references: [id], onDelete: SetNull)
+  seconds   Int?
+  createdAt DateTime    @default(now())
+
+  group  ChatGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  sender User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, createdAt])
+}
+
 // ───────────────────────────── الملفات المرفوعة ─────────────────────────────
 
 /**
@@ -771,6 +822,7 @@ model Media {
   coverOf    User?      @relation("UserCover")
   storyOf    Story?     @relation("StoryMedia")
   messageOf  Message?   @relation("MessageMedia")
+  groupMessageOf GroupMessage? @relation("GroupMessageMedia")
   moment     Moment?    @relation("MomentMedia")
   storeItem  StoreItem? @relation("StoreItemMedia")
   storeCover StoreItem? @relation("StoreItemCover")
