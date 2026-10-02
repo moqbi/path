@@ -22,6 +22,8 @@ const PERSON = {
   id: true,
   name: true,
   memberNo: true,
+  isPlus: true,
+  tag: { select: { name: true, bg: true, fg: true } },
   avatarMediaId: true,
   frame: { select: { spec: true, mediaId: true, frameHole: true } },
   charm: { select: { spec: true, mediaId: true } },

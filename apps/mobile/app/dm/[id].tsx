@@ -7,7 +7,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Picker from "expo-image-picker";
 import { Audio } from "expo-av";
-import { Avatar } from "../../components/avatar";
+import { ChatLine, bubbleStyle, needsHead } from "../../components/chat-line";
+import { viewPhoto } from "../../components/photo-viewer";
 import { MediaImage } from "../../components/media-image";
 import { ScreenHeader } from "../../components/screen-header";
 import { Ticks, receiptOf } from "../../components/receipt";
@@ -17,7 +18,7 @@ import { uploadFile } from "../../lib/upload";
 import { useKeyboardInset } from "../../lib/keyboard";
 import { keys } from "../../lib/queries";
 import { useSession } from "../../lib/session";
-import { ar, timeOfDay } from "../../lib/format";
+import { ar } from "../../lib/format";
 import { colors } from "../../theme/tokens";
 
 type Line = {
@@ -138,7 +139,7 @@ export default function Conversation() {
   const thread = useQuery({
     queryKey: keys.thread(id),
     queryFn: () =>
-      api<{ id: string; other: { id: string; name: string; avatarMediaId: string | null; frame: { spec: string; mediaId: string | null; frameHole?: number | null } | null; charm: { spec: string; mediaId: string | null } | null }; messages: Line[] }>(
+      api<{ id: string; other: { id: string; name: string; isPlus?: boolean; tag?: { name: string; bg: string; fg: string } | null; avatarMediaId: string | null; frame: { spec: string; mediaId: string | null; frameHole?: number | null } | null; charm: { spec: string; mediaId: string | null } | null }; messages: Line[] }>(
         `/v1/dm/${id}?limit=50`,
       ),
     refetchInterval: 8_000,
@@ -310,7 +311,7 @@ export default function Conversation() {
           }}
           scrollEventThrottle={64}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 14, gap: 8 }}
+          contentContainerStyle={{ paddingHorizontal: 14, paddingVertical: 14, gap: 6 }}
           ListEmptyComponent={
             thread.isLoading ? (
               <ActivityIndicator style={{ marginTop: 40 }} color={colors.clay} />
@@ -320,14 +321,43 @@ export default function Conversation() {
               </Text>
             )
           }
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) => {
             const mine = item.senderId === me?.id;
             const open = editing === item.id;
+            // صورةُ المرسل واسمُه ووسمُه فوق أوّل رسالةٍ من سلسلته (القاعدة ٢١٦).
+            const person = mine ? me : other;
 
             return (
-              <View style={{ alignItems: mine ? "flex-start" : "flex-end" }}>
+              <ChatLine
+                person={person ?? { name: "", avatarMediaId: null }}
+                mine={mine}
+                at={item.createdAt}
+                head={needsHead(item, lines[index - 1])}
+                meta={
+                  <>
+                    {item.editedAt ? <Text style={{ color: colors.faint, fontSize: 10 }}>عُدّلت</Text> : null}
+                    {mine ? <Ticks state={receiptOf(item)} size={14} /> : null}
+                    {shown === item.id ? (
+                      mine ? (
+                        item.kind === "TEXT" ? (
+                          <Pressable
+                            onPress={() => {
+                              setDraft(item.body);
+                              setEditing(item.id);
+                            }}
+                          >
+                            <Text style={{ color: colors.clayInk, fontSize: 11.5, fontWeight: "600" }}>تعديل</Text>
+                          </Pressable>
+                        ) : null
+                      ) : (
+                        <ReportButton target="MESSAGE" targetId={item.id} />
+                      )
+                    ) : null}
+                  </>
+                }
+              >
                 {open ? (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, width: "86%" }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "stretch" }}>
                     <TextInput
                       value={draft}
                       onChangeText={setDraft}
@@ -346,61 +376,24 @@ export default function Conversation() {
                     </Pressable>
                   </View>
                 ) : item.kind === "PHOTO" && item.mediaId ? (
-                  <MediaImage mediaId={item.mediaId} style={{ width: 220, height: 220, borderRadius: 16 }} />
+                  <Pressable
+                    onPress={() => viewPhoto(item.mediaId)}
+                    onLongPress={() => setShown((v) => (v === item.id ? null : item.id))}
+                  >
+                    <MediaImage mediaId={item.mediaId} style={{ width: 220, height: 220, borderRadius: 16 }} />
+                  </Pressable>
                 ) : item.kind === "VOICE" && item.mediaId ? (
                   <Voice mediaId={item.mediaId} seconds={item.seconds ?? 0} mine={mine} />
                 ) : (
                   <Pressable
                     // ضغطةٌ على رسالتي تكشف «تعديل»، وعلى رسالته «إبلاغ».
                     onPress={() => setShown((v) => (v === item.id ? null : item.id))}
-                    style={{
-                      maxWidth: "78%",
-                      borderRadius: 16,
-                      paddingHorizontal: 14,
-                      paddingVertical: 10,
-                      backgroundColor: mine ? colors.clay : colors.card,
-                      borderWidth: mine ? 0 : 1,
-                      borderColor: colors.line,
-                    }}
+                    style={bubbleStyle(mine)}
                   >
-                    <Text style={{ color: mine ? colors.onBrand : colors.ink, fontSize: 13.5, lineHeight: 23 }}>
-                      {item.body}
-                    </Text>
+                    <Text style={{ color: colors.ink, fontSize: 14.5, lineHeight: 24 }}>{item.body}</Text>
                   </Pressable>
                 )}
-
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 }}>
-                  <Text style={{ color: colors.faint, fontSize: 10 }}>
-                    {timeOfDay(new Date(item.createdAt))}
-                  </Text>
-                  {item.editedAt ? (
-                    <Text style={{ color: colors.faint, fontSize: 10 }}>· عُدّلت</Text>
-                  ) : null}
-                  {mine ? <Ticks state={receiptOf(item)} size={14} /> : null}
-                </View>
-
-                {shown === item.id ? (
-                  mine ? (
-                    item.kind === "TEXT" ? (
-                      <Pressable
-                        onPress={() => {
-                          setDraft(item.body);
-                          setEditing(item.id);
-                        }}
-                        style={{ marginTop: 4 }}
-                      >
-                        <Text style={{ color: colors.clayInk, fontSize: 11.5, fontWeight: "600" }}>
-                          تعديل
-                        </Text>
-                      </Pressable>
-                    ) : null
-                  ) : (
-                    <View style={{ marginTop: 2 }}>
-                      <ReportButton target="MESSAGE" targetId={item.id} />
-                    </View>
-                  )
-                ) : null}
-              </View>
+              </ChatLine>
             );
           }}
         />

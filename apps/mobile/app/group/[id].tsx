@@ -5,7 +5,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Picker from "expo-image-picker";
-import { Avatar } from "../../components/avatar";
+import { ChatLine, bubbleStyle, needsHead } from "../../components/chat-line";
 import { MediaImage } from "../../components/media-image";
 import { viewPhoto } from "../../components/photo-viewer";
 import { ScreenHeader } from "../../components/screen-header";
@@ -15,15 +15,15 @@ import { uploadFile } from "../../lib/upload";
 import { useKeyboardInset } from "../../lib/keyboard";
 import { keys } from "../../lib/queries";
 import { useSession } from "../../lib/session";
-import { ar, timeOfDay } from "../../lib/format";
+import { ar } from "../../lib/format";
 import type { GroupLine, GroupThread } from "../../lib/groups";
 import { colors } from "../../theme/tokens";
 
 /**
  * المحادثة الجماعيّة (القاعدة ٢١٥).
  *
- * كالمحادثة الخاصّة بفقاعاتها وسطر إرسالها، ويتبدّل شيئان: فوق فقاعة كلِّ
- * عضوٍ اسمُه وصورتُه — في الجماعة سؤالُ «مَن» قبل «ماذا» — ولا إيصالَ
+ * بسطر المحادثة الخاصّة نفسه (`ChatLine`، القاعدة ٢١٦): صورةُ المرسل واسمُه
+ * ووسمُه والتاريخ فوق فقاعته. ولا إيصالَ
  * لكل رسالة: ختمُ قراءةٍ لكل عضوٍ يكفي لعدّ ما لم يُقرأ. وضغطةٌ على
  * رسالتي تكشف «حذف»، وللمشرف على كل رسالة.
  */
@@ -137,7 +137,7 @@ export default function Group() {
           }}
           scrollEventThrottle={64}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 14, gap: 10 }}
+          contentContainerStyle={{ paddingHorizontal: 14, paddingVertical: 14, gap: 6 }}
           ListEmptyComponent={
             thread.isLoading ? (
               <ActivityIndicator style={{ marginTop: 40 }} color={colors.clay} />
@@ -153,21 +153,29 @@ export default function Group() {
           }
           renderItem={({ item, index }) => {
             const mine = item.senderId === me?.id;
-            // الاسمُ فوق أوّل رسالةٍ من سلسلة صاحبها وحدها، لا فوق كلّ سطر.
-            const first = index === 0 || lines[index - 1]?.senderId !== item.senderId;
             const canDrop = mine || Boolean(data?.canManage);
 
             return (
-              <View style={{ alignItems: mine ? "flex-start" : "flex-end" }}>
-                {!mine && first ? (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                    <Avatar name={item.sender.name} size={22} mediaId={item.sender.avatarMediaId} />
-                    <Text style={{ color: colors.ink2, fontSize: 11.5, fontWeight: "700", writingDirection: "auto" }}>
-                      {item.sender.name}
-                    </Text>
-                  </View>
-                ) : null}
-
+              <ChatLine
+                person={item.sender}
+                mine={mine}
+                at={item.createdAt}
+                head={needsHead(item, lines[index - 1])}
+                meta={
+                  shown === item.id ? (
+                    <Pressable
+                      onPress={() =>
+                        Alert.alert("حذف الرسالة؟", mine ? undefined : "تُحذف عند الجميع بصلاحية المشرف.", [
+                          { text: "إلغاء", style: "cancel" },
+                          { text: "حذف", style: "destructive", onPress: () => drop.mutate(item.id) },
+                        ])
+                      }
+                    >
+                      <Text style={{ color: colors.live, fontSize: 11.5, fontWeight: "700" }}>حذف</Text>
+                    </Pressable>
+                  ) : null
+                }
+              >
                 {item.kind === "PHOTO" && item.mediaId ? (
                   <Pressable
                     onPress={() => viewPhoto(item.mediaId)}
@@ -178,40 +186,12 @@ export default function Group() {
                 ) : (
                   <Pressable
                     onPress={() => canDrop && setShown((v) => (v === item.id ? null : item.id))}
-                    style={{
-                      maxWidth: "80%",
-                      borderRadius: 16,
-                      paddingHorizontal: 14,
-                      paddingVertical: 10,
-                      backgroundColor: mine ? colors.clay : colors.card,
-                      borderWidth: mine ? 0 : 1,
-                      borderColor: colors.line,
-                    }}
+                    style={bubbleStyle(mine)}
                   >
-                    <Text style={{ color: mine ? colors.onBrand : colors.ink, fontSize: 13.5, lineHeight: 23 }}>
-                      {item.body}
-                    </Text>
+                    <Text style={{ color: colors.ink, fontSize: 14.5, lineHeight: 24 }}>{item.body}</Text>
                   </Pressable>
                 )}
-
-                <Text style={{ color: colors.faint, fontSize: 10, marginTop: 3 }}>
-                  {timeOfDay(new Date(item.createdAt))}
-                </Text>
-
-                {shown === item.id ? (
-                  <Pressable
-                    onPress={() =>
-                      Alert.alert("حذف الرسالة؟", mine ? undefined : "تُحذف عند الجميع بصلاحية المشرف.", [
-                        { text: "إلغاء", style: "cancel" },
-                        { text: "حذف", style: "destructive", onPress: () => drop.mutate(item.id) },
-                      ])
-                    }
-                    style={{ marginTop: 4 }}
-                  >
-                    <Text style={{ color: colors.live, fontSize: 11.5, fontWeight: "700" }}>حذف</Text>
-                  </Pressable>
-                ) : null}
-              </View>
+              </ChatLine>
             );
           }}
         />
