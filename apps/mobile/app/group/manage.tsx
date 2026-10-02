@@ -6,7 +6,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Avatar } from "../../components/avatar";
 import { ScreenHeader } from "../../components/screen-header";
-import { CloseIcon, PlusIcon, SearchIcon } from "../../components/icons";
+import { CloseIcon, PlusIcon } from "../../components/icons";
 import { api } from "../../lib/api";
 import { keys } from "../../lib/queries";
 import { useSession } from "../../lib/session";
@@ -57,8 +57,8 @@ function Round({ label, onPress, tone }: { label: string; onPress: () => void; t
 /**
  * إنشاءُ المجموعة وإدارتُها (القاعدة ٢١٥) — شاشةٌ واحدة بوجهين.
  *
- * بلا `id` إنشاءٌ: اسمٌ وأعضاءٌ يُبحث عنهم بالاسم أو برقم العضويّة — والبحثُ
- * للمشرف وحده، فلا ينقض منعَ البحث عن الناس (القاعدة ٢٠). وبـ`id` الأعضاءُ
+ * بلا `id` إنشاءٌ: اسمٌ وأعضاءٌ يُضافون برقم العضويّة — للمشرف وحده، فلا ينقض
+ * منعَ البحث عن الناس (القاعدة ٢٠). وبـ`id` الأعضاءُ
  * لكل عضو، ومعهم للمشرف: إعادةُ التسمية، والإضافةُ والإخراج، وحذفُ المجموعة.
  * ولغيره «غادر».
  */
@@ -96,12 +96,14 @@ export default function ManageGroup() {
 
   const candidates = useQuery({
     queryKey: ["groups", "candidates", needle],
-    queryFn: () => api<{ people: GroupPerson[] }>(`/v1/groups/candidates?q=${encodeURIComponent(needle)}`),
-    enabled: canManage,
+    queryFn: () =>
+      api<{ people: GroupPerson[]; missing: number[] }>(`/v1/groups/candidates?q=${encodeURIComponent(needle)}`),
+    enabled: canManage && needle.length > 0,
   });
 
   const inGroup = new Set([...(group.data?.members ?? []).map((p) => p.id), ...picked.map((p) => p.id)]);
-  const offered = (candidates.data?.people ?? []).filter((p) => !inGroup.has(p.id));
+  const offered = needle ? (candidates.data?.people ?? []).filter((p) => !inGroup.has(p.id)) : [];
+  const missing = needle ? (candidates.data?.missing ?? []) : [];
 
   const refresh = () => void client.invalidateQueries({ queryKey: keys.dm });
   const fail = (problem: Error) => setError(problem.message);
@@ -266,45 +268,68 @@ export default function ManageGroup() {
           </View>
         ) : null}
 
-        {/* البحثُ عمّن يُضاف — للمشرف وحده. */}
+        {/*
+          الإضافةُ برقم العضويّة — **بقرار المالك**: رقمٌ أو أكثر يفصلها فراغ أو
+          فاصلة («١٢ ٣٤ ٥٦»)، فتظهر أصحابُها ويُضافون بضغطة. ورقمٌ بلا حسابٍ يُقال.
+        */}
         {canManage ? (
           <View>
             <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>
-              أضف أعضاء — بالاسم أو برقم العضوية
+              أضف أعضاء برقم العضوية
             </Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, height: 44, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}>
-              <SearchIcon size={17} color={colors.muted} />
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, height: 46, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}>
+              <Text style={{ color: colors.muted, fontSize: 15, fontWeight: "700" }}>#</Text>
               <TextInput
                 value={query}
                 onChangeText={setQuery}
-                placeholder="ابحث…"
+                placeholder="مثلاً: ١٢ ٣٤ ٥٦"
                 placeholderTextColor={colors.faint}
-                returnKeyType="search"
-                style={{ flex: 1, color: colors.ink, fontSize: 14, textAlign: "right" }}
+                keyboardType="numbers-and-punctuation"
+                returnKeyType="done"
+                style={{ flex: 1, color: colors.ink, fontSize: 15, textAlign: "right" }}
               />
             </View>
-            {!needle ? (
-              <Text style={{ color: colors.faint, fontSize: 11, marginTop: 6 }}>بلا بحثٍ: أصدقاؤك.</Text>
-            ) : null}
-            {candidates.isFetching && offered.length === 0 ? (
+            <Text style={{ color: colors.faint, fontSize: 11, marginTop: 6 }}>
+              أكثر من رقم؟ افصل بينها بمسافة أو فاصلة.
+            </Text>
+
+            {needle && candidates.isFetching && offered.length === 0 ? (
               <ActivityIndicator style={{ marginTop: 14 }} color={colors.clay} />
-            ) : offered.length === 0 ? (
-              <Text style={{ color: colors.muted, fontSize: 12.5, marginTop: 12 }}>لا أحد.</Text>
-            ) : (
-              offered.map((person) => (
-                <PersonRow
-                  key={person.id}
-                  person={person}
-                  action={
-                    <Round
-                      label={`أضف ${person.name}`}
-                      tone="add"
-                      onPress={() => setPicked((list) => [...list, person])}
-                    />
-                  }
-                />
-              ))
-            )}
+            ) : null}
+
+            {offered.map((person) => (
+              <PersonRow
+                key={person.id}
+                person={person}
+                action={
+                  <Round
+                    label={`أضف ${person.name}`}
+                    tone="add"
+                    onPress={() => setPicked((list) => [...list, person])}
+                  />
+                }
+              />
+            ))}
+
+            {offered.length > 1 ? (
+              <Pressable
+                onPress={() => {
+                  setPicked((list) => [...list, ...offered]);
+                  setQuery("");
+                }}
+                style={{ marginTop: 4, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.clay, backgroundColor: colors.claySoft }}
+              >
+                <Text style={{ color: colors.clayInk, fontSize: 13, fontWeight: "700" }}>
+                  اختر الكل ({ar(offered.length)})
+                </Text>
+              </Pressable>
+            ) : null}
+
+            {missing.length > 0 ? (
+              <Text style={{ color: colors.live, fontSize: 12, marginTop: 8 }}>
+                لا حساب بالرقم {missing.map((n) => `#${ar(n)}`).join("، ")}
+              </Text>
+            ) : null}
           </View>
         ) : null}
 

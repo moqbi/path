@@ -20,7 +20,7 @@ export const groupRoutes = new Hono()
 
   .get("/", async (c) => c.json(await groups.list(me(c))))
 
-  .get("/candidates", zValidator("query", z.object({ q: z.string().max(60).default("") })), async (c) =>
+  .get("/candidates", zValidator("query", z.object({ q: z.string().max(400).default("") })), async (c) =>
     c.json(await groups.candidates(me(c), c.req.valid("query").q)),
   )
 

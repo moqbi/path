@@ -3,7 +3,6 @@ import { MESSAGE_KEEP_DAYS } from "@athar/shared";
 import { push } from "./push";
 import { dropMedia } from "./media";
 import { guard } from "../lib/moderation";
-import { circleIds } from "./visibility";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 
 /**
@@ -312,24 +311,26 @@ export async function remove(userId: string, groupId: string) {
 }
 
 /**
- * من يُضاف: بحثٌ بالاسم أو برقم العضويّة — **للمشرف وحده**، فلا ينقض منعَ
- * البحث عن الناس (القاعدة ٢٠). وبلا بحثٍ أصدقاؤه أوّلاً.
+ * من يُضاف: **برقم العضويّة** — **بقرار المالك**، فهو ما يُقال ويُكتب (القاعدة ١٥)
+ * ولا يلتبس كالأسماء. رقمٌ أو أرقامٌ يفصلها فراغٌ أو فاصلة، والأرقامُ العربيّة
+ * تُحوَّل. وللمشرف وحده، فلا ينقض منعَ البحث عن الناس (القاعدة ٢٠).
  */
 export async function candidates(userId: string, query: string) {
   await requireRunner(userId);
-  const q = query.trim().replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
-  const memberNo = /^\d+$/.test(q) ? Number(q) : null;
+  const latin = query.replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
+  const numbers = [...new Set(latin.split(/[\s,،]+/).filter((part) => /^\d{1,9}$/.test(part)).map(Number))].slice(0, 50);
+  if (numbers.length === 0) return { people: [], missing: [] };
   const rows = await prisma.user.findMany({
-    where: q
-      ? memberNo !== null
-        ? { memberNo }
-        : { name: { contains: q, mode: "insensitive" } }
-      : { id: { in: await circleIds(userId) } },
+    where: { memberNo: { in: numbers } },
     select: PERSON,
     orderBy: { memberNo: "asc" },
-    take: 40,
   });
-  return { people: rows.filter((row) => row.id !== userId) };
+  const found = new Set(rows.map((row) => row.memberNo));
+  return {
+    people: rows.filter((row) => row.id !== userId),
+    // ما لا حسابَ له يُقال رقماً رقماً، فلا يظنّ المشرفُ أنّه أُضيف.
+    missing: numbers.filter((n) => !found.has(n)),
+  };
 }
 
 /** الكنسُ كالمحادثات: ثلاثون يوماً (القاعدة ٨٣) — والمجموعةُ تبقى. */
