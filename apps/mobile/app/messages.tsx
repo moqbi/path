@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { scrolled } from "../lib/scrolled";
 import { View, FlatList, Pressable, ActivityIndicator, RefreshControl } from "react-native";
 import { Text, TextInput } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -140,6 +141,8 @@ export default function Messages() {
       </View>
 
       <FlatList
+        // التمريرُ يطوي صفّاً مسحوباً مفتوحاً (القاعدة ٢١٣).
+        onScrollBeginDrag={scrolled}
         keyboardShouldPersistTaps="handled"
         data={conversations}
         ListFooterComponent={

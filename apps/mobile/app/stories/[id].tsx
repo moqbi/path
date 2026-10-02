@@ -3,7 +3,7 @@ import { View, Pressable, ActivityIndicator, Dimensions, ScrollView, Animated, P
 import type { StoryText } from "@athar/shared";
 import { StoryTexts } from "../../components/story-texts";
 import { Text } from "../../components/type";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Avatar } from "../../components/avatar";
@@ -59,6 +59,12 @@ export default function StoryViewer() {
   const me = useSession((s) => s.me);
   const client = useQueryClient();
 
+  /*
+    الحشوةُ من مزوّد الجذر لا من `SafeAreaView`: الأخير يقيس موضعه هو، والقصّةُ
+    نافذةٌ شفّافة تحت تحويلٍ (السحبُ يصغّرها) — فكان يقرأ صفراً ويجلس الاسمُ
+    خلف البطّاريّة وإشارة الشبكة.
+  */
+  const insets = useSafeAreaInsets();
   const [index, setIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [held, setHeld] = useState(false);
@@ -236,7 +242,7 @@ export default function StoryViewer() {
         onPress={() => step(index + 1)}
       />
 
-      <SafeAreaView edges={["top"]} pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, top: 0 }}>
+      <View pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, top: 0, paddingTop: insets.top }}>
         <View pointerEvents="box-none" style={{ padding: 12 }}>
           <View style={{ flexDirection: "row", gap: 4, marginBottom: 12 }}>
             {stories.map((item, position) => (
@@ -276,10 +282,10 @@ export default function StoryViewer() {
             </Pressable>
           </View>
         </View>
-      </SafeAreaView>
+      </View>
 
       {mine ? (
-        <SafeAreaView edges={["bottom"]} pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}>
+        <View pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, bottom: 0, paddingBottom: insets.bottom }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16 }}>
             {/* العدّادُ بابُ القائمة: من نشر قصّةً يسأل «مَن» قبل «كم». */}
             <Pressable
@@ -301,7 +307,7 @@ export default function StoryViewer() {
               <Text style={{ color: "#fff", fontSize: 12, fontWeight: "600" }}>احذف القصة</Text>
             </Pressable>
           </View>
-        </SafeAreaView>
+        </View>
       ) : null}
     </Animated.View>
 

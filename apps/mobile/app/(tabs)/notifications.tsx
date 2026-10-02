@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { scrolled } from "../../lib/scrolled";
 import { Alert } from "react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SwipeRow } from "../../components/swipe-row";
@@ -213,6 +214,8 @@ export default function Notifications() {
       </View>
 
       <SectionList
+        // التمريرُ يطوي صفّاً مسحوباً مفتوحاً (القاعدة ٢١٣).
+        onScrollBeginDrag={scrolled}
         sections={days}
         keyExtractor={(item) => item.id}
         stickySectionHeadersEnabled={false}

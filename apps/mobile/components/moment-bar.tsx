@@ -178,7 +178,11 @@ export function MomentBar({
           }}
         >
           {head ? <View style={{ flex: 1 }}>{head}</View> : null}
-          {button}
+          {/*
+            على خطّ زرّ البطاقة نفسه: ذاك داخل حدّها (١) وحشوتها (١٢)، فزرُّ سطر
+            الحدث يدخل بالمقدار نفسه — وإلّا تعرّج عمودُ الأزرار بين بطاقةٍ وسطر.
+          */}
+          <View style={head ? { marginLeft: 13 } : undefined}>{button}</View>
         </View>
       )}
 

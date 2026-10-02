@@ -1,8 +1,9 @@
-import { useRef, useState } from "react";
-import { View, Pressable, Animated, PanResponder } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { View, Pressable, Animated, PanResponder, Easing } from "react-native";
 import { Text } from "./type";
 import { CloseIcon } from "./icons";
 import { colors } from "../theme/tokens";
+import { claimOpen, releaseOpen } from "../lib/swipe-open";
 
 const REVEAL = 88;
 
@@ -77,12 +78,39 @@ export function SwipeRow({
   swiping.current = onSwiping;
   const open = useRef(false);
   const from = useRef(0);
+  const box = useRef<View>(null);
 
-  const settle = (to: number) => {
+  /*
+    تسجيلُه في السجلّ الواحد (`lib/swipe-open.ts`): فتحُ صفٍّ يطوي غيرَه،
+    والتمريرُ واللمسُ خارجه يطويانه. والكائنُ ثابتٌ بمرجعٍ واحد فيعرفه السجلّ.
+  */
+  const entry = useRef<{ close: () => void; rect: { x: number; y: number; width: number; height: number } | null }>({
+    close: () => settle(0),
+    rect: null,
+  }).current;
+
+  // صفٌّ يُزال من الشاشة مفتوحاً لا يبقى في السجلّ.
+  useEffect(() => () => releaseOpen(entry), [entry]);
+
+  // الطيُّ يتباطأ في آخره فيُقرأ انسياباً، لا توقّفاً مفاجئاً.
+  function settle(to: number) {
     open.current = to > 0;
     setRevealed(to > 0);
-    Animated.timing(shift, { toValue: to, duration: 220, useNativeDriver: true }).start();
-  };
+    if (to > 0) {
+      claimOpen(entry);
+      box.current?.measureInWindow((x, y, width, height) => {
+        entry.rect = { x, y, width, height };
+      });
+    } else {
+      releaseOpen(entry);
+    }
+    Animated.timing(shift, {
+      toValue: to,
+      duration: 240,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }
 
   const pan = useRef(
     PanResponder.create({
@@ -126,7 +154,7 @@ export function SwipeRow({
   }
 
   return (
-    <View style={{ position: "relative", overflow: "hidden", borderRadius: radius }}>
+    <View ref={box} collapsable={false} style={{ position: "relative", overflow: "hidden", borderRadius: radius }}>
       <View style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: reveal, flexDirection: "row" }}>
         {lead ? (
           <Pressable

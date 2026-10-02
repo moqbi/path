@@ -1,4 +1,5 @@
 import { BlockIcon, MessageIcon, UserMinusIcon } from "../../components/icons";
+import { scrolled } from "../../lib/scrolled";
 import { useCallback, useState } from "react";
 import { View, FlatList, Pressable, ScrollView, ActivityIndicator, RefreshControl } from "react-native";
 import { Text } from "../../components/type";
@@ -151,6 +152,8 @@ export default function Circle() {
       />
 
       <FlatList
+        // التمريرُ يطوي صفّاً مسحوباً مفتوحاً (القاعدة ٢١٣).
+        onScrollBeginDrag={scrolled}
         /*
           قائمةٌ واحدة لثلاثة أبواب: صفوفها تختلف شكلاً لا مكاناً، فتبقى
           الأبواب فوقها ثابتة ويتبدّل ما تحتها — كعدسات الخط الزمني.

@@ -23,6 +23,7 @@ import { Suspended } from "../components/suspended";
 import { PhotoViewer } from "../components/photo-viewer";
 import { Tour } from "../components/tour";
 import { applyTheme, colors, themeStore, veil } from "../theme/tokens";
+import { dismissOpen } from "../lib/swipe-open";
 
 /**
  * العربية من اليمين — قراراً لا إعداداً، وفي البيئات الثلاث معاً.
@@ -271,7 +272,17 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={client}>
-        <View style={{ flex: 1, direction: "rtl" }}>
+        {/*
+          لمسةٌ خارج صفٍّ مسحوبٍ مفتوح تطويه (القاعدة ٢١٣). في طور الالتقاط
+          لأنّ الجذر أوّلُ من يُسأل، ويردّ «لا» دائماً فلا يأخذ اللمسة من أحد.
+        */}
+        <View
+          style={{ flex: 1, direction: "rtl" }}
+          onStartShouldSetResponderCapture={(event) => {
+            dismissOpen(event.nativeEvent.pageX, event.nativeEvent.pageY);
+            return false;
+          }}
+        >
           <Gate />
         </View>
       </QueryClientProvider>
