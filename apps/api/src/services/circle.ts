@@ -204,6 +204,18 @@ export async function userProfile(viewerId: string, id: string) {
   return { person, friend: false as const, mutual, pending, owned: [] as string[] };
 }
 
+/**
+ * رقمُ عضويّةٍ إلى معرّف حساب — لرابط المشاركة (`/u/<رقم>`) حين يفتح التطبيق
+ * (القاعدة ٢٢٥). البطاقةُ تُقرأ لكلّ حسابٍ قائم (القاعدة ٢٠)، فلا يكشف هذا
+ * شيئاً فوقها. والمحجوبُ «غير موجود» كالرقم الذي لا صاحب له.
+ */
+export async function idByMemberNo(viewerId: string, memberNo: number) {
+  const person = await prisma.user.findUnique({ where: { memberNo }, select: { id: true } });
+  if (!person) throw notFound("لا يوجد هذا الحساب");
+  if ((await blockedWith(viewerId)).includes(person.id)) throw notFound("لا يوجد هذا الحساب");
+  return { id: person.id };
+}
+
 // ───────────────────────────── الكتابة ─────────────────────────────
 
 /** عدد من في دائرة شخص. */

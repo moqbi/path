@@ -73,6 +73,15 @@ export const circleRoutes = new Hono()
 export const userRoutes = new Hono()
   .use("*", requireAuth)
 
+  // رابطُ المشاركة يحمل رقمَ العضويّة، والتطبيقُ يحتاج المعرّف (القاعدة ٢٢٥).
+  .get("/no/:memberNo", async (c) => {
+    const memberNo = Number(c.req.param("memberNo"));
+    if (!Number.isInteger(memberNo) || memberNo < 1 || memberNo > 2_000_000_000) {
+      return c.json({ error: "لا يوجد هذا الحساب" }, 404);
+    }
+    return c.json(await circle.idByMemberNo(me(c), memberNo));
+  })
+
   .get("/:id", zValidator("param", byId), async (c) =>
     c.json(await circle.userProfile(me(c), c.req.valid("param").id)),
   )

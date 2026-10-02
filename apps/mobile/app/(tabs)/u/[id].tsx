@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { scrolled } from "../../../lib/scrolled";
 import { markSeen } from "../../../lib/seen";
 import { View, Pressable, ActivityIndicator, Animated, RefreshControl } from "react-native";
@@ -74,7 +74,32 @@ type Person = {
 */
 export default function ProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  // رابطُ المشاركة (`/u/<رقم العضوية>`) يفتح هذه الشاشة برقمٍ لا بمعرّف
+  // (القاعدة ٢٢٥) — يُحلّ إلى المعرّف ثمّ يُستبدل المسار.
+  if (/^\d+$/.test(id ?? "")) return <ByNumber memberNo={id} />;
   return <Profile key={id} />;
+}
+
+function ByNumber({ memberNo }: { memberNo: string }) {
+  const router = useRouter();
+  const found = useQuery({
+    queryKey: ["user-by-number", memberNo],
+    queryFn: () => api<{ id: string }>(`/v1/users/no/${memberNo}`),
+    retry: false,
+  });
+  const target = found.data?.id;
+  useEffect(() => {
+    if (target) router.replace(`/u/${target}` as never);
+  }, [target, router]);
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.ground, alignItems: "center", justifyContent: "center", gap: 10 }}>
+      {found.isError ? (
+        <Text style={{ color: colors.muted, fontSize: 13 }}>لا يوجد هذا الحساب</Text>
+      ) : (
+        <ActivityIndicator color={colors.muted} />
+      )}
+    </SafeAreaView>
+  );
 }
 
 function Profile() {
