@@ -455,16 +455,16 @@ export function MomentCard({
   }
 
   // ما له متن — صورة أو خاطرة — يبقى في بطاقته.
+  const media = moment.mediaId ? (
+    <Photo mediaId={moment.mediaId} />
+  ) : moment.imageSpec ? (
+    <div style={{ height: 132, background: moment.imageSpec }} />
+  ) : null;
+
   const head = (
     <>
-      {moment.mediaId ? (
-        <Photo mediaId={moment.mediaId} />
-      ) : moment.imageSpec ? (
-        <div style={{ height: 132, background: moment.imageSpec }} />
-      ) : null}
-
-      {/* بلا صورةٍ يبدأ النصّ من أعلى البطاقة ويترك يسارَه لزرّ التفاعل الطافي. */}
-      <div className={moment.mediaId || moment.imageSpec ? "px-4 pt-3" : "min-h-[50px] pl-[52px] pr-4 pt-3.5"}>
+      {/* النصّ يبدأ من أعلى المتن ويترك يسارَه لزرّ التفاعل الطافي في ركنه. */}
+      <div className="min-h-[50px] pl-[52px] pr-4 pt-3.5">
         {moment.text ? (
           <p dir="auto" className="mb-2 text-[13.5px] leading-relaxed text-ink">{moment.text}</p>
         ) : null}
@@ -500,6 +500,7 @@ export function MomentCard({
           moderate={moderate && moment.author.id !== viewerId}
           locked={moment.commentsLocked}
           inset
+          media={media}
           extra={
             opens ? (
               <Link href={`/m/${moment.id}`} className="block">

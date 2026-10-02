@@ -45,6 +45,7 @@ export function MomentBar({
   head,
   extra,
   inset = false,
+  media,
   footer,
   locked = false,
 }: {
@@ -57,6 +58,11 @@ export function MomentBar({
   head?: React.ReactNode;
   extra?: React.ReactNode;
   inset?: boolean;
+  /**
+   * صورةُ البطاقة: تُرسم فوق ركن الزرّ لا تحته — كان الزرّ يطفو على
+   * الصورة نفسها فيُقرأ بقعةً عليها. فالزرّ يجلس في ركن المتن تحتها.
+   */
+  media?: React.ReactNode;
   /**
    * ما تحت اللوحة: الوجوه والتعليقات. اللوحةُ تُفتح بين المتن وبينه —
    * **بقرار المالك**: كانت تُفتح في أعلى البطاقة فوق النصّ، وصفُّ وجوهها
@@ -152,12 +158,18 @@ export function MomentBar({
   return (
     <View style={head ? undefined : { marginTop: 8 }}>
       {inset ? (
-        /*
-          في البطاقة الزرُّ يطفو في ركنها — **بقرار المالك**: كان صفّاً
-          وحده فوق المتن، فيبدأ النصّ بعد فراغٍ بارتفاع الزرّ. والمتنُ
-          يترك له مكانه (`paddingLeft` في البطاقة).
-        */
-        <View style={{ position: "absolute", top: 10, left: 12, zIndex: 2 }}>{button}</View>
+        <>
+          {media}
+          {/*
+            في البطاقة الزرُّ يطفو في ركن المتن — **بقرار المالك**: كان صفّاً
+            وحده فوقه، فيبدأ النصّ بعد فراغٍ بارتفاع الزرّ. والمتنُ يترك له
+            مكانه (`paddingLeft` في البطاقة)، والصورةُ فوقهما لا تحته.
+          */}
+          <View>
+            <View style={{ position: "absolute", top: 10, left: 12, zIndex: 2 }}>{button}</View>
+            {extra}
+          </View>
+        </>
       ) : (
         /* الزرّ في الطرف الأيسر من المنشور — كما في الويب. */
         <View
@@ -173,7 +185,7 @@ export function MomentBar({
         </View>
       )}
 
-      {extra}
+      {inset ? null : extra}
 
       {open ? (
         <View

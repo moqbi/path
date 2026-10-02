@@ -328,29 +328,24 @@ export function MomentCard({
     );
   }
 
+  /* الصورة تفتح نفسها كاملةً (القاعدة ٣٠)، والنصُّ تحتها يفتح اللحظة. */
+  const media = moment.mediaId ? (
+    <Pressable accessibilityLabel="افتح الصورة" onPress={() => viewPhoto(moment.mediaId)}>
+      <MediaImage mediaId={moment.mediaId} style={{ width: "100%", height: 230 }} />
+    </Pressable>
+  ) : moment.imageSpec ? (
+    <View style={{ height: 132, backgroundColor: firstColor(moment.imageSpec, colors.chip) }} />
+  ) : null;
+
   const head = (
     <View>
-      {/* الصورة تفتح نفسها كاملةً (القاعدة ٣٠)، والنصُّ تحتها يفتح اللحظة. */}
-      {moment.mediaId ? (
-        <Pressable accessibilityLabel="افتح الصورة" onPress={() => viewPhoto(moment.mediaId)}>
-          <MediaImage mediaId={moment.mediaId} style={{ width: "100%", height: 230 }} />
-        </Pressable>
-      ) : moment.imageSpec ? (
-        <View style={{ height: 132, backgroundColor: firstColor(moment.imageSpec, colors.chip) }} />
-      ) : null}
-
       {/*
-        بلا صورةٍ في الرأس يبدأ النصّ من أعلى البطاقة، ويترك يسارَه لزرّ
-        التفاعل الطافي في الركن — كان الزرّ صفّاً وحده فوق النصّ.
+        النصّ يبدأ من أعلى المتن ويترك يسارَه لزرّ التفاعل الطافي في ركنه —
+        كان الزرّ صفّاً وحده فوق النصّ، ثمّ طفا على الصورة نفسها.
       */}
       <Pressable
         onPress={open}
-        style={{
-          paddingRight: 14,
-          paddingLeft: moment.mediaId || moment.imageSpec ? 14 : 52,
-          paddingTop: moment.mediaId || moment.imageSpec ? 10 : 14,
-          minHeight: moment.mediaId || moment.imageSpec ? undefined : 50,
-        }}
+        style={{ paddingRight: 14, paddingLeft: 52, paddingTop: 14, minHeight: 50 }}
       >
         {moment.text ? (
           <Text style={{ color: colors.ink, fontSize: 13.5, lineHeight: 23, marginBottom: 8 }}>
@@ -400,6 +395,7 @@ export function MomentCard({
           moderate={moderate && moment.author.id !== viewerId}
           locked={moment.commentsLocked ?? false}
           inset
+          media={media}
           extra={head}
           footer={
             <View style={{ paddingHorizontal: 14, paddingBottom: 12, paddingTop: 8 }}>

@@ -25,6 +25,7 @@ export function MomentBar({
   head,
   extra,
   inset = false,
+  media,
   footer,
   locked = false,
 }: {
@@ -50,6 +51,8 @@ export function MomentBar({
   extra?: React.ReactNode;
   /** داخل بطاقة: الزرّ واللوحة يأخذان حشوة البطاقة والصورة تبقى سائبة. */
   inset?: boolean;
+  /** صورةُ البطاقة: فوق ركن الزرّ لا تحته — كان يطفو على الصورة نفسها. */
+  media?: React.ReactNode;
   /**
    * ما تحت اللوحة: الوجوه والتعليقات. اللوحةُ تُفتح بين المتن وبينه —
    * **بقرار المالك**، كالجوّال: كانت فوق النصّ ويتكرّر صفُّ وجوهها تحتها.
@@ -148,8 +151,11 @@ export function MomentBar({
   return (
     <div ref={root} className={head ? "" : inset ? "relative" : "mt-2"} onClick={contain}>
       {inset ? (
-        /* في البطاقة الزرُّ يطفو في ركنها فيبدأ المتنُ من أعلاها — بقرار المالك. */
-        <div className="absolute left-3 top-2.5 z-10">
+        <>
+          {media}
+          {/* الزرُّ يطفو في ركن المتن تحت الصورة فيبدأ النصّ من أعلاه — بقرار المالك. */}
+          <div className="relative">
+            <div className="absolute left-3 top-2.5 z-10">
         <button
           type="button"
           aria-label={isLocked ? "تفاعل — التعليقات مقفلة" : "تفاعل"}
@@ -189,7 +195,10 @@ export function MomentBar({
             </span>
           )}
         </button>
-        </div>
+            </div>
+            {extra}
+          </div>
+        </>
       ) : (
         /* في RTL يضع `justify-end` الزرَّ في الطرف الأيسر من المنشور. */
         <div className={head ? "flex items-start gap-2" : "flex justify-end"}>
@@ -236,7 +245,7 @@ export function MomentBar({
         </div>
       )}
 
-      {extra}
+      {inset ? null : extra}
 
       {open ? (
         <div className={`mt-2 flex flex-col gap-2 ${inset ? "px-3" : ""}`}>
