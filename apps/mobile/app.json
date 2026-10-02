@@ -80,7 +80,8 @@
       ],
       "expo-apple-authentication",
       "./plugins/with-rtl",
-      "./plugins/with-purpose"
+      "./plugins/with-purpose",
+      "./plugins/with-links"
     ],
     "extra": {
       "eas": {
