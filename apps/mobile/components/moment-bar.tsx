@@ -156,7 +156,7 @@ export function MomentBar({
   );
 
   return (
-    <View style={head ? undefined : { marginTop: 8 }}>
+    <View style={head || inset ? undefined : { marginTop: 8 }}>
       {inset ? (
         <>
           {media}
