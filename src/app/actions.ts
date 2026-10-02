@@ -584,7 +584,7 @@ export async function setAvatar(formData: FormData): Promise<string | void> {
     const media = await storeUpload(user.id, file, width, height, user.isPlus);
     await prisma.user.update({ where: { id: user.id }, data: { avatarMediaId: media.id } });
     // «غيّر صورته» لدائرته (القاعدة ٢١٤).
-    await announceAvatar(user.id, media.id);
+    await announceAvatar(user.id);
   } catch (problem) {
     return problem instanceof Error ? problem.message : "تعذّر حفظ الصورة";
   }

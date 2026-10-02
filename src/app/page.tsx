@@ -8,7 +8,6 @@ import { friendshipSince, togetherMoments } from "@/lib/together";
 import { unreadCount } from "@/lib/dm";
 import { MomentCard } from "@/components/moment-card";
 import { ComposerFan } from "@/components/composer-fan";
-import { Tour } from "@/components/tour";
 import { Avatar, Empty, NameTag } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import { TimelineHead } from "@/components/timeline-head";
@@ -303,7 +302,6 @@ export default async function TimelinePage({
         )}
       </TimelineHead>
 
-      <Tour />
       <ComposerFan />
       <TabBar active="/" view={view} />
     </div>

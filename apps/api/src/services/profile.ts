@@ -364,8 +364,8 @@ export async function setPicture(
   const old = which === "avatar" ? before?.avatarMediaId : before?.coverMediaId;
   if (old && old !== media.id) await dropMedia([old]);
 
-  // «غيّر صورته» لدائرته (القاعدة ٢١٤) — لا يُنتظر: نسخُ الملف لا يؤخّر الشاشة.
-  if (which === "avatar" && old !== media.id) void announceAvatar(userId, media.id);
+  // «غيّر صورته» لدائرته (القاعدة ٢١٤) — لا يُنتظر: سطرُ حدثٍ لا يؤخّر الشاشة.
+  if (which === "avatar" && old !== media.id) void announceAvatar(userId);
 
   return { mediaId: media.id };
 }

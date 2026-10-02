@@ -1,34 +1,28 @@
 import "server-only";
 import { prisma } from "@/lib/db";
-import { copyMedia, dropMedia } from "@/lib/media";
 
 /** تبديلاتٌ متتالية في ساعةٍ لحظةٌ واحدة: الأخيرةُ تحلّ محلّ ما قبلها. */
 const MERGE_MINUTES = 60;
 
 /**
- * «غيّر صورته» — نسخةُ الويب من `apps/api/src/services/avatar-moment.ts`
- * (القاعدة ٢١٤). الصورةُ نسخةٌ لا إشارة: `Moment.mediaId` فريد، وحذفُ اللحظة
- * يحذف صورتها. ولا يرمي: لحظةٌ لم تُكتب لا تُفشل تبديلَ صورة.
+ * «غيّر صورته» — نسخةُ الويب من `apps/api/src/services/avatar-moment.ts`: سطرُ حدثٍ يُكتب حين يبدّل صاحبُه صورةَ عرضه (القاعدة ٢١٤).
+ *
+ * **حدثٌ بلا صورة** — **بقرار المالك**، كـ«أصبح صديق فلان» و«وصلتك هدية»: الخبرُ
+ * أنّه غيّرها، والصورةُ الجديدة ظاهرةٌ أصلاً بجانب السطر وفي كل مكان.
+ *
+ * ومن جرّب خمس صورٍ في دقائق لا يملأ خطَّ دائرته بخمسة أسطر: ما سبقها في
+ * الساعة نفسها يُحذف. ولا يرمي: لحظةٌ لم تُكتب لا تُفشل تبديلَ صورة.
  */
-export async function announceAvatar(userId: string, mediaId: string): Promise<void> {
+export async function announceAvatar(userId: string): Promise<void> {
   try {
-    const recent = await prisma.moment.findMany({
+    await prisma.moment.deleteMany({
       where: {
         authorId: userId,
         kind: "AVATAR_CHANGED",
         createdAt: { gt: new Date(Date.now() - MERGE_MINUTES * 60_000) },
       },
-      select: { id: true, mediaId: true },
     });
-    if (recent.length > 0) {
-      await prisma.moment.deleteMany({ where: { id: { in: recent.map((row) => row.id) } } });
-      await dropMedia(recent.flatMap((row) => (row.mediaId ? [row.mediaId] : [])));
-    }
-
-    const copy = await copyMedia(mediaId, userId).catch(() => null);
-    await prisma.moment.create({
-      data: { authorId: userId, kind: "AVATAR_CHANGED", mediaId: copy?.id ?? null },
-    });
+    await prisma.moment.create({ data: { authorId: userId, kind: "AVATAR_CHANGED" } });
   } catch (problem) {
     console.error("[avatar-moment]", problem instanceof Error ? problem.message : problem);
   }
