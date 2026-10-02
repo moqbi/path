@@ -84,6 +84,18 @@ export default function Compose() {
   const [source, setSource] = useState<string>("osm");
   // بحثٌ بالاسم لما لم يظهر في القائمة.
   const [query, setQuery] = useState("");
+  /*
+    القائمةُ تُطوى بالاختيار ولا تُفتح إلا بـ«غيّر» (القاعدة ٢١٢): قائمةٌ
+    باقيةٌ بعد الاختيار تدفع «مع مين؟» وزرَّ النشر عشرين صفّاً إلى أسفل،
+    ولا يُعرف أَحُفظ الاختيار أم ينتظر شيئاً آخر.
+  */
+  const [browsing, setBrowsing] = useState(false);
+  const listOpen = !chosen || browsing;
+  const choose = (name: string | null) => {
+    setChosen(name);
+    setBrowsing(false);
+    setQuery("");
+  };
   const [found, setFound] = useState<NearbyPlace[] | null>(null);
 
   const [busy, setBusy] = useState(false);
@@ -460,14 +472,25 @@ export default function Compose() {
                       <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "600" }}>
                         {chosen ?? "موقعك حُدّد"}
                       </Text>
-                      <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 2 }}>
-                        {chosen ? "اختر غيره من القائمة" : "اختر مكاناً من حولك، أو اتركه فيُكتب أقرب عنوان."}
-                      </Text>
+                      {chosen ? null : (
+                        <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 2 }}>
+                          اختر مكاناً من حولك، أو اتركه فيُكتب أقرب عنوان.
+                        </Text>
+                      )}
                     </>
                   ) : (
                     <Text style={{ color: colors.live, fontSize: 13, lineHeight: 22 }}>{geoError}</Text>
                   )}
                 </View>
+                {chosen && !browsing ? (
+                  <Pressable
+                    onPress={() => setBrowsing(true)}
+                    hitSlop={6}
+                    style={{ minHeight: 36, paddingHorizontal: 14, borderRadius: 999, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line }}
+                  >
+                    <Text style={{ color: colors.clayInk, fontSize: 12.5, fontWeight: "700" }}>غيّر</Text>
+                  </Pressable>
+                ) : null}
                 {kind === "PLACE" ? null : (
                   <Pressable
                     accessibilityLabel="احذف الموقع"
@@ -476,6 +499,7 @@ export default function Compose() {
                       setFix(null);
                       setGeoError(null);
                       setLocating(false);
+                      setBrowsing(false);
                     }}
                     style={{ width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line }}
                   >
@@ -486,7 +510,7 @@ export default function Compose() {
 
               {/* الأماكن حولك: سطرٌ لكلٍّ باسمه ونوعه وبُعده. */}
               {/* بحثٌ بالاسم: المكانُ الذي أنت فيه قد لا يكون بين الأقرب. */}
-              {fix ? (
+              {fix && listOpen ? (
                 <View style={{ borderTopWidth: 1, borderTopColor: colors.line, paddingHorizontal: 14, paddingVertical: 8 }}>
                   <TextInput
                     value={query}
@@ -499,13 +523,13 @@ export default function Compose() {
                 </View>
               ) : null}
 
-              {fix && found ? (
+              {!listOpen ? null : fix && found ? (
                 found.length === 0 ? (
                   <View style={{ borderTopWidth: 1, borderTopColor: colors.line, padding: 14 }}>
                     <Text style={{ color: colors.muted, fontSize: 12 }}>ما لقينا مكاناً بهذا الاسم.</Text>
                   </View>
                 ) : (
-                  <PlaceRows places={found} chosen={chosen} onChoose={setChosen} />
+                  <PlaceRows places={found} chosen={chosen} onChoose={choose} />
                 )
               ) : fix ? (
                 asking2 ? (
@@ -519,7 +543,7 @@ export default function Compose() {
                     </Text>
                   </View>
                 ) : (
-                  <PlaceRows places={around} chosen={chosen} onChoose={setChosen} />
+                  <PlaceRows places={around} chosen={chosen} onChoose={choose} />
                 )
               ) : null}
 

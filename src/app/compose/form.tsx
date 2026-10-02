@@ -64,6 +64,8 @@ export function ComposeForm({
   const [locating, setLocating] = useState(kind === "PLACE");
   const [spots, setSpots] = useState<Spot[] | null>(null);
   const [spot, setSpot] = useState<string | null>(null);
+  // القائمةُ تُطوى بالاختيار وتُفتح بـ«غيّر» (القاعدة ٢١٢).
+  const [browsing, setBrowsing] = useState(false);
   const [pending, start] = useTransition();
 
   /**
@@ -272,13 +274,13 @@ export function ComposeForm({
                     <p className="text-[14px] font-semibold">
                       {placeLine ?? "وين أنت بالضبط؟"}
                     </p>
-                    <p className="mt-0.5 text-[11.5px] text-muted">
+                    {spot ? null : <p className="mt-0.5 text-[11.5px] text-muted">
                       {spots === null
                         ? "نبحث عن الأماكن حولك…"
                         : spots.length === 0
                           ? "ما لقينا أماكن مسمّاة حولك — يُكتب أقرب عنوان."
                           : "اختر مكانك من حولك، أو اتركه لأقرب عنوان."}
-                    </p>
+                    </p>}
                   </>
                 ) : (
                   <p className="text-[13px] leading-relaxed" style={{ color: "var(--color-live)" }}>
@@ -286,6 +288,15 @@ export function ComposeForm({
                   </p>
                 )}
               </div>
+              {spot && !browsing ? (
+                <button
+                  type="button"
+                  onClick={() => setBrowsing(true)}
+                  className="h-9 shrink-0 rounded-full border border-line px-4 text-[12.5px] font-bold text-clay-ink"
+                >
+                  غيّر
+                </button>
+              ) : null}
               {kind === "PLACE" ? null : (
                 <button
                   type="button"
@@ -295,6 +306,7 @@ export function ComposeForm({
                     setFix(null);
                     setSpots(null);
                     setSpot(null);
+                    setBrowsing(false);
                     setGeoError(null);
                     setLocating(false);
                   }}
@@ -305,7 +317,7 @@ export function ComposeForm({
               )}
             </div>
 
-            {spots && spots.length > 0 ? (
+            {spots && spots.length > 0 && (!spot || browsing) ? (
               <div className="max-h-[232px] overflow-y-auto border-t border-line">
                 {spots.map((item) => {
                   const on = spot === item.id;
@@ -313,7 +325,10 @@ export function ComposeForm({
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => setSpot(on ? null : item.id)}
+                      onClick={() => {
+                        setSpot(on ? null : item.id);
+                        setBrowsing(false);
+                      }}
                       className="flex w-full items-center gap-3 border-b border-line px-4 py-3 text-right last:border-b-0"
                       style={{ background: on ? "var(--color-clay-soft)" : "transparent" }}
                     >
