@@ -15,6 +15,9 @@ import {
 import { MomentBar } from "@/components/moment-bar";
 import { AthrMark } from "@/components/brand";
 import { Photo } from "@/components/photo";
+import { PHOTO_RATIO } from "@/lib/photo";
+import { mapsUrl } from "@/lib/maps";
+import { PlaceLink } from "@/components/place-link";
 import { Reactors } from "@/components/reactions";
 import { AuthorFaces } from "@/components/author-panel";
 import { CommentList } from "@/components/comments";
@@ -309,7 +312,15 @@ export function EventLine({
       </>
     ) : (
       <>
-        في <span className="font-bold">{moment.placeName ?? "مكان"}</span>
+        في{" "}
+        {/* اسمُ المكان يفتح الخرائط (القاعدة ٢١١). */}
+        {mapsUrl(moment) ? (
+          <PlaceLink url={mapsUrl(moment)!} className="font-bold text-clay-ink hover:underline">
+            {moment.placeName}
+          </PlaceLink>
+        ) : (
+          <span className="font-bold">{moment.placeName ?? "مكان"}</span>
+        )}
       </>
     );
 
@@ -443,7 +454,7 @@ export function MomentCard({
             <>
               {moment.mediaId ? (
                 <div className="mt-2.5">
-                  <Photo mediaId={moment.mediaId} height={190} rounded />
+                  <Photo mediaId={moment.mediaId} rounded x={moment.photoX ?? 50} y={moment.photoY ?? 50} />
                 </div>
               ) : null}
               <Bubble moment={moment} viewerId={viewerId} moderate={moderate} />
@@ -455,25 +466,37 @@ export function MomentCard({
   }
 
   // ما له متن — صورة أو خاطرة — يبقى في بطاقته.
+  // الصورةُ في أعلى البطاقة وزرُّ التفاعل في ركنها فوقها، بإطار المحرّر وموضعه.
   const media = moment.mediaId ? (
-    <Photo mediaId={moment.mediaId} />
+    // حشوةٌ لا هامش: هامشُ أوّل ابنٍ ينهار عبر أبيه فيُزيح البطاقة كلّها.
+    <div className="px-3 pt-3">
+      <Photo mediaId={moment.mediaId} rounded x={moment.photoX ?? 50} y={moment.photoY ?? 50} />
+    </div>
   ) : moment.imageSpec ? (
-    <div style={{ height: 132, background: moment.imageSpec }} />
+    <div className="px-3 pt-3">
+      <div className="rounded-2xl" style={{ aspectRatio: PHOTO_RATIO, background: moment.imageSpec }} />
+    </div>
   ) : null;
 
   const head = (
     <>
-      {/* النصّ يبدأ من أعلى المتن ويترك يسارَه لزرّ التفاعل الطافي في ركنه. */}
-      <div className="min-h-[50px] pl-[52px] pr-4 pt-3.5">
+      {/* بلا صورةٍ يبدأ النصّ من أعلى البطاقة بجانب الزرّ، ومعها يأتي تحتها. */}
+      <div className={media ? "px-4 pt-3" : "min-h-[50px] pl-[52px] pr-4 pt-3.5"}>
         {moment.text ? (
           <p dir="auto" className="mb-2 text-[13.5px] leading-relaxed text-ink">{moment.text}</p>
         ) : null}
 
         {/* الموقع على لحظةٍ أو صورة: سطرٌ صغير، لا حدثُ مكانٍ مستقل. */}
+        {/* ويُضغط فيفتح الخرائط (القاعدة ٢١١). */}
         {moment.placeName ? (
-          <p dir="auto" className="mb-2 flex items-center gap-1.5 text-[12px] text-muted">
-            <PinIcon size={12} />
-            {moment.placeName}
+          <p dir="auto" className="mb-2 text-[12px]">
+            <PlaceLink
+              url={mapsUrl(moment)!}
+              className="flex items-center gap-1.5 font-semibold text-clay-ink hover:underline"
+            >
+              <PinIcon size={12} />
+              {moment.placeName}
+            </PlaceLink>
           </p>
         ) : null}
 

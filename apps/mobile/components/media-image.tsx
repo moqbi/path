@@ -26,11 +26,14 @@ export function MediaImage({
   mediaId,
   style,
   resizeMode = "cover",
+  position,
   onSize,
 }: {
   mediaId: string | null | undefined;
   style?: StyleProp<ImageStyle>;
   resizeMode?: "cover" | "contain";
+  /** موضعُ القصّ بالمئة — صورةُ اللحظة كما ضبطها صاحبُها في إطار البطاقة. */
+  position?: { x: number; y: number };
   /** أبعاد الملف كما وصلت — يحتاجها من يحسب موضع الغلاف بنفسه. */
   onSize?: (width: number, height: number) => void;
 }) {
@@ -53,6 +56,7 @@ export function MediaImage({
       }}
       style={style}
       contentFit={resizeMode}
+      contentPosition={position ? { left: `${position.x}%`, top: `${position.y}%` } : "center"}
       transition={120}
       onLoad={(event) => {
         const size = event.source;

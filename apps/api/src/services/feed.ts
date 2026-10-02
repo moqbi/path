@@ -15,11 +15,16 @@ const shape = {
   text: true,
   placeName: true,
   placeCity: true,
+  // للخرائط (القاعدة ٢١١): لا تُحفظ إلا و«إظهار موقعي» مفتوح.
+  lat: true,
+  lng: true,
   musicTitle: true,
   musicArtist: true,
   musicUrl: true,
   musicThumb: true,
   imageSpec: true,
+  photoX: true,
+  photoY: true,
   mediaId: true,
   commentsLocked: true,
   // «خاصة»: من يرى اللحظة يُقال له إنّها لم تُوجَّه إلى الدائرة كلّها.

@@ -39,11 +39,17 @@ export type Moment = {
   text: string | null;
   placeName: string | null;
   placeCity: string | null;
+  /** للخرائط — اختياريٌّ لخادمٍ أقدم، وبلاه يُبحث بالاسم. */
+  lat?: number | null;
+  lng?: number | null;
   musicTitle: string | null;
   musicArtist: string | null;
   musicUrl: string | null;
   musicThumb: string | null;
   imageSpec: string | null;
+  /** موضعُ الصورة في إطار البطاقة بالمئة — `null` وسطٌ (قبل الحقل). */
+  photoX?: number | null;
+  photoY?: number | null;
   mediaId: string | null;
   /** قفلُ التعليقات بيد صاحبها — اختياريٌّ لخادمٍ أقدم لا يرسله. */
   commentsLocked?: boolean;

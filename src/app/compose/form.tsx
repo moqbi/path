@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { postMusicLink, postPlace, postSimple } from "@/app/actions";
 import { ImagePicker } from "@/components/image-picker";
+import { PhotoFrameEditor } from "@/components/photo-frame-editor";
 import { Avatar, ScreenHeader } from "@/components/ui";
 import {
   CheckIcon,
@@ -55,6 +56,8 @@ export function ComposeForm({
   const [wantPlace, setWantPlace] = useState(kind === "PLACE");
   const [fix, setFix] = useState<Fix | null>(null);
   const [picture, setPicture] = useState<{ file: Blob; url: string; width: number; height: number } | null>(null);
+  // موضعُ الصورة في إطار البطاقة — يبدأ من الوسط مع كل صورةٍ جديدة.
+  const [photoPos, setPhotoPos] = useState({ x: 50, y: 50 });
   const [musicUrl, setMusicUrl] = useState("");
   const [text, setText] = useState("");
   const [geoError, setGeoError] = useState<string | null>(null);
@@ -146,6 +149,8 @@ export function ComposeForm({
           data.set("image", picture.file);
           data.set("imageWidth", String(picture.width));
           data.set("imageHeight", String(picture.height));
+          data.set("photoX", String(photoPos.x));
+          data.set("photoY", String(photoPos.y));
         }
         data.set("kind", kind);
         start(() => void postSimple(data));
@@ -158,26 +163,31 @@ export function ComposeForm({
       <div className="scroll-area px-5 py-4">
         {kind === "PHOTO" ? (
           <div className="mb-4">
-            <div
-              className="mb-2.5 flex items-center justify-center overflow-hidden rounded-2xl border border-line"
-              style={{
-                height: 200,
-                backgroundImage: picture ? `url(${picture.url})` : undefined,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                background: picture ? undefined : "var(--color-chip)",
-              }}
-            >
-              {picture ? null : (
+            {/* المحرّرُ بنسبة إطار البطاقة: ما يُضبط هنا ما يُرى في الخطّ — بقرار المالك. */}
+            {picture ? (
+              <div className="mb-2.5">
+                <PhotoFrameEditor
+                  url={picture.url}
+                  width={picture.width}
+                  height={picture.height}
+                  value={photoPos}
+                  onChange={setPhotoPos}
+                />
+              </div>
+            ) : (
+              <div
+                className="mb-2.5 flex items-center justify-center rounded-2xl border border-line"
+                style={{ height: 200, background: "var(--color-chip)" }}
+              >
                 <span className="text-[12.5px] text-muted">ما اخترت صورة بعد</span>
-              )}
-            </div>
+              </div>
+            )}
             <ImagePicker
               label={picture ? "غيّر الصورة" : "اختر صورة"}
               maxSize={1600}
               onPicked={(file, width, height) =>
                 // الملف يُرسل، والرابط المؤقّت للمعاينة وحدها.
-                setPicture({ file, url: URL.createObjectURL(file), width, height })
+                (setPhotoPos({ x: 50, y: 50 }), setPicture({ file, url: URL.createObjectURL(file), width, height }))
               }
             />
           </div>

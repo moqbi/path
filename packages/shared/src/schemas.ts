@@ -35,6 +35,9 @@ export const momentInput = z.object({
   kind: z.enum(["PHOTO", "THOUGHT", "PLACE", "MUSIC"]),
   text: z.string().trim().max(MOMENT_TEXT_MAX).optional(),
   mediaId: cuid.optional(),
+  /** موضعُ الصورة في إطار البطاقة، بالمئة — يُضبط بالسحب قبل النشر. */
+  photoX: z.number().int().min(0).max(100).optional(),
+  photoY: z.number().int().min(0).max(100).optional(),
   with: z.array(cuid).max(20).optional(),
   audience: z.enum(["CIRCLE", "GROUP", "PICKED"]).default("CIRCLE"),
   audienceGroupId: cuid.optional(),

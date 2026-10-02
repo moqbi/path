@@ -152,11 +152,9 @@ export function MomentBar({
     <div ref={root} className={head ? "" : inset ? "relative" : "mt-2"} onClick={contain}>
       {inset ? (
         <>
-          {media}
-          {/* الزرُّ يطفو في ركن المتن تحت الصورة فيبدأ النصّ من أعلاه — بقرار المالك. */}
-          <div className="relative">
-            <div className="absolute left-3 top-2.5 z-10">
-        <button
+          {/* الزرُّ في ركن البطاقة الأعلى، والصورةُ تنزل تحته ثمّ المتن — بقرار المالك. */}
+          <div className="absolute left-3 top-2.5 z-10">
+            <button
           type="button"
           aria-label={isLocked ? "تفاعل — التعليقات مقفلة" : "تفاعل"}
           aria-expanded={open}
@@ -195,9 +193,9 @@ export function MomentBar({
             </span>
           )}
         </button>
-            </div>
-            {extra}
           </div>
+          {media}
+          {extra}
         </>
       ) : (
         /* في RTL يضع `justify-end` الزرَّ في الطرف الأيسر من المنشور. */

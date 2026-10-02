@@ -7,9 +7,11 @@ import { viewPhoto } from "./photo-viewer";
 import { AthrMark } from "./brand";
 import { TagIcon, PinIcon, PlayIcon, WithIcon, SunIcon, MoonIcon, PlaneIcon, GiftIcon, SparkIcon, PrivateIcon } from "./icons";
 import { MomentBar } from "./moment-bar";
+import { PHOTO_RATIO } from "./photo-frame";
 import { AuthorFaces, Bubble, CommentList, Reactors } from "./reactors";
 import { colors } from "../theme/tokens";
 import { openIn } from "../lib/browse";
+import { openMaps } from "../lib/maps";
 import { ar, relative, timeOfDay } from "../lib/format";
 import { useCircle, type Moment } from "../lib/queries";
 
@@ -230,6 +232,18 @@ export function MomentCard({
                 </Text>
                 {linked.after}
               </>
+            ) : moment.kind === "PLACE" && moment.placeName ? (
+              /* اسمُ المكان يفتح الخرائط (القاعدة ٢١١)، وبقيّةُ السطر تفتح اللحظة. */
+              <>
+                {"في "}
+                <Text
+                  accessibilityRole="link"
+                  onPress={() => void openMaps(moment)}
+                  style={{ color: colors.clayInk, fontWeight: "700" }}
+                >
+                  {moment.placeName}
+                </Text>
+              </>
             ) : (
               title
             )}
@@ -315,7 +329,8 @@ export function MomentCard({
                   <Pressable accessibilityLabel="افتح الصورة" onPress={() => viewPhoto(moment.mediaId)}>
                     <MediaImage
                       mediaId={moment.mediaId}
-                      style={{ width: "100%", height: 190, borderRadius: 14, marginTop: 10 }}
+                      position={{ x: moment.photoX ?? 50, y: moment.photoY ?? 50 }}
+                      style={{ width: "100%", aspectRatio: PHOTO_RATIO, borderRadius: 14, marginTop: 10 }}
                     />
                   </Pressable>
                 ) : null}
@@ -329,23 +344,48 @@ export function MomentCard({
   }
 
   /* الصورة تفتح نفسها كاملةً (القاعدة ٣٠)، والنصُّ تحتها يفتح اللحظة. */
+  /*
+    الصورةُ في أعلى البطاقة وزرُّ التفاعل في ركنها فوقها، والنصُّ تحتها — في
+    إطارٍ بنسبة المحرّر (`PHOTO_RATIO`) وبالموضع الذي ضبطه صاحبُها، فما رآه
+    قبل النشر هو ما تراه دائرته.
+  */
   const media = moment.mediaId ? (
-    <Pressable accessibilityLabel="افتح الصورة" onPress={() => viewPhoto(moment.mediaId)}>
-      <MediaImage mediaId={moment.mediaId} style={{ width: "100%", height: 230 }} />
+    <Pressable
+      accessibilityLabel="افتح الصورة"
+      onPress={() => viewPhoto(moment.mediaId)}
+      style={{ marginTop: 12, marginHorizontal: 12, borderRadius: 14, overflow: "hidden" }}
+    >
+      <MediaImage
+        mediaId={moment.mediaId}
+        position={{ x: moment.photoX ?? 50, y: moment.photoY ?? 50 }}
+        style={{ width: "100%", aspectRatio: PHOTO_RATIO }}
+      />
     </Pressable>
   ) : moment.imageSpec ? (
-    <View style={{ height: 132, backgroundColor: firstColor(moment.imageSpec, colors.chip) }} />
+    <View
+      style={{
+        marginTop: 12,
+        marginHorizontal: 12,
+        borderRadius: 14,
+        aspectRatio: PHOTO_RATIO,
+        backgroundColor: firstColor(moment.imageSpec, colors.chip),
+      }}
+    />
   ) : null;
 
   const head = (
     <View>
       {/*
-        النصّ يبدأ من أعلى المتن ويترك يسارَه لزرّ التفاعل الطافي في ركنه —
-        كان الزرّ صفّاً وحده فوق النصّ، ثمّ طفا على الصورة نفسها.
+        بلا صورةٍ يبدأ النصّ من أعلى البطاقة ويترك يسارَه لزرّ التفاعل في
+        ركنها، ومع الصورة يأتي تحتها بعرض البطاقة.
       */}
       <Pressable
         onPress={open}
-        style={{ paddingRight: 14, paddingLeft: 52, paddingTop: 14, minHeight: 50 }}
+        style={
+          media
+            ? { paddingHorizontal: 14, paddingTop: 10 }
+            : { paddingRight: 14, paddingLeft: 52, paddingTop: 14, minHeight: 50 }
+        }
       >
         {moment.text ? (
           <Text style={{ color: colors.ink, fontSize: 13.5, lineHeight: 23, marginBottom: 8 }}>
@@ -354,11 +394,18 @@ export function MomentCard({
         ) : null}
 
         {/* الموقع على لحظةٍ أو صورة: سطرٌ صغير، لا حدثُ مكانٍ مستقل. */}
+        {/* ويُضغط فيفتح الخرائط (القاعدة ٢١١). */}
         {moment.placeName ? (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 8 }}>
-            <PinIcon size={12} color={colors.muted} />
-            <Text style={{ color: colors.muted, fontSize: 12 }}>{moment.placeName}</Text>
-          </View>
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel={`افتح ${moment.placeName} في الخرائط`}
+            onPress={() => void openMaps(moment)}
+            hitSlop={6}
+            style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 8, alignSelf: "flex-start" }}
+          >
+            <PinIcon size={12} color={colors.clayInk} />
+            <Text style={{ color: colors.clayInk, fontSize: 12, fontWeight: "600" }}>{moment.placeName}</Text>
+          </Pressable>
         ) : null}
 
         {withNames.length > 0 ? (

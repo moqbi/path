@@ -16,6 +16,8 @@ export const momentShape = {
   musicUrl: true,
   musicThumb: true,
   imageSpec: true,
+  photoX: true,
+  photoY: true,
   mediaId: true,
   commentsLocked: true,
   // «خاصة»: من يرى اللحظة يُقال له إنّها لم تُوجَّه إلى الدائرة كلّها.

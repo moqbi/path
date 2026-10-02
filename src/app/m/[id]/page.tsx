@@ -12,6 +12,8 @@ import { CommentList } from "@/components/comments";
 import { EVENTS, EventLine } from "@/components/moment-card";
 import { Photo } from "@/components/photo";
 import { PinIcon } from "@/components/icons";
+import { PlaceLink } from "@/components/place-link";
+import { mapsUrl } from "@/lib/maps";
 import { ar, timeOfDay } from "@/lib/format";
 
 export default async function MomentPage({
@@ -85,7 +87,7 @@ export default async function MomentPage({
               <>
                 {moment.mediaId ? (
                   <div className="mb-3">
-                    <Photo mediaId={moment.mediaId} height={260} rounded />
+                    <Photo mediaId={moment.mediaId} rounded x={moment.photoX ?? 50} y={moment.photoY ?? 50} />
                   </div>
                 ) : moment.imageSpec ? (
                   <div
@@ -101,9 +103,15 @@ export default async function MomentPage({
                 ) : null}
 
                 {moment.placeName ? (
-                  <p dir="auto" className="mt-2 flex items-center gap-1.5 text-[12.5px] text-muted">
-                    <PinIcon size={13} />
-                    {moment.placeName}
+                  <p dir="auto" className="mt-2 text-[12.5px]">
+                    {/* يفتح الخرائط (القاعدة ٢١١). */}
+                    <PlaceLink
+                      url={mapsUrl(moment)!}
+                      className="flex items-center gap-1.5 font-semibold text-clay-ink hover:underline"
+                    >
+                      <PinIcon size={13} />
+                      {moment.placeName}
+                    </PlaceLink>
                   </p>
                 ) : null}
 

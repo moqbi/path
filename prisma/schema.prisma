@@ -395,6 +395,9 @@ model Moment {
   imageSpec String?
 
   mediaId String? @unique
+  /// موضعُ الصورة في إطار البطاقة (٠–١٠٠ أفقياً ورأسياً) — يُضبط بالسحب قبل النشر.
+  photoX  Int?
+  photoY  Int?
   media   Media?  @relation("MomentMedia", fields: [mediaId], references: [id], onDelete: SetNull)
 
   /// الجمهور: الدائرة كلها، أو تصنيف منها، أو أشخاص بأعيانهم.

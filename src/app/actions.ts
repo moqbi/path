@@ -397,6 +397,12 @@ async function readPlace(
   };
 }
 
+/** نسبةٌ صحيحة بين ٠ و١٠٠ أو لا شيء — ما يكتبه المتصفّح لا يُصدَّق كما هو. */
+function percent(value: FormDataEntryValue | null): number | null {
+  const n = Math.round(Number(value));
+  return value === null || value === "" || !Number.isFinite(n) ? null : Math.max(0, Math.min(100, n));
+}
+
 /** لحظة صورة أو فكرة: نص، وإشارة اختيارية. */
 export async function postSimple(formData: FormData): Promise<void> {
   const user = await requireUser();
@@ -432,6 +438,9 @@ export async function postSimple(formData: FormData): Promise<void> {
       kind: kind as MomentKind,
       text: text || null,
       mediaId,
+      // موضعُ الصورة في إطار البطاقة كما ضبطه صاحبُها بالسحب (٠–١٠٠).
+      photoX: mediaId ? percent(formData.get("photoX")) : null,
+      photoY: mediaId ? percent(formData.get("photoY")) : null,
       imageSpec: kind === "PHOTO" && !mediaId ? randomImage() : null,
       ...where,
       audience: seen.audience,

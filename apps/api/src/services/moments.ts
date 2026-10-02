@@ -195,6 +195,8 @@ export async function createMoment(userId: string, input: MomentInput) {
       kind: input.kind,
       text,
       mediaId,
+      photoX: mediaId ? (input.photoX ?? null) : null,
+      photoY: mediaId ? (input.photoY ?? null) : null,
       imageSpec: input.kind === "PHOTO" && !mediaId ? randomImage() : null,
       lat: where.lat,
       lng: where.lng,

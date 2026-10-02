@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { View, Pressable, ScrollView, Image, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Pressable, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, useWindowDimensions } from "react-native";
+import { PhotoFrameEditor } from "../components/photo-frame";
 import { Text, TextInput } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -57,6 +58,10 @@ export default function Compose() {
   const [text, setText] = useState("");
   const [musicUrl, setMusicUrl] = useState("");
   const [picture, setPicture] = useState<{ uri: string; width: number; height: number; mime: string } | null>(null);
+  // موضعُ الصورة في إطار البطاقة — يبدأ من الوسط مع كل صورةٍ جديدة.
+  const [photoPos, setPhotoPos] = useState({ x: 50, y: 50 });
+  const [framing, setFraming] = useState(false);
+  const screenWidth = useWindowDimensions().width;
   const [asking, setAsking] = useState(false);
   const [withIds, setWithIds] = useState<string[]>([]);
   const [audience, setAudience] = useState("CIRCLE");
@@ -214,6 +219,7 @@ export default function Compose() {
     const shot = takeShot();
     if (shot && !shot.video) {
       setPicture({ uri: shot.uri, width: shot.width, height: shot.height, mime: shot.mime });
+      setPhotoPos({ x: 50, y: 50 });
     }
   });
 
@@ -238,6 +244,7 @@ export default function Compose() {
       height: asset.height,
       mime: asset.mimeType ?? "image/jpeg",
     });
+    setPhotoPos({ x: 50, y: 50 });
   }
 
   const ready =
@@ -266,6 +273,8 @@ export default function Compose() {
           kind,
           text: text.trim() || undefined,
           mediaId,
+          photoX: mediaId ? photoPos.x : undefined,
+          photoY: mediaId ? photoPos.y : undefined,
           musicUrl: kind === "MUSIC" ? musicUrl.trim() : undefined,
           with: withIds.length ? withIds : undefined,
           audience: audience === "CIRCLE" || audience === "PICKED" ? audience : "GROUP",
@@ -321,28 +330,41 @@ export default function Compose() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 16 }}>
+        <ScrollView scrollEnabled={!framing} contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 16 }}>
           {kind === "PHOTO" ? (
             <View style={{ marginBottom: 16 }}>
-              <View
-                style={{
-                  height: 200,
-                  borderRadius: 16,
-                  borderWidth: 1,
-                  borderColor: colors.line,
-                  backgroundColor: colors.chip,
-                  overflow: "hidden",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: 10,
-                }}
-              >
-                {picture ? (
-                  <Image source={{ uri: picture.uri }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
-                ) : (
+              {/*
+                المحرّرُ بنسبة إطار البطاقة نفسها: ما يُضبط هنا هو ما يُرى في
+                الخطّ الزمنيّ — بقرار المالك.
+              */}
+              {picture ? (
+                <View style={{ marginBottom: 10 }}>
+                  <PhotoFrameEditor
+                    uri={picture.uri}
+                    width={picture.width}
+                    height={picture.height}
+                    value={photoPos}
+                    onChange={setPhotoPos}
+                    frameWidth={screenWidth - 40}
+                    onActive={setFraming}
+                  />
+                </View>
+              ) : (
+                <View
+                  style={{
+                    height: 200,
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: colors.line,
+                    backgroundColor: colors.chip,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 10,
+                  }}
+                >
                   <Text style={{ color: colors.muted, fontSize: 12.5 }}>ما اخترت صورة بعد</Text>
-                )}
-              </View>
+                </View>
+              )}
               <Pressable
                 onPress={() => setAsking(true)}
                 style={{ height: 46, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
