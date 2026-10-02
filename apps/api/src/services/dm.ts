@@ -3,7 +3,7 @@ import { push } from "./push";
 import { guard } from "../lib/moderation";
 import { MESSAGE_KEEP_DAYS, VOICE_SECONDS } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
-import { circleIds } from "./visibility";
+import { blockedWith, circleIds } from "./visibility";
 
 /**
  * المحادثات الخاصة.
@@ -42,12 +42,22 @@ const MESSAGE = {
   editedAt: true,
 } as const;
 
-/** المحادثة لا تُفتح إلا بين من قُبلت بينهما الصداقة. */
+/**
+ * المحادثة لا تُفتح إلا بين من قُبلت بينهما الصداقة — إلّا الحسابَ المفتوح
+ * (القاعدة ٢٢١): حسابُ الدعم يُراسَل بلا إضافة، فمن يسأل لا يُطلب منه أن
+ * يصير صديقاً أوّلاً. والحظرُ فوقه في الاتجاهين.
+ */
 export async function open(userId: string, otherId: string) {
   if (userId === otherId) throw badRequest("لا يمكنك محادثة نفسك");
 
   const circle = await circleIds(userId);
-  if (!circle.includes(otherId)) throw forbidden("المحادثة بعد قبول الإضافة");
+  if (!circle.includes(otherId)) {
+    const [other, blocked] = await Promise.all([
+      prisma.user.findUnique({ where: { id: otherId }, select: { isOpen: true } }),
+      blockedWith(userId),
+    ]);
+    if (!other?.isOpen || blocked.includes(otherId)) throw forbidden("المحادثة بعد قبول الإضافة");
+  }
 
   const { aId, bId } = pairKey(userId, otherId);
   const conversation = await prisma.conversation.upsert({
@@ -69,6 +79,7 @@ export async function list(userId: string) {
       a: { select: PERSON },
       b: { select: PERSON },
       messages: { select: MESSAGE, orderBy: { createdAt: "desc" }, take: 1 },
+      pins: { where: { userId }, select: { createdAt: true } },
       _count: {
         select: { messages: { where: { senderId: { not: userId }, readAt: null } } },
       },
@@ -76,15 +87,44 @@ export async function list(userId: string) {
     orderBy: { updatedAt: "desc" },
   });
 
-  return {
-    conversations: rows.map((row) => ({
-      id: row.id,
-      updatedAt: row.updatedAt,
-      other: row.a.id === userId ? row.b : row.a,
-      last: row.messages[0] ?? null,
-      unseen: row._count.messages,
-    })),
-  };
+  const conversations = rows.map((row) => ({
+    id: row.id,
+    updatedAt: row.updatedAt,
+    other: row.a.id === userId ? row.b : row.a,
+    last: row.messages[0] ?? null,
+    unseen: row._count.messages,
+    /** مفضّلةٌ مثبّتةٌ أعلى القائمة (القاعدة ٢٢٠). */
+    pinned: row.pins.length > 0,
+    pinnedAt: row.pins[0]?.createdAt ?? null,
+  }));
+  // المفضّلةُ أوّلاً بترتيب تثبيتها، ثمّ البقيّةُ بآخر رسالة كما كانت.
+  conversations.sort((a, b) => {
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+    if (a.pinnedAt && b.pinnedAt) return a.pinnedAt.getTime() - b.pinnedAt.getTime();
+    return 0;
+  });
+  return { conversations };
+}
+
+/** حدُّ المفضّلة — ثلاثٌ تبقى أعلى القائمة، وما زاد قائمةٌ ثانية لا مفضّلة. */
+export const PIN_MAX = 3;
+
+/** تثبيتُ محادثةٍ مفضّلةً أو فكُّه (القاعدة ٢٢٠). والحدُّ يُفحص هنا لا في الشاشة وحدها. */
+export async function pin(userId: string, conversationId: string, on: boolean) {
+  await mine(userId, conversationId);
+  if (!on) {
+    await prisma.conversationPin.deleteMany({ where: { userId, conversationId } });
+    return { pinned: false };
+  }
+  const already = await prisma.conversationPin.findUnique({
+    where: { userId_conversationId: { userId, conversationId } },
+    select: { userId: true },
+  });
+  if (already) return { pinned: true };
+  const count = await prisma.conversationPin.count({ where: { userId } });
+  if (count >= PIN_MAX) throw badRequest("المفضّلة ثلاث محادثات بالكثير");
+  await prisma.conversationPin.create({ data: { userId, conversationId } });
+  return { pinned: true };
 }
 
 /** يثبت أن المستخدم طرفٌ في المحادثة، ويردّ الطرفين. */
@@ -167,6 +207,12 @@ export async function send(
 ) {
   const conversation = await mine(userId, conversationId);
 
+  // الحظرُ يقطع المحادثة القائمة أيضاً (القاعدة ٢٤): المحادثةُ تبقى صفّاً بعد
+  // الحظر، فلولا هذا لبقي المحظورُ يكتب فيها.
+  if ((await blockedWith(userId)).includes(otherSide(conversation, userId))) {
+    throw notFound("المحادثة غير موجودة");
+  }
+
   let body = "";
   let mediaId: string | null = null;
   let seconds: number | null = null;
@@ -215,7 +261,8 @@ export async function send(
   void push({
     userId: to,
     kind: "DM",
-    title: who?.name ?? "رسالة جديدة",
+    // العنوانُ يقول ما جرى ومن فعله، والمتنُ ما قيل (القاعدة ١٦٨).
+    title: `رسالة جديدة من ${who?.name ?? "صديقك"}`,
     // ولا يُكتب متنُ الرسالة الصوتية ولا الصورة: نوعُها خبرُها.
     body:
       input.kind === "TEXT"
@@ -291,7 +338,9 @@ export async function unreadCount(userId: string) {
       conversation: { OR: [{ aId: userId }, { bId: userId }] },
     },
   });
-  return { unread: count };
+  // والمجموعاتُ في الشارة نفسها (القاعدة ٢١٥): رقمُ المحادثات يقول كم ينتظر.
+  const { unreadCount: groupUnread } = await import("./groups");
+  return { unread: count + (await groupUnread(userId)) };
 }
 
 /**

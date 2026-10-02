@@ -1,24 +1,27 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { scrolled } from "../../lib/scrolled";
+import { markSeen } from "../../lib/seen";
 import { View, SectionList, ActivityIndicator, Pressable, Animated, Easing, PanResponder } from "react-native";
 import { Text } from "../../components/type";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { MomentCard, SPINE_W } from "../../components/moment-card";
-import { SPINE_X } from "../../components/spine";
-import { CoverLayer } from "../../components/cover";
+import { COVER_HEIGHT, CoverLayer } from "../../components/cover";
 import { Avatar } from "../../components/avatar";
 import { AthrMark } from "../../components/brand";
-import { MessageIcon, RefreshIcon, SparkIcon, StarIcon } from "../../components/icons";
+import { ClockIcon, MessageIcon, RefreshIcon, SparkIcon, StarIcon } from "../../components/icons";
 import { ComposerFan } from "../../components/composer-fan";
-import { Tour } from "../../components/tour";
-import { useCircle, useFeed, useTogether, type Moment } from "../../lib/queries";
+import { Spot } from "../../components/spot";
+import { PlusEnded } from "../../components/plus-ended";
+import { useCircle, useFeed, useTogether, useUnreadDm, type Moment } from "../../lib/queries";
 import { useSession } from "../../lib/session";
-import { ar, dayLabel, membership, MONTHS } from "../../lib/format";
+import { ar, dayLabel, membership, MONTHS, timeOfDay } from "../../lib/format";
+import { useTabTop } from "../../lib/tab-top";
 import { playRefresh } from "../../lib/sound";
 import { NameTag } from "../../components/name-tag";
 import { colors } from "../../theme/tokens";
 
-const COVER = 176;
+const COVER = COVER_HEIGHT;
 
 /** أقصى ما ينزل به الغلاف، والمسافة التي يُحسب بعدها التحديث. */
 const PULL_MAX = 96;
@@ -34,6 +37,8 @@ const PULL_TRIP = 62;
 export default function Timeline() {
   const me = useSession((s) => s.me);
   const router = useRouter();
+  // حشوةُ الحافّة العليا في الرأس الداكن نفسه — انظر `components/screen-header.tsx`.
+  const insets = useSafeAreaInsets();
 
   /*
     العدسات ثلاثٌ في الخط الزمني نفسه لا ثلاثُ صفحات: الرأس والغلاف
@@ -46,6 +51,15 @@ export default function Timeline() {
   const feed = useFeed(view === "private" ? "private" : "");
   const together = useTogether(withId);
   const circle = useCircle();
+  const unread = useUnreadDm();
+  const unreadCount = unread.data?.unread ?? 0;
+  // العودةُ من محادثةٍ قُرئت تُعيد العدّ: الخطّ الزمنيّ لا يُفكّ من الشجرة.
+  const recount = unread.refetch;
+  useFocusEffect(
+    useCallback(() => {
+      void recount();
+    }, [recount]),
+  );
 
   const lensMoments = useMemo(
     () =>
@@ -54,7 +68,18 @@ export default function Timeline() {
         : (feed.data?.pages.flatMap((page) => page.moments) ?? []),
     [view, together.data, feed.data],
   );
-  const moments = lensMoments;
+  /*
+    لحظةٌ واحدة مرّةً واحدة، والأحدثُ أوّلاً — مهما جاءت الصفحات.
+    صفحتان تتداخلان بعد تحديثٍ (لحظةٌ نُشرت بين الجلبين) كانتا تُكرّران
+    لحظةً بمفتاحها نفسه، ومفتاحٌ مكرّر في القائمة يُربك رسمها فتتداخل
+    البطاقات ويخرج بعضها عن ترتيبه.
+  */
+  const moments = useMemo(() => {
+    const seen = new Set<string>();
+    return lensMoments
+      .filter((moment) => (seen.has(moment.id) ? false : (seen.add(moment.id), true)))
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
+  }, [lensMoments]);
 
   const friend = circle.data?.members.find((person) => person.id === withId) ?? null;
   const since = together.data?.since ? new Date(together.data.since) : null;
@@ -84,9 +109,45 @@ export default function Timeline() {
   const pull = useRef(new Animated.Value(0)).current;
   const spin = useRef(new Animated.Value(0)).current;
   const atTop = useRef(true);
+
+  /*
+    ساعةُ التمرير — **بقرار المالك**: قرصٌ صغير يسار القائمة فيه ساعةٌ
+    ووقتُ أعلى لحظةٍ ظاهرة، يظهر ما دام الإصبعُ يمرّر ويبهت بعده. من
+    نزل في يومٍ طويل يعرف أين هو منه بلا أن يقرأ بطاقةً بطاقة.
+  */
+  const list = useRef<SectionList<Moment>>(null);
+  const [clock, setClock] = useState<string | null>(null);
+  const clockFade = useRef(new Animated.Value(0)).current;
+  const clockTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showClock = () => {
+    if (clockTimer.current) clearTimeout(clockTimer.current);
+    Animated.timing(clockFade, { toValue: 1, duration: 120, useNativeDriver: true }).start();
+  };
+  const hideClock = () => {
+    if (clockTimer.current) clearTimeout(clockTimer.current);
+    clockTimer.current = setTimeout(() => {
+      Animated.timing(clockFade, { toValue: 0, duration: 260, useNativeDriver: true }).start();
+    }, 700);
+  };
+  const onViewable = useRef(({ viewableItems }: { viewableItems: { item: Moment | undefined }[] }) => {
+    const first = viewableItems.find((row) => row.item && "createdAt" in row.item)?.item;
+    if (first) setClock(timeOfDay(new Date(first.createdAt)));
+    // وما مرّ على الشاشة يُكتب «شافها» — منه لوحةُ صاحب اللحظة.
+    markSeen(viewableItems.flatMap((row) => (row.item && "createdAt" in row.item ? [row.item.id] : [])));
+  }).current;
+
+  // الضغطةُ على «اللحظات» وهو ظاهرٌ ترجع إلى أعلاه.
+  useTabTop(() => list.current?.getScrollResponder()?.scrollTo({ y: 0, animated: true }));
   const [pulling, setPulling] = useState(false);
 
-  const reload = () => (view === "together" ? together.refetch() : feed.refetch());
+  const refreshMe = useSession((s) => s.refresh);
+  // والتحديث يسأل عن صاحب الشاشة أيضاً: غلافُه وإطارُه وتميمتُه منه.
+  const reload = () =>
+    Promise.all([
+      view === "together" ? together.refetch() : feed.refetch(),
+      refreshMe(),
+      unread.refetch(),
+    ]);
 
   /*
     `PanResponder` يُبنى مرّةً واحدة، فما يُغلق عليه يبقى من أوّل رسم.
@@ -97,7 +158,7 @@ export default function Timeline() {
   latest.current = reload;
 
   const settle = () =>
-    Animated.spring(pull, { toValue: 0, useNativeDriver: true, bounciness: 6, speed: 14 }).start();
+    Animated.spring(pull, { toValue: 0, useNativeDriver: false, bounciness: 6, speed: 14 }).start();
 
   const grip = useRef(
     PanResponder.create({
@@ -131,14 +192,14 @@ export default function Timeline() {
             toValue: 1,
             duration: 750,
             easing: Easing.linear,
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
         );
         turn.start();
         Animated.timing(pull, {
           toValue: PULL_TRIP,
           duration: 140,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }).start();
 
         void Promise.resolve(latest.current()).finally(() => {
@@ -155,7 +216,7 @@ export default function Timeline() {
   if (!me) return null;
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       {/*
         الرأس: العلامة ثم ATHAR، و«آثار+» قبل الرسائل.
 
@@ -169,7 +230,8 @@ export default function Timeline() {
           justifyContent: "space-between",
           minHeight: 56,
           paddingHorizontal: 16,
-          paddingVertical: 8,
+          paddingTop: insets.top + 8,
+          paddingBottom: 8,
           backgroundColor: colors.chrome,
         }}
       >
@@ -181,6 +243,7 @@ export default function Timeline() {
         </View>
 
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Spot id="header.plus">
           <Pressable
             onPress={() => router.push("/subscribe" as never)}
             style={{
@@ -198,14 +261,40 @@ export default function Timeline() {
             <SparkIcon size={13} color={colors.goldInk} />
             <Text style={{ color: colors.goldInk, fontSize: 12, fontWeight: "700" }}>آثار+</Text>
           </Pressable>
+          </Spot>
 
+          <Spot id="header.chats">
           <Pressable
             onPress={() => router.push("/messages" as never)}
             accessibilityLabel="المحادثات"
             style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
           >
             <MessageIcon size={21} color={colors.chromeInk} />
+            {/* عددُ الرسائل التي لم تُقرأ — لا نقطةٌ صمّاء: الرقم يقول كم ينتظر. */}
+            {unreadCount > 0 ? (
+              <View
+                style={{
+                  position: "absolute",
+                  top: 2,
+                  right: 0,
+                  minWidth: 18,
+                  height: 18,
+                  paddingHorizontal: 4,
+                  borderRadius: 9,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: colors.live,
+                  borderWidth: 1.5,
+                  borderColor: colors.chrome,
+                }}
+              >
+                <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700", lineHeight: 13 }}>
+                  {unreadCount > 99 ? "+٩٩" : ar(unreadCount)}
+                </Text>
+              </View>
+            ) : null}
           </Pressable>
+          </Spot>
         </View>
       </View>
 
@@ -213,14 +302,38 @@ export default function Timeline() {
         الغلافُ واللحظات في طبقةٍ واحدة تنزل بالسحب: هما ما يتحرّك،
         والرأس والشريط السفلي ثابتان.
       */}
-      <Animated.View
-        style={{ flex: 1, transform: [{ translateY: pull }] }}
-        {...grip.panHandlers}
-      >
+      <Animated.View style={{ flex: 1 }} {...grip.panHandlers}>
 
         {/* الغلاف: صورتك على محور الخيط، والمدّة تحت الاسم، والتحديث مقابله. */}
-        <View style={{ height: COVER, overflow: "hidden" }}>
-          <CoverLayer mediaId={me.coverMediaId} spec={me.background?.spec} height={COVER} />
+        <Animated.View style={{ height: Animated.add(COVER, pull), overflow: "hidden" }}>
+          {/*
+            السحبُ يمدّ الغلاف ولا يُنزله: كان الغلافُ واللحظات ينزلان معاً
+            فيبقى فوقهما فراغٌ بلون الورق. الآن يطول الإطارُ بمقدار السحب
+            وتكبر الصورةُ فيه من أعلاها — فلا يظهر شيءٌ ليس غلافاً.
+          */}
+          <Animated.View
+            style={{
+              height: COVER,
+              transform: [
+                {
+                  translateY: pull.interpolate({
+                    inputRange: [0, PULL_MAX],
+                    outputRange: [0, PULL_MAX / 2],
+                    extrapolate: "clamp",
+                  }),
+                },
+                {
+                  scale: pull.interpolate({
+                    inputRange: [0, PULL_MAX],
+                    outputRange: [1, (COVER + PULL_MAX) / COVER],
+                    extrapolate: "clamp",
+                  }),
+                },
+              ],
+            }}
+          >
+            <CoverLayer mediaId={me.coverMediaId} spec={me.background?.spec} height={COVER} x={me.coverX} y={me.coverY} zoom={me.coverZoom} />
+          </Animated.View>
 
           <View
             style={{
@@ -234,37 +347,11 @@ export default function Timeline() {
               paddingBottom: 16,
             }}
           >
-            <View style={{ width: SPINE_W, alignItems: "center" }}>
-              <Avatar
-                name={me.name}
-                size={68}
-                mediaId={me.avatarMediaId}
-                frame={me.frame}
-                charm={me.charm}
-              />
-            </View>
-
-            <View style={{ flex: 1, paddingBottom: 6 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Text
-                  style={{
-                    color: "#fff",
-                    fontSize: 14,
-                    fontWeight: "600",
-                    writingDirection: "auto",
-                    // ظلُّ الحرف بدل إعتام الغلاف كلّه.
-                    textShadowColor: "rgba(14,26,36,.62)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
-                  }}
-                >
-                  {me.name}
-                </Text>
-                <NameTag isPlus={me.isPlus} tag={me.tag} size={10} />
-              </View>
-              <Text style={{ color: "rgba(255,255,255,.92)", fontSize: 11.5, textShadowColor: "rgba(14,26,36,.62)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>
-                لك معانا {membership(me.createdAt)}
-              </Text>
-            </View>
-
+            {/*
+              زرُّ التحديث في الطرف الأيمن قبل الصورة — **بقرار المالك** —
+              والصورةُ والاسم يتقدّمان يساراً بعده. فلم تعد الصورة على محور
+              الخيط، فذهب وصلُ الخيط تحتها: خيطٌ ينزل من تحت زرٍّ لا يعني شيئاً.
+            */}
             <Pressable
               onPress={() => {
               /*
@@ -281,7 +368,7 @@ export default function Timeline() {
                   toValue: 1,
                   duration: 750,
                   easing: Easing.linear,
-                  useNativeDriver: true,
+                  useNativeDriver: false,
                 }),
               );
               turn.start();
@@ -292,15 +379,18 @@ export default function Timeline() {
               });
             }}
               accessibilityLabel="تحديث الخط الزمني"
+              // ٢٤×٢٤ — **بقرار المالك** (كان ٣٦ فيُقرأ أكبر من الصورة جنبه)،
+              // ومساحةُ اللمس أوسعُ منه بـ`hitSlop` فلا يصغر الإصبعُ معه.
+              hitSlop={12}
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
+                width: 24,
+                height: 24,
+                borderRadius: 12,
                 alignItems: "center",
                 justifyContent: "center",
                 // قرصٌ داكن لا شفّاف: بلا درعٍ كان الأبيضُ يذوب في غلافٍ فاتح.
                 backgroundColor: "rgba(14,26,36,.38)",
-                marginBottom: 4,
+                marginBottom: 8,
               }}
             >
               {/*
@@ -323,30 +413,70 @@ export default function Timeline() {
                   ],
                 }}
               >
-                <RefreshIcon size={17} color="#fff" />
+                <RefreshIcon size={14} color="#fff" />
               </Animated.View>
             </Pressable>
+            <View style={{ width: SPINE_W, alignItems: "center" }}>
+              <Avatar
+                name={me.name}
+                size={68}
+                mediaId={me.avatarMediaId}
+                frame={me.frame}
+                charm={me.charm}
+              />
+            </View>
+
+            {/*
+              الاسم أبعدُ عن الصورة (`marginRight`): التميمةُ تجلس يسارها
+              وأغلبُها خارجها (القاعدة ٥٩)، فكانت تلامس الاسم.
+            */}
+            <View style={{ flex: 1, paddingBottom: 6, marginRight: 10 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Text
+                  style={{
+                    color: "#fff",
+                    fontSize: 14,
+                    fontWeight: "600",
+                    writingDirection: "auto",
+                    // ظلُّ الحرف بدل إعتام الغلاف كلّه.
+                    textShadowColor: "rgba(14,26,36,.62)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
+                  }}
+                >
+                  {me.name}
+                </Text>
+                <NameTag isPlus={me.isPlus} tag={me.tag} size={10} />
+              </View>
+              <Text style={{ color: "rgba(255,255,255,.92)", fontSize: 11.5, textShadowColor: "rgba(14,26,36,.62)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 }}>
+                لك معانا {membership(me.createdAt)}
+              </Text>
+            </View>
+
           </View>
 
-          {/* الخيط يبدأ من أسفل الصورة داخل الغلاف نفسه. */}
-          <View
-            style={{
-              position: "absolute",
-              insetInlineStart: SPINE_X,
-              bottom: 0,
-              width: 1,
-              height: 10,
-              backgroundColor: "rgba(255,255,255,.75)",
-            }}
-          />
-        </View>
+        </Animated.View>
 
+        <View style={{ flex: 1 }}>
         <SectionList
+          ref={list}
+          // حقلُ التعليق داخل القائمة: آبل تُزيح المحتوى بقدر الكيبورد وتُظهر
+          // الحقلَ المركَّز فوقه، فيرى الكاتبُ ما يكتب.
+          automaticallyAdjustKeyboardInsets
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
           sections={days}
           keyExtractor={(item) => item.id}
           stickySectionHeadersEnabled={false}
+          onViewableItemsChanged={onViewable}
+          viewabilityConfig={{ itemVisiblePercentThreshold: 30 }}
+          onScrollBeginDrag={() => {
+            showClock();
+            scrolled();
+          }}
+          onScrollEndDrag={hideClock}
+          onMomentumScrollBegin={showClock}
+          onMomentumScrollEnd={hideClock}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 90, flexGrow: 1 }}
-          style={{ backgroundColor: colors.paper }}
+          style={{ backgroundColor: colors.ground }}
           // موضعُ رأس القائمة وحده هو ما يأذن للسحب أن يلتقط الإيماءة.
           scrollEventThrottle={16}
           onScroll={(event) => {
@@ -409,10 +539,33 @@ export default function Timeline() {
           }
         />
 
+        {clock ? (
+          <Animated.View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              top: 10,
+              left: 12,
+              opacity: clockFade,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 5,
+              paddingHorizontal: 10,
+              height: 28,
+              borderRadius: 14,
+              backgroundColor: colors.chrome,
+            }}
+          >
+            <ClockIcon size={14} color={colors.chromeInk} />
+            <Text style={{ color: colors.chromeInk, fontSize: 11.5, fontWeight: "700" }}>{clock}</Text>
+          </Animated.View>
+        ) : null}
+        </View>
+
       </Animated.View>
 
       <ComposerFan />
-      <Tour />
+      <PlusEnded />
     </SafeAreaView>
   );
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { SUPPORTER_TAG } from "@athar/shared";
 import { initial } from "@/lib/format";
-import { SparkIcon } from "@/components/icons";
+import { VerifiedIcon } from "@/components/icons";
 import { AthrPageMark } from "@/components/brand";
 import { BackButton, BackSwipe } from "@/components/nav";
 
@@ -54,8 +55,12 @@ export type Frame =
 export function frameZoom(frame: NonNullable<Frame>): number {
   const hole = frame.frameHole ?? 0;
   if (hole < 20 || hole > 99) return 1;
-  return 100 / hole;
+  // والحلقةُ تركب حافّةَ الوجه قليلاً (٥٪) لا تلامسها: الحافّتان متطابقتين
+  // تتركان خيطاً شفّافاً بينهما، وحلقةٌ غيرُ مستديرةٍ تمامًا تترك فراغاً.
+  return (100 / hole) * HOLE_OVERLAP;
 }
+
+const HOLE_OVERLAP = 0.95;
 
 /**
  * خلفية صنف المتجر: صورته إن رُفعت، وإلا قيمة `spec` كما هي.
@@ -210,22 +215,20 @@ export function Avatar({
 const CHARM_RATIO = 0.5;
 
 /**
- * أين تجلس التميمة: **ركنُ الصورة الأسفل-الأيسر**.
+ * أين تجلس التميمة: **يسارَ الصورة، أغلبُها خارجها** — بقرار المالك.
  *
- * حافّتُها اليمنى على محور الصورة الرأسيّ، وحافّتُها السفلى على أسفلها
- * تماماً — فتقع في الربع الأسفل الأيسر: جزءٌ منها فوق الصورة والإطار
- * (حيث يمرّ قوسُ الدائرة)، وجزءٌ خارجهما (حيث يخرج ركنُ المربّع عن
- * القوس)، وقاعُها موازٍ لقاع الصورة لا نازلٌ عنه.
+ * رسم المالك مربّعاً أحمر على الشاشة: نطاقُها الرأسيّ كما كان (من محور
+ * الصورة الأفقيّ إلى قاعها)، لكنّها مُزاحةٌ إلى الخارج — نحو ستّين في
+ * المئة منها خارج الدائرة، والباقي يعبر حافّتها. كانت في الربع الأسفل
+ * الأيسر **داخل** الدائرة، فغطّى الجناحُ كتفَ صاحب الصورة.
+ * فمركزُها الأفقيّ على عُشر نصف القطر من حافّة الصورة اليسرى:
+ * `left = −٠٫٤ × مقاسها` (ومقاسُها نصفُ القطر، `CHARM_RATIO`).
  *
- * وهذا ما رسمه المالك خطّين: خطٌّ من الأسفل عند نهايتها، وخطٌّ من
- * اليمين عند بدايتها.
- *
- * وقبلها جُرّبت ثلاث مواضع ولم تُصب: ٠٫٧٨ من نصف القطر (مدفونةً في
- * أسفل الوجه)، ثمّ ١٫١٥ على قُطر الأسفل-اليسار (ساقطةً تحت الصورة
- * كلّها)، ثمّ ٠٫٨٥ يساراً (ملتصقةً بجنبها).
+ * وتُرسم **فوق الإطار** (`zIndex`): إطارٌ بجناحين يمتدّ خارج الصورة
+ * لا يغطّيها.
  */
 function charmSeat(size: number, badge: number): { left: number; top: number } {
-  return { left: size / 2 - badge, top: size - badge };
+  return { left: -badge * 0.3, top: size - badge * 0.8 };
 }
 
 function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }) {
@@ -255,8 +258,9 @@ function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }
       style={{
         width: badge,
         height: badge,
-        // ركنُها الأسفل-الأيسر: يمينُها على المحور، وقاعُها على القاع.
+        // يسارَ الصورة وأغلبُها خارجها، وفوق الإطار (القاعدة ٥٩).
         ...charmSeat(size, badge),
+        zIndex: 2,
         // ظلٌّ خفيف يفصلها عن الصورة تحتها بلا حلقةٍ تحيط بها.
         filter: "drop-shadow(0 2px 4px rgba(14,26,36,.35))",
         ...paint,
@@ -405,9 +409,9 @@ export function Empty({
  * والوسم صفة عليه لا عنوان فوقه.
  */
 /**
- * ما يلي الاسم: نجمةُ المشترك ثم وسمه الممنوح.
+ * ما يلي الاسم: شارةُ توثيق المشترك ثم وسمه الممنوح.
  *
- * الاشتراك كان وسماً نصّياً يُمنح تلقائياً («داعم»)، فصار نجمةً: أصغر،
+ * الاشتراك كان وسماً نصّياً يُمنح تلقائياً («داعم»)، فصار شارةَ توثيق: أصغر،
  * ولا يزاحم وسماً حقيقياً منحه المشرف، ولا يحتاج ترجمةً حين يكون الاسم
  * لاتينياً. والوسم الممنوح يبقى كما هو بجانبها.
  */
@@ -425,10 +429,10 @@ export function NameTag({
     <>
       {isPlus ? (
         <span className="shrink-0 text-gold" aria-label="مشترك في آثار+" title="مشترك في آثار+">
-          <SparkIcon size={Math.round(size * 1.25)} />
+          <VerifiedIcon size={Math.min(24, Math.max(16, Math.round(size * 1.6)))} />
         </span>
       ) : null}
-      <TagPill tag={tag ?? null} size={size} />
+      <TagPill tag={tag ?? (isPlus ? SUPPORTER_TAG : null)} size={size} />
     </>
   );
 }

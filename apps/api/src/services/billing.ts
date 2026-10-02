@@ -1,4 +1,5 @@
 import { prisma } from "@athar/db";
+import { endPlus } from "./plus";
 import { PLUS_COINS, PLUS_ENTITLEMENT } from "@athar/shared";
 import { env } from "../env";
 
@@ -114,6 +115,26 @@ export async function applyEvent(event: RevenueCatEvent): Promise<{ ok: string }
   const active = !ENDS_NOW.has(type) && Boolean(until) && until!.getTime() > Date.now();
 
   /*
+    حدثٌ متأخّر لا يُطفئ اشتراكاً أحدث منه (القاعدة ١٩٦): RevenueCat يعيد
+    إرسال ما فشل ولا يضمن الترتيب، فحدثُ دورةٍ مضت يصل بعد تجديد الدورة
+    التالية — وبلا هذا الشرط يُقرأ «منتهياً» فيُنهى الاشتراكُ القائم وتُثبَّت
+    صورتُه بلا رجعة. فما يقول انتهاءً قبل `plusUntil` المحفوظ يُكتب سجلاً
+    ويُترك.
+  */
+  if (!active && type !== "TRANSFER") {
+    const now = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { isPlus: true, plusUntil: true },
+    });
+    const stored = now?.isPlus && now.plusUntil ? now.plusUntil.getTime() : 0;
+    const said = until?.getTime() ?? 0;
+    if (stored > Date.now() && stored > said) {
+      console.log(`↷ حدث ${type} متأخّر عن اشتراكٍ أحدث — مُهمَل`);
+      return { ok: "حدثٌ أقدم من الاشتراك القائم" };
+    }
+  }
+
+  /*
     التحويل بين حسابين: من انتقل منه الاشتراك يفقده، ومن انتقل إليه
     يأخذه. والطرف الأول يُعالَج هنا لأنه لا يصله حدثٌ خاصّ به.
   */
@@ -123,6 +144,7 @@ export async function applyEvent(event: RevenueCatEvent): Promise<{ ok: string }
       where: { id: { in: from } },
       data: { isPlus: false, plusUntil: null },
     });
+    for (const id of from) await endPlus(id).catch(() => {});
   }
 
   await prisma.$transaction(async (tx) => {
@@ -161,6 +183,9 @@ export async function applyEvent(event: RevenueCatEvent): Promise<{ ok: string }
       },
     });
   });
+
+  // وما انتهى يُنهى كلُّه: الصورة المتحرّكة، وأصناف المشتركين، ونافذة التجديد.
+  if (!active) await endPlus(userId);
 
   return { ok: active ? "فُعّل آثار+" : "أُوقف آثار+" };
 }

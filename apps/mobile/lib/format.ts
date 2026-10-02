@@ -93,3 +93,24 @@ export function presence(lastSeenAt: string | null | undefined): string {
   if (hours < 24) return `قبل ${ar(hours)} ساعة`;
   return `قبل ${ar(Math.floor(hours / 24))} يوم`;
 }
+
+/** مدّةُ الشراء كما يقرؤها المشتري: «يوم»، «يومان»، «٥ أيام»، «أسبوع»، «شهر». */
+export function daysLabel(days: number): string {
+  if (days === 1) return "يوم";
+  if (days === 2) return "يومان";
+  if (days === 7) return "أسبوع";
+  if (days === 30) return "شهر";
+  if (days === 90) return "٣ أشهر";
+  if (days === 365) return "سنة";
+  return days <= 10 ? `${ar(days)} أيام` : `${ar(days)} يوماً`;
+}
+
+/** ما بقي حتى تاريخٍ آتٍ: «ينتهي بعد ٣ أيام» أو «بعد ٥ ساعات». */
+export function leftUntil(iso: string): string {
+  const ms = new Date(iso).getTime() - Date.now();
+  if (ms <= 0) return "انتهت مدّته";
+  const hours = Math.ceil(ms / 3_600_000);
+  if (hours < 24) return `ينتهي بعد ${ar(hours)} ساعة`;
+  const days = Math.ceil(hours / 24);
+  return `ينتهي بعد ${days === 1 ? "يوم" : days === 2 ? "يومين" : `${ar(days)} أيام`}`;
+}

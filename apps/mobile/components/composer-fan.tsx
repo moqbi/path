@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { View, Pressable, Image, Animated, Easing, Dimensions } from "react-native";
 import { Text } from "./type";
 import { useRouter } from "expo-router";
+import { create } from "zustand";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { playClose, playOpen } from "../lib/sound";
+import { Spot } from "./spot";
 import { colors } from "../theme/tokens";
 
 /**
@@ -23,15 +25,28 @@ const BOTTOM = 4;
 const SIZE = 56;
 
 /**
- * قرصُ الصنف ورسمُه: الرسم ٣٢ بكسلاً، والقرص يلبسه بحشوةٍ لا يزيد.
- * قرصٌ بحجم زرّ النشر (٥٦) حول رسمٍ ٣٢ يترك هالةً بيضاء تُقرأ أكبر من
- * رسمها. ويُوسَّط في مربّع الزرّ (`SIZE`) فلا يتغيّر مدار القوس.
+ * قرصُ الصنف ورسمُه: الرسم ٢٨ بكسلاً — **بقرار المالك** مع رسومه الملوّنة
+ * الجديدة — والقرص يلبسه بحشوةٍ لا يزيد (٤٠). قرصٌ كبيرٌ حول رسمٍ صغير
+ * يترك هالةً بيضاء تُقرأ أكبر من رسمها. ويُوسَّط في مربّع الزرّ (`SIZE`)
+ * فلا يتغيّر مدار القوس، ومساحةُ اللمس تبقى ٥٦ مهما صغر الرسم.
  */
-const DISC = 44;
-const ICON = 32;
+const DISC = 40;
+const ICON = 28;
 
-/** الزرّ: ٢٠ من الحافة اليمنى، ونصفُ قطره ٢٨. */
-const RIGHT = 20;
+/**
+ * الزرّ: ٢٨ من الحافة اليمنى لا ٢٠.
+ *
+ * على الجهاز كان يكاد يلامس الحافّة — والإبهام يصل إليه وهو ملتصقٌ،
+ * لكنّه يُقرأ ملصوقاً لا موضوعاً. وفي الويب يجلس داخل هيكل هاتفٍ له
+ * حافّةٌ من حوله، فلا يُحسّ الفرق إلا على شاشةٍ حقيقية.
+ */
+const RIGHT = 28;
+
+/**
+ * ورسمُ الزرّ ٣٢ — **بقرار المالك** (كان ٢٤ فصغر عن أن يُرى زرّاً أوّلاً).
+ * مربّعُه يبقى ٥٦ فلا يتغيّر مدار القوس ولا تصغر مساحةُ اللمس.
+ */
+const PLUS = 32;
 /** هامشٌ يبقى من الحافة اليسرى حتى لا يلامس القرصُ الحافّة. */
 const EDGE = 10;
 
@@ -59,10 +74,18 @@ const ART = {
   wake: require("../assets/composer/wake.png"),
 };
 
+/**
+ * حالُ القوس خارج المكوّن: الجولةُ تفتحه لتضع دائرتها على كلّ صنفٍ فيه،
+ * ثمّ تُغلقه — وحالٌ محلّيّة لا يبلغها أحدٌ من خارجها.
+ */
+export const useFan = create<{ open: boolean }>(() => ({ open: false }));
+
 export function ComposerFan() {
   const router = useRouter();
   const client = useQueryClient();
-  const [open, setOpen] = useState(false);
+  const open = useFan((state) => state.open);
+  const setOpen = (next: boolean | ((was: boolean) => boolean)) =>
+    useFan.setState({ open: typeof next === "function" ? next(useFan.getState().open) : next });
   const [busy, setBusy] = useState<string | null>(null);
   const progress = useRef(new Animated.Value(0)).current;
 
@@ -125,7 +148,7 @@ export function ComposerFan() {
       <View
         // الزرّ على اليمين كما في الويب، والأصناف تطير يساراً — وزواياه
         // محسوبةٌ على ذلك (القاعدة ٨).
-        style={{ position: "absolute", right: 20, bottom: 86, width: SIZE, height: SIZE }}
+        style={{ position: "absolute", right: RIGHT, bottom: 86, width: SIZE, height: SIZE }}
         pointerEvents="box-none"
       >
         {items.map((item, index) => {
@@ -151,6 +174,7 @@ export function ComposerFan() {
                 ],
               }}
             >
+              <Spot id={`fan.${item.key}`}>
               <Pressable
                 accessibilityLabel={item.label}
                 disabled={busy !== null}
@@ -178,6 +202,7 @@ export function ComposerFan() {
                   resizeMode="contain"
                 />
               </Pressable>
+              </Spot>
             </Animated.View>
           );
         })}
@@ -216,11 +241,14 @@ export function ComposerFan() {
               ],
             }}
           >
-            <Image
-              source={require("../assets/composer/plus.png")}
-              style={{ width: SIZE, height: SIZE }}
-              resizeMode="contain"
-            />
+            {/* هدفُ الجولة: تضع دائرتها على الزائد نفسه. */}
+            <Spot id="compose">
+              <Image
+                source={require("../assets/composer/plus.png")}
+                style={{ width: PLUS, height: PLUS }}
+                resizeMode="contain"
+              />
+            </Spot>
           </Animated.View>
         </Pressable>
       </View>

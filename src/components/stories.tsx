@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Avatar } from "@/components/ui";
+import { LockIcon } from "@/components/icons";
 import { StoryComposer } from "@/components/story-composer";
 import type { StoryRing } from "@/lib/stories";
 
@@ -44,7 +45,7 @@ function Ring({ ring, label }: { ring: StoryRing; label: string }) {
       className="flex w-[68px] shrink-0 flex-col items-center gap-1.5"
     >
       <span
-        className="flex h-[62px] w-[62px] items-center justify-center rounded-full"
+        className="relative flex h-[62px] w-[62px] items-center justify-center rounded-full"
         style={{
           padding: 2.5,
           background: ring.fresh
@@ -58,6 +59,16 @@ function Ring({ ring, label }: { ring: StoryRing; label: string }) {
         >
           <Avatar name={ring.name} size={52} mediaId={ring.avatarMediaId} />
         </span>
+        {/* قصّةٌ خاصّة: قفلٌ على الحلقة (القاعدة ٢١٩). */}
+        {ring.private ? (
+          <span
+            aria-label="قصة خاصة"
+            className="absolute bottom-0 left-0 flex h-5 w-5 items-center justify-center rounded-full"
+            style={{ background: "var(--color-night)", color: "#f7f5ef", border: "2px solid var(--color-paper)" }}
+          >
+            <LockIcon size={11} />
+          </span>
+        ) : null}
       </span>
       <span className="w-full truncate text-center text-[10.5px] text-ink-2">{label}</span>
     </Link>

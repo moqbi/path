@@ -87,7 +87,14 @@ async function readGoogle(idToken: string): Promise<Identity> {
 async function readSnap(accessToken: string): Promise<Identity> {
   if (!process.env.SNAP_CLIENT_ID) throw new Error("الدخول بسناب غير مفعّل");
 
-  const response = await fetch("https://api.snapchat.com/v1/me", {
+  /*
+     و`kit.snapchat.com` لا `api.snapchat.com`: الثاني يُحلّ إلى
+     `feelinsonice-hrd.appspot.com` — خادمُ سناب القديم على App Engine —
+     بشهادةٍ لا تحمل اسمه، فيسقط الطلب في المصافحة قبل أن يصل. وNode
+     تردّ عليه «fetch failed» عاريةً، فلا يقول السجلّ إنّ العلّة في
+     العنوان لا في الشبكة.
+  */
+  const response = await fetch("https://kit.snapchat.com/v1/me", {
     method: "POST",
     headers: {
       authorization: `Bearer ${accessToken}`,
@@ -95,13 +102,24 @@ async function readSnap(accessToken: string): Promise<Identity> {
     },
     body: JSON.stringify({ query: "{me{externalId displayName}}" }),
   });
-  if (!response.ok) throw new Error("تعذّر التحقّق من الرمز");
+  /*
+     والحالتان تُفرَّقان في السجلّ وإن اتّحدت الرسالة: ردٌّ برفضٍ من سناب
+     شيء، وردٌّ بنجاحٍ لا معرّف فيه شيءٌ آخر — والأولى مفاتيحُ والثانية
+     صلاحيّاتٌ لم تُمنح. ولا يُكتب الرمز.
+  */
+  if (!response.ok) {
+    console.error("[snap] /v1/me", response.status, (await response.text().catch(() => "")).slice(0, 300));
+    throw new Error("تعذّر التحقّق من الرمز");
+  }
 
   const payload = (await response.json()) as {
     data?: { me?: { externalId?: string; displayName?: string } };
   };
   const me = payload.data?.me;
-  if (!me?.externalId) throw new Error("تعذّر التحقّق من الرمز");
+  if (!me?.externalId) {
+    console.error("[snap] /v1/me ردٌّ بلا externalId", JSON.stringify(payload).slice(0, 300));
+    throw new Error("تعذّر التحقّق من الرمز");
+  }
 
   return {
     provider: "SNAP",
@@ -110,6 +128,25 @@ async function readSnap(accessToken: string): Promise<Identity> {
     name: me.displayName ?? null,
     emailVerified: false,
   };
+}
+
+/**
+ * سببُ خطأٍ نصّاً، ومعه سببُه إن كان له سبب.
+ *
+ * `fetch` في Node تردّ «fetch failed» لكلّ عطلٍ في الشبكة — عنوانٌ لا
+ * يُحلّ، ومنفذٌ مغلق، ومصافحةٌ مرفوضة، ومهلةٌ — والفرقُ بينها كلُّ ما
+ * يهمّ، وهو في `cause` وحدها. وبلا قراءتها يبقى السجلّ يقول «فشل».
+ */
+function why(problem: unknown): string {
+  if (!(problem instanceof Error)) return String(problem);
+  const cause = problem.cause;
+  const inner =
+    cause instanceof Error
+      ? `${cause.message}${"code" in cause ? ` (${String((cause as { code?: unknown }).code)})` : ""}`
+      : cause
+        ? String(cause)
+        : "";
+  return inner ? `${problem.message} · ${inner}` : problem.message;
 }
 
 export async function readIdentity(
@@ -123,7 +160,14 @@ export async function readIdentity(
     return await readGoogle(idToken);
   } catch (problem) {
     if (problem instanceof Error && problem.message.includes("غير مفعّل")) throw problem;
-    throw new Error("تعذّر التحقّق من الرمز");
+    /*
+       الرسالةُ تُسطَّح في وجه المستخدم عمداً — تفصيلُ سببِ رفضِ رمزٍ
+       يعين من يجرّب — لكنّها لا تُسطَّح في السجلّ: بلا هذا السطر يبقى
+       «تعذّر التحقّق من الرمز» كلَّ ما يملكه من يصلح العطل، وهي تقول
+       كلَّ شيءٍ إلا ما جرى.
+    */
+    console.error("[oauth]", provider, why(problem));
+    throw new Error("تعذّر التحقّق من الرمز", { cause: problem });
   }
 }
 
@@ -179,16 +223,11 @@ export async function upsertIdentity(identity: Identity) {
     throw new Error("لم يعطنا المزوّد بريداً — جرّب الدخول بالبريد");
   }
 
-  const last = await prisma.user.findFirst({
-    orderBy: { memberNo: "desc" },
-    select: { memberNo: true },
-  });
-
+  // ورقمُ العضوية من متسلسلة Postgres لا من حسابٍ هنا (القاعدة ١٥).
   const user = await prisma.user.create({
     data: {
       email: identity.email,
       name: identity.name?.trim() || identity.email?.split("@")[0] || "صديق",
-      memberNo: (last?.memberNo ?? 0) + 1,
       emailVerifiedAt: identity.emailVerified ? new Date() : null,
       identities: {
         create: {
@@ -197,6 +236,8 @@ export async function upsertIdentity(identity: Identity) {
           email: identity.email,
         },
       },
+      // أوّلُ لحظةٍ في الحساب: «انضم فلان إلى آثار مومنتس».
+      moments: { create: { kind: "JOINED" } },
     },
     select: { id: true, email: true, name: true },
   });

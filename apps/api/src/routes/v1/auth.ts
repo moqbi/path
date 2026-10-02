@@ -29,10 +29,12 @@ export const authRoutes = new Hono()
   .use("/forgot", rateLimit(3, 60))
   .use("/reset", rateLimit(5, 60))
 
+  /*
+     والتسجيلُ يردّ «أُرسلت» لا جلسةً: لا حساب بعدُ حتى يُفتح الرابط
+     (القاعدة ١٥ — لا عضويّةَ تُمنح لمن لم يؤكّد).
+  */
   .post("/register", zValidator("json", registerInput), async (c) => {
-    const input = c.req.valid("json");
-    const device = c.req.header("user-agent");
-    return c.json(await auth.register({ ...input, device }), 201);
+    return c.json(await auth.register(c.req.valid("json")), 202);
   })
 
   .post("/login", zValidator("json", loginInput), async (c) => {
@@ -81,5 +83,12 @@ export const authRoutes = new Hono()
     await auth.logoutAll(me(c));
     return c.json({ ok: true });
   })
+
+  /*
+     معرّفُ عميل سناب من بيئة الخادم لا من البناء: تطبيقُ سناب قد يبقى
+     «قيد المراجعة» بعد نشر نسختنا، ومعرّفٌ مدموجٌ في النسخة لا يُبدَّل إلا
+     ببناءٍ ومراجعةِ آبل. فارغٌ = الزرّ يختفي.
+  */
+  .get("/providers", (c) => c.json({ snap: process.env.SNAP_CLIENT_ID || null }))
 
   .get("/me", requireAuth, async (c) => c.json({ user: await auth.profile(me(c)) }));

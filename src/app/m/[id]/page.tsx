@@ -6,10 +6,14 @@ import { addComment } from "@/app/actions";
 import { Avatar, NameTag, ScreenHeader } from "@/components/ui";
 import { SeenTracker } from "@/components/interactive";
 import { Reactions, Reactors } from "@/components/reactions";
+import { AuthorSummary } from "@/components/author-panel";
+import { LockIcon, PrivateIcon } from "@/components/icons";
 import { CommentList } from "@/components/comments";
 import { EVENTS, EventLine } from "@/components/moment-card";
 import { Photo } from "@/components/photo";
 import { PinIcon } from "@/components/icons";
+import { PlaceLink } from "@/components/place-link";
+import { mapsUrl } from "@/lib/maps";
 import { ar, timeOfDay } from "@/lib/format";
 
 export default async function MomentPage({
@@ -67,6 +71,11 @@ export default async function MomentPage({
                 <p className="text-[11px] text-faint">
                   {timeOfDay(moment.createdAt)}
                   {moment.placeCity ? ` · ${moment.placeCity}` : null}
+                  {moment.audience !== "CIRCLE" ? (
+                    <span className="ms-1.5 inline-flex items-center gap-0.5 font-bold" style={{ color: "var(--color-clay-ink)" }}>
+                      · <PrivateIcon size={11} /> خاصة
+                    </span>
+                  ) : null}
                 </p>
               </div>
             </div>
@@ -78,7 +87,7 @@ export default async function MomentPage({
               <>
                 {moment.mediaId ? (
                   <div className="mb-3">
-                    <Photo mediaId={moment.mediaId} height={260} rounded />
+                    <Photo mediaId={moment.mediaId} rounded x={moment.photoX ?? 50} y={moment.photoY ?? 50} />
                   </div>
                 ) : moment.imageSpec ? (
                   <div
@@ -94,9 +103,15 @@ export default async function MomentPage({
                 ) : null}
 
                 {moment.placeName ? (
-                  <p dir="auto" className="mt-2 flex items-center gap-1.5 text-[12.5px] text-muted">
-                    <PinIcon size={13} />
-                    {moment.placeName}
+                  <p dir="auto" className="mt-2 text-[12.5px]">
+                    {/* يفتح الخرائط (القاعدة ٢١١). */}
+                    <PlaceLink
+                      url={mapsUrl(moment)!}
+                      className="flex items-center gap-1.5 font-semibold text-clay-ink hover:underline"
+                    >
+                      <PinIcon size={13} />
+                      {moment.placeName}
+                    </PlaceLink>
                   </p>
                 ) : null}
 
@@ -110,7 +125,11 @@ export default async function MomentPage({
           <div className="h-px bg-line" />
 
           <div className="px-4 py-3.5">
-            {moment.reactions.length > 0 ? (
+            {moment.author.id === user.id ? (
+              <div className="mb-3">
+                <AuthorSummary momentId={moment.id} locked={moment.commentsLocked} />
+              </div>
+            ) : moment.reactions.length > 0 ? (
               <div className="mb-3">
                 <Reactors reactions={moment.reactions} viewerId={user.id} />
               </div>
@@ -137,12 +156,24 @@ export default async function MomentPage({
                 ما علّق أحد بعد. اكتب أول سطر.
               </p>
             ) : (
-              <CommentList comments={moment.comments} viewerId={user.id} size={30} />
+              <CommentList
+                comments={moment.comments}
+                viewerId={user.id}
+                size={30}
+                momentAuthorId={moment.author.id}
+                moderate={user.canModerate}
+              />
             )}
           </section>
         </article>
       </main>
 
+      {moment.commentsLocked && moment.author.id !== user.id ? (
+        <p className="flex items-center justify-center gap-1.5 px-5 pb-8 pt-3 text-[12.5px] font-semibold text-muted">
+          <LockIcon size={14} />
+          أقفل صاحبُ اللحظة التعليقات
+        </p>
+      ) : (
       <form action={commentOn} className="flex items-center gap-2 px-5 pb-8 pt-3">
         <input
           name="body"
@@ -160,6 +191,7 @@ export default async function MomentPage({
           إرسال
         </button>
       </form>
+      )}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
   type AdminResult,
 } from "@/app/actions";
 import { ImagePicker } from "@/components/image-picker";
+import { SiteShots } from "./site-shots";
 import { CameraIcon, CloseIcon } from "@/components/icons";
 import { SocialIcon } from "@/components/social";
 import { PLATFORMS } from "@/lib/platforms";
@@ -113,7 +114,7 @@ function HeroImage({ mediaId }: { mediaId: string | null }) {
         className="mb-2.5 h-28 w-full rounded-xl"
         style={{
           background: mediaId
-            ? `center / cover no-repeat url(/api/media/${mediaId})`
+            ? `center / cover no-repeat url(/api/site-media/${mediaId})`
             : "linear-gradient(135deg,#0e1a24,#7a4a3e,#c9743f)",
         }}
       />
@@ -303,6 +304,31 @@ function NewSocial() {
 
 /** أقسام الصفحة كما تُقرأ من أعلى إلى أسفل — لا كما تُخزَّن مفاتيحُها. */
 const GROUPS: { title: string; note?: string; fields: { key: string; label: string; note?: string; multiline?: boolean }[] }[] = [
+  /*
+    روابطُ التحميل أوّلاً: هي ما يتغيّر يوم النشر، وتقرؤها أزرارُ الهبوط
+    وزرُّ «حمّل التطبيق» في رأس الموقع وصفحةُ المشاركة `/u` معاً.
+  */
+  {
+    title: "روابط تحميل التطبيق",
+    note: "أزرار المتجرين في الموقع كلّه تفتح هذه الروابط. يبدأ الرابط بـhttps://",
+    fields: [
+      {
+        key: "store.ios",
+        label: "رابط App Store",
+        note: "مثل https://apps.apple.com/app/id6814671198",
+      },
+      {
+        key: "store.android",
+        label: "رابط Google Play",
+        note: "مثل https://play.google.com/store/apps/details?id=app.athar.mobile",
+      },
+    ],
+  },
+  {
+    title: "حساب الدعم",
+    note: "نماذجُ التواصل في الموقع والتطبيق تختم بسطرٍ يحيل إلى هذا الحساب. اجعله «مفتوحاً» من صفحته في «الحسابات» ليقبل الإضافة بنفسه ويُراسَل بلا إضافة.",
+    fields: [{ key: "support.member", label: "رقم عضوية حساب الدعم", note: "مثل 1" }],
+  },
   {
     title: "الرأس",
     note: "أوّل ما يُرى: الشعار ثم العبارة ثم المتن.",
@@ -367,11 +393,13 @@ export function SitePanel({
   defaults,
   heroMediaId,
   links,
+  shots,
 }: {
   text: Record<string, string>;
   defaults: Record<string, string>;
   heroMediaId: string | null;
   links: { id: string; platform: string; url: string; sortOrder: number; hidden: boolean }[];
+  shots: { id: string; label: string; mediaId: string; sortOrder: number; hidden: boolean }[];
 }) {
   return (
     <>
@@ -383,6 +411,8 @@ export function SitePanel({
       </p>
 
       <HeroImage mediaId={heroMediaId} />
+
+      <SiteShots shots={shots} />
 
       {GROUPS.map((group) => (
         <section key={group.title} className="mb-6">

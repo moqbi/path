@@ -27,6 +27,12 @@ enum MomentKind {
   /// «أهديت فلاناً كذا» — للمُهدي، و«وصلتك هدية» للمُهدى إليه.
   GIFT_SENT
   GIFT_GOT
+  /// «انضم فلان إلى آثار مومنتس» — أوّلُ لحظةٍ في الحساب، تُكتب مع إنشائه.
+  JOINED
+  /// «تهانينا — حصلت على وسم كذا من الإدارة»: تُكتب حين يمنح المشرفُ وسماً.
+  TAG_GRANTED
+  /// «غيّر صورته» — تُكتب حين يبدّل صاحبُها صورةَ عرضه، ومعها نسخةٌ منها.
+  AVATAR_CHANGED
 }
 
 enum UserRole {
@@ -39,6 +45,8 @@ enum UserRole {
 enum AdminScope {
   NONE
   STORE
+  /// البلاغاتُ ورسائلُ الدعم وحدها: يتابعها ويردّ عليها، ولا يمسّ غيرها.
+  REPORTS
   ALL
 }
 
@@ -96,6 +104,12 @@ model User {
   /// معرّف قصير يظهر تحت الاسم: @mohammed.
   handle       String? @unique
   city         String?
+  /// آخرُ مدينةٍ قرأها الجهاز — منها تُقاس «وصل إلى…» لا من `city`:
+  /// الأخيرة يكتبها صاحبها بيده أحياناً، فالمقارنةُ بها كانت تكتب لحظة
+  /// وصولٍ مع كل دخولٍ وتمحو ما كتبه.
+  lastCity     String?
+  /// كتب صاحبُ الحساب مدينته بيده — فلا يكتب فوقها التحديدُ التلقائيّ.
+  cityLocked   Boolean   @default(false)
   bio          String?
 
   /// اشتراك «آثار+». الصلاحية تُقرأ من plusUntil، وisPlus مشتقة منها عند الكتابة.
@@ -122,6 +136,12 @@ model User {
   isOpen      Boolean   @default(false)
   isPlus      Boolean   @default(false)
   plusUntil   DateTime?
+  /// متى انتهى آخرُ اشتراكٍ في آثار+ — تُكتب عند إنهائه (`endPlus`)، ومنها
+  /// تعرف الشاشة أن تعرض «انتهى اشتراكك» مرّةً لكل انتهاء.
+  plusEndedAt DateTime?
+  /// «احذف الكل» في الإشعارات: ما قبل هذا الوقت لا يُعرض بعده في أيّ مكان.
+  notesClearedAt DateTime?
+  dismissedNotes NoteDismissal[]
 
   /// رصيد الكوينز. عملة المتجر الوحيدة: كل ما فيه يُشترى بها، ولا
   /// يُشترى شيءٌ بالريال مباشرةً. و١٠٠٠ كوينز = ٣٠ ر.س.
@@ -136,8 +156,16 @@ model User {
   /// صورة العرض والغلاف — ملفات مرفوعة يملكها المستخدم.
   avatarMediaId String? @unique
   coverMediaId  String? @unique
+  /// صنفُ المتجر الذي جاء منه الغلافُ الحاليّ (ثيمٌ لُبس غلافُه) — فارغٌ لغلافٍ
+  /// رفعه صاحبه. به يُعرف أنّ انتهاء مدّة الثيم يأخذ غلافه معه، ولا يمسّ
+  /// غلافاً اختاره صاحبُه بعده (القاعدة ١٩٣).
+  coverItemId   String?
   /// موضع الغلاف عمودياً (٪): يضبطه صاحبه بسحب الصورة.
   coverY        Int     @default(50)
+  /// موضعُ الغلاف أفقياً (٪) — كـ`coverY`. والتكبيرُ نسبةٌ من ١٠٠ إلى ٣٠٠:
+  /// الصورة لا تُقصّ عند الرفع، وما يُحفظ أيُّ جزءٍ منها يُرى وبأيّ قُرب.
+  coverX        Int     @default(50)
+  coverZoom     Int     @default(100)
   avatarMedia   Media?  @relation("UserAvatar", fields: [avatarMediaId], references: [id], onDelete: SetNull)
   coverMedia    Media?  @relation("UserCover", fields: [coverMediaId], references: [id], onDelete: SetNull)
 
@@ -209,6 +237,11 @@ model User {
 
   media          Media[]        @relation("MediaOwner")
   conversationsA Conversation[] @relation("ConversationA")
+  groupsMade     ChatGroup[]        @relation("GroupCreator")
+  groupSeats     ChatGroupMember[]
+  groupMessages  GroupMessage[]
+  storySeats     StoryAudience[] @relation("StoryAudience")
+  conversationPins ConversationPin[] @relation("ConversationPins")
   conversationsB Conversation[] @relation("ConversationB")
   messagesSent   Message[]
 
@@ -222,6 +255,9 @@ model User {
   momentsSeenBy MomentViewer[]
   blocksMade    Block[]        @relation("Blocker")
   blocksGot     Block[]        @relation("Blocked")
+  accessEvents AccessEvent[]
+  coinGrants      CoinGrant[] @relation("CoinGrantTo")
+  coinGrantsGiven CoinGrant[] @relation("CoinGrantBy")
 }
 
 /// قصة: صورة تُعرض لأصدقائك يوماً ثم تذهب.
@@ -235,15 +271,32 @@ model Story {
   filter    String?
   /// مدّة الفيديو بالثواني — فارغة في الصور.
   seconds   Int?
+  /// النصوصُ فوقها (`StoryText[]`): موضعٌ نسبيّ ومقاسٌ ولون — لا تُحرق في الصورة.
+  texts     Json?
+  /// قصةٌ خاصّة (القاعدة ٢١٩): لمن اختارهم صاحبُها وحدهم (`StoryAudience`) لا لدائرته كلّها.
+  private   Boolean  @default(false)
   createdAt DateTime @default(now())
   expiresAt DateTime
 
-  author User        @relation("StoryAuthor", fields: [authorId], references: [id], onDelete: Cascade)
-  media  Media       @relation("StoryMedia", fields: [mediaId], references: [id], onDelete: Cascade)
-  views  StoryView[]
+  author   User            @relation("StoryAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  media    Media           @relation("StoryMedia", fields: [mediaId], references: [id], onDelete: Cascade)
+  views    StoryView[]
+  audience StoryAudience[]
 
   @@index([authorId, expiresAt])
   @@index([expiresAt])
+}
+
+/// من خُصّت بهم القصّةُ الخاصّة — صاحبُها يراها دائماً ولا يُكتب هنا.
+model StoryAudience {
+  storyId String
+  userId  String
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user  User  @relation("StoryAudience", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([storyId, userId])
+  @@index([userId])
 }
 
 model StoryView {
@@ -305,6 +358,26 @@ model Block {
 /// عضوية الدائرة. صفٌّ واحد لكل علاقة، والاتجاه لا يعني شيئاً بعد القبول.
 /// سقف الـ١٥٠ يُفرض في طبقة التطبيق (lib/circle.ts) لأنه قيد على المجموع
 /// وليس على الصف الواحد — Postgres لا يعبّر عنه بقيد إعلاني.
+/// من أين دخل الحساب: عنوانٌ وجهاز — لكشف الحسابات المرتبطة في اللوحة
+/// (القاعدة ١٩٤). صفٌّ لكل ثلاثيّة (حساب، عنوان، جهاز) يُحدَّث ولا يتكاثر،
+/// ويُكنس بعد تسعين يوماً. والفراغُ نصٌّ فارغ لا `null`: قيدُ الفرادة في
+/// Postgres يعدّ كلَّ `null` مختلفاً فيتكاثر الصفّ.
+model AccessEvent {
+  id      String   @id @default(cuid())
+  userId  String
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ip      String   @default("")
+  device  String   @default("")
+  firstAt DateTime @default(now())
+  lastAt  DateTime @default(now())
+  hits    Int      @default(1)
+
+  @@unique([userId, ip, device])
+  @@index([ip])
+  @@index([device])
+  @@index([lastAt])
+}
+
 model Friendship {
   id          String           @id @default(cuid())
   requesterId String
@@ -344,12 +417,18 @@ model Moment {
   imageSpec String?
 
   mediaId String? @unique
+  /// موضعُ الصورة في إطار البطاقة (٠–١٠٠ أفقياً ورأسياً) — يُضبط بالسحب قبل النشر.
+  photoX  Int?
+  photoY  Int?
   media   Media?  @relation("MomentMedia", fields: [mediaId], references: [id], onDelete: SetNull)
 
   /// الجمهور: الدائرة كلها، أو تصنيف منها، أو أشخاص بأعيانهم.
   audience        Audience     @default(CIRCLE)
   audienceGroupId String?
   audienceGroup   FriendGroup? @relation("MomentGroup", fields: [audienceGroupId], references: [id], onDelete: SetNull)
+
+  /// قفلُ التعليقات بيد صاحبها — التفاعلُ يبقى مفتوحاً (القاعدة ٣).
+  commentsLocked Boolean @default(false)
 
   createdAt DateTime @default(now())
 
@@ -453,6 +532,33 @@ model Tag {
 
 /// تصنيف في المتجر: اسمه ومعرّفه وترتيبه. يُضاف ويُعاد ترتيبه من اللوحة،
 /// فالمتجر يكبر بلا نشر نسخة جديدة.
+/// مجموعةٌ داخل نوعٍ واحد: «مجموعة الورود» تمائم، «مجموعة النخيل» إطارات.
+/// غيرُ التصنيف: التصنيفُ شريحةٌ في أعلى المتجر، والمجموعةُ قسمٌ داخل نوعه.
+model StoreCollection {
+  id        String        @id @default(cuid())
+  name      String
+  /// نوعُ أصنافها — وفارغٌ لمجموعةٍ مختلطة (تمائم وإطارات وثيمات معاً): تُعرض
+  /// قسماً في شريحة كلّ نوعٍ فيها بأصناف ذلك النوع (القاعدة ١٩٧).
+  kind      StoreItemKind?
+  sortOrder Int           @default(0)
+  createdAt DateTime      @default(now())
+
+  items StoreItem[]
+}
+
+/// مدّةٌ وسعرُها لصنفٍ واحد.
+model StoreItemPlan {
+  id         String @id @default(cuid())
+  itemId     String
+  days       Int
+  priceCoins Int
+  sortOrder  Int    @default(0)
+
+  item StoreItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, days])
+}
+
 model StoreCategory {
   id        String  @id @default(cuid())
   name      String
@@ -501,17 +607,29 @@ model StoreItem {
   /// مخفيٌّ عن المتجر بيد المشرف — ولا يُنزع ممّن اشتراه: ما دُفع ثمنه
   /// يبقى في إكسسواراته ويُلبَس. بابُ الموسميّ: يُرفع ويُنزل بلا حذف.
   hidden    Boolean  @default(false)
+  /// متى نُبِّه الناسُ به — مرّةً لكل صنف حين يصير ظاهراً. فارغٌ = لم يُعلَن
+  /// بعد: الكنسُ يلتقطه ويختمه (`announceStore`). والصنفُ المخفيّ لا يُعلَن
+  /// حتى يُرفع، فالموسميُّ يُعلَن يوم يُعرض لا يوم أُعدّ.
+  announcedAt DateTime?
 
   categoryId String?
   category   StoreCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  /// المجموعةُ داخل نوعه: «مجموعة الورود» في التمائم. وبلا مجموعةٍ يقع في
+  /// «التمائم الأخرى». وحذفُ المجموعة لا يحذف أصنافها (`SetNull`).
+  collectionId String?
+  collection   StoreCollection? @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+  /// مُدَدُ الشراء وأسعارُها — «يوم بـ٢٥، خمسة أيام بـ٥٠، شهر بـ١٥٠». وبلا
+  /// مُددٍ يُشترى مرّةً ويبقى (`priceCoins`).
+  plans        StoreItemPlan[]
 
   purchases      Purchase[]
   /// ما تحتويه هذه الحزمة، وفي أيّ حزمةٍ يقع هذا الصنف.
   holds          BundleItem[] @relation("BundleHolds")
   heldIn         BundleItem[] @relation("BundleHeld")
-  usersWithFrame User[]     @relation("UserFrame")
-  usersWithBg    User[]     @relation("UserBackground")
-  usersWithCharm User[]     @relation("UserCharm")
+  usersWithFrame User[]       @relation("UserFrame")
+  usersWithBg    User[]       @relation("UserBackground")
+  usersWithCharm User[]       @relation("UserCharm")
+
   /// يُرتَّب بـ`sortOrder` ويُفلتر بـ`hidden` في كل فتحةِ متجر.
   @@index([hidden, sortOrder])
 }
@@ -537,6 +655,9 @@ model Purchase {
   paidCoins  Int
   /// من أهداه إن كان هدية — والدافع هو المُهدي لا المالك.
   giftedById String?
+  /// نهايةُ مدّة الشراء — فارغٌ يعني مِلكاً دائماً. وبعدها يُنزع إن كان
+  /// ملبوساً ولا يُعدّ مملوكاً، ويُشترى ثانيةً فيُمدَّد من حيث انتهى.
+  expiresAt  DateTime?
   createdAt  DateTime @default(now())
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -606,9 +727,22 @@ model Conversation {
   a        User      @relation("ConversationA", fields: [aId], references: [id], onDelete: Cascade)
   b        User      @relation("ConversationB", fields: [bId], references: [id], onDelete: Cascade)
   messages Message[]
+  pins     ConversationPin[]
 
   @@unique([aId, bId])
   @@index([updatedAt])
+}
+
+/// محادثةٌ مفضّلة تُثبَّت أعلى القائمة (القاعدة ٢٢٠) — لكلّ طرفٍ مفضّلتُه، وثلاثٌ حدّاً.
+model ConversationPin {
+  userId         String
+  conversationId String
+  createdAt      DateTime @default(now())
+
+  user         User         @relation("ConversationPins", fields: [userId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, conversationId])
 }
 
 enum MessageKind {
@@ -639,6 +773,54 @@ model Message {
   @@index([conversationId, createdAt])
 }
 
+/// محادثةٌ جماعيّة ينشئها المشرف (القاعدة ٢١٥) — لجمع المختبرين ونحوهم.
+/// جدولٌ مستقلّ لا توسعةٌ لـ`Conversation`: تلك زوجٌ بإيصالٍ لكل رسالة،
+/// وهذه أعضاءٌ بختم قراءةٍ لكلٍّ منهم.
+model ChatGroup {
+  id          String   @id @default(cuid())
+  name        String
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  createdBy User?             @relation("GroupCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  members   ChatGroupMember[]
+  messages  GroupMessage[]
+
+  @@index([updatedAt])
+}
+
+model ChatGroupMember {
+  groupId    String
+  userId     String
+  /// ما بعده لم يُقرأ — ختمٌ واحد للعضو لا إيصالٌ لكل رسالة.
+  lastReadAt DateTime @default(now())
+  joinedAt   DateTime @default(now())
+
+  group ChatGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, userId])
+  @@index([userId])
+}
+
+model GroupMessage {
+  id        String      @id @default(cuid())
+  groupId   String
+  senderId  String
+  body      String
+  kind      MessageKind @default(TEXT)
+  mediaId   String?     @unique
+  media     Media?      @relation("GroupMessageMedia", fields: [mediaId], references: [id], onDelete: SetNull)
+  seconds   Int?
+  createdAt DateTime    @default(now())
+
+  group  ChatGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  sender User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, createdAt])
+}
+
 // ───────────────────────────── الملفات المرفوعة ─────────────────────────────
 
 /**
@@ -666,16 +848,19 @@ model Media {
 
   owner User @relation("MediaOwner", fields: [ownerId], references: [id], onDelete: Cascade)
 
-  avatarOf  User?      @relation("UserAvatar")
-  coverOf   User?      @relation("UserCover")
-  storyOf   Story?     @relation("StoryMedia")
-  messageOf Message?   @relation("MessageMedia")
-  moment    Moment?    @relation("MomentMedia")
-  storeItem StoreItem? @relation("StoreItemMedia")
+  avatarOf   User?      @relation("UserAvatar")
+  coverOf    User?      @relation("UserCover")
+  storyOf    Story?     @relation("StoryMedia")
+  messageOf  Message?   @relation("MessageMedia")
+  groupMessageOf GroupMessage? @relation("GroupMessageMedia")
+  moment     Moment?    @relation("MomentMedia")
+  storeItem  StoreItem? @relation("StoreItemMedia")
   storeCover StoreItem? @relation("StoreItemCover")
 
   /// صورةُ موقعٍ عامّة إن كانت — الرأس مثلاً.
   siteImage SiteImage? @relation("SiteImage")
+  /// لقطةٌ من داخل التطبيق في صفحة الهبوط.
+  siteShot  SiteShot?  @relation("SiteShot")
 
   @@index([ownerId, createdAt])
   @@index([ready, createdAt])
@@ -698,6 +883,11 @@ model SupportTicket {
   email String?
 
   body      String
+  /// من أين كُتبت: فارغٌ لرسالةٍ عادية، و`careers` لطلب وظيفة من صفحة
+  /// الوظائف — يُعرض وسماً في اللوحة فلا يُخلط طلبُ عملٍ بشكوى.
+  topic     String?
+  /// مرفقاتُها: صورٌ لرسالة الدعم، وصورٌ أو PDF لطلب الوظيفة.
+  files     TicketFile[]
   /// ردّ المشرف — فارغٌ حتى يُردّ.
   reply     String?
   repliedAt DateTime?
@@ -708,6 +898,27 @@ model SupportTicket {
   @@index([userId, createdAt])
   @@index([closed, createdAt])
   @@index([email, createdAt])
+}
+
+/// مرفقُ رسالة دعمٍ أو طلبِ وظيفة.
+///
+/// جدولٌ مستقلّ لا `Media`: `Media` يشترط صاحباً (`ownerId`)، ورسالةُ الموقع
+/// بلا حساب. ولا يُقرأ إلا من اللوحة (`/api/ticket-file/[id]`) — سيرةُ
+/// متقدّمٍ أو صورةُ مشكلةٍ لا تُفتح برابطٍ يُنسخ.
+model TicketFile {
+  id       String        @id @default(cuid())
+  ticketId String
+  ticket   SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  /// اسمُ الملف كما رفعه صاحبه — يُعرض في اللوحة ويُنزَّل به.
+  name     String
+  mime     String
+  size     Int
+  /// مفتاحُه في R2 — أو البايتات في القاعدة حين لا دلوَ مربوط (القاعدة ١٠٢).
+  key      String?
+  bytes    Bytes?
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
 }
 
 /// جلسةُ تجديد. يُخزَّن ملخّص التوكن لا التوكن: قاعدةٌ تُسرَّق لا تعطي
@@ -735,6 +946,7 @@ enum ReportTarget {
   MOMENT
   STORY
   MESSAGE
+  COMMENT
   USER
 }
 
@@ -784,6 +996,26 @@ model SiteImage {
 }
 
 /**
+ * لقطاتُ «من داخل التطبيق» في صفحة الهبوط — تُرفع وتُرتَّب وتُخفى من
+ * لوحة الموقع بلا نشر نسخة، وتقبل الصورة المتحرّكة (GIF أو WebP) لتُري
+ * التطبيق وهو يُستعمل. وبلا صفٍّ واحد تُعرض اللقطاتُ الثلاث المحفوظة مع
+ * الكود (`public/shots`) — قاعدةٌ جديدة لا تعرض قسماً فارغاً.
+ */
+model SiteShot {
+  id        String  @id @default(cuid())
+  /// ما يُكتب تحت الهاتف: «الخط الزمني».
+  label     String
+  mediaId   String  @unique
+  media     Media   @relation("SiteShot", fields: [mediaId], references: [id], onDelete: Cascade)
+  sortOrder Int     @default(0)
+  hidden    Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([hidden, sortOrder])
+}
+
+/**
  * روابط التواصل — «تابعنا» في ذيل الموقع وفي شاشة الخصوصية بالتطبيق.
  * صفوفٌ في القاعدة لا قائمةٌ في الكود: حسابٌ جديد يُضاف من اللوحة بلا
  * نشر نسخة، وحسابٌ يُغلق يُخفى بضغطة. و`platform` يختار الأيقونة —
@@ -811,7 +1043,7 @@ model ModerationLog {
   ownerId String?
   owner   User?   @relation("ModerationOn", fields: [ownerId], references: [id], onDelete: SetNull)
 
-  /// ما جرى: `MOMENT_REMOVED` اليوم، وغيره حين يُبنى.
+  /// ما جرى: `MOMENT_REMOVED` أو `COMMENT_REMOVED`.
   action   String
   /// معرّف المحذوف — بلا مفتاحٍ أجنبيّ: المشار إليه ذهب.
   targetId String
@@ -844,6 +1076,12 @@ model Report {
 
   /// نسخةٌ من المتن وقت البلاغ: المحتوى قد يُحذف قبل أن يُقرأ البلاغ.
   snippet String?
+
+  /// سياقُ البلاغ على رسالة: ما قبلها وما بعدها من المحادثة نفسها، منسوخاً
+  /// من الخادم وقت البلاغ — لا لقطةَ شاشةٍ يرفعها المُبلِّغ فتُزوَّر، ولا
+  /// بابَ للمشرف إلى المحادثات كلّها (القاعدة ١٩٥). والمحادثات تُكنس بعد
+  /// ثلاثين يوماً (القاعدة ٨٣)، فالنسخةُ هي الدليلُ الباقي.
+  context Json?
 
   state     ReportState @default(OPEN)
   handledAt DateTime?
@@ -896,14 +1134,33 @@ enum EmailTokenKind {
 
 /**
  * رمزٌ يُرسَل إلى البريد ويُستعمل مرّةً واحدة.
- *
  * **التجزئة تُخزَّن لا الرمز**: قاعدةٌ تُسرَّق أو نسخةٌ احتياطيّة تُقرأ
  * لا تُعطي قارئَها مفاتيحَ حسابات الناس — كما لا تُخزَّن كلمةُ المرور.
  * والرمز يذهب إلى البريد وحده.
- *
  * و`usedAt` بدل الحذف: رابطٌ استُعمل مرّتين يُقال لصاحبه «انتهى» لا
  * «غير موجود»، والفرقُ يوفّر عليه أن يظنّ الرابط مكسوراً فيعيد الطلب.
  */
+/// طلبُ تسجيلٍ لم يُؤكَّد بعد — **ولا حساب له في `User`**.
+///
+/// حسابٌ يُنشأ قبل التأكيد يأخذ رقمَ عضويّةٍ ثمّ يُحذف، فتبقى فجوةٌ
+/// لا صاحبَ لها — ورقمُ العضوية لا يُعاد استعماله (القاعدة ١٥). فيُحفظ
+/// الطلبُ هنا، ويُولَد `User` عند فتح الرابط فيأخذ رقمَه حينئذٍ.
+///
+/// وكلمةُ المرور **مجزَّأةٌ هنا كما تُجزَّأ هناك**: جدولٌ ينتظر عشر
+/// دقائق لا يُستثنى من قاعدةٍ تحمي ما يدوم.
+/// والرمزُ مجزَّأٌ كذلك (القاعدة ١١٩ب).
+model PendingSignup {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  tokenHash    String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
 model EmailToken {
   id        String         @id @default(cuid())
   userId    String
@@ -921,19 +1178,17 @@ model EmailToken {
 
 /**
  * جهازٌ يُرسَل إليه التنبيه.
- *
  * الرمزُ من Expo (`ExponentPushToken[…]`) لا من آبل وقوقل مباشرةً:
  * خدمةُ Expo تعرف أيُّ جهازٍ على أيّ منصّة فتوصّله، فلا نحمل نحن
  * شهادةَ APNs ومفتاحَ FCM في خادمنا ولا نكتب بروتوكولين.
- *
  * **والرمز فريدٌ لا المستخدم**: جهازٌ واحد قد يُسجَّل عليه حسابان
  * بالتتابع، فالرمزُ ينتقل إلى آخر من دخل به — وإلّا وصل تنبيهُ الأوّل
  * إلى يد الثاني.
  */
 model DeviceToken {
-  id     String @id @default(cuid())
-  userId String
-  token  String @unique
+  id       String @id @default(cuid())
+  userId   String
+  token    String @unique
   /// «ios» أو «android» — للإحصاء ولتشخيص ما لا يصل.
   platform String
 
@@ -955,10 +1210,8 @@ enum AuthProvider {
 
 /**
  * هويّةٌ عند مزوّد: «هذا الحسابُ عندنا هو ذاك الحسابُ عندهم».
- *
  * جدولٌ مستقلّ لا عمودان في `User`: الشخصُ الواحد قد يربط آبل وقوقل
  * معاً بحسابٍ واحد، وعمودٌ لكل مزوّدٍ يعني عموداً جديداً مع كل مزوّد.
- *
  * و`subject` هو معرّفُ المستخدم عند المزوّد — **لا بريدُه**: البريدُ
  * يتغيّر (وآبل تعطي بريداً مُقنَّعاً يُبدَّل)، والمعرّفُ لا يتغيّر.
  * وفريدٌ مع المزوّد: حسابان عندنا لا يشيران إلى هويّةٍ واحدة عندهم.
@@ -977,4 +1230,35 @@ model AuthIdentity {
 
   @@unique([provider, subject])
   @@index([userId])
+}
+
+/// إشعارٌ حذفه صاحبُه بالسحب. الإشعاراتُ تُشتقّ ولا تُخزَّن (القاعدة ٢٥)،
+/// فالمحذوفُ لا صفَّ له يُمحى — يُحفظ معرّفُه المشتقّ ليُستثنى من الاشتقاق
+/// في الخادم والويب معاً. و«احذف الكل» ختمٌ على الحساب لا ألفُ صفّ.
+model NoteDismissal {
+  userId    String
+  noteId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, noteId])
+}
+
+/// نقاطٌ منحتها الإدارة — مكافأةُ المختبرين ونحوها (القاعدة ١٩٨). الصفُّ سجلٌّ
+/// يُجيب «من أين هذه النقاط» ومنه يُشتقّ الإشعار، و`pushedAt` يختمه الكنسُ حين
+/// يُرسل التنبيه فلا يُقرع مرّتين.
+model CoinGrant {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation("CoinGrantTo", fields: [userId], references: [id], onDelete: Cascade)
+  coins     Int
+  note      String?
+  byId      String?
+  by        User?     @relation("CoinGrantBy", fields: [byId], references: [id], onDelete: SetNull)
+  createdAt DateTime  @default(now())
+  pushedAt  DateTime?
+
+  @@index([userId, createdAt])
+  @@index([pushedAt])
 }

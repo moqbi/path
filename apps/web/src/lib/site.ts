@@ -45,8 +45,22 @@ export const SITE_TEXT = {
   // ── التحميل ──
   "download.title": "جاهزٌ للانطلاق؟",
   "download.body":
-    "آثار مومنتس يصل المتجرين قريباً. وحتى ذلك الحين، اكتب لنا إن أردت أن تكون من أوّل من يجرّبه.",
+    "حمّل آثار مومنتس من متجر جهازك، وابدأ دائرتك مع ناسك.",
   "download.cta": "اكتب لنا",
+  /*
+    روابطُ المتجرين تُلصق من اللوحة (قسم «روابط تحميل التطبيق») بلا نسخةٍ
+    جديدة من الموقع، ولا يُقبل إلا `https://`. وفارغُها زرٌّ بلا رابط —
+    **بلا «قريباً» بقرار المالك**: التطبيقُ في المتجر، وكلمةٌ تقول غير ذلك
+    تُقرأ خطأً.
+  */
+  "store.ios": "",
+  "store.android": "",
+
+  /*
+    حسابُ الدعم والأخبار (القاعدة ٢٢١): رقمُ عضويّته تحيل إليه نماذجُ
+    التواصل في الموقع والتطبيق. رقمٌ في اللوحة لا في الكود (القاعدة ٣٢ب).
+  */
+  "support.member": "1",
 
   // ── الذيل ──
   "foot.tagline": "لحظاتك، مع ناسك.",
@@ -69,13 +83,25 @@ export const siteText = cache(async function siteText(): Promise<Record<SiteKey,
   return out;
 });
 
+/** رابطُ متجرٍ صالح أو لا شيء: حقلٌ حرّ لا يُرسم منه `javascript:`. */
+export const storeUrl = (value: string): string | null =>
+  /^https:\/\/[^\s]+$/.test(value.trim()) ? value.trim() : null;
+
 /** سطورٌ من حقلٍ واحد: القائمة تُحرَّر نصّاً بسطرٍ لكل بند. */
 export const lines = (value: string): string[] =>
   value.split("\n").map((line) => line.trim()).filter(Boolean);
 
-/** صورةٌ عامّة بمفتاحها — `null` يعني «ارسم الافتراضيّ». */
+/**
+ * صورةٌ عامّة بمفتاحها — `null` يعني «ارسم الافتراضيّ».
+ *
+ * وفشلُ القراءة `null` كذلك، كأختيها: صفحةُ الهبوط تُرسم برأسٍ مرسوم
+ * (`HeroArt`) إن لم تكن هناك صورة، وهذا خيرٌ من أن يسقط الموقع كلّه
+ * لأنّ القاعدة تأخّرت لحظة.
+ */
 export const siteImage = cache(async function siteImage(key: string): Promise<string | null> {
-  const row = await prisma.siteImage.findUnique({ where: { key }, select: { mediaId: true } });
+  const row = await prisma.siteImage
+    .findUnique({ where: { key }, select: { mediaId: true } })
+    .catch(() => null);
   return row?.mediaId ?? null;
 });
 
@@ -84,4 +110,30 @@ export const socialLinks = cache(async function socialLinks() {
   return prisma.socialLink
     .findMany({ where: { hidden: false }, orderBy: { sortOrder: "asc" } })
     .catch(() => []);
+});
+
+/**
+ * لقطاتُ «من داخل التطبيق» الظاهرة، مرتّبة. وبلا صفٍّ واحد — قاعدةٌ جديدة
+ * أو قبل أن يرفع المشرف شيئاً — اللقطاتُ الثلاث المحفوظة مع الكود.
+ * والصورةُ من البابِ العامّ لصور الموقع (`/api/site-media`) لا من
+ * `/api/media` الذي يشترط جلسة: زائرُ الهبوط لا جلسةَ له.
+ */
+export type Shot = { id: string; label: string; src: string };
+
+export const DEFAULT_SHOTS: Shot[] = [
+  { id: "timeline", label: "الخط الزمني", src: "/shots/timeline.webp" },
+  { id: "circle", label: "الدائرة", src: "/shots/circle.webp" },
+  { id: "profile", label: "الملف الشخصي", src: "/shots/profile.webp" },
+];
+
+export const siteShots = cache(async function siteShots(): Promise<Shot[]> {
+  const rows = await prisma.siteShot
+    .findMany({
+      where: { hidden: false },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      select: { id: true, label: true, mediaId: true },
+    })
+    .catch(() => []);
+  if (rows.length === 0) return DEFAULT_SHOTS;
+  return rows.map((row) => ({ id: row.id, label: row.label, src: `/api/site-media/${row.mediaId}` }));
 });

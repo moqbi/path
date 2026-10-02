@@ -1,10 +1,11 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { signIn } from "@/app/actions";
+import { signIn, signUp } from "@/app/actions";
 import { useGoogleLogin } from "./google";
 import { AthrMark, TAGLINE_AR, TAGLINE_EN } from "@/components/brand";
 import { BackIcon } from "@/components/icons";
+import { BASE, asset } from "@/lib/base";
 
 type Phase = "intro" | "leaving" | "form";
 
@@ -52,10 +53,36 @@ const PROVIDERS = [
   { key: "snap", label: "Snapchat", mark: <SnapMark /> },
 ];
 
-export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?: boolean }) {
+export function LoginForm({
+  photo,
+  deleted = false,
+  verify = "",
+}: {
+  photo: boolean;
+  deleted?: boolean;
+  verify?: string;
+}) {
   const phase = usePhases();
   const [showEmail, setShowEmail] = useState(false);
+  /*
+     بابان في مكانٍ واحد لا صفحتان: من فتح الشاشة ليُنشئ حساباً لا
+     يُرسَل إلى عنوانٍ آخر ثمّ يُعاد. والحقلُ الثالث (الاسم) يظهر مع
+     الإنشاء وحده.
+  */
+  const [newcomer, setNewcomer] = useState(false);
   const [state, action, pending] = useActionState(signIn, null);
+  const [upState, upAction, upPending] = useActionState(signUp, null);
+
+  const form = newcomer
+    ? { action: upAction, error: upState?.error, pending: upPending, label: "إنشاء حساب" }
+    : { action, error: state?.error, pending, label: "دخول" };
+
+  /*
+     ورسالةُ النجاح تحلّ محلّ النموذج لا تجلس فوقه: التسجيل لم يُنشئ
+     حساباً بعد — أُرسل رابطٌ — فترك الحقول مفتوحةً يُقرأ «أعِد
+     المحاولة» ويُنشئ طلباً ثانياً بالبريد نفسه.
+  */
+  const sent = upState?.ok ?? "";
   const [notice, setNotice] = useState<string | null>(
     // العودة إلى هذه الشاشة بعد الحذف تحتاج جملة تؤكد أن ما طُلب قد تمّ.
     deleted ? "حُذف حسابك وكل ما فيه. تسعدنا عودتك متى شئت." : null,
@@ -71,7 +98,7 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
       className="screen relative"
       style={{
         backgroundImage: photo
-          ? "linear-gradient(180deg,rgba(14,26,36,.35),rgba(14,26,36,.88)), url(/login-bg.jpg)"
+          ? `linear-gradient(180deg,rgba(14,26,36,.35),rgba(14,26,36,.88)), url(${asset("/login-bg.jpg")})`
           : [
               "radial-gradient(120% 60% at 85% 18%, rgba(255,196,120,.55), transparent 60%)",
               "linear-gradient(180deg,#16293a 0%,#2c4055 30%,#7b6a63 62%,#3d3a3a 78%,#171d24 100%)",
@@ -178,8 +205,43 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
             pointerEvents: formVisible ? "auto" : "none",
           }}
         >
-          {showEmail ? (
-            <form action={action} className="flex flex-col gap-2.5">
+          {verify ? (
+            <p
+              role="alert"
+              className="mb-3 rounded-xl px-4 py-3 text-[12.5px] leading-relaxed"
+              style={{ background: "rgba(14,26,36,.6)", color: "#ffb9a4" }}
+            >
+              {verify}
+            </p>
+          ) : null}
+
+          {sent ? (
+            <div className="flex flex-col gap-3 text-center">
+              <p
+                role="status"
+                className="rounded-xl px-4 py-4 text-[13px] leading-relaxed"
+                style={{ background: "rgba(14,26,36,.6)", color: "#e8e2d8" }}
+              >
+                {sent}
+                <br />
+                <span className="text-[11.5px]" style={{ color: "rgba(247,245,239,.62)" }}>
+                  إن لم تجد الرسالة في الوارد فانظر في «البريد غير الهامّ».
+                </span>
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setNewcomer(false);
+                  setShowEmail(true);
+                }}
+                className="text-[12.5px] font-semibold"
+                style={{ color: "rgba(247,245,239,.86)" }}
+              >
+                أكّدتُ — سجّل دخولي
+              </button>
+            </div>
+          ) : showEmail ? (
+            <form action={form.action} className="flex flex-col gap-2.5">
               <button
                 type="button"
                 onClick={() => setShowEmail(false)}
@@ -189,6 +251,23 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
                 <BackIcon size={15} /> كل الخيارات
               </button>
 
+              {newcomer ? (
+                <input
+                  name="name"
+                  type="text"
+                  autoComplete="name"
+                  required
+                  maxLength={40}
+                  placeholder="اسمك"
+                  className="rounded-xl px-4 text-[14.5px] outline-none"
+                  style={{
+                    height: 52,
+                    background: "rgba(247,245,239,.1)",
+                    border: "1px solid rgba(247,245,239,.22)",
+                    color: "#f7f5ef",
+                  }}
+                />
+              ) : null}
               <input
                 name="email"
                 type="email"
@@ -206,9 +285,10 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
               <input
                 name="password"
                 type="password"
-                autoComplete="current-password"
+                autoComplete={newcomer ? "new-password" : "current-password"}
                 required
-                placeholder="كلمة المرور"
+                minLength={newcomer ? 8 : undefined}
+                placeholder={newcomer ? "كلمة المرور — ٨ أحرف فأكثر" : "كلمة المرور"}
                 className="rounded-xl px-4 text-[14.5px] outline-none"
                 style={{
                   height: 52,
@@ -218,29 +298,43 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
                 }}
               />
 
-              {state?.error ? (
+              {form.error ? (
                 <p role="alert" className="text-[12.5px] font-medium" style={{ color: "#ff9d84" }}>
-                  {state.error}
+                  {form.error}
                 </p>
               ) : null}
 
               <button
                 type="submit"
-                disabled={pending}
+                disabled={form.pending}
                 className="brand-gradient mt-2 flex items-center justify-center rounded-xl text-[15.5px] font-bold disabled:opacity-60"
                 style={{ height: 54, color: "var(--color-on-brand)" }}
               >
-                {pending ? "لحظة…" : "دخول"}
+                {form.pending ? "لحظة…" : form.label}
               </button>
 
-              {/* من نسي كلمته لا يستطيع الدخول ليطلبها، فبابُها هنا. */}
-              <a
-                href="/forgot"
-                className="mt-1 text-center text-[12.5px] font-medium"
-                style={{ color: "rgba(247,245,239,.72)" }}
+              {/*
+                 ومن نسي كلمته لا يستطيع الدخول ليطلبها، فبابُها هنا —
+                 ولا تُعرض لمن يُنشئ حساباً: لا كلمةَ له بعدُ لينساها.
+              */}
+              {newcomer ? null : (
+                <a
+                  href="/forgot"
+                  className="mt-1 text-center text-[12.5px] font-medium"
+                  style={{ color: "rgba(247,245,239,.72)" }}
+                >
+                  نسيت كلمة المرور؟
+                </a>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setNewcomer((was) => !was)}
+                className="mt-1 text-center text-[12.5px] font-semibold"
+                style={{ color: "rgba(247,245,239,.86)" }}
               >
-                نسيت كلمة المرور؟
-              </a>
+                {newcomer ? "عندي حساب — سجّل دخولي" : "ما عندي حساب — أنشئ واحداً"}
+              </button>
             </form>
           ) : (
             <div className="flex flex-col gap-2.5">
@@ -258,7 +352,7 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
                       }
                       if (provider.key === "snap") {
                         // البدءُ من الخادم: المتحقّقُ والحارسُ يُولَّدان هناك.
-                        window.location.href = "/api/snap/start";
+                        window.location.href = `${BASE}/api/snap/start`;
                         return;
                       }
                       setNotice(
@@ -279,7 +373,10 @@ export function LoginForm({ photo, deleted = false }: { photo: boolean; deleted?
 
               <button
                 type="button"
-                onClick={() => setShowEmail(true)}
+                onClick={() => {
+                  setNewcomer(false);
+                  setShowEmail(true);
+                }}
                 className="brand-gradient mt-1 flex items-center justify-center rounded-xl text-[15px] font-bold"
                 style={{ height: 54, color: "var(--color-on-brand)" }}
               >

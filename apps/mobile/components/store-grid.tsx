@@ -6,8 +6,9 @@ import { MediaImage } from "./media-image";
 import { firstColor, frameInset } from "./avatar";
 import { CheckIcon, LockIcon } from "./icons";
 import { api } from "../lib/api";
+import { useSession } from "../lib/session";
 import { keys, type StoreItem } from "../lib/queries";
-import { ar, coinText } from "../lib/format";
+import { ar, coinText, daysLabel, leftUntil } from "../lib/format";
 import { colors } from "../theme/tokens";
 import { Sheet } from "./sheet";
 
@@ -166,9 +167,12 @@ export function StoreGrid({
   coins,
   daysHere,
   equipped,
+  expires = {},
 }: {
   items: StoreItem[];
   owned: string[];
+  /** متى ينتهي ما اشتُري بمدّة — بمعرّف الصنف. */
+  expires?: Record<string, string>;
   isPlus: boolean;
   coins: number;
   daysHere: number;
@@ -181,8 +185,22 @@ export function StoreGrid({
   /* نتيجةُ الشراء تُقال نافذةً: «تمّ الشراء» أو «رصيدك لا يكفي». */
   const [said, setSaid] = useState<{ ok?: string; error?: string } | null>(null);
   const [showing, setShowing] = useState(false);
+  /*
+    المدّةُ المختارة — **بقرار المالك**: للصنف مُدَدٌ بأسعار («يوم بـ٢٥،
+    خمسة أيام بـ٥٠، شهر بـ١٥٠») تُختار من قائمةٍ منسدلة في بطاقته، ويظهر
+    سعرُها. وما انتهت مدّتُه يختفي من صاحبه ويُشترى ثانيةً.
+  */
+  const [planId, setPlanId] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
 
   const refresh = () => {
+    /*
+       وصاحبُ الجلسة نفسه يُعاد سؤاله: الصورةُ والإطار والتميمة في كل
+       شاشةٍ تُرسم من `useSession` لا من ذاكرة الاستعلامات، فكان «ألبسه»
+       يُحفظ على الخادم ولا يتغيّر شيءٌ على الشاشة حتى تُفتح «إكسسواراتي»
+       — وهي التي كانت تسأل.
+    */
+    void useSession.getState().refresh();
     void client.invalidateQueries({ queryKey: keys.store });
     void client.invalidateQueries({ queryKey: keys.me });
     void client.invalidateQueries({ queryKey: ["me"] });
@@ -190,7 +208,11 @@ export function StoreGrid({
   };
 
   const buy = useMutation({
-    mutationFn: (id: string) => api<{ ok: string }>(`/v1/store/${id}/buy`, { method: "POST" }),
+    mutationFn: ({ id, plan }: { id: string; plan?: string }) =>
+      api<{ ok: string }>(`/v1/store/${id}/buy`, {
+        method: "POST",
+        body: JSON.stringify(plan ? { plan } : {}),
+      }),
     onSuccess: (row) => {
       refresh();
       setSaid({ ok: row.ok });
@@ -229,12 +251,16 @@ export function StoreGrid({
   }
 
   const chosen = open;
+  const plans = chosen?.plans ?? [];
+  const plan = plans.find((one) => one.id === planId) ?? plans[0] ?? null;
+  const cost = (item: StoreItem) =>
+    plan && chosen && item.id === chosen.id ? price({ ...item, priceCoins: plan.priceCoins }) : price(item);
 
   return (
     <>
       {/* بطاقةُ الصنف: عرضٌ وشراء — الضغطة تفتح لا تشتري. */}
       {chosen ? (
-        <Sheet onClose={() => setOpen(null)} title={KIND_LABEL[chosen.kind] ?? "صنف"}>
+        <Sheet onClose={() => { setShowing(false); setOpen(null); }} title={KIND_LABEL[chosen.kind] ?? "صنف"}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 16, paddingVertical: 8 }}>
             <View style={{ width: 80, height: 80, alignItems: "center", justifyContent: "center" }}>
               <Preview item={chosen} />
@@ -251,10 +277,52 @@ export function StoreGrid({
               <Text style={{ color: colors.clayInk, fontSize: 14, fontWeight: "600", marginTop: 4 }}>
                 {chosen.earnedAfterDays !== null
                   ? `يُكتسب بعد ${ar(chosen.earnedAfterDays)} يوم`
-                  : coinText(price(chosen))}
+                  : plan
+                    ? `${coinText(cost(chosen))} · ${daysLabel(plan.days)}`
+                    : coinText(price(chosen))}
               </Text>
+              {expires[chosen.id] ? (
+                <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 2 }}>{leftUntil(expires[chosen.id])}</Text>
+              ) : null}
             </View>
           </View>
+
+          {/* القائمةُ المنسدلة للمُدد: المختارةُ ظاهرة، والضغطُ يفتح البقيّة. */}
+          {plans.length > 0 && chosen.earnedAfterDays === null ? (
+            <View style={{ marginTop: 8 }}>
+              <Pressable
+                onPress={() => setPicking((was) => !was)}
+                style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", height: 44, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
+              >
+                <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600" }}>
+                  المدّة: {plan ? daysLabel(plan.days) : ""}
+                </Text>
+                <Text style={{ color: colors.muted, fontSize: 13 }}>{picking ? "▴" : "▾"}</Text>
+              </Pressable>
+              {picking ? (
+                <View style={{ marginTop: 4, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, overflow: "hidden" }}>
+                  {plans.map((one) => {
+                    const on = plan?.id === one.id;
+                    return (
+                      <Pressable
+                        key={one.id}
+                        onPress={() => {
+                          setPlanId(one.id);
+                          setPicking(false);
+                        }}
+                        style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 14, paddingVertical: 11, backgroundColor: on ? colors.claySoft : "transparent" }}
+                      >
+                        <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: on ? "700" : "500" }}>{daysLabel(one.days)}</Text>
+                        <Text style={{ color: colors.clayInk, fontSize: 13, fontWeight: "600" }}>
+                          {coinText(price({ ...chosen, priceCoins: one.priceCoins }))}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : null}
+            </View>
+          ) : null}
 
           <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
             <Pressable
@@ -315,81 +383,131 @@ export function StoreGrid({
             ) : (
               <Pressable
                 disabled={pending}
-                onPress={() => buy.mutate(chosen.id)}
+                onPress={() => buy.mutate({ id: chosen.id, plan: plan?.id })}
                 style={{ flex: 1, height: 48, borderRadius: 12, backgroundColor: colors.clay, alignItems: "center", justifyContent: "center", opacity: pending ? 0.6 : 1 }}
               >
                 <Text style={{ color: colors.onBrand, fontSize: 14, fontWeight: "700" }}>
-                  {pending ? "نشتري…" : `اشترِ بـ${coinText(price(chosen))}`}
+                  {pending ? "نشتري…" : `اشترِ بـ${coinText(cost(chosen))}`}
                 </Text>
               </Pressable>
             )}
           </View>
 
+          {/* ما اشتُري بمدّةٍ يُمدَّد من هنا: المدّةُ الجديدة تُضاف إلى ما بقي. */}
+          {ownedSet.has(chosen.id) && plan && expires[chosen.id] ? (
+            <Pressable
+              disabled={pending}
+              onPress={() => buy.mutate({ id: chosen.id, plan: plan.id })}
+              style={{ height: 46, borderRadius: 12, borderWidth: 1, borderColor: colors.clay, alignItems: "center", justifyContent: "center", marginTop: 8, opacity: pending ? 0.6 : 1 }}
+            >
+              <Text style={{ color: colors.clayInk, fontSize: 13.5, fontWeight: "700" }}>
+                مدّد {daysLabel(plan.days)} بـ{coinText(cost(chosen))}
+              </Text>
+            </Pressable>
+          ) : null}
+
           {/* والرصيد يُقال قبل الضغط لا بعده. */}
           {!ownedSet.has(chosen.id) &&
           chosen.earnedAfterDays === null &&
           !(chosen.plusOnly && !isPlus) &&
-          coins < price(chosen) ? (
+          coins < cost(chosen) ? (
             <Text style={{ color: colors.muted, fontSize: 11.5, textAlign: "center", marginTop: 8 }}>
-              رصيدك {coinText(coins)} — ينقصك {coinText(price(chosen) - coins)}
+              رصيدك {coinText(coins)} — ينقصك {coinText(cost(chosen) - coins)}
             </Text>
+          ) : null}
+
+          {/*
+            نافذتا «عرض» والنتيجة **داخل** البطاقة لا بجانبها: آبل
+            تعرض نافذةً واحدةً فوق الشاشة، فنافذةٌ أختٌ لنافذةٍ مفتوحة
+            تُقدَّم خلفها فلا تُرى — وهذا سببُ أنّ «عرض» لم يكن يفعل شيئاً.
+          */}
+          {/* «عرض»: الرسم كاملاً. */}
+          {showing && chosen ? (
+            <Modal transparent animationType="fade" onRequestClose={() => setShowing(false)}>
+              <Pressable
+                onPress={() => setShowing(false)}
+                style={{ flex: 1, backgroundColor: "rgba(14,26,36,.88)", alignItems: "center", justifyContent: "center", padding: 32 }}
+              >
+                {chosen.mediaId ? (
+                  <MediaImage
+                    mediaId={chosen.mediaId}
+                    resizeMode="contain"
+                    style={{ width: 280, height: 280 }}
+                  />
+                ) : (
+                  <View style={{ width: 240, height: 240, borderRadius: 24, backgroundColor: firstColor(chosen.spec, colors.chip) }} />
+                )}
+              </Pressable>
+            </Modal>
+          ) : null}
+
+          {/* والنتيجة نافذةٌ تُقرأ، لا سطرٌ في طرف الشاشة. */}
+          {said ? (
+            <Modal transparent animationType="fade" onRequestClose={() => setSaid(null)}>
+              <View style={{ flex: 1, backgroundColor: "rgba(14,26,36,.5)", alignItems: "center", justifyContent: "center", paddingHorizontal: 32 }}>
+                <View style={{ width: "100%", maxWidth: 300, borderRadius: 24, backgroundColor: colors.card, padding: 24 }}>
+                  <Text
+                    style={{
+                      color: said.ok ? colors.clayInk : colors.live,
+                      fontSize: 15,
+                      fontWeight: "700",
+                      textAlign: "center",
+                    }}
+                  >
+                    {said.ok ? "تمّ الشراء" : said.error}
+                  </Text>
+                  <Text style={{ color: colors.muted, fontSize: 12.5, lineHeight: 21, textAlign: "center", marginTop: 6 }}>
+                    {said.ok
+                      ? chosen.kind === "BUNDLE"
+                        ? "ما فيها صار لك — تلبسه من إكسسواراتك في «أنا»."
+                        : "صار لك — تلبسه الآن أو من إكسسواراتك في «أنا»."
+                      : "اشحن نقاطك من زرّ الرصيد في أعلى المتجر ثم أعِد المحاولة."}
+                  </Text>
+                  {/* ما اشتُري يُلبَس من مكانه: لا رحلةَ إلى «أنا» ليلبس ما رآه للتوّ. */}
+                  {said.ok && chosen.kind !== "BUNDLE" ? (
+                    <Pressable
+                      disabled={wear.isPending}
+                      onPress={() => {
+                        wear.mutate(chosen.id);
+                        setSaid(null);
+                        setOpen(null);
+                      }}
+                      style={{ height: 46, borderRadius: 12, backgroundColor: colors.clay, alignItems: "center", justifyContent: "center", marginTop: 16 }}
+                    >
+                      <Text style={{ color: colors.onBrand, fontSize: 13.5, fontWeight: "700" }}>ألبسه الآن</Text>
+                    </Pressable>
+                  ) : null}
+                  <Pressable
+                    onPress={() => {
+                      setSaid(null);
+                      setOpen(null);
+                    }}
+                    style={{
+                      height: 46,
+                      borderRadius: 12,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginTop: said.ok && chosen.kind !== "BUNDLE" ? 8 : 16,
+                      backgroundColor: said.ok && chosen.kind !== "BUNDLE" ? colors.chip : colors.clay,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: said.ok && chosen.kind !== "BUNDLE" ? colors.ink2 : colors.onBrand,
+                        fontSize: 13.5,
+                        fontWeight: "700",
+                      }}
+                    >
+                      {said.ok && chosen.kind !== "BUNDLE" ? "لاحقاً" : "تمام"}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            </Modal>
           ) : null}
         </Sheet>
       ) : null}
 
-      {/* «عرض»: الرسم كاملاً. */}
-      {showing && chosen ? (
-        <Modal transparent animationType="fade" onRequestClose={() => setShowing(false)}>
-          <Pressable
-            onPress={() => setShowing(false)}
-            style={{ flex: 1, backgroundColor: "rgba(14,26,36,.88)", alignItems: "center", justifyContent: "center", padding: 32 }}
-          >
-            {chosen.mediaId ? (
-              <MediaImage
-                mediaId={chosen.mediaId}
-                resizeMode="contain"
-                style={{ width: 280, height: 280 }}
-              />
-            ) : (
-              <View style={{ width: 240, height: 240, borderRadius: 24, backgroundColor: firstColor(chosen.spec, colors.chip) }} />
-            )}
-          </Pressable>
-        </Modal>
-      ) : null}
-
-      {/* والنتيجة نافذةٌ تُقرأ، لا سطرٌ في طرف الشاشة. */}
-      {said ? (
-        <Modal transparent animationType="fade" onRequestClose={() => setSaid(null)}>
-          <View style={{ flex: 1, backgroundColor: "rgba(14,26,36,.5)", alignItems: "center", justifyContent: "center", paddingHorizontal: 32 }}>
-            <View style={{ width: "100%", maxWidth: 300, borderRadius: 24, backgroundColor: colors.card, padding: 24 }}>
-              <Text
-                style={{
-                  color: said.ok ? colors.clayInk : colors.live,
-                  fontSize: 15,
-                  fontWeight: "700",
-                  textAlign: "center",
-                }}
-              >
-                {said.ok ? "تمّ الشراء" : said.error}
-              </Text>
-              <Text style={{ color: colors.muted, fontSize: 12.5, lineHeight: 21, textAlign: "center", marginTop: 6 }}>
-                {said.ok
-                  ? "صار لك — البسه من إكسسواراتك في «أنا»."
-                  : "اشحن نقاطك من زرّ الرصيد في أعلى المتجر ثم أعِد المحاولة."}
-              </Text>
-              <Pressable
-                onPress={() => {
-                  setSaid(null);
-                  setOpen(null);
-                }}
-                style={{ height: 46, borderRadius: 12, backgroundColor: colors.clay, alignItems: "center", justifyContent: "center", marginTop: 16 }}
-              >
-                <Text style={{ color: colors.onBrand, fontSize: 13.5, fontWeight: "700" }}>تمام</Text>
-              </Pressable>
-            </View>
-          </View>
-        </Modal>
-      ) : null}
 
       {error ? (
         <View style={{ marginBottom: 12, borderRadius: 12, backgroundColor: colors.claySoft, paddingHorizontal: 16, paddingVertical: 12 }}>
@@ -413,6 +531,9 @@ export function StoreGrid({
               disabled={pending}
               onPress={() => {
                 setError(null);
+                // كلُّ بطاقةٍ تبدأ بأقصر مُددها مختارةً، والقائمةُ مطويّة.
+                setPlanId(item.plans?.[0]?.id ?? null);
+                setPicking(false);
                 setOpen(item);
               }}
               style={{
@@ -477,7 +598,10 @@ export function StoreGrid({
                 </View>
               ) : (
                 <Text style={{ color: colors.clayInk, fontSize: 11, fontWeight: "600" }}>
-                  {coinText(price(item))}
+                  {/* بمُدد: أرخصُها «من …» — والمدّةُ تُختار في البطاقة. */}
+                  {item.plans?.length
+                    ? `من ${coinText(price({ ...item, priceCoins: Math.min(...item.plans.map((one) => one.priceCoins)) }))}`
+                    : coinText(price(item))}
                 </Text>
               )}
             </Pressable>

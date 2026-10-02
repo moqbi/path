@@ -1,4 +1,5 @@
 import { View, Pressable } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "./type";
 import { useRouter } from "expo-router";
 import Svg, { Path } from "react-native-svg";
@@ -16,12 +17,24 @@ export function ScreenHeader({
   title,
   back,
   right,
+  onTitlePress,
 }: {
   title: string;
   back?: string;
   right?: React.ReactNode;
+  /** اسمٌ في الرأس قد يكون باباً: اسمُ من تحادثه يفتح ملفّه. */
+  onTitlePress?: () => void;
 }) {
   const router = useRouter();
+  /*
+    حشوةُ الحافّة العليا في الرأس نفسه لا في `SafeAreaView` فوقه.
+
+    كانت الشاشة تُغلَّف بـ`edges={["top"]}` على أرضيةٍ فاتحة، فيخرج
+    شريطُ الحالة فاتحاً فوق رأسٍ داكن — يُقرأ فراغاً فوق التطبيق لا
+    جزءاً منه. والرأسُ داكنٌ أصلاً (القاعدة ٢٩)، فإذا ابتلع الحشوة
+    امتدّ إلى أعلى الشاشة واتّصل بها.
+  */
+  const insets = useSafeAreaInsets();
 
   return (
     <View
@@ -31,14 +44,23 @@ export function ScreenHeader({
         gap: 10,
         minHeight: 56,
         paddingHorizontal: 16,
-        paddingVertical: 8,
+        paddingTop: insets.top + 8,
+        paddingBottom: 8,
         backgroundColor: colors.chrome,
       }}
     >
       <AthrMark size={32} />
-      <Text face="display" style={{ flex: 1, color: colors.chromeInk, fontSize: 16, fontWeight: "700" }}>
-        {title}
-      </Text>
+      {onTitlePress ? (
+        <Pressable accessibilityRole="link" onPress={onTitlePress} style={{ flex: 1, minWidth: 0 }} hitSlop={8}>
+          <Text face="display" style={{ color: colors.chromeInk, fontSize: 16, fontWeight: "700" }}>
+            {title}
+          </Text>
+        </Pressable>
+      ) : (
+        <Text face="display" style={{ flex: 1, color: colors.chromeInk, fontSize: 16, fontWeight: "700" }}>
+          {title}
+        </Text>
+      )}
 
       {right}
 

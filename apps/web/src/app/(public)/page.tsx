@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { AthrMark, AthrWordmark } from "@/components/brand";
 import { HeroArt } from "./hero-art";
-import { lines, siteImage, siteText } from "@/lib/site";
-import { MomentsShot, CircleShot, StoriesShot, ChatShot } from "./shots";
+import { lines, siteImage, siteShots, siteText, storeUrl } from "@/lib/site";
+import { ShotsCarousel } from "./shots-carousel";
 
 /*
   أربع مزايا لا أكثر: ما يفعله المستخدم في التطبيق كل يوم.
@@ -52,23 +52,25 @@ const FEATURES = [
   },
 ] as const;
 
-const SHOTS = [
-  { key: "moments", label: "الخط الزمني", node: <MomentsShot /> },
-  { key: "circle", label: "الدائرة", node: <CircleShot /> },
-  { key: "stories", label: "القصص", node: <StoriesShot /> },
-  { key: "chat", label: "المحادثات", node: <ChatShot /> },
-] as const;
-
 /**
- * أزرار المتجرين.
+ * أزرار المتجرين — روابطُها من اللوحة («روابط تحميل التطبيق»).
  *
- * التطبيق لم يُنشر بعد، فالزرّ يقول «قريباً» ولا يحمل رابطاً: رابطٌ ميّت
- * إلى المتجر أسوأ من لا رابط. ويُستبدل الوسم بالرابط يوم النشر.
+ * وبلا رابطٍ يبقى الزرّ شارةً بلا رابط، **بلا «قريباً»** بقرار المالك:
+ * التطبيقُ في المتجر، ورابطٌ ميّتٌ أسوأ من لا رابط.
  */
-function StoreButtons({ tone = "light" }: { tone?: "light" | "dark" }) {
+function StoreButtons({
+  tone = "light",
+  ios,
+  android,
+}: {
+  tone?: "light" | "dark";
+  ios: string | null;
+  android: string | null;
+}) {
   const stores = [
     {
       name: "App Store",
+      href: ios,
       sub: "حمّله من",
       icon: (
         <path d="M16.2 12.9c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.2-2.8.9-3.5.9s-1.8-.8-3-.8c-1.6 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7c1.3 0 2.1-1.1 2.8-2.3.9-1.3 1.3-2.6 1.3-2.7 0 0-2.5-1-2.5-3.7ZM14 5.9c.6-.8 1-1.9.9-3-.9 0-2 .6-2.7 1.4-.6.7-1.1 1.8-.9 2.9 1 0 2-.5 2.7-1.3Z" />
@@ -76,6 +78,7 @@ function StoreButtons({ tone = "light" }: { tone?: "light" | "dark" }) {
     },
     {
       name: "Google Play",
+      href: android,
       sub: "حمّله من",
       icon: (
         <path d="M4.3 2.6a1 1 0 0 0-.5.9v17a1 1 0 0 0 .5.9l9.3-9.4ZM14.7 10.8l2.9-2.9-10.4-5.9a1 1 0 0 0-.5-.1ZM14.7 13.2l-8 8a1 1 0 0 0 .5-.1l10.4-5.9ZM18.7 8.6l-3.1 3.2 3.1 3.2 2.8-1.6c.8-.5.8-1.7 0-2.2Z" />
@@ -87,36 +90,42 @@ function StoreButtons({ tone = "light" }: { tone?: "light" | "dark" }) {
 
   return (
     <div className="flex flex-wrap justify-center gap-3">
-      {stores.map((store) => (
-        <span
-          key={store.name}
-          className="flex items-center gap-3 rounded-2xl px-5 py-2.5"
-          style={{
-            border: `1px solid ${dark ? "#223140" : "var(--color-line)"}`,
-            background: dark ? "rgba(255,255,255,0.04)" : "var(--color-card)",
-            color: dark ? "var(--color-chrome-ink)" : "var(--color-ink)",
-          }}
-        >
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden>
-            {store.icon}
-          </svg>
-          <span className="flex flex-col items-start leading-tight">
-            <span className="text-[10px] opacity-70">{store.sub}</span>
-            <span className="latin text-[13px] font-semibold" dir="ltr" style={{ letterSpacing: "0.04em" }}>
-              {store.name}
+      {stores.map((store) => {
+        const look = {
+          border: `1px solid ${dark ? "#223140" : "var(--color-line)"}`,
+          background: dark ? "rgba(255,255,255,0.04)" : "var(--color-card)",
+          color: dark ? "var(--color-chrome-ink)" : "var(--color-ink)",
+        };
+        const inner = (
+          <>
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden>
+              {store.icon}
+            </svg>
+            <span className="flex flex-col items-start leading-tight">
+              <span className="text-[10px] opacity-70">{store.sub}</span>
+              <span className="latin text-[13px] font-semibold" dir="ltr" style={{ letterSpacing: "0.04em" }}>
+                {store.name}
+              </span>
             </span>
-          </span>
-          <span
-            className="rounded-full px-2 py-0.5 text-[10px] font-bold"
-            style={{
-              background: dark ? "rgba(246,185,59,0.16)" : "var(--color-gold-soft)",
-              color: dark ? "var(--color-gold-bright)" : "var(--color-clay-ink)",
-            }}
+          </>
+        );
+        return store.href ? (
+          <a
+            key={store.name}
+            href={store.href}
+            target="_blank"
+            rel="noopener"
+            className="flex items-center gap-3 rounded-2xl px-5 py-2.5 transition-transform hover:-translate-y-0.5"
+            style={look}
           >
-            قريباً
+            {inner}
+          </a>
+        ) : (
+          <span key={store.name} className="flex items-center gap-3 rounded-2xl px-5 py-2.5" style={look}>
+            {inner}
           </span>
-        </span>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -147,6 +156,10 @@ function FeatureIcon({ children }: { children: React.ReactNode }) {
 export default async function LandingPage() {
   const text = await siteText();
   const hero = await siteImage("hero");
+  // اللقطاتُ من اللوحة، وبلا صفٍّ فيها الثلاثُ الأصليّة (`DEFAULT_SHOTS`).
+  const shots = await siteShots();
+  const ios = storeUrl(text["store.ios"]);
+  const android = storeUrl(text["store.android"]);
 
   return (
     <>
@@ -162,7 +175,7 @@ export default async function LandingPage() {
             <div
               aria-hidden
               className="hero-photo"
-              style={{ backgroundImage: `url(/api/media/${hero})` }}
+              style={{ backgroundImage: `url(/api/site-media/${hero})` }}
             />
             <div aria-hidden className="hero-veil" />
           </>
@@ -215,7 +228,7 @@ export default async function LandingPage() {
           </p>
 
           <div className="rise rise-5 mt-8">
-            <StoreButtons tone="dark" />
+            <StoreButtons tone="dark" ios={ios} android={android} />
           </div>
         </div>
       </section>
@@ -245,14 +258,7 @@ export default async function LandingPage() {
         <h2 className="section-title">{text["shots.title"]}</h2>
         <p className="section-sub">{text["shots.sub"]}</p>
 
-        <div className="no-bar mt-8 flex justify-start gap-4 overflow-x-auto pb-2 lg:justify-center">
-          {SHOTS.map((shot) => (
-            <figure key={shot.key} className="flex shrink-0 flex-col items-center gap-2.5">
-              <div className="phone">{shot.node}</div>
-              <figcaption className="text-[12px] font-semibold text-muted">{shot.label}</figcaption>
-            </figure>
-          ))}
-        </div>
+        <ShotsCarousel shots={shots} />
       </section>
 
       {/* ───────────── الخصوصية ───────────── */}
@@ -314,7 +320,7 @@ export default async function LandingPage() {
         </p>
 
         <div className="mt-7">
-          <StoreButtons />
+          <StoreButtons ios={ios} android={android} />
         </div>
 
         <Link

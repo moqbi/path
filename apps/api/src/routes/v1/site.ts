@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { prisma } from "@athar/db";
 import { requireAuth } from "../../middleware/auth";
+import { supportAccount } from "../../services/support-account";
 
 /**
  * محتوى الموقع كما يقرؤه التطبيق.
@@ -22,4 +23,10 @@ export const siteRoutes = new Hono()
       select: { id: true, platform: true, url: true },
     });
     return c.json({ links });
+  })
+
+  /** حسابُ الدعم الذي تحيل إليه شاشةُ «الدعم الفني» (القاعدة ٢٢١). */
+  .get("/support", async (c) => {
+    const account = await supportAccount();
+    return c.json({ account });
   });

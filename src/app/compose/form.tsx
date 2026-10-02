@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { postMusicLink, postPlace, postSimple } from "@/app/actions";
 import { ImagePicker } from "@/components/image-picker";
+import { PhotoFrameEditor } from "@/components/photo-frame-editor";
 import { Avatar, ScreenHeader } from "@/components/ui";
 import {
   CheckIcon,
@@ -13,6 +14,7 @@ import {
   WithIcon,
 } from "@/components/icons";
 import { ar } from "@/lib/format";
+import { BASE } from "@/lib/base";
 
 type Kind = "PHOTO" | "THOUGHT" | "PLACE" | "MUSIC";
 
@@ -54,12 +56,16 @@ export function ComposeForm({
   const [wantPlace, setWantPlace] = useState(kind === "PLACE");
   const [fix, setFix] = useState<Fix | null>(null);
   const [picture, setPicture] = useState<{ file: Blob; url: string; width: number; height: number } | null>(null);
+  // موضعُ الصورة في إطار البطاقة — يبدأ من الوسط مع كل صورةٍ جديدة.
+  const [photoPos, setPhotoPos] = useState({ x: 50, y: 50 });
   const [musicUrl, setMusicUrl] = useState("");
   const [text, setText] = useState("");
   const [geoError, setGeoError] = useState<string | null>(null);
   const [locating, setLocating] = useState(kind === "PLACE");
   const [spots, setSpots] = useState<Spot[] | null>(null);
   const [spot, setSpot] = useState<string | null>(null);
+  // القائمةُ تُطوى بالاختيار وتُفتح بـ«غيّر» (القاعدة ٢١٢).
+  const [browsing, setBrowsing] = useState(false);
   const [pending, start] = useTransition();
 
   /**
@@ -86,7 +92,7 @@ export function ComposeForm({
         setFix(here);
         setLocating(false);
         // الأماكن حولك تُجلب بعد الإحداثيات: تختار أين أنت بالضبط.
-        fetch(`/api/places?lat=${here.lat}&lng=${here.lng}`)
+        fetch(`${BASE}/api/places?lat=${here.lat}&lng=${here.lng}`)
           .then((response) => (response.ok ? response.json() : { places: [] }))
           .then((data: { places: Spot[] }) => setSpots(data.places ?? []))
           .catch(() => setSpots([]));
@@ -145,6 +151,8 @@ export function ComposeForm({
           data.set("image", picture.file);
           data.set("imageWidth", String(picture.width));
           data.set("imageHeight", String(picture.height));
+          data.set("photoX", String(photoPos.x));
+          data.set("photoY", String(photoPos.y));
         }
         data.set("kind", kind);
         start(() => void postSimple(data));
@@ -157,26 +165,31 @@ export function ComposeForm({
       <div className="scroll-area px-5 py-4">
         {kind === "PHOTO" ? (
           <div className="mb-4">
-            <div
-              className="mb-2.5 flex items-center justify-center overflow-hidden rounded-2xl border border-line"
-              style={{
-                height: 200,
-                backgroundImage: picture ? `url(${picture.url})` : undefined,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                background: picture ? undefined : "var(--color-chip)",
-              }}
-            >
-              {picture ? null : (
+            {/* المحرّرُ بنسبة إطار البطاقة: ما يُضبط هنا ما يُرى في الخطّ — بقرار المالك. */}
+            {picture ? (
+              <div className="mb-2.5">
+                <PhotoFrameEditor
+                  url={picture.url}
+                  width={picture.width}
+                  height={picture.height}
+                  value={photoPos}
+                  onChange={setPhotoPos}
+                />
+              </div>
+            ) : (
+              <div
+                className="mb-2.5 flex items-center justify-center rounded-2xl border border-line"
+                style={{ height: 200, background: "var(--color-chip)" }}
+              >
                 <span className="text-[12.5px] text-muted">ما اخترت صورة بعد</span>
-              )}
-            </div>
+              </div>
+            )}
             <ImagePicker
               label={picture ? "غيّر الصورة" : "اختر صورة"}
               maxSize={1600}
               onPicked={(file, width, height) =>
                 // الملف يُرسل، والرابط المؤقّت للمعاينة وحدها.
-                setPicture({ file, url: URL.createObjectURL(file), width, height })
+                (setPhotoPos({ x: 50, y: 50 }), setPicture({ file, url: URL.createObjectURL(file), width, height }))
               }
             />
           </div>
@@ -261,13 +274,13 @@ export function ComposeForm({
                     <p className="text-[14px] font-semibold">
                       {placeLine ?? "وين أنت بالضبط؟"}
                     </p>
-                    <p className="mt-0.5 text-[11.5px] text-muted">
+                    {spot ? null : <p className="mt-0.5 text-[11.5px] text-muted">
                       {spots === null
                         ? "نبحث عن الأماكن حولك…"
                         : spots.length === 0
                           ? "ما لقينا أماكن مسمّاة حولك — يُكتب أقرب عنوان."
                           : "اختر مكانك من حولك، أو اتركه لأقرب عنوان."}
-                    </p>
+                    </p>}
                   </>
                 ) : (
                   <p className="text-[13px] leading-relaxed" style={{ color: "var(--color-live)" }}>
@@ -275,6 +288,15 @@ export function ComposeForm({
                   </p>
                 )}
               </div>
+              {spot && !browsing ? (
+                <button
+                  type="button"
+                  onClick={() => setBrowsing(true)}
+                  className="h-9 shrink-0 rounded-full border border-line px-4 text-[12.5px] font-bold text-clay-ink"
+                >
+                  غيّر
+                </button>
+              ) : null}
               {kind === "PLACE" ? null : (
                 <button
                   type="button"
@@ -284,6 +306,7 @@ export function ComposeForm({
                     setFix(null);
                     setSpots(null);
                     setSpot(null);
+                    setBrowsing(false);
                     setGeoError(null);
                     setLocating(false);
                   }}
@@ -294,7 +317,7 @@ export function ComposeForm({
               )}
             </div>
 
-            {spots && spots.length > 0 ? (
+            {spots && spots.length > 0 && (!spot || browsing) ? (
               <div className="max-h-[232px] overflow-y-auto border-t border-line">
                 {spots.map((item) => {
                   const on = spot === item.id;
@@ -302,7 +325,10 @@ export function ComposeForm({
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => setSpot(on ? null : item.id)}
+                      onClick={() => {
+                        setSpot(on ? null : item.id);
+                        setBrowsing(false);
+                      }}
                       className="flex w-full items-center gap-3 border-b border-line px-4 py-3 text-right last:border-b-0"
                       style={{ background: on ? "var(--color-clay-soft)" : "transparent" }}
                     >

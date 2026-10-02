@@ -21,7 +21,8 @@
     "api:dev": "pnpm --filter @athar/api dev",
     "api:typecheck": "pnpm --filter @athar/api typecheck",
     "ws:install": "pnpm install",
-    "api:test": "pnpm --filter @athar/api test"
+    "api:test": "pnpm --filter @athar/api test",
+    "check:storage": "tsx scripts/check-storage.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -58,6 +58,38 @@ Postgres والتطبيق يتنازعان المعالج نفسه، لا قبل
 
 ---
 
+## ٢ب. إغلاق Render
+
+بعد النقل تصير القاعدةُ على الخادم هي الحيّة، وتبقى قاعدةُ Render نسخةً
+جامدة — **إلّا أن يظلّ بابٌ يكتب فيها**. وأشهرُها ويبهوك RevenueCat:
+عنوانٌ لم يُحدَّث يبعث كلَّ عمليّة شراءٍ إلى الخادم القديم، فيدفع
+المستخدم ولا يُفعَّل اشتراكه ولا تصل نقاطه — ولا يظهر خطأٌ في أيّ شاشة.
+
+فقبل أن يُغلَق شيء، يُقارَن الاثنان قراءةً فقط:
+
+```bash
+RENDER_DATABASE_URL="postgresql://…render.com/…?sslmode=require" \
+DIRECT_URL="postgresql://athar:…@127.0.0.1:5432/athar" \
+  scripts/ops/compare-render.sh
+```
+
+ثمّ بالترتيب:
+
+1. في RevenueCat → Integrations → Webhook: العنوان
+   `https://atharmts.com/v1/webhooks/revenuecat`.
+2. أيّ عنوانٍ آخر سُجّل عند طرفٍ خارجيّ على `*.onrender.com` — عودةُ
+   مزوّدٍ، أو تنبيهٌ، أو مهمّةٌ مجدولة — يُحوَّل إلى النطاق.
+3. تُقارَن القاعدتان بالأمر أعلاه، ولا يُطفأ شيءٌ حتى يتّضح أنّ الخادم
+   أحدث.
+4. تُوقَف خدمتا Render ثمّ تُحذف القاعدة — **بعد نسخةٍ منها عندك**.
+
+> **و`migrate-from-render.sh` ليس أداةَ هذه المرحلة**: `--clean` فيه
+> تمحو ما على الخادم وتضع نسخة Render مكانه. صحيحٌ يوم النقل والقاعدة
+> فارغة، وخسارةٌ بعده. ولذلك يقف اليوم إن وجد مستخدمين ولا يمضي إلّا
+> بـ`OVERWRITE=yes`.
+
+---
+
 ## ٣. التنصيب
 
 **سكربتٌ واحد يفعل كلَّ ما في هذا القسم** — والخطواتُ بعده مشروحةٌ لمن
@@ -82,9 +114,10 @@ SSH_KEY="ssh-ed25519 AAAA… اسمك" bash bootstrap.sh
 RENDER_DATABASE_URL="postgresql://…render.com/…?sslmode=require" DIRECT_URL="postgresql://athar:…@127.0.0.1:5432/athar" ADMIN_EMAILS="you@example.com"   scripts/ops/migrate-from-render.sh
 
 # وهذه بـroot: ما يُكتب في /etc ليس لحساب التطبيق
-cp /home/athar/app/scripts/ops/athar-*.service /etc/systemd/system/
+cp /home/athar/app/scripts/ops/athar-*.service /home/athar/app/scripts/ops/athar-*.timer /etc/systemd/system/
 cp /home/athar/app/scripts/ops/Caddyfile /etc/caddy/Caddyfile
-systemctl daemon-reload && systemctl enable athar-web athar-api
+systemctl daemon-reload && systemctl enable athar-web athar-site athar-api
+systemctl enable --now athar-backup.timer
 
 # والنشرُ بـathar
 sudo -iu athar bash -lc "cd ~/app && scripts/ops/deploy.sh"
@@ -95,6 +128,12 @@ systemctl reload caddy
 > فـ`sudo` منه يسأل عن كلمةٍ لا وجود لها. ولهذا يُعطى في `bootstrap.sh`
 > إذناً بلا كلمة لأمرين بعينهما — إعادةِ تشغيل الخدمتين وإعادةِ تحميل
 > Caddy — وما عداهما يُفعل من جلسة root.
+
+> **وثلاث خدماتٍ لا اثنتان** (القاعدة ١٢٢): `athar-site` على ٣٠٠١ يحمل
+> صفحة الهبوط و`/contact` و`/delete-account` و`/u/*` واللوحة على الجذر،
+> و`athar-web` على ٣٠٠٠ يحمل التطبيق تحت `/app`، و`athar-api` على ٤٠٠٠.
+> و`basePath` يُدمج وقت البناء: تغييرُه يستلزم `deploy.sh` لا إعادةَ
+> تشغيل.
 
 > **وترتيبُ السحابة يهمّ**: يبقى سجلّا DNS **رماديَّين** (بلا وكيل) حتى
 > يأخذ Caddy شهادته — التحدّي يمرّ بالمنفذ ٨٠ — ثمّ يُلوَّنان برتقاليّاً
@@ -109,7 +148,7 @@ systemctl reload caddy
 ```bash
 apt update && apt upgrade -y
 apt install -y ufw fail2ban unattended-upgrades postgresql-16 \
-               pgbouncer redis-server git curl
+               pgbouncer redis-server git curl ffmpeg
 dpkg-reconfigure --priority=low unattended-upgrades
 
 adduser --disabled-password --gecos "" athar
@@ -124,6 +163,12 @@ ufw enable
 
 و**الدخول بالمفاتيح وحدها**: في `/etc/ssh/sshd_config` اجعل
 `PasswordAuthentication no` و`PermitRootLogin prohibit-password`.
+
+> **وخادمٌ قائمٌ من قبل هذا السطر ينقصه ffmpeg**: ثُبِّت في
+> `bootstrap.sh` متأخّراً، فمن أقلع خادمه قبله يضيفها بيده —
+> `apt install -y ffmpeg` ثمّ `systemctl restart athar-api`. وعلامتُها
+> في السجلّ سطرٌ يقول `[media] ffprobe مفقود`، وأثرُها على المستخدم
+> رسالةٌ صوتيّة وفيديو قصّةٍ يُردّان بـ«تعذّرت قراءة المقطع».
 
 ### ٣٫٢ Node
 
@@ -272,6 +317,15 @@ SNAP_CLIENT_ID="..."
 > **ونطاقُ المرسِل يُثبَت في بريفو أوّلاً** (Senders & Domains): سجلّا
 > DKIM وSPF على `atharmts.com`، وإلّا رُفض الإرسال أو ذهب إلى «المهملات».
 > والرسائلُ تحمل روابط مطلقة، فبلا `SITE_URL` لا تُرسَل أصلاً.
+
+> **وعنوانُ الخادم يُسجَّل في بريفو** (`app.brevo.com/security/authorised_ips`):
+> مفتاحُها مقصورٌ على عناوين مسجَّلة، فترّد ٤٠١ بـ«unrecognised IP address»
+> والمفتاحُ سليم. ويُسجَّل **العنوانان** — IPv4 وIPv6 — فالخادم يخرج
+> بأيّهما حسب الوجهة، وأوّلُ ما جرّبناه خرج بالسادس.
+> وهذا فخٌّ صامت: لا شيء يظهر للمستخدم إلا «تحقّق من بريدك»، والسببُ
+> سطرٌ في `journalctl -u athar-web | grep '[mail]'` وحده. فإن أُعيد
+> تنصيبُ الخادم أو تغيّر عنوانه، يُسجَّل الجديد قبل أن يُسأل «لماذا وقف
+> البريد».
 
 و`EXPO_PUBLIC_SITE_URL="https://atharmts.com"` في بناء الجوّال. ولا
 نطاقَ يُكتب في الكود (القاعدة ١٠٥).

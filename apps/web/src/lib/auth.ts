@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
@@ -45,8 +45,18 @@ export async function verifyPassword(password: string, stored: string): Promise<
   return timingSafeEqual(derived, expected);
 }
 
-export async function createSession(userId: string): Promise<void> {
-  const token = await new SignJWT({ sub: userId })
+/**
+ * بصمةُ كلمة المرور في الجلسة: تغييرُها — أو ضبطُها من «نسيت كلمتي» —
+ * يُبطل كلَّ كوكي صدر قبلها. كان الكوكي يعيش ثلاثين يوماً مهما جرى، فمن
+ * سُرقت جلستُه في اللوحة لا يُخرجه تغييرُ الكلمة.
+ * والبصمةُ مقطعٌ من تجزئة التجزئة: لا تُعيد شيئاً من الكلمة ولا من ملحها.
+ */
+function passwordMark(hash: string | null): string {
+  return createHash("sha256").update(hash ?? "none").digest("base64url").slice(0, 16);
+}
+
+export async function createSession(userId: string, passwordHash: string | null): Promise<void> {
+  const token = await new SignJWT({ sub: userId, pv: passwordMark(passwordHash) })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${SESSION_DAYS}d`)
@@ -67,15 +77,16 @@ export async function destroySession(): Promise<void> {
   store.delete(SESSION_COOKIE);
 }
 
-/** معرّف المستخدم من الجلسة، أو null إن لم توجد جلسة صالحة. */
-export async function currentUserId(): Promise<string | null> {
+/** الجلسة من الكوكي: المعرّف وبصمة الكلمة، أو null إن لم توجد جلسة صالحة. */
+async function readSession(): Promise<{ id: string; pv: string | null } | null> {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   if (!token) return null;
 
   try {
-    const { payload } = await jwtVerify(token, secret());
-    return typeof payload.sub === "string" ? payload.sub : null;
+    const { payload } = await jwtVerify(token, secret(), { algorithms: ["HS256"] });
+    if (typeof payload.sub !== "string") return null;
+    return { id: payload.sub, pv: typeof payload.pv === "string" ? payload.pv : null };
   } catch {
     // توقيع فاسد أو جلسة منتهية — يُعامَل كعدم تسجيل دخول.
     return null;
@@ -112,7 +123,7 @@ export type SessionUser = {
   createdAt: Date;
   role: "USER" | "ADMIN";
   /// مدى صلاحية اللوحة الممنوح لغير المالك.
-  adminScope: "NONE" | "STORE" | "ALL";
+  adminScope: "NONE" | "STORE" | "REPORTS" | "ALL";
   /// صلاحية الإشراف على المحتوى — مستقلّةٌ عن اللوحة، والمالك يملكها دائماً.
   canModerate: boolean;
   /// إيقافٌ مؤقّت قائم — `null` يشمل إيقافاً انقضى.
@@ -137,8 +148,9 @@ export type SessionUser = {
  * لمحتواها — بلا `cache` لصار الاستعلامان اثنين وختمُ الحضور مرّتين.
  */
 export const currentUser = cache(async function currentUser(): Promise<SessionUser | null> {
-  const id = await currentUserId();
-  if (!id) return null;
+  const session = await readSession();
+  if (!session) return null;
+  const id = session.id;
 
   const user = await prisma.user.findUnique({
     where: { id },
@@ -163,6 +175,7 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
       coverMediaId: true,
       coverY: true,
       lastSeenAt: true,
+      passwordHash: true,
       frameId: true,
       backgroundId: true,
       charmId: true,
@@ -173,6 +186,8 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
     },
   });
   if (!user) return null;
+  // كوكي بلا بصمةٍ أو ببصمةٍ قديمة: صدر قبل تغيير الكلمة، فلا يُقبل.
+  if (session.pv !== passwordMark(user.passwordHash)) return null;
 
   await touch(user.id, user.lastSeenAt);
 

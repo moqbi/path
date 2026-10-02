@@ -9,10 +9,18 @@ import {
   PlayIcon,
   GiftIcon,
   WithIcon,
+  TagIcon,
+  CameraIcon,
+  PrivateIcon,
 } from "@/components/icons";
 import { MomentBar } from "@/components/moment-bar";
+import { AthrMark } from "@/components/brand";
 import { Photo } from "@/components/photo";
+import { PHOTO_RATIO } from "@/lib/photo";
+import { mapsUrl } from "@/lib/maps";
+import { PlaceLink } from "@/components/place-link";
 import { Reactors } from "@/components/reactions";
+import { AuthorFaces } from "@/components/author-panel";
 import { CommentList } from "@/components/comments";
 import { ar, relative, timeOfDay } from "@/lib/format";
 import type { FeedMoment } from "@/lib/feed";
@@ -34,6 +42,9 @@ export const EVENTS = new Set([
   "FRIEND_ADDED",
   "GIFT_SENT",
   "GIFT_GOT",
+  "JOINED",
+  "TAG_GRANTED",
+  "AVATAR_CHANGED",
 ]);
 
 const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
@@ -45,6 +56,9 @@ const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
   FRIEND_ADDED: { bg: "var(--color-gold-soft)", ink: "var(--color-gold-ink)" },
   GIFT_SENT: { bg: "var(--color-clay-soft)", ink: "var(--color-clay-ink)" },
   GIFT_GOT: { bg: "var(--color-clay-soft)", ink: "var(--color-clay-ink)" },
+  JOINED: { bg: "var(--color-night)", ink: "#f7f5ef" },
+  TAG_GRANTED: { bg: "var(--color-gold-soft)", ink: "var(--color-gold-ink)" },
+  AVATAR_CHANGED: { bg: "var(--color-clay-soft)", ink: "var(--color-clay-ink)" },
 };
 
 function EventIcon({ kind }: { kind: string }) {
@@ -62,6 +76,12 @@ function EventIcon({ kind }: { kind: string }) {
       <WithIcon size={16} />
     ) : kind === "GIFT_SENT" || kind === "GIFT_GOT" ? (
       <GiftIcon size={16} />
+    ) : kind === "JOINED" ? (
+      <AthrMark size={20} />
+    ) : kind === "TAG_GRANTED" ? (
+      <TagIcon size={16} />
+    ) : kind === "AVATAR_CHANGED" ? (
+      <CameraIcon size={16} />
     ) : (
       <PinIcon size={16} />
     );
@@ -84,6 +104,7 @@ function Spine({
   mediaId,
   charm,
   at,
+  hidden = false,
 }: {
   authorId: string;
   viewerId: string;
@@ -92,6 +113,8 @@ function Spine({
   mediaId?: string | null;
   charm?: { spec: string; mediaId: string | null } | null;
   at: Date;
+  /** لحظةٌ لتصنيفٍ أو لأشخاصٍ بأعيانهم — لا للدائرة كلّها. */
+  hidden?: boolean;
 }) {
   return (
     <div className="flex w-14 shrink-0 flex-col items-center gap-1.5">
@@ -102,6 +125,20 @@ function Spine({
         <Avatar name={name} size={46} frame={frame} mediaId={mediaId} charm={charm} />
       </Link>
       <span className="text-[10px] font-semibold text-muted">{timeOfDay(at)}</span>
+      {/*
+        «خاصة» تحت الساعة — يراها صاحبُها ومن اختارهم، فيعرف كلٌّ منهم أنّ
+        اللحظة لم تُوجَّه إلى الدائرة كلّها (القاعدة ٢٠٦).
+      */}
+      {hidden ? (
+        <span
+          title="لحظة خاصة"
+          className="flex items-center gap-0.5 rounded-full border border-line bg-card px-1.5 py-px text-[9.5px] font-bold"
+          style={{ color: "var(--color-clay-ink)" }}
+        >
+          <PrivateIcon size={11} />
+          خاصة
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -110,13 +147,26 @@ function Spine({
  * التعليقات داخل الخط الزمني.
  * تُعرض ثلاثة، وما زاد يُقرأ بفتح اللحظة — فلا تبتلع لحظةٌ واحدة الشاشة.
  */
-function Comments({ moment, viewerId }: { moment: FeedMoment; viewerId: string }) {
+function Comments({
+  moment,
+  viewerId,
+  moderate = false,
+}: {
+  moment: FeedMoment;
+  viewerId: string;
+  moderate?: boolean;
+}) {
   if (moment.comments.length === 0) return null;
   const hidden = moment._count.comments - moment.comments.length;
 
   return (
     <div className="flex flex-col gap-2">
-      <CommentList comments={moment.comments} viewerId={viewerId} />
+      <CommentList
+        comments={moment.comments}
+        viewerId={viewerId}
+        momentAuthorId={moment.author.id}
+        moderate={moderate}
+      />
       {hidden > 0 ? (
         <Link href={`/m/${moment.id}`} className="text-[11.5px] font-semibold text-clay-ink">
           اقرأ {ar(hidden)} تعليقاً آخر
@@ -131,16 +181,38 @@ function Comments({ moment, viewerId }: { moment: FeedMoment; viewerId: string }
  * الحدث نفسه سطرٌ عارٍ، وما يجتمع حوله من ناس يجلس في قالبٍ أبيض تحته —
  * فيُقرأ الفرق بين ما قاله صاحبه وما ردّ به الناس.
  */
-function Bubble({ moment, viewerId }: { moment: FeedMoment; viewerId: string }) {
+function Bubble({
+  moment,
+  viewerId,
+  moderate = false,
+}: {
+  moment: FeedMoment;
+  viewerId: string;
+  moderate?: boolean;
+}) {
   const hasComments = moment.comments.length > 0;
   const hasReactions = moment.reactions.length > 0;
+  // لصاحبها صفُّ من شاهد ومن تفاعل (القاعدة ٢٠٢) — لا يُعرف عددُه قبل الجلب،
+  // فالقالبُ يُرسم له بالتعليقات وحدها حين لا يتفاعل أحد.
+  if (moment.author.id === viewerId) {
+    return (
+      <div className="mt-2 flex flex-col gap-2.5 empty:hidden">
+        <AuthorFaces momentId={moment.id} />
+        {hasComments ? (
+          <div className="rounded-2xl border border-line bg-card px-3 py-2.5">
+            <Comments moment={moment} viewerId={viewerId} moderate={moderate} />
+          </div>
+        ) : null}
+      </div>
+    );
+  }
   if (!hasComments && !hasReactions) return null;
 
   return (
     <div className="mt-2 rounded-2xl border border-line bg-card px-3 py-2.5">
       {hasReactions ? <Reactors reactions={moment.reactions} viewerId={viewerId} /> : null}
       {hasReactions && hasComments ? <div className="my-2.5 h-px bg-line" /> : null}
-      <Comments moment={moment} viewerId={viewerId} />
+      <Comments moment={moment} viewerId={viewerId} moderate={moderate} />
     </div>
   );
 }
@@ -164,6 +236,7 @@ function Row({
         mediaId={moment.author.avatarMediaId}
         charm={moment.author.charm}
         at={moment.createdAt}
+        hidden={moment.audience !== "CIRCLE"}
       />
       <div className="min-w-0 grow">{children}</div>
     </article>
@@ -183,6 +256,24 @@ export function EventLine({
 }) {
   const { kind } = moment;
 
+  /*
+    اسمُ الطرف الآخر رابطٌ إلى ملفّه — كالجوّال (القاعدة ١٦٥): «أصبح صديق فلان»
+    و«أهديت فلاناً» و«وصلتك هدية من فلان». الطرفُ إشارةٌ على اللحظة (معرّفُه
+    معها)، وما كُتب قبل الإشارة يبقى نصّاً.
+  */
+  const other =
+    kind === "FRIEND_ADDED" || kind === "GIFT_SENT" || kind === "GIFT_GOT"
+      ? (moment.tags[0]?.user ?? null)
+      : null;
+  const who = (fallback: string) =>
+    other ? (
+      <Link href={`/u/${other.id}`} className="font-bold text-clay-ink hover:underline">
+        {other.name}
+      </Link>
+    ) : (
+      <span className="font-bold">{fallback}</span>
+    );
+
   const title =
     kind === "CITY" ? (
       <>
@@ -194,17 +285,29 @@ export function EventLine({
       <span className="font-bold">صحيت</span>
     ) : kind === "FRIEND_ADDED" ? (
       <>
-        أصبح صديق <span className="font-bold">{moment.text ?? "أحدهم"}</span>
+        أصبح صديق {who(moment.text ?? "أحدهم")}
       </>
     ) : kind === "GIFT_SENT" ? (
       <>
-        أهديت <span className="font-bold">{withNames[0] ?? "صديقاً"}</span>{" "}
+        أهديت {who(withNames[0] ?? "صديقاً")}{" "}
         <span className="font-bold">{moment.text ?? "هدية"}</span>
       </>
     ) : kind === "GIFT_GOT" ? (
       <>
-        وصلتك هدية من <span className="font-bold">{withNames[0] ?? "صديق"}</span>:{" "}
+        وصلتك هدية من {who(withNames[0] ?? "صديق")}:{" "}
         <span className="font-bold">{moment.text ?? "هدية"}</span>
+      </>
+    ) : kind === "TAG_GRANTED" ? (
+      <>
+        تهانينا — حصل على وسم <span className="font-bold">«{moment.text ?? ""}»</span> من الإدارة
+      </>
+    ) : kind === "AVATAR_CHANGED" ? (
+      <>
+        <span className="font-bold">{moment.author.name}</span> غيّر صورته
+      </>
+    ) : kind === "JOINED" ? (
+      <>
+        انضم <span className="font-bold">{moment.author.name}</span> إلى آثار مومنتس
       </>
     ) : kind === "MUSIC" ? (
       <>
@@ -218,7 +321,15 @@ export function EventLine({
       </>
     ) : (
       <>
-        في <span className="font-bold">{moment.placeName ?? "مكان"}</span>
+        في{" "}
+        {/* اسمُ المكان يفتح الخرائط (القاعدة ٢١١). */}
+        {mapsUrl(moment) ? (
+          <PlaceLink url={mapsUrl(moment)!} className="font-bold text-clay-ink hover:underline">
+            {moment.placeName}
+          </PlaceLink>
+        ) : (
+          <span className="font-bold">{moment.placeName ?? "مكان"}</span>
+        )}
       </>
     );
 
@@ -246,7 +357,7 @@ export function EventLine({
             {subtitle}
           </p>
         ) : null}
-        {withNames.length > 0 && kind !== "GIFT_SENT" && kind !== "GIFT_GOT" ? (
+        {withNames.length > 0 && kind !== "GIFT_SENT" && kind !== "GIFT_GOT" && kind !== "FRIEND_ADDED" ? (
           <p className="mt-0.5 flex items-center gap-1.5 text-[11.5px] font-medium text-ink-2">
             <WithIcon size={12} />
             مع {withNames.join(" و")}
@@ -263,7 +374,8 @@ export function EventLine({
         رابط — وهو غير جائز في HTML، وكان يُصلَح بمعالج ضغطٍ يوقف الصعود،
         ومكوّن الخادم لا يملك أن يمرّر معالجاً فيسقط العرض كلّه.
       */}
-      {href ? (
+      {/* ورابطُ الاسم لا يُلفّ برابطٍ ثانٍ — رابطٌ داخل رابطٍ لا يجوز في HTML. */}
+      {href && !other ? (
         <Link href={href} className="flex min-w-0 grow items-start gap-2.5">
           {body}
         </Link>
@@ -345,15 +457,16 @@ export function MomentCard({
           isPlus={isPlus}
           author={moment.author.id === viewerId}
           moderate={moderate && moment.author.id !== viewerId}
+          locked={moment.commentsLocked}
           head={line}
           extra={
             <>
               {moment.mediaId ? (
                 <div className="mt-2.5">
-                  <Photo mediaId={moment.mediaId} height={190} rounded />
+                  <Photo mediaId={moment.mediaId} rounded x={moment.photoX ?? 50} y={moment.photoY ?? 50} />
                 </div>
               ) : null}
-              <Bubble moment={moment} viewerId={viewerId} />
+              <Bubble moment={moment} viewerId={viewerId} moderate={moderate} />
             </>
           }
         />
@@ -362,24 +475,37 @@ export function MomentCard({
   }
 
   // ما له متن — صورة أو خاطرة — يبقى في بطاقته.
+  // الصورةُ في أعلى البطاقة وزرُّ التفاعل في ركنها فوقها، بإطار المحرّر وموضعه.
+  const media = moment.mediaId ? (
+    // حشوةٌ لا هامش: هامشُ أوّل ابنٍ ينهار عبر أبيه فيُزيح البطاقة كلّها.
+    <div className="px-3 pt-3">
+      <Photo mediaId={moment.mediaId} rounded x={moment.photoX ?? 50} y={moment.photoY ?? 50} />
+    </div>
+  ) : moment.imageSpec ? (
+    <div className="px-3 pt-3">
+      <div className="rounded-2xl" style={{ aspectRatio: PHOTO_RATIO, background: moment.imageSpec }} />
+    </div>
+  ) : null;
+
   const head = (
     <>
-      {moment.mediaId ? (
-        <Photo mediaId={moment.mediaId} />
-      ) : moment.imageSpec ? (
-        <div style={{ height: 132, background: moment.imageSpec }} />
-      ) : null}
-
-      <div className="px-4 pt-3">
+      {/* بلا صورةٍ يبدأ النصّ من أعلى البطاقة بجانب الزرّ، ومعها يأتي تحتها. */}
+      <div className={media ? "px-4 pt-3" : "min-h-[50px] pl-[52px] pr-4 pt-3.5"}>
         {moment.text ? (
           <p dir="auto" className="mb-2 text-[13.5px] leading-relaxed text-ink">{moment.text}</p>
         ) : null}
 
         {/* الموقع على لحظةٍ أو صورة: سطرٌ صغير، لا حدثُ مكانٍ مستقل. */}
+        {/* ويُضغط فيفتح الخرائط (القاعدة ٢١١). */}
         {moment.placeName ? (
-          <p dir="auto" className="mb-2 flex items-center gap-1.5 text-[12px] text-muted">
-            <PinIcon size={12} />
-            {moment.placeName}
+          <p dir="auto" className="mb-2 text-[12px]">
+            <PlaceLink
+              url={mapsUrl(moment)!}
+              className="flex items-center gap-1.5 font-semibold text-clay-ink hover:underline"
+            >
+              <PinIcon size={12} />
+              {moment.placeName}
+            </PlaceLink>
           </p>
         ) : null}
 
@@ -404,28 +530,32 @@ export function MomentCard({
           isPlus={isPlus}
           author={moment.author.id === viewerId}
           moderate={moderate && moment.author.id !== viewerId}
+          locked={moment.commentsLocked}
           inset
-          panelFirst
-          head={<span className="block" style={{ height: 2 }} />}
+          media={media}
           extra={
-            <>
-              {opens ? (
-                <Link href={`/m/${moment.id}`} className="block">
-                  {head}
-                </Link>
-              ) : (
-                head
-              )}
-
-              <div className="px-4 pb-3 pt-2">
-                {moment.reactions.length > 0 ? <Reactors reactions={moment.reactions} viewerId={viewerId} /> : null}
-                {moment.comments.length > 0 ? (
-                  <div className="mt-2.5 border-t border-line pt-2.5">
-                    <Comments moment={moment} viewerId={viewerId} />
-                  </div>
-                ) : null}
-              </div>
-            </>
+            opens ? (
+              <Link href={`/m/${moment.id}`} className="block">
+                {head}
+              </Link>
+            ) : (
+              head
+            )
+          }
+          footer={
+            <div className="px-4 pb-3 pt-2">
+              {moment.author.id === viewerId ? (
+                /* لصاحبها صفٌّ واحد: من تفاعل ومن شاهد باهتاً (القاعدة ٢٠٢). */
+                <AuthorFaces momentId={moment.id} />
+              ) : moment.reactions.length > 0 ? (
+                <Reactors reactions={moment.reactions} viewerId={viewerId} />
+              ) : null}
+              {moment.comments.length > 0 ? (
+                <div className="mt-2.5 border-t border-line pt-2.5">
+                  <Comments moment={moment} viewerId={viewerId} moderate={moderate} />
+                </div>
+              ) : null}
+            </div>
           }
         />
       </div>

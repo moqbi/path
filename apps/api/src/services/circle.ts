@@ -1,9 +1,9 @@
 import { prisma } from "@athar/db";
+import { forgetNotifications } from "./notifications";
 import { push } from "./push";
 import { CIRCLE_CAP } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { blockedWith, circleIds } from "./visibility";
-import { isModerator } from "../middleware/auth";
 
 /** ما يُعرض عن شخصٍ في قائمة أو بطاقة. */
 const PERSON = {
@@ -69,7 +69,17 @@ export async function circle(userId: string) {
  * وهذا قرار منتَج لا تبسيط: لا اكتشاف عام في آثار، فمن لا يعرفك لا يجدك.
  */
 export async function suggestions(userId: string) {
-  const [ids, blocked] = await Promise.all([circleIds(userId), blockedWith(userId)]);
+  const [all, blocked, open] = await Promise.all([
+    circleIds(userId),
+    blockedWith(userId),
+    prisma.user.findMany({ where: { isOpen: true }, select: { id: true } }),
+  ]);
+  // الحسابُ المفتوح ليس جسراً (القاعدة ٢٢١): آلافٌ أضافوه لا يصيرون «أصدقاء
+  // أصدقاء» بعضهم لبعض — وإلّا صار اقتراحاً لغرباء، وهو الاستكشاف بعينه.
+  // ولا يُقترح على صاحبه أحد.
+  const openIds = new Set(open.map((row) => row.id));
+  if (openIds.has(userId)) return [];
+  const ids = all.filter((id) => !openIds.has(id));
   if (ids.length === 0) return [];
 
   const theirs = await prisma.friendship.findMany({
@@ -131,6 +141,8 @@ export async function userProfile(viewerId: string, id: string) {
       createdAt: true,
       coverMediaId: true,
       coverY: true,
+      coverX: true,
+      coverZoom: true,
       background: { select: { spec: true, mediaId: true, palette: true } },
     },
   });
@@ -148,7 +160,8 @@ export async function userProfile(viewerId: string, id: string) {
       تعرضه. ومعرّفات الأصناف لا أكثر: لا سعرَ ولا تاريخَ شراء.
     */
     const owns = await prisma.purchase.findMany({
-      where: { userId: id },
+      // ما انتهت مدّتُه لا يُعدّ مِلكاً: يُهدى له من جديد.
+      where: { userId: id, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
       select: { itemId: true },
     });
     return {
@@ -178,19 +191,16 @@ export async function userProfile(viewerId: string, id: string) {
   const mutual = ids.filter((one) => set.has(one)).length;
 
   /*
-    والمشرف يفتح أيّ بطاقة.
+    البطاقة تُقرأ لكلّ حسابٍ قائم — بقرار المالك.
 
-    البلاغ يصل من داخل الدائرة على من هو خارج دائرة المشرف، فلو بقي
-    الشرط على حاله لردّت اللوحةُ «لا يوجد هذا الحساب» عمّن يُبلَّغ عنه.
-    وهذا **بطاقةٌ لا لحظات**: اللحظات لها بابُها في `/v1/moderation`،
-    وهي تُقرأ من خلف `requireModerator` لا من هنا.
+    من أعطى رابطه أعطى بطاقته: صورةٌ واسمٌ ورقمُ عضوية، بلا لحظةٍ ولا
+    محادثة حتى تُقبل الإضافة. وهذا ليس استكشافاً عامّاً (القاعدة ٢):
+    لا بحثَ بالاسم ولا بالبريد ولا قائمةَ تُتصفَّح — يصلها من يصلها
+    برابطٍ أعطاه صاحبه أو من قائمةٍ كان فيها.
+
+    وكان الشرط `mutual === 0` يُخفيها، فمن حذف صديقاً لا يجمعه به أحد
+    وجد صفحةَ «غير موجود» مكان من كان صديقَه أمسِ، ولا بابَ إلى إعادته.
   */
-  // والحساب المفتوح تُقرأ بطاقتُه بلا صديقٍ مشترك — كلحظاته العامّة.
-  if (mutual === 0 && !pending && !person.isOpen) {
-    if (!(await isModerator(viewerId))) throw notFound("لا يوجد هذا الحساب");
-    return { person, friend: false as const, mutual, pending, owned: [] as string[] };
-  }
-
   return { person, friend: false as const, mutual, pending, owned: [] as string[] };
 }
 
@@ -208,24 +218,28 @@ async function circleSize(userId: string): Promise<number> {
  * امتلأت دائرته لا يُقبل فيها أحد ولو كان هو المدعوّ.
  */
 async function assertRoomForBoth(a: string, b: string) {
-  const [sizeA, sizeB] = await Promise.all([circleSize(a), circleSize(b)]);
+  // الحسابُ المفتوح لا سقفَ لجانبه (القاعدة ٢٢١): حسابُ الدعم والأخبار يقبل
+  // الآلاف. والطرفُ الآخر يبقى على سقفه — إضافتُه تأخذ خانةً من دائرته.
+  const open = await prisma.user.findMany({
+    where: { id: { in: [a, b] }, isOpen: true },
+    select: { id: true },
+  });
+  const uncapped = new Set(open.map((row) => row.id));
+  const [sizeA, sizeB] = await Promise.all([
+    uncapped.has(a) ? 0 : circleSize(a),
+    uncapped.has(b) ? 0 : circleSize(b),
+  ]);
   if (sizeA >= CIRCLE_CAP || sizeB >= CIRCLE_CAP) {
     throw badRequest(`الدائرة مكتملة — ${CIRCLE_CAP} صديقاً هو السقف`);
   }
 }
 
-/** عدد الأصدقاء المشتركين بين اثنين. */
-async function mutualCount(a: string, b: string): Promise<number> {
-  const [circleA, circleB] = await Promise.all([circleIds(a), circleIds(b)]);
-  const set = new Set(circleB);
-  return circleA.filter((id) => set.has(id)).length;
-}
-
 /**
- * طلب صداقة — من المقترحين وحدهم.
+ * طلب صداقة — من بطاقةِ من وصلتَ إليه.
  *
- * لا بحث بالبريد ولا اكتشاف عام: من لا يجمعك به صديقٌ مشترك لا يظهر لك
- * ولا يصلك منه طلب. والفحص هنا لا في الشاشة.
+ * ولا يُشترط صديقٌ مشترك: من فتح بطاقةً يرسل طلباً، وصاحبُها هو من
+ * يقبل أو يدع. والحارسُ هو القبول لا الوصول — ومن حذف صديقاً يستطيع
+ * أن يعيده، وذلك ما لم يكن ممكناً حين كان الشرط قائماً.
  */
 export async function requestFriend(userId: string, targetId: string) {
   if (targetId === userId) throw badRequest("لا يمكنك إضافة نفسك");
@@ -239,14 +253,6 @@ export async function requestFriend(userId: string, targetId: string) {
   });
   if (!target) throw notFound("لا يوجد هذا الحساب");
 
-  /*
-    الإضافة من أصدقاء الأصدقاء وحدهم (القاعدة ٢٠) — **إلا الحسابَ
-    المفتوح**: حسابُ أخبار التطبيق يقبل من أيّ أحد، وإلا احتاج كلُّ
-    مستخدمٍ جديد وسيطاً ليصل إلى أخبار التطبيق الذي نزّله للتوّ.
-  */
-  if (!target.isOpen && (await mutualCount(userId, targetId)) === 0) {
-    throw forbidden("ما بينكما صديق مشترك");
-  }
   await assertRoomForBoth(userId, targetId);
 
   // طلبٌ قادمٌ من الطرف الآخر يُقبل بالطلب المقابل: لا يُنشأ طلبان.
@@ -259,18 +265,25 @@ export async function requestFriend(userId: string, targetId: string) {
     return { status: "ACCEPTED" as const };
   }
 
-  await prisma.friendship.upsert({
+  const row = await prisma.friendship.upsert({
     where: { requesterId_addresseeId: { requesterId: userId, addresseeId: targetId } },
     create: { requesterId: userId, addresseeId: targetId },
     update: {},
+    select: { id: true },
   });
 
+  // الحسابُ المفتوح يقبل بنفسه (القاعدة ٢٢١): لا أحدَ يقبل آلاف الطلبات بيده،
+  // وطلبٌ معلّقٌ عند حساب الدعم بابٌ مغلقٌ في وجه من يسأل.
+  if (target.isOpen) return acceptFriend(targetId, row.id);
+
+  // الطلبُ يصل في الحال لا بعد انقضاء خبيئة إشعارات صاحبه.
+  forgetNotifications(targetId);
   const who = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
   void push({
     userId: targetId,
     kind: "FRIEND",
-    title: who?.name ?? "طلب صداقة",
-    body: "يبغى يكون من دائرتك",
+    title: "طلب صداقة جديد",
+    body: `${who?.name ?? "شخص"} يبغى يكون من دائرتك`,
     path: "/circle",
   });
 
@@ -294,18 +307,42 @@ export async function acceptFriend(userId: string, friendshipId: string) {
   await assertRoomForBoth(friendship.requesterId, friendship.addresseeId);
 
   const [me, other] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { name: true } }),
-    prisma.user.findUnique({ where: { id: friendship.requesterId }, select: { name: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { name: true, isOpen: true } }),
+    prisma.user.findUnique({ where: { id: friendship.requesterId }, select: { name: true, isOpen: true } }),
   ]);
+
+  // ولا يُكتب في خطّ الحساب المفتوح «أصبح صديق فلان» لكل من أضافه: آلافُ
+  // الأسطر تدفن أخباره. والسطرُ يبقى في خطّ من أضافه.
+  const lines = [];
+  if (!me?.isOpen) {
+    lines.push(
+      prisma.moment.create({
+        // والصديقُ إشارةٌ لا نصٌّ وحده: اسمُه في السطر رابطٌ إلى ملفّه.
+        data: {
+          authorId: userId,
+          kind: "FRIEND_ADDED",
+          text: other?.name ?? null,
+          tags: { create: { userId: friendship.requesterId } },
+        },
+      }),
+    );
+  }
+  if (!other?.isOpen) {
+    lines.push(
+      prisma.moment.create({
+        data: {
+          authorId: friendship.requesterId,
+          kind: "FRIEND_ADDED",
+          text: me?.name ?? null,
+          tags: { create: { userId } },
+        },
+      }),
+    );
+  }
 
   await prisma.$transaction([
     prisma.friendship.update({ where: { id: friendshipId }, data: { status: "ACCEPTED" } }),
-    prisma.moment.create({
-      data: { authorId: userId, kind: "FRIEND_ADDED", text: other?.name ?? null },
-    }),
-    prisma.moment.create({
-      data: { authorId: friendship.requesterId, kind: "FRIEND_ADDED", text: me?.name ?? null },
-    }),
+    ...lines,
   ]);
 
   return { status: "ACCEPTED" as const };

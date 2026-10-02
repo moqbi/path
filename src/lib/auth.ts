@@ -1,11 +1,12 @@
 import "server-only";
 import { cache } from "react";
-import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import { prisma } from "@/lib/db";
 import { deliverTo } from "@/lib/dm";
+import { clientIp } from "@/lib/rate-limit";
 
 const scrypt = promisify(scryptCallback) as (
   password: string,
@@ -46,8 +47,20 @@ export async function verifyPassword(password: string, stored: string): Promise<
   return timingSafeEqual(derived, expected);
 }
 
+/**
+ * بصمةُ كلمة المرور في الجلسة: ضبطُها من «نسيت كلمتي» — أو تغييرُها — يُبطل
+ * كلَّ كوكي صدر قبلها. كان الكوكي يعيش ثلاثين يوماً مهما جرى، فإعادةُ
+ * الضبط تُخرج أجهزة الجوّال (توكن التجديد) وتترك المتصفّح المسروق داخلاً.
+ * والبصمةُ مقطعٌ من تجزئة التجزئة: لا تُعيد شيئاً من الكلمة ولا من ملحها.
+ * ومن لا كلمةَ له (دخل بمزوّد) بصمتُه ثابتة حتى يضعها.
+ */
+export function passwordMark(hash: string | null): string {
+  return createHash("sha256").update(hash ?? "none").digest("base64url").slice(0, 16);
+}
+
 export async function createSession(userId: string): Promise<void> {
-  const token = await new SignJWT({ sub: userId })
+  const row = await prisma.user.findUnique({ where: { id: userId }, select: { passwordHash: true } });
+  const token = await new SignJWT({ sub: userId, pv: passwordMark(row?.passwordHash ?? null) })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${SESSION_DAYS}d`)
@@ -68,20 +81,34 @@ export async function destroySession(): Promise<void> {
   store.delete(SESSION_COOKIE);
 }
 
-/** معرّف المستخدم من الجلسة، أو null إن لم توجد جلسة صالحة. */
-export async function currentUserId(): Promise<string | null> {
+/**
+ * معرّف المستخدم من الجلسة، أو null إن لم توجد جلسة صالحة.
+ *
+ * وصالحةٌ تعني ثلاثاً: توقيعٌ سليم، وحسابٌ قائم، وبصمةُ كلمةٍ تطابق ما في
+ * صفّه الآن — فالتحقّق يسأل القاعدة، ومرّةً لكل طلب (`cache`).
+ */
+export const currentUserId = cache(async function currentUserId(): Promise<string | null> {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   if (!token) return null;
 
+  let id: string;
+  let pv: string | null;
   try {
-    const { payload } = await jwtVerify(token, secret());
-    return typeof payload.sub === "string" ? payload.sub : null;
+    const { payload } = await jwtVerify(token, secret(), { algorithms: ["HS256"] });
+    if (typeof payload.sub !== "string") return null;
+    id = payload.sub;
+    pv = typeof payload.pv === "string" ? payload.pv : null;
   } catch {
     // توقيع فاسد أو جلسة منتهية — يُعامَل كعدم تسجيل دخول.
     return null;
   }
-}
+
+  const row = await prisma.user.findUnique({ where: { id }, select: { passwordHash: true } });
+  // كوكي بلا بصمةٍ أو ببصمةٍ قديمة صدر قبل تغيير الكلمة، فلا يُقبل.
+  if (!row || pv !== passwordMark(row.passwordHash)) return null;
+  return id;
+});
 
 /**
  * ختم الحضور.
@@ -94,6 +121,20 @@ async function touch(id: string, lastSeenAt: Date | null) {
   try {
     await prisma.user.update({ where: { id }, data: { lastSeenAt: new Date() } });
   } catch {}
+  /*
+    ومن أين دخل — لكشف الحسابات المرتبطة في اللوحة (القاعدة ١٩٤). على الويب
+    العنوانُ وحده: لا معرّفَ جهازٍ في المتصفّح إلا بتتبّعٍ لا نريده.
+  */
+  try {
+    const ip = (await clientIp()).slice(0, 64);
+    if (ip && ip !== "local") {
+      await prisma.accessEvent.upsert({
+        where: { userId_ip_device: { userId: id, ip, device: "" } },
+        create: { userId: id, ip },
+        update: { lastAt: new Date(), hits: { increment: 1 } },
+      });
+    }
+  } catch {}
   // حضوره يعني أنّ ما أُرسل إليه قد وصله، فيرى المرسل الصحّين.
   await deliverTo(id);
 }
@@ -104,6 +145,9 @@ export type SessionUser = {
   name: string;
   handle: string | null;
   email: string | null;
+  /// متى أُكّد البريد — `null` يعني لم يُؤكَّد، ولا يُمنع به شيء
+  /// (القاعدة ١١٩ب). يُقرأ هنا ليُعرض التنبيه في الخطّ الزمنيّ.
+  emailVerifiedAt: Date | null;
   city: string | null;
   bio: string | null;
   isPlus: boolean;
@@ -111,7 +155,7 @@ export type SessionUser = {
   createdAt: Date;
   role: "USER" | "ADMIN";
   /// مدى صلاحية اللوحة الممنوح لغير المالك.
-  adminScope: "NONE" | "STORE" | "ALL";
+  adminScope: "NONE" | "STORE" | "REPORTS" | "ALL";
   /// صلاحية الإشراف على المحتوى — مستقلّةٌ عن اللوحة، والمالك يملكها دائماً.
   canModerate: boolean;
   /// إيقافٌ مؤقّت قائم — `null` يشمل إيقافاً انقضى.
@@ -120,6 +164,8 @@ export type SessionUser = {
   avatarMediaId: string | null;
   coverMediaId: string | null;
   coverY: number;
+  coverX: number;
+  coverZoom: number;
   /** الملبوس الآن: المعرّفان ليُعرف أيّ صنفٍ عليه علامة «ملبوس». */
   frameId: string | null;
   backgroundId: string | null;
@@ -147,6 +193,7 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
       name: true,
       handle: true,
       email: true,
+      emailVerifiedAt: true,
       city: true,
       bio: true,
       isPlus: true,
@@ -161,6 +208,8 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
       avatarMediaId: true,
       coverMediaId: true,
       coverY: true,
+      coverX: true,
+      coverZoom: true,
       lastSeenAt: true,
       frameId: true,
       backgroundId: true,
@@ -184,6 +233,7 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
     name: user.name,
     handle: user.handle,
     email: user.email,
+    emailVerifiedAt: user.emailVerifiedAt,
     city: user.city,
     bio: user.bio,
     isPlus: active,
@@ -199,6 +249,8 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
     avatarMediaId: user.avatarMediaId,
     coverMediaId: user.coverMediaId,
     coverY: user.coverY,
+    coverX: user.coverX,
+    coverZoom: user.coverZoom,
     frameId: user.frameId,
     backgroundId: user.backgroundId,
     charmId: user.charmId,

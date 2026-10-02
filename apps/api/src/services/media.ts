@@ -92,6 +92,7 @@ export async function copyMedia(
 export async function wearItemCover(
   coverMediaId: string | null,
   userId: string,
+  itemId: string | null = null,
 ): Promise<void> {
   if (!coverMediaId) return;
   try {
@@ -103,7 +104,8 @@ export async function wearItemCover(
     });
     await prisma.user.update({
       where: { id: userId },
-      data: { coverMediaId: copy.id, coverY: 50 },
+      // ومعه مصدرُه: انتهاءُ مدّة الثيم يأخذ غلافَه (القاعدة ١٩٣).
+      data: { coverMediaId: copy.id, coverItemId: itemId, coverY: 50, coverX: 50, coverZoom: 100 },
     });
     if (old?.coverMediaId) await dropMedia([old.coverMediaId]);
   } catch {

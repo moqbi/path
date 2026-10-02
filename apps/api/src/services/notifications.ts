@@ -36,6 +36,12 @@ export type Note = {
  */
 /** عمرُ خبر المتجر: ثلاثة أيام كنافذة «الجديد» في عدّاد التبويب. */
 const NEW_ITEM_DAYS = 3;
+/**
+ * عمرُ الإشعار ١٥ يوماً — **بقرار المالك**: ما مضى عليه أكثرُ يختفي من كل
+ * مكانٍ وحده. ولأنّها تُشتقّ (القاعدة ٢٥) فلا صفَّ يُمحى: شرطٌ في الاشتقاق
+ * نفسه في الخادم والويب، فلا يعود بتحديثٍ ولا يبقى في مكانٍ دون آخر.
+ */
+const NOTE_DAYS = 15;
 
 /**
  * خبيئةٌ قصيرة للاشتقاق.
@@ -57,6 +63,11 @@ export function forgetNotifications(userId: string): void {
   cache.delete(userId);
 }
 
+/** يُنسى ما خُبّئ للجميع — خبرٌ يخصّ الناس كلَّهم (صنفٌ جديد في المتجر). */
+export function forgetAllNotifications(): void {
+  cache.clear();
+}
+
 export async function notifications(userId: string, limit = 40): Promise<Note[]> {
   const fresh = cache.get(userId);
   if (fresh && Date.now() - fresh.at < CACHE_MS) return fresh.notes.slice(0, limit);
@@ -75,13 +86,19 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
 async function derive(userId: string, limit: number): Promise<Note[]> {
   const me = await prisma.user.findUnique({
     where: { id: userId },
-    select: { notifyOnTag: true },
+    select: { notifyOnTag: true, notesClearedAt: true, createdAt: true },
   });
+  const dismissed = new Set(
+    (await prisma.noteDismissal.findMany({ where: { userId }, select: { noteId: true } })).map(
+      (row) => row.noteId,
+    ),
+  );
+  const clearedAt = me?.notesClearedAt?.getTime() ?? 0;
   const hidden = new Set(await blockedWith(userId));
 
   const person = { select: { id: true, name: true, avatarMediaId: true } };
 
-  const [reactions, comments, tags, friendships, messages, gifts, fresh] = await Promise.all([
+  const [reactions, comments, tags, friendships, messages, gifts, fresh, grants] = await Promise.all([
     prisma.reaction.findMany({
       where: { moment: { authorId: userId }, userId: { not: userId } },
       select: {
@@ -169,26 +186,26 @@ async function derive(userId: string, limit: number): Promise<Note[]> {
       where: {
         hidden: false,
         earnedAfterDays: null,
-        createdAt: { gt: new Date(Date.now() - NEW_ITEM_DAYS * 86_400_000) },
+        /*
+          ولا ما سبق الحساب: من سجّل اليوم لم يفُته شيء، وخبرُ صنفٍ رُفع قبل
+          وجوده لا يُقرأ «جديداً» عنده.
+        */
+        createdAt: {
+          gt: new Date(
+            Math.max(Date.now() - NEW_ITEM_DAYS * 86_400_000, me?.createdAt.getTime() ?? 0),
+          ),
+        },
       },
       select: { id: true, name: true, spec: true, mediaId: true, createdAt: true, limited: true },
       orderBy: { createdAt: "desc" },
       take: 8,
     }),
-    /*
-      جديدُ المتجر: خبرٌ لا فعل — ويُشتقّ من `createdAt` كبقيّته لا من
-      جدولٍ يُكتب لكل مستخدمٍ عند كل إضافة. والمخفيُّ لا يُخبَر عنه،
-      وما يُكتسب بالوقت كذلك: ليس وصولاً جديداً إلى المتجر.
-    */
-    prisma.storeItem.findMany({
-      where: {
-        hidden: false,
-        earnedAfterDays: null,
-        createdAt: { gt: new Date(Date.now() - NEW_ITEM_DAYS * 86_400_000) },
-      },
-      select: { id: true, name: true, spec: true, mediaId: true, createdAt: true, limited: true },
+    // نقاطٌ منحتها الإدارة (القاعدة ١٩٨) — خبرٌ من التطبيق لا من صديق.
+    prisma.coinGrant.findMany({
+      where: { userId },
+      select: { id: true, coins: true, note: true, createdAt: true },
       orderBy: { createdAt: "desc" },
-      take: 8,
+      take: 10,
     }),
   ]);
 
@@ -262,6 +279,14 @@ async function derive(userId: string, limit: number): Promise<Note[]> {
       href: "store",
       item: { spec: row.spec, mediaId: row.mediaId },
     })),
+    ...grants.map((row) => ({
+      // `k-` لا `c-`: الأخيرةُ للتعليقات.
+      id: `k-${row.id}`,
+      kind: "STORE" as const,
+      at: row.createdAt,
+      text: grantText(row.coins, row.note),
+      href: "store",
+    })),
     ...messages.map((row) => ({
       id: `m-${row.id}`,
       kind: "MESSAGE" as const,
@@ -275,6 +300,10 @@ async function derive(userId: string, limit: number): Promise<Note[]> {
   return notes
     // وما لا صاحب له لا يُحجب: خبرُ المتجر ليس من أحد.
     .filter((note) => !note.person || !hidden.has(note.person.id))
+    // وما حذفه صاحبُه لا يعود: بالسحب واحداً، أو بـ«احذف الكل».
+    .filter(
+      (note) => note.at.getTime() > Math.max(clearedAt, Date.now() - NOTE_DAYS * 86_400_000) && !dismissed.has(note.id),
+    )
     .sort((a, b) => b.at.getTime() - a.at.getTime())
     .slice(0, limit);
 }
@@ -283,4 +312,29 @@ export async function unseenCount(userId: string): Promise<number> {
   return (await notifications(userId, 40)).filter(
     (note) => Date.now() - note.at.getTime() < 3 * 24 * 60 * 60 * 1000,
   ).length;
+}
+
+/** حذفُ إشعارٍ واحد بالسحب — يُستثنى من الاشتقاق بعدها في كل مكان. */
+export async function dismiss(userId: string, noteId: string): Promise<void> {
+  await prisma.noteDismissal.upsert({
+    where: { userId_noteId: { userId, noteId } },
+    create: { userId, noteId },
+    update: {},
+  });
+  forgetNotifications(userId);
+}
+
+/** «احذف الكل»: ختمٌ واحد، وما حُذف قبله واحداً واحداً لم يعد يلزم. */
+export async function clearAll(userId: string): Promise<void> {
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: userId }, data: { notesClearedAt: new Date() } }),
+    prisma.noteDismissal.deleteMany({ where: { userId } }),
+  ]);
+  forgetNotifications(userId);
+}
+
+/** «لأنك تستحق! تمّ منحك ٥٠٠ نقطة من قبل الإدارة» — بنصّ المالك (القاعدة ١٩٨). */
+export function grantText(coins: number, note: string | null): string {
+  const n = coins.toLocaleString("ar-SA");
+  return `لأنك تستحق! تمّ منحك ${n} نقطة من قبل الإدارة${note ? ` — ${note}` : ""}`;
 }

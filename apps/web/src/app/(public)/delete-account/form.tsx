@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { deleteAccountFromWeb } from "@/app/actions";
 
 const FIELD =
-  "w-full min-w-0 rounded-xl border border-line bg-card px-4 text-[13.5px] text-ink outline-none focus:border-clay";
+  "w-full min-w-0 rounded-xl border border-line bg-paper px-4 text-[13.5px] text-ink outline-none focus:border-clay";
 
 export function DeleteForm() {
   const [state, action, pending] = useActionState(deleteAccountFromWeb, null);
@@ -21,7 +21,7 @@ export function DeleteForm() {
     return (
       <p
         role="status"
-        className="my-5 rounded-2xl border border-line bg-card p-5 text-[14px] font-semibold"
+        className="rounded-2xl border border-line bg-paper p-5 text-[14px] font-semibold"
       >
         {state.ok}
       </p>
@@ -29,7 +29,7 @@ export function DeleteForm() {
   }
 
   return (
-    <form action={action} className="my-5 flex max-w-md flex-col gap-2.5">
+    <form action={action} className="flex flex-col gap-2.5">
       <label className="flex flex-col gap-1">
         <span className="px-1 text-[11.5px] font-semibold text-muted">بريد الحساب</span>
         <input

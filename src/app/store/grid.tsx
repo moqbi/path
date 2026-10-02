@@ -6,6 +6,7 @@ import { coinText, ar } from "@/lib/format";
 import { LockIcon, CheckIcon } from "@/components/icons";
 import { frameInset, itemPaint } from "@/components/ui";
 import { Portal, Sheet } from "@/components/sheet";
+import { BASE } from "@/lib/base";
 
 /**
  * شبكة أصناف المتجر.
@@ -444,7 +445,7 @@ function ItemCard({
             {item.mediaId ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={`/api/media/${item.mediaId}`}
+                src={`${BASE}/api/media/${item.mediaId}`}
                 alt={item.name}
                 className="max-h-full max-w-full object-contain"
               />

@@ -1,5 +1,5 @@
 import { prisma } from "@athar/db";
-import { notFound } from "../lib/errors";
+import { forbidden, notFound } from "../lib/errors";
 import { blockedWith, visibleWhere } from "./visibility";
 
 /**
@@ -15,12 +15,20 @@ const shape = {
   text: true,
   placeName: true,
   placeCity: true,
+  // للخرائط (القاعدة ٢١١): لا تُحفظ إلا و«إظهار موقعي» مفتوح.
+  lat: true,
+  lng: true,
   musicTitle: true,
   musicArtist: true,
   musicUrl: true,
   musicThumb: true,
   imageSpec: true,
+  photoX: true,
+  photoY: true,
   mediaId: true,
+  commentsLocked: true,
+  // «خاصة»: من يرى اللحظة يُقال له إنّها لم تُوجَّه إلى الدائرة كلّها.
+  audience: true,
   createdAt: true,
   author: {
     select: {
@@ -60,6 +68,9 @@ const shape = {
           isPlus: true,
           avatarMediaId: true,
           tag: { select: { name: true, bg: true, fg: true } },
+          // الإطارُ والتميمة مع صورة المعلّق كما في كلّ مكانٍ تظهر فيه صورته.
+          frame: { select: { spec: true, mediaId: true, frameHole: true } },
+          charm: { select: { spec: true, mediaId: true } },
         },
       },
     },
@@ -153,30 +164,21 @@ export async function privateTimeline(userId: string, options: { cursor?: string
 }
 
 /**
- * «آثارنا»: الخط الزمني المشترك بين اثنين.
+ * «آثارنا»: الأثرُ المشترك بين اثنين — **بقرار المالك** ما جمعهما بالإشارة
+ * («مع فلان») وحدها: لحظةٌ كتبها أحدهما وأشار فيها إلى الآخر. وكان يدخلها
+ * كلُّ تفاعلٍ وتعليق، فتصير «كلَّ ما مرّ عليه» لا «ما كنّا فيه معاً».
+ * وشرط الرؤية يبقى فوق ذلك كلّه: `visibleWhere` هي الباب الوحيد.
  *
- * ليس كل ما نشراه، بل ما يجمعهما فعلاً — لحظةٌ أشار فيها أحدهما إلى
- * الآخر، أو ترك عليها أثراً بتفاعلٍ أو تعليق. وشرط الرؤية يبقى فوق ذلك
- * كلّه: `visibleWhere` هي الباب الوحيد لقراءة اللحظات.
- *
- * ومن ليس في دائرتك لا أثرَ معه: الخادم يمنع، لا الواجهة.
+ * ومن ليس في دائرتك لا أثرَ معه: الخادم يمنع، لا الواجهة. وهي من مزايا
+ * آثار+ — الخادمُ يمنعها عن غير المشترك كذلك.
  */
 function involves(authorId: string, otherId: string) {
-  return {
-    AND: [
-      { authorId },
-      {
-        OR: [
-          { tags: { some: { userId: otherId } } },
-          { reactions: { some: { userId: otherId } } },
-          { comments: { some: { userId: otherId } } },
-        ],
-      },
-    ],
-  };
+  return { AND: [{ authorId }, { tags: { some: { userId: otherId } } }] };
 }
 
 export async function togetherTimeline(userId: string, friendId: string) {
+  const viewer = await prisma.user.findUnique({ where: { id: userId }, select: { isPlus: true } });
+  if (!viewer?.isPlus) throw forbidden("«آثارنا» من مزايا آثار+");
   const { circleIds } = await import("./visibility");
   const ids = await circleIds(userId);
   if (!ids.includes(friendId)) throw notFound("لا يوجد هذا الحساب");

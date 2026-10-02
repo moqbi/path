@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "@athar/db";
-import { SITE_URL } from "@athar/shared";
-import { letterHtml, sendMail } from "./mail";
+import { SITE_URL, appUrl } from "@athar/shared";
+import { escapeHtml, letterHtml, sendMail } from "./mail";
 
 /**
  * رموزُ البريد: تأكيدُ العنوان وإعادةُ ضبط كلمة المرور.
@@ -80,7 +80,9 @@ export async function sendVerify(userId: string, email: string, name: string): P
   const token = await issue(userId, "VERIFY");
   if (!token) return false;
 
-  const url = `${SITE_URL}/verify?token=${token}`;
+  // `appUrl` لا `SITE_URL` عارياً (القاعدة ١٢٢): الصفحة في التطبيق تحت
+  // `/app`، والجذرُ للموقع العامّ — فكان الرابط يفتح «٤٠٤» في بريد الناس.
+  const url = appUrl(`/verify?token=${token}`);
   return sendMail({
     to: email,
     subject: "أكّد بريدك في آثار",
@@ -107,14 +109,16 @@ export async function sendReset(userId: string, email: string, name: string): Pr
   const token = await issue(userId, "RESET");
   if (!token) return false;
 
-  const url = `${SITE_URL}/reset?token=${token}`;
+  // كرابط التأكيد: الصفحة تحت `/app`. نسخةُ الويب (`src/lib/email-tokens.ts`)
+  // صُحّحت وبقيت هذه على الجذر، فوصلت الرسالة ورابطُها مكسور.
+  const url = appUrl(`/reset?token=${token}`);
   return sendMail({
     to: email,
     subject: "إعادة ضبط كلمة مرورك في آثار",
     text: `${name} — اضبط كلمة مرورك من هذا الرابط: ${url}`,
     html: letterHtml({
       title: "إعادة ضبط كلمة المرور",
-      intro: `${name}، اضغط الزرّ لتختار كلمة مرورٍ جديدة. الرابط يعمل ساعةً واحدة ومرّةً واحدة.`,
+      intro: `${escapeHtml(name)}، اضغط الزرّ لتختار كلمة مرورٍ جديدة. الرابط يعمل ساعةً واحدة ومرّةً واحدة.`,
       button: "اضبط كلمة المرور",
       url,
       note: "إن لم تطلب أنت هذا، تجاهل الرسالة — كلمةُ مرورك كما هي ولا أحد يستطيع تغييرها بلا هذا الرابط.",

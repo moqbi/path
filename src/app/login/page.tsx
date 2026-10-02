@@ -7,10 +7,10 @@ import { LoginForm } from "./form";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ deleted?: string }>;
+  searchParams: Promise<{ deleted?: string; verify?: string }>;
 }) {
   if (await currentUserId()) redirect("/");
-  const { deleted } = await searchParams;
+  const { deleted, verify } = await searchParams;
 
   /*
    * الخلفية صورة حقيقية إن وُجدت في `public/login-bg.jpg`، وإلا تدرّج
@@ -18,5 +18,5 @@ export default async function LoginPage({
    */
   const photo = fs.existsSync(path.join(process.cwd(), "public", "login-bg.jpg"));
 
-  return <LoginForm photo={photo} deleted={deleted === "1"} />;
+  return <LoginForm photo={photo} deleted={deleted === "1"} verify={verify ?? ""} />;
 }

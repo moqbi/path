@@ -1,12 +1,17 @@
 import { SITE_URL, hasSite } from "@athar/shared";
-import { useMemo } from "react";
-import { View, SectionList, Pressable, ActivityIndicator, Alert, Share } from "react-native";
+import { scrolled } from "../../lib/scrolled";
+import { useMemo, useRef, useState } from "react";
+import { View, SectionList, Pressable, ActivityIndicator, Alert, Share, Animated, RefreshControl } from "react-native";
 import { Text } from "../../components/type";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { AvatarMenu } from "../../components/avatar-menu";
-import { CoverLayer } from "../../components/cover";
+import { Spot } from "../../components/spot";
+import { frameBleed } from "../../components/avatar";
+import { COVER_HEIGHT, CoverLayer, StretchCover, useStretch } from "../../components/cover";
+import { useTabTop } from "../../lib/tab-top";
+import { playRefresh } from "../../lib/sound";
 import { MomentCard, SPINE_W } from "../../components/moment-card";
 import { AthrMark } from "../../components/brand";
 import {
@@ -19,7 +24,7 @@ import { ar, dayLabel, MONTHS } from "../../lib/format";
 import { NameTag } from "../../components/name-tag";
 import { colors } from "../../theme/tokens";
 
-const COVER = 176;
+const COVER = COVER_HEIGHT;
 
 function Stat({ icon, value, label, first }: { icon: React.ReactNode; value: string; label: string; first: boolean }) {
   return (
@@ -97,6 +102,8 @@ function Action({
 export default function Me() {
   const { me, signOut } = useSession();
   const router = useRouter();
+  // حشوةُ الحافّة العليا في الرأس الداكن نفسه — انظر `components/screen-header.tsx`.
+  const insets = useSafeAreaInsets();
 
   const stats = useQuery({
     queryKey: ["me", "stats"],
@@ -106,6 +113,22 @@ export default function Me() {
     queryKey: ["me", "moments"],
     queryFn: () => api<{ moments: Moment[] }>("/v1/me/moments?limit=40"),
   });
+
+  /*
+    السحبُ من أعلى يمدّ الغلاف ويُحدّث فعلاً — كاللحظات: صاحبُ الجلسة
+    (غلافُه وإطارُه) ولحظاتُه وأرقامُه معاً. والضغطةُ على «أنا» وهو
+    ظاهرٌ ترجع إلى الأعلى.
+  */
+  const { y: scrollY, onScroll } = useStretch();
+  const list = useRef<SectionList<Moment>>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshMe = useSession((state) => state.refresh);
+  const reload = () => {
+    playRefresh();
+    setRefreshing(true);
+    void Promise.all([refreshMe(), stats.refetch(), mine.refetch()]).finally(() => setRefreshing(false));
+  };
+  useTabTop(() => list.current?.getScrollResponder()?.scrollTo({ y: 0, animated: true }));
 
   const days = useMemo(() => {
     const out: { title: string; data: Moment[] }[] = [];
@@ -124,7 +147,7 @@ export default function Me() {
   const s = stats.data;
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       {/* الرأس: العلامة، ففاصل، فاسم الشاشة — والمشاركة في الطرف المقابل. */}
       <View
         style={{
@@ -132,7 +155,7 @@ export default function Me() {
           alignItems: "center",
           justifyContent: "space-between",
           paddingHorizontal: 20,
-          paddingTop: 6,
+          paddingTop: insets.top + 6,
           paddingBottom: 10,
           backgroundColor: colors.chrome,
         }}
@@ -176,16 +199,26 @@ export default function Me() {
         </Pressable>
       </View>
 
-      <SectionList
+      <Animated.SectionList
+        ref={list as never}
+        // حقلُ التعليق داخل القائمة: آبل تُزيح المحتوى بقدر الكيبورد وتُظهر
+        // الحقلَ المركَّز فوقه، فيرى الكاتبُ ما يكتب.
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
         sections={days}
         keyExtractor={(item) => item.id}
         stickySectionHeadersEnabled={false}
         contentContainerStyle={{ paddingBottom: 30 }}
+        onScroll={onScroll}
+        onScrollBeginDrag={scrolled}
+        scrollEventThrottle={16}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} tintColor="#fff" />}
         ListHeaderComponent={
           <>
-            <View style={{ height: COVER, overflow: "hidden" }}>
-              <CoverLayer mediaId={me.coverMediaId} spec={me.background?.spec} height={COVER} />
-            </View>
+            <StretchCover y={scrollY} height={COVER}>
+              <CoverLayer mediaId={me.coverMediaId} spec={me.background?.spec} height={COVER} x={me.coverX} y={me.coverY} zoom={me.coverZoom} />
+            </StretchCover>
 
             <View style={{ alignItems: "center", marginTop: -52, paddingHorizontal: 20 }}>
               <AvatarMenu
@@ -198,7 +231,8 @@ export default function Me() {
                 charmItem={me.charm}
               />
 
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 }}>
+              {/* ما يخرج من الإطار تحت الصورة لا يلتصق بالاسم. */}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 + frameBleed(104, me.frame) }}>
                 <Text style={{ color: colors.ink, fontSize: 20, fontWeight: "600", writingDirection: "auto" }}>
                   {me.name}
                 </Text>
@@ -230,9 +264,16 @@ export default function Me() {
             </View>
 
             <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: 20, marginTop: 10, marginBottom: 18 }}>
-              <Action grow label="تعديل الملف" onPress={() => router.push("/me/edit" as never)} />
-              <Action grow label="إكسسواراتي" onPress={() => router.push("/me/accessories" as never)} />
-              <Action label="الإعدادات" icon={<GearIcon size={18} color={colors.ink2} />} onPress={() => router.push("/settings" as never)} />
+              {/* أهدافُ الجولة: كلُّ زرٍّ يُضاء في دوره. */}
+              <Spot id="me.edit" grow>
+                <Action grow label="تعديل الملف" onPress={() => router.push("/me/edit" as never)} />
+              </Spot>
+              <Spot id="me.accessories" grow>
+                <Action grow label="إكسسواراتي" onPress={() => router.push("/me/accessories" as never)} />
+              </Spot>
+              <Spot id="me.settings">
+                <Action label="الإعدادات" icon={<GearIcon size={18} color={colors.ink2} />} onPress={() => router.push("/settings" as never)} />
+              </Spot>
               <Action
                 label="خروج"
                 icon={<ExitIcon size={18} color={colors.ink2} />}

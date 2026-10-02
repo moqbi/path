@@ -3,13 +3,17 @@ import { Text } from "./type";
 import { useRouter } from "expo-router";
 import { Avatar, firstColor } from "./avatar";
 import { MediaImage } from "./media-image";
-import { PinIcon, PlayIcon, WithIcon, SunIcon, MoonIcon, PlaneIcon, GiftIcon, SparkIcon } from "./icons";
+import { viewPhoto } from "./photo-viewer";
+import { AthrMark } from "./brand";
+import { CameraIcon, TagIcon, PinIcon, PlayIcon, WithIcon, SunIcon, MoonIcon, PlaneIcon, GiftIcon, SparkIcon, PrivateIcon } from "./icons";
 import { MomentBar } from "./moment-bar";
-import { Bubble, CommentList, Reactors } from "./reactors";
+import { PHOTO_RATIO } from "./photo-frame";
+import { AuthorFaces, Bubble, CommentList, Reactors } from "./reactors";
 import { colors } from "../theme/tokens";
 import { openIn } from "../lib/browse";
+import { openMaps } from "../lib/maps";
 import { ar, relative, timeOfDay } from "../lib/format";
-import type { Moment } from "../lib/queries";
+import { useCircle, type Moment } from "../lib/queries";
 
 /** عمود الصور على محور الخط: نفس ٥٦ التي في الويب (`w-14`). */
 export const SPINE_W = 56;
@@ -21,7 +25,7 @@ export const SPINE_W = 56;
  * بإطار. والتفريق في العرض لا في الخادم.
  */
 const EVENTS = new Set([
-  "CITY", "PLACE", "SLEEP", "WAKE", "MUSIC", "FRIEND_ADDED", "GIFT_SENT", "GIFT_GOT",
+  "CITY", "PLACE", "SLEEP", "WAKE", "MUSIC", "FRIEND_ADDED", "GIFT_SENT", "GIFT_GOT", "JOINED", "TAG_GRANTED", "AVATAR_CHANGED",
 ]);
 
 const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
@@ -33,6 +37,9 @@ const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
   FRIEND_ADDED: { bg: colors.goldSoft, ink: colors.goldInk },
   GIFT_SENT: { bg: colors.claySoft, ink: colors.clayInk },
   GIFT_GOT: { bg: colors.claySoft, ink: colors.clayInk },
+  JOINED: { bg: colors.night, ink: "#f7f5ef" },
+  TAG_GRANTED: { bg: colors.goldSoft, ink: colors.goldInk },
+  AVATAR_CHANGED: { bg: colors.claySoft, ink: colors.clayInk },
 };
 
 function EventIcon({ kind }: { kind: string }) {
@@ -44,6 +51,9 @@ function EventIcon({ kind }: { kind: string }) {
     : kind === "MUSIC" ? <PlayIcon size={14} color={style.ink} />
     : kind === "FRIEND_ADDED" ? <WithIcon size={15} color={style.ink} />
     : kind === "GIFT_SENT" || kind === "GIFT_GOT" ? <GiftIcon size={15} color={style.ink} />
+    : kind === "JOINED" ? <AthrMark size={20} />
+    : kind === "TAG_GRANTED" ? <TagIcon size={15} color={style.ink} />
+    : kind === "AVATAR_CHANGED" ? <CameraIcon size={16} color={style.ink} />
     : <PinIcon size={16} color={style.ink} />;
 
   return (
@@ -63,7 +73,7 @@ function EventIcon({ kind }: { kind: string }) {
 }
 
 /** نصّ الخبر — منقولٌ من الويب لا مترجماً عنه. */
-function eventText(moment: Moment, withNames: string[]) {
+function eventText(moment: Moment, withNames: string[], viewerId = "") {
   switch (moment.kind) {
     case "CITY":
       return { title: `وصل إلى ${moment.text ?? "مدينة"}`, subtitle: null };
@@ -78,6 +88,23 @@ function eventText(moment: Moment, withNames: string[]) {
       return { title: `أهديت ${withNames[0] ?? "صديقاً"} ${moment.text ?? "هدية"}`, subtitle: null };
     case "GIFT_GOT":
       return { title: `وصلتك هدية من ${withNames[0] ?? "صديق"}: ${moment.text ?? "هدية"}`, subtitle: null };
+    case "TAG_GRANTED":
+      // بلسانه لصاحبه، وبالغائب لدائرته — كبقية أسطر الأحداث.
+      return {
+        title:
+          moment.author.id === viewerId
+            ? `تهانينا — حصلت على وسم «${moment.text ?? ""}» من الإدارة`
+            : `تهانينا — حصل على وسم «${moment.text ?? ""}» من الإدارة`,
+        subtitle: null,
+      };
+    case "AVATAR_CHANGED":
+      // بلسانه لصاحبه، وبالغائب لدائرته (القاعدة ٢١٤).
+      return {
+        title: moment.author.id === viewerId ? "غيّرت صورتك" : `${moment.author.name} غيّر صورته`,
+        subtitle: null,
+      };
+    case "JOINED":
+      return { title: `انضم ${moment.author.name} إلى آثار مومنتس`, subtitle: null };
     case "MUSIC":
       return {
         title: `يسمع ${moment.musicTitle ?? "أغنية"}${moment.musicArtist ? ` لـ${moment.musicArtist}` : ""}`,
@@ -107,15 +134,21 @@ export function MomentCard({
    * ثلاثة استعلامات لسؤالٍ واحد.
    */
   moderate = false,
+  here = false,
 }: {
   moment: Moment;
   viewerId: string;
   isPlus: boolean;
   moderate?: boolean;
+  /** البطاقة في صفحة اللحظة نفسها: الضغطُ عليها لا يفتح الصفحةَ فوقها ثانيةً. */
+  here?: boolean;
 }) {
   const router = useRouter();
+  const circle = useCircle();
   const withNames = moment.tags.map((t) => t.name);
-  const open = () => router.push(`/m/${moment.id}` as never);
+  const open = () => {
+    if (!here) router.push(`/m/${moment.id}` as never);
+  };
   const isEvent = EVENTS.has(moment.kind);
   const found = moment.reactions.find((r) => r.mine);
   const mineReaction = found ? { kind: found.kind, emoji: found.emoji } : null;
@@ -138,25 +171,100 @@ export function MomentCard({
       <Text style={{ color: colors.muted, fontSize: 10, fontWeight: "600" }}>
         {timeOfDay(new Date(moment.createdAt))}
       </Text>
+      {/*
+        «خاصة» تحت الساعة — يراها صاحبُها ومن اختارهم، فيعرف كلٌّ منهم أنّ
+        اللحظة لم تُوجَّه إلى الدائرة كلّها (القاعدة ٢٠٦).
+      */}
+      {moment.audience && moment.audience !== "CIRCLE" ? (
+        <View
+          accessibilityLabel="لحظة خاصة"
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 2,
+            paddingHorizontal: 6,
+            paddingVertical: 1,
+            borderRadius: 999,
+            borderWidth: 1,
+            borderColor: colors.line,
+            backgroundColor: colors.card,
+          }}
+        >
+          <PrivateIcon size={11} color={colors.clayInk} />
+          <Text style={{ color: colors.clayInk, fontSize: 9.5, fontWeight: "700" }}>خاصة</Text>
+        </View>
+      ) : null}
     </View>
   );
 
   if (isEvent) {
-    const { title, subtitle } = eventText(moment, withNames);
+    const { title, subtitle } = eventText(moment, withNames, viewerId);
+    /*
+      اسمُ الطرف الآخر رابطٌ إلى ملفّه — في «أصبح صديق فلان» و«أهديت فلاناً»
+      و«وصلتك هدية من فلان». الطرفُ إشارةٌ على اللحظة (معرّفُه معها)، وما
+      كُتب قبل أن تُحفظ الإشارة يُعرف من دائرتك بالاسم نفسه.
+    */
+    const other =
+      moment.tags[0] ??
+      (moment.kind === "FRIEND_ADDED" && moment.text
+        ? (circle.data?.members ?? []).find((person) => person.name === moment.text) ?? null
+        : null);
+    const linked = other
+      ? moment.kind === "FRIEND_ADDED"
+        ? { before: "أصبح صديق ", id: other.id, name: other.name, after: "" }
+        : moment.kind === "GIFT_SENT"
+          ? { before: "أهديت ", id: other.id, name: other.name, after: ` ${moment.text ?? "هدية"}` }
+          : moment.kind === "GIFT_GOT"
+            ? { before: "وصلتك هدية من ", id: other.id, name: other.name, after: `: ${moment.text ?? "هدية"}` }
+            : null
+      : null;
 
     const line = (
       <Pressable onPress={open} style={{ flexDirection: "row", gap: 10 }}>
         <EventIcon kind={moment.kind} />
         <View style={{ flex: 1, paddingTop: 2 }}>
           <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600", lineHeight: 21 }}>
-            {title}
+            {/*
+              اسمُ الصديق الجديد رابطٌ إلى ملفّه: الإشارةُ تحمل معرّفه، فمن قرأ
+              «أصبح صديق فلان» يصل إلى فلان بضغطة. واللحظاتُ القديمة بلا إشارة
+              تبقى نصّاً.
+            */}
+            {linked ? (
+              <>
+                {linked.before}
+                <Text
+                  onPress={() => router.push(`/u/${linked.id}` as never)}
+                  style={{ color: colors.clayInk, fontWeight: "700" }}
+                >
+                  {linked.name}
+                </Text>
+                {linked.after}
+              </>
+            ) : moment.kind === "PLACE" && moment.placeName ? (
+              /* اسمُ المكان يفتح الخرائط (القاعدة ٢١١)، وبقيّةُ السطر تفتح اللحظة. */
+              <>
+                {"في "}
+                <Text
+                  accessibilityRole="link"
+                  onPress={() => void openMaps(moment)}
+                  style={{ color: colors.clayInk, fontWeight: "700" }}
+                >
+                  {moment.placeName}
+                </Text>
+              </>
+            ) : (
+              title
+            )}
           </Text>
           {subtitle ? (
             <Text style={{ color: colors.ink2, fontSize: 12, fontWeight: "500", marginTop: 2 }}>
               {subtitle}
             </Text>
           ) : null}
-          {withNames.length > 0 && moment.kind !== "GIFT_SENT" && moment.kind !== "GIFT_GOT" ? (
+          {withNames.length > 0 &&
+          moment.kind !== "GIFT_SENT" &&
+          moment.kind !== "GIFT_GOT" &&
+          moment.kind !== "FRIEND_ADDED" ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 }}>
               <WithIcon size={12} color={colors.ink2} />
               <Text style={{ color: colors.ink2, fontSize: 11.5, fontWeight: "500" }}>
@@ -221,16 +329,20 @@ export function MomentCard({
             isPlus={isPlus}
             author={moment.author.id === viewerId}
             moderate={moderate && moment.author.id !== viewerId}
+          locked={moment.commentsLocked ?? false}
             head={line}
             extra={
               <>
                 {moment.mediaId ? (
-                  <MediaImage
-                    mediaId={moment.mediaId}
-                    style={{ width: "100%", height: 190, borderRadius: 14, marginTop: 10 }}
-                  />
+                  <Pressable accessibilityLabel="افتح الصورة" onPress={() => viewPhoto(moment.mediaId)}>
+                    <MediaImage
+                      mediaId={moment.mediaId}
+                      position={{ x: moment.photoX ?? 50, y: moment.photoY ?? 50 }}
+                      style={{ width: "100%", aspectRatio: PHOTO_RATIO, borderRadius: 14, marginTop: 10 }}
+                    />
+                  </Pressable>
                 ) : null}
-                <Bubble moment={moment} viewerId={viewerId} />
+                <Bubble moment={moment} viewerId={viewerId} moderate={moderate} />
               </>
             }
           />
@@ -239,15 +351,50 @@ export function MomentCard({
     );
   }
 
-  const head = (
-    <Pressable onPress={open}>
-      {moment.mediaId ? (
-        <MediaImage mediaId={moment.mediaId} style={{ width: "100%", height: 230 }} />
-      ) : moment.imageSpec ? (
-        <View style={{ height: 132, backgroundColor: firstColor(moment.imageSpec, colors.chip) }} />
-      ) : null}
+  /* الصورة تفتح نفسها كاملةً (القاعدة ٣٠)، والنصُّ تحتها يفتح اللحظة. */
+  /*
+    الصورةُ في أعلى البطاقة وزرُّ التفاعل في ركنها فوقها، والنصُّ تحتها — في
+    إطارٍ بنسبة المحرّر (`PHOTO_RATIO`) وبالموضع الذي ضبطه صاحبُها، فما رآه
+    قبل النشر هو ما تراه دائرته.
+  */
+  const media = moment.mediaId ? (
+    <Pressable
+      accessibilityLabel="افتح الصورة"
+      onPress={() => viewPhoto(moment.mediaId)}
+      style={{ marginTop: 12, marginHorizontal: 12, borderRadius: 14, overflow: "hidden" }}
+    >
+      <MediaImage
+        mediaId={moment.mediaId}
+        position={{ x: moment.photoX ?? 50, y: moment.photoY ?? 50 }}
+        style={{ width: "100%", aspectRatio: PHOTO_RATIO }}
+      />
+    </Pressable>
+  ) : moment.imageSpec ? (
+    <View
+      style={{
+        marginTop: 12,
+        marginHorizontal: 12,
+        borderRadius: 14,
+        aspectRatio: PHOTO_RATIO,
+        backgroundColor: firstColor(moment.imageSpec, colors.chip),
+      }}
+    />
+  ) : null;
 
-      <View style={{ paddingHorizontal: 14, paddingTop: 10 }}>
+  const head = (
+    <View>
+      {/*
+        بلا صورةٍ يبدأ النصّ من أعلى البطاقة ويترك يسارَه لزرّ التفاعل في
+        ركنها، ومع الصورة يأتي تحتها بعرض البطاقة.
+      */}
+      <Pressable
+        onPress={open}
+        style={
+          media
+            ? { paddingHorizontal: 14, paddingTop: 10 }
+            : { paddingRight: 14, paddingLeft: 52, paddingTop: 14, minHeight: 50 }
+        }
+      >
         {moment.text ? (
           <Text style={{ color: colors.ink, fontSize: 13.5, lineHeight: 23, marginBottom: 8 }}>
             {moment.text}
@@ -255,11 +402,18 @@ export function MomentCard({
         ) : null}
 
         {/* الموقع على لحظةٍ أو صورة: سطرٌ صغير، لا حدثُ مكانٍ مستقل. */}
+        {/* ويُضغط فيفتح الخرائط (القاعدة ٢١١). */}
         {moment.placeName ? (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 8 }}>
-            <PinIcon size={12} color={colors.muted} />
-            <Text style={{ color: colors.muted, fontSize: 12 }}>{moment.placeName}</Text>
-          </View>
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel={`افتح ${moment.placeName} في الخرائط`}
+            onPress={() => void openMaps(moment)}
+            hitSlop={6}
+            style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 8, alignSelf: "flex-start" }}
+          >
+            <PinIcon size={12} color={colors.clayInk} />
+            <Text style={{ color: colors.clayInk, fontSize: 12, fontWeight: "600" }}>{moment.placeName}</Text>
+          </Pressable>
         ) : null}
 
         {withNames.length > 0 ? (
@@ -268,8 +422,8 @@ export function MomentCard({
             <Text style={{ color: colors.muted, fontSize: 12 }}>مع {withNames.join(" و")}</Text>
           </View>
         ) : null}
-      </View>
-    </Pressable>
+      </Pressable>
+    </View>
   );
 
   return (
@@ -286,7 +440,7 @@ export function MomentCard({
           overflow: "hidden",
         }}
       >
-        {/* زرّ التفاعل في أعلى البطاقة: يُلمس قبل القراءة لا بعدها. */}
+        {/* زرّ التفاعل في ركن البطاقة: يُلمس قبل القراءة لا بعدها. */}
         <MomentBar
           momentId={moment.id}
           momentKind={moment.kind}
@@ -294,38 +448,40 @@ export function MomentCard({
           isPlus={isPlus}
           author={moment.author.id === viewerId}
           moderate={moderate && moment.author.id !== viewerId}
+          locked={moment.commentsLocked ?? false}
           inset
-          panelFirst
-          extra={
-            <>
-              {head}
-              <View style={{ paddingHorizontal: 14, paddingBottom: 12, paddingTop: 8 }}>
-                {moment.reactions.length > 0 ? (
-                  <>
-                    <Reactors reactions={moment.reactions} viewerId={viewerId} />
-                    {/* الخادمُ يرسل اثني عشر وجهاً بسقف، والباقي عددٌ:
-                        ثلاثةُ آلاف صفٍّ في تمريرةٍ واحدة ثمنٌ بلا مقابل. */}
-                    {moment._count.reactions > moment.reactions.length ? (
-                      <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 4 }}>
-                        و{ar(moment._count.reactions - moment.reactions.length)} غيرهم
+          media={media}
+          extra={head}
+          footer={
+            <View style={{ paddingHorizontal: 14, paddingBottom: 12, paddingTop: 8 }}>
+              {moment.author.id === viewerId ? (
+                /* لصاحبها صفٌّ واحد: من تفاعل ومن شاهد باهتاً (القاعدة ٢٠٢). */
+                <AuthorFaces momentId={moment.id} />
+              ) : moment.reactions.length > 0 ? (
+                <>
+                  <Reactors reactions={moment.reactions} viewerId={viewerId} />
+                  {/* الخادمُ يرسل اثني عشر وجهاً بسقف، والباقي عددٌ:
+                      ثلاثةُ آلاف صفٍّ في تمريرةٍ واحدة ثمنٌ بلا مقابل. */}
+                  {moment._count.reactions > moment.reactions.length ? (
+                    <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 4 }}>
+                      و{ar(moment._count.reactions - moment.reactions.length)} غيرهم
+                    </Text>
+                  ) : null}
+                </>
+              ) : null}
+              {moment.comments.length > 0 ? (
+                <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 10 }}>
+                  <CommentList comments={moment.comments} viewerId={viewerId} moderate={moderate} />
+                  {moment._count.comments > moment.comments.length ? (
+                    <Pressable onPress={open} style={{ marginTop: 8 }}>
+                      <Text style={{ color: colors.clayInk, fontSize: 12, fontWeight: "600" }}>
+                        كل التعليقات ({ar(moment._count.comments)})
                       </Text>
-                    ) : null}
-                  </>
-                ) : null}
-                {moment.comments.length > 0 ? (
-                  <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 10 }}>
-                    <CommentList comments={moment.comments} viewerId={viewerId} />
-                    {moment._count.comments > moment.comments.length ? (
-                      <Pressable onPress={open} style={{ marginTop: 8 }}>
-                        <Text style={{ color: colors.clayInk, fontSize: 12, fontWeight: "600" }}>
-                          كل التعليقات ({ar(moment._count.comments)})
-                        </Text>
-                      </Pressable>
-                    ) : null}
-                  </View>
-                ) : null}
-              </View>
-            </>
+                    </Pressable>
+                  ) : null}
+                </View>
+              ) : null}
+            </View>
           }
         />
       </View>

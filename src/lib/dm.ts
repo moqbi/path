@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { circleIds } from "@/lib/circle";
 import { sweepStories } from "@/lib/stories";
+import { sweepPendingSignups } from "@/lib/signup";
 import { migrateToCloud } from "@/lib/media";
 
 /** الطرفان مرتّبان دائماً، فيكون للزوج صفٌّ واحد مهما بدأ المحادثة. */
@@ -157,6 +158,7 @@ export async function sweepOld(): Promise<void> {
 export async function deliverTo(userId: string): Promise<void> {
   await sweepOld();
   await sweepStories();
+  await sweepPendingSignups().catch(() => {});
   try {
     await prisma.message.updateMany({
       where: {

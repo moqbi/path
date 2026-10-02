@@ -38,7 +38,23 @@ export type Frame =
 export function frameZoom(frame: NonNullable<Frame>): number {
   const hole = frame.frameHole ?? 0;
   if (hole < 20 || hole > 99) return 1;
-  return 100 / hole;
+  // والحلقةُ تركب حافّةَ الوجه قليلاً (٥٪) لا تلامسها: الحافّتان متطابقتين
+  // تتركان خيطاً شفّافاً بينهما، وحلقةٌ غيرُ مستديرةٍ تمامًا تترك فراغاً.
+  return (100 / hole) * HOLE_OVERLAP;
+}
+
+const HOLE_OVERLAP = 0.95;
+
+/**
+ * كم يخرج رسمُ الإطار عن مربّع الصورة من كل جهة.
+ *
+ * الإطارُ المقيس يُكبَّر بمقلوب فراغه، فجناحاه يتجاوزان مربّع الصورة —
+ * وحاويةٌ تقصّ (صفُّ تعليقٍ يُسحب) تقطع ما خرج، ونصٌّ تحته يلتصق به.
+ * فمن يضع صورةً بإطارٍ في مكانٍ ضيّق يترك لها هذا القدر حولها.
+ */
+export function frameBleed(size: number, frame: Frame): number {
+  if (!frame?.mediaId) return 0;
+  return Math.max(0, Math.ceil((size * frameZoom(frame) - size) / 2));
 }
 
 /**
@@ -74,13 +90,20 @@ const FRAME_INSET = 0.07;
 const CHARM_RATIO = 0.5;
 
 /**
- * أين تجلس التميمة: **ركنُ الصورة الأسفل-الأيسر** — نسخةُ الويب.
+ * أين تجلس التميمة: **يسارَ الصورة، أغلبُها خارجها** — بقرار المالك.
  *
- * حافّتُها اليمنى على محور الصورة الرأسيّ، وقاعُها على قاعها: جزءٌ
- * فوق الصورة والإطار وجزءٌ خارجهما، ولا تنزل تحتهما.
+ * رسم المالك مربّعاً أحمر على الشاشة: نطاقُها الرأسيّ كما كان (من محور
+ * الصورة الأفقيّ إلى قاعها)، لكنّها مُزاحةٌ إلى الخارج — نحو ستّين في
+ * المئة منها خارج الدائرة، والباقي يعبر حافّتها. كانت في الربع الأسفل
+ * الأيسر **داخل** الدائرة، فغطّى الجناحُ كتفَ صاحب الصورة.
+ * فمركزُها الأفقيّ على عُشر نصف القطر من حافّة الصورة اليسرى:
+ * `left = −٠٫٤ × مقاسها` (ومقاسُها نصفُ القطر، `CHARM_RATIO`).
+ *
+ * وتُرسم **فوق الإطار** (`zIndex`): إطارٌ بجناحين يمتدّ خارج الصورة
+ * لا يغطّيها.
  */
 function charmSeat(size: number, badge: number): { left: number; top: number } {
-  return { left: Math.round(size / 2 - badge), top: Math.round(size - badge) };
+  return { left: Math.round(-badge * 0.3), top: Math.round(size - badge * 0.8) };
 }
 
 export function Avatar({
@@ -194,8 +217,9 @@ function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }
         position: "absolute",
         width: badge,
         height: badge,
-        // ركنُها الأسفل-الأيسر: يمينُها على المحور، وقاعُها على القاع.
+        // يسارَ الصورة وأغلبُها خارجها، وفوق الإطار (القاعدة ٥٩).
         ...charmSeat(size, badge),
+        zIndex: 2,
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: charm.mediaId ? "transparent" : firstColor(charm.spec, colors.clay),

@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { cloudReady, deleteObjects, getObject, putObject } from "@/lib/storage";
+import { BASE } from "@/lib/base";
 
 /** أقصى حجم مقبول بعد تصغير المتصفح — حارس ضد رفع ملف ضخم يدوياً. */
 const MAX_BYTES = 1_500_000;
@@ -63,10 +64,29 @@ export async function storeUpload(
   height: number,
   allowAnimated = false,
 ) {
-  const mime = baseMime(file.type);
-  if (!ALLOWED.has(mime)) throw new Error("يُقبل JPEG أو PNG أو WebP فقط");
+  if (!ALLOWED.has(baseMime(file.type))) throw new Error("يُقبل JPEG أو PNG أو WebP فقط");
   const bytes = new Uint8Array(await file.arrayBuffer());
+  /*
+    والنوعُ يُؤخذ من البايتات لا من `type`: ذاك يكتبه المرسل، فملفُّ HTML
+    يُرفع بـ«image/png» ويُقدَّم بها — والصيغةُ الحقيقية هي ما يُحفظ.
+  */
+  const mime = sniffImage(bytes);
+  if (!mime || !ALLOWED.has(mime)) throw new Error("يُقبل JPEG أو PNG أو WebP فقط");
   return keep(ownerId, mime, bytes, width, height, allowAnimated);
+}
+
+/** صيغةُ الصورة من توقيعها — أو `null` إن لم تكن صورةً نعرفها. */
+function sniffImage(bytes: Uint8Array): string | null {
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return "image/png";
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) return "image/gif";
+  if (
+    bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+    bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50
+  ) {
+    return "image/webp";
+  }
+  return null;
 }
 
 /**
@@ -227,7 +247,7 @@ export async function copyMedia(
   });
 }
 
-export const mediaUrl = (id: string | null | undefined) => (id ? `/api/media/${id}` : null);
+export const mediaUrl = (id: string | null | undefined) => (id ? `${BASE}/api/media/${id}` : null);
 
 /**
  * نقل ما بقي في القاعدة إلى السحابة.

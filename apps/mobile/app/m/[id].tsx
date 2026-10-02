@@ -1,40 +1,42 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { scrolled } from "../../lib/scrolled";
+import { markSeen } from "../../lib/seen";
 import { View, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useKeyboardInset } from "../../lib/keyboard";
 import { Text, TextInput } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
-import { Avatar } from "../../components/avatar";
 import { MomentCard } from "../../components/moment-card";
 import { ScreenHeader } from "../../components/screen-header";
-import { useComment, useMoment, useReact } from "../../lib/queries";
-import { relative } from "../../lib/format";
+import { useComment, useMoment } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { colors } from "../../theme/tokens";
-
-/** الوجوه الخمسة مفتوحةٌ للجميع؛ والحرّ لمشتركي آثار+ ويُفحص على الخادم. */
-const FACES = [
-  { kind: "SMILE", glyph: "🙂" },
-  { kind: "LAUGH", glyph: "😄" },
-  { kind: "GASP", glyph: "😮" },
-  { kind: "SAD", glyph: "😢" },
-  { kind: "LOVE", glyph: "❤️" },
-];
+import { LockIcon } from "../../components/icons";
 
 /**
- * صفحة اللحظة: المنشور في قالب، ثم خط، ثم التفاعلات، ثم خط، ثم
- * التعليقات — بهذا الترتيب لا بغيره، فالتعليق جوابٌ على شيءٍ يُرى.
+ * صفحة اللحظة: بطاقةٌ واحدة ثمّ حقلُ التعليق.
+ *
+ * والبطاقةُ هي بطاقةُ الخطّ الزمنيّ نفسها — فيها زرُّ التفاعل ووجوهُ
+ * من تفاعل وتعليقاتُهم. وكانت الصفحة ترسم تحتها صفَّ وجوهٍ ثانياً
+ * وقائمةَ تعليقاتٍ ثانية، فيُقرأ التعليق مرّتين: واحدٌ داخل القالب
+ * وواحدٌ سائبٌ تحته، ومعهما إيموجي بلا موضع. ولوحةُ التفاعل بابٌ
+ * واحد (القاعدة ٨)، فصفُّ الوجوه العاري نقضُها.
  */
 export default function MomentPage() {
   const me = useSession((state) => state.me);
   const { id } = useLocalSearchParams<{ id: string }>();
   const moment = useMoment(id);
-  const react = useReact(id);
   const comment = useComment(id);
   const [body, setBody] = useState("");
+  const insets = useSafeAreaInsets();
+  const keyboard = useKeyboardInset();
+
+  useEffect(() => markSeen([id]), [id]);
 
   if (moment.isLoading) {
     return (
-      <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+      <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
         <ScreenHeader title="لحظة" back="/" />
         <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
       </SafeAreaView>
@@ -44,7 +46,7 @@ export default function MomentPage() {
   const data = moment.data?.moment;
   if (!data) {
     return (
-      <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+      <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
         <ScreenHeader title="لحظة" back="/" />
         <Text style={{ color: colors.muted, fontSize: 13.5, textAlign: "center", marginTop: 50 }}>
           اللحظة غير موجودة.
@@ -53,13 +55,22 @@ export default function MomentPage() {
     );
   }
 
-  const line = { height: 1, backgroundColor: colors.line, marginHorizontal: 16 };
-
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       <ScreenHeader title="لحظة" back="/" />
 
-      <ScrollView contentContainerStyle={{ paddingTop: 12, paddingBottom: 24 }}>
+      {/*
+        حقلُ التعليق **خارج** التمرير ومثبّتٌ في أسفل الشاشة، ويصعد مع
+        الكيبورد بارتفاعه (`useKeyboardInset`). كان داخل التمرير تحت البطاقة
+        مباشرةً، فيجلس في منتصف الشاشة كأنّ كيبورداً مفتوحاً تحته.
+      */}
+      <View style={{ flex: 1, paddingBottom: keyboard }}>
+      <ScrollView
+        onScrollBeginDrag={scrolled}
+        style={{ flex: 1 }}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingTop: 12, paddingBottom: 24 }}
+      >
         {/*
           حشوة الخطّ الزمني نفسها: البطاقة مرسومةٌ على ورقٍ بعمود صورٍ
           وخيط، وبلا حشوةٍ جانبية تلتصق بالحافتين ويمشي العمود خارج
@@ -71,62 +82,43 @@ export default function MomentPage() {
             viewerId={me?.id ?? ""}
             isPlus={me?.isPlus ?? false}
             moderate={me?.canModerate ?? false}
+            here
           />
         </View>
+      </ScrollView>
 
-        <View style={line} />
-
-        <View style={{ flexDirection: "row", gap: 8, padding: 14 }}>
-          {FACES.map((face) => (
-            <Pressable
-              key={face.kind}
-              onPress={() => react.mutate({ kind: face.kind })}
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: 21,
-                alignItems: "center",
-                justifyContent: "center",
-                borderWidth: 1,
-                borderColor: colors.line,
-                backgroundColor: colors.card,
-              }}
-            >
-              <Text style={{ fontSize: 19 }}>{face.glyph}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {data.reactions.length > 0 ? (
-          <Text style={{ color: colors.muted, fontSize: 12, paddingHorizontal: 16, paddingBottom: 12 }}>
-            {data.reactions.map((r) => r.name).join("، ")}
-          </Text>
-        ) : null}
-
-        <View style={line} />
-
-        <View style={{ padding: 14, gap: 12 }}>
-          {data.comments.map((item) => (
-            <View key={item.id} style={{ flexDirection: "row", gap: 9 }}>
-              <Avatar name={item.user.name} size={32} mediaId={item.user.avatarMediaId} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.ink, fontSize: 13, fontWeight: "600" }}>
-                  {item.user.name}
-                </Text>
-                <Text style={{ color: colors.ink2, fontSize: 13, lineHeight: 21 }}>{item.body}</Text>
-                <Text style={{ color: colors.faint, fontSize: 10.5 }}>
-                  {relative(new Date(item.createdAt))}
-                </Text>
-              </View>
-            </View>
-          ))}
-
-          {data.comments.length === 0 ? (
-            <Text style={{ color: colors.faint, fontSize: 12.5 }}>لا تعليقات بعد.</Text>
-          ) : null}
-        </View>
-
-        <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 14 }}>
+        {/* قفلُ التعليقات يُغلق الحقلَ في وجه غير صاحبها ويقول ذلك. */}
+        {data.commentsLocked && data.author.id !== me?.id ? (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              paddingTop: 12,
+              paddingBottom: Math.max(insets.bottom, 12),
+              borderTopWidth: 1,
+              borderTopColor: colors.line,
+              backgroundColor: colors.paper,
+            }}
+          >
+            <LockIcon size={14} color={colors.muted} />
+            <Text style={{ color: colors.muted, fontSize: 12.5, fontWeight: "600" }}>أقفل صاحبُ اللحظة التعليقات</Text>
+          </View>
+        ) : (
+        <View
+          style={{
+            flexDirection: "row",
+            gap: 8,
+            paddingHorizontal: 14,
+            paddingTop: 10,
+            // والكيبورد مفتوحٌ لا حاجة لهامش الشريط السفليّ: الكيبورد يغطّيه.
+            paddingBottom: keyboard ? 10 : Math.max(insets.bottom, 12),
+            borderTopWidth: 1,
+            borderTopColor: colors.line,
+            backgroundColor: colors.paper,
+          }}
+        >
           <TextInput
             value={body}
             onChangeText={setBody}
@@ -165,7 +157,8 @@ export default function MomentPage() {
             <Text style={{ color: colors.onBrand, fontSize: 13, fontWeight: "700" }}>أرسل</Text>
           </Pressable>
         </View>
-      </ScrollView>
+        )}
+      </View>
     </SafeAreaView>
   );
 }

@@ -1,5 +1,5 @@
 import { prisma } from "@athar/db";
-import { forgetNotifications } from "./notifications";
+import { forgetAllNotifications, forgetNotifications } from "./notifications";
 
 /**
  * تنبيهاتُ الجهاز عبر خدمة Expo.
@@ -20,16 +20,19 @@ export type PushKind =
   | "TAG"
   | "REACTION"
   | "COMMENT"
-  | "STORE";
+  | "STORE"
+  /** منحٌ من الإدارة — يخصّ صاحبه وحده، فلا مفتاحَ يُطفئه (القاعدة ١٩٨). */
+  | "GRANT";
 
 /** أيُّ حقلٍ في `User` يحرس هذا النوع. */
-const GATE: Record<PushKind, string> = {
+const GATE: Record<PushKind, string | null> = {
   DM: "notifyDm",
   FRIEND: "notifyFriend",
   TAG: "notifyOnTag",
   REACTION: "notifyReaction",
   COMMENT: "notifyComment",
   STORE: "notifyStoreNew",
+  GRANT: null,
 };
 
 /**
@@ -98,7 +101,8 @@ export async function push(message: PushMessage): Promise<void> {
     });
     if (!user) return;
 
-    const allowed = (user as unknown as Record<string, boolean>)[GATE[message.kind]];
+    const gate = GATE[message.kind];
+    const allowed = gate ? (user as unknown as Record<string, boolean>)[gate] : true;
     if (allowed === false) return;
     if (inQuietHours(user.quietFrom, user.quietTo)) return;
     if (user.devices.length === 0) return;
@@ -118,21 +122,79 @@ export async function push(message: PushMessage): Promise<void> {
   }
 }
 
+/**
+ * خبرٌ للجميع — صنفٌ جديد في المتجر.
+ *
+ * لا `push()` لكلّ حساب: ذاك استعلامٌ لكل واحد. هنا صفحاتٌ من خمسمئة
+ * حسابٍ فتح التنبيه ولديه جهاز، يُستثنى منها من في وضعه الهادئ، وتُرسل
+ * دفعاتٍ من مئة — أقصى ما تقبله خدمة Expo في الطلب الواحد.
+ */
+export async function broadcast(kind: PushKind, title: string, body: string, path?: string): Promise<number> {
+  // التبويبُ يُشتقّ من القاعدة، وخبيئتُه لا تعرف بالخبر حتى تُنسى.
+  forgetAllNotifications();
+
+  let cursor: string | undefined;
+  let sent = 0;
+  for (;;) {
+    const users = await prisma.user.findMany({
+      where: { ...(GATE[kind] ? { [GATE[kind]!]: true } : null), devices: { some: {} } },
+      select: { id: true, quietFrom: true, quietTo: true, devices: { select: { token: true } } },
+      orderBy: { id: "asc" },
+      take: 500,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    });
+    if (users.length === 0) break;
+    cursor = users[users.length - 1].id;
+
+    const messages = users
+      .filter((user) => !inQuietHours(user.quietFrom, user.quietTo))
+      .flatMap((user) =>
+        user.devices.map((device) => ({
+          to: device.token,
+          title,
+          body,
+          sound: "default",
+          data: path ? { path } : {},
+        })),
+      );
+    for (let index = 0; index < messages.length; index += 100) {
+      await deliver(messages.slice(index, index + 100)).catch((problem) =>
+        console.error("[push] دفعةٌ لم تخرج", problem),
+      );
+    }
+    sent += messages.length;
+    if (users.length < 500) break;
+  }
+  return sent;
+}
+
+type Ticket = { status: string; message?: string; details?: { error?: string } };
+
 /** يرسل الدفعة ويمسح ما ردّته الخدمةُ «جهازٌ لم يعد مسجّلاً». */
-async function deliver(messages: Record<string, unknown>[]): Promise<void> {
+async function deliver(messages: Record<string, unknown>[]): Promise<Ticket[]> {
   const response = await fetch(ENDPOINT, {
     method: "POST",
     headers: { "content-type": "application/json", accept: "application/json" },
     body: JSON.stringify(messages),
   });
   if (!response.ok) {
-    console.error("[push] ردّت الخدمة", response.status);
-    return;
+    const text = await response.text().catch(() => "");
+    console.error("[push] ردّت الخدمة", response.status, text.slice(0, 500));
+    return [{ status: "error", message: `HTTP ${response.status} ${text.slice(0, 200)}` }];
   }
 
-  const payload = (await response.json()) as {
-    data?: { status: string; details?: { error?: string } }[];
-  };
+  const payload = (await response.json()) as { data?: Ticket[] };
+
+  /*
+     كلُّ تذكرةٍ خاطئة تُكتب في السجلّ باسمها: `InvalidCredentials` تعني
+     مفتاح APNs غير مرفوعٍ لهذا المعرّف، و`MismatchSenderId` مفتاح FCM.
+     وكانت تُبلع كلُّها إلا «غير مسجّل»، فلا يُعرف لماذا لم يصل شيء.
+  */
+  for (const ticket of payload.data ?? []) {
+    if (ticket.status !== "ok") {
+      console.error("[push] رُفضت", ticket.details?.error ?? "", ticket.message ?? "");
+    }
+  }
 
   /*
      الرمزُ يموت حين يُحذف التطبيق أو تُلغى صلاحيتُه، والخدمةُ تقولها
@@ -147,6 +209,33 @@ async function deliver(messages: Record<string, unknown>[]): Promise<void> {
   if (dead.length) {
     await prisma.deviceToken.deleteMany({ where: { token: { in: dead } } });
   }
+  return payload.data ?? [];
+}
+
+/**
+ * تنبيهٌ تجريبيّ لصاحب الجلسة — بلا أبواب التفضيل والوضع الهادئ.
+ *
+ * يردّ ما قالته خدمة Expo لكل جهاز، فيُعرف من الشاشة نفسها أين انقطع
+ * الطريق: لا جهاز مسجّل، أو مفتاح آبل ناقص، أو وصل.
+ */
+export async function testPush(userId: string) {
+  const devices = await prisma.deviceToken.findMany({ where: { userId }, select: { token: true, platform: true } });
+  if (devices.length === 0) return { devices: 0, results: [] as string[] };
+  const tickets = await deliver(
+    devices.map((device) => ({
+      to: device.token,
+      title: "آثار مومنتس",
+      body: "تنبيهٌ تجريبيّ — التنبيهات تعمل",
+      sound: "default",
+      data: {},
+    })),
+  );
+  return {
+    devices: devices.length,
+    results: tickets.map((ticket) =>
+      ticket.status === "ok" ? "ok" : `${ticket.details?.error ?? "error"}: ${ticket.message ?? ""}`.trim(),
+    ),
+  };
 }
 
 /** تسجيلُ جهازٍ لصاحب الجلسة — والرمزُ ينتقل إليه إن كان لغيره. */

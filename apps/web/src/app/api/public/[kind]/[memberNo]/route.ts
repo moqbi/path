@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { SERVED_GUARD, servedType } from "@/lib/served";
 import { prisma } from "@/lib/db";
 import { getObject } from "@/lib/storage";
 
@@ -11,6 +12,10 @@ import { getObject } from "@/lib/storage";
  * صاحبه وغلافه. فلا يُفتح به ملفُّ لحظةٍ ولا قصةٍ ولا رسالة مهما عُرف
  * معرّفه.
  *
+ * ومعهما **الإطار والتميمة الملبوسان**: رسمُ صنفِ متجرٍ يُعرض للجميع
+ * أصلاً (القاعدة ٢٣ب)، ويُقرأ هنا من رقم العضوية أيضاً لا من معرّفه —
+ * فلا يصير هذا البابُ طريقاً إلى ملفٍّ غيرهما.
+ *
  * وما يُقدَّم هنا هو بعينه ما تعرضه الصفحة العامة `/u/[memberNo]`: من
  * أعطى رابطه أعطى وجهه. ولا يُكشف شيءٌ زائد.
  *
@@ -22,7 +27,7 @@ export async function GET(
   { params }: { params: Promise<{ kind: string; memberNo: string }> },
 ) {
   const { kind, memberNo } = await params;
-  if (kind !== "avatar" && kind !== "cover") {
+  if (kind !== "avatar" && kind !== "cover" && kind !== "frame" && kind !== "charm") {
     return new NextResponse("غير موجود", { status: 404 });
   }
 
@@ -33,9 +38,21 @@ export async function GET(
 
   const person = await prisma.user.findUnique({
     where: { memberNo: number },
-    select: { avatarMediaId: true, coverMediaId: true },
+    select: {
+      avatarMediaId: true,
+      coverMediaId: true,
+      frame: { select: { mediaId: true } },
+      charm: { select: { mediaId: true } },
+    },
   });
-  const mediaId = kind === "avatar" ? person?.avatarMediaId : person?.coverMediaId;
+  const mediaId =
+    kind === "avatar"
+      ? person?.avatarMediaId
+      : kind === "cover"
+        ? person?.coverMediaId
+        : kind === "frame"
+          ? person?.frame?.mediaId
+          : person?.charm?.mediaId;
   if (!mediaId) return new NextResponse("غير موجود", { status: 404 });
 
   const media = await prisma.media.findUnique({
@@ -51,7 +68,8 @@ export async function GET(
     if (!upstream.ok) return new NextResponse("غير موجود", { status: 404 });
 
     const headers = new Headers();
-    headers.set("Content-Type", media.mime);
+    headers.set("Content-Type", servedType(media.mime));
+    for (const [name, value] of Object.entries(SERVED_GUARD)) headers.set(name, value);
     headers.set("Cache-Control", cache);
     const length = upstream.headers.get("content-length");
     if (length) headers.set("Content-Length", length);
@@ -62,6 +80,6 @@ export async function GET(
 
   return new NextResponse(new Uint8Array(media.bytes), {
     status: 200,
-    headers: { "Content-Type": media.mime, "Cache-Control": cache },
+    headers: { "Content-Type": servedType(media.mime), ...SERVED_GUARD, "Cache-Control": cache },
   });
 }

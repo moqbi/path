@@ -16,13 +16,24 @@ import { dmRoutes, messageRoutes } from "./routes/v1/dm";
 import { mountWs } from "./routes/v1/ws";
 import { sweepPending } from "./services/upload";
 import { sweepOld } from "./services/dm";
+import { sweepOld as sweepGroups } from "./services/groups";
+import { groupRoutes } from "./routes/v1/groups";
 import { coinRoutes, plusRoutes, storeRoutes } from "./routes/v1/store";
 import { contentRoutes, moderationRoutes, reportRoutes } from "./routes/v1/reports";
 import { webhookRoutes } from "./routes/v1/webhooks";
 import { dripPlusCredit } from "./services/billing";
+import { expirePlus } from "./services/plus";
+import { sweepModerationLog } from "./services/reports";
+import { pushCoinGrants } from "./services/coin-grants";
+import { announceStore } from "./services/store-news";
+import { expireRentals } from "./services/store";
+import { sweepAccess } from "./services/access";
 import { storyRoutes } from "./routes/v1/stories";
 import { siteRoutes } from "./routes/v1/site";
+import { placeRoutes } from "./routes/v1/places";
 import { sweep as sweepStories } from "./services/stories";
+import { sweepPendingSignups } from "./services/auth";
+import { UNVERIFIED_MINUTES } from "@athar/shared";
 
 /**
  * خادم آثار.
@@ -55,12 +66,25 @@ app.use(
     // وPUT معها: البريد والخصوصية والغلاف وصورة العرض كلّها `PUT`،
     // فكان المتصفّح يردّ طلبها في الفحص المبدئي قبل أن يصل الخادم.
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowHeaders: ["Authorization", "Content-Type"],
+    // ومعرّفُ الجهاز (القاعدة ١٩٤): بدونه يردّ المتصفّح كلَّ طلبٍ من معاينة
+    // الويب في الفحص المبدئي — الجوّالُ الأصليّ لا يمرّ بـCORS فلا يُرى فيه.
+    allowHeaders: ["Authorization", "Content-Type", "X-Device-Id"],
     maxAge: 600,
     credentials: false,
   }),
 );
 if (!isProd) app.use("*", logger());
+
+/*
+   ردودُ الواجهة لا تُخبّأ: بلا ترويسةٍ تقول ذلك قد يحتفظ مخبأُ النظام في
+   آبل (`NSURLCache`) بجوابٍ قديم ويعيده، فيُسحب الخطّ الزمنيّ ويُسمع
+   التحديث ولا يتغيّر شيء حتى يُغلق التطبيق. والملفّاتُ وحدها تُخبّأ —
+   وترويستُها تُكتب في بابها فتعلو هذه.
+*/
+app.use("/v1/*", async (c, next) => {
+  await next();
+  if (!c.res.headers.has("Cache-Control")) c.header("Cache-Control", "no-store");
+});
 
 app.get("/health", (c) => c.json({ ok: true, at: new Date().toISOString() }));
 
@@ -76,10 +100,46 @@ setInterval(
   () => {
     void sweepPending().catch((error) => console.error("✗ كنس المعلّقة", error));
     void sweepOld().catch((error) => console.error("✗ كنس المحادثات", error));
+    void sweepGroups().catch((error) => console.error("✗ كنس المجموعات", error));
     void sweepStories().catch((error) => console.error("✗ كنس القصص", error));
     void dripPlusCredit().catch((error) => console.error("✗ رصيد آثار+", error));
   },
   SWEEP_MINUTES * 60_000,
+).unref();
+
+/*
+   وانتهاءُ آثار+ كل خمس دقائق: منحُ اللوحة ونزعُها لا يصلهما حدثٌ من
+   RevenueCat، فالكنسُ هو من يُنهيهما — وربعُ ساعةٍ يتحرّك فيها وجهٌ
+   بعد انتهاء اشتراك صاحبه طويلة. والاستعلامُ سطرٌ واحد.
+*/
+setInterval(
+  () => {
+    void expirePlus().catch((error) => console.error("✗ انتهاء آثار+", error));
+    // وما اشتُري بمدّةٍ وانتهت يُنزع ممّن يلبسه.
+    void expireRentals().catch((error) => console.error("✗ انتهاء المدد", error));
+    // وجديدُ المتجر: ما رُفع من اللوحة يُقرع به جرسٌ مرّةً واحدة.
+    void announceStore().catch((error) => console.error("✗ إعلان المتجر", error));
+    // وسجلُّ الدخول الأقدم من تسعين يوماً يُكنس (القاعدة ١٩٤).
+    void sweepAccess().catch((error) => console.error("✗ كنس سجلّ الدخول", error));
+    // وسجلُّ الإشراف بعد ستّين يوماً (القاعدة ١٩٩).
+    void sweepModerationLog().catch((error) => console.error("✗ كنس سجلّ الإشراف", error));
+    // ونقاطُ الإدارة الممنوحة: جرسٌ لكل منح (القاعدة ١٩٨).
+    void pushCoinGrants().catch((error) => console.error("✗ تنبيه النقاط الممنوحة", error));
+  },
+  5 * 60_000,
+).unref();
+
+/*
+   وكنسُ طلبات التسجيل على مؤقّتٍ أقصر: مهلتُها عشرُ دقائق
+   (`UNVERIFIED_MINUTES`)، ومؤقّتٌ كلَّ نصف ساعة يُبقي الطلب أربعين
+   دقيقةً — أربعةَ أضعاف ما قُرّر. والثلثُ يجعل أطولَ ما يعيشه ثلاثَ
+   عشرةَ دقيقة، والاستعلامُ سطرٌ واحد على فهرسٍ لا يُثقل.
+*/
+setInterval(
+  () => {
+    void sweepPendingSignups().catch((error) => console.error("✗ كنس طلبات التسجيل", error));
+  },
+  Math.max(1, Math.round(UNVERIFIED_MINUTES / 3)) * 60_000,
 ).unref();
 
 app.route("/v1/auth", authRoutes);
@@ -97,8 +157,10 @@ app.route("/v1/media", mediaRoutes);
 app.route("/v1/notifications", notificationRoutes);
 app.route("/v1/dm", dmRoutes);
 app.route("/v1/messages", messageRoutes);
+app.route("/v1/groups", groupRoutes);
 app.route("/v1/reports", reportRoutes);
 app.route("/v1/site", siteRoutes);
+app.route("/v1/places", placeRoutes);
 app.route("/v1/webhooks", webhookRoutes);
 /** بابُ اللوحة — الدور يُفحص فيه لا في العرض. */
 app.route("/v1/admin", moderationRoutes);

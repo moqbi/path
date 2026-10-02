@@ -16,7 +16,12 @@ export const momentShape = {
   musicUrl: true,
   musicThumb: true,
   imageSpec: true,
+  photoX: true,
+  photoY: true,
   mediaId: true,
+  commentsLocked: true,
+  // «خاصة»: من يرى اللحظة يُقال له إنّها لم تُوجَّه إلى الدائرة كلّها.
+  audience: true,
   media: { select: { width: true, height: true } },
   lat: true,
   lng: true,
@@ -97,6 +102,12 @@ export async function momentById(id: string) {
     where: { id },
     select: {
       ...momentShape,
+      /*
+        صفحةُ اللحظة تقرأ تعليقاتها كلّها: الخطُّ الزمنيّ يعرض ثلاثةً
+        ويقول «اقرأ ٧ تعليقات أخرى» — فكانت الصفحةُ تفتح على الثلاثة
+        نفسها، لأنّ الشكلَ المشترك يأخذ ثلاثةً لا غير.
+      */
+      comments: { ...momentShape.comments, take: 100 },
       views: {
         select: { user: { select: { id: true, name: true } }, seenAt: true },
         orderBy: { seenAt: "desc" },

@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { onScrolled } from "../lib/scrolled";
 import { View, Pressable, ScrollView, ActivityIndicator } from "react-native";
 import { Text, TextInput } from "./type";
 import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ReactionGlyph, facesFor, CUSTOM, EMOJI_GROUPS } from "./reactions";
-import { LockIcon } from "./icons";
+import { EyeIcon, LockIcon, UnlockIcon } from "./icons";
+import { ar } from "../lib/format";
 import { ReportButton } from "./report-sheet";
 import { api } from "../lib/api";
-import { keys, useComment, useReact } from "../lib/queries";
+import { useAudience, useComment, useLockComments, useReact } from "../lib/queries";
 import { colors } from "../theme/tokens";
 
 type Mine = { kind: string; emoji: string | null } | null;
@@ -43,7 +45,9 @@ export function MomentBar({
   head,
   extra,
   inset = false,
-  panelFirst = false,
+  media,
+  footer,
+  locked = false,
 }: {
   momentId: string;
   momentKind?: string;
@@ -54,7 +58,19 @@ export function MomentBar({
   head?: React.ReactNode;
   extra?: React.ReactNode;
   inset?: boolean;
-  panelFirst?: boolean;
+  /**
+   * صورةُ البطاقة: تحت صفّ الزرّ لا تحته — كان الزرّ يطفو على الصورة نفسها
+   * فيُقرأ بقعةً عليها. والبطاقةُ تترك لها حشوةَ صفّ الزرّ من أعلاها.
+   */
+  media?: React.ReactNode;
+  /**
+   * ما تحت اللوحة: الوجوه والتعليقات. اللوحةُ تُفتح بين المتن وبينه —
+   * **بقرار المالك**: كانت تُفتح في أعلى البطاقة فوق النصّ، وصفُّ وجوهها
+   * يتكرّر مع صفّ الوجوه تحتها.
+   */
+  footer?: React.ReactNode;
+  /** التعليقاتُ مقفلة بيد صاحبها: يبقى التفاعل، ويذهب الحقل. */
+  locked?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [board, setBoard] = useState(false);
@@ -66,6 +82,25 @@ export function MomentBar({
   const react = useReact(momentId);
   const comment = useComment(momentId);
   const faces = facesFor(momentKind);
+  const audience = useAudience(momentId, author);
+  const lock = useLockComments(momentId);
+  const isLocked = author ? (audience.data?.commentsLocked ?? locked) : locked;
+
+  /*
+    التمريرُ يطوي اللوحة (القاعدة ١٩) — ما لم يكن فيها تعليقٌ نصفُ مكتوب
+    يضيع بانزلاق إصبع.
+  */
+  const draft = useRef(body);
+  draft.current = body;
+  useEffect(() => {
+    if (!open) return;
+    return onScrolled(() => {
+      if (draft.current.trim()) return;
+      setOpen(false);
+      setBoard(false);
+      setAsking(false);
+    });
+  }, [open]);
 
   /* صاحبُها من بابه، والمشرفُ من بابه — لا بابَ واحد يقبل الاثنين. */
   const remove = useMutation({
@@ -92,7 +127,7 @@ export function MomentBar({
 
   const button = (
     <Pressable
-      accessibilityLabel="تفاعل"
+      accessibilityLabel={isLocked ? "تفاعل — التعليقات مقفلة" : "تفاعل"}
       onPress={() => {
         setBoard(false);
         setOpen((v) => !v);
@@ -105,38 +140,63 @@ export function MomentBar({
         justifyContent: "center",
         borderWidth: 1,
         // أرضيةٌ صلبة لا شفافة: فوق صورة الثيم كان الزرّ يكاد يختفي.
-        backgroundColor: mine ? colors.claySoft : colors.card,
-        borderColor: mine ? colors.clay : colors.line,
+        backgroundColor: mine || isLocked ? colors.claySoft : colors.card,
+        borderColor: mine || isLocked ? colors.clay : colors.line,
       }}
     >
-      <View style={{ opacity: mine ? 1 : 0.72 }}>
-        <ReactionGlyph kind={mine?.kind ?? "SMILE"} emoji={mine?.emoji} size={20} />
-      </View>
+      {/* التعليقاتُ مقفلة: الزرّ نفسه يقولها قبل أن يُفتح — بقرار المالك. */}
+      {isLocked ? (
+        <LockIcon size={15} color={colors.clayInk} />
+      ) : (
+        <View style={{ opacity: mine ? 1 : 0.72 }}>
+          <ReactionGlyph kind={mine?.kind ?? "SMILE"} emoji={mine?.emoji} size={20} />
+        </View>
+      )}
     </Pressable>
   );
 
   return (
-    <View style={head ? undefined : { marginTop: 8 }}>
-      {/* الزرّ في الطرف الأيسر من المنشور — كما في الويب. */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: head ? "flex-start" : "center",
-          justifyContent: head ? "flex-start" : "flex-end",
-          gap: head ? 8 : 0,
-          paddingHorizontal: inset ? 12 : 0,
-          paddingTop: inset ? 10 : 0,
-          paddingBottom: inset ? 8 : 0,
-        }}
-      >
-        {head ? <View style={{ flex: 1 }}>{head}</View> : null}
-        {button}
-      </View>
+    <View style={head || inset ? undefined : { marginTop: 8 }}>
+      {inset ? (
+        <>
+          {/*
+            الزرُّ في ركن البطاقة الأعلى — **بقرار المالك** — والصورةُ تنزل تحته
+            في إطارها، والمتنُ بعدها. وبلا صورةٍ يبدأ المتنُ بجانبه.
+          */}
+          <View style={{ position: "absolute", top: 10, left: 12, zIndex: 2 }}>{button}</View>
+          {media}
+          {extra}
+        </>
+      ) : (
+        /* الزرّ في الطرف الأيسر من المنشور — كما في الويب. */
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: head ? "flex-start" : "center",
+            justifyContent: head ? "flex-start" : "flex-end",
+            gap: head ? 8 : 0,
+          }}
+        >
+          {head ? <View style={{ flex: 1 }}>{head}</View> : null}
+          {/*
+            على خطّ زرّ البطاقة نفسه: ذاك داخل حدّها (١) وحشوتها (١٢)، فزرُّ سطر
+            الحدث يدخل بالمقدار نفسه — وإلّا تعرّج عمودُ الأزرار بين بطاقةٍ وسطر.
+          */}
+          <View style={head ? { marginLeft: 13 } : undefined}>{button}</View>
+        </View>
+      )}
 
-      {panelFirst ? null : extra}
+      {inset ? null : extra}
 
       {open ? (
-        <View style={{ marginTop: 8, gap: 8, paddingHorizontal: inset ? 12 : 0 }}>
+        <View
+          style={{
+            marginTop: 8,
+            marginBottom: inset ? 4 : 0,
+            gap: 8,
+            paddingHorizontal: inset ? 12 : 0,
+          }}
+        >
           {/*
             الصفّ ينزل سطراً ثانياً ولا يُقصّ.
 
@@ -146,6 +206,9 @@ export function MomentBar({
             والالتفاف لا التمرير: ما يُمرَّر إليه يحتاج أن يُكتشف، وهذا
             بابُ ميزةٍ مدفوعة لا يُخبّأ.
           */}
+          {author ? (
+            <AuthorPanel data={audience.data} locked={isLocked} onLock={() => lock.mutate(!isLocked)} />
+          ) : (
           <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 2 }}>
             {faces.map((kind) => (
               <Pressable
@@ -192,8 +255,9 @@ export function MomentBar({
               </Pressable>
             )}
           </View>
+          )}
 
-          {board ? (
+          {board && !author ? (
             <ScrollView
               /*
                 لوحةٌ تنزل داخل قائمةٍ تنزل: أندرويد يعطي الإيماءة للأعلى
@@ -274,6 +338,15 @@ export function MomentBar({
             </View>
           ) : null}
 
+          {isLocked && !author ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 6, height: 36 }}>
+                <LockIcon size={14} color={colors.muted} />
+                <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600" }}>أقفل صاحبُ اللحظة التعليقات</Text>
+              </View>
+              {moderate ? null : <ReportButton target="MOMENT" targetId={momentId} />}
+            </View>
+          ) : (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <TextInput
               value={body}
@@ -284,6 +357,8 @@ export function MomentBar({
               accessibilityLabel="تعليق"
               style={{
                 flex: 1,
+                // بلا `minWidth: 0` يأخذ الحقلُ عرضَه الافتراضيّ فيخرج عن حافّة البطاقة.
+                minWidth: 0,
                 height: 36,
                 borderRadius: 999,
                 borderWidth: 1,
@@ -325,12 +400,67 @@ export function MomentBar({
               الإبلاغ بجانب «إرسال»: المكان الذي يُفتح قصداً على اللحظة.
               ولا يُبلّغ أحدٌ عن لحظته، فلا يُعرض لصاحبها.
             */}
-            {author ? null : <ReportButton target="MOMENT" targetId={momentId} />}
+            {/*
+              والمشرف لا يُبلغ: يحكم. زرُّ «بلاغ» أمامه يرسل القضيّة إلى
+              نفسه، و«احذفها بصلاحية الإشراف» فوقه يؤدّي الغرض بضغطة.
+            */}
+            {author || moderate ? null : <ReportButton target="MOMENT" targetId={momentId} />}
           </View>
+          )}
         </View>
       ) : null}
 
-      {panelFirst ? extra : null}
+      {footer}
+    </View>
+  );
+}
+
+/**
+ * لوحةُ صاحب اللحظة — **بقرار المالك**: لا وجوهَ تفاعلٍ يضغطها على لحظته،
+ * بل قفلُ التعليقات وعددُ من شاهدها. ووجوهُ المشاهدين ليست هنا: صفٌّ واحد
+ * تحت البطاقة ظاهرٌ بلا ضغطة (`AuthorFaces`)، من تفاعل بصورته ومن شاهد
+ * باهتاً — كان صفّاً ثانياً في اللوحة يكرّر ما تحتها.
+ */
+function AuthorPanel({
+  data,
+  locked,
+  onLock,
+}: {
+  data: import("../lib/queries").Audience | undefined;
+  locked: boolean;
+  onLock: () => void;
+}) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+      <Pressable
+        accessibilityRole="switch"
+        accessibilityState={{ checked: locked }}
+        accessibilityLabel={locked ? "افتح التعليقات" : "أقفل التعليقات"}
+        onPress={onLock}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 6,
+          height: 32,
+          paddingHorizontal: 11,
+          borderRadius: 999,
+          borderWidth: 1,
+          borderColor: locked ? colors.clay : colors.line,
+          backgroundColor: locked ? colors.claySoft : colors.card,
+        }}
+      >
+        {locked ? <LockIcon size={15} color={colors.clayInk} /> : <UnlockIcon size={15} color={colors.muted} />}
+        <Text style={{ color: locked ? colors.clayInk : colors.muted, fontSize: 11.5, fontWeight: "700" }}>
+          {locked ? "التعليقات مقفلة" : "التعليقات مفتوحة"}
+        </Text>
+      </Pressable>
+
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+        <EyeIcon size={15} color={colors.muted} />
+        <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600" }}>
+          {data ? `${ar(data.views)} مشاهدة` : "…"}
+        </Text>
+      </View>
     </View>
   );
 }

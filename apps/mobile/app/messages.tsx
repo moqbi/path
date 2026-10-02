@@ -1,5 +1,7 @@
+import { useState } from "react";
+import { scrolled } from "../lib/scrolled";
 import { View, FlatList, Pressable, ActivityIndicator, RefreshControl } from "react-native";
-import { Text } from "../components/type";
+import { Text, TextInput } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
@@ -7,9 +9,12 @@ import { Avatar } from "../components/avatar";
 import { SwipeRow } from "../components/swipe-row";
 import { ScreenHeader } from "../components/screen-header";
 import { Ticks, receiptOf } from "../components/receipt";
-import { CameraIcon, MicIcon } from "../components/icons";
+import { CameraIcon, MicIcon, PlusIcon, SearchIcon, StarIcon, TrashIcon, WithIcon } from "../components/icons";
+import { Modal } from "react-native";
+import type { GroupRow } from "../lib/groups";
 import { api } from "../lib/api";
-import { keys } from "../lib/queries";
+import { keys, useCircle } from "../lib/queries";
+import { usePullRefresh } from "../lib/refresh";
 import { useSession } from "../lib/session";
 import { ar, presence, relative } from "../lib/format";
 import { NameTag } from "../components/name-tag";
@@ -39,7 +44,12 @@ type Row = {
     readAt: string | null;
   } | null;
   unseen: number;
+  /** مفضّلةٌ مثبّتةٌ أعلى القائمة (القاعدة ٢٢٠) — اختياريٌّ لخادمٍ أقدم. */
+  pinned?: boolean;
 };
+
+/** حدُّ المفضّلة — كالخادم (`PIN_MAX`). */
+const PIN_MAX = 3;
 
 /** خلاصةُ آخر رسالة: الصوت والصورة يُقالان لا يُتركان فارغين. */
 function Last({ row, meId }: { row: Row; meId: string }) {
@@ -79,24 +89,194 @@ export default function Messages() {
   });
 
   /** حذف المحادثة: تُكشف بالسحب كما في الويب، لا بزرٍّ دائمٍ في الصفّ. */
+  /* المجموعات فوق المحادثات (القاعدة ٢١٥): قليلةٌ ومنها يأتي أكثرُ الكلام. */
+  const groupList = useQuery({
+    queryKey: keys.groups,
+    queryFn: () => api<{ groups: GroupRow[] }>("/v1/groups"),
+    refetchInterval: 20_000,
+  });
+
+  const pullRefresh = usePullRefresh(() => Promise.all([list.refetch(), groupList.refetch()]));
+  /*
+    المفضّلة (القاعدة ٢٢٠): نجمةٌ بجانب الحذف في السحبة، تثبّت المحادثة أعلى
+    القائمة أو تفكّها. وثلاثٌ حدّاً — والرابعةُ تفتح نافذةً في وسط الشاشة تقول
+    ما يجري وما يُفعل، قبل أن يُسأل الخادم: الشاشةُ تعرف كم مثبّتاً عندها.
+  */
+  const [pinFull, setPinFull] = useState(false);
+  const pinned = (list.data?.conversations ?? []).filter((row) => row.pinned).length;
+  const togglePin = useMutation({
+    mutationFn: (row: Row) =>
+      api(`/v1/dm/${row.id}/pin`, { method: row.pinned ? "DELETE" : "POST" }),
+    onSuccess: async () => client.invalidateQueries({ queryKey: keys.dm }),
+    onError: () => setPinFull(true),
+  });
+  const pin = (row: Row) => {
+    if (!row.pinned && pinned >= PIN_MAX) {
+      setPinFull(true);
+      return;
+    }
+    togglePin.mutate(row);
+  };
+
   const drop = useMutation({
     mutationFn: (id: string) => api(`/v1/dm/${id}`, { method: "DELETE" }),
     onSuccess: async () => client.invalidateQueries({ queryKey: keys.dm }),
   });
 
+  /*
+    البحثُ باسم الصديق — **بقرار المالك**: في المحادثات القائمة أوّلاً، ثمّ
+    في أصدقائك ممّن لا محادثةَ معهم فتُبدأ من هنا. والبحثُ في دائرتك
+    وحدها: لا بابَ منه إلى من ليس فيها (القاعدة ٢٠).
+  */
+  const [query, setQuery] = useState("");
+  const circle = useCircle();
+  const needle = query.trim().toLowerCase();
+  const conversations = (list.data?.conversations ?? []).filter(
+    (row) => !needle || row.other.name.toLowerCase().includes(needle),
+  );
+  const talking = new Set((list.data?.conversations ?? []).map((row) => row.other.id));
+  const groups = (groupList.data?.groups ?? []).filter(
+    (row) => !needle || row.name.toLowerCase().includes(needle),
+  );
+  const others = needle
+    ? (circle.data?.members ?? []).filter(
+        (person) => !talking.has(person.id) && person.name.toLowerCase().includes(needle),
+      )
+    : [];
+  const start = useMutation({
+    mutationFn: (id: string) => api<{ id: string }>(`/v1/dm/with/${id}`, { method: "POST" }),
+    onSuccess: (row) => router.push(`/dm/${row.id}` as never),
+  });
+
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
-      <ScreenHeader title="المحادثات" back="/" />
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
+      <ScreenHeader
+        title="المحادثات"
+        back="/"
+        right={
+          // إنشاءُ المجموعة للمشرف وحده (القاعدة ٢١٥).
+          me?.canGroups ? (
+            <Pressable
+              accessibilityLabel="مجموعة جديدة"
+              onPress={() => router.push("/group/manage" as never)}
+              hitSlop={8}
+              style={{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.1)" }}
+            >
+              <PlusIcon size={19} color="#f7f5ef" />
+            </Pressable>
+          ) : undefined
+        }
+      />
+
+      <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            height: 42,
+            paddingHorizontal: 12,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: colors.line,
+            backgroundColor: colors.card,
+          }}
+        >
+          <SearchIcon size={17} color={colors.muted} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="ابحث باسم صديق"
+            placeholderTextColor={colors.faint}
+            returnKeyType="search"
+            style={{ flex: 1, color: colors.ink, fontSize: 14, textAlign: "right" }}
+          />
+        </View>
+      </View>
 
       <FlatList
-        data={list.data?.conversations ?? []}
+        // التمريرُ يطوي صفّاً مسحوباً مفتوحاً (القاعدة ٢١٣).
+        onScrollBeginDrag={scrolled}
+        keyboardShouldPersistTaps="handled"
+        data={conversations}
+        ListHeaderComponent={
+          groups.length > 0 ? (
+            <View style={{ paddingBottom: 4 }}>
+              {groups.map((row) => (
+                <Pressable
+                  key={row.id}
+                  onPress={() => router.push(`/group/${row.id}` as never)}
+                  style={{ flexDirection: "row", alignItems: "center", gap: 11, paddingHorizontal: 20, paddingVertical: 11 }}
+                >
+                  <View style={{ width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center", backgroundColor: colors.claySoft }}>
+                    <WithIcon size={22} color={colors.clayInk} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <Text numberOfLines={1} style={{ color: colors.ink, fontSize: 14, fontWeight: "600", flexShrink: 1, writingDirection: "auto" }}>
+                        {row.name}
+                      </Text>
+                      <Text style={{ color: colors.faint, fontSize: 10.5 }}>
+                        {row.last ? relative(new Date(row.last.createdAt)) : `${ar(row.members)} عضو`}
+                      </Text>
+                    </View>
+                    <Text numberOfLines={1} style={{ color: colors.muted, fontSize: 12 }}>
+                      {row.last
+                        ? `${row.last.senderId === me?.id ? "أنت" : row.last.sender.name}: ${row.last.kind === "PHOTO" ? "صورة" : row.last.body}`
+                        : "لا رسائل بعد"}
+                    </Text>
+                  </View>
+                  {row.unseen > 0 ? (
+                    <View style={{ minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 6, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}>
+                      <Text style={{ color: colors.onBrand, fontSize: 10.5, fontWeight: "700" }}>{ar(row.unseen)}</Text>
+                    </View>
+                  ) : null}
+                </Pressable>
+              ))}
+              {conversations.length > 0 ? (
+                <View style={{ height: 1, backgroundColor: colors.line, marginHorizontal: 20, marginVertical: 4 }} />
+              ) : null}
+            </View>
+          ) : null
+        }
+        ListFooterComponent={
+          others.length > 0 ? (
+            <View style={{ paddingTop: 8 }}>
+              <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600", paddingHorizontal: 20, paddingBottom: 4 }}>
+                أصدقاء بلا محادثة
+              </Text>
+              {others.map((person) => (
+                <Pressable
+                  key={person.id}
+                  onPress={() => start.mutate(person.id)}
+                  style={{ flexDirection: "row", alignItems: "center", gap: 11, paddingHorizontal: 20, paddingVertical: 10 }}
+                >
+                  <Avatar name={person.name} size={40} mediaId={person.avatarMediaId} frame={person.frame} charm={person.charm} />
+                  <Text numberOfLines={1} style={{ flex: 1, color: colors.ink, fontSize: 14, fontWeight: "600", writingDirection: "auto" }}>
+                    {person.name}
+                  </Text>
+                  <Text style={{ color: colors.clayInk, fontSize: 12.5, fontWeight: "700" }}>ابدأ محادثة</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null
+        }
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingVertical: 8, flexGrow: 1 }}
         refreshControl={
-          <RefreshControl refreshing={list.isRefetching} onRefresh={() => void list.refetch()} tintColor={colors.clay} />
+          <RefreshControl {...pullRefresh} tintColor={colors.clay} />
         }
         renderItem={({ item }) => (
-          <SwipeRow onDelete={() => void drop.mutate(item.id)}>
+          <SwipeRow
+            onDelete={() => void drop.mutate(item.id)}
+            confirmLabel="حذف المحادثة"
+            onSecond={() => pin(item)}
+            secondLabel={item.pinned ? "شيلها من المفضّلة" : "أضفها للمفضّلة"}
+            icons={{
+              delete: <TrashIcon size={22} color="#fff" />,
+              second: <StarIcon size={22} color={item.pinned ? colors.gold : "#fff"} />,
+            }}
+          >
           <Pressable
             onPress={() => router.push(`/dm/${item.id}` as never)}
             style={{ flexDirection: "row", alignItems: "center", gap: 11, paddingHorizontal: 20, paddingVertical: 11 }}
@@ -117,6 +297,7 @@ export default function Messages() {
                   {item.other.name}
                 </Text>
                 <NameTag isPlus={item.other.isPlus} tag={item.other.tag} size={10} />
+                {item.pinned ? <StarIcon size={12} color={colors.gold} /> : null}
                 <Text style={{ color: colors.faint, fontSize: 10.5 }}>
                   {item.last ? relative(new Date(item.last.createdAt)) : presence(item.other.lastSeenAt)}
                 </Text>
@@ -137,6 +318,12 @@ export default function Messages() {
         ListEmptyComponent={
           list.isLoading ? (
             <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
+          ) : groups.length > 0 ? null : needle ? (
+            others.length > 0 ? null : (
+              <Text style={{ color: colors.muted, fontSize: 13.5, textAlign: "center", marginTop: 40 }}>
+                لا أحد بهذا الاسم في دائرتك.
+              </Text>
+            )
           ) : (
             <View style={{ marginTop: 50, paddingHorizontal: 40 }}>
               <Text style={{ color: colors.muted, fontSize: 13.5, textAlign: "center", lineHeight: 24 }}>
@@ -146,6 +333,34 @@ export default function Messages() {
           )
         }
       />
+      {/* المفضّلةُ ملأى: نافذةٌ في الوسط تقول الحدَّ وما يُفعل — بلهجتنا. */}
+      <Modal visible={pinFull} transparent animationType="fade" onRequestClose={() => setPinFull(false)}>
+        <Pressable
+          onPress={() => setPinFull(false)}
+          style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 32, backgroundColor: "rgba(14,26,36,.55)" }}
+        >
+          <Pressable
+            onPress={() => undefined}
+            style={{ width: "100%", maxWidth: 340, borderRadius: 22, padding: 24, alignItems: "center", gap: 12, backgroundColor: colors.card }}
+          >
+            <View style={{ width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", backgroundColor: colors.goldSoft }}>
+              <StarIcon size={28} color={colors.gold} />
+            </View>
+            <Text style={{ color: colors.ink, fontSize: 17, fontWeight: "700", textAlign: "center" }}>
+              المفضّلة فلّت!
+            </Text>
+            <Text style={{ color: colors.ink2, fontSize: 14, lineHeight: 24, textAlign: "center" }}>
+              تقدر تثبّت {ar(PIN_MAX)} محادثات بس. شيل وحدة من المفضّلة، وبعدها ثبّت هذي مكانها.
+            </Text>
+            <Pressable
+              onPress={() => setPinFull(false)}
+              style={{ alignSelf: "stretch", height: 48, marginTop: 6, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
+            >
+              <Text style={{ color: colors.onBrand, fontSize: 15, fontWeight: "700" }}>أبشر</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }

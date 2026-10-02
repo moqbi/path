@@ -1,0 +1,1 @@
+ALTER TABLE "Moment" ADD COLUMN "commentsLocked" BOOLEAN NOT NULL DEFAULT false;

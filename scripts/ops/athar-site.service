@@ -1,0 +1,16 @@
+[Unit]
+Description=آثار — الموقع العامّ واللوحة (apps/web)
+After=network.target postgresql.service pgbouncer.service
+
+[Service]
+User=athar
+WorkingDirectory=/home/athar/app/apps/web
+EnvironmentFile=/home/athar/app/.env
+Environment=PORT=3001
+ExecStart=/usr/bin/npm run start
+Restart=always
+RestartSec=3
+MemoryMax=700M
+
+[Install]
+WantedBy=multi-user.target

@@ -88,6 +88,12 @@ export type Plan = {
   /** السعر بعملة المشتري وبصيغة متجره — لا نكتبه نحن. */
   price: string;
   yearly: boolean;
+  /**
+   * ما يعادل الشهر في السنويّ («٨٫٣٣ ر.س»)، كما يحسبه المتجر.
+   * آبل تطلب أن يُعرض السعرُ والمدّةُ معاً (3.1.2) — وسعرُ الشهر في
+   * باقةٍ سنوية يُقال بجانب سعرها لا بدلاً منه.
+   */
+  perMonth: string | null;
 };
 
 /**
@@ -97,28 +103,42 @@ export type Plan = {
  * والضريبة والتقريب يختلفان بين بلدٍ وآخر — ورقمٌ مكتوب في الشاشة
  * يخالف ما يُخصم فعلاً سببُ رفضٍ في المراجعة.
  */
+type Package = Awaited<ReturnType<Purchases["getOfferings"]>>["all"][string]["availablePackages"][number];
+
+/*
+  الحزمُ تُحفظ حين تُقرأ لتُشترى منها: كان الشراءُ يسأل المتجرَ عن العروض
+  ثانيةً مع كل ضغطة، فتمضي ثوانٍ بين اللمسة ونافذة آبل بلا أثرٍ على الشاشة.
+*/
+let cached: Package[] = [];
+
 export async function plans(): Promise<Plan[]> {
   const purchases = await load();
   if (!purchases) return [];
 
   const offerings = await purchases.getOfferings();
   const packages = offerings.current?.availablePackages ?? [];
+  cached = packages;
 
   return packages.map((item) => ({
     id: item.identifier,
     price: item.product.priceString,
     yearly: item.packageType === "ANNUAL",
+    perMonth: item.packageType === "ANNUAL" ? (item.product.pricePerMonthString ?? null) : null,
   }));
 }
 
 /** يشتري باقةً ويردّ هل صار الاستحقاق فعّالاً عند المتجر. */
 export async function buy(planId: string): Promise<{ active: boolean; cancelled: boolean }> {
   const purchases = await load();
-  if (!purchases) return { active: false, cancelled: false };
+  // بلا متجرٍ لا شراء — وكان يردّ «لم يُلغَ» فتقول الشاشة «تمّ الشراء».
+  if (!purchases) throw new Error("المتجر غير متاح في هذه النسخة");
 
-  const offerings = await purchases.getOfferings();
-  const item = offerings.current?.availablePackages.find((one) => one.identifier === planId);
-  if (!item) return { active: false, cancelled: false };
+  let item = cached.find((one) => one.identifier === planId);
+  if (!item) {
+    await plans();
+    item = cached.find((one) => one.identifier === planId);
+  }
+  if (!item) throw new Error("الباقة غير موجودة في المتجر — تحقّق من العرض في RevenueCat");
 
   try {
     const { customerInfo } = await purchases.purchasePackage(item);
@@ -127,8 +147,25 @@ export async function buy(planId: string): Promise<{ active: boolean; cancelled:
     // إلغاءُ المشتري لنافذة الدفع ليس خطأً يُعرض له.
     const cancelled = Boolean((problem as { userCancelled?: boolean }).userCancelled);
     if (cancelled) return { active: false, cancelled: true };
-    throw problem;
+    throw new Error(purchaseProblem(problem));
   }
+}
+
+/**
+ * سببُ الفشل بلسان صاحبه: رموزُ RevenueCat تُقرأ للمطوّر لا للمشتري.
+ * وأشيعُها «الإيصال مستعملٌ» — حسابُ آبل نفسه اشترك من حسابٍ آخر في آثار.
+ */
+function purchaseProblem(problem: unknown): string {
+  // الأرقامُ من `PURCHASES_ERROR_CODE` في حزمة RevenueCat.
+  const code = String((problem as { code?: string | number }).code ?? "");
+  const text = problem instanceof Error ? problem.message : "";
+  if (code === "7")
+    return "حسابُ آبل هذا مشتركٌ من حسابٍ آخر في آثار. ادخل بذلك الحساب، أو استعد المشتريات منه.";
+  if (code === "6") return "أنت مشتركٌ في هذه الباقة أصلاً. اضغط «استعادة المشتريات» إن لم يظهر اشتراكك.";
+  if (code === "20") return "الدفعُ بانتظار الموافقة — يُفعَّل الاشتراك حين يكتمل.";
+  if (code === "10") return "تعذّر الاتصال بالمتجر — تحقّق من الإنترنت وأعد المحاولة.";
+  if (code === "3") return "الشراء غير مسموح على هذا الجهاز (قيود الاستخدام).";
+  return text || "تعذّر الشراء";
 }
 
 /**

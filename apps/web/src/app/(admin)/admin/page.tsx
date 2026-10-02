@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
+  grantCoinsToTag,
   closeTicket,
   createCategory,
   createStoreItem,
@@ -32,14 +33,19 @@ import { itemPaint, ScreenHeader, TagPill } from "@/components/ui";
 import { Saver } from "./saver";
 import { AdminEmail } from "./email";
 import { SitePanel } from "./site";
+import { TOPIC_LABEL } from "@/lib/topics";
 import { Suspend } from "./suspend";
 import { PlusGrant } from "./plus";
+import { CoinsGrant } from "./coins";
 import { SITE_TEXT, siteText, siteImage, type SiteKey } from "@/lib/site";
 import { ItemImage } from "./item-image";
 import { ItemCover } from "./item-cover";
 import { BundleItems } from "./bundle";
+import { CollectionsView, ItemCollection, ItemPlans } from "./store-extras";
 import { coinText, ar, relative, riyals } from "@/lib/format";
 import { parsePalette } from "@/lib/theme";
+import { ReportContext } from "./report-context";
+import { linkedMany, type LinkedResult } from "@/lib/linked";
 
 const FIELD =
   "rounded-xl border border-line bg-card px-4 text-[13.5px] text-ink outline-none focus:border-clay";
@@ -85,6 +91,7 @@ const KIND_LABEL: Record<string, string> = {
 const STORE_VIEWS = [
   { key: "items", label: "الأصناف" },
   { key: "cats", label: "التصنيفات" },
+  { key: "collections", label: "المجموعات" },
   { key: "packs", label: "باقات النقاط" },
 ] as const;
 
@@ -207,6 +214,7 @@ const REPORT_TARGET: Record<string, string> = {
   MOMENT: "لحظة",
   STORY: "قصة",
   MESSAGE: "رسالة",
+  COMMENT: "تعليق",
   USER: "حساب",
 };
 
@@ -293,7 +301,9 @@ function StaffRow({
           {person.name}
           {person.role === "ADMIN" ? <Chip gold>مالك</Chip> : null}
           {person.adminScope !== "NONE" ? (
-            <Chip>{person.adminScope === "ALL" ? "اللوحة" : "المتجر"}</Chip>
+            <Chip>
+              {person.adminScope === "ALL" ? "اللوحة" : person.adminScope === "REPORTS" ? "البلاغات" : "المتجر"}
+            </Chip>
           ) : null}
           {person.canModerate ? <Chip live>إشراف</Chip> : null}
         </p>
@@ -321,6 +331,7 @@ function StaffRow({
       >
         <option value="NONE">بلا صلاحية</option>
         <option value="STORE">المتجر فقط</option>
+        <option value="REPORTS">البلاغات والدعم فقط</option>
         <option value="ALL">اللوحة كاملة</option>
       </select>
       <button
@@ -334,6 +345,61 @@ function StaffRow({
   );
 }
 
+/**
+ * الحسابات المرتبطة في صفّ الحساب (القاعدة ١٩٤) — ظاهرةٌ دائماً بحالها:
+ * كان القسمُ يختفي حين لا ارتباط، فلا يُعرف أهو «لا ارتباط» أم «لا بيانات».
+ */
+function LinkedRow({ result }: { result: LinkedResult }) {
+  const { linked, seen, crowded } = result;
+  return (
+    <div className="border-t border-line px-3 py-2.5">
+      <p className="text-[11.5px] font-semibold text-ink-2">
+        الحسابات المرتبطة{linked.length > 0 ? ` (${ar(linked.length)})` : ""}
+      </p>
+      {seen.ips + seen.devices === 0 ? (
+        <p className="mt-0.5 text-[11px] text-faint">
+          لا دخولَ مسجَّلاً له بعد — يُسجَّل من أوّل استعمالٍ بعد نشر الميزة.
+        </p>
+      ) : linked.length === 0 ? (
+        <p className="mt-0.5 text-[11px] text-faint">
+          لا حسابات مرتبطة — دخل من {ar(seen.ips)} شبكة
+          {seen.devices > 0 ? ` و${ar(seen.devices)} جهاز` : " (من الويب أو نسخةٍ قبل معرّف الجهاز)"}
+          {crowded > 0 ? ` · تُرك ${ar(crowded)} عنوانٌ مزدحم` : ""}.
+        </p>
+      ) : (
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {linked.map((other) => (
+            <Link
+              key={other.id}
+              href={`/admin?s=users&q=${other.memberNo}`}
+              className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+              style={{
+                background: other.device ? "var(--color-live-soft)" : "var(--color-chip)",
+                color: other.device ? "var(--color-live)" : "var(--color-ink-2)",
+              }}
+            >
+              <bdi>{other.name}</bdi> ({ar(other.memberNo)}) ·{" "}
+              {other.device ? "الجهاز نفسه" : "الشبكة نفسها"}
+              {other.suspendedUntil && other.suspendedUntil > new Date() ? " · موقوف" : ""}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** ما جرى في سجلّ الإشراف — كان كلُّ صفٍّ يُقرأ «حذف لحظةً» أيّاً كان. */
+const LOG_ACTION: Record<string, string> = {
+  MOMENT_REMOVED: "حذف لحظةً",
+  COMMENT_REMOVED: "حذف تعليقاً",
+  PLUS_GRANTED: "منح آثار+",
+  PLUS_REVOKED: "أوقف آثار+",
+  USER_SUSPENDED: "أوقف حساباً",
+  USER_RESTORED: "رفع الإيقاف",
+  COINS_GRANTED: "منح نقاطاً",
+};
+
 const SECTIONS = [
   { key: "tags", label: "الوسوم", store: false },
   { key: "users", label: "الحسابات", store: false },
@@ -341,8 +407,8 @@ const SECTIONS = [
   { key: "site", label: "الموقع", store: false },
   { key: "team", label: "الصلاحيات", store: false, owner: true },
   { key: "files", label: "الملفات", store: false, owner: true },
-  { key: "support", label: "الدعم", store: false },
-  { key: "reports", label: "البلاغات", store: false },
+  { key: "support", label: "الدعم", store: false, reports: true },
+  { key: "reports", label: "البلاغات", store: false, reports: true },
   { key: "words", label: "الكلمات", store: false },
 ] as const;
 
@@ -352,7 +418,7 @@ export default async function AdminPage({
   searchParams: Promise<{ s?: string; v?: string; q?: string }>;
 }) {
   const { s: raw, v, q } = await searchParams;
-  const view = v === "cats" || v === "packs" ? v : "items";
+  const view = v === "cats" || v === "packs" || v === "collections" ? v : "items";
   const user = await currentUser();
   if (!user) redirect("/login");
 
@@ -386,13 +452,17 @@ export default async function AdminPage({
     );
   }
   const sections = SECTIONS.filter(
-    (item) => (scope === "ALL" || item.store) && (!("owner" in item && item.owner) || owner),
+    (item) =>
+      (scope === "ALL" ||
+        (scope === "STORE" && item.store) ||
+        (scope === "REPORTS" && "reports" in item && item.reports)) &&
+      (!("owner" in item && item.owner) || owner),
   );
   const section = sections.some((item) => item.key === raw) ? raw! : sections[0].key;
 
   const [
     items, tags, people, categories, tickets, reports, bannedWords, packs,
-    userCount, staff, site, heroMediaId, socials, logs, found,
+    userCount, staff, site, heroMediaId, socials, logs, found, shots,
   ] = await Promise.all([
     prisma.storeItem.findMany({
       orderBy: { sortOrder: "asc" },
@@ -447,16 +517,20 @@ export default async function AdminPage({
       orderBy: { sortOrder: "asc" },
       include: { _count: { select: { items: true } } },
     }),
-    // المفتوحة أولاً: ما يحتاج ردّاً قبل ما رُدّ عليه.
-    scope === "ALL"
+    // المفتوحة أولاً: ما يحتاج ردّاً قبل ما رُدّ عليه. وممنوحُ البلاغات
+    // والدعم (`REPORTS`) يقرؤهما — كان القسمان يظهران له فارغين.
+    scope === "ALL" || scope === "REPORTS"
       ? prisma.supportTicket.findMany({
           orderBy: [{ closed: "asc" }, { createdAt: "desc" }],
           take: 60,
-          include: { user: { select: { name: true, memberNo: true } } },
+          include: {
+            user: { select: { name: true, memberNo: true } },
+            files: { select: { id: true, name: true, mime: true, size: true } },
+          },
         })
       : Promise.resolve([]),
     // المفتوحة أولاً كالرسائل: ما ينتظر حكماً قبل ما حُكم فيه.
-    scope === "ALL"
+    scope === "ALL" || scope === "REPORTS"
       ? prisma.report.findMany({
           orderBy: [{ state: "asc" }, { createdAt: "desc" }],
           take: 80,
@@ -504,6 +578,8 @@ export default async function AdminPage({
     // سجلّ الإشراف: يُقرأ مع البلاغات، فهما بابا التصرّف في المحتوى.
     scope === "ALL"
       ? prisma.moderationLog.findMany({
+          // ستّون يوماً ثمّ يُحذف من القاعدة (القاعدة ١٩٩) — والشرطُ هنا يسبق الكنس.
+          where: { createdAt: { gte: new Date(Date.now() - 60 * 86_400_000) } },
           orderBy: { createdAt: "desc" },
           take: 60,
           include: {
@@ -534,7 +610,20 @@ export default async function AdminPage({
           },
         })
       : Promise.resolve([]),
+    // لقطاتُ «من داخل التطبيق» في صفحة الهبوط.
+    scope === "ALL"
+      ? prisma.siteShot.findMany({
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+          select: { id: true, label: true, mediaId: true, sortOrder: true, hidden: true },
+        })
+      : Promise.resolve([]),
   ]);
+
+  // الحسابات المرتبطة لكل صفٍّ ظاهر — لمن يملك الإشراف (القاعدة ١٩٤).
+  const linked =
+    section === "users" && user.canModerate
+      ? await linkedMany(people.map((person) => person.id))
+      : new Map<string, LinkedResult>();
 
   // الأصناف مرصوفة تحت تصنيفاتها كما تُرى في المتجر، وما بلا تصنيف في آخرها.
   const groups = [
@@ -560,8 +649,8 @@ export default async function AdminPage({
         }
       />
 
-      <main className="scroll-area px-5 py-5">
-        <div className="mb-6 grid grid-cols-4 gap-2">
+      <main className="scroll-area admin-main px-5 py-5">
+        <div className="admin-stats mb-6 grid grid-cols-4 gap-2">
           {[
             { value: userCount, label: "مستخدم" },
             { value: items.length, label: "صنف" },
@@ -579,13 +668,15 @@ export default async function AdminPage({
         </div>
 
         {/* أقسام بدل جدارٍ واحد: قسمٌ في الشاشة لا ثلاثة فوق بعضها. */}
-        <div className="no-bar mb-5 flex gap-2 overflow-x-auto">
+        {/* وعلى الشاشة العريضة عمودٌ جانبيّ ثابت (`.admin-nav`). */}
+        <nav className="admin-nav no-bar mb-5 flex gap-2 overflow-x-auto">
           {sections.map((item) => {
             const on = section === item.key;
             return (
               <Link
                 key={item.key}
                 href={`/admin?s=${item.key}`}
+                aria-current={on ? "page" : undefined}
                 className="shrink-0 rounded-full px-4 py-2 text-[12.5px] font-semibold"
                 style={{
                   background: on ? "var(--color-clay)" : "var(--color-card)",
@@ -597,8 +688,9 @@ export default async function AdminPage({
               </Link>
             );
           })}
-        </div>
+        </nav>
 
+        <div className="admin-section min-w-0">
         {section === "tags" ? (
         <>
         <h2 className="mb-1 text-[15px] font-bold">الوسوم</h2>
@@ -746,6 +838,48 @@ export default async function AdminPage({
           {" "}امنح وسماً لحساب أو انزعه. الرقم على اليمين رقم العضوية.
           {owner ? " وتغييرُ البريد لك وحدك: من يبدّل بريد حسابٍ ينقله إلى عنوانه." : ""}
         </p>
+        {/*
+          منحُ النقاط لكل من يحمل وسماً (القاعدة ١٩٨) — مكافأةُ المختبرين بعد كل
+          اختبارٍ بضغطةٍ واحدة، لا حساباً حساباً.
+        */}
+        {scope === "ALL" && tags.length > 0 ? (
+          <details className="mb-3 rounded-2xl border border-line bg-card">
+            <summary className="cursor-pointer px-3.5 py-3 text-[13px] font-semibold">
+              امنح نقاطاً لكل من يحمل وسماً
+            </summary>
+            <Saver action={grantCoinsToTag} className="flex flex-wrap items-end gap-2 border-t border-line p-3.5">
+              <label className="flex flex-col gap-1 text-[11px] text-muted">
+                الوسم
+                <select name="tagId" required className="h-10 rounded-xl border border-line bg-paper px-2 text-[12px] text-ink outline-none">
+                  {tags.map((tag) => (
+                    <option key={tag.id} value={tag.id}>
+                      {tag.name} ({ar(tag._count.users)})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-[11px] text-muted">
+                النقاط
+                <input name="coins" inputMode="numeric" required className="h-10 w-[96px] rounded-xl border border-line bg-paper px-2 text-[12px] text-ink outline-none" />
+              </label>
+              <label className="flex min-w-0 grow flex-col gap-1 text-[11px] text-muted">
+                السبب (اختياري)
+                <input name="note" maxLength={80} placeholder="مكافأة اختبار النسخة ١٨" className="h-10 w-full rounded-xl border border-line bg-paper px-2 text-[12px] text-ink outline-none" />
+              </label>
+              <button
+                type="submit"
+                className="h-10 shrink-0 rounded-xl px-4 text-[12px] font-bold"
+                style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+              >
+                أودِع للجميع
+              </button>
+              <p className="w-full text-[11px] leading-relaxed text-muted">
+                يصل كلَّ واحدٍ منهم تنبيه «لأنك تستحق — تمّ منحك … نقطة من قبل الإدارة».
+              </p>
+            </Saver>
+          </details>
+        ) : null}
+
         {people.length === 0 ? (
           <p className="mb-7 rounded-2xl border border-line bg-card p-5 text-center text-[12.5px] text-muted">
             لا حساب بهذا البحث.
@@ -811,6 +945,14 @@ export default async function AdminPage({
                 </Link>
               ) : null}
 
+              {/*
+                الحسابات المرتبطة في صفّه (القاعدة ١٩٤): من شاركه جهازاً أو
+                شبكة. قرينةٌ لا دليل — والجهازُ أقوى من الشبكة.
+              */}
+              {linked.has(person.id) ? (
+                <LinkedRow result={linked.get(person.id)!} />
+              ) : null}
+
               {owner ? <AdminEmail userId={person.id} current={person.email} /> : null}
 
               {/*
@@ -827,6 +969,9 @@ export default async function AdminPage({
 
               {/* ومنحُ آثار+ حيث يُقرأ الحساب لا في شاشةٍ تعرض الناس كلَّهم. */}
               {scope === "ALL" ? <PlusGrant userId={person.id} until={person.plusUntil} /> : null}
+
+              {/* ومنحُ النقاط بجانبه — مكافأةُ المختبرين (القاعدة ١٩٨). */}
+              {scope === "ALL" ? <CoinsGrant userId={person.id} /> : null}
 
               {/*
                 وفتحُ الحساب للمالك وحده: بطاقتُه ولحظاتُه العامّة تُقرأ
@@ -873,14 +1018,18 @@ export default async function AdminPage({
               >
                 {tab.label}
                 <span className="mr-1.5 text-[11px] opacity-70">
-                  {ar(tab.key === "items" ? items.length : tab.key === "cats" ? categories.length : packs.length)}
+                  {tab.key === "collections"
+                    ? ""
+                    : ar(tab.key === "items" ? items.length : tab.key === "cats" ? categories.length : packs.length)}
                 </span>
               </Link>
             );
           })}
         </div>
 
-        {view === "packs" ? (
+        {view === "collections" ? (
+          <CollectionsView />
+        ) : view === "packs" ? (
           <>
             <p className="mb-3 px-1 text-[11.5px] leading-relaxed text-muted">
               النقاط عملة المتجر: كل ما فيه يُشترى بها. والباقة تُشترى بمالٍ
@@ -1210,7 +1359,15 @@ export default async function AdminPage({
                             mediaId={item.mediaId}
                             kind={item.kind}
                             mime={item.media?.mime ?? null}
+                            hole={item.frameHole}
                           />
+                          {/* المجموعةُ داخل النوع، ومُدَدُ الشراء — للإطار والتميمة والثيم. */}
+                          {item.kind !== "BUNDLE" ? (
+                            <>
+                              <ItemCollection itemId={item.id} kind={item.kind} collectionId={item.collectionId} />
+                              <ItemPlans itemId={item.id} />
+                            </>
+                          ) : null}
                           <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
                             الثيم يُلبَس خلفيةً للتطبيق، والتميمة شعاراً تحت صورة العرض،
                             والإطار حلقةً حولها. التميمة والإطار يُحفظان PNG بشفافيتهما.
@@ -1519,6 +1676,7 @@ export default async function AdminPage({
             defaults={SITE_TEXT as unknown as Record<string, string>}
             heroMediaId={heroMediaId}
             links={socials}
+            shots={shots}
           />
         ) : null}
 
@@ -1632,6 +1790,12 @@ export default async function AdminPage({
                         <span dir="auto" className="flex items-center gap-1.5 truncate text-[13px] font-semibold">
                           {ticket.user?.name ?? ticket.name ?? "زائر"}
                           {ticket.user ? null : <Chip gold>من الموقع</Chip>}
+                          {ticket.topic && TOPIC_LABEL[ticket.topic] ? (
+                            <Chip gold={ticket.topic !== "complaint" && ticket.topic !== "report"} live={ticket.topic === "report"}>
+                              {TOPIC_LABEL[ticket.topic]}
+                            </Chip>
+                          ) : null}
+                          {ticket.files.length ? <Chip>{ar(ticket.files.length)} مرفق</Chip> : null}
                           {ticket.closed ? <Chip>مغلقة</Chip> : ticket.reply ? <Chip>رُدّ</Chip> : <Chip live>جديدة</Chip>}
                         </span>
                         <span className="mt-0.5 block truncate text-[11.5px] text-muted">
@@ -1657,6 +1821,43 @@ export default async function AdminPage({
                       <p dir="auto" className="mb-3 whitespace-pre-wrap text-[12.5px] leading-relaxed text-ink">
                         {ticket.body}
                       </p>
+
+                      {/*
+                        المرفقات: الصورُ مصغّرةً تُفتح كاملةً بالضغط، والـPDF
+                        سطرٌ باسمه. وكلُّها من بابٍ لا يفتحه إلا المشرف.
+                      */}
+                      {ticket.files.length ? (
+                        <div className="mb-3 flex flex-wrap gap-2">
+                          {ticket.files.map((file) => (
+                            <a
+                              key={file.id}
+                              href={`/api/ticket-file/${file.id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-2 rounded-xl border border-line bg-paper p-1.5 pe-3 text-[11.5px] font-semibold text-ink"
+                            >
+                              {file.mime.startsWith("image/") ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={`/api/ticket-file/${file.id}`}
+                                  alt=""
+                                  className="h-12 w-12 rounded-lg object-cover"
+                                />
+                              ) : (
+                                <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-card text-[10px] font-bold text-clay-ink">
+                                  PDF
+                                </span>
+                              )}
+                              <span dir="auto" className="max-w-[160px] truncate">
+                                {file.name}
+                              </span>
+                              <span className="text-[10px] font-normal text-faint">
+                                {ar(Math.max(1, Math.round(file.size / 1024)))} ك.ب
+                              </span>
+                            </a>
+                          ))}
+                        </div>
+                      ) : null}
 
                       <Saver action={replyTicket.bind(null, ticket.id)} className="flex flex-col gap-2">
                         <textarea
@@ -1739,6 +1940,15 @@ export default async function AdminPage({
                     {report.note ? (
                       <p className="mt-1.5 text-[11.5px] leading-relaxed text-ink-2">«{report.note}»</p>
                     ) : null}
+                    <ReportContext context={report.context} />
+                    {user.canModerate && report.reportedId ? (
+                      <Link
+                        href={`/admin/u/${report.reportedId}`}
+                        className="mt-2 inline-block text-[11.5px] font-semibold text-clay-ink"
+                      >
+                        افتح حسابه والحسابات المرتبطة به
+                      </Link>
+                    ) : null}
 
                     {report.state === "OPEN" ? (
                       <div className="mt-3 flex gap-2">
@@ -1780,7 +1990,7 @@ export default async function AdminPage({
             <h2 className="mb-1 text-[15px] font-bold">سجلّ الإشراف</h2>
             <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
               كلّ حذفٍ جرى من صفحة حساب: من حذف، ومِن حساب مَن، ومتى، وما كان
-              المتن. والصفّ يبقى وإن ذهب المحتوى.
+              المتن. والصفّ يبقى وإن ذهب المحتوى — ستّين يوماً ثمّ يُحذف.
             </p>
             {logs.length === 0 ? (
               <p className="mb-7 rounded-2xl border border-line bg-card p-5 text-center text-[12.5px] text-muted">
@@ -1791,8 +2001,9 @@ export default async function AdminPage({
                 {logs.map((row) => (
                   <div key={row.id} className="rounded-2xl border border-line bg-card p-3">
                     <p className="text-[12px]">
-                      <span className="font-semibold">{row.admin.name}</span> حذف لحظةً
-                      {row.owner ? ` من حساب ${row.owner.name} (${ar(row.owner.memberNo)})` : ""}
+                      <span className="font-semibold">{row.admin.name}</span>{" "}
+                      {LOG_ACTION[row.action] ?? row.action}
+                      {row.owner ? ` — ${row.owner.name} (${ar(row.owner.memberNo)})` : ""}
                     </p>
                     <p className="text-[10.5px] text-faint">{relative(row.createdAt)}</p>
                     {row.snippet ? (
@@ -1881,6 +2092,7 @@ export default async function AdminPage({
             </div>
           </>
         ) : null}
+        </div>
       </main>
     </div>
   );

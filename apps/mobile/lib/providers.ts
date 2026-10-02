@@ -2,8 +2,10 @@ import { Platform } from "react-native";
 import * as AppleAuth from "expo-apple-authentication";
 import * as Google from "expo-auth-session/providers/google";
 import * as AuthSession from "expo-auth-session";
+import * as WebBrowser from "expo-web-browser";
 import { api, saveTokens } from "./api";
 import type { Me } from "./session";
+import { appUrl } from "@athar/shared";
 
 /**
  * الدخول بمزوّد على الجوّال.
@@ -72,6 +74,19 @@ export async function signInWithApple(): Promise<Me> {
 }
 
 /**
+ * تأكيدٌ بآبل قبل حذف الحساب: نافذةُ النظام من جديد بلا نطاقات، فيعود
+ * رمزُ هويّةٍ يُثبت الصاحب ورمزُ تفويضٍ يُلغى به الربطُ عند آبل.
+ * والإلغاءُ من المستخدم يُرمى كما هو (`ERR_REQUEST_CANCELED`).
+ */
+export async function confirmWithApple(): Promise<{ idToken: string; code: string }> {
+  const credential = await AppleAuth.signInAsync({ requestedScopes: [] });
+  if (!credential.identityToken || !credential.authorizationCode) {
+    throw new Error("ما وصل رمزٌ من آبل");
+  }
+  return { idToken: credential.identityToken, code: credential.authorizationCode };
+}
+
+/**
  * قوقل: الخطّافُ يفتح صفحةَ المزوّد ويردّ الرمز.
  *
  * `useIdTokenAuthRequest` لا `useAuthRequest`: نريد **رمز هويّةٍ
@@ -109,8 +124,25 @@ const SNAP_SCOPES = [
   "https://auth.snapchat.com/oauth2/api/user.external_id",
 ];
 
+/**
+ * معرّفُ العميل يسأل الخادمَ أوّلاً (`/v1/auth/providers`): تطبيقُ سناب قد
+ * يبقى قيد مراجعتها بعد نشر نسختنا، فيُفتح بمعرّفٍ لم يُعتمد ويردّ «Failed
+ * to load authorization data». والخادمُ يبدّله بلا بناء. وما في البناء
+ * احتياطٌ لخادمٍ قديمٍ لا يعرف البابَ.
+ */
+let snapClient: string = process.env.EXPO_PUBLIC_SNAP_CLIENT_ID ?? "";
+
+export async function loadProviders(): Promise<void> {
+  try {
+    const answer = await api<{ snap: string | null }>("/v1/auth/providers");
+    snapClient = answer.snap ?? "";
+  } catch {
+    // خادمٌ بلا البابِ بعد: يبقى ما في البناء.
+  }
+}
+
 export function snapReady(): boolean {
-  return Boolean(process.env.EXPO_PUBLIC_SNAP_CLIENT_ID);
+  return Boolean(snapClient);
 }
 
 /**
@@ -120,24 +152,58 @@ export function snapReady(): boolean {
  * `/snap/callback` وهي تردّ المستخدم إلى التطبيق بما جاء منها.
  */
 function snapRedirect(): string {
-  const site = (process.env.EXPO_PUBLIC_SITE_URL ?? "").replace(/\/+$/, "");
-  return site ? `${site}/snap/callback` : AuthSession.makeRedirectUri({ scheme: "athar", path: "snap" });
+  // و`appUrl` لا `SITE_URL` عارياً: الصفحةُ تحت `/app` منذ صار الجذرُ
+  // لصفحة الهبوط (القاعدة ١٢٢)، وعنوانٌ لا يطابق ما سُجّل عند سناب
+  // يُردّ بـ«تعذّر تحميل بيانات المصادقة» قبل أن يُسأل المستخدم شيئاً.
+  const site = appUrl("/snap/callback");
+  return site || AuthSession.makeRedirectUri({ scheme: "athar", path: "snap" });
+}
+
+function snapConfig(): AuthSession.AuthRequestConfig {
+  return {
+    clientId: snapClient,
+    scopes: SNAP_SCOPES,
+    redirectUri: snapRedirect(),
+    responseType: "code",
+    usePKCE: true,
+  };
 }
 
 export function useSnap() {
-  const clientId = process.env.EXPO_PUBLIC_SNAP_CLIENT_ID ?? "";
-  const redirectUri = snapRedirect();
+  return AuthSession.useAuthRequest(snapConfig(), SNAP);
+}
 
-  return AuthSession.useAuthRequest(
-    {
-      clientId,
-      scopes: SNAP_SCOPES,
-      redirectUri,
-      responseType: "code",
-      usePKCE: true,
-    },
-    SNAP,
-  );
+/**
+ * يفتح صفحةَ سناب وينتظر العودة **بمخطّط التطبيق** لا بعنوان العودة.
+ *
+ * `promptAsync` تنتظر عودةً بمخطّط `redirectUri` نفسه — وهو هنا
+ * `https` — ونافذةُ الدخول في آبل (`ASWebAuthenticationSession`) لا
+ * تلتقط عودةَ `https` إلا بنطاقٍ مربوط. وصفحتُنا ترتدّ إلى `athar://snap`،
+ * فكانت النافذة تبقى مفتوحةً على «نرجعك إلى آثار» أو تُغلق بلا جواب،
+ * ويُقرأ ذلك «زرّ سناب لا يعمل». فتُفتح هنا بمخطّط التطبيق، ويُفحص ما
+ * عاد بـ`parseReturnUrl` — ومعه مطابقةُ الحارس (`state`).
+ *
+ * ويردّ `null` حين يُلغي المستخدم: الإلغاء ليس خطأً يُعرض.
+ */
+export async function promptSnapLogin(request: AuthSession.AuthRequest | null): Promise<Me | null> {
+  /*
+    الطلبُ يُبنى هنا إن لم يجهز الخطّاف بعد — ضغطةٌ في أوّل ثانيةٍ من
+    فتح الشاشة كانت تسقط على «نجهّز» فلا يُفتح شيء.
+  */
+  // وطلبٌ بُني قبل جواب الخادم يحمل معرّفاً قديماً: يُعاد بناؤه.
+  if (!request || request.clientId !== snapClient) request = new AuthSession.AuthRequest(snapConfig());
+  const url = request.url ?? (await request.makeAuthUrlAsync(SNAP));
+  const result = await WebBrowser.openAuthSessionAsync(url, "athar://snap");
+  if (result.type !== "success") return null;
+
+  const parsed = request.parseReturnUrl(result.url);
+  if (parsed.type !== "success") {
+    const reason = parsed.type === "error" ? parsed.error?.message : null;
+    throw new Error(reason || "تعذّر الدخول بسناب");
+  }
+  const code = parsed.params.code;
+  if (!code || !request.codeVerifier) throw new Error("ما وصل رمزٌ من سناب");
+  return finishSnap(code, request.codeVerifier);
 }
 
 /**
@@ -145,7 +211,7 @@ export function useSnap() {
  * «من صاحبُه؟» — فلا يُصدَّق ما يقوله التطبيق عن نفسه.
  */
 export async function finishSnap(code: string, verifier: string): Promise<Me> {
-  const clientId = process.env.EXPO_PUBLIC_SNAP_CLIENT_ID ?? "";
+  const clientId = snapClient;
   const redirectUri = snapRedirect();
 
   const token = await AuthSession.exchangeCodeAsync(

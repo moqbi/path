@@ -15,22 +15,28 @@ say() { printf "\n\033[1;33m▸ %s\033[0m\n" "$1"; }
 set -a; . ./.env; set +a
 
 say "الاعتماديات"
-npm ci --include=dev
+# pnpm وحده: قفلُه يحمل المشاريع الأربعة ومعها الويب في الجذر
+# (المستورِد `.:`). وقفلُ npm حُذف — وجودُهما معاً يجعل EAS يظنّ
+# الجوّال عضواً في مساحة npm فينصّب اعتماديات الويب مكان `expo`.
 pnpm install --frozen-lockfile
 
 say "العميل والهجرات"
 npx prisma generate
 DATABASE_URL="${DIRECT_URL:-$DATABASE_URL}" npx prisma migrate deploy
 
-say "البناء: الويب ثمّ الخادم"
+say "البناء: التطبيق ثمّ الموقع"
+# التطبيق تحت `/app` (basePath)، والموقعُ العامّ على الجذر — مشروعان
+# يُبنيان كلاهما، فنشرُ أحدهما وحده يترك الآخر على نسخةٍ قديمة.
 npx next build
-pnpm --filter @athar/api build 2>/dev/null || echo "   (لا خطوةَ بناءٍ للخادم — يعمل بـtsx)"
+pnpm --filter @athar/web build
+echo "   (لا خطوةَ بناءٍ للواجهة البرمجية — تعمل بـtsx)"
 
 say "إعادةُ التشغيل"
-sudo systemctl restart athar-web athar-api
-sleep 3
-systemctl is-active athar-web athar-api
+sudo systemctl restart athar-web athar-site athar-api
+sleep 4
+systemctl is-active athar-web athar-site athar-api
 
 say "فحصٌ سريع"
-curl -fsS -o /dev/null -w "   الويب: %{http_code}\n" http://127.0.0.1:3000/login
-curl -fsS -o /dev/null -w "   الخادم: %{http_code}\n" http://127.0.0.1:4000/health || true
+curl -fsS -o /dev/null -w "   التطبيق: %{http_code}\n" http://127.0.0.1:3000/app/login
+curl -fsS -o /dev/null -w "   الموقع:  %{http_code}\n" http://127.0.0.1:3001/
+curl -fsS -o /dev/null -w "   الخادم:  %{http_code}\n" http://127.0.0.1:4000/health || true

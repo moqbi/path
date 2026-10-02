@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { CloseIcon } from "@/components/icons";
+import { BlockIcon, CloseIcon, FlagIcon, ShieldIcon, TrashIcon, UserMinusIcon } from "@/components/icons";
 
 const REVEAL = 88;
 
@@ -17,6 +17,8 @@ export function SwipeRow({
   confirmLabel = "حذف",
   onSecond,
   secondLabel,
+  icons = false,
+  surface = "var(--color-paper)",
   children,
 }: {
   onDelete: () => void | Promise<void>;
@@ -24,6 +26,14 @@ export function SwipeRow({
   /** فعلٌ ثانٍ يظهر بجانب الأول — الحظر مثلاً بجانب الإزالة. */
   onSecond?: () => void | Promise<void>;
   secondLabel?: string;
+  /**
+   * أيقوناتٌ بدل الكلمات في صفّ الصديق — **بقرار المالك**، كالجوّال:
+   * «إزالة» شخصٌ بعلامة طرح، و«حظر» دائرةٌ يقطعها خطّ. و`"trash"` سلّةٌ
+   * لحذف المحادثة. والكلمةُ اسمُ الزرّ عند قارئ الشاشة.
+   */
+  icons?: boolean | "trash" | "flag" | "shield";
+  /** لونُ ما يُزاح — الورقُ في القوائم، والبطاقةُ في التعليقات. */
+  surface?: string;
   children: React.ReactNode;
 }) {
   const [offset, setOffset] = useState(0);
@@ -33,7 +43,8 @@ export function SwipeRow({
   const axis = useRef<"none" | "x" | "y">("none");
 
   const second = onSecond && secondLabel ? { run: onSecond, label: secondLabel } : null;
-  const reveal = second ? REVEAL * 2 : REVEAL;
+  const width = icons ? 64 : REVEAL;
+  const reveal = second ? width * 2 : width;
 
   function fire(run: () => void | Promise<void>) {
     setOpen(false);
@@ -49,21 +60,35 @@ export function SwipeRow({
             type="button"
             disabled={pending}
             onClick={() => fire(second.run)}
+            aria-label={second.label}
             className="flex grow items-center justify-center px-2 text-[13px] font-bold disabled:opacity-60"
             style={{ background: "var(--color-night)", color: "#f7f5ef" }}
           >
-            {second.label}
+            {icons ? <BlockIcon size={22} /> : second.label}
           </button>
         ) : null}
         <button
           type="button"
           disabled={pending}
           onClick={() => fire(onDelete)}
+          aria-label={confirmLabel}
           className="flex grow items-center justify-center gap-1.5 px-2 text-[13px] font-bold disabled:opacity-60"
           style={{ background: "var(--color-live)", color: "#fff" }}
         >
-          <CloseIcon size={16} />
-          {confirmLabel}
+          {icons === "trash" ? (
+            <TrashIcon size={22} />
+          ) : icons === "flag" ? (
+            <FlagIcon size={22} />
+          ) : icons === "shield" ? (
+            <ShieldIcon size={22} />
+          ) : icons ? (
+            <UserMinusIcon size={22} />
+          ) : (
+            <>
+              <CloseIcon size={16} />
+              {confirmLabel}
+            </>
+          )}
         </button>
       </div>
 
@@ -118,7 +143,7 @@ export function SwipeRow({
           WebkitUserSelect: "none",
           transform: `translateX(${offset}px)`,
           transition: origin.current ? "none" : "transform 220ms cubic-bezier(.2,.8,.3,1)",
-          background: "var(--color-paper)",
+          background: surface,
         }}
       >
         {children}

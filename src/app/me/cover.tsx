@@ -21,12 +21,17 @@ export function ProfileCover({
   mediaId,
   spec,
   initialY,
+  x = 50,
+  zoom = 100,
   height = 168,
   manage = false,
 }: {
   mediaId: string | null;
   spec: string | null;
   initialY: number;
+  /** ما ضبطه الجوّال أفقياً وقُرباً — يُرسم هنا ولا يُضبط (الويب يضبط الرأسيّ). */
+  x?: number;
+  zoom?: number;
   height?: number;
   /** أزرار الضبط والإزالة: في صفحة التعديل وحدها، لا فوق الملف. */
   manage?: boolean;
@@ -70,7 +75,7 @@ export function ProfileCover({
       onPointerCancel={up}
     >
       {/* أسفل الغلاف يذوب في أرضية الصفحة — لا حدَّ حادّاً بين صورتين. */}
-      <CoverLayer mediaId={mediaId} spec={spec} y={y} />
+      <CoverLayer mediaId={mediaId} spec={spec} y={y} x={x} zoom={zoom} />
 
       {adjusting ? (
         <>

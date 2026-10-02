@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { currentUserId } from "@/lib/auth";
 import { nearbyPlaces } from "@/lib/places";
+import { hit } from "@/lib/rate-limit";
 
 /**
  * الأماكن حول نقطة.
@@ -12,6 +13,11 @@ import { nearbyPlaces } from "@/lib/places";
 export async function GET(request: Request) {
   const id = await currentUserId();
   if (!id) return NextResponse.json({ places: [] }, { status: 401 });
+  // كلُّ طلبٍ هنا نداءٌ لخوادم أماكن عامّة بحصصٍ محدودة — حسابٌ واحد لا
+  // يستنفدها على الجميع.
+  if (!hit(`places:${id}`, 30, 60_000)) {
+    return NextResponse.json({ places: [] }, { status: 429 });
+  }
 
   const { searchParams } = new URL(request.url);
   const lat = Number(searchParams.get("lat"));

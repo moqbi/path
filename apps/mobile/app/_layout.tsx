@@ -1,5 +1,6 @@
-import { useEffect } from "react";
-import { I18nManager, Platform, View, ActivityIndicator } from "react-native";
+import { useEffect, useSyncExternalStore } from "react";
+import { AppState, I18nManager, Platform, View, ActivityIndicator, StyleSheet } from "react-native";
+import { MediaImage } from "../components/media-image";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as Notifications from "expo-notifications";
 import { enablePush } from "../lib/push";
@@ -17,8 +18,12 @@ import { Montserrat_500Medium, Montserrat_700Bold } from "@expo-google-fonts/mon
 import { useSession } from "../lib/session";
 import { primeAccess } from "../lib/api";
 import { markFirstSeen } from "../lib/rate";
+import { watchCity } from "../lib/arrive";
 import { Suspended } from "../components/suspended";
-import { colors } from "../theme/tokens";
+import { PhotoViewer } from "../components/photo-viewer";
+import { Tour } from "../components/tour";
+import { applyTheme, colors, themeStore, veil } from "../theme/tokens";
+import { dismissOpen } from "../lib/swipe-open";
 
 /**
  * العربية من اليمين — قراراً لا إعداداً، وفي البيئات الثلاث معاً.
@@ -103,6 +108,51 @@ function Gate() {
   }, [me?.id]);
 
   /*
+    وفتحُ التطبيق في مدينةٍ أخرى يكتب لحظةَ الوصول — بلا أن يُطلب إذنٌ
+    من أجلها، وبلا خدمةٍ تعمل في الخلفيّة.
+  */
+  useEffect(() => {
+    if (!me) return;
+    return watchCity();
+  }, [me?.id]);
+
+  /*
+    والعودةُ من الخلفيّة تسأل عن صاحب الجلسة: اشتراكٌ انتهى وهو مغلق،
+    أو صنفٌ أُهدي إليه، يُرى حين يعود لا حين يُغلق التطبيق ويفتحه.
+  */
+  useEffect(() => {
+    if (!me) return;
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") void useSession.getState().refresh();
+    });
+    return () => sub.remove();
+  }, [me?.id]);
+
+  /*
+    وجلسةٌ تبقى مفتوحةً بلا خلفيّةٍ ولا إغلاق لا تسمع بانتهاء اشتراكها:
+    الخادم يطفئ `isPlus` بكنسٍ كل خمس دقائق (القاعدة ١٤٩)، فمن انتهى
+    اشتراكه وتطبيقُه مفتوحٌ أمامه يبقى يرى النجمة ووسم «داعم» ومزايا
+    آثار+ كلَّها حتى يُغلق التطبيق ويعيد فتحه — والوسمُ خصوصاً يُقرأ
+    كذباً بعد الانتهاء. فتُسأل الجلسةُ من نفسها كلَّ خمس دقائق أيضاً.
+  */
+  useEffect(() => {
+    if (!me) return;
+    const timer = setInterval(() => void useSession.getState().refresh(), 5 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [me?.id]);
+
+  /*
+    الثيم يُلبَس هنا: ألوانُ الحساب تُكتب في `colors` فتتبدّل الشجرة
+    كلّها (القاعدة ٧٢). و`useSyncExternalStore` يُعيد بناءها حين
+    تتبدّل — والمكوّنات تقرأ المرجع نفسه فلا تعرف أنّ شيئاً جرى.
+  */
+  const skin = useSyncExternalStore(themeStore.subscribe, themeStore.get, themeStore.get);
+  const backdrop = me?.background?.mediaId ?? null;
+  useEffect(() => {
+    applyTheme(me?.background?.palette ?? null, Boolean(backdrop));
+  }, [me?.background?.palette, backdrop]);
+
+  /*
     وضغطةُ التنبيه تفتح موضعَه: رسالةً أو لحظةً أو الأصدقاء. ومن فتح
     تنبيهاً ووجد نفسه في الخط الزمنيّ يسأل «أين ما نبّهني؟».
   */
@@ -143,9 +193,30 @@ function Gate() {
     ومعه تعمل إيماءةُ الرجوع من الحافة وزرُّ الرجوع في أندرويد.
   */
   return (
+    <>
+    {/*
+      صورةُ الثيم خلف الشاشات كلّها وفوقها حجابٌ من أرضيته (٧٠٪) — كما تُلبَس
+      على `.shell` في الويب (القاعدة ٤٧). والشاشاتُ تُرسم على `colors.ground`
+      الشفّافة حين تكون صورة، فتُرى من تحتها.
+    */}
+    {backdrop ? (
+      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+        <MediaImage mediaId={backdrop} style={StyleSheet.absoluteFill} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: veil() }]} />
+      </View>
+    ) : null}
     <Stack
+      // مفتاحُ الثيم: تبديلُه يُعيد بناء المكدّس بألوانه الجديدة.
+      key={skin}
       screenOptions={{
         headerShown: false,
+        /*
+          الرجوعُ بالسحب من الحافّة في كل شاشة مكدّس (القاعدة ٢١٧) — صريحٌ هنا
+          لا متروكٌ لافتراضٍ يختلف بين إصدار وآخر. والسحبُ من وسط الشاشة لا:
+          يتنازع وصفوفَ السحب في المحادثات والتعليقات (القاعدة ٢١٣).
+        */
+        gestureEnabled: true,
+        fullScreenGestureEnabled: false,
         /*
           الاتجاه يُعاد فرضُه على حاوية كل شاشة.
 
@@ -154,9 +225,27 @@ function Gate() {
           والمعاينة على الويب تعرضها صحيحة، فلا يُكشف إلا على جهاز.
           وتكراره هنا لا يضرّ حيث وصلت الوراثة، ويحسمها حيث لم تصل.
         */
-        contentStyle: { backgroundColor: colors.paper, direction: "rtl" },
+        contentStyle: { backgroundColor: colors.ground, direction: "rtl" },
       }}
-    />
+    >
+      {/*
+        القصةُ طبقةٌ شفّافة فوق ما قبلها: سحبُها إلى أسفل يكشف الشاشةَ التي
+        فُتحت منها تحتها — شاشةٌ عاديّة تحتها أرضيةٌ مصمتة لا شيء.
+      */}
+      <Stack.Screen
+        name="stories/[id]"
+        options={{
+          presentation: "transparentModal",
+          animation: "fade",
+          contentStyle: { backgroundColor: "transparent", direction: "rtl" },
+        }}
+      />
+    </Stack>
+    {/* نافذةُ الصورة هنا لا في البطاقة: لا جدَّ لها يلتقط سحبتها. */}
+    <PhotoViewer />
+    {/* الجولةُ طبقةٌ فوق المكدّس كلّه، لمن دخل وحده. */}
+    {me ? <Tour key={me.id} /> : null}
+    </>
   );
 }
 
@@ -190,7 +279,17 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={client}>
-        <View style={{ flex: 1, direction: "rtl" }}>
+        {/*
+          لمسةٌ خارج صفٍّ مسحوبٍ مفتوح تطويه (القاعدة ٢١٣). في طور الالتقاط
+          لأنّ الجذر أوّلُ من يُسأل، ويردّ «لا» دائماً فلا يأخذ اللمسة من أحد.
+        */}
+        <View
+          style={{ flex: 1, direction: "rtl" }}
+          onStartShouldSetResponderCapture={(event) => {
+            dismissOpen(event.nativeEvent.pageX, event.nativeEvent.pageY);
+            return false;
+          }}
+        >
           <Gate />
         </View>
       </QueryClientProvider>

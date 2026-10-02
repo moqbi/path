@@ -43,7 +43,14 @@ export type StoryRing = {
   /** فيها ما لم يُشاهَد بعد — الحلقة الملوّنة. */
   fresh: boolean;
   count: number;
+  /** فيها قصّةٌ خاصّة ممّا يراه القارئ — قفلٌ على الحلقة (القاعدة ٢١٩). */
+  private: boolean;
 };
+
+/** من يرى القصّة — نسخةُ `storyVisibleTo` في الخادم حرفاً بحرف (القاعدة ٢١٩). */
+export const storyVisibleTo = (viewerId: string) => ({
+  OR: [{ authorId: viewerId }, { private: false }, { audience: { some: { userId: viewerId } } }],
+});
 
 /**
  * حلقات القصص: أنت أولاً، ثم من لم تُشاهد قصصهم، ثم البقية.
@@ -55,11 +62,12 @@ export async function storyRings(userId: string): Promise<StoryRing[]> {
   const authors = await visibleAuthors(userId);
 
   const stories = await prisma.story.findMany({
-    where: { authorId: { in: authors }, expiresAt: { gt: new Date() } },
+    where: { authorId: { in: authors }, expiresAt: { gt: new Date() }, ...storyVisibleTo(userId) },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
       authorId: true,
+      private: true,
       author: {
         select: {
           id: true,
@@ -82,8 +90,10 @@ export async function storyRings(userId: string): Promise<StoryRing[]> {
       frame: story.author.frame,
       fresh: false,
       count: 0,
+      private: false,
     };
     ring.count += 1;
+    if (story.private) ring.private = true;
     if (story.views.length === 0) ring.fresh = true;
     rings.set(story.authorId, ring);
   }
@@ -102,18 +112,41 @@ export async function storiesOf(viewerId: string, authorId: string) {
   if (!authors.includes(authorId)) return [];
 
   return prisma.story.findMany({
-    where: { authorId, expiresAt: { gt: new Date() } },
+    where: { authorId, expiresAt: { gt: new Date() }, ...storyVisibleTo(viewerId) },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
+      private: true,
       mediaId: true,
       caption: true,
       filter: true,
       seconds: true,
+      texts: true,
       createdAt: true,
       media: { select: { mime: true } },
       author: { select: { id: true, name: true, avatarMediaId: true } },
-      _count: { select: { views: true } },
+      // مشاهداتُ غير صاحبها — كالخادم.
+      _count: { select: { views: { where: { userId: { not: authorId } } } } },
     },
   });
+}
+
+/** من شاهد قصص صاحبها — لكل قصّةٍ قائمتُها، الأحدثُ أوّلاً وبلاه هو. */
+export async function viewersOf(ownerId: string, storyIds: string[]) {
+  const rows = await prisma.storyView.findMany({
+    where: { storyId: { in: storyIds }, userId: { not: ownerId }, story: { authorId: ownerId } },
+    orderBy: { seenAt: "desc" },
+    select: {
+      storyId: true,
+      seenAt: true,
+      user: { select: { id: true, name: true, avatarMediaId: true } },
+    },
+  });
+  const out = new Map<string, { id: string; name: string; avatarMediaId: string | null; seenAt: string }[]>();
+  for (const row of rows) {
+    const list = out.get(row.storyId) ?? [];
+    list.push({ ...row.user, seenAt: row.seenAt.toISOString() });
+    out.set(row.storyId, list);
+  }
+  return out;
 }

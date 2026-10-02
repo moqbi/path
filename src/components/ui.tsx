@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { SUPPORTER_TAG } from "@/lib/supporter";
 import { initial } from "@/lib/format";
-import { SparkIcon } from "@/components/icons";
+import { VerifiedIcon } from "@/components/icons";
 import { AthrPageMark } from "@/components/brand";
 import { BackButton, BackSwipe } from "@/components/nav";
+import { BASE } from "@/lib/base";
 
 /**
  * خلفية الحرف تُشتق من الاسم لا تُخزَّن، فتبقى ثابتة لكل شخص بلا عمود إضافي
@@ -54,8 +56,12 @@ export type Frame =
 export function frameZoom(frame: NonNullable<Frame>): number {
   const hole = frame.frameHole ?? 0;
   if (hole < 20 || hole > 99) return 1;
-  return 100 / hole;
+  // والحلقةُ تركب حافّةَ الوجه قليلاً (٥٪) لا تلامسها: الحافّتان متطابقتين
+  // تتركان خيطاً شفّافاً بينهما، وحلقةٌ غيرُ مستديرةٍ تمامًا تترك فراغاً.
+  return (100 / hole) * HOLE_OVERLAP;
 }
+
+const HOLE_OVERLAP = 0.95;
 
 /**
  * خلفية صنف المتجر: صورته إن رُفعت، وإلا قيمة `spec` كما هي.
@@ -69,7 +75,7 @@ export function itemPaint(
 ) {
   return item.mediaId
     ? {
-        backgroundImage: `url(/api/media/${item.mediaId})`,
+        backgroundImage: `url(${BASE}/api/media/${item.mediaId})`,
         backgroundSize: fit,
         backgroundPosition: "center" as const,
         backgroundRepeat: "no-repeat" as const,
@@ -118,7 +124,7 @@ export function Avatar({
         width: "100%",
         height: "100%",
         backgroundColor: mediaId ? undefined : tintFor(name),
-        backgroundImage: mediaId ? `url(/api/media/${mediaId})` : undefined,
+        backgroundImage: mediaId ? `url(${BASE}/api/media/${mediaId})` : undefined,
         backgroundSize: mediaId ? "cover" : undefined,
         backgroundPosition: mediaId ? "center" : undefined,
         // الحرف على تدرّج فاتح دائماً، فحبره ثابت لا يتبع الوضع —
@@ -185,7 +191,7 @@ export function Avatar({
           style={{
             // الرسمُ يُكبَّر بمقلوب فراغه الأوسط، ويُوسَّط على الوجه.
             inset: `${((1 - frameZoom(frame)) / 2) * 100}%`,
-            backgroundImage: `url(/api/media/${frame.mediaId})`,
+            backgroundImage: `url(${BASE}/api/media/${frame.mediaId})`,
             backgroundSize: "contain",
             backgroundPosition: "center",
             backgroundRepeat: "no-repeat",
@@ -210,22 +216,20 @@ export function Avatar({
 const CHARM_RATIO = 0.5;
 
 /**
- * أين تجلس التميمة: **ركنُ الصورة الأسفل-الأيسر**.
+ * أين تجلس التميمة: **يسارَ الصورة، أغلبُها خارجها** — بقرار المالك.
  *
- * حافّتُها اليمنى على محور الصورة الرأسيّ، وحافّتُها السفلى على أسفلها
- * تماماً — فتقع في الربع الأسفل الأيسر: جزءٌ منها فوق الصورة والإطار
- * (حيث يمرّ قوسُ الدائرة)، وجزءٌ خارجهما (حيث يخرج ركنُ المربّع عن
- * القوس)، وقاعُها موازٍ لقاع الصورة لا نازلٌ عنه.
+ * رسم المالك مربّعاً أحمر على الشاشة: نطاقُها الرأسيّ كما كان (من محور
+ * الصورة الأفقيّ إلى قاعها)، لكنّها مُزاحةٌ إلى الخارج — نحو ستّين في
+ * المئة منها خارج الدائرة، والباقي يعبر حافّتها. كانت في الربع الأسفل
+ * الأيسر **داخل** الدائرة، فغطّى الجناحُ كتفَ صاحب الصورة.
+ * فمركزُها الأفقيّ على عُشر نصف القطر من حافّة الصورة اليسرى:
+ * `left = −٠٫٤ × مقاسها` (ومقاسُها نصفُ القطر، `CHARM_RATIO`).
  *
- * وهذا ما رسمه المالك خطّين: خطٌّ من الأسفل عند نهايتها، وخطٌّ من
- * اليمين عند بدايتها.
- *
- * وقبلها جُرّبت ثلاث مواضع ولم تُصب: ٠٫٧٨ من نصف القطر (مدفونةً في
- * أسفل الوجه)، ثمّ ١٫١٥ على قُطر الأسفل-اليسار (ساقطةً تحت الصورة
- * كلّها)، ثمّ ٠٫٨٥ يساراً (ملتصقةً بجنبها).
+ * وتُرسم **فوق الإطار** (`zIndex`): إطارٌ بجناحين يمتدّ خارج الصورة
+ * لا يغطّيها.
  */
 function charmSeat(size: number, badge: number): { left: number; top: number } {
-  return { left: size / 2 - badge, top: size - badge };
+  return { left: -badge * 0.3, top: size - badge * 0.8 };
 }
 
 function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }) {
@@ -240,7 +244,7 @@ function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }
 
   const paint = charm.mediaId
     ? {
-        backgroundImage: `url(/api/media/${charm.mediaId})`,
+        backgroundImage: `url(${BASE}/api/media/${charm.mediaId})`,
         backgroundSize: "contain" as const,
         backgroundPosition: "center" as const,
         backgroundRepeat: "no-repeat" as const,
@@ -255,8 +259,9 @@ function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }
       style={{
         width: badge,
         height: badge,
-        // ركنُها الأسفل-الأيسر: يمينُها على المحور، وقاعُها على القاع.
+        // يسارَ الصورة وأغلبُها خارجها، وفوق الإطار (القاعدة ٥٩).
         ...charmSeat(size, badge),
+        zIndex: 2,
         // ظلٌّ خفيف يفصلها عن الصورة تحتها بلا حلقةٍ تحيط بها.
         filter: "drop-shadow(0 2px 4px rgba(14,26,36,.35))",
         ...paint,
@@ -285,17 +290,33 @@ export function CoverLayer({
   mediaId,
   spec,
   y = 50,
+  x = 50,
+  zoom = 100,
 }: {
   mediaId: string | null | undefined;
   spec: string | null | undefined;
   y?: number;
+  x?: number;
+  /** القُرب (١٠٠–٣٠٠) — يضبطه الجوّال بإصبعين، ويُرسم هنا بالمعادلة نفسها. */
+  zoom?: number;
 }) {
+  /*
+    المعادلةُ نفسها في الجوّال (`coverFrame` في `components/cover.tsx`):
+    الصورةُ تملأ الإطار بموضعها (`background-position`)، ثمّ تُكبَّر حول
+    النقطة نفسها (`transform-origin`). والغلافُ الخارجيّ يقصّ ما خرج.
+  */
+  const scale = mediaId ? Math.min(300, Math.max(100, zoom)) / 100 : 1;
   return (
-    <span
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-0 block"
-      style={coverStyle(mediaId, spec, y)}
-    />
+    <span aria-hidden="true" className="pointer-events-none absolute inset-0 block overflow-hidden">
+      <span
+        className="absolute inset-0 block"
+        style={{
+          ...coverStyle(mediaId, spec, y, x),
+          transform: scale === 1 ? undefined : `scale(${scale})`,
+          transformOrigin: `${x}% ${y}%`,
+        }}
+      />
+    </span>
   );
 }
 
@@ -311,12 +332,15 @@ export function coverStyle(
   spec: string | null | undefined,
   /** موضع الصورة عمودياً (٪) — يضبطه صاحب الحساب بسحب الغلاف. */
   y: number = 50,
+  /** وأفقياً — يضبطه الجوّال. */
+  x: number = 50,
 ): React.CSSProperties {
   if (mediaId) {
+    const pct = (value: number) => Math.min(100, Math.max(0, value));
     return {
-      backgroundImage: `url(/api/media/${mediaId})`,
+      backgroundImage: `url(${BASE}/api/media/${mediaId})`,
       backgroundSize: "cover",
-      backgroundPosition: `center ${Math.min(100, Math.max(0, y))}%`,
+      backgroundPosition: `${pct(x)}% ${pct(y)}%`,
     };
   }
 
@@ -331,12 +355,15 @@ export function ScreenHeader({
   title,
   back,
   action,
+  titleHref,
   display = false,
   mark = false,
 }: {
   title: string;
   back?: string;
   action?: React.ReactNode;
+  /** اسمٌ في الرأس قد يكون باباً: اسمُ من تحادثه يفتح ملفّه. */
+  titleHref?: string;
   display?: boolean;
   /** العلامة بدل الاسم العاري: الرمز، ثم فاصل، ثم اسم الشاشة. */
   mark?: boolean;
@@ -352,6 +379,10 @@ export function ScreenHeader({
         {back ? <BackButton href={back} /> : null}
         {mark ? (
           <AthrPageMark label={title} />
+        ) : titleHref ? (
+          <Link href={titleHref} className="text-[18px] font-semibold">
+            {title}
+          </Link>
         ) : (
           <h1
             className={display ? "text-[23px]" : "text-[18px] font-semibold"}
@@ -425,10 +456,11 @@ export function NameTag({
     <>
       {isPlus ? (
         <span className="shrink-0 text-gold" aria-label="مشترك في آثار+" title="مشترك في آثار+">
-          <SparkIcon size={Math.round(size * 1.25)} />
+          <VerifiedIcon size={Math.min(24, Math.max(16, Math.round(size * 1.6)))} />
         </span>
       ) : null}
-      <TagPill tag={tag ?? null} size={size} />
+      {/* وسمُ المشرف يسبق، وإلّا «داعم» لكل مشترك (`SUPPORTER_TAG`). */}
+      <TagPill tag={tag ?? (isPlus ? SUPPORTER_TAG : null)} size={size} />
     </>
   );
 }

@@ -9,6 +9,17 @@ import { z } from "zod";
  * والمفتاحان منفصلان عمداً: تسريب مفتاح الوصول لا يمنح تجديداً، وتدوير
  * أحدهما لا يُخرج الناس من حساباتهم.
  */
+
+/**
+ * مفتاحٌ من البيئة: «true» أو «1» وحدهما يُشعلانه.
+ *
+ * لا `z.coerce.boolean()`: تلك تقرأ النصَّ «false» صادقاً (نصٌّ غيرُ فارغ)،
+ * فمن كتب `ALLOW_FAKE_PLUS="false"` ليطفئه فتح آثار+ مجّاناً للجميع.
+ */
+const flag = z
+  .union([z.boolean(), z.string()])
+  .transform((value) => (typeof value === "boolean" ? value : /^(true|1|yes)$/i.test(value.trim())));
+
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
@@ -40,13 +51,13 @@ const schema = z.object({
    * المتجر التجريبي والحقيقيَّين، فقبولُ التجريبيّ هناك يفتح آثار+
    * بنافذةٍ وهمية. ومفتوحةٌ في التطوير وإلا لم يُختبر المسار.
    */
-  ALLOW_SANDBOX_BILLING: z.coerce.boolean().optional(),
+  ALLOW_SANDBOX_BILLING: flag.optional(),
 
   /**
    * يفتح تفعيل «آثار+» بضغطةٍ بلا دفع — للتجربة وحدها.
    * في الإنتاج يبقى مطفأً: الدفع يمرّ بالمتجرين ولا شيء غيره.
    */
-  ALLOW_FAKE_PLUS: z.coerce.boolean().default(false),
+  ALLOW_FAKE_PLUS: flag.default(false),
 
   SENTRY_DSN: z.string().optional(),
   POSTHOG_KEY: z.string().optional(),

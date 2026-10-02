@@ -14,15 +14,19 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   appleReady,
   finishGoogle,
-  finishSnap,
   googleReady,
   signInWithApple,
   snapReady,
+  promptSnapLogin,
   useGoogle,
   useSnap,
+  loadProviders,
 } from "../lib/providers";
 import { AthrMark, AthrWordmark, TAGLINE_AR, TAGLINE_EN } from "../components/brand";
-import { BackIcon } from "../components/icons";
+import { BackIcon, CheckIcon } from "../components/icons";
+import { api } from "../lib/api";
+import { openIn } from "../lib/browse";
+import { SITE_URL, hasSite } from "@athar/shared";
 import { useSession } from "../lib/session";
 import { brandGradient, colors } from "../theme/tokens";
 
@@ -192,6 +196,16 @@ export default function Login() {
   const adopt = useSession((s) => s.adopt);
 
   const [showEmail, setShowEmail] = useState(false);
+  /*
+     بابان في الشاشة نفسها لا شاشتان: من فتحها ليُنشئ حساباً لا يُرسَل
+     إلى شاشةٍ أخرى ثمّ يُعاد. وحقلُ الاسم يظهر مع الإنشاء وحده.
+  */
+  const [newcomer, setNewcomer] = useState(false);
+  // الموافقةُ علامةٌ يضعها المستخدم بيده — **بقرار المالك** — لا سطرٌ يُقرأ ويُتجاوز.
+  const [agreed, setAgreed] = useState(false);
+  const NEED_CONSENT = "ضع علامة الموافقة على الشروط أولاً";
+  const [sent, setSent] = useState<string | null>(null);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -207,7 +221,12 @@ export default function Login() {
      فيتحقّق منه ويُصدر جلستنا.
   */
   const [, googleAnswer, promptGoogle] = useGoogle();
-  const [snapRequest, snapAnswer, promptSnap] = useSnap();
+  const [snapRequest] = useSnap();
+  // زرُّ سناب يتبع الخادم: يظهر حين يكون لها معرّفٌ معتمد، ويختفي حين لا.
+  const [snapOn, setSnapOn] = useState(snapReady());
+  useEffect(() => {
+    void loadProviders().then(() => setSnapOn(snapReady()));
+  }, []);
 
   useEffect(() => {
     if (googleAnswer?.type !== "success") return;
@@ -216,8 +235,8 @@ export default function Login() {
 
     setPending(true);
     finishGoogle(idToken)
-      .then((user) => {
-        adopt(user);
+      .then(async (user) => {
+        await adopt(user);
         router.replace("/");
       })
       .catch((problem: unknown) =>
@@ -226,35 +245,33 @@ export default function Login() {
       .finally(() => setPending(false));
   }, [googleAnswer, adopt, router]);
 
-  useEffect(() => {
-    if (snapAnswer?.type !== "success") return;
-    const code = snapAnswer.params?.code;
-    const verifier = snapRequest?.codeVerifier;
-    if (!code || !verifier) return;
-
-    setPending(true);
-    finishSnap(code, verifier)
-      .then((user) => {
-        adopt(user);
-        router.replace("/");
-      })
-      .catch((problem: unknown) =>
-        setError(problem instanceof Error ? problem.message : "تعذّر الدخول بسناب"),
-      )
-      .finally(() => setPending(false));
-  }, [snapAnswer, snapRequest, adopt, router]);
 
   /** ما يجري عند ضغط زرّ مزوّد. */
   async function withProvider(key: string) {
     setError(null);
     setNotice(null);
+    if (!agreed) {
+      setError(NEED_CONSENT);
+      return;
+    }
 
     if (key === "snap") {
       if (!snapReady()) {
         setNotice("الدخول بسناب غير مفعّل في هذه النسخة.");
         return;
       }
-      await promptSnap();
+      setPending(true);
+      try {
+        const user = await promptSnapLogin(snapRequest);
+        if (user) {
+          await adopt(user);
+          router.replace("/");
+        }
+      } catch (problem) {
+        setError(problem instanceof Error ? problem.message : "تعذّر الدخول بسناب");
+      } finally {
+        setPending(false);
+      }
       return;
     }
 
@@ -269,7 +286,7 @@ export default function Login() {
 
     setPending(true);
     try {
-      adopt(await signInWithApple());
+      await adopt(await signInWithApple());
       router.replace("/");
     } catch (problem) {
       // إلغاءُ المستخدم ليس خطأً يُعرض: أغلق النافذة وانتهى.
@@ -321,14 +338,31 @@ export default function Login() {
 
   async function submit() {
     if (pending) return;
+    if (!agreed) {
+      setError(NEED_CONSENT);
+      return;
+    }
     setPending(true);
     setError(null);
     try {
+      if (newcomer) {
+        /*
+           والتسجيل **لا يفتح جلسة**: لا حساب بعدُ حتى يُفتح الرابط،
+           فيُولَد هناك ويأخذ رقمَ عضويّته (القاعدة ١٥). فيبقى في هذه
+           الشاشة ومعه ما يقول له أين يبحث.
+        */
+        await api("/v1/auth/register", {
+          method: "POST",
+          body: JSON.stringify({ name: name.trim(), email: email.trim(), password }),
+        });
+        setSent("أرسلنا رابطاً إلى بريدك — افتحه ليُفتح حسابك.");
+        return;
+      }
       await signIn(email, password);
       router.replace("/");
     } catch (problem) {
       // رسالةٌ واحدة للحالتين: أيُّ بريدٍ مسجَّل ليس خبراً يُعطى.
-      setError(problem instanceof Error ? problem.message : "تعذّر الدخول");
+      setError(problem instanceof Error ? problem.message : newcomer ? "تعذّر التسجيل" : "تعذّر الدخول");
     } finally {
       setPending(false);
     }
@@ -422,7 +456,42 @@ export default function Login() {
           pointerEvents={formVisible ? "auto" : "none"}
           style={{ opacity: formFade, transform: [{ translateY: formRise }] }}
         >
-          {showEmail ? (
+          {sent ? (
+            <View style={{ gap: 12 }}>
+              <Text
+                accessibilityRole="alert"
+                style={{
+                  fontSize: 13,
+                  lineHeight: 22,
+                  color: "#e8e2d8",
+                  textAlign: "center",
+                  backgroundColor: "rgba(14,26,36,.6)",
+                  borderRadius: 12,
+                  paddingHorizontal: 16,
+                  paddingVertical: 16,
+                }}
+              >
+                {sent}
+                {"\n"}
+                <Text style={{ fontSize: 11.5, color: "rgba(247,245,239,.62)" }}>
+                  إن لم تجد الرسالة في الوارد فانظر في «البريد غير الهامّ».
+                </Text>
+              </Text>
+              <Pressable
+                onPress={() => {
+                  setSent(null);
+                  setNewcomer(false);
+                  setPassword("");
+                }}
+              >
+                <Text
+                  style={{ fontSize: 12.5, fontWeight: "600", color: "rgba(247,245,239,.86)", textAlign: "center", paddingVertical: 6 }}
+                >
+                  أكّدتُ — سجّل دخولي
+                </Text>
+              </Pressable>
+            </View>
+          ) : showEmail ? (
             <View style={{ gap: 10 }}>
               <Pressable
                 onPress={() => setShowEmail(false)}
@@ -440,6 +509,17 @@ export default function Login() {
                 <Text style={{ fontSize: 12.5, color: "#b9b2a8" }}>كل الخيارات</Text>
               </Pressable>
 
+              {newcomer ? (
+                <TextInput
+                  style={FIELD}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="اسمك"
+                  placeholderTextColor="rgba(247,245,239,.5)"
+                  maxLength={40}
+                  textContentType="name"
+                />
+              ) : null}
               <TextInput
                 style={FIELD}
                 value={email}
@@ -457,10 +537,10 @@ export default function Login() {
                 style={FIELD}
                 value={password}
                 onChangeText={setPassword}
-                placeholder="كلمة المرور"
+                placeholder={newcomer ? "كلمة المرور — ٨ أحرف فأكثر" : "كلمة المرور"}
                 placeholderTextColor="rgba(247,245,239,.5)"
                 secureTextEntry
-                textContentType="password"
+                textContentType={newcomer ? "newPassword" : "password"}
                 onSubmitEditing={submit}
               />
 
@@ -475,23 +555,44 @@ export default function Login() {
 
               <BrandButton onPress={submit} disabled={pending} style={{ marginTop: 8 }}>
                 <Text style={{ fontSize: 15.5, fontWeight: "700", color: colors.onBrand }}>
-                  {pending ? "لحظة…" : "دخول"}
+                  {pending ? "لحظة…" : newcomer ? "إنشاء حساب" : "دخول"}
                 </Text>
               </BrandButton>
 
-              {/* من نسي كلمته لا يستطيع الدخول ليطلبها، فبابُها هنا. */}
-              <Pressable onPress={() => router.push("/forgot" as never)}>
+              {/*
+                 ومن نسي كلمته لا يستطيع الدخول ليطلبها، فبابُها هنا —
+                 ولا تُعرض لمن يُنشئ حساباً: لا كلمةَ له بعدُ لينساها.
+              */}
+              {newcomer ? null : (
+                <Pressable onPress={() => router.push("/forgot" as never)}>
+                  <Text
+                    style={{ fontSize: 12.5, fontWeight: "500", color: "rgba(247,245,239,.72)", textAlign: "center", paddingVertical: 6 }}
+                  >
+                    نسيت كلمة المرور؟
+                  </Text>
+                </Pressable>
+              )}
+
+              <Pressable
+                onPress={() => {
+                  setNewcomer((was) => !was);
+                  setError(null);
+                }}
+              >
                 <Text
-                  style={{ fontSize: 12.5, fontWeight: "500", color: "rgba(247,245,239,.72)", textAlign: "center", paddingVertical: 6 }}
+                  style={{ fontSize: 12.5, fontWeight: "600", color: "rgba(247,245,239,.86)", textAlign: "center", paddingVertical: 6 }}
                 >
-                  نسيت كلمة المرور؟
+                  {newcomer ? "عندي حساب — سجّل دخولي" : "ما عندي حساب — أنشئ واحداً"}
                 </Text>
               </Pressable>
+              <Consent agreed={agreed} onToggle={() => { setAgreed((was) => !was); setError(null); }} />
             </View>
           ) : (
             <View style={{ gap: 10 }}>
               <View style={{ flexDirection: "row", gap: 10 }}>
-                {PROVIDERS.filter((provider) => provider.key !== "apple" || appleReady()).map((provider) => (
+                {PROVIDERS.filter(
+                  (provider) => (provider.key !== "apple" || appleReady()) && (provider.key !== "snap" || snapOn),
+                ).map((provider) => (
                   <Pressable
                     key={provider.key}
                     accessibilityRole="button"
@@ -520,6 +621,17 @@ export default function Login() {
                 </Text>
               </BrandButton>
 
+              {/* خطأُ المزوّد يُقرأ هنا: كان يُكتب في نموذج البريد وحده، فيُرى
+                  زرُّ سناب «لا يضغط» وهو يفشل بصمت. */}
+              {error ? (
+                <Text
+                  accessibilityRole="alert"
+                  style={{ fontSize: 12.5, fontWeight: "500", color: "#ff9d84", textAlign: "center" }}
+                >
+                  {error}
+                </Text>
+              ) : null}
+
               {notice ? (
                 <Text
                   accessibilityRole="text"
@@ -538,11 +650,62 @@ export default function Login() {
                   {notice}
                 </Text>
               ) : null}
+              <Consent agreed={agreed} onToggle={() => { setAgreed((was) => !was); setError(null); }} />
             </View>
           )}
         </Animated.View>
       </View>
     </View>
+  );
+}
+
+/**
+ * الموافقةُ على الشروط تحت أبواب الدخول كلّها — شرطُ آبل 1.2 لكل تطبيقٍ فيه
+ * محتوى يكتبه الناس: يوافق المستخدم على شروطٍ تقول صراحةً إنّه لا تسامح مع
+ * المحتوى المسيء ولا مع المسيئين. والبابُ واحد للبريد والمزوّدين: كلُّها
+ * تُنشئ حساباً لمن لا حسابَ له.
+ */
+function Consent({ agreed, onToggle }: { agreed: boolean; onToggle: () => void }) {
+  const link = (title: string, path: string) => (
+    <Text
+      accessibilityRole="link"
+      onPress={() => {
+        if (hasSite()) void openIn(`${SITE_URL}${path}`);
+      }}
+      style={{ color: "#f7f5ef", fontWeight: "700", textDecorationLine: "underline" }}
+    >
+      {title}
+    </Text>
+  );
+  return (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: agreed }}
+      accessibilityLabel="أوافق على شروط الاستخدام وسياسة الخصوصية"
+      onPress={onToggle}
+      hitSlop={6}
+      style={{ marginTop: 6, flexDirection: "row", alignItems: "flex-start", gap: 10 }}
+    >
+      <View
+        style={{
+          width: 22,
+          height: 22,
+          marginTop: 1,
+          borderRadius: 6,
+          borderWidth: 1.5,
+          borderColor: agreed ? colors.clay : "rgba(247,245,239,.6)",
+          backgroundColor: agreed ? colors.clay : "transparent",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {agreed ? <CheckIcon size={14} color={colors.onBrand} /> : null}
+      </View>
+      <Text style={{ flex: 1, minWidth: 0, fontSize: 11.5, lineHeight: 19, color: "rgba(247,245,239,.78)", textAlign: "right" }}>
+        أوافق على {link("شروط الاستخدام", "/terms")} و{link("سياسة الخصوصية", "/privacy")}، ولا تسامح مع المحتوى
+        المسيء أو المستخدمين المسيئين.
+      </Text>
+    </Pressable>
   );
 }
 

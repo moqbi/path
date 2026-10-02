@@ -38,7 +38,7 @@ export default async function ProfilePage() {
     }),
     // ما تملكه من المتجر — يُلبَس من هنا لا من صفحة الشراء.
     prisma.purchase.findMany({
-      where: { userId: user.id },
+      where: { userId: user.id, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
       select: {
         item: {
           select: {
@@ -94,7 +94,7 @@ export default async function ProfilePage() {
       {/* المشاركة في الطرف المقابل للعلامة: رابط ملفك ورقم عضويتك. */}
       <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
         <AthrPageMark label="الملف الشخصي" />
-        <ShareProfile id={user.id} name={user.name} memberNo={user.memberNo} />
+        <ShareProfile name={user.name} memberNo={user.memberNo} />
       </header>
 
       {/*
@@ -108,6 +108,8 @@ export default async function ProfilePage() {
             mediaId={user.coverMediaId}
             spec={user.background?.spec ?? null}
             initialY={user.coverY}
+            x={user.coverX}
+            zoom={user.coverZoom}
             height={176}
           />
         }
@@ -305,14 +307,19 @@ export default async function ProfilePage() {
           </div>
         </div>
 
+        {/*
+           و`a` لا `Link`: اللوحة خارج جذر التطبيق (`/app` — القاعدة
+           ١٢٢)، و`next/link` يسبق كلَّ مسارٍ بالجذر فيصير `/app/admin`
+           — وذاك بابٌ حُذف.
+        */}
         {user.role === "ADMIN" ? (
-          <Link
+          <a
             href="/admin"
             className="mb-3 flex items-center justify-center gap-2 rounded-xl border border-line bg-card text-[14px] font-semibold text-ink-2"
             style={{ height: 48 }}
           >
             لوحة التحكم
-          </Link>
+          </a>
         ) : null}
 
         {!user.isPlus ? (

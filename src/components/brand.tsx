@@ -1,3 +1,4 @@
+import { asset } from "@/lib/base";
 /**
  * علامة آثار.
  *
@@ -12,7 +13,7 @@ export function AthrMark({ size = 32 }: { size?: number }) {
   return (
     /* eslint-disable-next-line @next/next/no-img-element */
     <img
-      src="/athr-mark.png"
+      src={asset("/athr-mark.png")}
       alt=""
       aria-hidden="true"
       width={size}

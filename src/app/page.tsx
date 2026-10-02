@@ -8,10 +8,10 @@ import { friendshipSince, togetherMoments } from "@/lib/together";
 import { unreadCount } from "@/lib/dm";
 import { MomentCard } from "@/components/moment-card";
 import { ComposerFan } from "@/components/composer-fan";
-import { Tour } from "@/components/tour";
 import { Avatar, Empty, NameTag } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import { TimelineHead } from "@/components/timeline-head";
+import { VerifyBanner } from "@/components/verify-banner";
 import { AthrHeaderMark } from "@/components/brand";
 import { MessageIcon, SparkIcon } from "@/components/icons";
 import { ar, dayLabel, membership } from "@/lib/format";
@@ -38,6 +38,8 @@ export default async function TimelinePage({
   const params = await searchParams;
   const view = params.view === "private" || params.view === "together" ? params.view : "";
   const withId = view === "together" ? (params.with ?? "") : "";
+  // «آثارنا» من مزايا آثار+ — من اختارها بلا اشتراكٍ يُؤخذ إلى صفحته.
+  if (view === "together" && !user.isPlus) redirect("/subscribe");
 
   const [unread, ids] = await Promise.all([
     unreadCount(user.id),
@@ -137,6 +139,8 @@ export default async function TimelinePage({
         coverMediaId={user.coverMediaId}
         coverSpec={user.background?.spec ?? null}
         coverY={user.coverY}
+        coverX={user.coverX}
+        coverZoom={user.coverZoom}
         name={user.name}
         since={membership(user.createdAt)}
         tag={<NameTag isPlus={user.isPlus} tag={user.tag} size={10} />}
@@ -150,6 +154,43 @@ export default async function TimelinePage({
           />
         }
       >
+        {/*
+           أوّلُ ما يقع عليه بصرُه بعد التسجيل — ولا يمنعه من شيء
+           (القاعدة ١١٩ب). ومن لا بريدَ له (دخل بسناب) لا يُقال له
+           «أكّد بريدك»: صفُّ «اربط بريدك» في الإعدادات موضعُه.
+        */}
+        {user.email && !user.emailVerifiedAt ? <VerifyBanner email={user.email} /> : null}
+
+        {/*
+           العدساتُ الثلاث ظاهرةً على سطح المكتب — **بقرار المالك**. على
+           الجوّال بابُها الضغطُ المطوّل على «اللحظات» (القاعدة ٣٢)، والفأرةُ
+           لا تضغط مطوّلاً: بابٌ لا يُكتشف بالفأرة ليس باباً.
+        */}
+        <nav className="desk-only mb-3 gap-1 rounded-2xl border border-line bg-card p-1">
+          {[
+            { key: "", label: "اللحظات", href: "/" },
+            { key: "private", label: "اللحظات الخاصة", href: "/?view=private" },
+            { key: "together", label: "آثارنا", href: user.isPlus ? "/?view=together" : "/subscribe" },
+          ].map((lens) => {
+            const on = view === lens.key;
+            return (
+              <Link
+                key={lens.key || "all"}
+                href={lens.href}
+                aria-current={on ? "page" : undefined}
+                className="flex h-10 grow items-center justify-center gap-1 rounded-xl text-[13px] font-semibold"
+                style={{
+                  background: on ? "var(--color-clay)" : "transparent",
+                  color: on ? "var(--color-on-brand)" : "var(--color-ink-2)",
+                }}
+              >
+                {lens.label}
+                {lens.key === "together" && !user.isPlus ? <SparkIcon size={12} /> : null}
+              </Link>
+            );
+          })}
+        </nav>
+
         {view === "private" ? (
           <p className="mb-1 text-[11.5px] leading-relaxed text-muted">
             ما نُشر لتصنيفٍ من أصدقائك أو لأشخاص بأعيانهم — غيرهم لا يراها أصلاً.
@@ -261,7 +302,6 @@ export default async function TimelinePage({
         )}
       </TimelineHead>
 
-      <Tour />
       <ComposerFan />
       <TabBar active="/" view={view} />
     </div>

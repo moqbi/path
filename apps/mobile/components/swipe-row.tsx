@@ -1,8 +1,9 @@
-import { useRef, useState } from "react";
-import { View, Pressable, Animated, PanResponder } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { View, Pressable, Animated, PanResponder, Easing } from "react-native";
 import { Text } from "./type";
 import { CloseIcon } from "./icons";
 import { colors } from "../theme/tokens";
+import { claimOpen, releaseOpen } from "../lib/swipe-open";
 
 const REVEAL = 88;
 
@@ -20,6 +21,12 @@ export function SwipeRow({
   confirmLabel = "حذف",
   onSecond,
   secondLabel,
+  surface,
+  width = REVEAL,
+  lead,
+  radius = 0,
+  onSwiping,
+  icons,
   children,
 }: {
   onDelete: () => void | Promise<void>;
@@ -27,10 +34,35 @@ export function SwipeRow({
   /** فعلٌ ثانٍ يظهر بجانب الأول — الحظر مثلاً بجانب الإزالة. */
   onSecond?: () => void | Promise<void>;
   secondLabel?: string;
+  /**
+   * لونُ ما يُزاح: الصفُّ يغطّي الزرّ تحته بأرضيّته، فيجب أن تكون أرضيّةَ
+   * مكانه — الورقُ في القوائم، والبطاقةُ في التعليقات. وإلّا ظهر شريطٌ
+   * بلونٍ غريب تحت كلّ تعليق.
+   */
+  surface?: string;
+  /** عرضُ الزرّ المكشوف — «حذف بصلاحية الإشراف» أطولُ من «حذف». */
+  width?: number;
+  /**
+   * فعلٌ لا يقطع يسبق الفعلين: «محادثة» في صفّ الصديق. يجلس أبعدَ عن
+   * الصفّ، وبلونٍ غير لون القطع — فلا يُضغط «إزالة» وهو يريد الكلام.
+   */
+  lead?: { label: string; run: () => void | Promise<void> };
+  /** انحناءُ الحواف حين يكون الصفّ قالباً لا سطراً. */
+  radius?: number;
+  /**
+   * يُخبر القائمةَ أنّ صفّاً يُسحب فتقف عن التمرير: تمريرُ آبل الأصليّ
+   * يأخذ ما مال من السحبة رأسياً فتتحرّك الشاشةُ كلّها مع الصفّ.
+   */
+  onSwiping?: (active: boolean) => void;
+  /**
+   * أيقوناتٌ بدل الكلمات — **بقرار المالك** في صفّ الصديق: ثلاثةُ أزرارٍ
+   * بكلماتها تملأ نصفَ الصفّ. والكلمةُ تبقى اسماً للزرّ عند قارئ الشاشة.
+   */
+  icons?: { delete: React.ReactNode; second?: React.ReactNode; lead?: React.ReactNode };
   children: React.ReactNode;
 }) {
   const second = onSecond && secondLabel ? { run: onSecond, label: secondLabel } : null;
-  const reveal = second ? REVEAL * 2 : REVEAL;
+  const reveal = width * (1 + (second ? 1 : 0) + (lead ? 1 : 0));
 
   const [busy, setBusy] = useState(false);
   /*
@@ -42,14 +74,43 @@ export function SwipeRow({
   */
   const [revealed, setRevealed] = useState(false);
   const shift = useRef(new Animated.Value(0)).current;
+  const swiping = useRef(onSwiping);
+  swiping.current = onSwiping;
   const open = useRef(false);
   const from = useRef(0);
+  const box = useRef<View>(null);
 
-  const settle = (to: number) => {
+  /*
+    تسجيلُه في السجلّ الواحد (`lib/swipe-open.ts`): فتحُ صفٍّ يطوي غيرَه،
+    والتمريرُ واللمسُ خارجه يطويانه. والكائنُ ثابتٌ بمرجعٍ واحد فيعرفه السجلّ.
+  */
+  const entry = useRef<{ close: () => void; rect: { x: number; y: number; width: number; height: number } | null }>({
+    close: () => settle(0),
+    rect: null,
+  }).current;
+
+  // صفٌّ يُزال من الشاشة مفتوحاً لا يبقى في السجلّ.
+  useEffect(() => () => releaseOpen(entry), [entry]);
+
+  // الطيُّ يتباطأ في آخره فيُقرأ انسياباً، لا توقّفاً مفاجئاً.
+  function settle(to: number) {
     open.current = to > 0;
     setRevealed(to > 0);
-    Animated.timing(shift, { toValue: to, duration: 220, useNativeDriver: true }).start();
-  };
+    if (to > 0) {
+      claimOpen(entry);
+      box.current?.measureInWindow((x, y, width, height) => {
+        entry.rect = { x, y, width, height };
+      });
+    } else {
+      releaseOpen(entry);
+    }
+    Animated.timing(shift, {
+      toValue: to,
+      duration: 240,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }
 
   const pan = useRef(
     PanResponder.create({
@@ -61,7 +122,10 @@ export function SwipeRow({
       */
       onMoveShouldSetPanResponderCapture: (_event, gesture) =>
         Math.abs(gesture.dx) > 6 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
+      // ولا يتنازل عن السحبة للقائمة وهي جارية.
+      onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: () => {
+        swiping.current?.(true);
         from.current = open.current ? reveal : 0;
         // الدرع يُنصب مع أوّل حركة لا بعد الإفلات: الضغطة التي تختم
         // السحبة تصل إلى الرابط قبل أن يتحرّك شيء إن تأخّر.
@@ -72,10 +136,14 @@ export function SwipeRow({
         shift.setValue(Math.max(0, Math.min(reveal, from.current + gesture.dx)));
       },
       onPanResponderRelease: (_event, gesture) => {
+        swiping.current?.(false);
         const at = Math.max(0, Math.min(reveal, from.current + gesture.dx));
         settle(at > reveal / 2 ? reveal : 0);
       },
-      onPanResponderTerminate: () => settle(open.current ? reveal : 0),
+      onPanResponderTerminate: () => {
+        swiping.current?.(false);
+        settle(open.current ? reveal : 0);
+      },
     }),
   ).current;
 
@@ -86,31 +154,49 @@ export function SwipeRow({
   }
 
   return (
-    <View style={{ position: "relative", overflow: "hidden" }}>
+    <View ref={box} collapsable={false} style={{ position: "relative", overflow: "hidden", borderRadius: radius }}>
       <View style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: reveal, flexDirection: "row" }}>
+        {lead ? (
+          <Pressable
+            disabled={busy}
+            onPress={() => fire(lead.run)}
+            accessibilityLabel={lead.label}
+            style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 8, backgroundColor: colors.clay, opacity: busy ? 0.6 : 1 }}
+          >
+            {icons?.lead ?? <Text style={{ color: colors.onBrand, fontSize: 13, fontWeight: "700" }}>{lead.label}</Text>}
+          </Pressable>
+        ) : null}
         {second ? (
           <Pressable
             disabled={busy}
             onPress={() => fire(second.run)}
+            accessibilityLabel={second.label}
             style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 8, backgroundColor: colors.night, opacity: busy ? 0.6 : 1 }}
           >
-            <Text style={{ color: "#f7f5ef", fontSize: 13, fontWeight: "700" }}>{second.label}</Text>
+            {icons?.second ?? <Text style={{ color: "#f7f5ef", fontSize: 13, fontWeight: "700" }}>{second.label}</Text>}
           </Pressable>
         ) : null}
 
         <Pressable
           disabled={busy}
           onPress={() => fire(onDelete)}
+          accessibilityLabel={confirmLabel}
           style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 8, backgroundColor: colors.live, opacity: busy ? 0.6 : 1 }}
         >
-          <CloseIcon size={16} color="#fff" />
-          <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>{confirmLabel}</Text>
+          {icons ? (
+            icons.delete
+          ) : (
+            <>
+              <CloseIcon size={16} color="#fff" />
+              <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>{confirmLabel}</Text>
+            </>
+          )}
         </Pressable>
       </View>
 
       <Animated.View
         {...pan.panHandlers}
-        style={{ backgroundColor: colors.paper, transform: [{ translateX: shift }] }}
+        style={{ backgroundColor: surface ?? colors.paper, transform: [{ translateX: shift }] }}
       >
         {children}
 

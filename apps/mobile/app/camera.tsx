@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { View, Pressable, Image, ActivityIndicator, Dimensions } from "react-native";
+import { View, Pressable, Image, ActivityIndicator, Dimensions, PanResponder, type GestureResponderEvent } from "react-native";
 import { Text } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -8,8 +8,8 @@ import Svg, { Circle, Path } from "react-native-svg";
 import { STORY_SECONDS } from "@athar/shared";
 import { CloseIcon } from "../components/icons";
 import { keepShot } from "../lib/capture";
-import { tap } from "../lib/sound";
 import { ar } from "../lib/format";
+import { StoryVideo } from "../components/story-video";
 import { colors } from "../theme/tokens";
 
 /**
@@ -37,6 +37,45 @@ export default function Camera() {
   const camera = useRef<CameraView | null>(null);
   const [facing, setFacing] = useState<"back" | "front">("back");
   const [flash, setFlash] = useState<"auto" | "on" | "off">("auto");
+  /*
+    التقريب بإصبعين (٠ إلى ١ كما تقبله `CameraView`). والمرجعُ ما كان
+    عليه ساعةَ وضع الإصبعين: القرصُ يُقاس نسبةً من بدايته لا من الصفر،
+    فلا يقفز التقريبُ حين تبدأ قرصةٌ ثانية.
+  */
+  const [zoom, setZoom] = useState(0);
+  const zoomNow = useRef(0);
+  zoomNow.current = zoom;
+  const pinch = useRef({ from: 0, base: 0 });
+  const spread = (event: GestureResponderEvent) => {
+    const [a, b] = event.nativeEvent.touches;
+    return a && b ? Math.hypot(a.pageX - b.pageX, a.pageY - b.pageY) : 0;
+  };
+  const pincher = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: (event) => event.nativeEvent.touches.length === 2,
+      onMoveShouldSetPanResponder: (event) => event.nativeEvent.touches.length === 2,
+      onPanResponderGrant: (event) => {
+        pinch.current = { from: spread(event), base: zoomNow.current };
+      },
+      onPanResponderMove: (event) => {
+        const now = spread(event);
+        if (!now) return;
+        if (!pinch.current.from) {
+          pinch.current = { from: now, base: zoomNow.current };
+          return;
+        }
+        // ضِعفُ المسافة بين الإصبعين ≈ نصفُ مدى التقريب: سريعٌ بلا أن يقفز.
+        const next = pinch.current.base + (now / pinch.current.from - 1) * 0.5;
+        setZoom(Math.min(1, Math.max(0, next)));
+      },
+      onPanResponderRelease: () => {
+        pinch.current.from = 0;
+      },
+      onPanResponderTerminate: () => {
+        pinch.current.from = 0;
+      },
+    }),
+  ).current;
   const [busy, setBusy] = useState(false);
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -128,16 +167,23 @@ export default function Camera() {
 
     setRecording(true);
     setElapsed(0);
+    /*
+      المدّة من الساعة لا من `elapsed`: الدالّة أُغلقت على قيمته ساعةَ
+      بدأ التسجيل — صفرٌ دائماً — فكان كلُّ مقطعٍ «٠ ثانية» ويردّه
+      الخادم بـ«seconds: too small». والساعة لا تُغلَق على شيء.
+    */
+    const began = Date.now();
     try {
       const clip = await camera.current.recordAsync({ maxDuration: limit });
       if (clip?.uri) {
+        const seconds = Math.max(1, Math.min(limit, Math.round((Date.now() - began) / 1000)));
         setShot({
           uri: clip.uri,
           mime: "video/mp4",
           width: 0,
           height: 0,
           video: true,
-          seconds: Math.min(elapsed, limit),
+          seconds,
         });
       }
     } finally {
@@ -150,9 +196,11 @@ export default function Camera() {
     return (
       <View style={{ flex: 1, backgroundColor: "#000" }}>
         {shot.video ? (
+          /* المقطع يُشغَّل ويُعاد — لا سطرٌ يصفه على شاشةٍ سوداء. */
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>
-              مقطعٌ من {ar(shot.seconds)} ثانية
+            <StoryVideo source={shot.uri} local width={screen.width} height={screen.height * 0.78} loop />
+            <Text style={{ color: "rgba(255,255,255,.75)", fontSize: 12.5, marginTop: 8 }}>
+              {ar(shot.seconds)} ثانية
             </Text>
           </View>
         ) : (
@@ -192,8 +240,18 @@ export default function Camera() {
         facing={facing}
         flash={flash}
         mode={mode}
+        zoom={zoom}
         // الفيديو يحتاج الصوت، والصورة لا — فلا يُطلب إذنٌ بلا سبب.
         videoQuality="720p"
+      />
+
+      {/*
+        طبقةُ القرص فوق الكاميرا وتحت الأزرار: إصبعان يقرّبان ويبعّدان،
+        في الصورة والفيديو معاً وأثناء التسجيل. وإصبعٌ واحد يمرّ.
+      */}
+      <View
+        {...pincher.panHandlers}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
       />
 
       {/* الإغلاق والفلاش في الأعلى، والتصوير والتبديل في الأسفل. */}
@@ -222,6 +280,46 @@ export default function Camera() {
       </SafeAreaView>
 
       <SafeAreaView edges={["bottom"]} style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}>
+        {/*
+          مقدارُ التقريب يُقرأ فوق الغالق، وضغطُه يعيده إلى الأصل —
+          وزرّا «١×» و«٢×» لمن يدُه مشغولةٌ بالجهاز.
+        */}
+        <View style={{ flexDirection: "row", alignSelf: "center", gap: 8, marginBottom: 14 }}>
+          {[
+            { label: "١×", value: 0 },
+            { label: "٢×", value: 0.25 },
+          ].map((step) => {
+            const on = Math.abs(zoom - step.value) < 0.02;
+            return (
+              <Pressable
+                key={step.label}
+                onPress={() => setZoom(step.value)}
+                hitSlop={8}
+                style={{
+                  minWidth: 38,
+                  height: 38,
+                  paddingHorizontal: 8,
+                  borderRadius: 19,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: on ? "rgba(255,255,255,.92)" : "rgba(0,0,0,.42)",
+                }}
+              >
+                <Text style={{ color: on ? "#000" : "#fff", fontSize: 12.5, fontWeight: "700" }}>{step.label}</Text>
+              </Pressable>
+            );
+          })}
+          {zoom > 0.02 && Math.abs(zoom - 0.25) >= 0.02 ? (
+            <Pressable
+              onPress={() => setZoom(0)}
+              style={{ height: 38, paddingHorizontal: 12, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.92)" }}
+            >
+              <Text style={{ color: "#000", fontSize: 12.5, fontWeight: "700" }}>
+                {ar(Math.round((1 + zoom * 4) * 10) / 10)}×
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 36, paddingBottom: 26 }}>
           <View style={{ width: 46 }} />
 
@@ -232,10 +330,12 @@ export default function Camera() {
           <Pressable
             accessibilityLabel={mode === "video" ? (recording ? "أوقف التسجيل" : "سجّل") : "صوّر"}
             disabled={busy}
-            onPress={() => {
-              tap();
-              void (mode === "video" ? roll() : shoot());
-            }}
+            /*
+              بلا مؤثّرٍ هنا: كان `tap()` يُسمِع نغمةَ فتح قوس النشر نفسها،
+              فيُسمع الغالق زرَّ الزائد. والنظامُ يُسمع غالقَه بنفسه في آبل،
+              وثلاثُ نغماتٍ لثلاثة أفعال (القاعدة ٣٦) لا رابعة مستعارة.
+            */
+            onPress={() => void (mode === "video" ? roll() : shoot())}
             style={{ width: 78, height: 78, borderRadius: 39, borderWidth: 3, borderColor: "rgba(255,255,255,.9)", alignItems: "center", justifyContent: "center" }}
           >
             <View
@@ -252,7 +352,10 @@ export default function Camera() {
           <Pressable
             accessibilityLabel="بدّل الكاميرا"
             disabled={recording}
-            onPress={() => setFacing((one) => (one === "back" ? "front" : "back"))}
+            onPress={() => {
+              setZoom(0);
+              setFacing((one) => (one === "back" ? "front" : "back"));
+            }}
             style={[disc, { opacity: recording ? 0.4 : 1 }]}
           >
             <FlipMark />

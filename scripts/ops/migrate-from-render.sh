@@ -22,28 +22,61 @@ pg_dump "$RENDER_DATABASE_URL" -Fc --no-owner --no-acl -f "$dump"
 ls -lh "$dump"
 
 say "٢/٦ صفوفُ المصدر — تُقارَن بعد الاستعادة"
-before=$(psql "$RENDER_DATABASE_URL" -qtA -c '
-  select (select count(*) from "User") || "/" ||
-         (select count(*) from "Moment") || "/" ||
-         (select count(*) from "Media")' 2>/dev/null || echo "?")
+before=$(psql "$RENDER_DATABASE_URL" -qtA -c "
+  select (select count(*) from \"User\")   || '/' ||
+         (select count(*) from \"Moment\") || '/' ||
+         (select count(*) from \"Media\")" 2>/dev/null || echo "?")
 echo "   مستخدمون/لحظات/ملفّات: $before"
 
 say "٣/٦ نسخةٌ احتياطيّة لما عندنا قبل أن نكتب فوقه"
-if psql "$DIRECT_URL" -qtA -c 'select 1 from "User" limit 1' >/dev/null 2>&1; then
+here=$(psql "$DIRECT_URL" -qtA -c 'select count(*) from "User"' 2>/dev/null || echo 0)
+if [ "$here" -gt 0 ]; then
   pg_dump "$DIRECT_URL" -Fc -f "/tmp/before-restore-${stamp}.dump"
   echo "   حُفظت في /tmp/before-restore-${stamp}.dump"
 else
   echo "   القاعدة فارغة — لا شيء يُحفظ"
 fi
 
+# **والاستعادة تمحو ما هنا**: `--clean` تُسقط الجداول ثمّ تكتب مكانها.
+#
+# وهذا صحيحٌ مرّةً واحدة — يوم النقل، والقاعدة هنا فارغة. أمّا بعده
+# فالقاعدةُ هنا هي الحيّة: فيها حساباتٌ سُجّلت ولحظاتٌ نُشرت ومشترياتٌ
+# دُفع ثمنها بعد النقل، وليس منها شيءٌ في Render. فتشغيلُ السكربت ثانيةً
+# «لننقلها» يرجع بالتطبيق إلى يوم النقل ويذهب ما بعده.
+#
+# فإن كان هنا مستخدمون، لا يمضي إلّا بإذنٍ صريح — ومن أذِن فليقرأ
+# العددين أوّلاً.
+if [ "$here" -gt 0 ] && [ "${OVERWRITE:-}" != "yes" ]; then
+  cat <<EOF
+
+  ✋ القاعدة هنا ليست فارغة: $here مستخدماً، وفي Render $before.
+
+     الاستعادة تمحو ما هنا وتضع مكانه نسخةَ Render. فإن كنت قد نقلت
+     من قبل، فما هنا أحدثُ — ونقلٌ ثانٍ خسارةٌ لا ربح.
+
+     وإن كان في Render شيءٌ حديثٌ ليس هنا (مشترياتٌ ذهب ويبهوكها إليه
+     مثلاً) فذاك يُنقل صفوفاً بعينها لا بمسحِ القاعدة كلّها.
+
+     ومن أراد المسح فعلاً — والنسخة محفوظة في
+     /tmp/before-restore-${stamp}.dump — يعيد الأمر بـ:
+
+         OVERWRITE=yes $0
+
+EOF
+  exit 1
+fi
+
 say "٤/٦ الاستعادة"
 pg_restore -d "$DIRECT_URL" --no-owner --no-acl --clean --if-exists "$dump"
 
-say "٥/٦ الهجرات"
+say "٥/٦ العميل ثمّ الهجرات"
 cd "$(dirname "$0")/../.."
+# `generate` قبل كلّ شيء: `boot-defaults` يستورد العميل المولَّد، ومستودعٌ
+# حديثُ النسخ لا يحمله — فيسقط بـ«Cannot find module».
+npx prisma generate
 DATABASE_URL="$DIRECT_URL" npx prisma migrate deploy
 
-say "٦/٦ الأدوار — فخُّ الترقية (`boot-defaults`)"
+say '٦/٦ الأدوار — فخُّ الترقية (boot-defaults)'
 # البذرةُ محروسةٌ بقاعدةٍ فارغة، فقاعدةٌ منقولةٌ عامرة قد تترك الجميع
 # بلا دورٍ فتُقفل اللوحة في وجه صاحبها. الرفعُ هنا صريحٌ لا مشروط.
 # و`ADMIN_EMAILS` لازمةٌ هنا: بلا قائمةٍ صريحة لا يُرقّى إلا حسابُ

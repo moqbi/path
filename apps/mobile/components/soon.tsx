@@ -12,7 +12,7 @@ import { colors } from "../theme/tokens";
  */
 export function Soon({ title, note }: { title: string; note: string }) {
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.ground }}>
       <ScreenHeader title={title} back="/" />
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40 }}>
         <Text style={{ color: colors.ink, fontSize: 15, fontWeight: "700", marginBottom: 8 }}>

@@ -1,10 +1,15 @@
-import { View, FlatList, Pressable, ActivityIndicator } from "react-native";
+import { useState } from "react";
+import { scrolled } from "../../../lib/scrolled";
+import { markSeen } from "../../../lib/seen";
+import { View, Pressable, ActivityIndicator, Animated, RefreshControl } from "react-native";
 import { Text } from "../../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { AvatarMenu } from "../../../components/avatar-menu";
-import { CoverLayer } from "../../../components/cover";
+import { frameBleed } from "../../../components/avatar";
+import { COVER_HEIGHT, CoverLayer, StretchCover, useStretch } from "../../../components/cover";
+import { playRefresh } from "../../../lib/sound";
 import { MediaImage } from "../../../components/media-image";
 import { MomentCard } from "../../../components/moment-card";
 import { ScreenHeader } from "../../../components/screen-header";
@@ -16,6 +21,7 @@ import { ar, membership } from "../../../lib/format";
 import { useSession } from "../../../lib/session";
 import { NameTag } from "../../../components/name-tag";
 import { colors } from "../../../theme/tokens";
+import { EdgeBack } from "../../../components/edge-back";
 
 type Person = {
   id: string;
@@ -30,6 +36,9 @@ type Person = {
   createdAt: string;
   avatarMediaId: string | null;
   coverMediaId: string | null;
+  coverX?: number;
+  coverY?: number;
+  coverZoom?: number;
   /* الصنف الملبوس كاملاً: نافذةُ الصورة تعرض اسمه وسعره وتبيعه. */
   frame: {
     id: string;
@@ -58,7 +67,17 @@ type Person = {
  * والشعار يبقى في الرأس ثم يأتي الاسم: كان الاسم يحلّ محلّ الشعار فتبدو
  * كل صفحةٍ تطبيقاً آخر.
  */
-export default function Profile() {
+/*
+  الشاشةُ تُبنى من جديد لكل ملفّ: هي شاشةٌ واحدة في مكدّس التبويبات
+  تتبدّل معاملُها ولا تُفكّ، فكانت حالةُ «أُرسل الطلب» لملفٍّ تبقى على
+  الملفّ التالي فيتعطّل زرُّ «أضفه» حتى يُغلق التطبيق.
+*/
+export default function ProfileScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  return <Profile key={id} />;
+}
+
+function Profile() {
   const me = useSession((state) => state.me);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -70,7 +89,14 @@ export default function Profile() {
 
   /** إضافةُ حسابٍ مفتوح: الطلب نفسه الذي يُرسل من «مقترحون». */
   const add = useMutation({
-    mutationFn: () => api(`/v1/circle/${id}/request`, { method: "POST" }),
+    mutationFn: () => api<{ status: "PENDING" | "ACCEPTED" }>(`/v1/circle/${id}/request`, { method: "POST" }),
+    // الحسابُ المفتوح يقبل في الحال (القاعدة ٢٢١): يُعاد جلبُ الملفّ فتظهر لحظاتُه.
+    onSuccess: (row) => {
+      if (row?.status === "ACCEPTED") {
+        void person.refetch();
+        void moments.refetch();
+      }
+    },
   });
 
   /** المحادثة تُفتح من هنا: تُنشأ إن لم تكن، ثم نذهب إليها. */
@@ -102,9 +128,25 @@ export default function Profile() {
 
   const who = person.data?.person;
 
+  // السحبُ من أعلى يمدّ الغلاف ويُعيد جلب الملف ولحظاته — كاللحظات و«أنا».
+  const { y: scrollY, onScroll } = useStretch();
+  const [refreshing, setRefreshing] = useState(false);
+  const reload = () => {
+    playRefresh();
+    setRefreshing(true);
+    void Promise.all([person.refetch(), moments.refetch()]).finally(() => setRefreshing(false));
+  };
+
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
-      <ScreenHeader title={who?.name ?? "ملف"} />
+    // السحبُ من الحافّة رجوع (القاعدة ٢١٧): الملفُّ داخل التبويبات بلا إيماءةٍ أصليّة.
+    <EdgeBack fallback="/circle">
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
+      {/*
+        زرُّ رجوعٍ فوقه — **بقرار المالك**، ونقضاً للقاعدة ٤٢: الملفُّ يُفتح
+        من صفّ صديق أو تعليقٍ أو لحظة، ومن فتحه يريد أن يعود حيث كان لا إلى
+        رأس التبويب. والوجهةُ المكتوبة للفتح المباشر وحده (القاعدة ٧٧).
+      */}
+      <ScreenHeader title={who?.name ?? "ملف"} back="/circle" />
 
       {person.isLoading ? (
         <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
@@ -113,9 +155,20 @@ export default function Profile() {
           لا يوجد هذا الحساب.
         </Text>
       ) : (
-        <FlatList
+        <Animated.FlatList
+          onScroll={onScroll}
+          onScrollBeginDrag={scrolled}
+          // حقلُ التعليق داخل القائمة: آبل تُزيح المحتوى بقدر الكيبورد وتُظهر
+          // الحقلَ المركَّز فوقه، فيرى الكاتبُ ما يكتب.
+          automaticallyAdjustKeyboardInsets
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          scrollEventThrottle={16}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} tintColor="#fff" />}
           data={moments.data?.moments ?? []}
           keyExtractor={(item) => item.id}
+          onViewableItemsChanged={onViewable}
+          viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
           /*
             والحذف داخل لوحة التفاعل لا زرّاً تحت البطاقة: البلاغ يصل على
             منشور، فيفتحه المشرف حيث يقرؤه الناس ويحكم في مكانه — ومعه
@@ -126,7 +179,9 @@ export default function Profile() {
               moment={item}
               viewerId={me?.id ?? ""}
               isPlus={me?.isPlus ?? false}
-              moderate={moderating}
+              // صلاحيةُ الحذف للمشرف على كل لحظةٍ يقرؤها، صديقاً كان صاحبها
+              // أو لا — `moderating` يقول من أيّ بابٍ جاءت اللحظات لا غير.
+              moderate={me?.canModerate ?? false}
             />
           )}
           /*
@@ -141,8 +196,11 @@ export default function Profile() {
                 تحت قناع الذوبان نفسه. وصورةٌ عاريةٌ في مربّعٍ رماديّ تنتهي
                 بحدٍّ حادّ، فيبدو الملف صفحةً من تطبيقٍ آخر.
               */}
-              <View style={{ height: 120, marginHorizontal: -20, overflow: "hidden" }}>
-                <CoverLayer mediaId={who.coverMediaId} spec={null} height={120} />
+              {/* بمقاس غلاف اللحظات و«أنا» (`COVER_HEIGHT`): كان ١٢٠ فيُقرأ ملفاً أصغر. */}
+              <View style={{ marginHorizontal: -20 }}>
+                <StretchCover y={scrollY} height={COVER_HEIGHT}>
+                  <CoverLayer mediaId={who.coverMediaId} spec={null} height={COVER_HEIGHT} x={who.coverX} y={who.coverY} zoom={who.coverZoom} />
+                </StretchCover>
               </View>
 
               <View style={{ alignItems: "center", marginTop: -32, paddingHorizontal: 16, marginBottom: 14 }}>
@@ -155,7 +213,8 @@ export default function Profile() {
                   frameItem={who.frame}
                   charmItem={who.charm}
                 />
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 }}>
+                {/* أبعدُ عن الصورة: التميمةُ تتدلّى من ركنها الأيسر الأسفل. */}
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 14 + frameBleed(78, who.frame) }}>
                   <Text style={{ color: colors.ink, fontSize: 17, fontWeight: "700", writingDirection: "auto" }}>
                     {who.name}
                   </Text>
@@ -214,17 +273,17 @@ export default function Profile() {
                       <MessageIcon size={17} color={colors.ink2} />
                     </Pressable>
                   </View>
-                ) : who.isOpen ? (
+                ) : (
                   /*
-                    الحساب المفتوح يُقرأ بلا صداقة، فيبقى له زرُّ إضافةٍ
-                    مكان أفعال الأصدقاء — ولا إهداءَ ولا محادثةَ ولا
-                    «آثارنا» مع من لم يُضَف بعد.
+                    ومن لم يُضَف بعدُ يبقى له زرُّ إضافةٍ مكان أفعال
+                    الأصدقاء الثلاثة — لا إهداءَ ولا محادثةَ ولا
+                    «آثارنا» قبل أن يَقبل.
                   */
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12 }}>
                   <Pressable
                     onPress={() => add.mutate()}
                     disabled={add.isPending || add.isSuccess}
                     style={{
-                      marginTop: 12,
                       height: 42,
                       paddingHorizontal: 18,
                       borderRadius: 12,
@@ -243,7 +302,18 @@ export default function Profile() {
                       {add.isSuccess ? "أُرسل الطلب" : "أضفه"}
                     </Text>
                   </Pressable>
-                ) : null}
+                  {/* والحسابُ المفتوح يُراسَل بلا إضافة (القاعدة ٢٢١) — حسابُ الدعم. */}
+                  {who.isOpen ? (
+                    <Pressable
+                      accessibilityLabel="محادثة"
+                      onPress={() => talk.mutate()}
+                      style={{ width: 44, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
+                    >
+                      <MessageIcon size={17} color={colors.ink2} />
+                    </Pressable>
+                  ) : null}
+                  </View>
+                )}
                 {who.bio ? (
                   <Text style={{ color: colors.ink2, fontSize: 13, textAlign: "center", marginTop: 7, lineHeight: 22 }}>
                     {who.bio}
@@ -253,7 +323,25 @@ export default function Profile() {
             </>
           }
           ListEmptyComponent={
-            moments.isLoading ? null : (
+            moments.isLoading ? null : person.data?.friend === false && !moderating ? (
+              /* مكانُ اللحظات يقول لماذا لا تُرى — لا سطرٌ يُقرأ «ما نشر شي». */
+              <View
+                style={{
+                  marginHorizontal: 20,
+                  marginTop: 16,
+                  padding: 16,
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: colors.line,
+                  backgroundColor: colors.card,
+                }}
+              >
+                <Text style={{ color: colors.muted, fontSize: 12.5, lineHeight: 22 }}>
+                  لن تتمكّن من مشاهدة لحظاته حتى تضيفه إلى دائرتك ويقبل طلبك.
+                  والمحادثة و«آثارنا» والإهداء تُفتح بعدها.
+                </Text>
+              </View>
+            ) : (
               <Text style={{ color: colors.faint, fontSize: 12.5, textAlign: "center", paddingVertical: 24 }}>
                 لا لحظات تراها.
               </Text>
@@ -262,5 +350,10 @@ export default function Profile() {
         />
       )}
     </SafeAreaView>
+    </EdgeBack>
   );
 }
+
+/** ما مرّ على الشاشة من لحظاته يُكتب «شافها» (`lib/seen.ts`). */
+const onViewable = ({ viewableItems }: { viewableItems: { item: { id: string } | null }[] }) =>
+  markSeen(viewableItems.flatMap((row) => (row.item ? [row.item.id] : [])));

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { View, Pressable, ScrollView, Image, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Pressable, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, useWindowDimensions } from "react-native";
+import { PhotoFrameEditor } from "../components/photo-frame";
 import { Text, TextInput } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -14,11 +15,22 @@ import { uploadFile } from "../lib/upload";
 import { maybeAskToRate } from "../lib/rate";
 import { useCircle } from "../lib/queries";
 import { ar } from "../lib/format";
+import { appleNearby, appleSearch } from "../lib/apple-places";
 import { SourceSheet } from "../components/source-sheet";
 import { takeShot } from "../lib/capture";
 import { colors } from "../theme/tokens";
 
+/** مكانٌ قريب كما يردّه `/v1/places/nearby`. */
+type NearbyPlace = { id: string; name: string; kind: string | null; meters: number };
+
 type Kind = "PHOTO" | "THOUGHT" | "PLACE" | "MUSIC";
+
+/** المسافةُ بين قراءتين بالأمتار — لتُترك القائمة ما لم يبتعد الموقع فعلاً. */
+function metersApart(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180 * Math.cos((a.lat * Math.PI) / 180);
+  return Math.sqrt(dLat * dLat + dLng * dLng) * 6371000;
+}
 
 /** حدّ نصّ اللحظة: ما زاد عن هذا يصير مقالاً لا لحظة. */
 const TEXT_MAX = 250;
@@ -46,6 +58,10 @@ export default function Compose() {
   const [text, setText] = useState("");
   const [musicUrl, setMusicUrl] = useState("");
   const [picture, setPicture] = useState<{ uri: string; width: number; height: number; mime: string } | null>(null);
+  // موضعُ الصورة في إطار البطاقة — يبدأ من الوسط مع كل صورةٍ جديدة.
+  const [photoPos, setPhotoPos] = useState({ x: 50, y: 50 });
+  const [framing, setFraming] = useState(false);
+  const screenWidth = useWindowDimensions().width;
   const [asking, setAsking] = useState(false);
   const [withIds, setWithIds] = useState<string[]>([]);
   const [audience, setAudience] = useState("CIRCLE");
@@ -56,6 +72,31 @@ export default function Compose() {
   const [fix, setFix] = useState<{ lat: number; lng: number } | null>(null);
   const [locating, setLocating] = useState(kind === "PLACE");
   const [geoError, setGeoError] = useState<string | null>(null);
+  /*
+    الأماكن حولك: أقربُ عنوانٍ يردّ شارعاً، والشارع لا يقول أين أنت —
+    في المقهى أم في المطعم المجاور (القاعدة ٦٣). فتُعرض المعالم
+    المسمّاة حولك ويُختار منها، وبلا اختيارٍ يُكتب أقربُ عنوان.
+  */
+  const [around, setAround] = useState<NearbyPlace[]>([]);
+  const [asking2, setAsking2] = useState(false);
+  const [chosen, setChosen] = useState<string | null>(null);
+  // من أين جاءت القائمة؟ — تُنسب إلى مصدرها حين تُعرض بلا خريطته.
+  const [source, setSource] = useState<string>("osm");
+  // بحثٌ بالاسم لما لم يظهر في القائمة.
+  const [query, setQuery] = useState("");
+  /*
+    القائمةُ تُطوى بالاختيار ولا تُفتح إلا بـ«غيّر» (القاعدة ٢١٢): قائمةٌ
+    باقيةٌ بعد الاختيار تدفع «مع مين؟» وزرَّ النشر عشرين صفّاً إلى أسفل،
+    ولا يُعرف أَحُفظ الاختيار أم ينتظر شيئاً آخر.
+  */
+  const [browsing, setBrowsing] = useState(false);
+  const listOpen = !chosen || browsing;
+  const choose = (name: string | null) => {
+    setChosen(name);
+    setBrowsing(false);
+    setQuery("");
+  };
+  const [found, setFound] = useState<NearbyPlace[] | null>(null);
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +109,7 @@ export default function Compose() {
    * يُطلب بلا سبب يُرفض بلا تفكير.
    */
   useEffect(() => {
-    if (!wantPlace || fix) return;
+    if (!wantPlace) return;
     let alive = true;
 
     (async () => {
@@ -83,12 +124,38 @@ export default function Compose() {
         return;
       }
 
+      /*
+        آخرُ موقعٍ يعرفه الجهاز أوّلاً — في جزءٍ من الثانية — فتبدأ قائمةُ
+        الأماكن فوراً، ثمّ قراءةٌ دقيقة تُصحّحها إن ابتعدت. كانت الشاشة تنتظر
+        قراءة GPS عالية الدقّة كاملةً (ثوانٍ، وأطولَ داخل المباني) قبل أن
+        تسأل عن مكانٍ واحد. والدقيقةُ بمهلة: ما لم تأتِ في ثمانٍ يبقى ما جاء.
+      */
+      let first: { lat: number; lng: number } | null = null;
       try {
-        const here = await Location.getCurrentPositionAsync({});
-        if (!alive) return;
-        setFix({ lat: here.coords.latitude, lng: here.coords.longitude });
+        const known = await Location.getLastKnownPositionAsync({ maxAge: 2 * 60 * 1000, requiredAccuracy: 150 });
+        if (known && alive) {
+          first = { lat: known.coords.latitude, lng: known.coords.longitude };
+          setFix(first);
+          setLocating(false);
+        }
       } catch {
-        if (alive) setGeoError("تعذّر تحديد موقعك. جرّب مرة ثانية.");
+        /* لا موقعَ محفوظ — تبقى القراءة الدقيقة */
+      }
+
+      try {
+        const here = await Promise.race([
+          // دقّةٌ عالية: «المتوازن» يخطئ مئات الأمتار فتُعرض أماكن الحيّ المجاور.
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
+          new Promise<null>((done) => setTimeout(() => done(null), 8000)),
+        ]);
+        const fallback = here ?? (first ? null : await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }));
+        const point = here ?? fallback;
+        if (!alive || !point) return;
+        const next = { lat: point.coords.latitude, lng: point.coords.longitude };
+        // لا يُعاد السؤال لخطواتٍ قليلة: القائمةُ لا تقفز تحت إصبعٍ يختار.
+        if (!first || metersApart(first, next) > 60) setFix(next);
+      } catch {
+        if (alive && !first) setGeoError("تعذّر تحديد موقعك. جرّب مرة ثانية.");
       } finally {
         if (alive) setLocating(false);
       }
@@ -97,7 +164,63 @@ export default function Compose() {
     return () => {
       alive = false;
     };
-  }, [wantPlace, fix]);
+  }, [wantPlace]);
+
+  useEffect(() => {
+    if (!fix) {
+      setAround([]);
+      setChosen(null);
+      return;
+    }
+    let alive = true;
+    setAsking2(true);
+    /*
+      خرائطُ آبل أوّلاً على الآيفون (`lib/apple-places.ts`)، والخادمُ حين لا
+      وحدةَ أو تفشل أو لا تجد شيئاً — فلا تبقى القائمةُ فارغةً لعطلٍ في طرف.
+    */
+    const fromServer = () =>
+      api<{ places: NearbyPlace[]; source?: string }>(`/v1/places/nearby?lat=${fix.lat}&lng=${fix.lng}`).then(
+        (row) => ({ places: row.places, source: row.source ?? "osm" }),
+      );
+    appleNearby(fix.lat, fix.lng)
+      .catch(() => null)
+      .then((apple) => (apple && apple.length > 0 ? { places: apple, source: "apple" } : fromServer()))
+      .then((row) => {
+        if (!alive) return;
+        setAround(row.places);
+        setSource(row.source);
+      })
+      .catch(() => alive && setAround([]))
+      .finally(() => alive && setAsking2(false));
+    return () => {
+      alive = false;
+    };
+  }, [fix]);
+
+  // البحثُ بعد أن يقف الإصبع — لا نداءَ مع كل حرف.
+  useEffect(() => {
+    const q = query.trim();
+    if (!fix || q.length < 2) {
+      setFound(null);
+      return;
+    }
+    let alive = true;
+    const timer = setTimeout(() => {
+      const fromServer = () =>
+        api<{ places: NearbyPlace[] }>(
+          `/v1/places/search?lat=${fix.lat}&lng=${fix.lng}&q=${encodeURIComponent(q)}`,
+        ).then((row) => row.places);
+      appleSearch(q, fix.lat, fix.lng)
+        .catch(() => null)
+        .then((apple) => (apple ? apple : fromServer()))
+        .then((places) => alive && setFound(places))
+        .catch(() => alive && setFound([]));
+    }, 450);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [query, fix]);
 
   /*
     العودة من الكاميرا: اللقطة تنتظر في `lib/capture`، وتُقرأ مرّةً
@@ -108,6 +231,7 @@ export default function Compose() {
     const shot = takeShot();
     if (shot && !shot.video) {
       setPicture({ uri: shot.uri, width: shot.width, height: shot.height, mime: shot.mime });
+      setPhotoPos({ x: 50, y: 50 });
     }
   });
 
@@ -132,6 +256,7 @@ export default function Compose() {
       height: asset.height,
       mime: asset.mimeType ?? "image/jpeg",
     });
+    setPhotoPos({ x: 50, y: 50 });
   }
 
   const ready =
@@ -160,6 +285,8 @@ export default function Compose() {
           kind,
           text: text.trim() || undefined,
           mediaId,
+          photoX: mediaId ? photoPos.x : undefined,
+          photoY: mediaId ? photoPos.y : undefined,
           musicUrl: kind === "MUSIC" ? musicUrl.trim() : undefined,
           with: withIds.length ? withIds : undefined,
           audience: audience === "CIRCLE" || audience === "PICKED" ? audience : "GROUP",
@@ -167,6 +294,7 @@ export default function Compose() {
           viewers: audience === "PICKED" ? viewers : undefined,
           lat: fix?.lat,
           lng: fix?.lng,
+          place: chosen ?? undefined,
         }),
       });
 
@@ -206,7 +334,7 @@ export default function Compose() {
   });
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       {/* الرأس كبقية الشاشات: العلامة ثم فاصل ثم «لحظة» — لا اسم نوعٍ عارٍ. */}
       <ScreenHeader title="لحظة" back="/" />
 
@@ -214,28 +342,41 @@ export default function Compose() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 16 }}>
+        <ScrollView scrollEnabled={!framing} contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 16 }}>
           {kind === "PHOTO" ? (
             <View style={{ marginBottom: 16 }}>
-              <View
-                style={{
-                  height: 200,
-                  borderRadius: 16,
-                  borderWidth: 1,
-                  borderColor: colors.line,
-                  backgroundColor: colors.chip,
-                  overflow: "hidden",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: 10,
-                }}
-              >
-                {picture ? (
-                  <Image source={{ uri: picture.uri }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
-                ) : (
+              {/*
+                المحرّرُ بنسبة إطار البطاقة نفسها: ما يُضبط هنا هو ما يُرى في
+                الخطّ الزمنيّ — بقرار المالك.
+              */}
+              {picture ? (
+                <View style={{ marginBottom: 10 }}>
+                  <PhotoFrameEditor
+                    uri={picture.uri}
+                    width={picture.width}
+                    height={picture.height}
+                    value={photoPos}
+                    onChange={setPhotoPos}
+                    frameWidth={screenWidth - 40}
+                    onActive={setFraming}
+                  />
+                </View>
+              ) : (
+                <View
+                  style={{
+                    height: 200,
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: colors.line,
+                    backgroundColor: colors.chip,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 10,
+                  }}
+                >
                   <Text style={{ color: colors.muted, fontSize: 12.5 }}>ما اخترت صورة بعد</Text>
-                )}
-              </View>
+                </View>
+              )}
               <Pressable
                 onPress={() => setAsking(true)}
                 style={{ height: 46, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
@@ -328,15 +469,28 @@ export default function Compose() {
                     <Text style={{ color: colors.muted, fontSize: 13.5 }}>نحدّد موقعك…</Text>
                   ) : fix ? (
                     <>
-                      <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "600" }}>موقعك حُدّد</Text>
-                      <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 2 }}>
-                        يُكتب اسم المكان من الإحداثيات عند النشر.
+                      <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "600" }}>
+                        {chosen ?? "موقعك حُدّد"}
                       </Text>
+                      {chosen ? null : (
+                        <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 2 }}>
+                          اختر مكاناً من حولك، أو اتركه فيُكتب أقرب عنوان.
+                        </Text>
+                      )}
                     </>
                   ) : (
                     <Text style={{ color: colors.live, fontSize: 13, lineHeight: 22 }}>{geoError}</Text>
                   )}
                 </View>
+                {chosen && !browsing ? (
+                  <Pressable
+                    onPress={() => setBrowsing(true)}
+                    hitSlop={6}
+                    style={{ minHeight: 36, paddingHorizontal: 14, borderRadius: 999, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line }}
+                  >
+                    <Text style={{ color: colors.clayInk, fontSize: 12.5, fontWeight: "700" }}>غيّر</Text>
+                  </Pressable>
+                ) : null}
                 {kind === "PLACE" ? null : (
                   <Pressable
                     accessibilityLabel="احذف الموقع"
@@ -345,6 +499,7 @@ export default function Compose() {
                       setFix(null);
                       setGeoError(null);
                       setLocating(false);
+                      setBrowsing(false);
                     }}
                     style={{ width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line }}
                   >
@@ -352,6 +507,51 @@ export default function Compose() {
                   </Pressable>
                 )}
               </View>
+
+              {/* الأماكن حولك: سطرٌ لكلٍّ باسمه ونوعه وبُعده. */}
+              {/* بحثٌ بالاسم: المكانُ الذي أنت فيه قد لا يكون بين الأقرب. */}
+              {fix && listOpen ? (
+                <View style={{ borderTopWidth: 1, borderTopColor: colors.line, paddingHorizontal: 14, paddingVertical: 8 }}>
+                  <TextInput
+                    value={query}
+                    onChangeText={setQuery}
+                    placeholder="ابحث عن مكان باسمه…"
+                    placeholderTextColor={colors.faint}
+                    returnKeyType="search"
+                    style={{ height: 40, borderRadius: 10, paddingHorizontal: 12, backgroundColor: colors.paper, color: colors.ink, fontSize: 13.5, textAlign: "right" }}
+                  />
+                </View>
+              ) : null}
+
+              {!listOpen ? null : fix && found ? (
+                found.length === 0 ? (
+                  <View style={{ borderTopWidth: 1, borderTopColor: colors.line, padding: 14 }}>
+                    <Text style={{ color: colors.muted, fontSize: 12 }}>ما لقينا مكاناً بهذا الاسم.</Text>
+                  </View>
+                ) : (
+                  <PlaceRows places={found} chosen={chosen} onChoose={choose} />
+                )
+              ) : fix ? (
+                asking2 ? (
+                  <View style={{ borderTopWidth: 1, borderTopColor: colors.line, padding: 14 }}>
+                    <Text style={{ color: colors.muted, fontSize: 12 }}>نقرأ الأماكن حولك…</Text>
+                  </View>
+                ) : around.length === 0 ? (
+                  <View style={{ borderTopWidth: 1, borderTopColor: colors.line, padding: 14 }}>
+                    <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 21 }}>
+                      ما لقينا مكاناً مسمّى حولك — يُكتب أقرب عنوان عند النشر.
+                    </Text>
+                  </View>
+                ) : (
+                  <PlaceRows places={around} chosen={chosen} onChoose={choose} />
+                )
+              ) : null}
+
+              {fix && (source === "google" || source === "apple") ? (
+                <Text style={{ color: colors.faint, fontSize: 10.5, paddingHorizontal: 14, paddingBottom: 10, textAlign: "left" }}>
+                  {source === "apple" ? "Apple Maps" : "Google Maps"}
+                </Text>
+              ) : null}
             </View>
           )}
 
@@ -476,5 +676,53 @@ export default function Compose() {
         onLibrary={() => void pickImage()}
       />
     </SafeAreaView>
+  );
+}
+
+/** صفوفُ الأماكن: اسمٌ ونوعٌ وبُعد — القائمةُ حولك ونتائجُ البحث سواء. */
+function PlaceRows({
+  places,
+  chosen,
+  onChoose,
+}: {
+  places: NearbyPlace[];
+  chosen: string | null;
+  onChoose: (name: string | null) => void;
+}) {
+  return (
+    <View style={{ borderTopWidth: 1, borderTopColor: colors.line }}>
+      {places.map((place) => {
+        const on = chosen === place.name;
+        return (
+          <Pressable
+            key={place.id}
+            onPress={() => onChoose(on ? null : place.name)}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
+              minHeight: 48,
+              paddingHorizontal: 14,
+              paddingVertical: 10,
+              backgroundColor: on ? colors.claySoft : "transparent",
+            }}
+          >
+            <PinIcon size={14} color={on ? colors.clayInk : colors.faint} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text
+                numberOfLines={1}
+                style={{ color: on ? colors.clayInk : colors.ink, fontSize: 13.5, fontWeight: on ? "700" : "500" }}
+              >
+                {place.name}
+              </Text>
+              {place.kind ? <Text style={{ color: colors.faint, fontSize: 11 }}>{place.kind}</Text> : null}
+            </View>
+            <Text style={{ color: colors.faint, fontSize: 11 }}>
+              {place.meters < 1000 ? `${ar(place.meters)} م` : `${ar((place.meters / 1000).toFixed(1))} كم`}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }

@@ -2,6 +2,7 @@ import type { Context, MiddlewareHandler } from "hono";
 import { prisma } from "@athar/db";
 import { readAccess, type Claims } from "../lib/tokens";
 import { forbidden, unauthorized } from "../lib/errors";
+import { recordAccess } from "../services/access";
 
 /**
  * الهوية من التوكن وحده.
@@ -25,6 +26,8 @@ export const requireAuth: MiddlewareHandler = async (c, next) => {
   } catch {
     throw unauthorized("انتهت الجلسة — جدّدها");
   }
+  // من أين دخل — لكشف الحسابات المرتبطة (القاعدة ١٩٤).
+  recordAccess(c, c.get("user").sub);
   await next();
 };
 

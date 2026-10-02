@@ -72,6 +72,9 @@ export default async function FriendProfilePage({
       createdAt: true,
       avatarMediaId: true,
       coverMediaId: true,
+      coverX: true,
+      coverY: true,
+      coverZoom: true,
       frame: { select: WORN },
       charm: { select: WORN },
       background: { select: { spec: true } },
@@ -81,13 +84,15 @@ export default async function FriendProfilePage({
   if (!person) notFound();
 
   /*
-    من ليس في الدائرة: تُعرض بطاقته وحدها إن كان يجمعكما صديق مشترك أو
-    طلبٌ معلّق. لا خطّ زمني ولا محادثة قبل القبول — والغريب تماماً لا
-    يُعرَض أصلاً، فلا اكتشاف عام في التطبيق.
+    من ليس في الدائرة: تُعرض بطاقته وحدها — لكلّ حسابٍ قائم، لا لمن
+    يجمعك به صديقٌ مشترك وحده. من أعطى رابطه أعطى بطاقته، ومن فتحها
+    يرسل طلباً وصاحبُها يقبل أو يدع: الحارسُ هو القبول لا الوصول.
+    ولا خطَّ زمنيّ ولا محادثة قبل القبول.
 
-    **والحساب المفتوح يُستثنى** (`isOpen`): حسابُ أخبار التطبيق يُقرأ
-    بلا صداقة ويُضاف من أيّ أحد. ولحظاته لا تدخل خطّ أحدٍ قبل أن
-    يُضيفه — يُقرأ بزيارةٍ مقصودة لا بدفعٍ إلى الخط الزمني.
+    وليس هذا استكشافاً عامّاً (القاعدة ٢): لا بحثَ بالاسم ولا بالبريد
+    ولا قائمةَ تُتصفَّح. وكان شرطُ الصديق المشترك يُخفي البطاقة، فمن
+    حذف صديقاً لا يجمعه به أحد وجد «غير موجود» مكان من كان صديقَه
+    أمسِ، ولا بابَ إلى إعادته.
   */
   if (!friend && !person.isOpen) {
     const [mutual, pending] = await Promise.all([
@@ -103,7 +108,6 @@ export default async function FriendProfilePage({
         select: { id: true, requesterId: true },
       }),
     ]);
-    if (mutual === 0 && !pending) notFound();
 
     return (
       <LockedProfile
@@ -132,8 +136,8 @@ export default async function FriendProfilePage({
     // أصناف المتجر كلها تُقرأ هنا لتُعرض في نافذة الإهداء بلا مغادرة الملف:
     // الإطار والثيم والتميمة كلّها تُهدى.
     prisma.storeItem.findMany({ orderBy: { sortOrder: "asc" } }),
-    prisma.purchase.findMany({ where: { userId: id }, select: { itemId: true } }),
-    prisma.purchase.findMany({ where: { userId: viewer.id }, select: { itemId: true } }),
+    prisma.purchase.findMany({ where: { userId: id, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, select: { itemId: true } }),
+    prisma.purchase.findMany({ where: { userId: viewer.id, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, select: { itemId: true } }),
   ]);
 
   const joined = `${MONTHS[person.createdAt.getMonth()]} ${ar(person.createdAt.getFullYear())}`;
@@ -152,7 +156,13 @@ export default async function FriendProfilePage({
 
       <div className="scroll-area">
         <div className="relative shrink-0 overflow-hidden" style={{ height: 140 }}>
-          <CoverLayer mediaId={person.coverMediaId} spec={person.background?.spec} />
+          <CoverLayer
+            mediaId={person.coverMediaId}
+            spec={person.background?.spec}
+            x={person.coverX}
+            y={person.coverY}
+            zoom={person.coverZoom}
+          />
         </div>
 
         <div className="relative px-5" style={{ marginTop: -34 }}>
@@ -213,15 +223,28 @@ export default async function FriendProfilePage({
               </form>
             </div>
             ) : (
-              <form action={requestFriend.bind(null, person.id)} className="pb-1.5">
-                <button
-                  type="submit"
-                  className="brand-gradient rounded-xl px-4 text-[13px] font-bold"
-                  style={{ height: 42, color: "var(--color-on-brand)" }}
-                >
-                  أضفه
-                </button>
-              </form>
+              /* الحسابُ المفتوح: يُضاف فيقبل بنفسه، ويُراسَل بلا إضافة (القاعدة ٢٢١). */
+              <div className="flex items-center gap-2 pb-1.5">
+                <form action={requestFriend.bind(null, person.id)}>
+                  <button
+                    type="submit"
+                    className="brand-gradient rounded-xl px-4 text-[13px] font-bold"
+                    style={{ height: 42, color: "var(--color-on-brand)" }}
+                  >
+                    أضفه
+                  </button>
+                </form>
+                <form action={startConversation.bind(null, person.id)}>
+                  <button
+                    type="submit"
+                    aria-label="محادثة"
+                    className="flex w-11 items-center justify-center rounded-xl border border-line bg-card text-ink-2"
+                    style={{ height: 42 }}
+                  >
+                    <MessageIcon size={17} />
+                  </button>
+                </form>
+              </div>
             )}
           </div>
 
@@ -277,8 +300,12 @@ type Person = {
   name: string;
   city: string | null;
   isPlus: boolean;
+  createdAt: Date;
   avatarMediaId: string | null;
   coverMediaId: string | null;
+  coverX: number;
+  coverY: number;
+  coverZoom: number;
   frame: { spec: string; mediaId: string | null; frameHole: number | null } | null;
   charm: { spec: string; mediaId: string | null } | null;
   background: { spec: string } | null;
@@ -286,9 +313,18 @@ type Person = {
 };
 
 /**
- * بطاقة من ليس في دائرتك: اسمه وصورته وعدد الأصدقاء المشتركين، وزر
- * الإضافة. لا لحظاته ولا محادثته — كلاهما بعد القبول، والخادم يمنعهما
- * لا الواجهة وحدها.
+ * ملفّ من ليس في دائرتك — **بهيئة ملفّ الصديق نفسها**.
+ *
+ * غلافٌ وصورةٌ واسمٌ ورقمُ عضوية كما يراها الصديق تماماً، ويتبدّل شيئان
+ * وحدهما: مكانُ اللحظات يحمل سطراً يقول لماذا لا تُرى، ومكانُ
+ * «آثارنا» والإهداء والمحادثة يحمل زرَّ الإضافة. صفحةٌ بتخطيطٍ آخر
+ * تُقرأ تطبيقاً آخر، والفرقُ بين الحالين ليس فرقَ تصميم.
+ *
+ * والثلاثةُ لا تظهر قبل القبول: الإهداء للأصدقاء وحدهم (القاعدة ٣٩)،
+ * والمحادثةُ بابٌ بين اثنين، و«آثارنا» ما جمعكما ولمّا يجمعكما شيء.
+ *
+ * ولا عددَ أصدقائه هنا: عددُ الدائرة يقول عن صاحبها ما لم يأذن بقوله
+ * (القاعدة ٨٧ب)، والصديق وحده يقرؤه.
  */
 function LockedProfile({
   person,
@@ -301,85 +337,99 @@ function LockedProfile({
   sentByMe: boolean;
   incoming: string | null;
 }) {
+  const joined = `${MONTHS[person.createdAt.getMonth()]} ${ar(person.createdAt.getFullYear())}`;
+
   return (
     <div className="screen">
       <ScreenHeader title={person.name} mark />
 
       <div className="scroll-area">
         <div className="relative shrink-0 overflow-hidden" style={{ height: 140 }}>
-          <CoverLayer mediaId={person.coverMediaId} spec={person.background?.spec} />
+          <CoverLayer
+            mediaId={person.coverMediaId}
+            spec={person.background?.spec}
+            x={person.coverX}
+            y={person.coverY}
+            zoom={person.coverZoom}
+          />
         </div>
 
         <div className="relative px-5" style={{ marginTop: -34 }}>
-          <Avatar
-            name={person.name}
-            size={96}
-            frame={person.frame}
+          <div className="mb-3 flex items-end justify-between">
+            <Avatar
+              name={person.name}
+              size={96}
+              frame={person.frame}
               charm={person.charm}
-            mediaId={person.avatarMediaId}
-          />
+              mediaId={person.avatarMediaId}
+            />
 
-          <h1 className="mb-1 mt-3 flex flex-wrap items-center gap-2 text-[19px] font-bold">
+            {incoming ? (
+              <div className="flex items-center gap-2 pb-1.5">
+                <form action={acceptFriend.bind(null, incoming)}>
+                  <button
+                    type="submit"
+                    className="flex items-center gap-1.5 rounded-xl px-4 text-[13px] font-bold"
+                    style={{ height: 42, background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+                  >
+                    <CheckIcon size={16} />
+                    اقبل
+                  </button>
+                </form>
+                <form action={ignoreFriend.bind(null, incoming)}>
+                  <button
+                    type="submit"
+                    aria-label="تجاهل"
+                    className="flex w-11 items-center justify-center rounded-xl border border-line bg-card text-muted"
+                    style={{ height: 42 }}
+                  >
+                    <CloseIcon size={17} />
+                  </button>
+                </form>
+              </div>
+            ) : sentByMe ? (
+              <span
+                className="flex items-center rounded-xl border border-line bg-card px-4 text-[13px] font-semibold text-muted"
+                style={{ height: 42, marginBottom: 6 }}
+              >
+                طلبك معلّق
+              </span>
+            ) : (
+              <form action={requestFriend.bind(null, person.id)} className="pb-1.5">
+                <button
+                  type="submit"
+                  className="brand-gradient rounded-xl px-4 text-[13px] font-bold"
+                  style={{ height: 42, color: "var(--color-on-brand)" }}
+                >
+                  أضفه
+                </button>
+              </form>
+            )}
+          </div>
+
+          <h1 className="mb-1 flex flex-wrap items-center gap-2 text-[19px] font-bold">
             {person.name}
             <NameTag isPlus={person.isPlus} tag={person.tag} size={11} />
           </h1>
-          <p className="mb-5 text-[12.5px] text-muted">
-            عضوية رقم {ar(person.memberNo)}
-            {person.city ? ` · ${person.city}` : ""}
+          <p className="mb-4 text-[12.5px] text-muted">
+            عضوية رقم {ar(person.memberNo)} · {person.city ? `${person.city} · ` : null}
+            في آثار من {joined}
             {mutual > 0
               ? ` · ${mutual === 1 ? "صديق مشترك واحد" : `${ar(mutual)} أصدقاء مشتركين`}`
               : ""}
           </p>
+        </div>
 
-          {incoming ? (
-            <div className="mb-5 flex gap-2.5">
-              <form action={acceptFriend.bind(null, incoming)} className="grow">
-                <button
-                  type="submit"
-                  className="flex w-full items-center justify-center gap-2 rounded-xl text-[14px] font-bold"
-                  style={{ height: 48, background: "var(--color-clay)", color: "var(--color-on-brand)" }}
-                >
-                  <CheckIcon size={17} />
-                  اقبل الإضافة
-                </button>
-              </form>
-              <form action={ignoreFriend.bind(null, incoming)}>
-                <button
-                  type="submit"
-                  aria-label="تجاهل"
-                  className="flex items-center justify-center rounded-xl border border-line text-muted"
-                  style={{ height: 48, width: 48 }}
-                >
-                  <CloseIcon size={17} />
-                </button>
-              </form>
-            </div>
-          ) : sentByMe ? (
-            <p
-              className="mb-5 flex items-center justify-center rounded-xl border border-line text-[13.5px] font-semibold text-muted"
-              style={{ height: 48 }}
-            >
-              طلبك معلّق عنده
-            </p>
-          ) : (
-            <form action={requestFriend.bind(null, person.id)} className="mb-5">
-              <button
-                type="submit"
-                className="brand-gradient w-full rounded-xl text-[14.5px] font-bold"
-                style={{ height: 50, color: "var(--color-on-brand)" }}
-              >
-                أضفه إلى أصدقائي
-              </button>
-            </form>
-          )}
-
+        {/* مكانُ اللحظات يقول لماذا لا تُرى — لا فراغٌ يُقرأ «ما نشر شي». */}
+        <div className="px-5">
           <div className="flex items-start gap-2.5 rounded-2xl border border-line bg-card p-4">
             <span className="mt-0.5 shrink-0 text-muted">
               <LockIcon size={16} />
             </span>
             <p className="text-[12.5px] leading-relaxed text-muted">
-              لحظاته ومحادثته بعد قبول الإضافة. الدائرة الصغيرة تعني أن ما يُنشر
-              فيها لا يُرى من خارجها.
+              لن تتمكّن من مشاهدة لحظاته حتى تضيفه إلى دائرتك ويقبل طلبك.
+              والمحادثة و«آثارنا» والإهداء تُفتح بعدها. الدائرة الصغيرة تعني
+              أن ما يُنشر فيها لا يُرى من خارجها.
             </p>
           </div>
         </div>

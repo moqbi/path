@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 import {
-  Canvas, ColorMatrix, Image as SkiaImage, Paint, Skia, type SkImage,
+  Canvas, ColorMatrix, Image as SkiaImage, Skia, type SkImage,
 } from "@shopify/react-native-skia";
 import { baseUrl, currentAccess } from "../lib/api";
 import { filterMatrix } from "../lib/filters";
@@ -22,13 +22,22 @@ function useAuthedImage(mediaId: string | null, local = false): SkImage | null {
     let alive = true;
 
     (async () => {
-      // الملفّ المحليّ (معاينةٌ قبل الرفع) يُقرأ بعنوانه كما هو.
+      /*
+        الملفّ على الجهاز يُقرأ بـ`Data.fromURI` لا بـ`fetch`: عنوان
+        `file://` ليس طلبَ شبكةٍ، و`fetch` عليه يردّ فارغاً في آبل —
+        فتبقى اللوحة بلا صورة ويُقرأ ذلك «الفلتر لا يعمل».
+      */
+      if (local) {
+        const data = await Skia.Data.fromURI(mediaId);
+        const made = Skia.Image.MakeImageFromEncoded(data);
+        if (alive) setImage(made);
+        return;
+      }
+
       const token = currentAccess();
-      const response = local
-        ? await fetch(mediaId)
-        : await fetch(`${baseUrl}/v1/media/${mediaId}`, {
-            headers: token ? { authorization: `Bearer ${token}` } : {},
-          });
+      const response = await fetch(`${baseUrl}/v1/media/${mediaId}`, {
+        headers: token ? { authorization: `Bearer ${token}` } : {},
+      });
       if (!response.ok || !alive) return;
 
       const bytes = new Uint8Array(await response.arrayBuffer());
@@ -77,11 +86,14 @@ export function Filtered({
   return (
     <View style={{ width, height }}>
       <Canvas style={{ width, height }}>
+        {/*
+          والمصفوفة **ابنةُ الصورة مباشرةً** لا داخل `<Paint>`: الأخيرة
+          طبقةُ رسمٍ ثانية تُضاف إلى الأولى، فتُرسم الصورة مرّتين —
+          مفلترةً وغيرَ مفلترة فوقها — فلا يُرى أثرُ الفلتر أصلاً.
+        */}
         {image ? (
           <SkiaImage image={image} x={0} y={0} width={width} height={height} fit="contain">
-            <Paint>
-              <ColorMatrix matrix={filterMatrix(filter)} />
-            </Paint>
+            <ColorMatrix matrix={filterMatrix(filter)} />
           </SkiaImage>
         ) : null}
       </Canvas>

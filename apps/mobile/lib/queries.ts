@@ -21,6 +21,9 @@ export const keys = {
   userMoments: (id: string) => ["user", id, "moments"] as const,
   dm: ["dm"] as const,
   thread: (id: string) => ["dm", id] as const,
+  // تحت «dm» لتتحدّث مع المحادثات وشارتها (القاعدة ٢١٥).
+  groups: ["dm", "groups"] as const,
+  group: (id: string) => ["dm", "group", id] as const,
 };
 
 export type Person = {
@@ -39,12 +42,22 @@ export type Moment = {
   text: string | null;
   placeName: string | null;
   placeCity: string | null;
+  /** للخرائط — اختياريٌّ لخادمٍ أقدم، وبلاه يُبحث بالاسم. */
+  lat?: number | null;
+  lng?: number | null;
   musicTitle: string | null;
   musicArtist: string | null;
   musicUrl: string | null;
   musicThumb: string | null;
   imageSpec: string | null;
+  /** موضعُ الصورة في إطار البطاقة بالمئة — `null` وسطٌ (قبل الحقل). */
+  photoX?: number | null;
+  photoY?: number | null;
   mediaId: string | null;
+  /** قفلُ التعليقات بيد صاحبها — اختياريٌّ لخادمٍ أقدم لا يرسله. */
+  commentsLocked?: boolean;
+  /** الجمهور: الدائرة كلّها، أو تصنيف، أو أشخاصٌ بأعيانهم — اختياريٌّ لخادمٍ أقدم. */
+  audience?: "CIRCLE" | "GROUP" | "PICKED";
   createdAt: string;
   author: Person;
   tags: { id: string; name: string }[];
@@ -70,6 +83,8 @@ export type Moment = {
       avatarMediaId: string | null;
       isPlus?: boolean;
       tag?: { name: string; bg: string; fg: string } | null;
+      frame?: { spec: string; mediaId: string | null; frameHole?: number | null } | null;
+      charm?: { spec: string; mediaId: string | null } | null;
     };
   }[];
   _count: { views: number; comments: number; reactions: number };
@@ -157,6 +172,17 @@ export const useNoteCount = () =>
     refetchInterval: 60_000,
   });
 
+/**
+ * عددُ الرسائل غير المقروءة — لشارة المحادثات في رأس اللحظات.
+ * ومفتاحُه تحت `["dm"]`، فكلُّ إبطالٍ للمحادثات بعد قراءةٍ يُعيد عدّه.
+ */
+export const useUnreadDm = () =>
+  useQuery({
+    queryKey: [...keys.dm, "unread"],
+    queryFn: () => api<{ unread: number }>("/v1/dm/unread"),
+    refetchInterval: 60_000,
+  });
+
 export type StoreItem = {
   id: string;
   kind: "FRAME" | "BACKGROUND" | "THEME" | "CHARM" | "BUNDLE";
@@ -170,6 +196,10 @@ export type StoreItem = {
   earnedAfterDays: number | null;
   limited: boolean;
   categoryId: string | null;
+  /** المجموعةُ داخل نوعه — «مجموعة الورود» في التمائم. */
+  collectionId?: string | null;
+  /** مُدَدُ الشراء وأسعارُها — فارغةٌ لصنفٍ يُشترى مرّةً ويبقى. */
+  plans?: { id: string; days: number; priceCoins: number }[];
   palette: string | null;
   /** ما تحمله الحزمة — فارغٌ لما ليس حزمة. */
   holds?: { item: { id: string; name: string; kind: string; spec: string; mediaId: string | null } }[];
@@ -181,9 +211,19 @@ export const useStore = () =>
     queryFn: () =>
       api<{
         categories: { id: string; name: string; slug: string }[];
+        collections?: { id: string; name: string; kind: string }[];
         items: StoreItem[];
         owned: string[];
-        rows: { fresh: StoreItem[]; themes: StoreItem[]; bundles: StoreItem[]; limited: StoreItem[] };
+        /** متى ينتهي ما اشتُري بمدّة — بمعرّف الصنف. */
+        expires?: Record<string, string>;
+        rows: {
+          fresh: StoreItem[];
+          charms?: StoreItem[];
+          frames?: StoreItem[];
+          themes: StoreItem[];
+          bundles: StoreItem[];
+          limited: StoreItem[];
+        };
         coins: number;
         isPlus: boolean;
         daysHere: number;
@@ -254,6 +294,45 @@ export function useComment(momentId: string) {
   });
 }
 
+/** لوحةُ صاحب اللحظة: من شاهد ومن تفاعل، وقفلُ التعليقات. */
+export type Audience = {
+  commentsLocked: boolean;
+  views: number;
+  people: {
+    user: {
+      id: string;
+      name: string;
+      avatarMediaId: string | null;
+      frame: { spec: string; mediaId: string | null; frameHole?: number | null } | null;
+    };
+    reaction: { kind: string; emoji: string | null } | null;
+  }[];
+};
+
+export const useAudience = (momentId: string, enabled: boolean) =>
+  useQuery({
+    queryKey: ["audience", momentId],
+    queryFn: () => api<Audience>(`/v1/moments/${momentId}/audience`),
+    enabled,
+  });
+
+export function useLockComments(momentId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (locked: boolean) =>
+      api(`/v1/moments/${momentId}/comments-lock`, { method: "POST", body: JSON.stringify({ locked }) }),
+    onMutate: (locked) => {
+      client.setQueryData<Audience>(["audience", momentId], (old) => (old ? { ...old, commentsLocked: locked } : old));
+    },
+    onSettled: () => {
+      void client.invalidateQueries({ queryKey: ["audience", momentId] });
+      void client.invalidateQueries({ queryKey: keys.moment(momentId) });
+      void client.invalidateQueries({ queryKey: ["feed"] });
+      void client.invalidateQueries({ queryKey: ["me", "moments"] });
+    },
+  });
+}
+
 export type StoryRing = {
   userId: string;
   name: string;
@@ -261,6 +340,8 @@ export type StoryRing = {
   frame: { spec: string; mediaId: string | null; frameHole?: number | null } | null;
   fresh: boolean;
   count: number;
+  /** فيها قصّةٌ خاصّة — قفلٌ على الحلقة (القاعدة ٢١٩). اختياريٌّ لخادمٍ أقدم. */
+  private?: boolean;
 };
 
 export const useRings = () =>

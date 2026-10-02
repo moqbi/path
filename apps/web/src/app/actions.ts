@@ -2,14 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 import { mailReply, tellSupport } from "@/lib/support-mail";
+import { readTicketFiles, saveTicketFiles } from "@/lib/ticket-files";
+import { BETA_DEVICES, CONTACT_REASONS, TOPIC_LABEL, type ContactReason } from "@/lib/topics";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { createSession, destroySession, requireUser, verifyPassword } from "@/lib/auth";
 import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
-import { dropMedia, migrateToCloud, storeUpload } from "@/lib/media";
+import { dropMedia, migrateToCloud, storeSiteShot, storeUpload } from "@/lib/media";
 import { cloudReady, probeBucket } from "@/lib/storage";
 import { forgetWords } from "@/lib/moderation";
+import { clear, clientIp, hit, TOO_MANY } from "@/lib/rate-limit";
 import { SUSPEND_HOURS } from "@/lib/suspend";
 import { isPlusDays, PLUS_COINS, PLUS_LABEL } from "@/lib/plus";
 import { SITE_TEXT, type SiteKey } from "@/lib/site";
@@ -45,16 +48,22 @@ export async function signIn(
     return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
   }
 
+  // عشرُ محاولاتٍ لكل عنوان وخمسٌ لكل بريد في ربع ساعة: الثانيةُ تحرس
+  // حسابَ المالك ممّن يبدّل عنوانه، والأولى تحرس الكلَّ ممّن يبدّل البريد.
+  const ip = await clientIp();
+  const byMail = `login:mail:${parsed.data.email}`;
+  if (!hit(`login:ip:${ip}`, 10, 15 * 60_000) || !hit(byMail, 5, 15 * 60_000)) {
+    return { error: TOO_MANY };
+  }
+
   const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
   // رسالة واحدة للحالتين حتى لا يكشف النموذج أي البُرد مسجَّلة.
   // ومن دخل بمزوّدٍ ولا كلمةَ له لا يدخل من هنا — واللوحةُ للمالك أصلاً.
-  const ok =
-    user && user.passwordHash
-      ? await verifyPassword(parsed.data.password, user.passwordHash)
-      : false;
+  const ok = await checkPassword(parsed.data.password, user?.passwordHash ?? null);
   if (!user || !ok) return { error: "البريد أو كلمة المرور غير صحيحة" };
 
-  await createSession(user.id);
+  clear(byMail);
+  await createSession(user.id, user.passwordHash);
   redirect("/admin");
 }
 
@@ -83,7 +92,7 @@ function picture(formData: FormData): { file: File; width: number; height: numbe
  * أصناف المتجر وتصنيفاته وحدها، و«اللوحة» يفتحها كاملةً — عدا منح
  * الصلاحيات نفسها، فتلك للمالك وحده وإلا منح المشرفُ نفسَه ما شاء.
  */
-async function requireAdmin(area: "store" | "panel" = "panel") {
+async function requireAdmin(area: "store" | "reports" | "panel" = "panel") {
   const user = await requireUser();
   const row = await prisma.user.findUnique({
     where: { id: user.id },
@@ -93,7 +102,9 @@ async function requireAdmin(area: "store" | "panel" = "panel") {
   const allowed =
     row.role === "ADMIN" ||
     row.adminScope === "ALL" ||
-    (area === "store" && row.adminScope === "STORE");
+    (area === "store" && row.adminScope === "STORE") ||
+    // «البلاغات» يتابع البلاغاتِ ورسائلَ الدعم ويردّ عليها — لا غير.
+    (area === "reports" && row.adminScope === "REPORTS");
   if (!allowed) throw new Error("هذه الصفحة للمشرفين");
   return user;
 }
@@ -107,6 +118,16 @@ async function requireOwner() {
   });
   if (row?.role !== "ADMIN") throw new Error("هذا للمالك وحده");
   return user;
+}
+
+/**
+ * كلمةُ المرور بوقتٍ واحد وُجد الحسابُ أو لم يوجد: scrypt يأخذ عشرات
+ * المللي، فردٌّ فوريّ لبريدٍ غير مسجَّل كان يقول بساعته ما تخفيه رسالتُه.
+ */
+const DUMMY_HASH = `${"0".repeat(32)}:${"0".repeat(128)}`;
+async function checkPassword(password: string, stored: string | null): Promise<boolean> {
+  const ok = await verifyPassword(password, stored ?? DUMMY_HASH);
+  return Boolean(stored) && ok;
 }
 
 /** يقرأ ألوان الثيم من النموذج، ويردّ `null` إن لم تُطلب أو نقصت. */
@@ -321,6 +342,74 @@ export async function deleteCategory(categoryId: string): Promise<void> {
   revalidatePath("/store");
 }
 
+// ───────────────────────── مجموعات المتجر ومُدَده ─────────────────────────
+
+/** الأرقام كما تُكتب: «٢٥» تُقرأ ٢٥. */
+const digits = (raw: FormDataEntryValue | null) =>
+  Number(String(raw ?? "").replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))).trim());
+
+const COLLECTION_KINDS = ["CHARM", "FRAME", "THEME"] as const;
+
+/**
+ * مجموعةٌ داخل نوعٍ واحد — **بقرار المالك**: «مجموعة الورود» تمائم تُعرض
+ * معاً في المتجر، وما بلا مجموعةٍ يقع في «التمائم الأخرى». غيرُ التصنيف:
+ * التصنيفُ شريحةٌ في أعلى المتجر.
+ */
+export async function createCollection(formData: FormData): Promise<void> {
+  await requireAdmin("store");
+  const name = String(formData.get("name") ?? "").trim().slice(0, 40);
+  const kind = String(formData.get("kind") ?? "");
+  // و«مختلطة» نوعٌ فارغ: تميمةٌ وإطارٌ وثيمٌ في مجموعةٍ واحدة (القاعدة ١٩٧).
+  const mixed = kind === "MIXED";
+  if (!name || (!mixed && !(COLLECTION_KINDS as readonly string[]).includes(kind))) return;
+  await prisma.storeCollection.create({
+    data: {
+      name,
+      kind: mixed ? null : (kind as (typeof COLLECTION_KINDS)[number]),
+      sortOrder: digits(formData.get("sortOrder")) || 0,
+    },
+  });
+  revalidatePath("/admin");
+}
+
+/** حذفُ المجموعة لا يحذف أصنافها: تعود إلى «الأخرى». */
+export async function deleteCollection(collectionId: string): Promise<void> {
+  await requireAdmin("store");
+  await prisma.storeCollection.delete({ where: { id: collectionId } });
+  revalidatePath("/admin");
+}
+
+export async function setItemCollection(itemId: string, formData: FormData): Promise<void> {
+  await requireAdmin("store");
+  const raw = String(formData.get("collectionId") ?? "");
+  await prisma.storeItem.update({ where: { id: itemId }, data: { collectionId: raw || null } });
+  revalidatePath("/admin");
+}
+
+/**
+ * مدّةٌ وسعرُها — **بقرار المالك**: «يوم بـ٢٥، خمسة أيام بـ٥٠، شهر بـ١٥٠».
+ * الصنفُ الذي له مُدَد يُشترى بمدّة، وما انتهت مدّتُه يُنزع ويُشترى ثانيةً.
+ * والمدّةُ نفسُها مرّتين تُحدَّث لا تتكرّر.
+ */
+export async function addItemPlan(itemId: string, formData: FormData): Promise<void> {
+  await requireAdmin("store");
+  const days = Math.round(digits(formData.get("days")));
+  const priceCoins = Math.round(digits(formData.get("priceCoins")));
+  if (!(days >= 1 && days <= 3650) || !(priceCoins >= 1 && priceCoins <= 1_000_000)) return;
+  await prisma.storeItemPlan.upsert({
+    where: { itemId_days: { itemId, days } },
+    create: { itemId, days, priceCoins },
+    update: { priceCoins },
+  });
+  revalidatePath("/admin");
+}
+
+export async function dropItemPlan(planId: string): Promise<void> {
+  await requireAdmin("store");
+  await prisma.storeItemPlan.delete({ where: { id: planId } });
+  revalidatePath("/admin");
+}
+
 // ───────────────────────── باقات النقاط (اللوحة) ─────────────────────────
 
 /**
@@ -493,11 +582,20 @@ export async function setUserTag(userId: string, formData: FormData): Promise<vo
   await requireAdmin();
   const raw = String(formData.get("tagId") ?? "");
   const tagId = raw.length > 0 ? raw : null;
-  if (tagId) {
-    const exists = await prisma.tag.findUnique({ where: { id: tagId }, select: { id: true } });
-    if (!exists) throw new Error("الوسم غير موجود");
-  }
+  const tag = tagId
+    ? await prisma.tag.findUnique({ where: { id: tagId }, select: { id: true, name: true } })
+    : null;
+  if (tagId && !tag) throw new Error("الوسم غير موجود");
+  const before = await prisma.user.findUnique({ where: { id: userId }, select: { tagId: true } });
   await prisma.user.update({ where: { id: userId }, data: { tagId } });
+  /*
+    «تهانينا — حصلت على وسم كذا من الإدارة» في خطّ صاحبه — **بقرار
+    المالك**: الوسمُ يُمنح مرّةً ويُرى في كل مكان، ولحظتُه تقول متى ولماذا.
+    ولا تُكتب لإعادة حفظ الوسم نفسه، ولا لنزعه.
+  */
+  if (tag && before?.tagId !== tag.id) {
+    await prisma.moment.create({ data: { authorId: userId, kind: "TAG_GRANTED", text: tag.name } });
+  }
   revalidateTags();
 }
 
@@ -594,7 +692,7 @@ export async function grantCredit(userId: string, riyals: number): Promise<void>
 export async function setAdminScope(userId: string, formData: FormData): Promise<void> {
   const owner = await requireOwner();
   const raw = String(formData.get("scope") ?? "NONE");
-  const scope = raw === "ALL" || raw === "STORE" ? raw : "NONE";
+  const scope = raw === "ALL" || raw === "STORE" || raw === "REPORTS" ? raw : "NONE";
   /*
     والإشراف على المحتوى صلاحيةٌ ثانية في النموذج نفسه، لا نموذجٌ ثانٍ:
     المالك يقرّر الدرجتين لشخصٍ واحد في نظرةٍ واحدة. وهي **مستقلّة** عن
@@ -699,7 +797,7 @@ export async function replyTicket(
   _prev: AdminResult,
   formData: FormData,
 ): Promise<AdminResult> {
-  await requireAdmin();
+  await requireAdmin("reports");
   const reply = String(formData.get("reply") ?? "").trim().slice(0, 1200);
   if (reply.length < 2) return { error: "اكتب الردّ" };
 
@@ -720,7 +818,7 @@ export async function replyTicket(
 }
 
 export async function closeTicket(ticketId: string): Promise<void> {
-  await requireAdmin();
+  await requireAdmin("reports");
   await prisma.supportTicket.update({ where: { id: ticketId }, data: { closed: true } });
   revalidatePath("/admin");
   revalidatePath("/settings/support");
@@ -746,6 +844,15 @@ export async function setItemImage(itemId: string, formData: FormData): Promise<
   revalidatePath("/admin");
   revalidatePath("/store");
   revalidatePath("/");
+}
+
+/** فراغُ الإطار باليد — حين يُخطئ القياسُ الآليّ أو لا يُحفظ. */
+export async function setFrameHole(itemId: string, formData: FormData): Promise<void> {
+  await requireAdmin("store");
+  const raw = Number(String(formData.get("hole") ?? "").replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))));
+  const hole = Number.isFinite(raw) && raw >= 20 && raw <= 99 ? Math.round(raw) : null;
+  await prisma.storeItem.update({ where: { id: itemId }, data: { frameHole: hole } });
+  revalidatePath("/admin");
 }
 
 /**
@@ -807,6 +914,8 @@ export async function storageState(): Promise<{
   inDb: number;
   dbBytes: number;
 }> {
+  // إجراءُ خادمٍ يُنادى بـPOST من أيّ أحد: اسمُ الدلو وأحجامُ القاعدة للمالك وحده.
+  await requireOwner();
   await requireOwner();
 
   const [inCloud, inDb, sum] = await Promise.all([
@@ -985,7 +1094,7 @@ export async function decideReport(
   reportId: string,
   formData: FormData,
 ): Promise<void> {
-  const admin = await requireAdmin();
+  const admin = await requireAdmin("reports");
   const state = formData.get("state") === "REMOVED" ? "REMOVED" : "KEPT";
 
   const report = await prisma.report.findUnique({ where: { id: reportId } });
@@ -999,6 +1108,8 @@ export async function decideReport(
       await prisma.story.deleteMany({ where: { id: report.targetId } });
     } else if (report.target === "MESSAGE") {
       await prisma.message.deleteMany({ where: { id: report.targetId } });
+    } else if (report.target === "COMMENT") {
+      await prisma.comment.deleteMany({ where: { id: report.targetId } });
     }
   }
 
@@ -1072,12 +1183,56 @@ export async function openPublicTicket(
   _prev: AdminResult,
   formData: FormData,
 ): Promise<AdminResult> {
+  // سببُ التواصل من قائمةٍ مغلقة: ما لم يكن فيها لا يُكتب في القاعدة.
+  const reason = String(formData.get("reason") ?? "");
+  if (!CONTACT_REASONS.some((item) => item.key === reason)) return { error: "اختر سبب التواصل" };
+  return sendPublicTicket(formData, reason as ContactReason);
+}
+
+/**
+ * «انضمّ إلى فريق التجربة» — من ذيل الموقع. اسمٌ وبريدٌ ونوعُ الجهاز:
+ * دعوةُ TestFlight تُرسَل إلى بريد آبل، ونسخةُ أندرويد التجريبية إلى بريد
+ * قوقل — فالجهازُ يقول أيَّ دعوةٍ تُرسَل. ولا مرفقات.
+ */
+export async function joinBeta(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  const device = String(formData.get("device") ?? "");
+  if (!(BETA_DEVICES as readonly string[]).includes(device)) return { error: "اختر جهازك" };
+  const note = String(formData.get("body") ?? "").trim().slice(0, 600);
+  const body = `الجهاز: ${device}${note ? `\n\n${note}` : ""}`;
+  return sendPublicTicket(formData, "beta", body);
+}
+
+/**
+ * طلبُ وظيفة من صفحة الوظائف — رسالةٌ من الموقع كرسالة الدعم، ومعها
+ * `topic = careers` فلا يُخلط طلبُ عملٍ بشكوى في اللوحة، وتُقبل معه ملفّاتُ
+ * PDF (سيرةٌ ذاتية أو أعمال) إلى جانب الصور.
+ */
+export async function applyForJob(
+  _prev: AdminResult,
+  formData: FormData,
+): Promise<AdminResult> {
+  return sendPublicTicket(formData, "careers");
+}
+
+async function sendPublicTicket(
+  formData: FormData,
+  topic: ContactReason | "careers" | "beta",
+  body?: string,
+): Promise<AdminResult> {
   const parsed = publicMessage.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
-    body: formData.get("body"),
+    // طلبُ التجربة يُكتب متنُه هنا (الجهاز وملاحظته): لا فقرةَ يُطلب من صاحبه كتابتُها.
+    body: body ?? formData.get("body"),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات ناقصة" };
+
+  // الحدُّ لكل بريدٍ يُتجاوز ببريدٍ جديد في كل مرّة؛ فمعه حدٌّ لكل عنوان.
+  if (!hit(`ticket:ip:${await clientIp()}`, 5, 60 * 60_000)) return { error: TOO_MANY };
+
+  // المرفقات تُفحص قبل أن يُكتب شيء: رسالةٌ بلا مرفقاتها نصفُ رسالة.
+  const read = await readTicketFiles(formData, topic === "careers");
+  if ("error" in read) return { error: read.error };
 
   // ثلاثُ رسائل مفتوحة من بريدٍ واحد تكفي: تكرارها يُغرق اللوحة ولا يُسرّع الردّ.
   const open = await prisma.supportTicket.count({
@@ -1085,17 +1240,33 @@ export async function openPublicTicket(
   });
   if (open >= 3) return { error: "عندك رسائل لم يُردّ عليها بعد — انتظر الردّ" };
 
-  await prisma.supportTicket.create({
-    data: { name: parsed.data.name, email: parsed.data.email, body: parsed.data.body },
+  const ticket = await prisma.supportTicket.create({
+    data: { name: parsed.data.name, email: parsed.data.email, body: parsed.data.body, topic },
   });
+  try {
+    await saveTicketFiles(ticket.id, read.files);
+  } catch {
+    // مرفقٌ لم يُحفظ: تُمحى الرسالة كلُّها ويُقال له أن يعيد — لا نصفَ رسالة.
+    await prisma.supportTicket.delete({ where: { id: ticket.id } }).catch(() => {});
+    return { error: "تعذّر رفع المرفقات — أعد المحاولة" };
+  }
+
   // خبرٌ إلى صندوق الدعم، ومعه بريدُ صاحبه فيُردّ عليه منه مباشرةً.
+  const extra = read.files.length ? `\n\n(${read.files.length} مرفق — في اللوحة)` : "";
   void tellSupport({
-    from: parsed.data.name,
-    body: parsed.data.body,
+    from: `${TOPIC_LABEL[topic] ?? "رسالة"} — ${parsed.data.name}`,
+    body: parsed.data.body + extra,
     replyTo: parsed.data.email,
   });
   revalidatePath("/admin");
-  return { ok: "وصلتنا رسالتك — نردّ على بريدك" };
+  return {
+    ok:
+      topic === "careers"
+        ? "وصلنا طلبك — نقرؤه ونردّ على بريدك إن كان مناسباً"
+        : topic === "beta"
+          ? "سجّلناك — تصلك الدعوة على بريدك حين تُفتح نسخةٌ تجريبية"
+          : "وصلتنا رسالتك — نردّ على بريدك",
+  };
 }
 
 /**
@@ -1114,6 +1285,12 @@ export async function deleteAccountFromWeb(
   const password = String(formData.get("password") ?? "");
   if (formData.get("sure") !== "on") return { error: "أكّد أنّك تريد الحذف" };
 
+  // بابٌ يقول «صحيحة» أو «غير صحيحة» لأيّ بريد عرّافُ كلماتِ مرور إن لم يُحدّ.
+  const ip = await clientIp();
+  if (!hit(`delete:ip:${ip}`, 5, 15 * 60_000) || !hit(`delete:mail:${email}`, 5, 60 * 60_000)) {
+    return { error: TOO_MANY };
+  }
+
   const user = await prisma.user.findUnique({
     where: { email },
     select: { id: true, passwordHash: true },
@@ -1124,8 +1301,7 @@ export async function deleteAccountFromWeb(
      التطبيق حيث جلستُه هي دليلُه — وجوجل بلاي تطلب طريقاً من خارج
      التطبيق، وهو قائمٌ لمن له كلمة.
   */
-  const ok =
-    user && user.passwordHash ? await verifyPassword(password, user.passwordHash) : false;
+  const ok = await checkPassword(password, user?.passwordHash ?? null);
   if (!user || !ok) return { error: "البريد أو كلمة المرور غير صحيحة" };
 
   // ملفاته تُجمَع قبل حذفه: الصفوف تذهب بـ`Cascade`، وكائنات السحابة لا
@@ -1213,6 +1389,97 @@ export async function clearSiteImage(key: string): Promise<void> {
   if (!row) return;
   await prisma.siteImage.delete({ where: { key } });
   await dropMedia([row.mediaId]);
+  revalidatePath("/", "layout");
+  revalidatePath("/admin");
+}
+
+// ── لقطات «من داخل التطبيق» ──
+
+const shotLabel = z.string().trim().min(1, "اكتب اسم الشاشة").max(40, "الاسم طويل");
+
+/**
+ * لقطةٌ جديدة لصفحة الهبوط. تقبل المتحرّكة (GIF أو WebP) بملفها
+ * (`storeSiteShot`)، وتُضاف في آخر الصفّ.
+ */
+export async function addSiteShot(formData: FormData): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  const label = shotLabel.safeParse(formData.get("label"));
+  if (!label.success) return { error: label.error.issues[0]?.message ?? "اسم غير صالح" };
+  const file = formData.get("image");
+  if (!(file instanceof File) || file.size === 0) return { error: "ما وصلت الصورة" };
+
+  try {
+    const media = await storeSiteShot(
+      admin.id,
+      file,
+      Number(formData.get("width") ?? 0),
+      Number(formData.get("height") ?? 0),
+    );
+    const last = await prisma.siteShot.aggregate({ _max: { sortOrder: true } });
+    await prisma.siteShot.create({
+      data: { label: label.data, mediaId: media.id, sortOrder: (last._max.sortOrder ?? 0) + 1 },
+    });
+  } catch (problem) {
+    return { error: problem instanceof Error ? problem.message : "تعذّر رفع اللقطة" };
+  }
+  revalidatePath("/", "layout");
+  revalidatePath("/admin");
+  return { ok: "أُضيفت" };
+}
+
+/** اسمُها وترتيبُها وإخفاؤها. */
+export async function updateSiteShot(
+  id: string,
+  _prev: AdminResult,
+  formData: FormData,
+): Promise<AdminResult> {
+  await requireAdmin();
+  const label = shotLabel.safeParse(formData.get("label"));
+  if (!label.success) return { error: label.error.issues[0]?.message ?? "اسم غير صالح" };
+  const order = z.coerce.number().int().min(0).max(999).safeParse(formData.get("sortOrder") || 0);
+  if (!order.success) return { error: "الترتيب رقمٌ من ٠ إلى ٩٩٩" };
+
+  await prisma.siteShot.updateMany({
+    where: { id },
+    data: { label: label.data, sortOrder: order.data, hidden: formData.get("hidden") === "on" },
+  });
+  revalidatePath("/", "layout");
+  revalidatePath("/admin");
+  return { ok: "حُفظ" };
+}
+
+/** تبديلُ صورتها — والقديمةُ تذهب بملفّها (القاعدة ١٠٤). */
+export async function replaceSiteShot(id: string, formData: FormData): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  const file = formData.get("image");
+  if (!(file instanceof File) || file.size === 0) return { error: "ما وصلت الصورة" };
+  const row = await prisma.siteShot.findUnique({ where: { id }, select: { mediaId: true } });
+  if (!row) return { error: "اللقطة غير موجودة" };
+
+  try {
+    const media = await storeSiteShot(
+      admin.id,
+      file,
+      Number(formData.get("width") ?? 0),
+      Number(formData.get("height") ?? 0),
+    );
+    await prisma.siteShot.update({ where: { id }, data: { mediaId: media.id } });
+  } catch (problem) {
+    return { error: problem instanceof Error ? problem.message : "تعذّر رفع اللقطة" };
+  }
+  await dropMedia([row.mediaId]);
+  revalidatePath("/", "layout");
+  revalidatePath("/admin");
+  return { ok: "بُدّلت" };
+}
+
+export async function deleteSiteShot(id: string): Promise<void> {
+  await requireAdmin();
+  const row = await prisma.siteShot.findUnique({ where: { id }, select: { mediaId: true } });
+  if (!row) return;
+  // الصفُّ يذهب مع ملفّه بـ`Cascade`، والكائنُ في السحابة يُمسح بيده.
+  await dropMedia([row.mediaId]);
+  await prisma.siteShot.deleteMany({ where: { id } });
   revalidatePath("/", "layout");
   revalidatePath("/admin");
 }
@@ -1427,13 +1694,97 @@ export async function grantPlus(
   return { ok: `مُنح ${PLUS_LABEL[days]}` };
 }
 
+/** أقصى ما يُمنح في المرّة الواحدة — زلّةُ إصبعٍ بصفرٍ زائد لا تصير مليوناً. */
+const GRANT_MAX = 50_000;
+
+function grantInput(formData: FormData): { coins: number; note: string | null } | string {
+  const coins = digits(formData.get("coins"));
+  if (!Number.isInteger(coins) || coins < 1) return "اكتب عدد النقاط";
+  if (coins > GRANT_MAX) return `أقصى المنح ${GRANT_MAX.toLocaleString("ar-SA")} نقطة في المرّة`;
+  const note = String(formData.get("note") ?? "").trim().slice(0, 80) || null;
+  return { coins, note };
+}
+
+/**
+ * منحُ نقاطٍ من الإدارة — **بقرار المالك** (القاعدة ١٩٨): مكافأةُ المختبرين بعد
+ * كل اختبار. يُودَع الرصيد ويُكتب `CoinGrant` في معاملةٍ واحدة — فلا رصيدَ بلا
+ * سجلّ يقول من أين جاء — ومنه يُشتقّ الإشعار، ويقرع الخادمُ الجرسَ مع كنسه.
+ */
+export async function grantCoins(
+  userId: string,
+  _prev: AdminResult,
+  formData: FormData,
+): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  const input = grantInput(formData);
+  if (typeof input === "string") return { error: input };
+
+  const target = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+  if (!target) return { error: "لا يوجد هذا الحساب" };
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: userId }, data: { coins: { increment: input.coins } } }),
+    prisma.coinGrant.create({ data: { userId, coins: input.coins, note: input.note, byId: admin.id } }),
+    prisma.moderationLog.create({
+      data: {
+        adminId: admin.id,
+        action: "COINS_GRANTED",
+        targetId: userId,
+        ownerId: userId,
+        snippet: `${input.coins} نقطة${input.note ? ` — ${input.note}` : ""}`,
+      },
+    }),
+  ]);
+
+  revalidatePath("/admin");
+  return { ok: `مُنح ${input.coins.toLocaleString("ar-SA")} نقطة` };
+}
+
+/** المنحُ نفسه لكل من يحمل وسماً — المختبرون كلّهم بضغطةٍ لا واحداً واحداً. */
+export async function grantCoinsToTag(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  const input = grantInput(formData);
+  if (typeof input === "string") return { error: input };
+  const tagId = String(formData.get("tagId") ?? "");
+  const tag = tagId ? await prisma.tag.findUnique({ where: { id: tagId }, select: { name: true } }) : null;
+  if (!tag) return { error: "اختر الوسم" };
+
+  const people = await prisma.user.findMany({ where: { tagId }, select: { id: true } });
+  if (people.length === 0) return { error: `لا أحد يحمل وسم «${tag.name}»` };
+  const ids = people.map((person) => person.id);
+
+  await prisma.$transaction([
+    prisma.user.updateMany({ where: { id: { in: ids } }, data: { coins: { increment: input.coins } } }),
+    prisma.coinGrant.createMany({
+      data: ids.map((userId) => ({ userId, coins: input.coins, note: input.note, byId: admin.id })),
+    }),
+    prisma.moderationLog.create({
+      data: {
+        adminId: admin.id,
+        action: "COINS_GRANTED",
+        targetId: tagId,
+        snippet: `${input.coins} نقطة لكل من يحمل «${tag.name}» (${ids.length})${input.note ? ` — ${input.note}` : ""}`,
+      },
+    }),
+  ]);
+
+  revalidatePath("/admin");
+  return { ok: `مُنح ${input.coins.toLocaleString("ar-SA")} نقطة لـ${ids.length.toLocaleString("ar-SA")} حساب` };
+}
+
 /** نزعُه قبل انقضائه — ويُسجَّل كما سُجّل منحُه. */
 export async function revokePlus(userId: string): Promise<void> {
   const admin = await requireAdmin();
   await prisma.user.update({
     where: { id: userId },
-    // والختم يُنسى: من عاد بعدها يبدأ دورةً جديدة لا يكمل ما انقطع.
-    data: { isPlus: false, plusUntil: null, plusCreditAt: null },
+    /*
+       النزعُ انتهاءٌ الآن لا إطفاءُ حقل: `plusUntil` يصير ماضياً، فيقرؤه
+       الويب منتهياً في الحال (`currentUser`)، ويُكمله كنسُ الخادم
+       (`endPlus`) خلال دقائق: تثبيتُ الصورة المتحرّكة، ونزعُ أصناف
+       المشتركين، ونسيانُ ختم الرصيد، ونافذةُ «انتهى اشتراكك». وإطفاءُ
+       `isPlus` هنا كان يُخرجه من الكنس فلا يُنهى شيءٌ من ذلك.
+    */
+    data: { plusUntil: new Date(Date.now() - 1000) },
   });
   await prisma.moderationLog.create({
     data: { adminId: admin.id, action: "PLUS_REVOKED", targetId: userId, ownerId: userId },

@@ -94,6 +94,71 @@ export const LockIcon = ({ size = 20, className }: IconProps) => (
   </svg>
 );
 
+/** القفلُ مفتوحاً: التعليقاتُ مفتوحة. */
+export const UnlockIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <rect x="5" y="10.5" width="14" height="9.5" rx="2.4" />
+    <path d="M8.4 10.5V8a3.6 3.6 0 0 1 7-1.2" />
+  </svg>
+);
+
+/** الحظر: دائرةٌ يقطعها خطّ. */
+export const BlockIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M6 6l12 12" />
+  </svg>
+);
+
+/** إزالةُ صديق: رأسٌ وكتفان وعلامةُ طرح. */
+export const UserMinusIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <circle cx="10" cy="7.5" r="3.5" />
+    <path d="M3.5 19.5c.6-3.3 3.2-5.5 6.5-5.5s5.9 2.2 6.5 5.5" />
+    <path d="M16 8.5h5" />
+  </svg>
+);
+
+/** حذفُ محادثة: سلّةٌ بغطاءٍ وخطّين — نسخةُ الجوّال. */
+export const TrashIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M4 6.5h16" />
+    <path d="M9 6.5V4.5h6v2" />
+    <path d="M6.5 6.5l1 13h9l1-13" />
+    <path d="M10 10.5v5.5M14 10.5v5.5" />
+  </svg>
+);
+
+/** البلاغ: رايةٌ على سارية — نسخةُ الجوّال. */
+export const FlagIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M5.5 21V4" />
+    <path d="M5.5 4.5h11l-2 4 2 4h-11" />
+  </svg>
+);
+
+/**
+ * شارةُ التوثيق — **بقرار المالك** بدل النجمة بجانب الاسم: ختمٌ مسنّن،
+ * وفي وسطه دائرةٌ وعلامةُ صحٍّ بالأبيض. والنجمةُ (`SparkIcon`) تبقى رمزَ
+ * آثار+ نفسه في المتجر والاشتراك (القاعدة ٧٦).
+ */
+export const VerifiedIcon = ({ size = 20, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden>
+    <path d="M12 2.3Q13.96-.37 15 2.77Q17.69.84 17.7 4.15Q20.86 3.14 19.85 6.3Q23.16 6.31 21.23 9Q24.37 10.04 21.7 12Q24.37 13.96 21.23 15Q23.16 17.69 19.85 17.7Q20.86 20.86 17.7 19.85Q17.69 23.16 15 21.23Q13.96 24.37 12 21.7Q10.04 24.37 9 21.23Q6.31 23.16 6.3 19.85Q3.14 20.86 4.15 17.7Q.84 17.69 2.77 15Q-.37 13.96 2.3 12Q-.37 10.04 2.77 9Q.84 6.31 4.15 6.3Q3.14 3.14 6.3 4.15Q6.31.84 9 2.77Q10.04-.37 12 2.3Z" fill="currentColor" />
+    <circle cx="12" cy="12" r="6.6" fill="none" stroke="#fff" strokeWidth={1.2} />
+    <path d="M9.2 12.2l2 2 3.8-4.1" fill="none" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/** اللحظةُ الخاصّة: عينٌ يقطعها خطّ — لا تُرى إلا لمن اختارهم صاحبُها. والقفلُ لقفل التعليقات. */
+export const PrivateIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M3 12s3.3-6 9-6 9 6 9 6-3.3 6-9 6-9-6-9-6Z" />
+    <path d="M12 9.4a2.6 2.6 0 1 1 0 5.2 2.6 2.6 0 0 1 0-5.2Z" />
+    <path d="M4 4l16 16" />
+  </svg>
+);
+
 export const CheckIcon = ({ size = 20, className }: IconProps) => (
   <svg {...base(size)} className={className} strokeWidth={2}>
     <path d="M5 12.5 10 17.5 19 7" />
@@ -211,8 +276,8 @@ export const ShieldIcon = ({ size = 20, className }: IconProps) => (
 
 export const GearIcon = ({ size = 20, className }: IconProps) => (
   <svg {...base(size)} className={className}>
-    <circle cx="12" cy="12" r="3.2" />
-    <path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2M6 6l1.5 1.5M16.5 16.5 18 18M18 6l-1.5 1.5M7.5 16.5 6 18" />
+    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+    <circle cx="12" cy="12" r="3" />
   </svg>
 );
 

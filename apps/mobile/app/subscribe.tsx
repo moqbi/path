@@ -1,17 +1,35 @@
 import { useEffect, useState } from "react";
-import { View, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import { View, ScrollView, Pressable, ActivityIndicator, Platform } from "react-native";
 import { Text } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ScreenHeader } from "../components/screen-header";
-import { BookIcon, CameraIcon, MicIcon, SparkIcon, StoreIcon } from "../components/icons";
+import { Sheet } from "../components/sheet";
+import { BookIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, StoreIcon, VerifiedIcon, WithIcon } from "../components/icons";
+import { TagPill } from "../components/name-tag";
+import { SITE_URL, SUPPORTER_TAG, hasSite } from "@athar/shared";
 import { api } from "../lib/api";
+import { openIn } from "../lib/browse";
 import { billingReady, buy, openManage, plans, restore, testStore, type Plan } from "../lib/billing";
 import { useSession } from "../lib/session";
 import { colors } from "../theme/tokens";
 
 const PERKS = [
+  /*
+    ما يُرى بجانب الاسم أوّلاً: النجمةُ توثيقاً، ووسمُ «داعم» — والرسمُ هو
+    الشيءُ نفسه كما يظهر في الخطّ الزمنيّ لا أيقونةٌ عنه.
+  */
+  {
+    title: "شارة التوثيق",
+    body: "بجانب اسمك في كل مكان — في اللحظات والتعليقات والأصدقاء",
+    icon: <VerifiedIcon size={24} color={colors.clay} />,
+  },
+  {
+    title: "وسم «داعم»",
+    body: "يظهر بجانب اسمك ما دام اشتراكك قائماً",
+    icon: <TagPill tag={SUPPORTER_TAG} size={10} />,
+  },
   {
     title: "تفاعل بأي إيموجي",
     body: "الخمسة الأساسية تبقى للجميع · لك كل كيبوردك",
@@ -23,9 +41,16 @@ const PERKS = [
     icon: <BookIcon size={18} color={colors.gold} />,
   },
   {
+    // **بقرار المالك**: الأثرُ المشترك من مزايا الاشتراك.
+    title: "آثارنا",
+    body: "كلُّ لحظةٍ جمعتك بصديقٍ بالإشارة «مع» — في خطٍّ واحد لكما",
+    icon: <WithIcon size={18} color={colors.gold} />,
+  },
+  {
     title: "دوائر منفصلة",
     body: "العائلة، الشلة، الشغل — كل وحدة بخصوصيتها",
-    icon: <SparkIcon size={18} color={colors.gold} />,
+    // النجمةُ صارت للتوثيق، فللدوائر رسمُها.
+    icon: <CircleIcon size={18} color={colors.gold} />,
   },
   {
     title: "رسالة صوتية دقيقتان",
@@ -57,6 +82,22 @@ const PERKS = [
  * ثوانٍ في العادة. ولذلك نسأل عن الحساب بضع مرّاتٍ متباعدة بدل أن
  * نُصدّق الجهاز ونفتح المزايا بأنفسنا.
  */
+/** رابطُ صفحةٍ قانونية في متصفّحٍ داخل التطبيق (القاعدة ٦٢). */
+function Legal({ title, path }: { title: string; path: string }) {
+  return (
+    <Pressable
+      onPress={() => {
+        if (hasSite()) void openIn(`${SITE_URL}${path}`);
+      }}
+      hitSlop={8}
+    >
+      <Text style={{ color: colors.clayInk, fontSize: 12, fontWeight: "600", textDecorationLine: "underline" }}>
+        {title}
+      </Text>
+    </Pressable>
+  );
+}
+
 async function waitForPlus(ask: () => Promise<void>, isPlus: () => boolean) {
   for (const wait of [0, 1500, 3000, 5000]) {
     if (wait) await new Promise((done) => setTimeout(done, wait));
@@ -73,6 +114,12 @@ export default function Subscribe() {
 
   const [offers, setOffers] = useState<Plan[] | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  // الباقةُ التي ضُغطت: تُضاء وحدها وعليها دوّارة، فيُعرف أنّ الضغطة وصلت.
+  const [chosen, setChosen] = useState<string | null>(null);
+  // نافذةُ النتيجة (القاعدة ٩٣ب): «تمّ» تُقرأ ولا تُستنتج من رجوعٍ صامت.
+  const [welcome, setWelcome] = useState<null | { live: boolean }>(null);
+  // والفشلُ نافذةٌ كذلك: سطرٌ صغير أسفل الشاشة لا يُرى، فيُقرأ «لا شيء حدث».
+  const [failure, setFailure] = useState<string | null>(null);
 
   // باقاتُ المتجر بأسعاره — تُقرأ مرّةً عند فتح الشاشة.
   useEffect(() => {
@@ -92,15 +139,16 @@ export default function Subscribe() {
     mutationFn: async (planId: string) => {
       const result = await buy(planId);
       if (result.cancelled) return;
-      if (!result.active) throw new Error("لم يكتمل الشراء");
+      /*
+        دفعٌ لم يُلغَ دفعٌ تمّ: `active` يقول هل ربط RevenueCat الاستحقاقَ
+        بالمنتج، لا هل خُصم المال — ونقصُ ذلك الربط كان يُقرأ «لم يكتمل»
+        والمبلغ قد خرج. والخادمُ هو من يقول «فعّال».
+      */
       const live = await waitForPlus(done, () => Boolean(useSession.getState().me?.isPlus));
-      if (!live) {
-        setNote("تمّ الشراء — التفعيل خلال دقيقة. اسحب للتحديث إن تأخّر.");
-        return;
-      }
-      router.back();
+      setWelcome({ live });
     },
-    onError: (problem) => setNote(problem instanceof Error ? problem.message : "تعذّر الشراء"),
+    onError: (problem) => setFailure(problem instanceof Error ? problem.message : "تعذّر الشراء"),
+    onSettled: () => setChosen(null),
   });
 
   const recover = useMutation({
@@ -109,6 +157,7 @@ export default function Subscribe() {
       await done();
       setNote(active ? "استُعيد اشتراكك" : "لا مشترياتٍ لهذا الحساب");
     },
+    onError: (problem) => setFailure(problem instanceof Error ? problem.message : "تعذّرت الاستعادة"),
   });
 
   /* تفعيلٌ بلا دفع — للتجربة وحدها، ومغلقٌ على الخادم ما لم يُفتح هناك. */
@@ -123,7 +172,7 @@ export default function Subscribe() {
   });
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       <ScreenHeader title="آثار+" back="/" />
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 30 }}>
@@ -170,32 +219,54 @@ export default function Subscribe() {
         ) : offers && offers.length > 0 ? (
           <View style={{ gap: 12, paddingTop: 8 }}>
             <View style={{ flexDirection: "row", gap: 10 }}>
-              {offers.map((offer) => (
+              {offers.map((offer) => {
+                const picked = chosen === offer.id;
+                return (
                 <Pressable
                   key={offer.id}
-                  onPress={() => act.mutate(offer.id)}
+                  onPress={() => {
+                    setNote(null);
+                    setChosen(offer.id);
+                    act.mutate(offer.id);
+                  }}
                   disabled={act.isPending}
-                  style={{
+                  style={({ pressed }) => ({
                     flex: 1,
                     borderRadius: 16,
-                    borderWidth: offer.yearly ? 1.5 : 1,
-                    borderColor: offer.yearly ? colors.gold : colors.line,
-                    backgroundColor: offer.yearly ? colors.goldSoft : "transparent",
+                    borderWidth: picked ? 2 : offer.yearly ? 1.5 : 1,
+                    borderColor: picked ? colors.clay : offer.yearly ? colors.gold : colors.line,
+                    backgroundColor: picked || offer.yearly ? colors.goldSoft : "transparent",
                     paddingVertical: 16,
                     paddingHorizontal: 12,
                     alignItems: "center",
-                  }}
+                    opacity: chosen && !picked ? 0.45 : 1,
+                    transform: [{ scale: pressed || picked ? 0.97 : 1 }],
+                  })}
                 >
+                  {/*
+                    اسمُ الاشتراك ومدّتُه وسعرُه معاً على البطاقة — شرطُ آبل
+                    (3.1.2): «سنوي» وحدها لا تقول ما يُشترى ولا كم يدوم.
+                  */}
                   <Text style={{ color: offer.yearly ? colors.goldInk : colors.muted, fontSize: 11.5, marginBottom: 6 }}>
-                    {offer.yearly ? "سنوي" : "شهري"}
+                    {offer.yearly ? "آثار+ سنوي · سنة" : "آثار+ شهري · شهر"}
                   </Text>
                   {/* السعر كما يقوله المتجر: بعملة المشتري وبضريبة بلده. */}
                   {/* `writingDirection` بدل `dir`: النصّ سعرٌ قد يبدأ برمز عملة لاتيني. */}
                   <Text style={{ color: colors.ink, fontSize: 22, fontWeight: "700", writingDirection: "auto" }}>
                     {offer.price}
                   </Text>
+                  <Text style={{ color: colors.muted, fontSize: 11, marginTop: 4 }}>
+                    {offer.yearly ? "كل سنة" : "كل شهر"}
+                  </Text>
+                  {offer.perMonth ? (
+                    <Text style={{ color: colors.faint, fontSize: 10.5, marginTop: 2, writingDirection: "auto" }}>
+                      {`يعادل ${offer.perMonth} شهرياً`}
+                    </Text>
+                  ) : null}
+                  {picked ? <ActivityIndicator color={colors.clay} style={{ marginTop: 8 }} /> : null}
                 </Pressable>
-              ))}
+                );
+              })}
             </View>
 
             {/* المتجر التجريبي يُقال صراحةً: شراءٌ وهميّ لا يُحسب. */}
@@ -258,11 +329,68 @@ export default function Subscribe() {
           </Text>
         ) : null}
 
-        <Text style={{ color: colors.faint, fontSize: 10.5, lineHeight: 22, textAlign: "center", paddingTop: 20 }}>
-          يتجدّد تلقائياً حتى تُلغيه من متجرك · تُخصم القيمة من حساب المتجر
+        {/*
+          نصُّ التجديد وبابا الشروط والخصوصية على شاشة الشراء نفسها — شرطُ
+          آبل (3.1.2)، وبغيابهما رُدّت النسخة: سطرٌ مختصر لا يقول متى يُخصم
+          ولا كيف يُلغى، وروابطُ في الإعدادات لا يراها من يشتري.
+        */}
+        <Text style={{ color: colors.muted, fontSize: 11, lineHeight: 21, textAlign: "center", paddingTop: 20 }}>
+          {`اشتراك آثار+ يتجدّد تلقائياً بالسعر نفسه في نهاية كل مدّة (شهر أو سنة) ما لم يُلغَ قبل انتهائها بـ٢٤ ساعة على الأقل. يُخصم المبلغ من حساب ${
+            Platform.OS === "ios" ? "Apple ID" : "Google Play"
+          } عند تأكيد الشراء، ويمكنك إدارة الاشتراك وإلغاؤه من إعدادات حسابك في ${
+            Platform.OS === "ios" ? "App Store" : "Google Play"
+          }.`}
         </Text>
+        <View style={{ flexDirection: "row", justifyContent: "center", gap: 18, paddingTop: 12 }}>
+          <Legal title="شروط الاستخدام" path="/terms" />
+          <Legal title="سياسة الخصوصية" path="/privacy" />
+        </View>
 
       </ScrollView>
+
+      {welcome ? (
+        <Sheet
+          title={welcome.live ? "أهلاً بك في آثار+" : "تمّ الشراء"}
+          onClose={() => {
+            setWelcome(null);
+            if (welcome.live) router.back();
+          }}
+        >
+          <View style={{ alignItems: "center", gap: 12, paddingVertical: 8 }}>
+            <View style={{ width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", backgroundColor: colors.goldSoft }}>
+              <SparkIcon size={26} color={colors.gold} />
+            </View>
+            <Text style={{ color: colors.ink, fontSize: 14, lineHeight: 24, textAlign: "center" }}>
+              {welcome.live
+                ? "اشتراكك فعّال الآن — النجمة ووسم «داعم» بجانب اسمك، و١٠٠٠ نقطة في رصيدك."
+                : "وصل الدفع، والتفعيل يصل خلال دقيقة. ارجع إلى اللحظات واسحب للتحديث إن تأخّر."}
+            </Text>
+            <Pressable
+              onPress={() => {
+                setWelcome(null);
+                router.back();
+              }}
+              style={{ alignSelf: "stretch", height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
+            >
+              <Text style={{ color: colors.onBrand, fontSize: 14.5, fontWeight: "700" }}>تمام</Text>
+            </Pressable>
+          </View>
+        </Sheet>
+      ) : null}
+
+      {failure ? (
+        <Sheet title="لم يكتمل الشراء" onClose={() => setFailure(null)}>
+          <View style={{ alignItems: "center", gap: 12, paddingVertical: 8 }}>
+            <Text style={{ color: colors.ink, fontSize: 14, lineHeight: 24, textAlign: "center" }}>{failure}</Text>
+            <Pressable
+              onPress={() => setFailure(null)}
+              style={{ alignSelf: "stretch", height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
+            >
+              <Text style={{ color: colors.onBrand, fontSize: 14.5, fontWeight: "700" }}>حسناً</Text>
+            </Pressable>
+          </View>
+        </Sheet>
+      ) : null}
     </SafeAreaView>
   );
 }

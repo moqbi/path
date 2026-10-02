@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { deleteStory, seeStory } from "@/app/actions";
 import { Avatar } from "@/components/ui";
 import { CloseIcon, EyeIcon } from "@/components/icons";
 import { filterCss } from "@/components/story-composer";
+import { StoryTexts, type StoryText } from "@/components/story-texts";
 import { ar, relative } from "@/lib/format";
+import { BASE } from "@/lib/base";
 
 /** مدة شريحة الصورة. والفيديو مدّته مدّته. */
 const SLIDE_MS = 5000;
@@ -16,9 +19,12 @@ type Story = {
   mediaId: string;
   at: string;
   seen: number;
+  /** من شاهدها — لصاحبها وحده، وفارغةٌ لغيره. */
+  viewers: { id: string; name: string; avatarMediaId: string | null; seenAt: string }[];
   video: boolean;
   seconds: number | null;
   filter: string | null;
+  texts: StoryText[] | null;
 };
 
 /**
@@ -40,8 +46,13 @@ export function StoryViewer({
   const router = useRouter();
   const [index, setIndex] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [paused, setPaused] = useState(false);
+  const [held, setHeld] = useState(false);
+  // قائمةُ من شاهدها فوق القصة، والعدُّ يقف ما دامت مفتوحة.
+  const [watching, setWatching] = useState(false);
+  const paused = held || watching;
   const started = useRef(Date.now());
+  // الوقفةُ لا تبدأ الشريحة من أوّلها: ما مضى منها يُستأنف منه.
+  const elapsed = useRef(0);
 
   const story = stories[index];
   // الفيديو يُقاس بمدّته لا بخمس ثوانٍ: القصّ في منتصفه يُفقد آخره.
@@ -54,14 +65,16 @@ export function StoryViewer({
   }, [story]);
 
   useEffect(() => {
-    started.current = Date.now();
+    elapsed.current = 0;
     setProgress(0);
   }, [index]);
 
   useEffect(() => {
     if (paused) return;
+    started.current = Date.now() - elapsed.current;
     const tick = setInterval(() => {
-      const done = (Date.now() - started.current) / span;
+      elapsed.current = Date.now() - started.current;
+      const done = elapsed.current / span;
       if (done >= 1) {
         if (index + 1 < stories.length) setIndex(index + 1);
         else router.back();
@@ -89,7 +102,7 @@ export function StoryViewer({
         {story.video ? (
           <video
             key={story.id}
-            src={`/api/media/${story.mediaId}`}
+            src={`${BASE}/api/media/${story.mediaId}`}
             autoPlay
             playsInline
             muted={false}
@@ -99,28 +112,30 @@ export function StoryViewer({
         ) : (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
-            src={`/api/media/${story.mediaId}`}
+            src={`${BASE}/api/media/${story.mediaId}`}
             alt=""
             className="absolute inset-0 h-full w-full"
             style={{ objectFit: "contain", filter: filterCss(story.filter) }}
           />
         )}
 
+        <StoryTexts texts={story.texts} />
+
         {/* نصفان للتنقّل: يمينٌ يرجع ويسارٌ يتقدّم، والضغط المطوّل يوقف. */}
         <button
           type="button"
           aria-label="السابق"
           className="absolute inset-y-0 right-0 w-1/2"
-          onPointerDown={() => setPaused(true)}
-          onPointerUp={() => setPaused(false)}
+          onPointerDown={() => setHeld(true)}
+          onPointerUp={() => setHeld(false)}
           onClick={() => step(index - 1)}
         />
         <button
           type="button"
           aria-label="التالي"
           className="absolute inset-y-0 left-0 w-1/2"
-          onPointerDown={() => setPaused(true)}
-          onPointerUp={() => setPaused(false)}
+          onPointerDown={() => setHeld(true)}
+          onPointerUp={() => setHeld(false)}
           onClick={() => step(index + 1)}
         />
 
@@ -173,13 +188,16 @@ export function StoryViewer({
 
         {mine ? (
           <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 p-4">
-            <span
-              className="pointer-events-none flex items-center gap-1.5 text-[12px]"
-              style={{ color: "rgba(255,255,255,.85)" }}
+            {/* العدّادُ بابُ القائمة: من نشر قصّةً يسأل «مَن» قبل «كم». */}
+            <button
+              type="button"
+              onClick={() => setWatching(true)}
+              className="pointer-events-auto flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] font-semibold"
+              style={{ background: "rgba(255,255,255,.16)", color: "#fff" }}
             >
               <EyeIcon size={15} />
-              {ar(story.seen)}
-            </span>
+              {story.seen > 0 ? `شاهدها ${ar(story.seen)}` : "لم يشاهدها أحد بعد"}
+            </button>
             <form
               action={async () => {
                 await deleteStory(story.id);
@@ -194,6 +212,35 @@ export function StoryViewer({
                 احذف القصة
               </button>
             </form>
+          </div>
+        ) : null}
+
+        {watching && mine ? (
+          <div
+            className="absolute inset-0 z-20 flex items-end"
+            style={{ background: "rgba(14,26,36,.42)" }}
+            onClick={() => setWatching(false)}
+          >
+            <div
+              className="w-full rounded-t-3xl bg-card p-5"
+              style={{ maxHeight: "60%", overflowY: "auto" }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <p className="mb-3 text-center text-[15px] font-bold">من شاهد قصّتك</p>
+              {story.viewers.length === 0 ? (
+                <p className="py-6 text-center text-[13px] text-muted">لم يشاهدها أحدٌ من أصدقائك بعد.</p>
+              ) : (
+                story.viewers.map((person) => (
+                  <Link key={person.id} href={`/u/${person.id}`} className="flex items-center gap-3 py-2">
+                    <Avatar name={person.name} size={40} mediaId={person.avatarMediaId} />
+                    <span dir="auto" className="min-w-0 grow truncate text-[14px] font-semibold">
+                      {person.name}
+                    </span>
+                    <span className="shrink-0 text-[11.5px] text-faint">{relative(new Date(person.seenAt))}</span>
+                  </Link>
+                ))
+              )}
+            </div>
           </div>
         ) : null}
       </div>

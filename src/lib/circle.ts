@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
+import { blockedWith } from "@/lib/visibility";
 
 /**
  * سقف الدائرة. لا يُشترى ولا يزيد بالاشتراك — هذا قرار منتج، لا رقم إعدادات.
@@ -45,8 +46,31 @@ export class CircleFullError extends Error {
  * عدد كليهما، فتجاوز أيٍّ منهما للسقف يجب أن يمنع القبول.
  */
 export async function assertRoomForBoth(a: string, b: string): Promise<void> {
-  const [sizeA, sizeB] = await Promise.all([circleSize(a), circleSize(b)]);
+  // الحسابُ المفتوح لا سقفَ لجانبه (القاعدة ٢٢١)، والطرفُ الآخر على سقفه.
+  const open = await prisma.user.findMany({
+    where: { id: { in: [a, b] }, isOpen: true },
+    select: { id: true },
+  });
+  const uncapped = new Set(open.map((row) => row.id));
+  const [sizeA, sizeB] = await Promise.all([
+    uncapped.has(a) ? 0 : circleSize(a),
+    uncapped.has(b) ? 0 : circleSize(b),
+  ]);
   if (sizeA >= CIRCLE_CAP || sizeB >= CIRCLE_CAP) throw new CircleFullError();
+}
+
+/**
+ * هل تُفتح محادثةٌ بينهما؟ الدائرةُ شرطٌ إلّا مع الحساب المفتوح
+ * (القاعدة ٢٢١) — حسابُ الدعم يُراسَل بلا إضافة — والحظرُ فوقه.
+ */
+export async function canChat(userId: string, otherId: string): Promise<boolean> {
+  if (userId === otherId) return false;
+  if ((await circleIds(userId)).includes(otherId)) return true;
+  const [other, blocked] = await Promise.all([
+    prisma.user.findUnique({ where: { id: otherId }, select: { isOpen: true } }),
+    blockedWith(userId),
+  ]);
+  return Boolean(other?.isOpen) && !blocked.includes(otherId);
 }
 
 /** عدد الأصدقاء المشتركين بين اثنين. */
@@ -76,7 +100,14 @@ export type Suggestion = {
  * من دائرتك لا يظهر لك أصلاً، وهكذا تبقى الدائرة دائرةً لا دليل هاتف.
  */
 export async function suggestions(userId: string, limit = 12): Promise<Suggestion[]> {
-  const mine = await circleIds(userId);
+  // الحسابُ المفتوح ليس جسراً (القاعدة ٢٢١): من أضافوه لا يُقترح بعضُهم لبعض.
+  const [all, open] = await Promise.all([
+    circleIds(userId),
+    prisma.user.findMany({ where: { isOpen: true }, select: { id: true } }),
+  ]);
+  const openIds = new Set(open.map((row) => row.id));
+  if (openIds.has(userId)) return [];
+  const mine = all.filter((id) => !openIds.has(id));
   if (mine.length === 0) return [];
 
   const [links, existing] = await Promise.all([

@@ -337,3 +337,173 @@ h3 {
 .legal li {
   margin-bottom: 6px;
 }
+
+/*
+ * سطح المكتب ثلاثة أعمدة — **بقرار المالك** (`layout.tsx` ← `.desk`):
+ * الأصدقاء يميناً، والهيكلُ في الوسط بعرضٍ أوسع من الهاتف، و«أنا» مع
+ * الإشعارات يساراً. والعمودان متساويان فيبقى الوسطُ في وسط الشاشة تماماً —
+ * وعليه تُحسب `.shell-fixed` (زرّ النشر والشريط السفلي) بـ`left: 50%`.
+ * وتحت ١٢٠٠ بكسل يختفي العمودان ويعود الهيكلُ ٤٣٠ كما كان.
+ */
+.desk-side,
+.desk-only {
+  display: none;
+}
+
+@media (min-width: 1200px) {
+  .desk {
+    display: grid;
+    grid-template-columns: minmax(300px, 1fr) minmax(0, 640px) minmax(300px, 1fr);
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .desk > .shell {
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    box-shadow: 0 0 0 1px var(--color-line), 0 24px 70px rgba(14, 26, 36, 0.12);
+  }
+
+  .desk .shell-fixed {
+    max-width: 640px;
+  }
+
+  .desk .desk-only {
+    display: flex;
+  }
+
+  /* تبويباتٌ لها عمودُها على سطح المكتب (القاعدة ٢٠٠). */
+  .desk .desk-hide {
+    display: none;
+  }
+
+  .desk-side {
+    display: flex;
+    min-width: 0;
+    height: 100dvh;
+    padding: 20px 24px;
+  }
+
+  /* العمودُ يلتصق بالوسط، وما زاد من العرض يذهب إلى حافّة الشاشة. */
+  .desk-side-start {
+    justify-content: flex-end;
+  }
+  .desk-side-end {
+    justify-content: flex-start;
+  }
+}
+
+.desk-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 360px;
+  min-height: 0;
+  border: 1px solid var(--color-line);
+  border-radius: 22px;
+  background: var(--color-card);
+  overflow: hidden;
+}
+
+.desk-panel-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 16px 12px;
+}
+
+.desk-panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.desk-panel-body[hidden] {
+  display: none;
+}
+
+.desk-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 8px;
+  padding: 8px;
+  border-radius: 14px;
+}
+
+.desk-row:hover {
+  background: var(--color-paper);
+}
+
+.desk-icon-btn {
+  display: flex;
+  height: 34px;
+  width: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--color-muted);
+}
+
+.desk-icon-btn:hover {
+  background: var(--color-card);
+  color: var(--color-clay-ink);
+}
+
+.desk-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin: 12px;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--color-paper);
+}
+
+.desk-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink-2);
+}
+
+.desk-tab[aria-selected="true"] {
+  background: var(--color-card);
+  color: var(--color-ink);
+  box-shadow: 0 1px 3px rgba(14, 26, 36, 0.1);
+}
+
+.desk-tab-badge {
+  display: inline-flex;
+  min-width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--color-live);
+  color: var(--color-on-brand);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.desk-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.desk-link:hover {
+  background: var(--color-paper);
+}

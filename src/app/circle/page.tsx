@@ -217,6 +217,7 @@ export default async function CirclePage({
                     onDelete={removeFriend.bind(null, member.id)}
                     secondLabel="حظر"
                     onSecond={blockUser.bind(null, member.id)}
+                    icons
                   >
                     <div
                       className="flex items-center gap-3 p-3"

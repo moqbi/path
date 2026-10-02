@@ -25,8 +25,14 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq && apt-get upgrade -y -qq
 
 say "الحزم"
+# وffmpeg ليس زينة: `ffprobe` منه يقيس مدّة المقاطع عند اعتمادها
+# (`lib/process.ts`). وخادمٌ بلا هذه الحزمة كان يردّ كلَّ رسالةٍ صوتية
+# وكلَّ فيديو قصّةٍ بـ«تعذّرت قراءة المقطع» — وصاحبُ المقطع لا يد له.
+# والصورةُ في `apps/api/Dockerfile` تثبّتها منذ بُنيت، وهذا الخادم لا
+# يمرّ بها فسقطت من بين يديه.
 apt-get install -y -qq ufw fail2ban unattended-upgrades postgresql-16 \
-  postgresql-contrib pgbouncer redis-server git curl rclone gnupg ca-certificates
+  postgresql-contrib pgbouncer redis-server git curl rclone gnupg ca-certificates \
+  ffmpeg
 
 say "Node 22"
 curl -fsSL https://deb.nodesource.com/setup_22.x | bash - >/dev/null
@@ -55,9 +61,11 @@ say "صلاحيةٌ محدودة لـ$APP_USER"
 # وبدل أن نعطيه المفتاحَ كلَّه: أمرانِ بعينهما بلا كلمة، وهما ما يحتاجه
 # النشر. وكلُّ ما عداهما يُفعل بـroot عن قصد.
 cat > /etc/sudoers.d/athar <<EOF
-$APP_USER ALL=(root) NOPASSWD: /usr/bin/systemctl restart athar-web athar-api, \
-  /usr/bin/systemctl restart athar-web, /usr/bin/systemctl restart athar-api, \
-  /usr/bin/systemctl reload caddy, /usr/bin/systemctl status athar-web athar-api
+$APP_USER ALL=(root) NOPASSWD: /usr/bin/systemctl restart athar-web athar-site athar-api, \
+  /usr/bin/systemctl restart athar-web, /usr/bin/systemctl restart athar-site, \
+  /usr/bin/systemctl restart athar-api, \
+  /usr/bin/systemctl reload caddy, \
+  /usr/bin/systemctl status athar-web athar-site athar-api
 EOF
 chmod 440 /etc/sudoers.d/athar
 visudo -cf /etc/sudoers.d/athar >/dev/null

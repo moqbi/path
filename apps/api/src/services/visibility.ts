@@ -101,8 +101,16 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
       avatarOf: { select: { id: true } },
       coverOf: { select: { id: true } },
       moment: { select: { id: true } },
-      storyOf: { select: { authorId: true, expiresAt: true } },
+      storyOf: {
+        select: {
+          authorId: true,
+          expiresAt: true,
+          private: true,
+          audience: { where: { userId }, select: { userId: true } },
+        },
+      },
       messageOf: { select: { conversation: { select: { aId: true, bId: true } } } },
+      groupMessageOf: { select: { groupId: true } },
     },
   });
   if (!media) return false;
@@ -114,10 +122,21 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
     return aId === userId || bId === userId;
   }
 
+  // صورةُ المجموعة لأعضائها وحدهم (القاعدة ٢١٥).
+  if (media.groupMessageOf) {
+    const seat = await prisma.chatGroupMember.findUnique({
+      where: { groupId_userId: { groupId: media.groupMessageOf.groupId, userId } },
+      select: { userId: true },
+    });
+    return Boolean(seat);
+  }
+
   if (media.moment) return canSeeMoment(userId, media.moment.id);
 
   if (media.storyOf) {
     if (media.storyOf.expiresAt <= new Date()) return false;
+    // الخاصّةُ لمن خُصّت بهم وحدهم (القاعدة ٢١٩) — والصاحبُ رُدّ بالمالك فوق.
+    if (media.storyOf.private && media.storyOf.audience.length === 0) return false;
     const circle = await circleIds(userId);
     return circle.includes(media.storyOf.authorId);
   }

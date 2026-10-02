@@ -7,18 +7,19 @@ import Link from "next/link";
 import { Avatar } from "@/components/ui";
 import { ar } from "@/lib/format";
 import { CUSTOM, EMOJI_GROUPS } from "@/lib/emoji";
+import { asset } from "@/lib/base";
 
 /**
  * ملفات التفاعلات في `public/reactions`. استبدال أيٍّ منها يغيّر شكله في
  * التطبيق كله بلا لمس الكود — ولذلك المفتاح هو الاسم لا رسم بداخل مكوّن.
  */
 export const REACTION_SRC: Record<string, string> = {
-  SMILE: "/reactions/smile.png",
-  LAUGH: "/reactions/laugh.png",
-  GASP: "/reactions/gasp.png",
-  SAD: "/reactions/sad.png",
-  LOVE: "/reactions/love.png",
-  SLEEPY: "/reactions/sleepy.png",
+  SMILE: asset("/reactions/smile.png"),
+  LAUGH: asset("/reactions/laugh.png"),
+  GASP: asset("/reactions/gasp.png"),
+  SAD: asset("/reactions/sad.png"),
+  LOVE: asset("/reactions/love.png"),
+  SLEEPY: asset("/reactions/sleepy.png"),
 };
 
 /** الوجوه العامة، ثم النوم — يُعرض لكل اللحظات وهو الأنسب للحظة نوم. */
@@ -105,8 +106,18 @@ export function Reactions({
     const onDown = (event: PointerEvent) => {
       if (!root.current?.contains(event.target as Node)) setOpen(false);
     };
+    // والتمريرُ يطويها كما في شريط الخطّ الزمنيّ.
+    const onScroll = (event: Event) => {
+      if (!root.current?.contains(event.target as Node)) setOpen(false);
+    };
     document.addEventListener("pointerdown", onDown);
-    return () => document.removeEventListener("pointerdown", onDown);
+    document.addEventListener("wheel", onScroll, { passive: true });
+    document.addEventListener("touchmove", onScroll, { passive: true });
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("wheel", onScroll);
+      document.removeEventListener("touchmove", onScroll);
+    };
   }, [open]);
 
   function choose(kind: string, emoji?: string) {
@@ -165,7 +176,8 @@ export function Reactions({
             boxShadow: "0 10px 30px rgba(14,26,36,.18)",
           }}
         >
-          <div className="flex items-center gap-0.5">
+          {/* صاحبُها لا يتفاعل مع لحظته: لوحتُه فوق (القاعدة ٢٠٢)، وهنا الحذفُ وحده. */}
+          <div className={`flex items-center gap-0.5 ${author ? "!hidden" : ""}`}>
             {faces.map((kind, index) => (
               <button
                 key={kind}

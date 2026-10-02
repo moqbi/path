@@ -11,7 +11,9 @@ import {
   UserIcon,
   WithIcon,
 } from "../../components/icons";
+import { useSession } from "../../lib/session";
 import { useNoteCount } from "../../lib/queries";
+import { Spot } from "../../components/spot";
 import { colors } from "../../theme/tokens";
 import { familyOf } from "../../theme/fonts";
 
@@ -95,8 +97,16 @@ export default function TabsLayout() {
   return (
     <View style={{ flex: 1 }}>
       <Tabs
+        /*
+          الرجوعُ بتاريخ التنقّل لا إلى أوّل تبويب: ملفُّ الصديق شاشةٌ في
+          هذا المكدّس، وزرُّ رجوعه كان سيسقط على «اللحظات» مهما فُتح من مكان.
+        */
+        backBehavior="history"
         screenOptions={{
           headerShown: false,
+          // الشاشةُ على أرضيّتها — شفّافةً حين يلبس صاحبُها ثيماً بصورة، فتُرى
+          // الصورةُ المرسومة في الجذر خلفها. وبلا هذا يرسم المتصفّح أرضيته الرمادية.
+          sceneStyle: { backgroundColor: colors.ground },
           tabBarActiveTintColor: colors.clayInk,
           tabBarInactiveTintColor: colors.muted,
           /*
@@ -134,7 +144,11 @@ export default function TabsLayout() {
           options={{
             // تبويب اللحظات يحمل اسم العدسة المفتوحة.
             title: lens.label,
-            tabBarIcon: ({ color }) => <HomeIcon size={19} color={color} />,
+            tabBarIcon: ({ color }) => (
+              <Spot id="tab.index">
+                <HomeIcon size={19} color={color} />
+              </Spot>
+            ),
             /*
               الضغطة المطوّلة بابٌ مخفيّ، وتُقاس بمؤقّتٍ كما في الويب:
               نصف ثانيةٍ من الضغط تفتح البابين، ورفعُ الإصبع قبلها يلغيها
@@ -162,7 +176,9 @@ export default function TabsLayout() {
           options={{
             title: "الأصدقاء",
             tabBarIcon: ({ color }) => (
-              <CircleIcon size={19} color={onFriend ? colors.clayInk : color} />
+              <Spot id="tab.circle">
+                <CircleIcon size={19} color={onFriend ? colors.clayInk : color} />
+              </Spot>
             ),
             tabBarLabelStyle: {
               fontSize: 9.5,
@@ -176,10 +192,10 @@ export default function TabsLayout() {
           options={{
             title: "الإشعارات",
             tabBarIcon: ({ color, focused }) => (
-              <View>
+              <Spot id="tab.notifications">
                 <BellIcon size={19} color={color} />
                 {unseen > 0 && !focused ? <Dot /> : null}
-              </View>
+              </Spot>
             ),
           }}
         />
@@ -187,14 +203,22 @@ export default function TabsLayout() {
           name="store"
           options={{
             title: "المتجر",
-            tabBarIcon: ({ color }) => <StoreIcon size={19} color={color} />,
+            tabBarIcon: ({ color }) => (
+              <Spot id="tab.store">
+                <StoreIcon size={19} color={color} />
+              </Spot>
+            ),
           }}
         />
         <Tabs.Screen
           name="me"
           options={{
             title: "أنا",
-            tabBarIcon: ({ color }) => <UserIcon size={19} color={color} />,
+            tabBarIcon: ({ color }) => (
+              <Spot id="tab.me">
+                <UserIcon size={19} color={color} />
+              </Spot>
+            ),
           }}
         />
         {/* ملفّ الصديق: شاشةٌ بلا تبويبٍ يخصّها، فيبقى الشريط تحتها. */}
@@ -245,6 +269,11 @@ export default function TabsLayout() {
             <Pressable
               onPress={() => {
                 setOpen(false);
+                // «آثارنا» من مزايا آثار+ — من اختارها بلا اشتراكٍ يُؤخذ إلى صفحته.
+                if (item.key === "together" && !useSession.getState().me?.isPlus) {
+                  router.push("/subscribe" as never);
+                  return;
+                }
                 router.push(
                   item.key
                     ? ({ pathname: "/", params: { view: item.key } } as never)

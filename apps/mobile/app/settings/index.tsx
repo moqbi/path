@@ -6,10 +6,13 @@ import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ScreenHeader } from "../../components/screen-header";
-import { BookIcon, CheckIcon, InfoIcon, ShieldIcon } from "../../components/icons";
+import { BookIcon, CheckIcon, InfoIcon, ShieldIcon, SparkIcon } from "../../components/icons";
 import { Sheet } from "../../components/sheet";
 import { openIn } from "../../lib/browse";
 import { api } from "../../lib/api";
+import { appleReady, confirmWithApple } from "../../lib/providers";
+import { testPush } from "../../lib/push";
+import { startTour } from "../../components/tour";
 import { keys } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { SITE_URL, hasSite } from "@athar/shared";
@@ -88,7 +91,7 @@ export default function Settings() {
   if (!me) return null;
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       <ScreenHeader title="الإعدادات والخصوصية" back="/me" />
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40, direction: "rtl" }} keyboardShouldPersistTaps="handled">
@@ -249,6 +252,23 @@ export default function Settings() {
           note="مشكلة أو اقتراح أو بلاغ — نردّ عليك داخل التطبيق"
           right={<InfoIcon size={18} color={colors.clayInk} />}
           onPress={() => router.push("/settings/support" as never)}
+        />
+
+        <Link
+          title="انضم إلى فريق التجارب"
+          note="جرّب النسخ الجديدة قبل الجميع عبر TestFlight أو Google Play"
+          right={<SparkIcon size={18} color={colors.clayInk} />}
+          onPress={() => router.push("/settings/beta" as never)}
+        />
+
+        <Link
+          title="الجولة التعريفية"
+          note="أعد جولة الأزرار من أوّلها"
+          right={<InfoIcon size={18} color={colors.clayInk} />}
+          onPress={() => {
+            router.navigate("/" as never);
+            setTimeout(startTour, 400);
+          }}
         />
 
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16 }}>
@@ -413,9 +433,13 @@ function ChangeEmail({
 
   const change = useMutation({
     mutationFn: () =>
-      api("/v1/me/email", { method: "PUT", body: JSON.stringify({ email, password }) }),
-    onSuccess: async () => {
-      setSaid({ ok: "تغيّر بريدك" });
+      api<{ sent?: boolean }>("/v1/me/email", { method: "PUT", body: JSON.stringify({ email, password }) }),
+    onSuccess: async (row) => {
+      setSaid({
+        ok: row?.sent
+          ? "تغيّر بريدك — أرسلنا إليه رابط التأكيد"
+          : "تغيّر بريدك — أكّده من «أرسل رابط التأكيد»",
+      });
       setPassword("");
       await refresh();
     },
@@ -499,31 +523,53 @@ function ChangeEmail({
 /**
  * حذف الحساب داخل التطبيق — شرط متجر آبل لكل تطبيق فيه تسجيل دخول.
  *
- * مطويٌّ فلا يُضغط بالخطأ، ومكتوبٌ فيه ما يذهب قبل أن يذهب، وكلمة المرور
- * شرطٌ لأن جهازاً مفتوحاً في يد غيرك لا يجب أن يمحو حسابك بضغطتين.
- * والخطأ فيها يُردّ رسالةً في الشاشة لا استثناءً.
+ * مطويٌّ فلا يُضغط بالخطأ، ومكتوبٌ فيه ما يذهب قبل أن يذهب، والتأكيدُ
+ * شيءٌ يملكه صاحبُ الحساب وحده — جهازٌ مفتوحٌ في يد غيرك لا يمحو حسابك.
+ * **والتأكيدُ بحسب طريقِ الدخول**: من رُبط بآبل يؤكّد بآبل (وبها يُلغى
+ * الربطُ عندها — شرطُ 5.1.1(v))، ومن له كلمةٌ يكتبها، ومن لا كلمةَ له
+ * يكتب بريدَه وهو مكتوبٌ أمامه. وكانت الشاشة تطلب «كلمة المرور» من حساب
+ * آبل بلا كلمة، فلا يُحذف — وهذا بالضبط ما يجرّبه مراجعُ آبل.
  */
 function DeleteAccount() {
   const router = useRouter();
+  const me = useSession((state) => state.me);
   const signOut = useSession((state) => state.signOut);
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const identities = useQuery({
+    queryKey: ["identities"],
+    queryFn: () => api<{ identities: { provider: string }[] }>("/v1/me/identities"),
+    enabled: open,
+  });
+  const viaApple =
+    appleReady() && Boolean(identities.data?.identities.some((one) => one.provider === "APPLE"));
+  const hasPassword = me?.hasPassword !== false;
+  // ما يُكتب للتأكيد حين لا كلمة: البريدُ، أو الاسمُ لمن لا بريدَ له.
+  const answer = me?.email ?? me?.name ?? "";
+
   async function wipe() {
     setBusy(true);
     setError(null);
     try {
-      await api("/v1/me/delete", { method: "POST", body: JSON.stringify({ password }) });
+      const body = viaApple ? { apple: await confirmWithApple() } : { password };
+      await api("/v1/me/delete", { method: "POST", body: JSON.stringify(body) });
       await signOut();
       router.replace("/login?deleted=1" as never);
     } catch (problem) {
-      setError(problem instanceof Error ? problem.message : "تعذّر الحذف");
+      const code = (problem as { code?: string } | null)?.code;
+      // إغلاقُ نافذة آبل تراجعٌ لا خطأ.
+      if (code !== "ERR_REQUEST_CANCELED") {
+        setError(problem instanceof Error ? problem.message : "تعذّر الحذف");
+      }
     } finally {
       setBusy(false);
     }
   }
+
+  const ready = viaApple || password.trim().length > 0;
 
   return (
     <View style={{ borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, marginBottom: 20, overflow: "hidden" }}>
@@ -539,17 +585,40 @@ function DeleteAccount() {
         <View style={{ borderTopWidth: 1, borderTopColor: colors.line, padding: 16, gap: 12 }}>
           <Text style={{ color: colors.muted, fontSize: 12.5, lineHeight: 21, textAlign: "right" }}>
             يذهب حسابك ومعه كل ما فيه: لحظاتك وصورك ومحادثاتك وتفاعلاتك وتعليقاتك
-            وأصدقاؤك. لا نُبقي نسخة ولا يمكن التراجع. اكتب كلمة مرورك لتأكيد أنك أنت.
+            وأصدقاؤك. لا نُبقي نسخة ولا يمكن التراجع.{" "}
+            {identities.isLoading
+              ? ""
+              : viaApple
+                ? "أكّد بحساب آبل أنك أنت، ونلغي معه ربط آثار بحسابك عند آبل."
+                : hasPassword
+                  ? "اكتب كلمة مرورك لتأكيد أنك أنت."
+                  : me?.email
+                    ? "اكتب بريدك للتأكيد:"
+                    : "اكتب اسمك للتأكيد:"}
           </Text>
 
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            placeholder="كلمة المرور"
-            placeholderTextColor={colors.faint}
-            secureTextEntry
-            style={SETTING_FIELD}
-          />
+          {identities.isLoading ? (
+            <ActivityIndicator color={colors.muted} />
+          ) : viaApple ? null : (
+            <>
+              {!hasPassword && answer ? (
+                <Text selectable style={{ color: colors.ink, fontSize: 13, fontWeight: "600", textAlign: "right" }}>
+                  {answer}
+                </Text>
+              ) : null}
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder={hasPassword ? "كلمة المرور" : me?.email ? "البريد" : "الاسم"}
+                placeholderTextColor={colors.faint}
+                secureTextEntry={hasPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType={!hasPassword && me?.email ? "email-address" : "default"}
+                style={SETTING_FIELD}
+              />
+            </>
+          )}
 
           {error ? (
             <Text accessibilityRole="alert" style={{ color: colors.live, fontSize: 12, textAlign: "right" }}>
@@ -557,15 +626,20 @@ function DeleteAccount() {
             </Text>
           ) : null}
 
-          {/* لا سؤالَ إضافيّ: الطيّ أوّلاً، وكلمة المرور هي التأكيد — كما في
-              الويب حرفاً بحرف. */}
           <Pressable
             onPress={() => void wipe()}
-            disabled={busy}
-            style={{ height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.live, opacity: busy ? 0.6 : 1 }}
+            disabled={busy || !ready || identities.isLoading}
+            style={{
+              height: 48,
+              borderRadius: 12,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: colors.live,
+              opacity: busy || !ready || identities.isLoading ? 0.6 : 1,
+            }}
           >
             <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}>
-              {busy ? "نحذف…" : "احذف حسابي نهائياً"}
+              {busy ? "نحذف…" : viaApple ? "أكّد بآبل واحذف حسابي" : "احذف حسابي نهائياً"}
             </Text>
           </Pressable>
         </View>
@@ -771,6 +845,8 @@ function NotifyPrefs() {
   const [said, setSaid] = useState<string | null>(null);
 
   const quiet = from !== null && to !== null;
+  const [tried, setTried] = useState<string | null>(null);
+  const trial = useMutation({ mutationFn: testPush, onSuccess: setTried });
 
   const save = useMutation({
     mutationFn: () =>
@@ -847,6 +923,24 @@ function NotifyPrefs() {
           {said}
         </Text>
       ) : null}
+
+      {/* تنبيهٌ تجريبيّ يقول أين وقف الطريق إن لم يصل. */}
+      <Pressable
+        onPress={() => { setTried(null); trial.mutate(); }}
+        disabled={trial.isPending}
+        style={{ marginTop: 12, height: 44, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, alignItems: "center", justifyContent: "center" }}
+      >
+        {trial.isPending ? (
+          <ActivityIndicator color={colors.clay} />
+        ) : (
+          <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600" }}>جرّب تنبيهاً</Text>
+        )}
+      </Pressable>
+      {tried ? (
+        <Text selectable style={{ color: colors.muted, fontSize: 12, lineHeight: 19, marginTop: 8, textAlign: "center" }}>
+          {tried}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -914,10 +1008,23 @@ function TimeField({
  */
 function VerifyEmail({ verified, hasEmail }: { verified: boolean; hasEmail: boolean }) {
   const [said, setSaid] = useState<string | null>(null);
+  const refresh = useSession((state) => state.refresh);
 
+  /*
+    «أرسلنا» لا تُقال إلا حين أُرسل شيء. الخادم يردّ `already` حين يكون
+    البريد مؤكَّداً أصلاً ولا يرسل — وكانت الشاشة تقول «أرسلنا» في الحالين،
+    فينتظر صاحبُها رسالةً لن تأتي. فتُحدَّث الجلسة ويظهر «مؤكَّد».
+  */
   const send = useMutation({
-    mutationFn: () => api("/v1/me/verify/send", { method: "POST" }),
-    onSuccess: () => setSaid("أرسلنا رابط التأكيد إلى بريدك"),
+    mutationFn: () => api<{ already?: boolean }>("/v1/me/verify/send", { method: "POST" }),
+    onSuccess: async (row) => {
+      if (row?.already) {
+        setSaid("بريدك مؤكَّد أصلاً");
+        await refresh();
+        return;
+      }
+      setSaid("أرسلنا رابط التأكيد إلى بريدك — وإن لم تجده فانظر في البريد غير المرغوب");
+    },
     onError: (problem) =>
       setSaid(problem instanceof Error ? problem.message : "تعذّر الإرسال"),
   });

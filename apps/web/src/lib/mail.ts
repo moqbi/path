@@ -86,6 +86,20 @@ export async function sendMail(letter: Letter): Promise<boolean> {
 }
 
 /**
+ * يهرّب ما كتبه غيرُنا قبل أن يدخل قالب الرسالة. الاسمُ يكتبه الزائر عند
+ * التسجيل والرسالةُ تخرج إلى عنوانٍ يكتبه هو أيضاً — فاسمٌ فيه وسومٌ كان
+ * يجعل بابَ التسجيل يرسل صفحةً من صنعه بتوقيعنا إلى من شاء.
+ */
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
  * قالبُ الرسالة: شعارٌ على شريطٍ داكن، ثمّ ورقةٌ فيها العنوان والمتن
  * وزرٌّ واحد، ثمّ الرابط نصّاً وذيلٌ صغير.
  *
@@ -125,21 +139,21 @@ export function letterHtml({
         </td></tr>
 
         <tr><td style="background:#FDFCF8;padding:28px 24px;font-family:Tahoma,Arial,sans-serif;" dir="rtl">
-          <h1 style="margin:0 0 12px;color:#14212b;font-size:19px;">${title}</h1>
+          <h1 style="margin:0 0 12px;color:#14212b;font-size:19px;">${escapeHtml(title)}</h1>
           <p style="margin:0 0 20px;color:#4a5560;font-size:14px;line-height:26px;">${intro}</p>
 
           <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 20px;">
             <tr><td align="center" style="border-radius:12px;background:#F6B93B;">
-              <a href="${url}" style="display:block;padding:14px 34px;color:#14212b;font-size:15px;font-weight:bold;text-decoration:none;">${button}</a>
+              <a href="${escapeHtml(url)}" style="display:block;padding:14px 34px;color:#14212b;font-size:15px;font-weight:bold;text-decoration:none;">${escapeHtml(button)}</a>
             </td></tr>
           </table>
 
           <p style="margin:0 0 6px;color:#8a9199;font-size:12px;line-height:22px;">أو انسخ هذا الرابط في متصفّحك:</p>
           <p style="margin:0 0 20px;word-break:break-all;" dir="ltr">
-            <a href="${url}" style="color:#B07A16;font-size:12px;">${url}</a>
+            <a href="${escapeHtml(url)}" style="color:#B07A16;font-size:12px;">${url}</a>
           </p>
 
-          <p style="margin:0;color:#8a9199;font-size:12px;line-height:22px;border-top:1px solid #EFE9DC;padding-top:16px;">${note}</p>
+          <p style="margin:0;color:#8a9199;font-size:12px;line-height:22px;border-top:1px solid #EFE9DC;padding-top:16px;">${escapeHtml(note)}</p>
         </td></tr>
 
         <tr><td align="center" style="background:#0E1A24;padding:14px 20px;font-family:Tahoma,Arial,sans-serif;">

@@ -63,10 +63,49 @@ export async function storeUpload(
   height: number,
   allowAnimated = false,
 ) {
-  const mime = baseMime(file.type);
-  if (!ALLOWED.has(mime)) throw new Error("يُقبل JPEG أو PNG أو WebP فقط");
+  if (!ALLOWED.has(baseMime(file.type))) throw new Error("يُقبل JPEG أو PNG أو WebP فقط");
   const bytes = new Uint8Array(await file.arrayBuffer());
+  /*
+    والنوعُ يُؤخذ من البايتات لا من `type`: ذاك يكتبه المرسل، فملفُّ HTML
+    يُرفع بـ«image/png» ويُقدَّم بها — والصيغةُ الحقيقية هي ما يُحفظ.
+  */
+  const mime = sniffImage(bytes);
+  if (!mime || !ALLOWED.has(mime)) throw new Error("يُقبل JPEG أو PNG أو WebP فقط");
   return keep(ownerId, mime, bytes, width, height, allowAnimated);
+}
+
+/** لقطةُ «من داخل التطبيق»: صورةُ هاتفٍ كاملة، متحرّكةً أو ساكنة. */
+const MAX_SHOT_BYTES = 8_000_000;
+
+/**
+ * لقطةٌ لصفحة الهبوط — من لوحة الموقع وحدها.
+ *
+ * حدودُ صورة العرض المتحرّكة (٣٢٠ بكسلاً، ٣ ميغا) لا تصلح هنا: هذه شاشةُ
+ * هاتفٍ كاملة تُعرض بعرض ٢٢٠، وتسجيلُها المتحرّك يكبر. فثمانيةُ ميغا
+ * لأيّ صيغة، والمتحرّكةُ تُحفظ بملفها بلا ترميزٍ يقتل حركتها.
+ * والصيغةُ من أوّل البايتات لا من `type` الذي يكتبه المتصفّح.
+ */
+export async function storeSiteShot(ownerId: string, file: File | Blob, width: number, height: number) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (bytes.length === 0) throw new Error("الملف فارغ");
+  if (bytes.length > MAX_SHOT_BYTES) throw new Error("اللقطة أكبر من ٨ ميغا");
+  const mime = sniffImage(bytes);
+  if (!mime) throw new Error("يُقبل JPEG أو PNG أو WebP أو GIF");
+  return write(ownerId, mime, bytes, Math.max(1, Math.round(width)), Math.max(1, Math.round(height)));
+}
+
+/** صيغةُ الصورة من توقيعها — أو `null` إن لم تكن صورةً نعرفها. */
+export function sniffImage(bytes: Uint8Array): string | null {
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return "image/png";
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) return "image/gif";
+  if (
+    bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+    bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50
+  ) {
+    return "image/webp";
+  }
+  return null;
 }
 
 /**

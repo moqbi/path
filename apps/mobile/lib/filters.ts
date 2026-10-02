@@ -1,5 +1,5 @@
 /**
- * فلاتر القصة — نفس الستّة التي في الويب، بنفس مفاتيحها وأسمائها.
+ * فلاتر القصة — نفسها التي في الويب، بنفس مفاتيحها وأسمائها.
  *
  * الويب يكتبها `filter` في CSS، ولا CSS في الموبايل. فتُبنى مصفوفةَ ألوان
  * تُمرَّر إلى Skia: وهذه ليست محاكاةً بالتقريب — مصفوفات `saturate`
@@ -83,7 +83,7 @@ const chain = (...matrices: Matrix[]): Matrix =>
   matrices.reduce((left, right) => multiply(right, left), IDENTITY);
 
 /**
- * الستّة كما في `src/components/story-composer.tsx` حرفاً بحرف:
+ * كما في `src/components/story-composer.tsx` حرفاً بحرف:
  * المفتاح والاسم واحدان، والتركيبة ترجمةُ سلسلة CSS نفسها.
  */
 export const FILTERS: { key: string; name: string; matrix: Matrix }[] = [
@@ -98,6 +98,18 @@ export const FILTERS: { key: string; name: string; matrix: Matrix }[] = [
   { key: "vivid", name: "زاهي", matrix: chain(saturate(1.5), contrast(1.1)) },
   // saturate(.75) brightness(1.08) contrast(.92)
   { key: "fade", name: "باهت", matrix: chain(saturate(0.75), brightness(1.08), contrast(0.92)) },
+  // sepia(.6) saturate(1.1) brightness(1.05)
+  { key: "sand", name: "رملي", matrix: chain(sepia(0.6), saturate(1.1), brightness(1.05)) },
+  // hue-rotate(12deg) saturate(1.2) brightness(1.03)
+  { key: "rose", name: "وردي", matrix: chain(hueRotate(12), saturate(1.2), brightness(1.03)) },
+  // contrast(1.2) saturate(.85) sepia(.15)
+  { key: "film", name: "فيلم", matrix: chain(contrast(1.2), saturate(0.85), sepia(0.15)) },
+  // brightness(.9) contrast(1.15) hue-rotate(-8deg) saturate(.9)
+  { key: "night", name: "ليلي", matrix: chain(brightness(0.9), contrast(1.15), hueRotate(-8), saturate(0.9)) },
+  // brightness(1.12) contrast(1.05) saturate(1.15)
+  { key: "noon", name: "ظهيرة", matrix: chain(brightness(1.12), contrast(1.05), saturate(1.15)) },
+  // grayscale(1) contrast(1.35) brightness(.95)
+  { key: "ink", name: "حبر", matrix: chain(grayscale(1), contrast(1.35), brightness(0.95)) },
 ];
 
 export const filterMatrix = (key: string | null | undefined): Matrix =>

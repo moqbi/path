@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { CloseIcon } from "@/components/icons";
+import { BASE } from "@/lib/base";
+import { PHOTO_RATIO } from "@/lib/photo";
 
 /**
  * صورة اللحظة في إطارٍ ثابت.
@@ -12,12 +14,18 @@ import { CloseIcon } from "@/components/icons";
  */
 export function Photo({
   mediaId,
-  height = 200,
+  height,
   rounded = false,
+  x = 50,
+  y = 50,
 }: {
   mediaId: string;
+  /** ارتفاعٌ ثابت؛ وبدونه يأخذ الإطارُ نسبةَ البطاقة (`PHOTO_RATIO`). */
   height?: number;
   rounded?: boolean;
+  /** موضعُ القصّ بالمئة كما ضبطه صاحبُها قبل النشر. */
+  x?: number;
+  y?: number;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -47,9 +55,15 @@ export function Photo({
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={`/api/media/${mediaId}`}
+          src={`${BASE}/api/media/${mediaId}`}
           alt=""
-          style={{ width: "100%", height, display: "block", objectFit: "cover" }}
+          style={{
+            width: "100%",
+            ...(height ? { height } : { aspectRatio: PHOTO_RATIO }),
+            display: "block",
+            objectFit: "cover",
+            objectPosition: `${x}% ${y}%`,
+          }}
         />
       </button>
 
@@ -64,7 +78,7 @@ export function Photo({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={`/api/media/${mediaId}`}
+            src={`${BASE}/api/media/${mediaId}`}
             alt=""
             style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
           />

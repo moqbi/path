@@ -1,6 +1,24 @@
 import { letterHtml, sendMail } from "@/lib/mail";
 
 /**
+ * كلُّ ما كتبه غيرُنا يُهرَّب قبل أن يدخل القالب — الاسمُ والبريدُ مثل المتن.
+ * كان المتنُ وحده يُهرَّب (`<` فقط)، فاسمٌ من الموقع بلا حساب يدخل رسالةً
+ * تخرج من نطاقنا بروابطَ وصورٍ كتبها هو: تصيّدٌ بتوقيعنا.
+ */
+function esc(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function paragraph(value: string): string {
+  return esc(value).replace(/\n/g, "<br>");
+}
+
+/**
  * بريدُ الدعم: خبرٌ إلينا حين تصل رسالة، وردٌّ إلى من لا شاشةَ له.
  *
  * **إلينا**: صندوقُ `SUPPORT_EMAIL` — ولوحةُ التحكّم تبقى مكان الحسم،
@@ -28,7 +46,7 @@ export async function tellSupport(input: {
     text: `${input.from}${input.replyTo ? ` <${input.replyTo}>` : ""}\n\n${input.body}`,
     html: letterHtml({
       title: "رسالة دعم جديدة",
-      intro: `من: ${input.from}${input.replyTo ? ` (${input.replyTo})` : ""}<br><br>${input.body.replace(/</g, "&lt;").replace(/\n/g, "<br>")}`,
+      intro: `من: ${esc(input.from)}${input.replyTo ? ` (${esc(input.replyTo)})` : ""}<br><br>${paragraph(input.body)}`,
       button: "افتح اللوحة",
       url: `${process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? ""}/admin?s=support`,
       note: "الردّ يُكتب من اللوحة، ومنها يصل صاحبَه.",
@@ -48,8 +66,8 @@ export async function mailReply(input: {
     subject: "ردٌّ على رسالتك — آثار مومنتس",
     text: `${input.reply}\n\n— على سؤالك: ${input.question}`,
     html: letterHtml({
-      title: `${input.name ? `أهلاً ${input.name}` : "أهلاً بك"}`,
-      intro: `${input.reply.replace(/</g, "&lt;").replace(/\n/g, "<br>")}<br><br><span style="color:#8a9199">على سؤالك: ${input.question.slice(0, 300).replace(/</g, "&lt;")}</span>`,
+      title: input.name ? `أهلاً ${input.name}` : "أهلاً بك",
+      intro: `${paragraph(input.reply)}<br><br><span style="color:#8a9199">على سؤالك: ${esc(input.question.slice(0, 300))}</span>`,
       button: "افتح آثار",
       url: process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "",
       note: "إن بقي عندك سؤال، اكتب إلينا مرّةً أخرى من صفحة «تواصل معنا».",

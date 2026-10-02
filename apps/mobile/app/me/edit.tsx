@@ -1,13 +1,14 @@
-import { useRef, useState } from "react";
-import { View, Pressable, ScrollView, ActivityIndicator, PanResponder, KeyboardAvoidingView, Platform } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { View, Pressable, ScrollView, ActivityIndicator, PanResponder, KeyboardAvoidingView, Platform, Image } from "react-native";
 import { Text, TextInput } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Picker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { ScreenHeader } from "../../components/screen-header";
-import { CoverLayer } from "../../components/cover";
+import { Sheet } from "../../components/sheet";
+import { COVER_HEIGHT, CoverLayer, coverFrame } from "../../components/cover";
 import { Avatar, type Frame } from "../../components/avatar";
 import { CameraIcon, CheckIcon, CloseIcon } from "../../components/icons";
 import { api } from "../../lib/api";
@@ -18,7 +19,8 @@ import { brandGradient, colors } from "../../theme/tokens";
 import { BIO_MAX } from "@athar/shared";
 import { ar } from "../../lib/format";
 
-const COVER_H = 132;
+// بمقاس الغلاف الحقيقيّ: ما يُضبط هنا هو ما يُرى هناك.
+const COVER_H = COVER_HEIGHT;
 
 /** شرط الصورة المتحركة — نصّ `ANIMATED.rule` في الويب حرفاً بحرف. */
 const ANIMATED_RULE = "GIF أو WebP متحركة · من ١٢٠×١٢٠ إلى ٣٢٠×٣٢٠ · حتى ٣ ميغابايت";
@@ -43,6 +45,13 @@ export default function EditProfile() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [pictureError, setPictureError] = useState<string | null>(null);
+  /*
+    ما دام الغلافُ يُضبط تقف الصفحةُ كلّها: التمريرُ الأصليّ في آبل يأخذ
+    السحبة قبل أن يُسأل الغلاف — فكانت الصفحةُ تتحرّك لا الصورة — وسحبُ
+    الحافّة يُرجع الشاشة إلى ما قبلها. رفضُ الإذن في جافاسكربت لا يوقفهما،
+    فيُطفآن صراحةً.
+  */
+  const [framingCover, setFramingCover] = useState(false);
 
   if (!me) return null;
 
@@ -74,26 +83,29 @@ export default function EditProfile() {
   }
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       <ScreenHeader title="تعديل الملف" back="/me" />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={{ paddingBottom: 40, direction: "rtl" }} keyboardShouldPersistTaps="handled">
-          <Text style={{ color: colors.muted, fontSize: 11.5, paddingHorizontal: 20, paddingTop: 14, textAlign: "right" }}>
-            الغلاف والصورة وبياناتك في مكانٍ واحد
-          </Text>
-
-          <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600", paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8, textAlign: "right" }}>
-            الغلاف
-          </Text>
-
+        <Stack.Screen options={{ gestureEnabled: !framingCover }} />
+        <ScrollView
+          scrollEnabled={!framingCover}
+          contentContainerStyle={{ paddingBottom: 40, direction: "rtl" }}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/*
+            الغلافُ ملاصقٌ للرأس بلا سطرين فوقه: «الغلاف والصورة وبياناتك في
+            مكانٍ واحد» ثمّ «الغلاف» كانا يفصلانه عن الرأس بشريطٍ من الورق
+            يُقرأ تشوّهاً — والغلافُ يقول نفسه.
+          */}
           <CoverEditor
             mediaId={me.coverMediaId}
             spec={me.background?.spec ?? null}
-            initialY={me.coverY}
+            initial={{ x: me.coverX ?? 50, y: me.coverY, zoom: me.coverZoom ?? 100 }}
+            onAdjusting={setFramingCover}
             onChanged={async () => {
               await refresh();
               await client.invalidateQueries({ queryKey: keys.me });
@@ -258,42 +270,127 @@ function Field({
 /**
  * الغلاف وأزراره: تغييره، وضبط موضعه، وإزالته.
  *
- * وضع الضبط يسحب الصورة عمودياً فيتحرّك موضعها داخل الإطار، ويُحفظ
- * الموضع نسبةً مئوية — والملف لا يُقصّ: الصورة تبقى كما رُفعت، وما
- * يُحفظ هو أيّ جزءٍ منها يُرى. والسحب ١٪ لكل بكسلين كما في الويب.
+ * **والضبطُ في كل اتجاه وبالتقريب**: إصبعٌ يسحب الصورة يميناً ويساراً
+ * وأعلى وأسفل، وإصبعان يقرّبانها ويبعّدانها. كان رأسيّاً وحده.
+ *
+ * والسحبُ **يتبع الإصبع بالبكسل**: المسافةُ التي يقطعها الموضع من صفرٍ
+ * إلى مئة على الشاشة هي ما يزيد من الصورة المكبَّرة عن إطارها
+ * (`القُرب × عرضها المملوء − عرض الإطار`)، فتُقسم الحركةُ عليها. والملفُّ
+ * لا يُقصّ: يُحفظ أيُّ جزءٍ منه يُرى وبأيّ قُرب.
+ *
+ * والإطارُ بمقاس الغلاف الحقيقيّ (`COVER_HEIGHT`) — كان أقصر فيُضبط غيرُ
+ * ما يُرى.
  */
+type Framing = { x: number; y: number; zoom: number };
+
+const clampTo = (value: number, low: number, high: number) =>
+  Math.min(high, Math.max(low, value));
+
 function CoverEditor({
   mediaId,
   spec,
-  initialY,
+  initial,
   onChanged,
+  onAdjusting,
 }: {
   mediaId: string | null;
   spec: string | null;
-  initialY: number;
+  initial: Framing;
   onChanged: () => Promise<void>;
+  /** الصفحةُ تُطفئ تمريرها وسحبَ حافّتها ما دام الغلافُ يُضبط. */
+  onAdjusting?: (on: boolean) => void;
 }) {
-  const [y, setY] = useState(initialY);
-  const [adjusting, setAdjusting] = useState(false);
+  const [framing, setFraming] = useState<Framing>(initial);
+  const [adjusting, setAdjustingState] = useState(false);
+  const setAdjusting = (on: boolean) => {
+    setAdjustingState(on);
+    onAdjusting?.(on);
+  };
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const start = useRef(initialY);
-  const live = useRef(initialY);
+
+  const live = useRef<Framing>(initial);
+  const start = useRef<Framing>(initial);
+  const pinchFrom = useRef<number | null>(null);
+  const box = useRef({ width: 0, height: COVER_H });
+  const natural = useRef<{ width: number; height: number } | null>(null);
+
+  const apply = (next: Framing) => {
+    live.current = next;
+    setFraming(next);
+  };
+
+  // ما حُفظ هو الأصل: غلافٌ جديد يبدأ من الوسط على الخادم، فيتبعه هنا
+  // — لا يبقى على الشاشة موضعُ صورةٍ ذهبت.
+  useEffect(() => {
+    if (!adjusting) apply(initial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mediaId, initial.x, initial.y, initial.zoom]);
+
+  /** كم بكسلاً يقطع الموضعُ من صفرٍ إلى مئة على الشاشة، في كل محور. */
+  const travel = (zoom: number) => {
+    if (!natural.current || box.current.width === 0) return { x: 0, y: 0 };
+    const filled = coverFrame(box.current, natural.current, 50, 50);
+    const scale = zoom / 100;
+    return {
+      x: Math.max(0, scale * filled.width - box.current.width),
+      y: Math.max(0, scale * filled.height - box.current.height),
+    };
+  };
+
+  const spread = (touches: readonly { pageX: number; pageY: number }[]) =>
+    Math.hypot(touches[0].pageX - touches[1].pageX, touches[0].pageY - touches[1].pageY);
 
   const drag = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
+      // في طور الالتقاط: الإطارُ داخل صفحةٍ تتمرّر، وبلا ذلك تأخذ الصفحةُ
+      // السحبةَ الرأسيّة لنفسها فلا يتحرّك الغلاف إلا أفقياً.
+      onMoveShouldSetPanResponderCapture: () => true,
+      onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: () => {
         start.current = live.current;
+        pinchFrom.current = null;
       },
-      onPanResponderMove: (_event, gesture) => {
-        const next = Math.min(100, Math.max(0, Math.round(start.current - gesture.dy / 2)));
-        live.current = next;
-        setY(next);
+      onPanResponderMove: (event, gesture) => {
+        const touches = event.nativeEvent.touches;
+
+        // إصبعان: تقريبٌ وتبعيد — والموضعُ باقٍ كما هو.
+        if (touches.length >= 2) {
+          const now = spread(touches);
+          if (pinchFrom.current === null) {
+            pinchFrom.current = now;
+            start.current = live.current;
+            return;
+          }
+          const zoom = clampTo(Math.round(start.current.zoom * (now / pinchFrom.current)), 100, 300);
+          apply({ ...live.current, zoom });
+          return;
+        }
+
+        // رفعُ إصبعٍ من اثنين لا يقفز بالصورة: تبدأ السحبةُ من هنا.
+        if (pinchFrom.current !== null) {
+          pinchFrom.current = null;
+          start.current = { ...live.current };
+          return;
+        }
+
+        // إصبعٌ واحد: السحبُ يمنةً يكشف ما على اليسار فينقص `x`، وكذا الرأسيّ.
+        const span = travel(start.current.zoom);
+        apply({
+          zoom: start.current.zoom,
+          x: span.x > 0 ? clampTo(start.current.x - (gesture.dx / span.x) * 100, 0, 100) : start.current.x,
+          y: span.y > 0 ? clampTo(start.current.y - (gesture.dy / span.y) * 100, 0, 100) : start.current.y,
+        });
+      },
+      onPanResponderRelease: () => {
+        pinchFrom.current = null;
       },
     }),
   ).current;
+
+  const nudgeZoom = (by: number) =>
+    apply({ ...live.current, zoom: clampTo(live.current.zoom + by, 100, 300) });
 
   async function pick() {
     setError(null);
@@ -320,10 +417,15 @@ function CoverEditor({
     setAdjusting(false);
     setBusy(true);
     try {
-      await api("/v1/me/cover", { method: "PUT", body: JSON.stringify({ y }) });
+      const { x, y, zoom } = live.current;
+      await api("/v1/me/cover", {
+        method: "PUT",
+        body: JSON.stringify({ x: Math.round(x), y: Math.round(y), zoom: Math.round(zoom) }),
+      });
       await onChanged();
-    } catch {
-      /* الموضع يبقى على الشاشة كما ضبطه صاحبه */
+    } catch (problem) {
+      // الفشلُ يُقال لا يُبتلع: «تمّ» على ما لم يُحفظ هو ما شكاه المالك.
+      setError(problem instanceof Error ? problem.message : "تعذّر حفظ الموضع");
     } finally {
       setBusy(false);
     }
@@ -343,9 +445,22 @@ function CoverEditor({
     <View>
       <View
         style={{ height: COVER_H, overflow: "hidden" }}
+        onLayout={(event) => {
+          box.current = { width: event.nativeEvent.layout.width, height: COVER_H };
+        }}
         {...(adjusting ? drag.panHandlers : {})}
       >
-        <CoverLayer mediaId={mediaId} spec={spec} height={COVER_H} y={y} />
+        <CoverLayer
+          mediaId={mediaId}
+          spec={spec}
+          height={COVER_H}
+          x={framing.x}
+          y={framing.y}
+          zoom={framing.zoom}
+          onNatural={(width, height) => {
+            natural.current = { width, height };
+          }}
+        />
 
         {adjusting ? (
           <>
@@ -354,8 +469,18 @@ function CoverEditor({
               pointerEvents="none"
               style={{ position: "absolute", left: 0, right: 0, top: COVER_H / 2 - 10, textAlign: "center", color: "#fff", fontSize: 12.5, fontWeight: "600" }}
             >
-              اسحب الصورة لأعلى أو لأسفل
+              اسحبها بإصبع، وقرّبها بإصبعين
             </Text>
+
+            {/* القُربُ بزرّين أيضاً: من لا يعرف القرص بإصبعين يجد بابه. */}
+            <View style={{ position: "absolute", top: 12, right: 12, flexDirection: "row", gap: 8 }}>
+              <Chip onPress={() => nudgeZoom(-20)} label="أبعِد" round>
+                <Text style={{ color: "#f7f5ef", fontSize: 17, fontWeight: "700" }}>−</Text>
+              </Chip>
+              <Chip onPress={() => nudgeZoom(20)} label="قرّب" round>
+                <Text style={{ color: "#f7f5ef", fontSize: 17, fontWeight: "700" }}>+</Text>
+              </Chip>
+            </View>
 
             {/* أسفل اليسار: الوسط تحجبه صورة العرض فلا يُضغط. */}
             <View style={{ position: "absolute", bottom: 12, left: 12, flexDirection: "row", gap: 8 }}>
@@ -364,8 +489,7 @@ function CoverEditor({
               </Chip>
               <Chip
                 onPress={() => {
-                  setY(initialY);
-                  live.current = initialY;
+                  apply(initial);
                   setAdjusting(false);
                 }}
               >
@@ -476,6 +600,7 @@ function AvatarEditor({
   onChanged: () => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
+  const [chosen, setChosen] = useState<Picker.ImagePickerAsset | null>(null);
   const setError = onError;
 
   async function pick() {
@@ -485,8 +610,21 @@ function AvatarEditor({
 
     const result = await Picker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.9 });
     if (result.canceled || !result.assets[0]) return;
-    const asset = result.assets[0];
+    // لا رفعَ قبل أن يراها: الاختيارُ يفتح معاينةً فيها «اعتمدها».
+    setChosen(result.assets[0]);
+  }
 
+  /**
+   * صورةُ العرض تُراجَع قبل أن تُعتمد — **بقرار المالك**: وجهُك يراه كلُّ
+   * من في دائرتك، وضغطةٌ في الألبوم على غير المقصود كانت تنشره في الحال.
+   * والمعاينةُ دائرةٌ بمقاسها الحقيقيّ في الملف لا مربّعُ الألبوم، فيُرى
+   * ما سيُقصّ منها. ولا `allowsEditing` من النظام: قصُّه يُسطّح الصورة
+   * المتحرّكة إطاراً واحداً (القاعدة ٨٢).
+   */
+  async function confirm() {
+    const asset = chosen;
+    if (!asset) return;
+    setChosen(null);
     setBusy(true);
     try {
       const uploaded = await uploadFile(asset.uri, asset.mimeType ?? "image/jpeg", "AVATAR", asset);
@@ -533,6 +671,35 @@ function AvatarEditor({
         </Pressable>
       </View>
 
+      {chosen ? (
+        <Sheet title="صورتك الجديدة" onClose={() => setChosen(null)}>
+          <View style={{ alignItems: "center", paddingVertical: 12 }}>
+            <Image
+              source={{ uri: chosen.uri }}
+              style={{ width: 160, height: 160, borderRadius: 80, backgroundColor: colors.chip }}
+              resizeMode="cover"
+            />
+            <Text style={{ color: colors.muted, fontSize: 12, marginTop: 10, textAlign: "center" }}>
+              هكذا تظهر لدائرتك.
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => void confirm()}
+            style={{ height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay, marginTop: 8 }}
+          >
+            <Text style={{ color: colors.onBrand, fontSize: 14, fontWeight: "700" }}>اعتمدها</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              setChosen(null);
+              void pick();
+            }}
+            style={{ height: 46, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.chip, marginTop: 8 }}
+          >
+            <Text style={{ color: colors.ink2, fontSize: 13.5, fontWeight: "600" }}>اختر غيرها</Text>
+          </Pressable>
+        </Sheet>
+      ) : null}
     </View>
   );
 }
