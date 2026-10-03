@@ -7,6 +7,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { playClose, playOpen } from "../lib/sound";
 import { Spot } from "./spot";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { barBottom } from "./glass-bar";
 import { colors } from "../theme/tokens";
 
 /**
@@ -81,6 +83,8 @@ const ART = {
 export const useFan = create<{ open: boolean }>(() => ({ open: false }));
 
 export function ComposerFan() {
+  // فوق الشريط الزجاجيّ العائم لا فوق حافّة الشاشة (القاعدة ٢٢٨).
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const client = useQueryClient();
   const open = useFan((state) => state.open);
@@ -148,7 +152,7 @@ export function ComposerFan() {
       <View
         // الزرّ على اليمين كما في الويب، والأصناف تطير يساراً — وزواياه
         // محسوبةٌ على ذلك (القاعدة ٨).
-        style={{ position: "absolute", right: RIGHT, bottom: 86, width: SIZE, height: SIZE }}
+        style={{ position: "absolute", right: RIGHT, bottom: barBottom(insets.bottom) + 62 + 14, width: SIZE, height: SIZE }}
         pointerEvents="box-none"
       >
         {items.map((item, index) => {

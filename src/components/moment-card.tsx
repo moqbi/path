@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { WithNames } from "@/components/with-names";
 import { Avatar, type Frame } from "@/components/ui";
 import {
   MoonIcon,
@@ -252,9 +253,12 @@ export function EventLine({
   moment,
   withNames,
   href,
+  viewerId,
 }: {
   moment: FeedMoment;
   withNames: string[];
+  /** القارئ: اسمُه في «مع …» يفتح «أنا» لا ملفّه بعين غيره. */
+  viewerId?: string;
   /** وجهة الفتح حين تُفتح اللحظة في صفحتها — على النصّ وحده لا على الصفّ. */
   href?: string;
 }) {
@@ -334,7 +338,11 @@ export function EventLine({
         في{" "}
         {/* اسمُ المكان يفتح الخرائط (القاعدة ٢١١). */}
         {mapsUrl(moment) ? (
-          <PlaceLink url={mapsUrl(moment)!} className="font-bold text-clay-ink hover:underline">
+          <PlaceLink
+            url={mapsUrl(moment)}
+            visitors={moment.author.id === viewerId ? { momentId: moment.id, place: moment.placeName! } : undefined}
+            className="font-bold text-clay-ink hover:underline"
+          >
             {moment.placeName}
           </PlaceLink>
         ) : (
@@ -370,7 +378,7 @@ export function EventLine({
         {withNames.length > 0 && kind !== "GIFT_SENT" && kind !== "GIFT_GOT" && kind !== "FRIEND_ADDED" ? (
           <p className="mt-0.5 flex items-center gap-1.5 text-[11.5px] font-medium text-ink-2">
             <WithIcon size={12} />
-            مع {withNames.join(" و")}
+            <WithNames people={moment.tags.map((t) => t.user)} viewerId={viewerId} />
           </p>
         ) : null}
       </div>
@@ -454,6 +462,7 @@ export function MomentCard({
       <EventLine
         moment={moment}
         withNames={withNames}
+        viewerId={viewerId}
         href={opens ? `/m/${moment.id}` : undefined}
       />
     );
@@ -510,7 +519,8 @@ export function MomentCard({
         {moment.placeName ? (
           <p dir="auto" className="mb-2 text-[12px]">
             <PlaceLink
-              url={mapsUrl(moment)!}
+              url={mapsUrl(moment)}
+              visitors={moment.author.id === viewerId ? { momentId: moment.id, place: moment.placeName } : undefined}
               className="flex items-center gap-1.5 font-semibold text-clay-ink hover:underline"
             >
               <PinIcon size={12} />
@@ -522,7 +532,7 @@ export function MomentCard({
         {withNames.length > 0 ? (
           <p className="flex items-center gap-1.5 text-[12px] text-muted">
             <WithIcon size={13} />
-            مع {withNames.join(" و")}
+            <WithNames people={moment.tags.map((t) => t.user)} viewerId={viewerId} />
           </p>
         ) : null}
       </div>

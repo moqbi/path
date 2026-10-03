@@ -1,4 +1,5 @@
 import { BlockIcon, MessageIcon, UserMinusIcon } from "../../components/icons";
+import { useBarSpace } from "../../components/glass-bar";
 import { scrolled } from "../../lib/scrolled";
 import { useCallback, useState } from "react";
 import { View, FlatList, Pressable, ScrollView, ActivityIndicator, RefreshControl } from "react-native";
@@ -46,6 +47,8 @@ const onlineNow = (lastSeenAt: string | null) =>
   Boolean(lastSeenAt) && Date.now() - new Date(lastSeenAt as string).getTime() < 3 * 60_000;
 
 export default function Circle() {
+  // المحتوى يمرّ تحت الشريط الزجاجيّ، وآخرُه يُقرأ فوقه (القاعدة ٢٢٨).
+  const barSpace = useBarSpace();
   const [tab, setTab] = useState<Tab>("friends");
   /* التصنيفُ المختار في «تصنيفاتي» — الفراغُ يعني «الكل». */
   const [groupFilter, setGroupFilter] = useState("");
@@ -159,7 +162,7 @@ export default function Circle() {
         }
         keyExtractor={(item) => item.id}
         scrollEnabled={!swiping}
-        contentContainerStyle={{ paddingBottom: 24, flexGrow: 1 }}
+        contentContainerStyle={{ paddingBottom: barSpace + 8, flexGrow: 1 }}
         refreshControl={
           <RefreshControl
             {...pullRefresh}

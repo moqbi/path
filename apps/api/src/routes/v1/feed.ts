@@ -14,6 +14,7 @@ import { requireActive, requireAuth, me } from "../../middleware/auth";
 import { rateLimitUser } from "../../middleware/rate-limit";
 import * as feed from "../../services/feed";
 import * as moments from "../../services/moments";
+import { placeVisitors } from "../../services/place-visitors";
 
 const byId = z.object({ id: cuid });
 
@@ -74,6 +75,11 @@ export const momentRoutes = new Hono()
 
   .get("/:id/audience", zValidator("param", byId), async (c) =>
     c.json(await moments.audience(me(c), c.req.valid("param").id)),
+  )
+
+  /** «من كان هنا» لصاحب لحظة المكان (القاعدة ٢٣٠): أصدقاؤه، وعددُ غيرهم. */
+  .get("/:id/visitors", zValidator("param", byId), async (c) =>
+    c.json(await placeVisitors(me(c), c.req.valid("param").id)),
   )
 
   .post(

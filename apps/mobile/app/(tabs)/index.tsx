@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
+import { useBarSpace } from "../../components/glass-bar";
 import { scrolled } from "../../lib/scrolled";
 import { markSeen } from "../../lib/seen";
 import { View, SectionList, ActivityIndicator, Pressable, Animated, Easing, PanResponder } from "react-native";
@@ -9,7 +10,7 @@ import { MomentCard, SPINE_W } from "../../components/moment-card";
 import { COVER_HEIGHT, CoverLayer } from "../../components/cover";
 import { Avatar } from "../../components/avatar";
 import { AthrMark } from "../../components/brand";
-import { ClockIcon, MessageIcon, RefreshIcon, SparkIcon, StarIcon } from "../../components/icons";
+import { ClockIcon, RefreshIcon, SparkIcon, StarIcon } from "../../components/icons";
 import { ComposerFan } from "../../components/composer-fan";
 import { Spot } from "../../components/spot";
 import { PlusEnded } from "../../components/plus-ended";
@@ -35,6 +36,8 @@ const PULL_TRIP = 62;
  * وحدها تمرّ تحته.
  */
 export default function Timeline() {
+  // المحتوى يمرّ تحت الشريط الزجاجيّ، وآخرُه يُقرأ فوقه (القاعدة ٢٢٨).
+  const barSpace = useBarSpace();
   const me = useSession((s) => s.me);
   const router = useRouter();
   // حشوةُ الحافّة العليا في الرأس الداكن نفسه — انظر `components/screen-header.tsx`.
@@ -52,7 +55,6 @@ export default function Timeline() {
   const together = useTogether(withId);
   const circle = useCircle();
   const unread = useUnreadDm();
-  const unreadCount = unread.data?.unread ?? 0;
   // العودةُ من محادثةٍ قُرئت تُعيد العدّ: الخطّ الزمنيّ لا يُفكّ من الشجرة.
   const recount = unread.refetch;
   useFocusEffect(
@@ -263,38 +265,6 @@ export default function Timeline() {
           </Pressable>
           </Spot>
 
-          <Spot id="header.chats">
-          <Pressable
-            onPress={() => router.push("/messages" as never)}
-            accessibilityLabel="المحادثات"
-            style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
-          >
-            <MessageIcon size={21} color={colors.chromeInk} />
-            {/* عددُ الرسائل التي لم تُقرأ — لا نقطةٌ صمّاء: الرقم يقول كم ينتظر. */}
-            {unreadCount > 0 ? (
-              <View
-                style={{
-                  position: "absolute",
-                  top: 2,
-                  right: 0,
-                  minWidth: 18,
-                  height: 18,
-                  paddingHorizontal: 4,
-                  borderRadius: 9,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: colors.live,
-                  borderWidth: 1.5,
-                  borderColor: colors.chrome,
-                }}
-              >
-                <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700", lineHeight: 13 }}>
-                  {unreadCount > 99 ? "+٩٩" : ar(unreadCount)}
-                </Text>
-              </View>
-            ) : null}
-          </Pressable>
-          </Spot>
         </View>
       </View>
 
@@ -475,7 +445,7 @@ export default function Timeline() {
           onScrollEndDrag={hideClock}
           onMomentumScrollBegin={showClock}
           onMomentumScrollEnd={hideClock}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 90, flexGrow: 1 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: barSpace + 70, flexGrow: 1 }}
           style={{ backgroundColor: colors.ground }}
           // موضعُ رأس القائمة وحده هو ما يأذن للسحب أن يلتقط الإيماءة.
           scrollEventThrottle={16}

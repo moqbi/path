@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useBarSpace } from "../../components/glass-bar";
 import { scrolled } from "../../lib/scrolled";
 import { Alert } from "react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -114,6 +115,8 @@ function KindBadge({ note }: { note: Note }) {
  * ودائرةُ النوع تُستثنى من مقعد التميمة (القاعدة ٤٧): ركنُها مشغول.
  */
 export default function Notifications() {
+  // المحتوى يمرّ تحت الشريط الزجاجيّ، وآخرُه يُقرأ فوقه (القاعدة ٢٢٨).
+  const barSpace = useBarSpace();
   const notes = useNotes();
   const pullRefresh = usePullRefresh(notes.refetch);
   const router = useRouter();
@@ -220,7 +223,7 @@ export default function Notifications() {
         keyExtractor={(item) => item.id}
         stickySectionHeadersEnabled={false}
         scrollEnabled={!swiping}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 90, flexGrow: 1 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: barSpace + 8, flexGrow: 1 }}
         refreshControl={
           <RefreshControl
             {...pullRefresh}

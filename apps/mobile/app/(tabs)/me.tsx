@@ -1,4 +1,5 @@
 import { SITE_URL, hasSite } from "@athar/shared";
+import { useBarSpace } from "../../components/glass-bar";
 import { scrolled } from "../../lib/scrolled";
 import { useMemo, useRef, useState } from "react";
 import { View, SectionList, Pressable, ActivityIndicator, Alert, Share, Animated, RefreshControl } from "react-native";
@@ -100,6 +101,8 @@ function Action({
  * تحته على الخيط نفسه الذي في «اللحظات».
  */
 export default function Me() {
+  // المحتوى يمرّ تحت الشريط الزجاجيّ، وآخرُه يُقرأ فوقه (القاعدة ٢٢٨).
+  const barSpace = useBarSpace();
   const { me, signOut } = useSession();
   const router = useRouter();
   // حشوةُ الحافّة العليا في الرأس الداكن نفسه — انظر `components/screen-header.tsx`.
@@ -209,7 +212,7 @@ export default function Me() {
         sections={days}
         keyExtractor={(item) => item.id}
         stickySectionHeadersEnabled={false}
-        contentContainerStyle={{ paddingBottom: 30 }}
+        contentContainerStyle={{ paddingBottom: barSpace + 8 }}
         onScroll={onScroll}
         onScrollBeginDrag={scrolled}
         scrollEventThrottle={16}

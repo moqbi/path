@@ -12,6 +12,7 @@ import { AuthorFaces, Bubble, CommentList, Reactors } from "./reactors";
 import { colors } from "../theme/tokens";
 import { openIn } from "../lib/browse";
 import { openMaps } from "../lib/maps";
+import { showVisitors } from "./place-visitors";
 import { ar, relative, timeOfDay } from "../lib/format";
 import { useCircle, type Moment } from "../lib/queries";
 
@@ -159,6 +160,27 @@ export function MomentCard({
   const router = useRouter();
   const circle = useCircle();
   const withNames = moment.tags.map((t) => t.name);
+  /*
+    «مع فلان» أسماءٌ تُضغط كـ«أصبح صديق فلان» (القاعدة ٢٢٩): كلُّ اسمٍ إلى
+    ملفّه، واسمُك إلى «أنا». والضغطةُ على الاسم لا تفتح اللحظة تحته.
+  */
+  const withLinks = (
+    <>
+      {"مع "}
+      {moment.tags.map((person, index) => (
+        <Text key={person.id}>
+          {index > 0 ? " و" : ""}
+          <Text
+            accessibilityRole="link"
+            onPress={() => router.push((person.id === viewerId ? "/me" : `/u/${person.id}`) as never)}
+            style={{ color: colors.clayInk, fontWeight: "700" }}
+          >
+            {person.name}
+          </Text>
+        </Text>
+      ))}
+    </>
+  );
   const open = () => {
     if (!here) router.push(`/m/${moment.id}` as never);
   };
@@ -259,7 +281,7 @@ export function MomentCard({
                 {"في "}
                 <Text
                   accessibilityRole="link"
-                  onPress={() => void openMaps(moment)}
+                  onPress={() => (moment.author.id === viewerId ? showVisitors(moment) : void openMaps(moment))}
                   style={{ color: colors.clayInk, fontWeight: "700" }}
                 >
                   {moment.placeName}
@@ -281,7 +303,7 @@ export function MomentCard({
             <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 }}>
               <WithIcon size={12} color={colors.ink2} />
               <Text style={{ color: colors.ink2, fontSize: 11.5, fontWeight: "500" }}>
-                مع {withNames.join(" و")}
+                {withLinks}
               </Text>
             </View>
           ) : null}
@@ -419,8 +441,10 @@ export function MomentCard({
         {moment.placeName ? (
           <Pressable
             accessibilityRole="link"
-            accessibilityLabel={`افتح ${moment.placeName} في الخرائط`}
-            onPress={() => void openMaps(moment)}
+            accessibilityLabel={
+              moment.author.id === viewerId ? `من كان في ${moment.placeName}` : `افتح ${moment.placeName} في الخرائط`
+            }
+            onPress={() => (moment.author.id === viewerId ? showVisitors(moment) : void openMaps(moment))}
             hitSlop={6}
             style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 8, alignSelf: "flex-start" }}
           >
@@ -432,7 +456,7 @@ export function MomentCard({
         {withNames.length > 0 ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
             <WithIcon size={13} color={colors.muted} />
-            <Text style={{ color: colors.muted, fontSize: 12 }}>مع {withNames.join(" و")}</Text>
+            <Text style={{ color: colors.muted, fontSize: 12 }}>{withLinks}</Text>
           </View>
         ) : null}
       </Pressable>

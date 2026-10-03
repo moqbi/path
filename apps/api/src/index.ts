@@ -68,7 +68,8 @@ app.use(
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     // ومعرّفُ الجهاز (القاعدة ١٩٤): بدونه يردّ المتصفّح كلَّ طلبٍ من معاينة
     // الويب في الفحص المبدئي — الجوّالُ الأصليّ لا يمرّ بـCORS فلا يُرى فيه.
-    allowHeaders: ["Authorization", "Content-Type", "X-Device-Id"],
+    // ودرجةُ أنواع اللحظات (القاعدة ٢٢٦) كذلك.
+    allowHeaders: ["Authorization", "Content-Type", "X-Device-Id", "X-Moment-Kinds"],
     maxAge: 600,
     credentials: false,
   }),

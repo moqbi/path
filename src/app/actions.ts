@@ -20,6 +20,7 @@ import {
 import { assertRoomForBoth, canChat, circleIds } from "@/lib/circle";
 import { STORY_HOURS, STORY_SECONDS, storyVisibleTo } from "@/lib/stories";
 import { blockedWith, canInteract, canSeeMoment, visibleAuthors } from "@/lib/visibility";
+import { placeVisitors, type VisitorsView } from "@/lib/place-visitors";
 import { reverseGeocode } from "@/lib/places";
 import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
 import { consume, sendReset, sendVerify } from "@/lib/email-tokens";
@@ -1466,6 +1467,12 @@ export async function momentAudience(momentId: string): Promise<AudienceView | {
       ...views.filter((v) => !reacted.has(v.user.id)).map((v) => ({ user: v.user, reaction: null })),
     ],
   };
+}
+
+/** «من كان هنا» لصاحب لحظة المكان (القاعدة ٢٣٠) — ولغيره «غير موجودة». */
+export async function momentVisitors(momentId: string): Promise<VisitorsView | { error: string }> {
+  const user = await requireUser();
+  return (await placeVisitors(user.id, momentId)) ?? { error: "اللحظة غير موجودة" };
 }
 
 /** قفلُ التعليقات وفتحُها — لصاحب اللحظة وحده. */

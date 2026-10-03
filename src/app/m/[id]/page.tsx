@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { WithNames } from "@/components/with-names";
 import { currentUser } from "@/lib/auth";
 import { circleIds } from "@/lib/circle";
 import { momentById } from "@/lib/feed";
@@ -82,7 +83,7 @@ export default async function MomentPage({
 
             {/* الحدث سطرُه كما في الخط الزمني — بأيقونته وصورة أغنيته. */}
             {EVENTS.has(moment.kind) ? (
-              <EventLine moment={moment} withNames={withNames} />
+              <EventLine moment={moment} withNames={withNames} viewerId={user.id} />
             ) : (
               <>
                 {moment.mediaId ? (
@@ -106,7 +107,8 @@ export default async function MomentPage({
                   <p dir="auto" className="mt-2 text-[12.5px]">
                     {/* يفتح الخرائط (القاعدة ٢١١). */}
                     <PlaceLink
-                      url={mapsUrl(moment)!}
+                      url={mapsUrl(moment)}
+                      visitors={moment.author.id === user.id ? { momentId: moment.id, place: moment.placeName } : undefined}
                       className="flex items-center gap-1.5 font-semibold text-clay-ink hover:underline"
                     >
                       <PinIcon size={13} />
@@ -116,7 +118,7 @@ export default async function MomentPage({
                 ) : null}
 
                 {withNames.length > 0 ? (
-                  <p className="mt-2 text-[12.5px] text-muted">مع {withNames.join(" و")}</p>
+                  <p className="mt-2 text-[12.5px] text-muted"><WithNames people={moment.tags.map((t) => t.user)} viewerId={user.id} /></p>
                 ) : null}
               </>
             )}
