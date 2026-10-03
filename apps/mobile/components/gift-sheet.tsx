@@ -22,11 +22,14 @@ export function GiftButton({
   friendName,
   friendIsPlus,
   friendOwned,
+  grow,
 }: {
   friendId: string;
   friendName: string;
   friendIsPlus: boolean;
   friendOwned: string[];
+  /** يملأ مكانه في صفّ أزرار الملف بمقاس أزرار «أنا». */
+  grow?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -34,10 +37,22 @@ export function GiftButton({
     <>
       <Pressable
         onPress={() => setOpen(true)}
-        style={{ flexDirection: "row", alignItems: "center", gap: 6, height: 42, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          height: grow ? 46 : 42,
+          flexGrow: grow ? 1 : 0,
+          paddingHorizontal: 14,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: colors.line,
+          backgroundColor: colors.card,
+        }}
       >
         <GiftIcon size={16} color={colors.ink2} />
-        <Text style={{ color: colors.ink2, fontSize: 13, fontWeight: "600" }}>إهداء</Text>
+        <Text style={{ color: grow ? colors.ink : colors.ink2, fontSize: grow ? 13.5 : 13, fontWeight: "600" }}>إهداء</Text>
       </Pressable>
 
       {open ? (

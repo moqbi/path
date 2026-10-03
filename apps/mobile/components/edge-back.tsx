@@ -3,7 +3,7 @@ import { Animated, Easing, PanResponder, useWindowDimensions } from "react-nativ
 import { useRouter } from "expo-router";
 
 /** عرضُ الحافّة التي تبدأ منها السحبة — ما بدأ من الوسط يخصّ ما تحته. */
-const EDGE = 28;
+const EDGE = 36;
 
 /**
  * السحبُ من الحافّة رجوعٌ (القاعدة ٧٨، والقاعدة ٢١٧ على الجوّال).
@@ -33,7 +33,12 @@ export function EdgeBack({ fallback, children }: { fallback: string; children: R
     PanResponder.create({
       onMoveShouldSetPanResponderCapture: (event, gesture) => {
         const w = sizes.current.width;
-        const x0 = gesture.x0;
+        /*
+          موضعُ البداية = الموضعُ الآن ناقصَ ما قُطع. لا `gesture.x0`: ذاك لا يُملأ
+          إلا بعد أن يُمنح المستجيب، فهو هنا صفرٌ أو بقيّةُ السحبة السابقة — فكان
+          فحصُ الحافّة يقرأ ما لا معنى له، والرجوعُ لا يعمل من الحافّتين.
+        */
+        const x0 = gesture.moveX - gesture.dx;
         const side = x0 >= w - EDGE ? "right" : x0 <= EDGE ? "left" : null;
         if (!side) return false;
         const inward = side === "right" ? gesture.dx < -8 : gesture.dx > 8;
