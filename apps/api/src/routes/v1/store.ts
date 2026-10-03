@@ -1,3 +1,4 @@
+import { giftPlans, intent } from "../../services/plus-gift";
 import { Hono } from "hono";
 import { z } from "zod";
 import { cuid } from "@athar/shared";
@@ -72,4 +73,16 @@ export const plusRoutes = new Hono()
     async (c) => c.json(await store.subscribe(me(c), c.req.valid("json").plan)),
   )
 
-  .delete("/", async (c) => c.json(await store.cancelPlus(me(c))));
+  .delete("/", async (c) => c.json(await store.cancelPlus(me(c))))
+
+  // إهداءُ آثار+ لصديق (القاعدة ٢٣٤): المُدَدُ المتاحة، ثمّ الطلبُ المعلّق قبل نافذة الشراء.
+  .get("/gift", (c) => c.json({ plans: giftPlans() }))
+
+  .post(
+    "/gift",
+    zValidator("json", z.object({ to: z.string().min(1).max(40), plan: z.enum(["month", "year"]) })),
+    async (c) => {
+      const { to, plan } = c.req.valid("json");
+      return c.json(await intent(me(c), to, plan));
+    },
+  );

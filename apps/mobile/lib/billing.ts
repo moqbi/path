@@ -182,7 +182,8 @@ export async function buyCoins(sku: string): Promise<{ bought: boolean; cancelle
   const purchases = await load();
   if (!purchases) return { bought: false, cancelled: false };
 
-  const products = await purchases.getProducts([sku]);
+  // أندرويد يجلب الاشتراكات افتراضاً، والباقةُ والهديةُ منتجان يُستهلكان؛ وآبل تتجاهل النوع.
+  const products = await purchases.getProducts([sku], "NON_SUBSCRIPTION" as never);
   const product = products.find((one) => one.identifier === sku) ?? products[0];
   if (!product) return { bought: false, cancelled: false };
 
@@ -194,6 +195,20 @@ export async function buyCoins(sku: string): Promise<{ bought: boolean; cancelle
     if (cancelled) return { bought: false, cancelled: true };
     throw problem;
   }
+}
+
+/**
+ * إهداءُ آثار+ (القاعدة ٢٣٤): منتجٌ يُستهلك كباقة النقاط، والخادمُ يُتمّ الهديةَ
+ * حين يصله الحدث — فما يردّه هذا «تمّ الشراء» لا «وصلت الهدية».
+ */
+export const buyGift = buyCoins;
+
+/** أسعارُ منتجاتٍ بعينها كما يقولها المتجر — ما لا يجده المتجرُ لا يُعرض. */
+export async function prices(skus: string[]): Promise<Record<string, string>> {
+  const purchases = await load();
+  if (!purchases || skus.length === 0) return {};
+  const products = await purchases.getProducts(skus, "NON_SUBSCRIPTION" as never).catch(() => []);
+  return Object.fromEntries(products.map((one) => [one.identifier, one.priceString]));
 }
 
 /**

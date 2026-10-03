@@ -14,13 +14,23 @@ const EDGE = 36;
  * تعوّد اللاتينية) وتمضي إلى الداخل، فتتبع الشاشةُ الإصبع؛ وما تجاوز ثلثَ
  * العرض أو أُفلت بسرعةٍ رجع، وإلّا عادت الشاشة مكانها.
  */
-export function EdgeBack({ fallback, children }: { fallback: string; children: React.ReactNode }) {
+export function EdgeBack({
+  fallback,
+  enabled = true,
+  children,
+}: {
+  fallback: string;
+  /** يُطفأ دون أن تُفكّ الشاشة: «آثارنا» عدسةٌ في تبويب اللحظات تتبدّل ولا تُغلق. */
+  enabled?: boolean;
+  children: React.ReactNode;
+}) {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const shift = useRef(new Animated.Value(0)).current;
   const from = useRef<"right" | "left" | null>(null);
-  const sizes = useRef({ width });
+  const sizes = useRef({ width, enabled });
   sizes.current.width = width;
+  sizes.current.enabled = enabled;
 
   const back = () => {
     if (router.canGoBack()) router.back();
@@ -32,6 +42,7 @@ export function EdgeBack({ fallback, children }: { fallback: string; children: R
   const pan = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponderCapture: (event, gesture) => {
+        if (!sizes.current.enabled) return false;
         const w = sizes.current.width;
         /*
           موضعُ البداية = الموضعُ الآن ناقصَ ما قُطع. لا `gesture.x0`: ذاك لا يُملأ

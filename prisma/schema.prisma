@@ -236,6 +236,8 @@ model User {
   tags           MomentTag[]
   purchases      Purchase[]
   giftsGiven     Purchase[]      @relation("GiftGiver")
+  plusGiftsSent  PlusGift[]      @relation("PlusGiftGiver")
+  plusGiftsGot   PlusGift[]      @relation("PlusGiftRecipient")
   topUps         CoinTopUp[]
 
   media          Media[]        @relation("MediaOwner")
@@ -1264,4 +1266,28 @@ model CoinGrant {
 
   @@index([userId, createdAt])
   @@index([pushedAt])
+}
+
+/// إهداءُ آثار+ لصديق بمالٍ حقيقيّ من المتجر (القاعدة ٢٣٤).
+/// يُكتب «معلّقاً» قبل نافذة الشراء — فحدثُ RevenueCat لا يحمل لمن الهدية —
+/// ويُتمّه الحدثُ نفسه فيُمدَّد اشتراكُ المُهدى إليه. والتطبيقُ لا يُتمّه بقوله.
+model PlusGift {
+  id          String    @id @default(cuid())
+  giverId     String
+  recipientId String
+  /// "month" أو "year".
+  plan        String
+  days        Int
+  /// PENDING حتى يصل حدثُ الشراء، ثمّ DONE.
+  status      String    @default("PENDING")
+  /// معرّف حدث RevenueCat — فريدٌ فلا تُمنح الهديةُ مرّتين.
+  eventId     String?   @unique
+  createdAt   DateTime  @default(now())
+  doneAt      DateTime?
+
+  giver     User @relation("PlusGiftGiver", fields: [giverId], references: [id], onDelete: Cascade)
+  recipient User @relation("PlusGiftRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([giverId, status, createdAt])
+  @@index([recipientId, status, doneAt])
 }

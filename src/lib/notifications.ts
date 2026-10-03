@@ -54,7 +54,7 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
 
   const person = { select: { id: true, name: true, avatarMediaId: true } };
 
-  const [reactions, comments, tags, friendships, messages, gifts, fresh, grants] = await Promise.all([
+  const [reactions, comments, tags, friendships, messages, gifts, fresh, grants, plusGifts] = await Promise.all([
     prisma.reaction.findMany({
       where: { moment: { authorId: userId }, userId: { not: userId } },
       select: {
@@ -166,6 +166,13 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
       orderBy: { createdAt: "desc" },
       take: 10,
     }),
+    // إهداءُ آثار+ (القاعدة ٢٣٤) — يُشتقّ من الصفّ المكتمل كبقيّة الهدايا.
+    prisma.plusGift.findMany({
+      where: { recipientId: userId, status: "DONE" },
+      select: { id: true, plan: true, doneAt: true, createdAt: true, giver: person },
+      orderBy: { doneAt: "desc" },
+      take: limit,
+    }),
   ]);
 
   const notes: Note[] = [
@@ -230,6 +237,14 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
           ]
         : [],
     ),
+    ...plusGifts.map((row) => ({
+      id: `p-${row.id}`,
+      kind: "GIFT" as const,
+      at: row.doneAt ?? row.createdAt,
+      text: `${row.giver.name} أهداك ${row.plan === "year" ? "آثار+ سنة" : "آثار+ شهر"}`,
+      href: "me",
+      person: row.giver,
+    })),
     ...fresh.map((row) => ({
       id: `s-${row.id}`,
       kind: "STORE" as const,

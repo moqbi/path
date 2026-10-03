@@ -1,5 +1,6 @@
 import { prisma } from "@athar/db";
 import { endPlus } from "./plus";
+import { completeGift, giftPlanOfSku } from "./plus-gift";
 import { PLUS_COINS, PLUS_ENTITLEMENT } from "@athar/shared";
 import { env } from "../env";
 
@@ -105,7 +106,11 @@ export async function applyEvent(event: RevenueCatEvent): Promise<{ ok: string }
     وبلا `expiration_at_ms` — فلو مرّت على ما تحت لقُرئت «اشتراكٌ منتهٍ»
     فأُوقف آثار+ لمن اشترى نقاط.
   */
-  if (type === "NON_RENEWING_PURCHASE") return topUp(event, userId);
+  if (type === "NON_RENEWING_PURCHASE") {
+    // إهداءُ آثار+ منتجٌ يُستهلك كالنقاط، ويُعرف بمعرّفه (القاعدة ٢٣٤).
+    const gift = giftPlanOfSku(event.product_id);
+    return gift ? completeGift(event, userId, gift) : topUp(event, userId);
+  }
 
   // استحقاقٌ آخر لا يعنينا (لو أُضيف غير «plus» يوماً).
   const ids = event.entitlement_ids ?? [];
