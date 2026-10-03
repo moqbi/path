@@ -13,6 +13,8 @@ import { Filtered } from "../../components/filtered";
 import { StoryVideo } from "../../components/story-video";
 import { CloseIcon, EyeIcon, LockIcon } from "../../components/icons";
 import { api } from "../../lib/api";
+import { storiesQuery } from "../../lib/story-prefetch";
+import type { StoryRing } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { ar, relative } from "../../lib/format";
 import { colors } from "../../theme/tokens";
@@ -78,8 +80,9 @@ export default function StoryViewer() {
   // الوقفةُ لا تبدأ الشريحة من أوّلها: ما مضى منها يُحفظ ويُستأنف منه.
   const elapsed = useRef(0);
 
+  // من الذاكرة إن جلبها الشريطُ سلفاً — فلا دوّارةَ على أسود (`story-prefetch`).
   const feed = useQuery({
-    queryKey: ["stories", id],
+    ...storiesQuery(id),
     queryFn: () => api<{ stories: Story[] }>(`/v1/stories/user/${id}`),
   });
 
@@ -104,10 +107,33 @@ export default function StoryViewer() {
   });
 
   // إيصال المشاهدة يُرسل مرّةً لكل شريحة تُفتح.
+  const receipts = useRef<Promise<unknown>[]>([]);
+  const seenAll = useRef(false);
   useEffect(() => {
     if (!story) return;
-    void api(`/v1/stories/${story.id}/seen`, { method: "POST" }).catch(() => {});
-  }, [story]);
+    receipts.current.push(api(`/v1/stories/${story.id}/seen`, { method: "POST" }).catch(() => {}));
+    if (index === stories.length - 1) seenAll.current = true;
+  }, [story, index, stories.length]);
+
+  /*
+    الحلقةُ تبهت ساعةَ تُغلق القصّة لا بعد تحديث الصفحة: كانت قائمةُ الحلقات
+    في الذاكرة على حالها، والشاشةُ تحتها لم تُفكّ فلا تُعاد. فمن بلغ آخرَها
+    تُطفأ حلقتُه في الحال، ثمّ تُسأل القائمةُ من الخادم بعد أن تصل الإيصالات —
+    هو الحَكَم إن بقي فيها ما لم يُرَ.
+  */
+  useEffect(
+    () => () => {
+      if (seenAll.current) {
+        client.setQueryData<{ rings: StoryRing[] }>(["stories"], (old) =>
+          old ? { rings: old.rings.map((ring) => (ring.userId === id ? { ...ring, fresh: false } : ring)) } : old,
+        );
+      }
+      void Promise.allSettled(receipts.current).then(() =>
+        client.invalidateQueries({ queryKey: ["stories"], exact: true }),
+      );
+    },
+    [client, id],
+  );
 
   useEffect(() => {
     elapsed.current = 0;

@@ -222,9 +222,6 @@ function Sheet({
             <Text style={{ color: colors.ink, fontSize: 15.5, fontWeight: "700" }}>
               أهدِ {friendName}
             </Text>
-            <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 2 }}>
-              يُخصم من رصيدك ويصله في لحظته
-            </Text>
           </View>
 
           <Pressable
@@ -234,13 +231,6 @@ function Sheet({
           >
             <CloseIcon size={16} color={colors.muted} />
           </Pressable>
-        </View>
-
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: colors.goldLine, backgroundColor: colors.goldSoft, marginBottom: 12 }}>
-          <SparkIcon size={14} color={colors.goldInk} />
-          <Text style={{ color: colors.goldInk, fontSize: 12, fontWeight: "600" }}>
-            رصيدك {coinText(coins)}
-          </Text>
         </View>
 
         {note?.error ? (
@@ -310,6 +300,17 @@ function Sheet({
             </View>
           </View>
         ) : null}
+
+        {/* ما تحت هذا السطر بالنقاط، وآثار+ فوقه بمالٍ من المتجر (القاعدة ٢٣٤). */}
+        <Text style={{ color: colors.ink2, fontSize: 12.5, fontWeight: "600", marginBottom: 8 }}>
+          إهداء التمائم والإطارات والثيمات يُخصم من رصيد نقاطك
+        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: colors.goldLine, backgroundColor: colors.goldSoft, marginBottom: 12 }}>
+          <SparkIcon size={14} color={colors.goldInk} />
+          <Text style={{ color: colors.goldInk, fontSize: 12, fontWeight: "600" }}>
+            رصيدك {coinText(coins)}
+          </Text>
+        </View>
 
         <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
           {KINDS.map((row) => {

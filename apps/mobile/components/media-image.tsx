@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { type ImageStyle, type StyleProp } from "react-native";
 import { Image } from "expo-image";
 import { baseUrl, currentAccess, renewAccess, watchAccess } from "../lib/api";
@@ -42,18 +42,31 @@ export function MediaImage({
 
   useEffect(() => watchAccess(() => setToken(currentAccess())), []);
 
-  if (!mediaId || !token) return null;
+  /*
+    المصدرُ كائنٌ ثابتٌ ما لم يتغيّر المعرّفُ أو التوكن: كائنٌ جديدٌ مع كل رسمٍ
+    يُقرأ صورةً جديدة — وشريطُ القصّة يرسم كل ستّين مللي، فكانت الصورةُ تُطلب
+    من الخادم مع كل نبضةٍ منه.
+  */
+  const source = useMemo(
+    () =>
+      mediaId && token
+        ? {
+            uri: `${baseUrl}/v1/media/${mediaId}`,
+            headers: { authorization: `Bearer ${token}` },
+            // الخبيئة بالمعرّف: العنوان ثابت لكنّ الترويسة تتجدّد، والصورة هي هي.
+            cacheKey: mediaId,
+          }
+        : null,
+    [mediaId, token],
+  );
+
+  if (!source) return null;
 
   return (
     <Image
       // المفتاح يحمل التوكن: تغيّرُه يُجبر إعادة الطلب بترويسةٍ جديدة.
       key={`${mediaId}:${tries}`}
-      source={{
-        uri: `${baseUrl}/v1/media/${mediaId}`,
-        headers: { authorization: `Bearer ${token}` },
-        // الخبيئة بالمعرّف: العنوان ثابت لكنّ الترويسة تتجدّد، والصورة هي هي.
-        cacheKey: mediaId,
-      }}
+      source={source}
       style={style}
       contentFit={resizeMode}
       contentPosition={position ? { left: `${position.x}%`, top: `${position.y}%` } : "center"}

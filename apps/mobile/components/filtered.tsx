@@ -14,6 +14,36 @@ import { MediaImage } from "./media-image";
  * البايتات بالباب المعتاد — وهو الذي يجدّد التوكن عند انتهائه — ثم
  * تُفكّ هنا.
  */
+/*
+  صورٌ مفكوكةٌ سلفاً: القصّةُ تُجلب قبل أن تُفتح (`lib/story-prefetch.ts`)، فإذا
+  فُتحت وجدت صورتها هنا. قليلةٌ وتُفرَّغ بالأقدم — صورةُ شاشةٍ كاملة في الذاكرة.
+*/
+const warm = new Map<string, Promise<SkImage | null>>();
+const WARM_MAX = 6;
+
+async function loadRemote(mediaId: string): Promise<SkImage | null> {
+  const token = currentAccess();
+  const response = await fetch(`${baseUrl}/v1/media/${mediaId}`, {
+    headers: token ? { authorization: `Bearer ${token}` } : {},
+  });
+  if (!response.ok) return null;
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  return Skia.Image.MakeImageFromEncoded(Skia.Data.fromBytes(bytes));
+}
+
+export function warmSkia(mediaId: string): Promise<SkImage | null> {
+  const known = warm.get(mediaId);
+  if (known) return known;
+  const loading = loadRemote(mediaId).catch(() => null);
+  warm.set(mediaId, loading);
+  // فشلٌ لا يُحفظ: الفتحُ يحاول من جديد.
+  void loading.then((image) => {
+    if (!image) warm.delete(mediaId);
+  });
+  if (warm.size > WARM_MAX) warm.delete(warm.keys().next().value!);
+  return loading;
+}
+
 function useAuthedImage(mediaId: string | null, local = false): SkImage | null {
   const [image, setImage] = useState<SkImage | null>(null);
 
@@ -34,16 +64,8 @@ function useAuthedImage(mediaId: string | null, local = false): SkImage | null {
         return;
       }
 
-      const token = currentAccess();
-      const response = await fetch(`${baseUrl}/v1/media/${mediaId}`, {
-        headers: token ? { authorization: `Bearer ${token}` } : {},
-      });
-      if (!response.ok || !alive) return;
-
-      const bytes = new Uint8Array(await response.arrayBuffer());
-      const data = Skia.Data.fromBytes(bytes);
-      const made = Skia.Image.MakeImageFromEncoded(data);
-      if (alive) setImage(made);
+      const made = await warmSkia(mediaId);
+      if (alive && made) setImage(made);
     })().catch(() => {
       /* تبقى الصورة فارغةً ويُعرض البديل */
     });
