@@ -11,9 +11,10 @@ import { ScreenHeader } from "../../components/screen-header";
 import { EdgeBack } from "../../components/edge-back";
 import { useBarSpace } from "../../components/glass-bar";
 import { Ticks, receiptOf } from "../../components/receipt";
-import { CameraIcon, MicIcon, PlusIcon, SearchIcon, StarIcon, TrashIcon, WithIcon } from "../../components/icons";
+import { CameraIcon, MicIcon, PlusIcon, SearchIcon, StarIcon, TrashIcon } from "../../components/icons";
 import { Modal } from "react-native";
 import type { GroupRow } from "../../lib/groups";
+import { GroupFace } from "../../components/group-face";
 import { api } from "../../lib/api";
 import { keys, useCircle } from "../../lib/queries";
 import { usePullRefresh } from "../../lib/refresh";
@@ -238,9 +239,7 @@ export default function Messages() {
                   onPress={() => router.push(`/group/${row.id}` as never)}
                   style={{ flexDirection: "row", alignItems: "center", gap: 11, paddingHorizontal: 20, paddingVertical: 11 }}
                 >
-                  <View style={{ width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center", backgroundColor: colors.claySoft }}>
-                    <WithIcon size={22} color={colors.clayInk} />
-                  </View>
+                  <GroupFace photoMediaId={row.photoMediaId} size={46} />
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                       <Text numberOfLines={1} style={{ color: colors.ink, fontSize: 14, fontWeight: "600", flexShrink: 1, writingDirection: "auto" }}>

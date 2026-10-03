@@ -120,6 +120,7 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
       },
       messageOf: { select: { conversation: { select: { aId: true, bId: true } } } },
       groupMessageOf: { select: { groupId: true } },
+      groupPhotoOf: { select: { id: true } },
     },
   });
   if (!media) return false;
@@ -132,9 +133,10 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
   }
 
   // صورةُ المجموعة لأعضائها وحدهم (القاعدة ٢١٥).
-  if (media.groupMessageOf) {
+  const groupId = media.groupMessageOf?.groupId ?? media.groupPhotoOf?.id;
+  if (groupId) {
     const seat = await prisma.chatGroupMember.findUnique({
-      where: { groupId_userId: { groupId: media.groupMessageOf.groupId, userId } },
+      where: { groupId_userId: { groupId, userId } },
       select: { userId: true },
     });
     return Boolean(seat);

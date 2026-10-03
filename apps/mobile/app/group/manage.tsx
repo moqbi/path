@@ -6,7 +6,10 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Avatar } from "../../components/avatar";
 import { ScreenHeader } from "../../components/screen-header";
-import { CloseIcon, PlusIcon } from "../../components/icons";
+import { CameraIcon, CloseIcon, PlusIcon } from "../../components/icons";
+import * as Picker from "expo-image-picker";
+import { GroupFace } from "../../components/group-face";
+import { uploadFile } from "../../lib/upload";
 import { api } from "../../lib/api";
 import { keys } from "../../lib/queries";
 import { useSession } from "../../lib/session";
@@ -83,6 +86,12 @@ export default function ManageGroup() {
   const [needle, setNeedle] = useState("");
   const [picked, setPicked] = useState<GroupPerson[]>([]);
   const [error, setError] = useState<string | null>(null);
+  /*
+    صورةُ المجموعة (القاعدة ٢٤١): تُرفع ساعةَ تُختار، وتُثبَّت للمجموعة القائمة في
+    الحال، وللجديدة بعد إنشائها — لا مجموعةَ بعدُ تُعلَّق عليها.
+  */
+  const [photo, setPhoto] = useState<string | null | undefined>(undefined);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (group.data) setName(group.data.name);
@@ -109,17 +118,57 @@ export default function ManageGroup() {
   const fail = (problem: Error) => setError(problem.message);
 
   const create = useMutation({
-    mutationFn: () =>
-      api<{ id: string }>("/v1/groups", {
+    mutationFn: async () => {
+      const row = await api<{ id: string }>("/v1/groups", {
         method: "POST",
         body: JSON.stringify({ name, memberIds: picked.map((p) => p.id) }),
-      }),
+      });
+      // الصورةُ بعد الإنشاء: فشلُها لا يُلغي مجموعةً قامت — تُختار ثانيةً من إدارتها.
+      if (photo) {
+        await api(`/v1/groups/${row.id}/photo`, { method: "PUT", body: JSON.stringify({ mediaId: photo }) }).catch(() => undefined);
+      }
+      return row;
+    },
     onSuccess: (row) => {
       refresh();
       router.replace(`/group/${row.id}` as never);
     },
     onError: fail,
   });
+
+  const savePhoto = useMutation({
+    mutationFn: (mediaId: string | null) =>
+      api(`/v1/groups/${id}/photo`, { method: "PUT", body: JSON.stringify({ mediaId }) }),
+    onSuccess: () => {
+      setError(null);
+      setPhoto(undefined);
+      void client.invalidateQueries({ queryKey: keys.group(id ?? "new") });
+      void client.invalidateQueries({ queryKey: keys.groups });
+    },
+    onError: fail,
+  });
+
+  async function pickPhoto() {
+    setError(null);
+    const granted = await Picker.requestMediaLibraryPermissionsAsync();
+    if (!granted.granted) {
+      setError("لازم تسمح بالوصول لألبومك.");
+      return;
+    }
+    const result = await Picker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.9 });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    setUploading(true);
+    try {
+      const mediaId = await uploadFile(asset.uri, asset.mimeType ?? "image/jpeg", "MESSAGE", asset);
+      setPhoto(mediaId);
+      if (editing) savePhoto.mutate(mediaId);
+    } catch (problem) {
+      setError(problem instanceof Error ? problem.message : "تعذّر رفع الصورة");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   const rename = useMutation({
     mutationFn: () => api(`/v1/groups/${id}`, { method: "PATCH", body: JSON.stringify({ name }) }),
@@ -178,6 +227,49 @@ export default function ManageGroup() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ padding: 20, paddingBottom: Math.max(insets.bottom, 20) + 20, gap: 18 }}
       >
+        {/* الصورة: يختارها المشرف ويراها الأعضاء (القاعدة ٢٤١). */}
+        <View style={{ alignItems: "center", gap: 8 }}>
+          <Pressable
+            disabled={!canManage || uploading || savePhoto.isPending}
+            onPress={() => void pickPhoto()}
+            accessibilityLabel="صورة المجموعة"
+          >
+            <GroupFace photoMediaId={photo !== undefined ? photo : group.data?.photoMediaId} size={92} />
+            {canManage ? (
+              <View
+                style={{
+                  position: "absolute",
+                  right: -2,
+                  bottom: -2,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: colors.night,
+                  borderWidth: 2,
+                  borderColor: colors.ground,
+                }}
+              >
+                {uploading || savePhoto.isPending ? (
+                  <ActivityIndicator size="small" color="#f7f5ef" />
+                ) : (
+                  <CameraIcon size={15} color="#f7f5ef" />
+                )}
+              </View>
+            ) : null}
+          </Pressable>
+          {canManage && (photo ?? group.data?.photoMediaId) ? (
+            <Pressable
+              hitSlop={8}
+              disabled={savePhoto.isPending}
+              onPress={() => (editing ? savePhoto.mutate(null) : setPhoto(null))}
+            >
+              <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600" }}>إزالة الصورة</Text>
+            </Pressable>
+          ) : null}
+        </View>
+
         {/* الاسم: يكتبه المشرف ويُقرأ لغيره. */}
         {canManage ? (
           <View style={{ gap: 8 }}>
