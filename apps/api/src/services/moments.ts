@@ -10,15 +10,6 @@ import { dropMedia } from "./media";
 import { push } from "./push";
 
 /** تدرّجات تقوم مقام الصورة حين تُنشر لحظة صورة بلا ملف. */
-const IMAGE_SPECS = [
-  "linear-gradient(160deg,#f6b93b,#ff7a5a 55%,#8c3f4a)",
-  "linear-gradient(160deg,#ffb27a,#c05a54 70%,#3b2a33)",
-  "linear-gradient(160deg,#f7f5ef,#d09a72 45%,#5a4152)",
-  "linear-gradient(160deg,#8fa7b8,#3f5a6b 60%,#0e1a24)",
-  "linear-gradient(160deg,#ffd27a,#d1706a 55%,#2f3742)",
-];
-
-const randomImage = () => IMAGE_SPECS[Math.floor(Math.random() * IMAGE_SPECS.length)];
 
 /**
  * جمهور اللحظة.
@@ -182,6 +173,13 @@ export async function createMoment(userId: string, input: MomentInput) {
   const track = musicUrl ? await resolveTrack(musicUrl) : null;
 
   const mediaId = input.mediaId ? await ownMedia(userId, input.mediaId) : null;
+  /*
+    لحظةُ صورةٍ بلا صورة خاطرةٌ بنصّها — **بقرار المالك**: كانت تُلبَس تدرّجاً
+    عشوائيّاً (`imageSpec`) فتنزل قالباً أصفر فارغاً فوق ما كتبه صاحبُها. وبلا
+    صورةٍ ولا نصّ لا شيء يُنشر.
+  */
+  if (input.kind === "PHOTO" && !mediaId && !text) throw badRequest("اختر صورة أو اكتب شيئاً");
+  const kind = input.kind === "PHOTO" && !mediaId ? "THOUGHT" : input.kind;
   const seen = await readAudience(userId, input);
   const where = await readPlace(userId, input, me.city);
 
@@ -192,12 +190,11 @@ export async function createMoment(userId: string, input: MomentInput) {
   const moment = await prisma.moment.create({
     data: {
       authorId: userId,
-      kind: input.kind,
+      kind,
       text,
       mediaId,
       photoX: mediaId ? (input.photoX ?? null) : null,
       photoY: mediaId ? (input.photoY ?? null) : null,
-      imageSpec: input.kind === "PHOTO" && !mediaId ? randomImage() : null,
       lat: where.lat,
       lng: where.lng,
       placeName,

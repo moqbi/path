@@ -18,6 +18,9 @@ import { billingReady, buyGift, prices } from "../lib/billing";
  * وما يملكه أصلاً يُعرض مطفأً: لا نبيعك ما لن ينفعه. والخصم بسعرك أنت:
  * أنت الدافع.
  */
+/** هل تبدأ هديّةُ آثار+ بعد اشتراك الصديق القائم — يملؤه جلبُ المُدد معها. */
+const giftDeferred = new Map<string, boolean>();
+
 export function GiftButton({
   friendId,
   friendName,
@@ -149,12 +152,15 @@ function Sheet({
     والسعرُ من المتجر نفسه؛ وما لا سعرَ له لا يُعرض.
   */
   const plusPlans = useQuery({
-    queryKey: ["plus-gift-plans"],
+    queryKey: ["plus-gift-plans", friendId],
     queryFn: async () => {
-      const { plans } = await api<{ plans: { plan: "month" | "year"; sku: string; days: number; label: string }[] }>(
-        "/v1/plus/gift",
-      );
+      const { plans, deferred } = await api<{
+        plans: { plan: "month" | "year"; sku: string; days: number; label: string }[];
+        /** اشتراكُه من المتجر قائم: الهديّةُ تُحفظ وتبدأ بعده (القاعدة ٢٣٤). اختياريٌّ لخادمٍ أقدم. */
+        deferred?: boolean;
+      }>(`/v1/plus/gift?to=${encodeURIComponent(friendId)}`);
       const priced = await prices(plans.map((one) => one.sku));
+      giftDeferred.set(friendId, Boolean(deferred));
       return plans.filter((one) => priced[one.sku]).map((one) => ({ ...one, price: priced[one.sku]! }));
     },
     enabled: billingReady(),
@@ -263,7 +269,12 @@ function Sheet({
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "700" }}>أهدِه آثار+</Text>
                 <Text style={{ color: colors.goldInk, fontSize: 11.5, marginTop: 1 }}>
-                  {friendIsPlus ? "تُضاف إلى اشتراكه القائم" : "اشتراكٌ يبدأ في لحظته"} · يُدفع من حسابك في المتجر
+                  {giftDeferred.get(friendId)
+                    ? "صديقك مشترك ويتجدد تلقائياً — الهدية تبدأ بعد ما يوقف اشتراكه"
+                    : friendIsPlus
+                      ? "تُضاف إلى اشتراكه القائم"
+                      : "اشتراكٌ يبدأ في لحظته"}{" "}
+                  · يُدفع من حسابك في المتجر
                 </Text>
               </View>
             </View>

@@ -44,6 +44,72 @@ export function giftPlanOfSku(sku: string | undefined): GiftPlan | null {
 /** المعلّقُ ينتظر يوماً — شراءٌ يتأخّر أكثرَ من ذلك لا يُطابَق بطلبٍ قديم. */
 const PENDING_MS = 24 * 60 * 60 * 1000;
 
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
+/**
+ * أاشتراكُه الآن من المتجر؟ — قائمٌ، وله حدثُ اشتراكٍ من RevenueCat (لا شراءُ
+ * نقاطٍ ولا إهداء)، وليس ما يجري الآن هديّةً بدأت. ومن ألغى التجديد يُعدّ
+ * كذلك: حدثُ الانتهاء آتٍ في آخر مدّته، والهديّةُ تبدأ بعده.
+ */
+export async function storeRunning(
+  userId: string,
+  user: { isPlus: boolean; plusUntil: Date | null; plusGiftUntil: Date | null },
+  db: Tx | typeof prisma = prisma,
+) {
+  if (!user.isPlus || !user.plusUntil || user.plusUntil.getTime() <= Date.now()) return false;
+  if (user.plusGiftUntil && user.plusGiftUntil.getTime() >= user.plusUntil.getTime()) return false;
+  const billed = await db.billingEvent.findFirst({
+    where: { appUserId: userId, type: { not: "NON_RENEWING_PURCHASE" } },
+    select: { id: true },
+  });
+  return Boolean(billed);
+}
+
+/**
+ * يبدأ الأيّامَ المحفوظة حين ينتهي اشتراكُ المتجر — يُنادى من أوّل `endPlus`،
+ * فكلُّ بابٍ يُنهي الاشتراك (حدثُ الانتهاء، والكنس، والنقل) يمرّ به. ويردّ
+ * «نعم» إن بقي آثار+ قائماً بهديّة، فلا يُنهى شيء.
+ */
+export async function resumeGift(userId: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { plusGiftDays: true, plusGiftUntil: true, plusUntil: true, plusCreditAt: true },
+  });
+  if (!user) return false;
+  const now = Date.now();
+  let until = user.plusGiftUntil && user.plusGiftUntil.getTime() > now ? user.plusGiftUntil : null;
+  if (user.plusGiftDays > 0) {
+    const from = Math.max(now, until?.getTime() ?? 0, user.plusUntil?.getTime() ?? 0);
+    until = new Date(from + user.plusGiftDays * 86_400_000);
+  }
+  if (!until) return false;
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      isPlus: true,
+      plusUntil: until,
+      plusGiftUntil: until,
+      plusGiftDays: 0,
+      // دورةُ الرصيد تبدأ من هنا (القاعدة ٧٣ب) — كانت قد نُسيت مع انتهاء المتجر.
+      ...(user.plusCreditAt ? null : { plusCreditAt: new Date() }),
+    },
+  });
+  return true;
+}
+
+/** ما تعرضه نافذةُ الإهداء: المُدد، وهل تبدأ الهديّةُ بعد اشتراكه القائم. */
+export async function giftInfo(giverId: string, to?: string) {
+  const plans = giftPlans();
+  if (!to || to === giverId) return { plans, deferred: false };
+  const circle = await circleIds(giverId);
+  if (!circle.includes(to)) return { plans, deferred: false };
+  const user = await prisma.user.findUnique({
+    where: { id: to },
+    select: { isPlus: true, plusUntil: true, plusGiftUntil: true },
+  });
+  return { plans, deferred: user ? await storeRunning(to, user) : false };
+}
+
 export async function intent(giverId: string, to: string, plan: GiftPlan) {
   const sku = skuOf(plan);
   if (!sku) throw notFound("هذه المدّة غير متاحة");
@@ -102,6 +168,7 @@ export async function completeGift(
   const giver = await prisma.user.findUnique({ where: { id: giverId }, select: { name: true } });
   const label = GIFT_PLANS[plan].label;
 
+  let deferred = false;
   try {
     await prisma.$transaction(async (tx) => {
       await tx.billingEvent.create({
@@ -117,24 +184,41 @@ export async function completeGift(
         data: { status: "DONE", eventId, doneAt: new Date() },
       });
 
-      // يُمدَّد ولا يُستبدَل — كمنح اللوحة (القاعدة ١١٥).
       const target = await tx.user.findUnique({
         where: { id: pending.recipientId },
-        select: { plusUntil: true, plusCreditAt: true, isPlus: true },
+        select: { plusUntil: true, plusCreditAt: true, isPlus: true, plusGiftUntil: true },
       });
-      const from =
-        target?.isPlus && target.plusUntil && target.plusUntil.getTime() > Date.now()
-          ? target.plusUntil
-          : new Date();
-      const first = !target?.plusCreditAt;
-      await tx.user.update({
-        where: { id: pending.recipientId },
-        data: {
-          isPlus: true,
-          plusUntil: new Date(from.getTime() + pending.days * 86_400_000),
-          ...(first ? { coins: { increment: PLUS_COINS }, plusCreditAt: new Date() } : null),
-        },
-      });
+
+      deferred = Boolean(target && (await storeRunning(pending.recipientId, target, tx)));
+      if (deferred) {
+        /*
+          اشتراكُه من المتجر قائم: الأيّامُ تُحفظ ولا تُضاف إلى `plusUntil` —
+          أوّلُ تجديدٍ يكتب تاريخه من المتجر فيمحوها، وحدثُ الانتهاء يُطفئه وهي
+          باقية. فتبدأ حين ينتهي اشتراكُ المتجر (`resumeGift`).
+        */
+        await tx.user.update({
+          where: { id: pending.recipientId },
+          data: { plusGiftDays: { increment: pending.days } },
+        });
+      } else {
+        // يُمدَّد ولا يُستبدَل — كمنح اللوحة (القاعدة ١١٥).
+        const from =
+          target?.isPlus && target.plusUntil && target.plusUntil.getTime() > Date.now()
+            ? target.plusUntil
+            : new Date();
+        const until = new Date(from.getTime() + pending.days * 86_400_000);
+        const first = !target?.plusCreditAt;
+        await tx.user.update({
+          where: { id: pending.recipientId },
+          data: {
+            isPlus: true,
+            plusUntil: until,
+            // نهايةُ الهديّة تُحفظ: اشتراكٌ من المتجر بعدها لا يقصّرها.
+            plusGiftUntil: until,
+            ...(first ? { coins: { increment: PLUS_COINS }, plusCreditAt: new Date() } : null),
+          },
+        });
+      }
 
       // سطرٌ عند الطرفين كهدايا المتجر (القاعدة ٩١)، والطرفُ الآخر إشارة.
       const sent = await tx.moment.create({ data: { authorId: giverId, kind: "GIFT_SENT", text: label } });
@@ -155,7 +239,7 @@ export async function completeGift(
     userId: pending.recipientId,
     kind: "GRANT",
     title: "وصلتك هدية",
-    body: `${giver?.name ?? "صديقك"} أهداك ${label}`,
+    body: `${giver?.name ?? "صديقك"} أهداك ${label}${deferred ? " — تبدأ بعد اشتراكك الحالي" : ""}`,
     path: "/me",
   });
 

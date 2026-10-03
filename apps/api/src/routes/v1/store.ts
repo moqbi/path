@@ -1,4 +1,4 @@
-import { giftPlans, intent } from "../../services/plus-gift";
+import { intent, giftInfo } from "../../services/plus-gift";
 import { Hono } from "hono";
 import { z } from "zod";
 import { cuid } from "@athar/shared";
@@ -76,7 +76,8 @@ export const plusRoutes = new Hono()
   .delete("/", async (c) => c.json(await store.cancelPlus(me(c))))
 
   // إهداءُ آثار+ لصديق (القاعدة ٢٣٤): المُدَدُ المتاحة، ثمّ الطلبُ المعلّق قبل نافذة الشراء.
-  .get("/gift", (c) => c.json({ plans: giftPlans() }))
+  /** `?to=` يقول إن كانت الهديّةُ تبدأ بعد اشتراكه القائم من المتجر. */
+  .get("/gift", async (c) => c.json(await giftInfo(me(c), c.req.query("to") || undefined)))
 
   .post(
     "/gift",

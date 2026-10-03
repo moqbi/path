@@ -1789,7 +1789,8 @@ export async function revokePlus(userId: string): Promise<void> {
        المشتركين، ونسيانُ ختم الرصيد، ونافذةُ «انتهى اشتراكك». وإطفاءُ
        `isPlus` هنا كان يُخرجه من الكنس فلا يُنهى شيءٌ من ذلك.
     */
-    data: { plusUntil: new Date(Date.now() - 1000) },
+    // والهديّةُ المحفوظة تذهب معه: النزعُ نزعٌ لا «تبدأ الهديّة الآن» (القاعدة ٢٣٤).
+    data: { plusUntil: new Date(Date.now() - 1000), plusGiftDays: 0, plusGiftUntil: null },
   });
   await prisma.moderationLog.create({
     data: { adminId: admin.id, action: "PLUS_REVOKED", targetId: userId, ownerId: userId },

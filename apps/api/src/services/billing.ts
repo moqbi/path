@@ -173,15 +173,21 @@ export async function applyEvent(event: RevenueCatEvent): Promise<{ ok: string }
     */
     const row = await tx.user.findUnique({
       where: { id: userId },
-      select: { plusCreditAt: true },
+      select: { plusCreditAt: true, plusGiftUntil: true },
     });
     const first = active && !row?.plusCreditAt;
+    /*
+      هديّةٌ بدأت لا يقصّرها اشتراكٌ من المتجر بعدها (القاعدة ٢٣٤): التاريخُ
+      أبعدُ الاثنين. وما لم يبدأ من الهدايا محفوظٌ في `plusGiftDays` لا يُمسّ هنا.
+    */
+    const giftEnd = row?.plusGiftUntil && row.plusGiftUntil.getTime() > Date.now() ? row.plusGiftUntil : null;
+    const plusUntil = active && until ? (giftEnd && giftEnd > until ? giftEnd : until) : null;
 
     await tx.user.update({
       where: { id: userId },
       data: {
         isPlus: active,
-        plusUntil: active ? until : null,
+        plusUntil,
         ...(first ? { coins: { increment: PLUS_COINS }, plusCreditAt: new Date() } : null),
         // ومن أُوقف يُنسى ختمُه، فيبدأ عند عودته دورةً جديدة لا يكملها.
         ...(active ? null : { plusCreditAt: null }),

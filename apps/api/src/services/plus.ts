@@ -3,6 +3,7 @@ import sharp from "sharp";
 import { prisma } from "@athar/db";
 import { cloudReady, getObject, putObject } from "@athar/storage";
 import { dropMedia } from "./media";
+import { resumeGift } from "./plus-gift";
 import { baseMime, isAnimated } from "./upload";
 
 /**
@@ -25,6 +26,9 @@ import { baseMime, isAnimated } from "./upload";
  * الكنس التالي. وتكرارُه لا يضرّ.
  */
 export async function endPlus(userId: string): Promise<void> {
+  // هديّةٌ محفوظة تبدأ حين ينتهي اشتراكُ المتجر — فلا يُنهى شيء (القاعدة ٢٣٤).
+  if (await resumeGift(userId)) return;
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {

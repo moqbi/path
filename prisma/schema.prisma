@@ -148,6 +148,11 @@ model User {
   memoriesPushedOn    String?
   /// يومُ الرياض الذي طوى فيه صاحبُه بطاقةَ الذكريات — تعود غداً.
   memoriesDismissedOn String?
+  /// أيّامُ آثار+ مُهداةٌ لم تبدأ (القاعدة ٢٣٤): لمن اشتراكُه من المتجر قائم،
+  /// فتبدأ حين ينتهي — تجديدُ المتجر يكتب `plusUntil` من عنده فيمحو ما أُضيف إليه.
+  plusGiftDays  Int       @default(0)
+  /// نهايةُ هديّةٍ بدأت: لا يقصّرها حدثُ اشتراكٍ من المتجر يصل بعدها.
+  plusGiftUntil DateTime?
   /// آخرُ سنةٍ قُرع فيها جرسُ «آثرك السنويّ».
   recapPushedYear     Int?
   dismissedNotes NoteDismissal[]
