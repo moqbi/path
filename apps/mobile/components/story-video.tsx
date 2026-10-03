@@ -5,6 +5,7 @@ import { ResizeMode, Video } from "expo-av";
 import { PlayIcon } from "./icons";
 import { baseUrl, currentAccess, watchAccess } from "../lib/api";
 import { colors } from "../theme/tokens";
+import { restoreAudio } from "../lib/sound";
 
 /**
  * مقطعُ القصّة يُشغَّل لا يُرسم صورةً.
@@ -43,6 +44,8 @@ export function StoryVideo({
 
   useEffect(() => watchAccess(() => setToken(currentAccess())), []);
   useEffect(() => setPlaying(!paused), [paused]);
+  // المقطعُ يترك جلسةَ الصوت على «تشغيل»، فتُعاد عند إغلاقه (القاعدة ٢٣٢).
+  useEffect(() => restoreAudio, []);
 
   if (!local && !token) return null;
 

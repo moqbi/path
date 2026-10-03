@@ -7,6 +7,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Picker from "expo-image-picker";
 import { Audio } from "expo-av";
+import { restoreAudio } from "../../lib/sound";
 import { ChatLine, bubbleStyle, needsHead } from "../../components/chat-line";
 import { viewPhoto } from "../../components/photo-viewer";
 import { MediaImage } from "../../components/media-image";
@@ -61,6 +62,7 @@ function Voice({ mediaId, seconds, mine }: { mediaId: string; seconds: number; m
     () => () => {
       void sound.current?.unloadAsync();
       if (speaking === pause) speaking = null;
+      restoreAudio();
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
@@ -103,6 +105,7 @@ function Voice({ mediaId, seconds, mine }: { mediaId: string; seconds: number; m
           setAt(0);
           setState("idle");
           if (speaking === pause) speaking = null;
+          restoreAudio();
         }
       });
       sound.current = made;
@@ -219,8 +222,12 @@ export default function Conversation() {
 
   useEffect(() => () => {
     if (ticker.current) clearInterval(ticker.current);
-    void recorder.current?.stopAndUnloadAsync();
+    void recorder.current
+      ?.stopAndUnloadAsync()
+      .catch(() => undefined)
+      .finally(restoreAudio);
     void heard.current?.unloadAsync();
+    restoreAudio();
   }, []);
 
   const refresh = () => {
@@ -288,7 +295,7 @@ export default function Conversation() {
 
     await machine.stopAndUnloadAsync().catch(() => undefined);
     // يُعاد وضعُ الصوت إلى السمّاعة، وإلّا خرجت المعاينة خافتةً في آبل.
-    await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true });
+    restoreAudio();
     const uri = machine.getURI();
     if (!keep || !uri) return;
     setTape({ uri, seconds: length });
@@ -309,6 +316,7 @@ export default function Conversation() {
         void sound.setPositionAsync(0);
         void sound.pauseAsync();
         setHearing(false);
+        restoreAudio();
       }
     });
     heard.current = sound;

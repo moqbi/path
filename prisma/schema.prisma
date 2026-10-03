@@ -142,6 +142,8 @@ model User {
   plusEndedAt DateTime?
   /// «احذف الكل» في الإشعارات: ما قبل هذا الوقت لا يُعرض بعده في أيّ مكان.
   notesClearedAt DateTime?
+  /// آخرُ فتحٍ لتبويب الإشعارات: ما قبله «قُرئ» فلا نقطةَ له على الأيقونة (القاعدة ٢٣١).
+  notesSeenAt    DateTime?
   dismissedNotes NoteDismissal[]
 
   /// رصيد الكوينز. عملة المتجر الوحيدة: كل ما فيه يُشترى بها، ولا

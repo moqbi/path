@@ -269,10 +269,22 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
     .slice(0, limit);
 }
 
+/**
+ * ما لم يُقرأ: الأحدثُ من آخر فتحٍ للتبويب (`notesSeenAt`) — كانت النقطةُ تعدّ
+ * كلَّ ما في ثلاثة أيام، فتبقى على الأيقونة بعد القراءة وتعود مع كل تبويب.
+ */
 export async function unseenCount(userId: string): Promise<number> {
-  return (await notifications(userId, 40)).filter(
-    (note) => Date.now() - note.at.getTime() < 3 * 24 * 60 * 60 * 1000,
-  ).length;
+  const [all, me] = await Promise.all([
+    notifications(userId, 40),
+    prisma.user.findUnique({ where: { id: userId }, select: { notesSeenAt: true } }),
+  ]);
+  const since = Math.max(me?.notesSeenAt?.getTime() ?? 0, Date.now() - 3 * 24 * 60 * 60 * 1000);
+  return all.filter((note) => note.at.getTime() > since).length;
+}
+
+/** فتحُ تبويب الإشعارات يقرؤها كلَّها. */
+export async function markSeen(userId: string): Promise<void> {
+  await prisma.user.update({ where: { id: userId }, data: { notesSeenAt: new Date() } });
 }
 
 /** «لأنك تستحق! تمّ منحك ٥٠٠ نقطة من قبل الإدارة» — بنصّ المالك (القاعدة ١٩٨). */

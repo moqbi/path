@@ -21,6 +21,11 @@ export const notificationRoutes = new Hono()
 
   .get("/count", async (c) => c.json({ unseen: await notes.unseenCount(me(c)) }))
 
+  .post("/seen", async (c) => {
+    await notes.markSeen(me(c));
+    return c.json({ ok: true });
+  })
+
   // الحذفُ من كل مكان: الخادمُ والويبُ يستثنيان ما حُذف من الاشتقاق نفسه.
   .delete("/", async (c) => {
     await notes.clearAll(me(c));

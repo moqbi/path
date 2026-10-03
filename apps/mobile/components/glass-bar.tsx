@@ -1,4 +1,6 @@
-import { View, Pressable, Platform } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Animated, View, Pressable, Platform, PanResponder } from "react-native";
+import * as Haptics from "expo-haptics";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Tabs, usePathname, useRouter } from "expo-router";
@@ -179,6 +181,115 @@ export function GlassBar({
     },
   ];
 
+  /*
+    **الشريطُ يُسحب لا يُنقر وحده** — **بقرار المالك**: الإصبعُ يمرّ على
+    الأيقونات فيتبعه قرصٌ زجاجيّ يكبر قليلاً، وتكبر الأيقونةُ تحته، ونقرةٌ
+    خفيفةٌ (`Haptics`) مع كل أيقونةٍ يعبرها، وبالإفلات يُفتح ما تحت الإصبع.
+    والقرصُ نفسه ينزلق بين التبويبات حين تتبدّل بالنقر — لا يقفز.
+    ومواضعُ الأيقونات تُقاس (`onLayout`) لا تُحسب من العرض: الصفُّ من اليمين
+    في التطبيق ومن اليسار في غيره، والقياسُ لا يسأل.
+  */
+  const slots = useRef<{ x: number; w: number }[]>([]);
+  const rowX = useRef(0);
+  const row = useRef<View>(null);
+  const x = useRef(new Animated.Value(0)).current;
+  const w = useRef(new Animated.Value(0)).current;
+  const lift = useRef(new Animated.Value(0)).current;
+  const [hover, setHover] = useState<number | null>(null);
+  const [measured, setMeasured] = useState(false);
+  const hoverRef = useRef<number | null>(null);
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+
+  const activeIndex = items.findIndex((item) => item.key === active);
+  const activeRef = useRef(activeIndex);
+  activeRef.current = activeIndex;
+  const showPill = hover !== null || (activeIndex >= 0 && active !== "me");
+
+  const moveTo = (index: number, spring = true) => {
+    const slot = slots.current[index];
+    if (!slot) return;
+    const to = { x: slot.x + 2, w: slot.w - 4 };
+    if (spring) {
+      Animated.spring(x, { toValue: to.x, useNativeDriver: false, speed: 22, bounciness: 7 }).start();
+      Animated.spring(w, { toValue: to.w, useNativeDriver: false, speed: 22, bounciness: 7 }).start();
+    } else {
+      x.setValue(to.x);
+      w.setValue(to.w);
+    }
+  };
+
+  // القرصُ يتبع التبويبَ المفتوح حين لا يكون إصبعٌ على الشريط.
+  useEffect(() => {
+    if (measured && hoverRef.current === null && activeIndex >= 0) moveTo(activeIndex);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeIndex, measured]);
+
+  const indexAt = (pageX: number) => {
+    const local = pageX - rowX.current;
+    let best = 0;
+    let gap = Infinity;
+    slots.current.forEach((slot, i) => {
+      const d = Math.abs(slot.x + slot.w / 2 - local);
+      if (d < gap) {
+        gap = d;
+        best = i;
+      }
+    });
+    return best;
+  };
+
+  const follow = (pageX: number) => {
+    const local = pageX - rowX.current;
+    const first = slots.current[0];
+    const widths = slots.current;
+    if (!first) return;
+    const slotW = first.w;
+    const min = Math.min(...widths.map((s) => s.x)) + 2;
+    const max = Math.max(...widths.map((s) => s.x)) + 2;
+    x.setValue(Math.min(max, Math.max(min, local - slotW / 2 + 2)));
+    w.setValue(slotW - 4);
+    const index = indexAt(pageX);
+    if (index !== hoverRef.current) {
+      hoverRef.current = index;
+      setHover(index);
+      void Haptics.selectionAsync().catch(() => undefined);
+    }
+  };
+
+  const release = (pageX: number | null) => {
+    const index = pageX === null ? null : indexAt(pageX);
+    hoverRef.current = null;
+    setHover(null);
+    Animated.spring(lift, { toValue: 0, useNativeDriver: false, speed: 18, bounciness: 6 }).start();
+    if (index !== null) {
+      moveTo(index);
+      itemsRef.current[index]?.onPress();
+    }
+    // ما لم يغيّر التبويب (المحادثاتُ شاشةٌ فوقه، أو التبويبُ نفسه) يعود القرصُ إلى مكانه.
+    setTimeout(() => {
+      if (hoverRef.current === null && activeRef.current >= 0) moveTo(activeRef.current);
+    }, 280);
+  };
+
+  const pan = useRef(
+    PanResponder.create({
+      // النقرُ يبقى للأزرار، والسحبةُ الأفقيّة تُؤخذ منها.
+      onMoveShouldSetPanResponderCapture: (_, g) => Math.abs(g.dx) > 6 && Math.abs(g.dx) > Math.abs(g.dy),
+      onPanResponderGrant: (event) => {
+        row.current?.measureInWindow((left) => {
+          rowX.current = left;
+        });
+        Animated.spring(lift, { toValue: 1, useNativeDriver: false, speed: 20, bounciness: 8 }).start();
+        follow(event.nativeEvent.pageX);
+      },
+      onPanResponderMove: (event) => follow(event.nativeEvent.pageX),
+      onPanResponderRelease: (event) => release(event.nativeEvent.pageX),
+      onPanResponderTerminate: () => release(null),
+      onPanResponderTerminationRequest: () => false,
+    }),
+  ).current;
+
   return (
     <View
       pointerEvents="box-none"
@@ -211,12 +322,53 @@ export function GlassBar({
             <BlurView intensity={60} tint="systemUltraThinMaterialDark" style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0 }} />
           ) : null}
 
-          <View style={{ flex: 1, flexDirection: "row", alignItems: "center", paddingHorizontal: 6 }}>
-            {items.map((item) => {
-              const on = item.key === active;
+          <View
+            ref={row}
+            {...pan.panHandlers}
+            onLayout={() =>
+              row.current?.measureInWindow((left) => {
+                rowX.current = left;
+              })
+            }
+            style={{ flex: 1, flexDirection: "row", alignItems: "center", paddingHorizontal: 6 }}
+          >
+            {/* القرصُ الزجاجيّ: ينزلق بين التبويبات ويتبع الإصبع ويكبر تحته. */}
+            <Animated.View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                top: 7,
+                height: PILL - 16,
+                left: x,
+                width: w,
+                borderRadius: (PILL - 16) / 2,
+                backgroundColor: lift.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ["rgba(255,255,255,.18)", "rgba(255,255,255,.28)"],
+                }),
+                borderWidth: 1,
+                borderColor: lift.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ["rgba(255,255,255,0)", "rgba(255,255,255,.35)"],
+                }),
+                opacity: measured && showPill ? 1 : 0,
+                transform: [{ scale: lift.interpolate({ inputRange: [0, 1], outputRange: [1, 1.14] }) }],
+              }}
+            />
+            {items.map((item, index) => {
+              const on = hover === null ? item.key === active : hover === index;
+              const big = hover === index;
               return (
                 <Pressable
                   key={item.key}
+                  onLayout={(event) => {
+                    const { x: left, width } = event.nativeEvent.layout;
+                    slots.current[index] = { x: left, w: width };
+                    if (slots.current.filter(Boolean).length === items.length && !measured) {
+                      setMeasured(true);
+                      if (activeIndex >= 0) moveTo(activeIndex, false);
+                    }
+                  }}
                   accessibilityRole="button"
                   accessibilityLabel={item.label}
                   accessibilityState={{ selected: on }}
@@ -233,7 +385,7 @@ export function GlassBar({
                       borderRadius: (PILL - 14) / 2,
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor: on && item.key !== "me" ? "rgba(255,255,255,.18)" : "transparent",
+                      transform: [{ scale: big ? 1.18 : 1 }],
                     }}
                   >
                     <Spot id={item.spot}>{item.render(on)}</Spot>

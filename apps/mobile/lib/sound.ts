@@ -90,3 +90,19 @@ export function playClose(): void {
   play("close");
 }
 
+
+/**
+ * وضعُ الصوت يعود إلى وضع الواجهة بعد كل تسجيلٍ أو مقطع (القاعدة ٢٣٢).
+ *
+ * التسجيلُ يضع جلسةَ الصوت في آبل على «تسجيلٍ وتشغيل»، ومقطعُ الرسالة على
+ * «تشغيلٍ يتجاهل الصامت» — وجلسةٌ بقيت هناك بعد أن فرغ منها صاحبُها تُغيّر
+ * صوتَ نقر الكيبورد في التطبيق كلّه (يخرج من سمّاعة المكالمة أو مشوّهاً).
+ * فما ينتهي من الصوت يعيدها إلى ما تحتاجه نغماتُ الواجهة وحدها.
+ */
+export function restoreAudio(): void {
+  void Audio.setAudioModeAsync({
+    allowsRecordingIOS: false,
+    playsInSilentModeIOS: false,
+    staysActiveInBackground: false,
+  }).catch(() => undefined);
+}
