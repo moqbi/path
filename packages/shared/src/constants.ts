@@ -27,6 +27,17 @@ export const STORY_SECONDS = 30;
 /** نصوصُ القصة: خمسةٌ على الأكثر، و١٢٠ حرفاً لكلٍّ — سطرٌ يُقرأ لا مقال. */
 export const STORY_TEXTS = 5;
 export const STORY_TEXT_MAX = 120;
+/** ملصقاتُ القصة (القاعدة ٢٣٨): ستّةٌ على الأكثر. */
+export const STORY_STICKERS = 6;
+/** أشكالُ ملصق الوقت — الوقتُ نفسه من `createdAt` لا نصٌّ يُحفظ (كالقاعدة ٥٤). */
+export const STORY_TIME_STYLES = ["digital", "clock", "pill", "date"] as const;
+/**
+ * صوتُ القصة: يُختار من فيديو في الاستديو أو من ملفّ صوت، والخادمُ يسحب الصوت
+ * ويرمي الصورة. الأصلُ حتى عشر دقائق وأربعين ميغا، والمقطعُ المقصوص حتى
+ * `STORY_SECONDS`.
+ */
+export const SOUND_SOURCE = { seconds: 600, bytes: 40_000_000 } as const;
+
 /** عرضُ الشاشة الذي يُقاس به مقاسُ النصّ — يُكبَّر ويُصغَّر بنسبته على كل جهاز. */
 export const STORY_TEXT_BASE = 390;
 export const STORY_TEXT_COLORS = [
@@ -79,16 +90,6 @@ export const MIME = {
 
 /** عمر التوكن: وصولٌ قصير، وتجديدٌ طويل — ومفتاحاهما منفصلان. */
 export const TOKEN = { accessMinutes: 15, refreshDays: 30 } as const;
-
-/** فلاتر القصة: الاسم يُحفظ، والقيمة تُطبَّق عند العرض. */
-export const STORY_FILTERS = [
-  { key: "", name: "بلا", css: "none" },
-  { key: "warm", name: "دافئ", css: "sepia(.35) saturate(1.25) contrast(1.03)" },
-  { key: "cool", name: "بارد", css: "hue-rotate(-12deg) saturate(1.1) brightness(1.04)" },
-  { key: "mono", name: "رمادي", css: "grayscale(1) contrast(1.08)" },
-  { key: "vivid", name: "زاهي", css: "saturate(1.5) contrast(1.1)" },
-  { key: "fade", name: "باهت", css: "saturate(.75) brightness(1.08) contrast(.92)" },
-] as const;
 
 /**
  * آثار+ عبر RevenueCat.

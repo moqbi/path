@@ -25,13 +25,13 @@ export async function sweepStories(): Promise<void> {
   try {
     const dead = await prisma.story.findMany({
       where: { expiresAt: { lt: new Date() } },
-      select: { id: true, mediaId: true },
+      select: { id: true, mediaId: true, audioMediaId: true },
       take: 500,
     });
     if (dead.length === 0) return;
     await prisma.story.deleteMany({ where: { id: { in: dead.map((row) => row.id) } } });
-    // ومعها ملفاتها من السحابة: «لا يُحتفظ بها» تعني هناك أيضاً.
-    await dropMedia(dead.map((row) => row.mediaId));
+    // ومعها ملفاتها من السحابة — صورتُها وصوتُها (القاعدة ٢٣٨): «لا يُحتفظ بها» تعني هناك أيضاً.
+    await dropMedia(dead.flatMap((row) => [row.mediaId, ...(row.audioMediaId ? [row.audioMediaId] : [])]));
   } catch {}
 }
 
@@ -111,7 +111,7 @@ export async function storiesOf(viewerId: string, authorId: string) {
   const authors = await visibleAuthors(viewerId);
   if (!authors.includes(authorId)) return [];
 
-  return prisma.story.findMany({
+  const rows = await prisma.story.findMany({
     where: { authorId, expiresAt: { gt: new Date() }, ...storyVisibleTo(viewerId) },
     orderBy: { createdAt: "asc" },
     select: {
@@ -122,13 +122,18 @@ export async function storiesOf(viewerId: string, authorId: string) {
       filter: true,
       seconds: true,
       texts: true,
+      stickers: true,
+      audioMediaId: true,
+      audioSeconds: true,
       createdAt: true,
       media: { select: { mime: true } },
       author: { select: { id: true, name: true, avatarMediaId: true } },
+      views: { where: { userId: viewerId }, select: { reaction: true } },
       // مشاهداتُ غير صاحبها — كالخادم.
       _count: { select: { views: { where: { userId: { not: authorId } } } } },
     },
   });
+  return rows.map(({ views, ...row }) => ({ ...row, myReaction: views[0]?.reaction ?? null }));
 }
 
 /** من شاهد قصص صاحبها — لكل قصّةٍ قائمتُها، الأحدثُ أوّلاً وبلاه هو. */
@@ -139,13 +144,21 @@ export async function viewersOf(ownerId: string, storyIds: string[]) {
     select: {
       storyId: true,
       seenAt: true,
+      reaction: true,
+      reactedAt: true,
       user: { select: { id: true, name: true, avatarMediaId: true } },
     },
   });
-  const out = new Map<string, { id: string; name: string; avatarMediaId: string | null; seenAt: string }[]>();
+  // من تفاعل أوّلاً ثمّ من شاهد وسكت — كالخادم (القاعدة ٢٣٨).
+  const at = (row: (typeof rows)[number]) => (row.reactedAt ?? row.seenAt).getTime();
+  rows.sort((a, b) => (a.reaction ? 0 : 1) - (b.reaction ? 0 : 1) || at(b) - at(a));
+  const out = new Map<
+    string,
+    { id: string; name: string; avatarMediaId: string | null; seenAt: string; reaction: string | null }[]
+  >();
   for (const row of rows) {
     const list = out.get(row.storyId) ?? [];
-    list.push({ ...row.user, seenAt: row.seenAt.toISOString() });
+    list.push({ ...row.user, seenAt: row.seenAt.toISOString(), reaction: row.reaction });
     out.set(row.storyId, list);
   }
   return out;

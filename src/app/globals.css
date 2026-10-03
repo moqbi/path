@@ -507,3 +507,66 @@ h3 {
 .desk-link:hover {
   background: var(--color-paper);
 }
+
+/* أعمدةُ ملصق الموسيقى في القصّة (القاعدة ٢٣٨): تتراقص ما دام الصوتُ يُسمع. */
+.story-bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2.5px;
+  height: 14px;
+}
+.story-bars i {
+  display: block;
+  width: 3.5px;
+  height: 100%;
+  border-radius: 2px;
+  background: #f6b93b;
+  transform: scaleY(0.35);
+  transform-origin: bottom;
+}
+.story-bars[data-on="1"] i {
+  animation: story-bar 0.55s ease-in-out infinite alternate;
+}
+.story-bars[data-on="1"] i:nth-child(2) {
+  animation-duration: 0.7s;
+}
+.story-bars[data-on="1"] i:nth-child(3) {
+  animation-duration: 0.85s;
+}
+@keyframes story-bar {
+  to {
+    transform: scaleY(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .story-bars[data-on="1"] i {
+    animation: none;
+  }
+}
+
+/* الوجهُ يطير حين يُضغط في القصّة (القاعدة ٢٣٨). */
+.story-burst {
+  animation: story-burst 0.9s ease-out forwards;
+}
+@keyframes story-burst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 80px) scale(0.4);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, 30px) scale(1.25);
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -120px) scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .story-burst {
+    animation-duration: 0.01s;
+  }
+}

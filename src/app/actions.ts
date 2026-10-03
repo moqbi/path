@@ -668,16 +668,39 @@ export async function seeStory(storyId: string): Promise<void> {
   });
 }
 
+/**
+ * تفاعلُ مشاهد القصّة بأحد الوجوه الخمسة (القاعدة ٢٣٨) — كبابِ الخادم: لمن يرى
+ * القصّة ولا لصاحبها، و`null` يرفعه. والتفاعلُ مشاهدةٌ فيُكتب في صفّ الإيصال.
+ */
+export async function reactStory(storyId: string, kind: string | null): Promise<void> {
+  const user = await requireUser();
+  const FACES = ["SMILE", "LAUGH", "GASP", "SAD", "LOVE"] as const;
+  const face = kind && (FACES as readonly string[]).includes(kind) ? (kind as (typeof FACES)[number]) : null;
+  if (kind && !face) return;
+  const story = await prisma.story.findFirst({
+    where: { id: storyId, expiresAt: { gt: new Date() }, ...storyVisibleTo(user.id) },
+    select: { authorId: true },
+  });
+  if (!story || story.authorId === user.id) return;
+  if (!(await visibleAuthors(user.id)).includes(story.authorId)) return;
+  const data = { reaction: face, reactedAt: face ? new Date() : null };
+  await prisma.storyView.upsert({
+    where: { storyId_userId: { storyId, userId: user.id } },
+    create: { storyId, userId: user.id, ...data },
+    update: data,
+  });
+}
+
 export async function deleteStory(storyId: string): Promise<void> {
   const user = await requireUser();
   const story = await prisma.story.findFirst({
     where: { id: storyId, authorId: user.id },
-    select: { id: true, mediaId: true },
+    select: { id: true, mediaId: true, audioMediaId: true },
   });
   if (!story) return;
   await prisma.story.delete({ where: { id: story.id } });
-  // وملفُّها معها (القاعدة ١٠٤): حذفُ الصفّ وحده يُبقي بكسلاتها في السحابة.
-  await dropMedia([story.mediaId]);
+  // وملفُّها وصوتُها معها (القاعدة ١٠٤): حذفُ الصفّ وحده يُبقي بكسلاتها في السحابة.
+  await dropMedia([story.mediaId, ...(story.audioMediaId ? [story.audioMediaId] : [])]);
   revalidatePath("/circle");
 }
 

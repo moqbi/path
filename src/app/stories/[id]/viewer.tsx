@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { deleteStory, seeStory } from "@/app/actions";
+import { deleteStory, reactStory, seeStory } from "@/app/actions";
 import { Avatar } from "@/components/ui";
 import { CloseIcon, EyeIcon } from "@/components/icons";
-import { filterCss } from "@/components/story-composer";
+import { filterCss, vignetteCss } from "@/components/story-composer";
 import { StoryTexts, type StoryText } from "@/components/story-texts";
+import { StoryStickers, type StorySticker } from "@/components/story-stickers";
+import { ReactionGlyph } from "@/components/reactions";
 import { ar, relative } from "@/lib/format";
 import { BASE } from "@/lib/base";
 
@@ -20,12 +22,19 @@ type Story = {
   at: string;
   seen: number;
   /** من شاهدها — لصاحبها وحده، وفارغةٌ لغيره. */
-  viewers: { id: string; name: string; avatarMediaId: string | null; seenAt: string }[];
+  viewers: { id: string; name: string; avatarMediaId: string | null; seenAt: string; reaction: string | null }[];
   video: boolean;
   seconds: number | null;
   filter: string | null;
   texts: StoryText[] | null;
+  stickers: StorySticker[] | null;
+  audioMediaId: string | null;
+  audioSeconds: number | null;
+  myReaction: string | null;
 };
+
+/** الوجوهُ الخمسة — مفتوحةٌ للجميع (القاعدة ٣). */
+const FACES = ["LOVE", "LAUGH", "GASP", "SAD", "SMILE"] as const;
 
 /**
  * عارض القصص.
@@ -55,8 +64,36 @@ export function StoryViewer({
   const elapsed = useRef(0);
 
   const story = stories[index];
-  // الفيديو يُقاس بمدّته لا بخمس ثوانٍ: القصّ في منتصفه يُفقد آخره.
-  const span = story?.video && story.seconds ? story.seconds * 1000 : SLIDE_MS;
+  // الفيديو يُقاس بمدّته لا بخمس ثوانٍ، والصورةُ بصوتها بطول مقطعها (القاعدة ٢٣٨).
+  const span =
+    story?.video && story.seconds
+      ? story.seconds * 1000
+      : !story?.video && story?.audioMediaId && story.audioSeconds
+        ? story.audioSeconds * 1000
+        : SLIDE_MS;
+
+  // صوتُ القصّة: يقف بوقوفها، ويُكتم بضغط ملصقه — والكتمُ يبقى على ما بعدها.
+  const audio = useRef<HTMLAudioElement | null>(null);
+  const [muted, setMuted] = useState(false);
+  useEffect(() => {
+    const el = audio.current;
+    if (!el) return;
+    if (paused) el.pause();
+    // المتصفّحُ يمنع التشغيل قبل لمسة — فتُبتلع، والملصقُ يشغّله.
+    else void el.play().catch(() => setMuted(true));
+  }, [paused, index]);
+
+  // تفاعلي: يُكتب في الحال ويُرسل بعده، وضغطُ الوجه نفسه ثانيةً يرفعه.
+  const [picked, setPicked] = useState<Record<string, string | null>>({});
+  const [burst, setBurst] = useState<{ face: string; key: number } | null>(null);
+  function react(face: string) {
+    if (!story) return;
+    const current = story.id in picked ? picked[story.id] : story.myReaction;
+    const next = current === face ? null : face;
+    setPicked((all) => ({ ...all, [story.id]: next }));
+    void reactStory(story.id, next);
+    if (next) setBurst({ face: next, key: Date.now() });
+  }
 
   // إيصال المشاهدة يُرسل مرة لكل شريحة تُفتح.
   useEffect(() => {
@@ -119,6 +156,14 @@ export function StoryViewer({
           />
         )}
 
+        {vignetteCss(story.filter) && !story.video ? (
+          <span className="pointer-events-none absolute inset-0" style={{ background: vignetteCss(story.filter)! }} />
+        ) : null}
+
+        {story.audioMediaId && !story.video ? (
+          <audio key={story.id} ref={audio} src={`${BASE}/api/media/${story.audioMediaId}`} autoPlay loop muted={muted} />
+        ) : null}
+
         <StoryTexts texts={story.texts} />
 
         {/* نصفان للتنقّل: يمينٌ يرجع ويسارٌ يتقدّم، والضغط المطوّل يوقف. */}
@@ -137,6 +182,16 @@ export function StoryViewer({
           onPointerDown={() => setHeld(true)}
           onPointerUp={() => setHeld(false)}
           onClick={() => step(index + 1)}
+        />
+
+        <StoryStickers
+          stickers={story.stickers}
+          at={new Date(story.at)}
+          muted={muted}
+          onMusic={() => {
+            setMuted((value) => !value);
+            void audio.current?.play().catch(() => {});
+          }}
         />
 
         <div className="pointer-events-none absolute inset-x-0 top-0 p-3">
@@ -196,7 +251,9 @@ export function StoryViewer({
               style={{ background: "rgba(255,255,255,.16)", color: "#fff" }}
             >
               <EyeIcon size={15} />
-              {story.seen > 0 ? `شاهدها ${ar(story.seen)}` : "لم يشاهدها أحد بعد"}
+              {story.seen > 0
+                ? `شاهدها ${ar(story.seen)}${reactedCount(story) ? `، تفاعل ${ar(reactedCount(story))}` : ""}`
+                : "لم يشاهدها أحد بعد"}
             </button>
             <form
               action={async () => {
@@ -213,6 +270,40 @@ export function StoryViewer({
               </button>
             </form>
           </div>
+        ) : null}
+
+        {mine ? null : (
+          <div className="absolute inset-x-0 bottom-0 z-10 flex justify-center pb-5">
+            <div className="flex gap-1.5 rounded-full p-1.5" style={{ background: "rgba(14,26,36,.55)" }}>
+              {FACES.map((face) => {
+                const on = (story.id in picked ? picked[story.id] : story.myReaction) === face;
+                return (
+                  <button
+                    key={face}
+                    type="button"
+                    aria-label={on ? "ارفع التفاعل" : "تفاعل"}
+                    onPointerDown={() => setHeld(true)}
+                    onPointerUp={() => setHeld(false)}
+                    onClick={() => react(face)}
+                    className="flex h-11 w-11 items-center justify-center rounded-full transition-transform"
+                    style={{ background: on ? "rgba(246,185,59,.9)" : "transparent", transform: on ? "scale(1.08)" : undefined }}
+                  >
+                    <ReactionGlyph kind={face} size={32} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {burst ? (
+          <span
+            key={burst.key}
+            className="story-burst pointer-events-none absolute left-1/2 top-[45%] z-20"
+            onAnimationEnd={() => setBurst(null)}
+          >
+            <ReactionGlyph kind={burst.face} size={96} />
+          </span>
         ) : null}
 
         {watching && mine ? (
@@ -232,9 +323,22 @@ export function StoryViewer({
               ) : (
                 story.viewers.map((person) => (
                   <Link key={person.id} href={`/u/${person.id}`} className="flex items-center gap-3 py-2">
-                    <Avatar name={person.name} size={40} mediaId={person.avatarMediaId} />
-                    <span dir="auto" className="min-w-0 grow truncate text-[14px] font-semibold">
-                      {person.name}
+                    {/* الوجهُ فوق صورة من تفاعل، ومن شاهد وسكت يُقال له نصّاً (القاعدة ٢٣٨). */}
+                    <span className="relative shrink-0">
+                      <Avatar name={person.name} size={44} mediaId={person.avatarMediaId} />
+                      {person.reaction ? (
+                        <span className="absolute -right-2 -top-2 flex h-[26px] w-[26px] items-center justify-center rounded-full border border-line bg-card">
+                          <ReactionGlyph kind={person.reaction} size={20} />
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="min-w-0 grow">
+                      <span dir="auto" className="block truncate text-[14px] font-semibold">
+                        {person.name}
+                      </span>
+                      <span className="block text-[11.5px]" style={{ color: person.reaction ? "var(--color-clay-ink)" : "var(--color-faint)" }}>
+                        {person.reaction ? "شاهدها وتفاعل" : "شاهدها وما تفاعل"}
+                      </span>
                     </span>
                     <span className="shrink-0 text-[11.5px] text-faint">{relative(new Date(person.seenAt))}</span>
                   </Link>
@@ -247,3 +351,6 @@ export function StoryViewer({
     </div>
   );
 }
+
+/** من تفاعل — من قائمة المشاهدين نفسها، فلا يُسأل الخادم مرّتين. */
+const reactedCount = (story: Story) => story.viewers.filter((person) => person.reaction).length;

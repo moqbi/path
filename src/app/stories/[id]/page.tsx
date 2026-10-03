@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { storiesOf, viewersOf } from "@/lib/stories";
 import type { StoryText } from "@/components/story-texts";
+import type { StorySticker } from "@/components/story-stickers";
 import { StoryViewer } from "./viewer";
 
 /** مشاهدة قصص شخص: شاشة كاملة، شريحة تلو أخرى. */
@@ -34,6 +35,10 @@ export default async function StoriesPage({ params }: { params: Promise<{ id: st
         seconds: story.seconds,
         filter: story.filter,
         texts: Array.isArray(story.texts) ? (story.texts as StoryText[]) : null,
+        stickers: Array.isArray(story.stickers) ? (story.stickers as StorySticker[]) : null,
+        audioMediaId: story.audioMediaId,
+        audioSeconds: story.audioSeconds,
+        myReaction: story.myReaction,
       }))}
     />
   );

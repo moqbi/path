@@ -293,11 +293,18 @@ model Story {
   texts     Json?
   /// قصةٌ خاصّة (القاعدة ٢١٩): لمن اختارهم صاحبُها وحدهم (`StoryAudience`) لا لدائرته كلّها.
   private   Boolean  @default(false)
+  /// الملصقات (`StorySticker[]`): الموقع والوقت والموسيقى — موضعٌ نسبيّ ومقاس، تُرسم عند العرض.
+  stickers  Json?
+  /// صوتُ القصة (القاعدة ٢٣٨): المقطعُ المقصوص وحده، يُحذف معها.
+  audioMediaId String? @unique
+  /// مدّةُ المقطع بالثواني — منها مدّةُ شريحة الصورة.
+  audioSeconds Int?
   createdAt DateTime @default(now())
   expiresAt DateTime
 
   author   User            @relation("StoryAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   media    Media           @relation("StoryMedia", fields: [mediaId], references: [id], onDelete: Cascade)
+  audio    Media?          @relation("StoryAudio", fields: [audioMediaId], references: [id], onDelete: SetNull)
   views    StoryView[]
   audience StoryAudience[]
 
@@ -322,6 +329,9 @@ model StoryView {
   storyId String
   userId  String
   seenAt  DateTime @default(now())
+  /// تفاعلُ المشاهد بأحد الوجوه الخمسة (القاعدة ٣) — فارغٌ: شاهد ولم يتفاعل.
+  reaction  ReactionKind?
+  reactedAt DateTime?
 
   story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -876,6 +886,7 @@ model Media {
   avatarOf   User?      @relation("UserAvatar")
   coverOf    User?      @relation("UserCover")
   storyOf    Story?     @relation("StoryMedia")
+  storyAudio Story?     @relation("StoryAudio")
   messageOf  Message?   @relation("MessageMedia")
   groupMessageOf GroupMessage? @relation("GroupMessageMedia")
   moment     Moment?    @relation("MomentMedia")
