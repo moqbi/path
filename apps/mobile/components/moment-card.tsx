@@ -12,6 +12,7 @@ import { AuthorFaces, Bubble, CommentList, Reactors } from "./reactors";
 import { colors } from "../theme/tokens";
 import { openIn } from "../lib/browse";
 import { openMaps } from "../lib/maps";
+import { showVisitors } from "./place-visitors";
 import { ar, relative, timeOfDay } from "../lib/format";
 import { useCircle, type Moment } from "../lib/queries";
 
@@ -280,7 +281,7 @@ export function MomentCard({
                 {"في "}
                 <Text
                   accessibilityRole="link"
-                  onPress={() => void openMaps(moment)}
+                  onPress={() => (moment.author.id === viewerId ? showVisitors(moment) : void openMaps(moment))}
                   style={{ color: colors.clayInk, fontWeight: "700" }}
                 >
                   {moment.placeName}
@@ -440,8 +441,10 @@ export function MomentCard({
         {moment.placeName ? (
           <Pressable
             accessibilityRole="link"
-            accessibilityLabel={`افتح ${moment.placeName} في الخرائط`}
-            onPress={() => void openMaps(moment)}
+            accessibilityLabel={
+              moment.author.id === viewerId ? `من كان في ${moment.placeName}` : `افتح ${moment.placeName} في الخرائط`
+            }
+            onPress={() => (moment.author.id === viewerId ? showVisitors(moment) : void openMaps(moment))}
             hitSlop={6}
             style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 8, alignSelf: "flex-start" }}
           >

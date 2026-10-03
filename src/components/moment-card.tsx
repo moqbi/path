@@ -338,7 +338,11 @@ export function EventLine({
         في{" "}
         {/* اسمُ المكان يفتح الخرائط (القاعدة ٢١١). */}
         {mapsUrl(moment) ? (
-          <PlaceLink url={mapsUrl(moment)!} className="font-bold text-clay-ink hover:underline">
+          <PlaceLink
+            url={mapsUrl(moment)}
+            visitors={moment.author.id === viewerId ? { momentId: moment.id, place: moment.placeName! } : undefined}
+            className="font-bold text-clay-ink hover:underline"
+          >
             {moment.placeName}
           </PlaceLink>
         ) : (
@@ -515,7 +519,8 @@ export function MomentCard({
         {moment.placeName ? (
           <p dir="auto" className="mb-2 text-[12px]">
             <PlaceLink
-              url={mapsUrl(moment)!}
+              url={mapsUrl(moment)}
+              visitors={moment.author.id === viewerId ? { momentId: moment.id, place: moment.placeName } : undefined}
               className="flex items-center gap-1.5 font-semibold text-clay-ink hover:underline"
             >
               <PinIcon size={12} />

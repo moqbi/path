@@ -21,6 +21,7 @@ import { markFirstSeen } from "../lib/rate";
 import { watchCity } from "../lib/arrive";
 import { Suspended } from "../components/suspended";
 import { PhotoViewer } from "../components/photo-viewer";
+import { PlaceVisitors } from "../components/place-visitors";
 import { Tour } from "../components/tour";
 import { applyTheme, colors, themeStore, veil } from "../theme/tokens";
 import { dismissOpen } from "../lib/swipe-open";
@@ -264,6 +265,8 @@ function Gate() {
     </Stack>
     {/* نافذةُ الصورة هنا لا في البطاقة: لا جدَّ لها يلتقط سحبتها. */}
     <PhotoViewer />
+    {/* «من كان هنا» لصاحب لحظة المكان — في الجذر للسبب نفسه. */}
+    <PlaceVisitors />
     {/* الجولةُ طبقةٌ فوق المكدّس كلّه، لمن دخل وحده. */}
     {me ? <Tour key={me.id} /> : null}
     </>
