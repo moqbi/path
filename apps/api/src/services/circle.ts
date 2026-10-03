@@ -355,7 +355,7 @@ export async function acceptFriend(userId: string, friendshipId: string) {
   }
 
   await prisma.$transaction([
-    prisma.friendship.update({ where: { id: friendshipId }, data: { status: "ACCEPTED" } }),
+    prisma.friendship.update({ where: { id: friendshipId }, data: { status: "ACCEPTED", acceptedAt: new Date() } }),
     ...lines,
   ]);
 

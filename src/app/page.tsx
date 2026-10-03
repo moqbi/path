@@ -12,6 +12,8 @@ import { Avatar, Empty, NameTag } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import { TimelineHead } from "@/components/timeline-head";
 import { VerifyBanner } from "@/components/verify-banner";
+import { MemoriesCard } from "@/components/memories-card";
+import { today as memoriesToday } from "@/lib/memories";
 import { AthrHeaderMark } from "@/components/brand";
 import { MessageIcon, SparkIcon } from "@/components/icons";
 import { ar, dayLabel, membership } from "@/lib/format";
@@ -41,9 +43,11 @@ export default async function TimelinePage({
   // «آثارنا» من مزايا آثار+ — من اختارها بلا اشتراكٍ يُؤخذ إلى صفحته.
   if (view === "together" && !user.isPlus) redirect("/subscribe");
 
-  const [unread, ids] = await Promise.all([
+  const [unread, ids, memories] = await Promise.all([
     unreadCount(user.id),
     circleIds(user.id),
+    // بطاقةُ اليوم في العدسة الأولى وحدها (القاعدة ٢٣٥).
+    view === "" ? memoriesToday(user.id) : Promise.resolve(null),
   ]);
 
   const moments =
@@ -196,6 +200,8 @@ export default async function TimelinePage({
             ما نُشر لتصنيفٍ من أصدقائك أو لأشخاص بأعيانهم — غيرهم لا يراها أصلاً.
           </p>
         ) : null}
+
+        {memories ? <MemoriesCard data={memories} /> : null}
 
         {view === "together" && friend ? (
           <section className="mb-3 rounded-2xl border border-line bg-card p-4 text-center">

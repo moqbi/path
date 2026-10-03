@@ -33,6 +33,8 @@ import { cloudReady, probeBucket } from "@/lib/storage";
 import { isSupportedMusicUrl, resolveTrack } from "@/lib/music-link";
 import { guard } from "@/lib/moderation";
 import { SUSPEND_HOURS } from "@/lib/suspend";
+import { dismiss as dismissToday, shareMemory } from "@/lib/memories";
+import { shareRecap } from "@/lib/recap";
 import { isPlusDays, PLUS_COINS, PLUS_LABEL } from "@/lib/plus";
 import type { MomentKind, ReactionKind } from "@/generated/prisma/client";
 import { requestSignup } from "@/lib/signup";
@@ -985,7 +987,7 @@ async function befriend(friendshipId: string): Promise<void> {
     });
 
   await prisma.$transaction([
-    prisma.friendship.update({ where: { id: friendshipId }, data: { status: "ACCEPTED" } }),
+    prisma.friendship.update({ where: { id: friendshipId }, data: { status: "ACCEPTED", acceptedAt: new Date() } }),
     ...(addressee.isOpen ? [] : [line(addressee, requester)]),
     ...(requester.isOpen ? [] : [line(requester, addressee)]),
   ]);
@@ -1184,6 +1186,7 @@ export async function saveNotifications(formData: FormData): Promise<void> {
       notifyComment: on("notifyComment"),
       notifyStoreNew: on("notifyStoreNew"),
       notifyStoreDeals: on("notifyStoreDeals"),
+      notifyMemories: on("notifyMemories"),
       // الطرفان معاً أو لا وضعَ هادئ.
       quietFrom: from !== null && to !== null ? from : null,
       quietTo: from !== null && to !== null ? to : null,
@@ -2313,4 +2316,37 @@ export async function reportComment(
     },
   });
   return { ok: "وصلنا بلاغك. نقرأه ونتصرّف." };
+}
+
+// ───────────────────────────── الذكريات وآثرك السنويّ (القاعدة ٢٣٥) ─────────────────────────────
+
+/** «×» على بطاقة اليوم: تُطوى لليوم على الجهازين وتعود غداً. */
+export async function dismissMemories(): Promise<void> {
+  const user = await requireUser();
+  await dismissToday(user.id);
+  revalidatePath("/");
+}
+
+/** «شاركها»: نسخةٌ باسم صاحبها في خطّه — والإجراءُ يفحص أنّ الأصل له. */
+export async function shareMemoryAction(momentId: string): Promise<{ ok: boolean; error?: string }> {
+  const user = await requireUser();
+  try {
+    await shareMemory(user.id, momentId);
+    revalidatePath("/");
+    return { ok: true };
+  } catch (problem) {
+    return { ok: false, error: problem instanceof Error ? problem.message : "تعذّرت المشاركة" };
+  }
+}
+
+export async function shareRecapAction(year: number): Promise<{ ok: boolean; error?: string }> {
+  const user = await requireUser();
+  if (!Number.isInteger(year)) return { ok: false, error: "سنة غير صالحة" };
+  try {
+    await shareRecap(user.id, year);
+    revalidatePath("/");
+    return { ok: true };
+  } catch (problem) {
+    return { ok: false, error: problem instanceof Error ? problem.message : "تعذّرت المشاركة" };
+  }
 }

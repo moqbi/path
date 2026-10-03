@@ -64,6 +64,7 @@ export type Me = {
   notifyComment?: boolean;
   notifyStoreNew?: boolean;
   notifyStoreDeals?: boolean;
+  notifyMemories?: boolean;
   quietFrom?: number | null;
   quietTo?: number | null;
   viewGroupId: string | null;

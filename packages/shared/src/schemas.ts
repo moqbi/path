@@ -139,6 +139,8 @@ export const notifyInput = z.object({
   notifyComment: z.boolean(),
   notifyStoreNew: z.boolean(),
   notifyStoreDeals: z.boolean(),
+  /** اختياريّ: نسخةٌ قديمة لا ترسله فلا يُطفأ بحفظها (كـ`notifyOnTag` في ٨٨ج). */
+  notifyMemories: z.boolean().optional(),
   quietFrom: z.number().int().min(0).max(1439).nullish(),
   quietTo: z.number().int().min(0).max(1439).nullish(),
 });

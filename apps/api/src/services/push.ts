@@ -22,7 +22,9 @@ export type PushKind =
   | "COMMENT"
   | "STORE"
   /** منحٌ من الإدارة — يخصّ صاحبه وحده، فلا مفتاحَ يُطفئه (القاعدة ١٩٨). */
-  | "GRANT";
+  | "GRANT"
+  /** الذكرياتُ ومناسباتُ الصداقة وآثرك السنويّ (القاعدة ٢٣٥). */
+  | "MEMORY";
 
 /** أيُّ حقلٍ في `User` يحرس هذا النوع. */
 const GATE: Record<PushKind, string | null> = {
@@ -33,6 +35,7 @@ const GATE: Record<PushKind, string | null> = {
   COMMENT: "notifyComment",
   STORE: "notifyStoreNew",
   GRANT: null,
+  MEMORY: "notifyMemories",
 };
 
 /**
@@ -94,6 +97,7 @@ export async function push(message: PushMessage): Promise<void> {
         notifyComment: true,
         notifyStoreNew: true,
         notifyStoreDeals: true,
+        notifyMemories: true,
         quietFrom: true,
         quietTo: true,
         devices: { select: { token: true } },

@@ -30,7 +30,7 @@ const randomImage = () => IMAGE_SPECS[Math.floor(Math.random() * IMAGE_SPECS.len
  * المختارون يُصفّون بالدائرة هنا لا في الشاشة: معرّفٌ يُدسّ في الطلب لا
  * يجعل غريباً جمهوراً.
  */
-async function readAudience(userId: string, input: MomentInput) {
+export async function readAudience(userId: string, input: MomentInput) {
   if (input.audience === "PICKED") {
     const circle = new Set(await circleIds(userId));
     const viewers = (input.viewers ?? []).filter((id) => circle.has(id));
@@ -58,7 +58,7 @@ async function readAudience(userId: string, input: MomentInput) {
 }
 
 /** المختارون يُحفظون بأعيانهم بعد إنشاء اللحظة. */
-async function attachViewers(momentId: string, viewers: string[]) {
+export async function attachViewers(momentId: string, viewers: string[]) {
   if (viewers.length === 0) return;
   await prisma.momentViewer.createMany({
     data: viewers.map((userId) => ({ momentId, userId })),

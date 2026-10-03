@@ -27,6 +27,9 @@ const shape = {
   photoY: true,
   mediaId: true,
   commentsLocked: true,
+  // ذكرى شاركها صاحبُها، وملخّصُ سنة (القاعدة ٢٣٥).
+  memoryOf: true,
+  recapYear: true,
   // «خاصة»: من يرى اللحظة يُقال له إنّها لم تُوجَّه إلى الدائرة كلّها.
   audience: true,
   createdAt: true,
@@ -241,6 +244,24 @@ export async function momentById(userId: string, momentId: string) {
   });
   if (!moment) throw notFound("اللحظة غير موجودة");
   return flatten(moment, userId);
+}
+
+/**
+ * لحظاتٌ بأعيانها بشكل الخطّ الزمنيّ — للذكريات ومناسبات الصداقة وأكثرِ لحظةٍ
+ * في السنة (القاعدة ٢٣٥). وشرطُ الرؤية فوقها كأيّ استعلام لحظات: معرّفٌ
+ * جاء من حسابٍ لا يُجيز ما لا يراه القارئ.
+ */
+export async function momentsByIds(userId: string, ids: string[]) {
+  if (ids.length === 0) return [];
+  const where = await visibleWhere(userId);
+  const rows = await prisma.moment.findMany({
+    where: { AND: [where, { id: { in: ids } }] },
+    select: shape,
+  });
+  const order = new Map(ids.map((id, index) => [id, index]));
+  return rows
+    .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
+    .map((row) => flatten(row, userId));
 }
 
 /** لحظات شخصٍ بعينه — بنفس شرط الرؤية. */

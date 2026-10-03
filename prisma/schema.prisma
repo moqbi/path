@@ -144,6 +144,12 @@ model User {
   notesClearedAt DateTime?
   /// آخرُ فتحٍ لتبويب الإشعارات: ما قبله «قُرئ» فلا نقطةَ له على الأيقونة (القاعدة ٢٣١).
   notesSeenAt    DateTime?
+  /// يومُ الرياض (YYYY-MM-DD) الذي قُرع فيه جرسُ الذكريات — مرّةً في اليوم.
+  memoriesPushedOn    String?
+  /// يومُ الرياض الذي طوى فيه صاحبُه بطاقةَ الذكريات — تعود غداً.
+  memoriesDismissedOn String?
+  /// آخرُ سنةٍ قُرع فيها جرسُ «آثرك السنويّ».
+  recapPushedYear     Int?
   dismissedNotes NoteDismissal[]
 
   /// رصيد الكوينز. عملة المتجر الوحيدة: كل ما فيه يُشترى بها، ولا
@@ -206,6 +212,8 @@ model User {
   notifyComment    Boolean @default(true)
   notifyStoreNew   Boolean @default(true)
   notifyStoreDeals Boolean @default(true)
+  /// الذكريات ومناسبات الصداقة وآثرك السنويّ — جرسُ الصباح (القاعدة ٢٣٥).
+  notifyMemories   Boolean @default(true)
 
   /// الوضع الهادئ: دقائقُ من منتصف الليل، والفارغ يعني لا وضع هادئ.
   /// بالدقائق لا بالساعات: «١٠:٣٠ مساءً» وقتٌ يختاره الناس.
@@ -389,6 +397,8 @@ model Friendship {
   addresseeId String
   status      FriendshipStatus @default(PENDING)
   createdAt   DateTime         @default(now())
+  /// متى قُبلت — منه تُحسب مناسباتُ الصداقة. فارغٌ للقديم: يُقرأ `createdAt`.
+  acceptedAt  DateTime?
 
   requester User @relation("Requester", fields: [requesterId], references: [id], onDelete: Cascade)
   addressee User @relation("Addressee", fields: [addresseeId], references: [id], onDelete: Cascade)
@@ -434,6 +444,11 @@ model Moment {
 
   /// قفلُ التعليقات بيد صاحبها — التفاعلُ يبقى مفتوحاً (القاعدة ٣).
   commentsLocked Boolean @default(false)
+
+  /// ذكرى شاركها صاحبُها: متى كُتبت الأصل — «ذكرى من ٣ أكتوبر ٢٠٢٥» (القاعدة ٢٣٥).
+  memoryOf  DateTime?
+  /// «آثري في ٢٠٢٦» — ملخّصُ سنةٍ شاركه صاحبُه، والأرقامُ في `text`.
+  recapYear Int?
 
   createdAt DateTime @default(now())
 

@@ -59,6 +59,10 @@ export type Moment = {
   commentsLocked?: boolean;
   /** الجمهور: الدائرة كلّها، أو تصنيف، أو أشخاصٌ بأعيانهم — اختياريٌّ لخادمٍ أقدم. */
   audience?: "CIRCLE" | "GROUP" | "PICKED";
+  /** ذكرى شاركها صاحبُها: تاريخُ الأصل (القاعدة ٢٣٥). */
+  memoryOf?: string | null;
+  /** «آثري في ٢٠٢٦» — ملخّصُ سنةٍ شاركه، والأرقامُ في `text`. */
+  recapYear?: number | null;
   createdAt: string;
   author: Person;
   tags: { id: string; name: string }[];
