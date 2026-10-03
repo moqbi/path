@@ -81,6 +81,8 @@ export default function TabsLayout() {
         <Tabs.Screen name="me" options={{ title: "أنا" }} />
         {/* ملفّ الصديق: شاشةٌ بلا تبويبٍ يخصّها، فيبقى الشريط تحتها. */}
         <Tabs.Screen name="u/[id]" options={{ href: null }} />
+        {/* المحادثات: بابُها في الشريط، والشريطُ باقٍ تحتها. */}
+        <Tabs.Screen name="messages" options={{ href: null }} />
       </Tabs>
 
       {/* الحجاب: ضغطةٌ عليه تُغلق البابين. */}

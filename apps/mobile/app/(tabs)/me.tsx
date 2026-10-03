@@ -20,7 +20,7 @@ import {
 import { api } from "../../lib/api";
 import { keys, type Moment } from "../../lib/queries";
 import { useSession } from "../../lib/session";
-import { ar, dayLabel, MONTHS } from "../../lib/format";
+import { ar, dayLabel } from "../../lib/format";
 import { colors } from "../../theme/tokens";
 
 const COVER = COVER_HEIGHT;
@@ -144,7 +144,6 @@ export default function Me() {
 
   if (!me) return null;
 
-  const joined = `${MONTHS[new Date(me.createdAt).getMonth()]} ${ar(new Date(me.createdAt).getFullYear())}`;
   const s = stats.data;
 
   return (
@@ -228,7 +227,9 @@ export default function Me() {
               tag={me.tag}
               handle={me.handle}
               bio={me.bio}
-              meta={`عضوية رقم ${ar(me.memberNo)}${me.city ? ` · ${me.city}` : ""} · انضم ${joined}`}
+              memberNo={me.memberNo}
+              city={me.city}
+              since={me.createdAt}
               mediaId={me.avatarMediaId}
               frame={me.frame}
               charm={me.charm}

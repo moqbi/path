@@ -1,24 +1,26 @@
 import { useState } from "react";
-import { scrolled } from "../lib/scrolled";
+import { scrolled } from "../../lib/scrolled";
 import { View, FlatList, Pressable, ActivityIndicator, RefreshControl } from "react-native";
-import { Text, TextInput } from "../components/type";
+import { Text, TextInput } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { Avatar } from "../components/avatar";
-import { SwipeRow } from "../components/swipe-row";
-import { ScreenHeader } from "../components/screen-header";
-import { Ticks, receiptOf } from "../components/receipt";
-import { CameraIcon, MicIcon, PlusIcon, SearchIcon, StarIcon, TrashIcon, WithIcon } from "../components/icons";
+import { Avatar } from "../../components/avatar";
+import { SwipeRow } from "../../components/swipe-row";
+import { ScreenHeader } from "../../components/screen-header";
+import { EdgeBack } from "../../components/edge-back";
+import { useBarSpace } from "../../components/glass-bar";
+import { Ticks, receiptOf } from "../../components/receipt";
+import { CameraIcon, MicIcon, PlusIcon, SearchIcon, StarIcon, TrashIcon, WithIcon } from "../../components/icons";
 import { Modal } from "react-native";
-import type { GroupRow } from "../lib/groups";
-import { api } from "../lib/api";
-import { keys, useCircle } from "../lib/queries";
-import { usePullRefresh } from "../lib/refresh";
-import { useSession } from "../lib/session";
-import { ar, presence, relative } from "../lib/format";
-import { NameTag } from "../components/name-tag";
-import { colors } from "../theme/tokens";
+import type { GroupRow } from "../../lib/groups";
+import { api } from "../../lib/api";
+import { keys, useCircle } from "../../lib/queries";
+import { usePullRefresh } from "../../lib/refresh";
+import { useSession } from "../../lib/session";
+import { ar, presence, relative } from "../../lib/format";
+import { NameTag } from "../../components/name-tag";
+import { colors } from "../../theme/tokens";
 
 type Row = {
   id: string;
@@ -82,6 +84,7 @@ function Last({ row, meId }: { row: Row; meId: string }) {
 export default function Messages() {
   const me = useSession((s) => s.me);
   const router = useRouter();
+  const barSpace = useBarSpace();
 
   const client = useQueryClient();
 
@@ -171,6 +174,11 @@ export default function Messages() {
   });
 
   return (
+    /*
+      المحادثاتُ شاشةٌ داخل التبويبات لا فوقها — **بقرار المالك**: الشريطُ الزجاجيّ
+      يبقى تحتها كما تحت ملفّ الصديق (القاعدة ٤٢)، والسحبُ من الحافّة رجوعُها.
+    */
+    <EdgeBack fallback="/">
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       <ScreenHeader
         title="المحادثات"
@@ -284,7 +292,7 @@ export default function Messages() {
           ) : null
         }
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingVertical: 8, flexGrow: 1 }}
+        contentContainerStyle={{ paddingTop: 8, paddingBottom: barSpace + 8, flexGrow: 1 }}
         refreshControl={
           <RefreshControl {...pullRefresh} tintColor={colors.clay} />
         }
@@ -404,5 +412,6 @@ export default function Messages() {
         </Pressable>
       </Modal>
     </SafeAreaView>
+    </EdgeBack>
   );
 }

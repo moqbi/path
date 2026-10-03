@@ -4,6 +4,7 @@ import { AvatarMenu, type WornItem } from "./avatar-menu";
 import { frameBleed, type Charm, type Frame } from "./avatar";
 import { NameTag } from "./name-tag";
 import { colors } from "../theme/tokens";
+import { ar, membership } from "../lib/format";
 
 /** مقاسُ الصورة في رأس الملفّ — «أنا» وملفُّ الصديق سواء. */
 export const PROFILE_AVATAR = 104;
@@ -11,7 +12,7 @@ export const PROFILE_AVATAR = 104;
 /**
  * هويّةُ الملفّ تحت الغلاف (القاعدة ٢٣٣) — **بقرار المالك**، ونسخةٌ واحدة
  * لـ«أنا» وملفّ الصديق: الصورةُ في طرف البداية تعبر حافّةَ الغلاف، والاسمُ
- * ووسمُه والمعرّفُ بجانبها في الوسط، ثمّ النبذةُ وسطرُ العضويّة بعرض الشاشة.
+ * ووسمُه بجانبها في الوسط، ثمّ النبذةُ وسطرُ العضويّة بعرض الشاشة.
  * كان الملفّان يرسمان الصورةَ في الوسط بمقاسين (١٠٤ و٧٨) فيُقرآن صفحتين من
  * تطبيقين.
  */
@@ -21,7 +22,9 @@ export function ProfileHead({
   tag,
   handle,
   bio,
-  meta,
+  memberNo,
+  city,
+  since,
   mediaId,
   frame,
   charm,
@@ -33,7 +36,10 @@ export function ProfileHead({
   tag?: { name: string; bg: string; fg: string } | null;
   handle?: string | null;
   bio?: string | null;
-  meta: string;
+  memberNo: number;
+  city?: string | null;
+  /** تاريخُ الانضمام — يُقرأ «لك معانا …» (القاعدة ٧٥). */
+  since: string;
   mediaId: string | null;
   frame?: Frame;
   charm?: Charm;
@@ -41,6 +47,19 @@ export function ProfileHead({
   charmItem: WornItem;
 }) {
   const size = PROFILE_AVATAR;
+  /*
+    سطرُ العضويّة **بقرار المالك**: «عضوية رقم │ المعرّف │ المدينة │ لك معانا»،
+    والمعرّفُ فيه لا تحت الاسم. والمعرّفُ لاتينيٌّ داخل سطرٍ عربيّ، فيُعزَل
+    (`\u2068…\u2069`) وإلّا جرّ الفاصلَ بعده إلى جهته فاختلّ الترتيب.
+  */
+  const meta = [
+    `عضوية رقم ${ar(memberNo)}`,
+    handle ? `\u2068@${handle}\u2069` : null,
+    city || null,
+    `لك معانا ${membership(since)}`,
+  ]
+    .filter(Boolean)
+    .join("  │  ");
   return (
     <View style={{ paddingHorizontal: 20 }}>
       {/*
@@ -70,9 +89,6 @@ export function ProfileHead({
             </Text>
             <NameTag isPlus={isPlus} tag={tag} size={12} />
           </View>
-          {handle ? (
-            <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2, writingDirection: "ltr" }}>@{handle}</Text>
-          ) : null}
         </View>
       </View>
 
