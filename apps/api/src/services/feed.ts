@@ -185,6 +185,13 @@ function involves(authorId: string, otherId: string) {
   return { AND: [{ authorId }, { tags: { some: { userId: otherId } } }] };
 }
 
+/**
+ * ما يُعدّ أثراً مشتركاً (القاعدة ١٥٩): صورةٌ ومكانٌ وأغنيةٌ وخاطرة — لا
+ * «أهديت فلان» ولا «أصبح صديق فلان» ولا النومُ والصحو. أسطرُ أحداثٍ تحمل
+ * إشارةً لكنّها لا تقول شيئاً عمّا عاشاه معاً.
+ */
+export const TOGETHER_KINDS: MomentKind[] = ["PHOTO", "PLACE", "MUSIC", "THOUGHT"];
+
 export async function togetherTimeline(userId: string, friendId: string) {
   const viewer = await prisma.user.findUnique({ where: { id: userId }, select: { isPlus: true } });
   if (!viewer?.isPlus) throw forbidden("«آثارنا» من مزايا آثار+");
@@ -208,7 +215,7 @@ export async function togetherTimeline(userId: string, friendId: string) {
 
   const rows = await prisma.moment.findMany({
     where: {
-      AND: [visible, { OR: [involves(userId, friendId), involves(friendId, userId)] }],
+      AND: [visible, { OR: [involves(userId, friendId), involves(friendId, userId)] }, { kind: { in: TOGETHER_KINDS } }],
     },
     select: shape,
     orderBy: { createdAt: "desc" },

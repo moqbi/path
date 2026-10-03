@@ -207,7 +207,7 @@ export function longestStreak(days: Set<string>) {
   return best;
 }
 
-/** أوّلُ لحظةٍ جمعتهما بالإشارة («مع فلان») — لكلّ صديق. */
+/** أوّلُ لحظةٍ جمعتهما بالإشارة («مع فلان») — لكلّ صديق، من أنواع «آثارنا» وحدها (القاعدة ١٥٩). */
 async function firstTogether(userId: string, friendId?: string) {
   const only = friendId
     ? Prisma.sql`AND ((m."authorId" = ${userId} AND t."userId" = ${friendId}) OR (m."authorId" = ${friendId} AND t."userId" = ${userId}))`
@@ -218,6 +218,7 @@ async function firstTogether(userId: string, friendId?: string) {
              m.id, m."createdAt" AS at
         FROM "Moment" m JOIN "MomentTag" t ON t."momentId" = m.id
        WHERE (m."authorId" = ${userId} OR t."userId" = ${userId}) ${only}
+         AND m.kind::text IN ('PHOTO', 'PLACE', 'MUSIC', 'THOUGHT')
     ) f ORDER BY other, at ASC`;
   return new Map(rows.map((row) => [row.other, { id: row.id, at: row.at }]));
 }
