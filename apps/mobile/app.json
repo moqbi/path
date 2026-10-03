@@ -101,6 +101,12 @@
     "owner": "i.moh57",
     "locales": {
       "ar": "./locales/ar.json"
+    },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a6564f39-9220-4bb7-917a-f31cf9d967d6"
     }
   }
 }
