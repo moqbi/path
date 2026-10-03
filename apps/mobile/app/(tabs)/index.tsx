@@ -49,7 +49,7 @@ export default function Timeline() {
     العدسات ثلاثٌ في الخط الزمني نفسه لا ثلاثُ صفحات: الرأس والغلاف
     والصورة تبقى، ويتبدّل ما تحتها وحده.
   */
-  const params = useLocalSearchParams<{ view?: string; with?: string }>();
+  const params = useLocalSearchParams<{ view?: string; with?: string; from?: string }>();
   const view = params.view === "private" || params.view === "together" ? params.view : "";
   const withId = view === "together" ? (params.with ?? "") : "";
 
@@ -224,7 +224,24 @@ export default function Timeline() {
       «آثارنا» تُفتح من ملفّ الصديق، والسحبُ من الحافّة يرجع إليه — **بقرار
       المالك** (القاعدة ٢٣٤). والخطُّ الزمنيّ العاديّ بلا رجوع: هو أوّلُ التطبيق.
     */
-    <EdgeBack fallback={withId ? `/u/${withId}` : "/"} enabled={view === "together" && Boolean(withId)}>
+    <EdgeBack
+      fallback={withId ? `/u/${withId}` : "/"}
+      enabled={view === "together" && Boolean(withId)}
+      onBack={() => {
+        /*
+          الرجوعُ إلى حيث فُتحت — **بقرار المالك**: من ملفّ الصديق يُرجع إلى ملفّه وتعود
+          العدسةُ الأولى فلا يُفتح التبويبُ على «آثارنا» بعدها، ومن قائمة «آثارنا»
+          نفسها يُرجع إلى القائمة.
+        */
+        if (params.from === "profile" && withId) {
+          const id = withId;
+          router.setParams({ view: undefined, with: undefined, from: undefined } as never);
+          router.navigate(`/u/${id}` as never);
+        } else {
+          router.setParams({ view: "together", with: "", from: undefined } as never);
+        }
+      }}
+    >
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       {/*
         الرأس: العلامة ثم ATHAR، و«آثار+» قبل الرسائل.
@@ -483,7 +500,7 @@ export default function Timeline() {
               count={moments.length}
               since={since}
               people={circle.data?.members ?? []}
-              onPick={(id) => router.setParams({ view: "together", with: id })}
+              onPick={(id) => router.setParams({ view: "together", with: id, from: undefined } as never)}
               onClear={() => router.setParams({ view: "together", with: "" })}
             />
           }

@@ -43,7 +43,13 @@ export function ProfileHead({
   const size = PROFILE_AVATAR;
   return (
     <View style={{ paddingHorizontal: 20 }}>
-      <View style={{ flexDirection: "row", alignItems: "flex-end", marginTop: -size / 2 }}>
+      {/*
+        الصورةُ في طرف البداية تعبر حافّةَ الغلاف، والاسمُ بجانبها **تحت** الحافّة
+        لا عليها، وكلُّ ما يُقرأ بعده — النبذةُ وسطرُ العضويّة — على الطرف نفسه:
+        كان الاسمُ يتوسّط ما بقي من السطر والنبذةُ تتوسّط الشاشة، فيُقرأ كلٌّ في
+        جهة، ويلتصق الاسمُ بالغلاف حين يكون تحته معرّف.
+      */}
+      <View style={{ flexDirection: "row", alignItems: "flex-start", marginTop: -size / 2 }}>
         <AvatarMenu
           name={name}
           size={size}
@@ -54,7 +60,7 @@ export function ProfileHead({
           charmItem={charmItem}
         />
         {/* التميمةُ تتدلّى من ركن الصورة نحو الاسم (القاعدة ٥٩): مسافةٌ تتّسع لها. */}
-        <View style={{ flex: 1, minWidth: 0, alignItems: "center", paddingRight: 18, paddingBottom: 6 }}>
+        <View style={{ flex: 1, minWidth: 0, alignItems: "flex-start", paddingRight: 34, marginTop: size / 2 + 10 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, maxWidth: "100%" }}>
             <Text
               numberOfLines={1}
@@ -71,13 +77,13 @@ export function ProfileHead({
       </View>
 
       {/* ما يخرج من الإطار تحت الصورة لا يلتصق بما بعده. */}
-      <View style={{ alignItems: "center", marginTop: 12 + frameBleed(size, frame) }}>
+      <View style={{ alignItems: "flex-start", marginTop: 12 + frameBleed(size, frame) }}>
         {bio ? (
-          <Text style={{ color: colors.ink2, fontSize: 13, textAlign: "center", lineHeight: 22, maxWidth: 320 }}>
+          <Text style={{ color: colors.ink2, fontSize: 13.5, textAlign: "right", lineHeight: 22, writingDirection: "auto" }}>
             {bio}
           </Text>
         ) : null}
-        <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: bio ? 6 : 0, textAlign: "center" }}>{meta}</Text>
+        <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: bio ? 6 : 0, textAlign: "right" }}>{meta}</Text>
       </View>
     </View>
   );

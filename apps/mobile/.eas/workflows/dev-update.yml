@@ -1,0 +1,27 @@
+# تحديثٌ لنسخة التطوير على جهاز المالك — يُنشر من الفرع بلا بناءٍ ولا مراجعة.
+# الواجهةُ وحدها تتحدّث هكذا؛ وحدةٌ أصليّة جديدة تحتاج بناءً (القاعدة ١٢٤).
+#
+# والمتغيّراتُ هنا لا في `eas.json`: التحديثُ لا يقرأ بيئةَ ملفّ البناء، وبلاها
+# يُحزَم التطبيقُ على خادمٍ محلّيّ لا وجودَ له على الجهاز. وكلُّها عامّةٌ
+# (`EXPO_PUBLIC_*`) تُقرأ من الحزمة نفسها — لا سرَّ فيها.
+name: Dev update
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  update:
+    name: Publish to development
+    type: update
+    env:
+      EXPO_PUBLIC_API_URL: https://atharmts.com
+      EXPO_PUBLIC_SITE_URL: https://atharmts.com
+      EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: 186550074028-pve7oubeech3slm7i02jgf48l9cboo3v.apps.googleusercontent.com
+      EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: 186550074028-ndj4lmrokmnv02snc6luvbdfes68pm45.apps.googleusercontent.com
+      EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: 186550074028-c8sechd2sqdoa849lbstjs82smlvlr0i.apps.googleusercontent.com
+      EXPO_PUBLIC_SNAP_CLIENT_ID: b3e81a2e-e14e-47c9-98f6-f82da9a433d2
+      EXPO_PUBLIC_RC_TEST_KEY: test_bPkuVnVXLCekZPeJHkZQtHucNQi
+    params:
+      branch: development
+      platform: ios
+      message: Dev update

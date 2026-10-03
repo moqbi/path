@@ -282,7 +282,7 @@ function Profile() {
                     />
 
                     <Pressable
-                      onPress={() => router.push({ pathname: "/", params: { view: "together", with: who.id } } as never)}
+                      onPress={() => router.push({ pathname: "/", params: { view: "together", with: who.id, from: "profile" } } as never)}
                       style={{ flexGrow: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, height: 46, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
                     >
                       <WithIcon size={16} color={colors.ink2} />

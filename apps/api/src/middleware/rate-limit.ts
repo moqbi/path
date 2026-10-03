@@ -33,10 +33,16 @@ function take(key: string, limit: number, windowMs: number): boolean {
  * لا من الجسد، فلا يُنتحل.
  *
  * ويُركَّب **بعد** `requireAuth` وإلّا لم يكن ثمّةَ من يُحاسَب.
+ *
+ * **والقراءةُ لا تُعدّ** (`GET`/`HEAD`): يُركَّب بـ`.use("/", …)` على مسارٍ
+ * يقرأ ويكتب معاً، فكانت قراءةُ حلقات القصص تُحسب من «عشرين قصّةً في
+ * الساعة» — والتطبيقُ يسألها مع كل فتحٍ وإغلاقٍ لقصّة — فيُردّ بـ٤٢٩
+ * والشريطُ فارغٌ بلا خطأٍ في السجلّ. وكذلك قراءةُ التعليقات والرسائل.
  */
 export function rateLimitUser(limit: number, windowSeconds: number): MiddlewareHandler {
   const windowMs = windowSeconds * 1000;
   return async (c, next) => {
+    if (c.req.method === "GET" || c.req.method === "HEAD") return next();
     const claims = c.get("user") as { sub?: string } | undefined;
     const userId = claims?.sub;
     if (!userId) return next();

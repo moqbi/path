@@ -255,6 +255,25 @@ function Trimmer({
   const [at, setAt] = useState<number | null>(null);
   const span = useRef({ start, end });
   span.current = { start, end };
+  // ما تقرؤه دالّةُ الحالة: أُغلق عليها عند الإنشاء، فلا ترى `playing` إلا بمرجع.
+  const want = useRef(false);
+  // قفزةٌ واحدة في الطريق: الحالةُ تصل كل ١٠٠ مللي، وقفزتان معاً تُلغي إحداهما الأخرى
+  // («Seeking interrupted») فيقف الصوت.
+  const seeking = useRef(false);
+
+  /** من أوّل النافذة — ويُشغَّل من جديد إن كان قد وقف عند آخر الملفّ. */
+  function rewind() {
+    const made = sound.current;
+    if (!made || seeking.current) return;
+    seeking.current = true;
+    made
+      .setPositionAsync(span.current.start * 1000)
+      .then(() => (want.current ? made.playAsync() : undefined))
+      .catch(() => {})
+      .finally(() => {
+        seeking.current = false;
+      });
+  }
 
   useEffect(() => {
     let alive = true;
@@ -265,10 +284,14 @@ function Trimmer({
       (status) => {
         if (!status.isLoaded) return;
         const seconds = status.positionMillis / 1000;
-        setAt(status.isPlaying ? seconds : null);
-        if (status.isPlaying && seconds >= span.current.end) {
-          void sound.current?.setPositionAsync(span.current.start * 1000).catch(() => {});
-        }
+        setAt(want.current ? seconds : null);
+        if (!want.current) return;
+        /*
+          نافذةٌ تنتهي عند آخر الملفّ — وهي الغالبة في مقطعٍ أقصر من ١٥ ثانية —
+          لا تبلغ `end` وهي تُسمع: الملفُّ ينتهي قبلها فيقف (`didJustFinish`)،
+          فكانت المعاينةُ تُسمع مرّةً ثمّ تسكت والزرُّ يقول «أوقف».
+        */
+        if (status.didJustFinish || seconds >= span.current.end - 0.05) rewind();
       },
     )
       .then(({ sound: made }) => {
@@ -278,6 +301,7 @@ function Trimmer({
       .catch(() => {});
     return () => {
       alive = false;
+      want.current = false;
       const made = sound.current;
       sound.current = null;
       void made?.unloadAsync().catch(() => {});
@@ -286,22 +310,26 @@ function Trimmer({
 
   // نافذةٌ سُحبت والصوتُ يُسمع: يبدأ من أوّلها الجديد.
   useEffect(() => {
-    if (playing) void sound.current?.setPositionAsync(start * 1000).catch(() => {});
-  }, [start, playing]);
+    if (want.current) rewind();
+  }, [start]);
 
   async function toggle() {
     const made = sound.current;
     if (!made) return;
+    if (want.current) {
+      want.current = false;
+      setPlaying(false);
+      setAt(null);
+      await made.pauseAsync().catch(() => {});
+      return;
+    }
+    want.current = true;
+    setPlaying(true);
     try {
-      if (playing) {
-        await made.pauseAsync();
-        setPlaying(false);
-      } else {
-        await made.setPositionAsync(start * 1000);
-        await made.playAsync();
-        setPlaying(true);
-      }
+      await made.setPositionAsync(span.current.start * 1000);
+      await made.playAsync();
     } catch {
+      want.current = false;
       setPlaying(false);
     }
   }
