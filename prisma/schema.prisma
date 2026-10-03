@@ -332,6 +332,8 @@ model StoryView {
   /// تفاعلُ المشاهد بأحد الوجوه الخمسة (القاعدة ٣) — فارغٌ: شاهد ولم يتفاعل.
   reaction  ReactionKind?
   reactedAt DateTime?
+  /// صوّر الشاشةَ وهي مفتوحة (القاعدة ٢٤٠) — يراه صاحبُها في «من شاهد».
+  screenshotAt DateTime?
 
   story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)

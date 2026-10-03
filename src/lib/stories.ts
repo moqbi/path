@@ -146,6 +146,7 @@ export async function viewersOf(ownerId: string, storyIds: string[]) {
       seenAt: true,
       reaction: true,
       reactedAt: true,
+      screenshotAt: true,
       user: { select: { id: true, name: true, avatarMediaId: true } },
     },
   });
@@ -154,11 +155,11 @@ export async function viewersOf(ownerId: string, storyIds: string[]) {
   rows.sort((a, b) => (a.reaction ? 0 : 1) - (b.reaction ? 0 : 1) || at(b) - at(a));
   const out = new Map<
     string,
-    { id: string; name: string; avatarMediaId: string | null; seenAt: string; reaction: string | null }[]
+    { id: string; name: string; avatarMediaId: string | null; seenAt: string; reaction: string | null; screenshot: boolean }[]
   >();
   for (const row of rows) {
     const list = out.get(row.storyId) ?? [];
-    list.push({ ...row.user, seenAt: row.seenAt.toISOString(), reaction: row.reaction });
+    list.push({ ...row.user, seenAt: row.seenAt.toISOString(), reaction: row.reaction, screenshot: Boolean(row.screenshotAt) });
     out.set(row.storyId, list);
   }
   return out;

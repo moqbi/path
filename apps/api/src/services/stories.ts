@@ -152,6 +152,7 @@ export async function viewers(userId: string, storyId: string) {
       seenAt: true,
       reaction: true,
       reactedAt: true,
+      screenshotAt: true,
       user: {
         select: {
           id: true,
@@ -170,7 +171,7 @@ export async function viewers(userId: string, storyId: string) {
   const at = (row: (typeof rows)[number]) => (row.reactedAt ?? row.seenAt).getTime();
   return [...rows]
     .sort((a, b) => (a.reaction ? 0 : 1) - (b.reaction ? 0 : 1) || at(b) - at(a))
-    .map((row) => ({ ...row.user, seenAt: row.seenAt, reaction: row.reaction }));
+    .map((row) => ({ ...row.user, seenAt: row.seenAt, reaction: row.reaction, screenshot: Boolean(row.screenshotAt) }));
 }
 
 /** نشر قصة: تُعرض لأصدقائك يوماً ثم تذهب. */
@@ -319,6 +320,41 @@ export async function react(userId: string, storyId: string, kind: "SMILE" | "LA
     });
   }
   return { reaction: kind };
+}
+
+/**
+ * لقطةُ شاشة (القاعدة ٢٤٠) — **بقرار المالك**: الجهازُ يقولها، وتُكتب في صفّ
+ * المشاهدة نفسه بشروطه — لمن يرى القصّة ولا لصاحبها. وأوّلُها يُختم ولا يُبدَّل:
+ * «صوّرها» خبرٌ يكفي مرّةً. والجرسُ لصاحبها مع الأولى وحدها.
+ */
+export async function screenshot(userId: string, storyId: string) {
+  const story = await prisma.story.findFirst({
+    where: { id: storyId, expiresAt: { gt: new Date() }, ...storyVisibleTo(userId) },
+    select: { authorId: true },
+  });
+  if (!story || story.authorId === userId) return { ok: true };
+  const authors = await visibleAuthors(userId);
+  if (!authors.includes(story.authorId)) return { ok: true };
+
+  const before = await prisma.storyView.findUnique({
+    where: { storyId_userId: { storyId, userId } },
+    select: { screenshotAt: true },
+  });
+  if (before?.screenshotAt) return { ok: true };
+  await prisma.storyView.upsert({
+    where: { storyId_userId: { storyId, userId } },
+    create: { storyId, userId, screenshotAt: new Date() },
+    update: { screenshotAt: new Date() },
+  });
+  const who = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+  void push({
+    userId: story.authorId,
+    kind: "REACTION",
+    title: "لقطة شاشة لقصتك",
+    body: `${who?.name ?? "صديق"} صوّر قصتك`,
+    path: `/stories/${story.authorId}`,
+  });
+  return { ok: true };
 }
 
 /** إيصال مشاهدة — منه تُطفأ حلقتها. */
