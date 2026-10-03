@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import { View, Pressable, ScrollView } from "react-native";
+import { useQueryClient } from "@tanstack/react-query";
 import { Text } from "./type";
 import { useRouter } from "expo-router";
 import { Spot } from "./spot";
@@ -7,6 +9,7 @@ import { PlusIcon } from "./icons";
 import { colors } from "../theme/tokens";
 import type { StoryRing } from "../lib/queries";
 import { LockIcon } from "./icons";
+import { prefetchStories } from "../lib/story-prefetch";
 
 /**
  * شريط القصص.
@@ -18,6 +21,14 @@ export function StoryStrip({ rings, meId }: { rings: StoryRing[]; meId: string }
   const router = useRouter();
   const mine = rings.find((ring) => ring.userId === meId) ?? null;
   const others = rings.filter((ring) => ring.userId !== meId);
+  const client = useQueryClient();
+
+  // ما فيه جديدٌ يُجلب سلفاً فتُفتح القصّةُ بلا شاشةٍ سوداء (`story-prefetch`).
+  const freshIds = others.filter((ring) => ring.fresh).slice(0, 4).map((ring) => ring.userId).join(",");
+  useEffect(() => {
+    if (!freshIds) return;
+    for (const userId of freshIds.split(",")) void prefetchStories(client, userId);
+  }, [client, freshIds]);
 
   return (
     // هدفُ الجولة: شريطُ القصص كلُّه.
@@ -61,9 +72,12 @@ export function StoryStrip({ rings, meId }: { rings: StoryRing[]; meId: string }
 
 function Ring({ ring, label }: { ring: StoryRing; label: string }) {
   const router = useRouter();
+  const client = useQueryClient();
 
   return (
     <Pressable
+      // الضغطةُ تبدأ الجلبَ قبل أن تكتمل — جزءٌ من ثانيةٍ يُكسب.
+      onPressIn={() => void prefetchStories(client, ring.userId)}
       onPress={() => router.push(`/stories/${ring.userId}` as never)}
       style={{ width: 68, alignItems: "center", gap: 6 }}
     >

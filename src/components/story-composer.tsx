@@ -16,20 +16,42 @@ const MAX_VIDEO = 9_000_000;
  * الصورة تُحفظ كما صُوِّرت ويُطبَّق الفلتر عليها في كل مكان تُعرض فيه —
  * فالتراجع ممكن، والفيديو لا يُعاد ترميزه في المتصفح أصلاً.
  */
-export const FILTERS: { key: string; name: string; css: string }[] = [
+export const FILTERS: { key: string; name: string; css: string; vignette?: number }[] = [
   { key: "", name: "بلا", css: "none" },
   { key: "warm", name: "دافئ", css: "sepia(.35) saturate(1.25) contrast(1.03)" },
-  { key: "cool", name: "بارد", css: "hue-rotate(-12deg) saturate(1.1) brightness(1.04)" },
-  { key: "mono", name: "رمادي", css: "grayscale(1) contrast(1.08)" },
-  { key: "vivid", name: "زاهي", css: "saturate(1.5) contrast(1.1)" },
-  { key: "fade", name: "باهت", css: "saturate(.75) brightness(1.08) contrast(.92)" },
+  { key: "gold", name: "ذهبي", css: "sepia(.25) saturate(1.4) hue-rotate(-8deg) brightness(1.05) contrast(1.05)", vignette: 0.25 },
+  { key: "dusk", name: "غروب", css: "sepia(.3) saturate(1.6) hue-rotate(-20deg) contrast(1.1)", vignette: 0.35 },
+  { key: "desert", name: "صحراء", css: "sepia(.5) saturate(1.5) hue-rotate(-12deg) brightness(1.06)", vignette: 0.2 },
   { key: "sand", name: "رملي", css: "sepia(.6) saturate(1.1) brightness(1.05)" },
-  { key: "rose", name: "وردي", css: "hue-rotate(12deg) saturate(1.2) brightness(1.03)" },
-  { key: "film", name: "فيلم", css: "contrast(1.2) saturate(.85) sepia(.15)" },
-  { key: "night", name: "ليلي", css: "brightness(.9) contrast(1.15) hue-rotate(-8deg) saturate(.9)" },
+  { key: "vivid", name: "زاهي", css: "saturate(1.5) contrast(1.1)" },
+  { key: "pop", name: "نابض", css: "saturate(1.8) contrast(1.2) brightness(1.03)" },
+  { key: "chrome", name: "كروم", css: "contrast(1.25) saturate(1.3) brightness(.97)", vignette: 0.2 },
   { key: "noon", name: "ظهيرة", css: "brightness(1.12) contrast(1.05) saturate(1.15)" },
+  { key: "cool", name: "بارد", css: "hue-rotate(-12deg) saturate(1.1) brightness(1.04)" },
+  { key: "teal", name: "فيروزي", css: "hue-rotate(-25deg) saturate(1.3) contrast(1.1) brightness(1.02)" },
+  { key: "ocean", name: "بحر", css: "hue-rotate(-40deg) saturate(1.2) brightness(1.04) contrast(1.05)" },
+  { key: "rose", name: "وردي", css: "hue-rotate(12deg) saturate(1.2) brightness(1.03)" },
+  { key: "candy", name: "حلوى", css: "hue-rotate(20deg) saturate(1.5) brightness(1.08) contrast(.95)" },
+  { key: "fade", name: "باهت", css: "saturate(.75) brightness(1.08) contrast(.92)" },
+  { key: "mist", name: "ضباب", css: "brightness(1.15) contrast(.8) saturate(.7)" },
+  { key: "film", name: "فيلم", css: "contrast(1.2) saturate(.85) sepia(.15)", vignette: 0.3 },
+  { key: "retro", name: "قديم", css: "sepia(.45) contrast(.9) brightness(1.1) saturate(.8)", vignette: 0.45 },
+  { key: "night", name: "ليلي", css: "brightness(.9) contrast(1.15) hue-rotate(-8deg) saturate(.9)", vignette: 0.3 },
+  { key: "mono", name: "رمادي", css: "grayscale(1) contrast(1.08)" },
+  { key: "silver", name: "فضي", css: "grayscale(1) brightness(1.12) contrast(.95)" },
   { key: "ink", name: "حبر", css: "grayscale(1) contrast(1.35) brightness(.95)" },
+  { key: "noir", name: "نوار", css: "grayscale(1) contrast(1.6) brightness(.9)", vignette: 0.5 },
 ];
+
+/**
+ * إعتامُ أطراف الفلتر — طبقةٌ فوق الصورة بالتدرّج نفسه الذي يرسمه الجوّال
+ * (`Vignette` في `apps/mobile/components/filtered.tsx`): شفّافٌ حتى نصف القطر
+ * ثمّ يدكن إلى الحافّة.
+ */
+export const vignetteCss = (key: string | null | undefined): string | null => {
+  const amount = FILTERS.find((item) => item.key === (key ?? ""))?.vignette;
+  return amount ? `radial-gradient(circle closest-corner at center, rgba(0,0,0,0) 50%, rgba(0,0,0,${amount}) 100%)` : null;
+};
 
 export const filterCss = (key: string | null | undefined) =>
   FILTERS.find((item) => item.key === (key ?? ""))?.css ?? "none";
@@ -220,6 +242,9 @@ export function StoryComposer() {
                 style={{ objectFit: "contain", filter: filterCss(filter) }}
               />
             )}
+            {vignetteCss(filter) ? (
+              <span className="pointer-events-none absolute inset-4 rounded-2xl" style={{ background: vignetteCss(filter)! }} />
+            ) : null}
           </div>
 
           <div className="shrink-0 px-4 pb-8">
@@ -232,18 +257,28 @@ export function StoryComposer() {
             <div className="no-bar mb-3 flex gap-2 overflow-x-auto">
               {FILTERS.map((item) => {
                 const on = filter === item.key;
+                // الصورةُ نفسها في كلّ قرص (القاعدة ٩٦): الاسمُ وحده تخمين.
                 return (
                   <button
                     key={item.key || "none"}
                     type="button"
+                    aria-label={`فلتر ${item.name}`}
                     onClick={() => setFilter(item.key)}
-                    className="shrink-0 rounded-full px-4 py-2 text-[12.5px] font-semibold"
-                    style={{
-                      background: on ? "#fff" : "rgba(255,255,255,.14)",
-                      color: on ? "#0b1219" : "#fff",
-                    }}
+                    className="flex shrink-0 flex-col items-center gap-1"
                   >
-                    {item.name}
+                    <span
+                      className="relative block overflow-hidden rounded-xl"
+                      style={{ width: 56, height: 74, outline: on ? "2px solid #F6B93B" : "none", outlineOffset: 2, background: "#0b1219" }}
+                    >
+                      {draft.video ? null : (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={draft.url} alt="" className="h-full w-full object-cover" style={{ filter: item.css }} />
+                      )}
+                      {item.vignette ? <span className="absolute inset-0" style={{ background: vignetteCss(item.key)! }} /> : null}
+                    </span>
+                    <span className="text-[11px] font-semibold" style={{ color: on ? "#F6B93B" : "rgba(255,255,255,.8)" }}>
+                      {item.name}
+                    </span>
                   </button>
                 );
               })}

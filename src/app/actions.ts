@@ -33,6 +33,8 @@ import { cloudReady, probeBucket } from "@/lib/storage";
 import { isSupportedMusicUrl, resolveTrack } from "@/lib/music-link";
 import { guard } from "@/lib/moderation";
 import { SUSPEND_HOURS } from "@/lib/suspend";
+import { dismiss as dismissToday, shareMemory } from "@/lib/memories";
+import { shareRecap } from "@/lib/recap";
 import { isPlusDays, PLUS_COINS, PLUS_LABEL } from "@/lib/plus";
 import type { MomentKind, ReactionKind } from "@/generated/prisma/client";
 import { requestSignup } from "@/lib/signup";
@@ -279,15 +281,6 @@ export async function deleteAccount(
 // ───────────────────────────── اللحظات ─────────────────────────────
 
 /** تدرّجات تقوم مقام رفع الصور في النموذج الأولي. */
-const IMAGE_SPECS = [
-  "linear-gradient(160deg,#f6b93b,#ff7a5a 55%,#8c3f4a)",
-  "linear-gradient(160deg,#ffb27a,#c05a54 70%,#3b2a33)",
-  "linear-gradient(160deg,#f7f5ef,#d09a72 45%,#5a4152)",
-  "linear-gradient(160deg,#8fa7b8,#3f5a6b 60%,#0e1a24)",
-  "linear-gradient(160deg,#ffd27a,#d1706a 55%,#2f3742)",
-];
-
-const randomImage = () => IMAGE_SPECS[Math.floor(Math.random() * IMAGE_SPECS.length)];
 
 /**
  * الإشارة «مع فلان» تظهر فوراً بلا موافقة.
@@ -430,6 +423,10 @@ export async function postSimple(formData: FormData): Promise<void> {
     mediaId = stored.id;
   }
 
+  // لحظةُ صورةٍ بلا صورة خاطرةٌ بنصّها — لا تدرّجٌ عشوائيّ فارغ فوقه (كالخادم).
+  if (kind === "PHOTO" && !mediaId && !text) throw new Error("اختر صورة أو اكتب شيئاً");
+  const posted = kind === "PHOTO" && !mediaId ? "THOUGHT" : kind;
+
   const seen = await readAudience(formData, user);
   // الموقع اختياريٌّ هنا: اللحظة والصورة تحملان مكانهما كما يحمله المكان.
   const where = await readPlace(formData, user);
@@ -437,13 +434,12 @@ export async function postSimple(formData: FormData): Promise<void> {
   const moment = await prisma.moment.create({
     data: {
       authorId: user.id,
-      kind: kind as MomentKind,
+      kind: posted as MomentKind,
       text: text || null,
       mediaId,
       // موضعُ الصورة في إطار البطاقة كما ضبطه صاحبُها بالسحب (٠–١٠٠).
       photoX: mediaId ? percent(formData.get("photoX")) : null,
       photoY: mediaId ? percent(formData.get("photoY")) : null,
-      imageSpec: kind === "PHOTO" && !mediaId ? randomImage() : null,
       ...where,
       audience: seen.audience,
       audienceGroupId: seen.audienceGroupId,
@@ -672,16 +668,39 @@ export async function seeStory(storyId: string): Promise<void> {
   });
 }
 
+/**
+ * تفاعلُ مشاهد القصّة بأحد الوجوه الخمسة (القاعدة ٢٣٨) — كبابِ الخادم: لمن يرى
+ * القصّة ولا لصاحبها، و`null` يرفعه. والتفاعلُ مشاهدةٌ فيُكتب في صفّ الإيصال.
+ */
+export async function reactStory(storyId: string, kind: string | null): Promise<void> {
+  const user = await requireUser();
+  const FACES = ["SMILE", "LAUGH", "GASP", "SAD", "LOVE"] as const;
+  const face = kind && (FACES as readonly string[]).includes(kind) ? (kind as (typeof FACES)[number]) : null;
+  if (kind && !face) return;
+  const story = await prisma.story.findFirst({
+    where: { id: storyId, expiresAt: { gt: new Date() }, ...storyVisibleTo(user.id) },
+    select: { authorId: true },
+  });
+  if (!story || story.authorId === user.id) return;
+  if (!(await visibleAuthors(user.id)).includes(story.authorId)) return;
+  const data = { reaction: face, reactedAt: face ? new Date() : null };
+  await prisma.storyView.upsert({
+    where: { storyId_userId: { storyId, userId: user.id } },
+    create: { storyId, userId: user.id, ...data },
+    update: data,
+  });
+}
+
 export async function deleteStory(storyId: string): Promise<void> {
   const user = await requireUser();
   const story = await prisma.story.findFirst({
     where: { id: storyId, authorId: user.id },
-    select: { id: true, mediaId: true },
+    select: { id: true, mediaId: true, audioMediaId: true },
   });
   if (!story) return;
   await prisma.story.delete({ where: { id: story.id } });
-  // وملفُّها معها (القاعدة ١٠٤): حذفُ الصفّ وحده يُبقي بكسلاتها في السحابة.
-  await dropMedia([story.mediaId]);
+  // وملفُّها وصوتُها معها (القاعدة ١٠٤): حذفُ الصفّ وحده يُبقي بكسلاتها في السحابة.
+  await dropMedia([story.mediaId, ...(story.audioMediaId ? [story.audioMediaId] : [])]);
   revalidatePath("/circle");
 }
 
@@ -985,7 +1004,7 @@ async function befriend(friendshipId: string): Promise<void> {
     });
 
   await prisma.$transaction([
-    prisma.friendship.update({ where: { id: friendshipId }, data: { status: "ACCEPTED" } }),
+    prisma.friendship.update({ where: { id: friendshipId }, data: { status: "ACCEPTED", acceptedAt: new Date() } }),
     ...(addressee.isOpen ? [] : [line(addressee, requester)]),
     ...(requester.isOpen ? [] : [line(requester, addressee)]),
   ]);
@@ -1184,6 +1203,7 @@ export async function saveNotifications(formData: FormData): Promise<void> {
       notifyComment: on("notifyComment"),
       notifyStoreNew: on("notifyStoreNew"),
       notifyStoreDeals: on("notifyStoreDeals"),
+      notifyMemories: on("notifyMemories"),
       // الطرفان معاً أو لا وضعَ هادئ.
       quietFrom: from !== null && to !== null ? from : null,
       quietTo: from !== null && to !== null ? to : null,
@@ -2313,4 +2333,37 @@ export async function reportComment(
     },
   });
   return { ok: "وصلنا بلاغك. نقرأه ونتصرّف." };
+}
+
+// ───────────────────────────── الذكريات وآثرك السنويّ (القاعدة ٢٣٥) ─────────────────────────────
+
+/** «×» على بطاقة اليوم: تُطوى لليوم على الجهازين وتعود غداً. */
+export async function dismissMemories(): Promise<void> {
+  const user = await requireUser();
+  await dismissToday(user.id);
+  revalidatePath("/");
+}
+
+/** «شاركها»: نسخةٌ باسم صاحبها في خطّه — والإجراءُ يفحص أنّ الأصل له. */
+export async function shareMemoryAction(momentId: string): Promise<{ ok: boolean; error?: string }> {
+  const user = await requireUser();
+  try {
+    await shareMemory(user.id, momentId);
+    revalidatePath("/");
+    return { ok: true };
+  } catch (problem) {
+    return { ok: false, error: problem instanceof Error ? problem.message : "تعذّرت المشاركة" };
+  }
+}
+
+export async function shareRecapAction(year: number): Promise<{ ok: boolean; error?: string }> {
+  const user = await requireUser();
+  if (!Number.isInteger(year)) return { ok: false, error: "سنة غير صالحة" };
+  try {
+    await shareRecap(user.id, year);
+    revalidatePath("/");
+    return { ok: true };
+  } catch (problem) {
+    return { ok: false, error: problem instanceof Error ? problem.message : "تعذّرت المشاركة" };
+  }
 }

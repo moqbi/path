@@ -20,6 +20,9 @@ export const momentShape = {
   photoY: true,
   mediaId: true,
   commentsLocked: true,
+  // ذكرى شاركها صاحبُها، وملخّصُ سنة (القاعدة ٢٣٥).
+  memoryOf: true,
+  recapYear: true,
   // «خاصة»: من يرى اللحظة يُقال له إنّها لم تُوجَّه إلى الدائرة كلّها.
   audience: true,
   media: { select: { width: true, height: true } },
@@ -140,4 +143,15 @@ export async function archive(userId: string) {
     },
     orderBy: { createdAt: "desc" },
   });
+}
+
+/** لحظاتٌ بأعيانها بشكل الخطّ الزمنيّ وبشرط الرؤية — للذكريات وملخّص السنة. */
+export async function momentsByIds(userId: string, ids: string[]) {
+  if (ids.length === 0) return [];
+  const rows = await prisma.moment.findMany({
+    where: { AND: [await visibleWhere(userId), { id: { in: ids } }] },
+    select: momentShape,
+  });
+  const order = new Map(ids.map((id, index) => [id, index]));
+  return rows.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 }

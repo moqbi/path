@@ -1,3 +1,4 @@
+import { MemoriesCard } from "../../components/memories-card";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useBarSpace } from "../../components/glass-bar";
 import { scrolled } from "../../lib/scrolled";
@@ -6,6 +7,7 @@ import { View, SectionList, ActivityIndicator, Pressable, Animated, Easing, PanR
 import { Text } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { EdgeBack } from "../../components/edge-back";
 import { MomentCard, SPINE_W } from "../../components/moment-card";
 import { COVER_HEIGHT, CoverLayer } from "../../components/cover";
 import { Avatar } from "../../components/avatar";
@@ -218,6 +220,11 @@ export default function Timeline() {
   if (!me) return null;
 
   return (
+    /*
+      «آثارنا» تُفتح من ملفّ الصديق، والسحبُ من الحافّة يرجع إليه — **بقرار
+      المالك** (القاعدة ٢٣٤). والخطُّ الزمنيّ العاديّ بلا رجوع: هو أوّلُ التطبيق.
+    */
+    <EdgeBack fallback={withId ? `/u/${withId}` : "/"} enabled={view === "together" && Boolean(withId)}>
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       {/*
         الرأس: العلامة ثم ATHAR، و«آثار+» قبل الرسائل.
@@ -537,6 +544,7 @@ export default function Timeline() {
       <ComposerFan />
       <PlusEnded />
     </SafeAreaView>
+    </EdgeBack>
   );
 }
 
@@ -575,7 +583,8 @@ function LensHead({
     );
   }
 
-  if (view !== "together") return null;
+  // العدسةُ الأولى: بطاقةُ اليوم — ذكرياتٌ ومناسباتٌ و«آثرك» (القاعدة ٢٣٥).
+  if (view !== "together") return <MemoriesCard />;
 
   if (friend) {
     return (

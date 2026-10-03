@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { View, Pressable, ActivityIndicator, Dimensions, ScrollView, Animated, PanResponder } from "react-native";
-import type { StoryText } from "@athar/shared";
+import type { StorySticker, StoryText } from "@athar/shared";
+import { Audio } from "expo-av";
 import { StoryTexts } from "../../components/story-texts";
+import { StoryStickers } from "../../components/story-stickers";
+import { ReactionGlyph } from "../../components/reactions";
+import { openMaps } from "../../lib/maps";
 import { Text } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -12,7 +16,9 @@ import { Sheet } from "../../components/sheet";
 import { Filtered } from "../../components/filtered";
 import { StoryVideo } from "../../components/story-video";
 import { CloseIcon, EyeIcon, LockIcon } from "../../components/icons";
-import { api } from "../../lib/api";
+import { api, baseUrl, currentAccess } from "../../lib/api";
+import { storiesQuery } from "../../lib/story-prefetch";
+import type { StoryRing } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { ar, relative } from "../../lib/format";
 import { colors } from "../../theme/tokens";
@@ -33,7 +39,17 @@ type Story = {
   _count: { views: number };
   /** خاصّةٌ بمن اختارهم صاحبُها (القاعدة ٢١٩) — اختياريٌّ لخادمٍ أقدم. */
   private?: boolean;
+  /** الملصقاتُ وصوتُ القصّة وتفاعلي ومجموعُ التفاعلات (القاعدة ٢٣٨) — اختياريّةٌ لخادمٍ أقدم. */
+  stickers?: StorySticker[] | null;
+  audioMediaId?: string | null;
+  audioSeconds?: number | null;
+  myReaction?: Face | null;
+  reactions?: number;
 };
+
+/** الوجوهُ الخمسة — مفتوحةٌ للجميع (القاعدة ٣). */
+const FACES = ["LOVE", "LAUGH", "GASP", "SAD", "SMILE"] as const;
+type Face = (typeof FACES)[number];
 
 type Viewer = {
   id: string;
@@ -42,6 +58,7 @@ type Viewer = {
   frame: { spec: string; mediaId: string | null; frameHole: number | null } | null;
   charm: { spec: string; mediaId: string | null } | null;
   seenAt: string;
+  reaction?: Face | null;
 };
 
 /**
@@ -78,8 +95,9 @@ export default function StoryViewer() {
   // الوقفةُ لا تبدأ الشريحة من أوّلها: ما مضى منها يُحفظ ويُستأنف منه.
   const elapsed = useRef(0);
 
+  // من الذاكرة إن جلبها الشريطُ سلفاً — فلا دوّارةَ على أسود (`story-prefetch`).
   const feed = useQuery({
-    queryKey: ["stories", id],
+    ...storiesQuery(id),
     queryFn: () => api<{ stories: Story[] }>(`/v1/stories/user/${id}`),
   });
 
@@ -87,13 +105,93 @@ export default function StoryViewer() {
   const story = stories[index];
   const mine = id === me?.id;
   const video = story?.media.mime.startsWith("video/") ?? false;
-  const span = video && story?.seconds ? story.seconds * 1000 : SLIDE_MS;
+  /*
+    الصورةُ بصوتها تبقى بطول مقطعها (القاعدة ٢٣٨): خمسُ ثوانٍ تقطع أغنيةً من
+    خمس عشرة. والفيديو مدّتُه مدّتُه.
+  */
+  const span =
+    video && story?.seconds
+      ? story.seconds * 1000
+      : !video && story?.audioMediaId && story.audioSeconds
+        ? story.audioSeconds * 1000
+        : SLIDE_MS;
 
   const viewers = useQuery({
     queryKey: ["story-viewers", story?.id],
     queryFn: () => api<{ viewers: Viewer[] }>(`/v1/stories/${story!.id}/viewers`),
     enabled: watching && mine && Boolean(story),
   });
+
+  /*
+    صوتُ القصّة: يُجلب مع الشريحة ويقف بوقوفها، ويُكتم بضغط ملصقه — والكتمُ
+    يبقى على ما بعدها: من كتم قصّةً في مجلسٍ لا يريد أن تنطق التاليةُ.
+  */
+  const [muted, setMuted] = useState(false);
+  const [audible, setAudible] = useState(false);
+  const voice = useRef<Audio.Sound | null>(null);
+  const audioId = !video ? story?.audioMediaId ?? null : null;
+  useEffect(() => {
+    setAudible(false);
+    if (!audioId) return;
+    let alive = true;
+    void Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+    Audio.Sound.createAsync(
+      { uri: `${baseUrl}/v1/media/${audioId}`, headers: { authorization: `Bearer ${currentAccess()}` } },
+      { shouldPlay: false, isLooping: true },
+    )
+      .then(({ sound }) => {
+        if (!alive) {
+          void sound.unloadAsync();
+          return;
+        }
+        voice.current = sound;
+        // يبدأ من حيث وصل العدّ: التحميلُ قد يتأخّر عن الصورة لحظة.
+        void sound
+          .setPositionAsync(elapsed.current)
+          .then(() => alive && setAudible(true))
+          .catch(() => {});
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+      const sound = voice.current;
+      voice.current = null;
+      setAudible(false);
+      void sound?.unloadAsync().catch(() => {});
+    };
+  }, [audioId]);
+  /*
+    كلُّ نداءٍ على الصوت يُبلع فشلُه: الشريحةُ قد تتبدّل والصوتُ يُفكّ في اللحظة
+    نفسها، و«لم يُحمَّل» من صوتٍ ذاهبٍ ليس خطأً يُرى.
+  */
+  useEffect(() => {
+    const sound = voice.current;
+    if (!sound || !audible) return;
+    (paused ? sound.pauseAsync() : sound.playAsync()).catch(() => {});
+  }, [paused, audible]);
+  useEffect(() => {
+    void voice.current?.setIsMutedAsync(muted).catch(() => {});
+  }, [muted, audible]);
+
+  /*
+    التفاعلُ السريع — **بقرار المالك**: الوجوهُ الخمسة في أسفل القصّة، والضغطةُ
+    تُرسل وتطيّر الوجه، وضغطُ الوجه نفسه ثانيةً يرفعه. ويُكتب في الذاكرة في الحال
+    فلا ينتظر الإصبعُ الخادم.
+  */
+  const [burst, setBurst] = useState<{ face: Face; key: number } | null>(null);
+  const fly = useRef(new Animated.Value(0)).current;
+  function react(face: Face) {
+    if (!story) return;
+    const next = story.myReaction === face ? null : face;
+    client.setQueryData<{ stories: Story[] }>(storiesQuery(id).queryKey, (old) =>
+      old ? { stories: old.stories.map((item) => (item.id === story.id ? { ...item, myReaction: next } : item)) } : old,
+    );
+    void api(`/v1/stories/${story.id}/react`, { method: "POST", body: JSON.stringify({ kind: next }) }).catch(() => {});
+    if (!next) return;
+    setBurst({ face: next, key: Date.now() });
+    fly.setValue(0);
+    Animated.timing(fly, { toValue: 1, duration: 900, useNativeDriver: true }).start(() => setBurst(null));
+  }
 
   const remove = useMutation({
     mutationFn: (storyId: string) => api(`/v1/stories/${storyId}`, { method: "DELETE" }),
@@ -104,10 +202,33 @@ export default function StoryViewer() {
   });
 
   // إيصال المشاهدة يُرسل مرّةً لكل شريحة تُفتح.
+  const receipts = useRef<Promise<unknown>[]>([]);
+  const seenAll = useRef(false);
   useEffect(() => {
     if (!story) return;
-    void api(`/v1/stories/${story.id}/seen`, { method: "POST" }).catch(() => {});
-  }, [story]);
+    receipts.current.push(api(`/v1/stories/${story.id}/seen`, { method: "POST" }).catch(() => {}));
+    if (index === stories.length - 1) seenAll.current = true;
+  }, [story, index, stories.length]);
+
+  /*
+    الحلقةُ تبهت ساعةَ تُغلق القصّة لا بعد تحديث الصفحة: كانت قائمةُ الحلقات
+    في الذاكرة على حالها، والشاشةُ تحتها لم تُفكّ فلا تُعاد. فمن بلغ آخرَها
+    تُطفأ حلقتُه في الحال، ثمّ تُسأل القائمةُ من الخادم بعد أن تصل الإيصالات —
+    هو الحَكَم إن بقي فيها ما لم يُرَ.
+  */
+  useEffect(
+    () => () => {
+      if (seenAll.current) {
+        client.setQueryData<{ rings: StoryRing[] }>(["stories"], (old) =>
+          old ? { rings: old.rings.map((ring) => (ring.userId === id ? { ...ring, fresh: false } : ring)) } : old,
+        );
+      }
+      void Promise.allSettled(receipts.current).then(() =>
+        client.invalidateQueries({ queryKey: ["stories"], exact: true }),
+      );
+    },
+    [client, id],
+  );
 
   useEffect(() => {
     elapsed.current = 0;
@@ -257,6 +378,18 @@ export default function StoryViewer() {
         onPress={() => step(index + 1)}
       />
 
+      {/* الملصقاتُ فوق النصفين: الموقعُ يفتح الخرائط والموسيقى تكتم — وما بينها للتنقّل. */}
+      <StoryStickers
+        stickers={story.stickers}
+        width={screen.width}
+        height={screen.height}
+        at={new Date(story.createdAt)}
+        playing={audible && !paused}
+        muted={muted}
+        onPlace={(place) => void openMaps({ lat: place.lat, lng: place.lng, placeName: place.name, placeCity: place.city })}
+        onMusic={() => setMuted((value) => !value)}
+      />
+
       <View pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, top: 0, paddingTop: insets.top }}>
         <View pointerEvents="box-none" style={{ padding: 12 }}>
           <View style={{ flexDirection: "row", gap: 4, marginBottom: 12 }}>
@@ -319,7 +452,9 @@ export default function StoryViewer() {
             >
               <EyeIcon size={15} color="#fff" />
               <Text style={{ color: "#fff", fontSize: 12, fontWeight: "600" }}>
-                {story._count.views > 0 ? `شاهدها ${ar(story._count.views)}` : "لم يشاهدها أحد بعد"}
+                {story._count.views > 0
+                  ? `شاهدها ${ar(story._count.views)}${story.reactions ? `، تفاعل ${ar(story.reactions)}` : ""}`
+                  : "لم يشاهدها أحد بعد"}
               </Text>
             </Pressable>
 
@@ -331,6 +466,55 @@ export default function StoryViewer() {
             </Pressable>
           </View>
         </View>
+      ) : (
+        <View pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, bottom: 0, paddingBottom: insets.bottom + 8 }}>
+          <View style={{ flexDirection: "row", alignSelf: "center", gap: 6, padding: 6, borderRadius: 999, backgroundColor: "rgba(14,26,36,.55)" }}>
+            {FACES.map((face) => {
+              const on = story.myReaction === face;
+              return (
+                <Pressable
+                  key={face}
+                  accessibilityLabel={on ? "ارفع التفاعل" : "تفاعل"}
+                  onPress={() => react(face)}
+                  onPressIn={() => setHeld(true)}
+                  onPressOut={() => setHeld(false)}
+                  hitSlop={4}
+                  style={{
+                    width: 46,
+                    height: 46,
+                    borderRadius: 23,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: on ? "rgba(246,185,59,.9)" : "transparent",
+                    transform: [{ scale: on ? 1.08 : 1 }],
+                  }}
+                >
+                  <ReactionGlyph kind={face} size={34} />
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
+      {burst ? (
+        <Animated.View
+          key={burst.key}
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            alignSelf: "center",
+            left: screen.width / 2 - 48,
+            top: screen.height * 0.45,
+            opacity: fly.interpolate({ inputRange: [0, 0.15, 0.75, 1], outputRange: [0, 1, 1, 0] }),
+            transform: [
+              { translateY: fly.interpolate({ inputRange: [0, 1], outputRange: [80, -120] }) },
+              { scale: fly.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0.4, 1.25, 1] }) },
+            ],
+          }}
+        >
+          <ReactionGlyph kind={burst.face} size={96} />
+        </Animated.View>
       ) : null}
     </Animated.View>
     </Animated.View>
@@ -355,16 +539,41 @@ export default function StoryViewer() {
                   }}
                   style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 9 }}
                 >
-                  <Avatar
-                    name={person.name}
-                    size={40}
-                    mediaId={person.avatarMediaId}
-                    frame={person.frame}
-                    charm={person.charm}
-                  />
-                  <Text style={{ flex: 1, fontSize: 14, fontWeight: "600", color: colors.ink }} numberOfLines={1}>
-                    {person.name}
-                  </Text>
+                  {/*
+                    الوجهُ فوق صورة من تفاعل — **بقرار المالك**: سؤالُ صاحب القصّة
+                    «مَن؟ وبماذا؟». ومن شاهد ولم يتفاعل يُقال له ذلك نصّاً.
+                  */}
+                  {/* حشوةٌ للشارة: القائمةُ تقصّ ما خرج عن حدّها. */}
+                  <View style={{ paddingTop: 7, paddingRight: 7 }}>
+                    <Avatar name={person.name} size={44} mediaId={person.avatarMediaId} frame={person.frame} />
+                    {person.reaction ? (
+                      <View
+                        style={{
+                          position: "absolute",
+                          top: -1,
+                          right: -1,
+                          width: 26,
+                          height: 26,
+                          borderRadius: 13,
+                          alignItems: "center",
+                          justifyContent: "center",
+                          backgroundColor: colors.card,
+                          borderWidth: 1,
+                          borderColor: colors.line,
+                        }}
+                      >
+                        <ReactionGlyph kind={person.reaction} size={20} />
+                      </View>
+                    ) : null}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: colors.ink }} numberOfLines={1}>
+                      {person.name}
+                    </Text>
+                    <Text style={{ fontSize: 11.5, color: person.reaction ? colors.clayInk : colors.faint }}>
+                      {person.reaction ? "شاهدها وتفاعل" : "شاهدها وما تفاعل"}
+                    </Text>
+                  </View>
                   <Text style={{ fontSize: 11.5, color: colors.faint }}>
                     {relative(new Date(person.seenAt))}
                   </Text>

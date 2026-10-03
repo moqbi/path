@@ -32,6 +32,8 @@ import { storyRoutes } from "./routes/v1/stories";
 import { siteRoutes } from "./routes/v1/site";
 import { placeRoutes } from "./routes/v1/places";
 import { sweep as sweepStories } from "./services/stories";
+import { morningBell } from "./services/morning";
+import { memoryRoutes, recapRoutes } from "./routes/v1/memories";
 import { sweepPendingSignups } from "./services/auth";
 import { UNVERIFIED_MINUTES } from "@athar/shared";
 
@@ -126,6 +128,8 @@ setInterval(
     void sweepModerationLog().catch((error) => console.error("✗ كنس سجلّ الإشراف", error));
     // ونقاطُ الإدارة الممنوحة: جرسٌ لكل منح (القاعدة ١٩٨).
     void pushCoinGrants().catch((error) => console.error("✗ تنبيه النقاط الممنوحة", error));
+    // وجرسُ الصباح: ذكرى أو مناسبةُ صداقة أو «آثرك جاهز» (القاعدة ٢٣٥).
+    void morningBell().catch((error) => console.error("✗ جرس الصباح", error));
   },
   5 * 60_000,
 ).unref();
@@ -162,6 +166,8 @@ app.route("/v1/groups", groupRoutes);
 app.route("/v1/reports", reportRoutes);
 app.route("/v1/site", siteRoutes);
 app.route("/v1/places", placeRoutes);
+app.route("/v1/memories", memoryRoutes);
+app.route("/v1/recap", recapRoutes);
 app.route("/v1/webhooks", webhookRoutes);
 /** بابُ اللوحة — الدور يُفحص فيه لا في العرض. */
 app.route("/v1/admin", moderationRoutes);

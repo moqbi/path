@@ -4,13 +4,14 @@ import {
   ANIMATED_SIDE,
   LIMITS,
   MIME,
+  SOUND_SOURCE,
   STORY_SECONDS,
   VOICE_SECONDS,
   type PresignInput,
 } from "@athar/shared";
 import { cloudReady, deleteObjects, getObject, headObject, presignUrl, putObject } from "@athar/storage";
 import { badRequest, forbidden, notFound } from "../lib/errors";
-import { NoProbe, measure, probeClip, processImage } from "../lib/process";
+import { NoFfmpeg, NoProbe, Silent, extractAudio, measure, probeClip, processImage } from "../lib/process";
 
 /**
  * الرفع في خطوتين: رابطٌ مؤقّت ثم اعتماد.
@@ -33,6 +34,8 @@ const RULES: Record<PresignInput["purpose"], Rule> = {
   STORY: { mimes: [...MIME.image, ...MIME.video], max: LIMITS.video },
   MESSAGE: { mimes: MIME.image, max: LIMITS.image },
   VOICE: { mimes: MIME.audio, max: LIMITS.audio },
+  // مصدرُ صوت القصّة (القاعدة ٢٣٨): مقطعٌ من الاستديو أو ملفُّ صوت — يُسحب صوتُه وتُرمى صورتُه.
+  SOUND: { mimes: [...MIME.video, ...MIME.audio, "audio/wav"], max: SOUND_SOURCE.bytes },
 };
 
 /** امتدادٌ يُشتقّ من النوع — ليُقرأ المفتاح في لوحة السحابة. */
@@ -46,6 +49,7 @@ const EXT: Record<string, string> = {
   "audio/ogg": "ogg",
   "audio/mpeg": "mp3",
   "audio/aac": "aac",
+  "audio/wav": "wav",
   "video/webm": "webm",
   "video/mp4": "mp4",
   "video/quicktime": "mov",
@@ -121,6 +125,7 @@ function sniff(head: Uint8Array): string | null {
   if (at(0, 0x89, 0x50, 0x4e, 0x47)) return "image/png";
   if (ascii(0, "GIF8")) return "image/gif";
   if (ascii(0, "RIFF") && ascii(8, "WEBP")) return "image/webp";
+  if (ascii(0, "RIFF") && ascii(8, "WAVE")) return "audio/wav";
   if (ascii(4, "ftyp")) {
     // MP4/MOV/M4A يشتركون في الحاوية ويفترقون بالعلامة.
     const brand = String.fromCharCode(...head.subarray(8, 12));
@@ -238,7 +243,7 @@ export async function commit(userId: string, mediaId: string) {
     data: { ready: true, mime: shaped.mime, width: shaped.width, height: shaped.height },
     select: { id: true, mime: true, width: true, height: true },
   });
-  return { ...ready, seconds: shaped.seconds };
+  return { ...ready, seconds: shaped.seconds, peaks: shaped.peaks };
 }
 
 /**
@@ -255,7 +260,26 @@ async function shape(
   purpose: PresignInput["purpose"],
   moving: boolean,
   bytes: Uint8Array,
-): Promise<{ mime: string; width: number; height: number; seconds?: number }> {
+): Promise<{ mime: string; width: number; height: number; seconds?: number; peaks?: number[] }> {
+  /*
+    مصدرُ الصوت يُستبدل بصوته وحده: المقطعُ الأصليّ لا يبقى في الدلو لحظةً بعد
+    هذا (القاعدة ٢٣٨)، وما يُحفظ M4A يُقصّ منه عند النشر. ومعه موجتُه لشريط القصّ.
+  */
+  if (purpose === "SOUND") {
+    try {
+      const sound = await extractAudio(bytes, EXT[mime] ?? "bin", SOUND_SOURCE.seconds);
+      await putObject(key, sound.bytes, "audio/mp4");
+      return { mime: "audio/mp4", width: 0, height: 0, seconds: sound.seconds, peaks: sound.peaks };
+    } catch (problem) {
+      if (problem instanceof NoFfmpeg) {
+        console.error("[media] ffmpeg مفقود على هذا الخادم — صوتُ القصّة لا يُسحب");
+        throw await reject(mediaId, key, "إضافة الصوت غير متاحة الآن");
+      }
+      if (problem instanceof Silent) throw await reject(mediaId, key, "المقطع بلا صوت");
+      throw await reject(mediaId, key, "تعذّرت قراءة الصوت");
+    }
+  }
+
   const isImage = mime.startsWith("image/");
 
   if (isImage && !moving) {

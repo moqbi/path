@@ -7,9 +7,8 @@ import { Text } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { AvatarMenu } from "../../components/avatar-menu";
+import { ProfileHead } from "../../components/profile-head";
 import { Spot } from "../../components/spot";
-import { frameBleed } from "../../components/avatar";
 import { COVER_HEIGHT, CoverLayer, StretchCover, useStretch } from "../../components/cover";
 import { useTabTop } from "../../lib/tab-top";
 import { playRefresh } from "../../lib/sound";
@@ -22,7 +21,6 @@ import { api } from "../../lib/api";
 import { keys, type Moment } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { ar, dayLabel, MONTHS } from "../../lib/format";
-import { NameTag } from "../../components/name-tag";
 import { colors } from "../../theme/tokens";
 
 const COVER = COVER_HEIGHT;
@@ -223,40 +221,22 @@ export default function Me() {
               <CoverLayer mediaId={me.coverMediaId} spec={me.background?.spec} height={COVER} x={me.coverX} y={me.coverY} zoom={me.coverZoom} />
             </StretchCover>
 
-            <View style={{ alignItems: "center", marginTop: -52, paddingHorizontal: 20 }}>
-              <AvatarMenu
-                name={me.name}
-                size={104}
-                mediaId={me.avatarMediaId}
-                frame={me.frame}
-                charm={me.charm}
-                frameItem={me.frame}
-                charmItem={me.charm}
-              />
+            {/* الصورةُ في طرف البداية، والاسمُ بجانبها (القاعدة ٢٣٣). */}
+            <ProfileHead
+              name={me.name}
+              isPlus={me.isPlus}
+              tag={me.tag}
+              handle={me.handle}
+              bio={me.bio}
+              meta={`عضوية رقم ${ar(me.memberNo)}${me.city ? ` · ${me.city}` : ""} · انضم ${joined}`}
+              mediaId={me.avatarMediaId}
+              frame={me.frame}
+              charm={me.charm}
+              frameItem={me.frame}
+              charmItem={me.charm}
+            />
 
-              {/* ما يخرج من الإطار تحت الصورة لا يلتصق بالاسم. */}
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 + frameBleed(104, me.frame) }}>
-                <Text style={{ color: colors.ink, fontSize: 20, fontWeight: "600", writingDirection: "auto" }}>
-                  {me.name}
-                </Text>
-                <NameTag isPlus={me.isPlus} tag={me.tag} size={12} />
-              </View>
-
-              {me.handle ? (
-                <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>@{me.handle}</Text>
-              ) : null}
-
-              {me.bio ? (
-                <Text style={{ color: colors.ink2, fontSize: 12.5, textAlign: "center", lineHeight: 22, marginTop: 8, maxWidth: 300 }}>
-                  {me.bio}
-                </Text>
-              ) : null}
-
-              <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 6, textAlign: "center" }}>
-                عضوية رقم {ar(me.memberNo)}
-                {me.city ? ` · ${me.city}` : ""} · انضم {joined}
-              </Text>
-
+            <View style={{ alignItems: "center", paddingHorizontal: 20 }}>
               {/* أربعة أرقام بأيقوناتها. */}
               <View style={{ flexDirection: "row", alignItems: "stretch", maxWidth: 330, width: "100%", marginTop: 14, marginBottom: 6 }}>
                 <Stat first icon={<BookIcon size={14} color={colors.ink2} />} value={ar(s?.moments ?? 0)} label="لحظة" />

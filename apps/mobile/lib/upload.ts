@@ -8,7 +8,7 @@ import { api } from "./api";
  * تمرّ بخادمنا: ميغاباياتٌ لا تُنقل مرّتين، وجوّالٌ على شبكةٍ ضعيفة لا
  * ينتظر وسيطاً.
  */
-export type Purpose = "AVATAR" | "COVER" | "MOMENT" | "STORY" | "MESSAGE" | "VOICE";
+export type Purpose = "AVATAR" | "COVER" | "MOMENT" | "STORY" | "MESSAGE" | "VOICE" | "SOUND";
 
 /** أطولُ ضلعٍ يُرفع — وهو حدُّ الخادم نفسه (`MAX_SIDE` في `lib/process.ts`). */
 const MAX_SIDE = 1600;
@@ -52,9 +52,27 @@ export async function uploadFile(
   size: { width: number; height: number } = { width: 0, height: 0 },
 ): Promise<string> {
   const ready = await shrink(uri, mime, size).catch(() => ({ uri, mime, ...size }));
-  uri = ready.uri;
-  mime = ready.mime;
-  size = { width: ready.width, height: ready.height };
+  return (await send(ready.uri, ready.mime, purpose, { width: ready.width, height: ready.height })).mediaId;
+}
+
+/**
+ * مصدرُ صوت القصّة (القاعدة ٢٣٨): مقطعٌ من الاستديو يُرفع فيسحب الخادمُ صوتَه
+ * ويرمي صورتَه، ويردّ مدّتَه وموجتَه لشريط القصّ.
+ */
+export async function uploadSound(
+  uri: string,
+  mime: string,
+): Promise<{ mediaId: string; seconds: number; peaks: number[] }> {
+  const done = await send(uri, mime, "SOUND", { width: 0, height: 0 });
+  return { mediaId: done.mediaId, seconds: done.commit.seconds ?? 0, peaks: done.commit.peaks ?? [] };
+}
+
+async function send(
+  uri: string,
+  mime: string,
+  purpose: Purpose,
+  size: { width: number; height: number },
+): Promise<{ mediaId: string; commit: { seconds?: number; peaks?: number[] } }> {
 
   const blob = await (await fetch(uri)).blob();
 
@@ -80,6 +98,8 @@ export async function uploadFile(
   if (!put.ok) throw new Error("تعذّر رفع الملف");
 
   // الاعتماد يفحص البايتات: ما لم يُعتمد لا يُربط بلحظةٍ ولا يُقدَّم.
-  await api(`/v1/media/${ticket.mediaId}/commit`, { method: "POST" });
-  return ticket.mediaId;
+  const commit = await api<{ seconds?: number; peaks?: number[] }>(`/v1/media/${ticket.mediaId}/commit`, {
+    method: "POST",
+  });
+  return { mediaId: ticket.mediaId, commit };
 }

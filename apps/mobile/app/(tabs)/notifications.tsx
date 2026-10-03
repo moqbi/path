@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useBarSpace } from "../../components/glass-bar";
 import { scrolled } from "../../lib/scrolled";
 import { Alert } from "react-native";
@@ -9,7 +9,7 @@ import { keys } from "../../lib/queries";
 import { View, SectionList, Pressable, ScrollView, ActivityIndicator, RefreshControl } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { Avatar, firstColor } from "../../components/avatar";
 import { MediaImage } from "../../components/media-image";
 import { ScreenHeader } from "../../components/screen-header";
@@ -123,11 +123,25 @@ export default function Notifications() {
   const [filter, setFilter] = useState<string>("");
 
   /*
+    فتحُ التبويب يقرأ الإشعارات (القاعدة ٢٣١): النقطةُ على الأيقونة لما جاء
+    بعده وحده. وكلُّ جلبٍ جديدٍ والتبويبُ ظاهرٌ يُقرأ كذلك — ما رآه لا يعود نقطة.
+  */
+  const client = useQueryClient();
+  const loadedAt = notes.dataUpdatedAt;
+  useFocusEffect(
+    useCallback(() => {
+      client.setQueryData(keys.noteCount, { unseen: 0 });
+      void api("/v1/notifications/seen", { method: "POST" })
+        .then(() => client.setQueryData(keys.noteCount, { unseen: 0 }))
+        .catch(() => {});
+    }, [client, loadedAt]),
+  );
+
+  /*
     الحذفُ — **بقرار المالك**: واحدٌ بالسحب، أو الكلُّ بزرّ. وهو حذفٌ من كل
     مكان: الخادمُ يستثني ما حُذف من الاشتقاق نفسه، فلا يعود في الويب ولا
     بعد تحديث. والصفُّ يختفي في الحال ولا ينتظر الجواب.
   */
-  const client = useQueryClient();
   const [swiping, setSwiping] = useState(false);
   const [gone, setGone] = useState<Set<string>>(new Set());
   const dropOne = useMutation({
@@ -277,23 +291,27 @@ export default function Notifications() {
                     mediaId={item.person.avatarMediaId}
                   />
                 ) : (
-                  /* خبرُ المتجر لا صاحب له، فرسمُ الصنف مكان الصورة. */
-                  <View
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 22,
-                      overflow: "hidden",
-                      backgroundColor: firstColor(item.item?.spec, colors.chip),
-                    }}
-                  >
-                    {item.item?.mediaId ? (
-                      <MediaImage
-                        mediaId={item.item.mediaId}
-                        style={{ width: 44, height: 44 }}
-                      />
-                    ) : null}
-                  </View>
+                  /*
+                    خبرُ المتجر لا صاحب له، فرسمُ الصنف مكان الصورة — **كاملاً بشفافيته**
+                    بلا قرصٍ ملوّنٍ تحته ولا قصّ: إطارٌ أو تميمةٌ مرفوعةٌ PNG كانت تُحبس في
+                    دائرةٍ بلون الصنف فتُقرأ زرّاً لا رسماً. والقرصُ لما لا رسمَ له إلا تدرّجه.
+                  */
+                  item.item?.mediaId ? (
+                    <MediaImage
+                      mediaId={item.item.mediaId}
+                      resizeMode="contain"
+                      style={{ width: 44, height: 44 }}
+                    />
+                  ) : (
+                    <View
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 22,
+                        backgroundColor: firstColor(item.item?.spec, colors.chip),
+                      }}
+                    />
+                  )
                 )}
                 <KindBadge note={item} />
               </View>

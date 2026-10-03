@@ -5,7 +5,7 @@ import { Avatar, firstColor } from "./avatar";
 import { MediaImage } from "./media-image";
 import { viewPhoto } from "./photo-viewer";
 import { AthrMark } from "./brand";
-import { CameraIcon, TagIcon, PinIcon, PlayIcon, WithIcon, SunIcon, MoonIcon, PlaneIcon, GiftIcon, SparkIcon, PrivateIcon } from "./icons";
+import { CameraIcon, TagIcon, PinIcon, PlayIcon, WithIcon, SunIcon, MoonIcon, PlaneIcon, GiftIcon, SparkIcon, PrivateIcon, ClockIcon } from "./icons";
 import { MomentBar } from "./moment-bar";
 import { PHOTO_RATIO } from "./photo-frame";
 import { AuthorFaces, Bubble, CommentList, Reactors } from "./reactors";
@@ -13,7 +13,7 @@ import { colors } from "../theme/tokens";
 import { openIn } from "../lib/browse";
 import { openMaps } from "../lib/maps";
 import { showVisitors } from "./place-visitors";
-import { ar, relative, timeOfDay } from "../lib/format";
+import { ar, MONTHS, relative, timeOfDay } from "../lib/format";
 import { useCircle, type Moment } from "../lib/queries";
 
 /** عمود الصور على محور الخط: نفس ٥٦ التي في الويب (`w-14`). */
@@ -130,6 +130,44 @@ function eventText(moment: Moment, withNames: string[], viewerId = "") {
         subtitle: [moment.placeCity, moment.text].filter(Boolean).join(" · ") || null,
       };
   }
+}
+
+/**
+ * «ذكرى من ٣ أكتوبر ٢٠٢٥» — لحظةٌ شاركها صاحبُها من ذكرياته (القاعدة ٢٣٥):
+ * تاريخُها اليوم وما فيها من يومٍ مضى، فيُقال ذلك قبل أن يُقرأ «كنت في…»
+ * خبراً عن الآن.
+ */
+function MemoryTag({ at }: { at: string }) {
+  const date = new Date(at);
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 6 }}>
+      <ClockIcon size={12} color={colors.clayInk} />
+      <Text style={{ color: colors.clayInk, fontSize: 11.5, fontWeight: "700" }}>
+        ذكرى من {ar(date.getDate())} {MONTHS[date.getMonth()]} {ar(date.getFullYear())}
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * «آثري في ٢٠٢٦» كما شاركه صاحبُه: السطرُ الأوّل عنوانٌ كبير والبقيّةُ أرقام —
+ * على الأرضية الداكنة نفسها التي تُعرض عليها شرائحُ الملخّص.
+ */
+function RecapBlock({ text }: { text: string }) {
+  const [first, ...rest] = text.split("\n");
+  return (
+    <View style={{ borderRadius: 14, backgroundColor: colors.night, padding: 14, marginBottom: 8, gap: 4 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
+        <SparkIcon size={16} color="#F6B93B" />
+        <Text style={{ color: "#f7f5ef", fontSize: 16, fontWeight: "800" }}>{first}</Text>
+      </View>
+      {rest.map((line) => (
+        <Text key={line} style={{ color: "rgba(247,245,239,.85)", fontSize: 12.5, lineHeight: 20 }}>
+          {line}
+        </Text>
+      ))}
+    </View>
+  );
 }
 
 /**
@@ -258,6 +296,7 @@ export function MomentCard({
       <Pressable onPress={open} style={{ flexDirection: "row", gap: 10 }}>
         <EventIcon kind={moment.kind} />
         <View style={{ flex: 1, paddingTop: 2 }}>
+          {moment.memoryOf ? <MemoryTag at={moment.memoryOf} /> : null}
           <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600", lineHeight: 21 }}>
             {/*
               اسمُ الصديق الجديد رابطٌ إلى ملفّه: الإشارةُ تحمل معرّفه، فمن قرأ
@@ -430,7 +469,10 @@ export function MomentCard({
             : { paddingRight: 14, paddingLeft: 52, paddingTop: 14, minHeight: 50 }
         }
       >
-        {moment.text ? (
+        {moment.memoryOf ? <MemoryTag at={moment.memoryOf} /> : null}
+        {moment.recapYear && moment.text ? (
+          <RecapBlock text={moment.text} />
+        ) : moment.text ? (
           <Text style={{ color: colors.ink, fontSize: 13.5, lineHeight: 23, marginBottom: 8 }}>
             {moment.text}
           </Text>

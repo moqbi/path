@@ -811,6 +811,7 @@ const NOTIFY_ITEMS = [
   { key: "notifyComment", label: "تعليق على لحظة", note: "كلامٌ يُكتب تحت لحظتك" },
   { key: "notifyStoreNew", label: "من آثار: محتوى جديد في المتجر", note: "إطارٌ أو ثيمٌ أو تميمة" },
   { key: "notifyStoreDeals", label: "من آثار: عروض وخصومات", note: "ما يُخفَّض سعره أو يُعرض لمدّة" },
+  { key: "notifyMemories", label: "ذكريات ومناسبات", note: "في مثل هذا اليوم، ومناسبات الصداقة، وآثرك السنوي — صباحاً" },
 ] as const;
 
 /** دقائقُ منتصف الليل ← «١٠:٣٠ م» كما تُقرأ. */

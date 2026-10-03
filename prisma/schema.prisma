@@ -142,6 +142,19 @@ model User {
   plusEndedAt DateTime?
   /// «احذف الكل» في الإشعارات: ما قبل هذا الوقت لا يُعرض بعده في أيّ مكان.
   notesClearedAt DateTime?
+  /// آخرُ فتحٍ لتبويب الإشعارات: ما قبله «قُرئ» فلا نقطةَ له على الأيقونة (القاعدة ٢٣١).
+  notesSeenAt    DateTime?
+  /// يومُ الرياض (YYYY-MM-DD) الذي قُرع فيه جرسُ الذكريات — مرّةً في اليوم.
+  memoriesPushedOn    String?
+  /// يومُ الرياض الذي طوى فيه صاحبُه بطاقةَ الذكريات — تعود غداً.
+  memoriesDismissedOn String?
+  /// أيّامُ آثار+ مُهداةٌ لم تبدأ (القاعدة ٢٣٤): لمن اشتراكُه من المتجر قائم،
+  /// فتبدأ حين ينتهي — تجديدُ المتجر يكتب `plusUntil` من عنده فيمحو ما أُضيف إليه.
+  plusGiftDays  Int       @default(0)
+  /// نهايةُ هديّةٍ بدأت: لا يقصّرها حدثُ اشتراكٍ من المتجر يصل بعدها.
+  plusGiftUntil DateTime?
+  /// آخرُ سنةٍ قُرع فيها جرسُ «آثرك السنويّ».
+  recapPushedYear     Int?
   dismissedNotes NoteDismissal[]
 
   /// رصيد الكوينز. عملة المتجر الوحيدة: كل ما فيه يُشترى بها، ولا
@@ -204,6 +217,8 @@ model User {
   notifyComment    Boolean @default(true)
   notifyStoreNew   Boolean @default(true)
   notifyStoreDeals Boolean @default(true)
+  /// الذكريات ومناسبات الصداقة وآثرك السنويّ — جرسُ الصباح (القاعدة ٢٣٥).
+  notifyMemories   Boolean @default(true)
 
   /// الوضع الهادئ: دقائقُ من منتصف الليل، والفارغ يعني لا وضع هادئ.
   /// بالدقائق لا بالساعات: «١٠:٣٠ مساءً» وقتٌ يختاره الناس.
@@ -234,6 +249,8 @@ model User {
   tags           MomentTag[]
   purchases      Purchase[]
   giftsGiven     Purchase[]      @relation("GiftGiver")
+  plusGiftsSent  PlusGift[]      @relation("PlusGiftGiver")
+  plusGiftsGot   PlusGift[]      @relation("PlusGiftRecipient")
   topUps         CoinTopUp[]
 
   media          Media[]        @relation("MediaOwner")
@@ -276,11 +293,18 @@ model Story {
   texts     Json?
   /// قصةٌ خاصّة (القاعدة ٢١٩): لمن اختارهم صاحبُها وحدهم (`StoryAudience`) لا لدائرته كلّها.
   private   Boolean  @default(false)
+  /// الملصقات (`StorySticker[]`): الموقع والوقت والموسيقى — موضعٌ نسبيّ ومقاس، تُرسم عند العرض.
+  stickers  Json?
+  /// صوتُ القصة (القاعدة ٢٣٨): المقطعُ المقصوص وحده، يُحذف معها.
+  audioMediaId String? @unique
+  /// مدّةُ المقطع بالثواني — منها مدّةُ شريحة الصورة.
+  audioSeconds Int?
   createdAt DateTime @default(now())
   expiresAt DateTime
 
   author   User            @relation("StoryAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   media    Media           @relation("StoryMedia", fields: [mediaId], references: [id], onDelete: Cascade)
+  audio    Media?          @relation("StoryAudio", fields: [audioMediaId], references: [id], onDelete: SetNull)
   views    StoryView[]
   audience StoryAudience[]
 
@@ -305,6 +329,9 @@ model StoryView {
   storyId String
   userId  String
   seenAt  DateTime @default(now())
+  /// تفاعلُ المشاهد بأحد الوجوه الخمسة (القاعدة ٣) — فارغٌ: شاهد ولم يتفاعل.
+  reaction  ReactionKind?
+  reactedAt DateTime?
 
   story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -385,6 +412,8 @@ model Friendship {
   addresseeId String
   status      FriendshipStatus @default(PENDING)
   createdAt   DateTime         @default(now())
+  /// متى قُبلت — منه تُحسب مناسباتُ الصداقة. فارغٌ للقديم: يُقرأ `createdAt`.
+  acceptedAt  DateTime?
 
   requester User @relation("Requester", fields: [requesterId], references: [id], onDelete: Cascade)
   addressee User @relation("Addressee", fields: [addresseeId], references: [id], onDelete: Cascade)
@@ -430,6 +459,11 @@ model Moment {
 
   /// قفلُ التعليقات بيد صاحبها — التفاعلُ يبقى مفتوحاً (القاعدة ٣).
   commentsLocked Boolean @default(false)
+
+  /// ذكرى شاركها صاحبُها: متى كُتبت الأصل — «ذكرى من ٣ أكتوبر ٢٠٢٥» (القاعدة ٢٣٥).
+  memoryOf  DateTime?
+  /// «آثري في ٢٠٢٦» — ملخّصُ سنةٍ شاركه صاحبُه، والأرقامُ في `text`.
+  recapYear Int?
 
   createdAt DateTime @default(now())
 
@@ -852,6 +886,7 @@ model Media {
   avatarOf   User?      @relation("UserAvatar")
   coverOf    User?      @relation("UserCover")
   storyOf    Story?     @relation("StoryMedia")
+  storyAudio Story?     @relation("StoryAudio")
   messageOf  Message?   @relation("MessageMedia")
   groupMessageOf GroupMessage? @relation("GroupMessageMedia")
   moment     Moment?    @relation("MomentMedia")
@@ -1262,4 +1297,28 @@ model CoinGrant {
 
   @@index([userId, createdAt])
   @@index([pushedAt])
+}
+
+/// إهداءُ آثار+ لصديق بمالٍ حقيقيّ من المتجر (القاعدة ٢٣٤).
+/// يُكتب «معلّقاً» قبل نافذة الشراء — فحدثُ RevenueCat لا يحمل لمن الهدية —
+/// ويُتمّه الحدثُ نفسه فيُمدَّد اشتراكُ المُهدى إليه. والتطبيقُ لا يُتمّه بقوله.
+model PlusGift {
+  id          String    @id @default(cuid())
+  giverId     String
+  recipientId String
+  /// "month" أو "year".
+  plan        String
+  days        Int
+  /// PENDING حتى يصل حدثُ الشراء، ثمّ DONE.
+  status      String    @default("PENDING")
+  /// معرّف حدث RevenueCat — فريدٌ فلا تُمنح الهديةُ مرّتين.
+  eventId     String?   @unique
+  createdAt   DateTime  @default(now())
+  doneAt      DateTime?
+
+  giver     User @relation("PlusGiftGiver", fields: [giverId], references: [id], onDelete: Cascade)
+  recipient User @relation("PlusGiftRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([giverId, status, createdAt])
+  @@index([recipientId, status, doneAt])
 }

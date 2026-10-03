@@ -1,5 +1,6 @@
 import { prisma } from "@athar/db";
 import { endPlus } from "./plus";
+import { completeGift, giftPlanOfSku } from "./plus-gift";
 import { PLUS_COINS, PLUS_ENTITLEMENT } from "@athar/shared";
 import { env } from "../env";
 
@@ -105,7 +106,11 @@ export async function applyEvent(event: RevenueCatEvent): Promise<{ ok: string }
     وبلا `expiration_at_ms` — فلو مرّت على ما تحت لقُرئت «اشتراكٌ منتهٍ»
     فأُوقف آثار+ لمن اشترى نقاط.
   */
-  if (type === "NON_RENEWING_PURCHASE") return topUp(event, userId);
+  if (type === "NON_RENEWING_PURCHASE") {
+    // إهداءُ آثار+ منتجٌ يُستهلك كالنقاط، ويُعرف بمعرّفه (القاعدة ٢٣٤).
+    const gift = giftPlanOfSku(event.product_id);
+    return gift ? completeGift(event, userId, gift) : topUp(event, userId);
+  }
 
   // استحقاقٌ آخر لا يعنينا (لو أُضيف غير «plus» يوماً).
   const ids = event.entitlement_ids ?? [];
@@ -168,15 +173,21 @@ export async function applyEvent(event: RevenueCatEvent): Promise<{ ok: string }
     */
     const row = await tx.user.findUnique({
       where: { id: userId },
-      select: { plusCreditAt: true },
+      select: { plusCreditAt: true, plusGiftUntil: true },
     });
     const first = active && !row?.plusCreditAt;
+    /*
+      هديّةٌ بدأت لا يقصّرها اشتراكٌ من المتجر بعدها (القاعدة ٢٣٤): التاريخُ
+      أبعدُ الاثنين. وما لم يبدأ من الهدايا محفوظٌ في `plusGiftDays` لا يُمسّ هنا.
+    */
+    const giftEnd = row?.plusGiftUntil && row.plusGiftUntil.getTime() > Date.now() ? row.plusGiftUntil : null;
+    const plusUntil = active && until ? (giftEnd && giftEnd > until ? giftEnd : until) : null;
 
     await tx.user.update({
       where: { id: userId },
       data: {
         isPlus: active,
-        plusUntil: active ? until : null,
+        plusUntil,
         ...(first ? { coins: { increment: PLUS_COINS }, plusCreditAt: new Date() } : null),
         // ومن أُوقف يُنسى ختمُه، فيبدأ عند عودته دورةً جديدة لا يكملها.
         ...(active ? null : { plusCreditAt: null }),

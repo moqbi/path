@@ -1,8 +1,11 @@
 import { z } from "zod";
 import {
   MOMENT_TEXT_MAX,
+  SOUND_SOURCE,
   STORY_SECONDS,
+  STORY_STICKERS,
   STORY_TEXT_COLORS,
+  STORY_TIME_STYLES,
   STORY_TEXT_MAX,
   STORY_TEXTS,
   VOICE_SECONDS,
@@ -78,6 +81,28 @@ export const storyText = z.object({
   bg: z.boolean().optional(),
 });
 
+/**
+ * ملصقُ القصة (القاعدة ٢٣٨): موضعٌ نسبيّ ومقاسٌ كالنصّ، ولكلّ نوعٍ ما يحمله.
+ * الموقعُ اسمٌ ومدينة وإحداثيّاتٌ اختياريّة، والوقتُ شكلٌ وحده، والموسيقى عنوان.
+ */
+const stickerBase = {
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  scale: z.number().min(0.5).max(2.5),
+};
+export const storySticker = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("place"),
+    ...stickerBase,
+    name: z.string().trim().min(1).max(80),
+    city: z.string().trim().max(60).optional(),
+    lat: z.number().min(-90).max(90).optional(),
+    lng: z.number().min(-180).max(180).optional(),
+  }),
+  z.object({ kind: z.literal("time"), ...stickerBase, style: z.enum(STORY_TIME_STYLES) }),
+  z.object({ kind: z.literal("music"), ...stickerBase, label: z.string().trim().max(40).optional() }),
+]);
+
 export const storyInput = z.object({
   mediaId: cuid,
   filter: z.string().max(20).optional(),
@@ -85,6 +110,17 @@ export const storyInput = z.object({
   texts: z.array(storyText).max(STORY_TEXTS).optional(),
   /** قصّةٌ خاصّة لمن اختارهم صاحبُها وحدهم (القاعدة ٢١٩) — فارغٌ أو غائبٌ: دائرتُه كلّها. */
   audience: z.array(cuid).max(150).optional(),
+  stickers: z.array(storySticker).max(STORY_STICKERS).optional(),
+  /** صوتُ القصة: ملفٌّ رُفع بغرض `SOUND`، ومنه ما بين البداية والنهاية بالثواني. */
+  audio: z
+    .object({ mediaId: cuid, start: z.number().min(0).max(SOUND_SOURCE.seconds), end: z.number().min(0).max(SOUND_SOURCE.seconds) })
+    .refine((a) => a.end - a.start >= 1 && a.end - a.start <= STORY_SECONDS + 0.5, "طول المقطع غير مقبول")
+    .optional(),
+});
+
+/** تفاعلُ مشاهد القصة: أحدُ الوجوه الخمسة، أو `null` يرفعه. */
+export const storyReactInput = z.object({
+  kind: z.enum(["SMILE", "LAUGH", "GASP", "SAD", "LOVE"]).nullable(),
 });
 
 /** طلب رفع ملف: النوع والحجم يُفحصان قبل أن يُعطى رابطٌ مؤقّت. */
@@ -93,7 +129,7 @@ export const presignInput = z.object({
   bytes: z.coerce.number().int().min(1),
   width: z.coerce.number().int().min(0).max(8000).default(0),
   height: z.coerce.number().int().min(0).max(8000).default(0),
-  purpose: z.enum(["AVATAR", "COVER", "MOMENT", "STORY", "MESSAGE", "VOICE"]),
+  purpose: z.enum(["AVATAR", "COVER", "MOMENT", "STORY", "MESSAGE", "VOICE", "SOUND"]),
 });
 
 export const pageQuery = z.object({
@@ -105,6 +141,7 @@ export type RegisterInput = z.infer<typeof registerInput>;
 export type LoginInput = z.infer<typeof loginInput>;
 export type MomentInput = z.infer<typeof momentInput>;
 export type PresignInput = z.infer<typeof presignInput>;
+export type StorySticker = z.infer<typeof storySticker>;
 
 export const markInput = z.object({ kind: z.enum(["SLEEP", "WAKE"]) });
 
@@ -139,6 +176,8 @@ export const notifyInput = z.object({
   notifyComment: z.boolean(),
   notifyStoreNew: z.boolean(),
   notifyStoreDeals: z.boolean(),
+  /** اختياريّ: نسخةٌ قديمة لا ترسله فلا يُطفأ بحفظها (كـ`notifyOnTag` في ٨٨ج). */
+  notifyMemories: z.boolean().optional(),
   quietFrom: z.number().int().min(0).max(1439).nullish(),
   quietTo: z.number().int().min(0).max(1439).nullish(),
 });

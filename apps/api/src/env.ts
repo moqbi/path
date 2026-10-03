@@ -54,6 +54,14 @@ const schema = z.object({
   ALLOW_SANDBOX_BILLING: flag.optional(),
 
   /**
+   * منتجا «إهداء آثار+» في المتجرين (القاعدة ٢٣٤) — شراءٌ يُستهلك لا يتجدّد،
+   * يُنشأ في App Store Connect وRevenueCat. فارغٌ = القسمُ يختفي من نافذة
+   * الإهداء: زرٌّ لا يفتح شيئاً أسوأ من زرٍّ غائب.
+   */
+  GIFT_PLUS_MONTH_SKU: z.string().optional(),
+  GIFT_PLUS_YEAR_SKU: z.string().optional(),
+
+  /**
    * يفتح تفعيل «آثار+» بضغطةٍ بلا دفع — للتجربة وحدها.
    * في الإنتاج يبقى مطفأً: الدفع يمرّ بالمتجرين ولا شيء غيره.
    */

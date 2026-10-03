@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
-import { notifications, type NoteKind } from "@/lib/notifications";
+import { markSeen, notifications, type NoteKind } from "@/lib/notifications";
 import { NoteRow } from "@/components/note-row";
 import { ClearNotes } from "@/components/note-dismiss";
 import { Empty } from "@/components/ui";
@@ -35,6 +35,8 @@ export default async function NotificationsPage({
 
   const { t } = await searchParams;
   const all = await notifications(user.id);
+  // فتحُ التبويب يقرؤها: النقطةُ على الأيقونة لما جاء بعده وحده (القاعدة ٢٣١).
+  await markSeen(user.id).catch(() => {});
   const kinds = t ? OF[t] : undefined;
   const notes = kinds ? all.filter((note) => kinds.includes(note.kind)) : all;
 

@@ -7,8 +7,7 @@ import { Text } from "../../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { AvatarMenu } from "../../../components/avatar-menu";
-import { frameBleed } from "../../../components/avatar";
+import { ProfileHead } from "../../../components/profile-head";
 import { COVER_HEIGHT, CoverLayer, StretchCover, useStretch } from "../../../components/cover";
 import { playRefresh } from "../../../lib/sound";
 import { MediaImage } from "../../../components/media-image";
@@ -20,7 +19,6 @@ import { api } from "../../../lib/api";
 import { keys, type Moment } from "../../../lib/queries";
 import { ar, membership } from "../../../lib/format";
 import { useSession } from "../../../lib/session";
-import { NameTag } from "../../../components/name-tag";
 import { colors } from "../../../theme/tokens";
 import { EdgeBack } from "../../../components/edge-back";
 
@@ -231,27 +229,24 @@ function Profile() {
                 </StretchCover>
               </View>
 
-              <View style={{ alignItems: "center", marginTop: -32, paddingHorizontal: 16, marginBottom: 14 }}>
-                <AvatarMenu
+              {/* بهيئة «أنا» نفسها (القاعدة ٢٣٣): الصورةُ في طرف البداية والاسمُ بجانبها. */}
+              <View style={{ marginHorizontal: -20 }}>
+                <ProfileHead
                   name={who.name}
-                  size={78}
+                  isPlus={who.isPlus}
+                  tag={who.tag}
+                  handle={who.handle}
+                  bio={who.bio}
+                  meta={`عضوية رقم ${ar(who.memberNo)}${who.city ? ` · ${who.city}` : ""} · لك معانا ${membership(who.createdAt)}`}
                   mediaId={who.avatarMediaId}
                   frame={who.frame}
                   charm={who.charm}
                   frameItem={who.frame}
                   charmItem={who.charm}
                 />
-                {/* أبعدُ عن الصورة: التميمةُ تتدلّى من ركنها الأيسر الأسفل. */}
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 14 + frameBleed(78, who.frame) }}>
-                  <Text style={{ color: colors.ink, fontSize: 17, fontWeight: "700", writingDirection: "auto" }}>
-                    {who.name}
-                  </Text>
-                  <NameTag isPlus={who.isPlus} tag={who.tag} size={11} />
-                </View>
-                <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 2 }}>
-                  لك معانا {membership(who.createdAt)} · عضو {ar(who.memberNo)}
-                </Text>
+              </View>
 
+              <View style={{ alignItems: "stretch", marginTop: 14, marginBottom: 18 }}>
                 {/*
                   ويُقال للمشرف إنّه يقرأ بصلاحية: من يرى لحظات من ليس في
                   دائرته بلا خبرٍ يظنّ الحدّ قد سقط عن الجميع.
@@ -259,7 +254,7 @@ function Profile() {
                 {moderating ? (
                   <View
                     style={{
-                      marginTop: 12,
+                      marginBottom: 12,
                       paddingHorizontal: 12,
                       paddingVertical: 8,
                       borderRadius: 12,
@@ -277,8 +272,9 @@ function Profile() {
                   ليس هنا — مكانه صفّ الصديق في الدائرة (القاعدة ٣٨).
                 */}
                 {person.data?.friend ? (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                     <GiftButton
+                      grow
                       friendId={who.id}
                       friendName={who.name}
                       friendIsPlus={who.isPlus}
@@ -287,16 +283,16 @@ function Profile() {
 
                     <Pressable
                       onPress={() => router.push({ pathname: "/", params: { view: "together", with: who.id } } as never)}
-                      style={{ flexDirection: "row", alignItems: "center", gap: 6, height: 42, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
+                      style={{ flexGrow: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, height: 46, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
                     >
                       <WithIcon size={16} color={colors.ink2} />
-                      <Text style={{ color: colors.ink2, fontSize: 13, fontWeight: "600" }}>آثارنا</Text>
+                      <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600" }}>آثارنا</Text>
                     </Pressable>
 
                     <Pressable
                       accessibilityLabel="محادثة"
                       onPress={() => talk.mutate()}
-                      style={{ width: 44, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
+                      style={{ width: 46, height: 46, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
                     >
                       <MessageIcon size={17} color={colors.ink2} />
                     </Pressable>
@@ -307,12 +303,13 @@ function Profile() {
                     الأصدقاء الثلاثة — لا إهداءَ ولا محادثةَ ولا
                     «آثارنا» قبل أن يَقبل.
                   */
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                   <Pressable
                     onPress={() => add.mutate()}
                     disabled={add.isPending || add.isSuccess}
                     style={{
-                      height: 42,
+                      flexGrow: 1,
+                      height: 46,
                       paddingHorizontal: 18,
                       borderRadius: 12,
                       alignItems: "center",
@@ -335,18 +332,13 @@ function Profile() {
                     <Pressable
                       accessibilityLabel="محادثة"
                       onPress={() => talk.mutate()}
-                      style={{ width: 44, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
+                      style={{ width: 46, height: 46, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
                     >
                       <MessageIcon size={17} color={colors.ink2} />
                     </Pressable>
                   ) : null}
                   </View>
                 )}
-                {who.bio ? (
-                  <Text style={{ color: colors.ink2, fontSize: 13, textAlign: "center", marginTop: 7, lineHeight: 22 }}>
-                    {who.bio}
-                  </Text>
-                ) : null}
               </View>
             </>
           }

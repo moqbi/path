@@ -109,6 +109,15 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
           audience: { where: { userId }, select: { userId: true } },
         },
       },
+      // صوتُ القصّة بقواعد قصّته نفسها (القاعدة ٢٣٨).
+      storyAudio: {
+        select: {
+          authorId: true,
+          expiresAt: true,
+          private: true,
+          audience: { where: { userId }, select: { userId: true } },
+        },
+      },
       messageOf: { select: { conversation: { select: { aId: true, bId: true } } } },
       groupMessageOf: { select: { groupId: true } },
     },
@@ -133,12 +142,13 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
 
   if (media.moment) return canSeeMoment(userId, media.moment.id);
 
-  if (media.storyOf) {
-    if (media.storyOf.expiresAt <= new Date()) return false;
+  const story = media.storyOf ?? media.storyAudio;
+  if (story) {
+    if (story.expiresAt <= new Date()) return false;
     // الخاصّةُ لمن خُصّت بهم وحدهم (القاعدة ٢١٩) — والصاحبُ رُدّ بالمالك فوق.
-    if (media.storyOf.private && media.storyOf.audience.length === 0) return false;
+    if (story.private && story.audience.length === 0) return false;
     const circle = await circleIds(userId);
-    return circle.includes(media.storyOf.authorId);
+    return circle.includes(story.authorId);
   }
 
   // صورة العرض والغلاف يراهما كل من يرى بطاقة صاحبهما — والحظر يحجبهما.

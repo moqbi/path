@@ -13,6 +13,8 @@ import {
   TagIcon,
   CameraIcon,
   PrivateIcon,
+  ClockIcon,
+  SparkIcon,
 } from "@/components/icons";
 import { MomentBar } from "@/components/moment-bar";
 import { AthrMark } from "@/components/brand";
@@ -249,6 +251,39 @@ function Row({
 }
 
 /** عنوان الحدث وسطره الثاني — بلا إطار، على ورق الخط الزمني نفسه. */
+const MONTH_NAMES = [
+  "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+  "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر",
+];
+
+/** «ذكرى من ٣ أكتوبر ٢٠٢٥» — لحظةٌ شاركها صاحبُها من ذكرياته (القاعدة ٢٣٥). */
+function MemoryTag({ at }: { at: Date }) {
+  return (
+    <p className="mb-1.5 flex items-center gap-1.5 text-[11.5px] font-bold text-clay-ink">
+      <ClockIcon size={12} />
+      ذكرى من {ar(at.getDate())} {MONTH_NAMES[at.getMonth()]} {ar(at.getFullYear())}
+    </p>
+  );
+}
+
+/** «آثري في ٢٠٢٦» كما شاركه صاحبُه: عنوانٌ ثمّ أرقام على أرضية الملخّص الداكنة. */
+function RecapBlock({ text }: { text: string }) {
+  const [first, ...rest] = text.split("\n");
+  return (
+    <div className="mb-2 rounded-2xl p-3.5" style={{ background: "var(--color-night)" }}>
+      <p className="mb-1 flex items-center gap-2 text-[16px] font-extrabold" style={{ color: "#f7f5ef" }}>
+        <span style={{ color: "#F6B93B" }}><SparkIcon size={16} /></span>
+        {first}
+      </p>
+      {rest.map((line) => (
+        <p key={line} className="text-[12.5px] leading-relaxed" style={{ color: "rgba(247,245,239,.85)" }}>
+          {line}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 export function EventLine({
   moment,
   withNames,
@@ -367,6 +402,7 @@ export function EventLine({
     <>
       <EventIcon kind={kind} />
       <div className="min-w-0 grow pt-1">
+        {moment.memoryOf ? <MemoryTag at={moment.memoryOf} /> : null}
         <p dir="auto" className="text-[13.5px] font-semibold leading-snug text-ink">
           {title}
         </p>
@@ -510,7 +546,10 @@ export function MomentCard({
     <>
       {/* بلا صورةٍ يبدأ النصّ من أعلى البطاقة بجانب الزرّ، ومعها يأتي تحتها. */}
       <div className={media ? "px-4 pt-3" : "min-h-[50px] pl-[52px] pr-4 pt-3.5"}>
-        {moment.text ? (
+        {moment.memoryOf ? <MemoryTag at={moment.memoryOf} /> : null}
+        {moment.recapYear && moment.text ? (
+          <RecapBlock text={moment.text} />
+        ) : moment.text ? (
           <p dir="auto" className="mb-2 text-[13.5px] leading-relaxed text-ink">{moment.text}</p>
         ) : null}
 

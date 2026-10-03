@@ -87,6 +87,11 @@ async function main() {
 
   // الانتهاءُ أوّلاً وحسابٌ حسابٌ: تثبيتُ الصورة المتحرّكة يقرأ الملفّ ويكتب
   // غيره، فلا يجتمع في معاملة. وفشلُ واحدٍ لا يوقف الباقي.
+  // والهدايا المحفوظة تُمحى قبل الإنهاء، وإلّا بدأها `endPlus` (القاعدة ٢٣٤).
+  await prisma.user.updateMany({
+    where: { ...others, OR: [{ plusGiftDays: { gt: 0 } }, { plusGiftUntil: { not: null } }] },
+    data: { plusGiftDays: 0, plusGiftUntil: null },
+  });
   let ended = 0;
   for (const user of plusUsers) {
     try {

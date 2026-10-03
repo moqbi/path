@@ -328,3 +328,28 @@ export const ClockIcon = ({ size = 20, color = "currentColor" }: Props) => (
     <Path d="M12 7.5V12l3 2" />
   </Svg>
 );
+
+/** نغمةٌ موسيقيّة — ملصقُ صوت القصّة (القاعدة ٢٣٨). */
+export const MusicIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M9 18V5.5l11-2V16" />
+    <Circle cx={6.5} cy={18} r={2.6} />
+    <Circle cx={17.5} cy={16} r={2.6} />
+  </Svg>
+);
+
+/** ملصقٌ بزاويةٍ مطويّة — بابُ ملصقات القصّة. */
+export const StickerIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M20 13V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7l7-7Z" />
+    <Path d="M13 20v-5a2 2 0 0 1 2-2h5" />
+  </Svg>
+);
+
+/** صوتٌ مكتوم — نغمةٌ يقطعها خطّ. */
+export const MuteIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" />
+    <Path d="m16 9.5 5 5M21 9.5l-5 5" />
+  </Svg>
+);
