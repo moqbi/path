@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Animated, View, Pressable, Platform, PanResponder } from "react-native";
 import * as Haptics from "expo-haptics";
+import * as Notifications from "expo-notifications";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Tabs, usePathname, useRouter } from "expo-router";
@@ -91,6 +92,23 @@ export function GlassBar({
   const me = useSession((s) => s.me);
   const unseen = useNoteCount().data?.unseen ?? 0;
   const unread = useUnreadDm().data?.unread ?? 0;
+
+  /*
+    الرقمُ على أيقونة التطبيق يتبع النقطتين نفسيهما: ما لم يُقرأ من الإشعارات
+    والرسائل. الخادمُ يرسله مع كلّ تنبيه والتطبيقُ مغلق، وهنا يُضبط وهو مفتوح —
+    فيختفي حين تُقرأ ولا يبقى رقمُ آخرِ تنبيه. وبالخروج يُصفَّر: لا رقمَ لحسابٍ
+    خرج منه صاحبُه.
+  */
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    void Notifications.setBadgeCountAsync(unseen + unread).catch(() => undefined);
+  }, [unseen, unread]);
+  useEffect(
+    () => () => {
+      if (Platform.OS !== "web") void Notifications.setBadgeCountAsync(0).catch(() => undefined);
+    },
+    [],
+  );
 
   const current = state.routes[state.index]?.name;
   // ملفُّ الصديق يُضيء «الأصدقاء»: من هناك يُفتح (القاعدة ٤٢).

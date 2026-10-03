@@ -1,5 +1,5 @@
 import { prisma } from "@athar/db";
-import { forgetAllNotifications, forgetNotifications } from "./notifications";
+import { forgetAllNotifications, forgetNotifications, unseenCount } from "./notifications";
 
 /**
  * تنبيهاتُ الجهاز عبر خدمة Expo.
@@ -111,18 +111,36 @@ export async function push(message: PushMessage): Promise<void> {
     if (inQuietHours(user.quietFrom, user.quietTo)) return;
     if (user.devices.length === 0) return;
 
+    const badge = await badgeOf(message.userId);
     await deliver(
       user.devices.map((device) => ({
         to: device.token,
         title: message.title,
         body: message.body,
         sound: "default",
+        ...(badge === null ? null : { badge }),
         data: message.path ? { path: message.path } : {},
       })),
     );
   } catch (problem) {
     // تنبيهٌ لم يخرج لا يُسقط الفعل الذي معه.
     console.error("[push] تعذّر الإرسال", problem);
+  }
+}
+
+/**
+ * الرقمُ على أيقونة التطبيق: الإشعاراتُ التي لم تُقرأ والرسائلُ التي لم تُقرأ —
+ * ما تعرضه النقطتان في الشريط السفليّ نفسه. آبل لا تعدّ بنفسها: رقمٌ لا يُرسل
+ * مع التنبيه لا يظهر أصلاً، والتطبيقُ يضبطه وهو مفتوح (`useAppBadge`).
+ * والفشلُ يردّ «لا رقم» فيبقى ما كان على الأيقونة ولا يسقط التنبيه.
+ */
+async function badgeOf(userId: string): Promise<number | null> {
+  try {
+    const { unreadCount } = await import("./dm");
+    const [notes, dm] = await Promise.all([unseenCount(userId), unreadCount(userId)]);
+    return notes + dm.unread;
+  } catch {
+    return null;
   }
 }
 
