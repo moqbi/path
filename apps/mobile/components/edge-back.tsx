@@ -17,9 +17,15 @@ const EDGE = 36;
 export function EdgeBack({
   fallback,
   enabled = true,
+  onBack,
   children,
 }: {
   fallback: string;
+  /**
+   * رجوعٌ بعينه بدل التاريخ: «آثارنا» تُفتح من ملفّ الصديق بتبديل تبويب، وتاريخُ
+   * التبويبات قد يسقط الملفَّ المخفيّ فيُرجع إلى «الأصدقاء» لا إلى الملفّ.
+   */
+  onBack?: () => void;
   /** يُطفأ دون أن تُفكّ الشاشة: «آثارنا» عدسةٌ في تبويب اللحظات تتبدّل ولا تُغلق. */
   enabled?: boolean;
   children: React.ReactNode;
@@ -33,7 +39,8 @@ export function EdgeBack({
   sizes.current.enabled = enabled;
 
   const back = () => {
-    if (router.canGoBack()) router.back();
+    if (onBack) onBack();
+    else if (router.canGoBack()) router.back();
     else router.replace(fallback as never);
   };
   const go = useRef(back);

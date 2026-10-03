@@ -163,7 +163,12 @@ export function FilterStrip({
         const on = value === item.key;
         return (
           <Pressable key={item.key || "none"} accessibilityLabel={`فلتر ${item.name}`} onPress={() => onChange(item.key)} style={{ alignItems: "center", gap: 5 }}>
+            {/*
+              اللوحةُ لا تأخذ اللمسة: لوحةُ Skia على آبل تبتلعها، فلا يصل الضغطُ إلى
+              الزرّ تحتها — وكانت الفلاترُ تُرى ولا تُختار.
+            */}
             <View
+              pointerEvents="none"
               style={{
                 width: W + 6,
                 height: H + 6,

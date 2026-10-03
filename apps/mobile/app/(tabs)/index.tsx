@@ -224,7 +224,16 @@ export default function Timeline() {
       «آثارنا» تُفتح من ملفّ الصديق، والسحبُ من الحافّة يرجع إليه — **بقرار
       المالك** (القاعدة ٢٣٤). والخطُّ الزمنيّ العاديّ بلا رجوع: هو أوّلُ التطبيق.
     */
-    <EdgeBack fallback={withId ? `/u/${withId}` : "/"} enabled={view === "together" && Boolean(withId)}>
+    <EdgeBack
+      fallback={withId ? `/u/${withId}` : "/"}
+      enabled={view === "together" && Boolean(withId)}
+      onBack={() => {
+        // يرجع إلى ملفّ الصديق نفسه، وتعود العدسةُ الأولى فلا يُفتح التبويبُ على «آثارنا» بعدها.
+        const id = withId;
+        router.setParams({ view: undefined, with: undefined } as never);
+        if (id) router.navigate(`/u/${id}` as never);
+      }}
+    >
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       {/*
         الرأس: العلامة ثم ATHAR، و«آثار+» قبل الرسائل.

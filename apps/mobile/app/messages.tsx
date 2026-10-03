@@ -48,6 +48,9 @@ type Row = {
   pinned?: boolean;
 };
 
+/** رأسُ قسمٍ في القائمة: المفضّلة أو بقيّة المحادثات، يُطوى ويُفتح. */
+type Head = { id: string; head: "pinned" | "rest"; count: number };
+
 /** حدُّ المفضّلة — كالخادم (`PIN_MAX`). */
 const PIN_MAX = 3;
 
@@ -134,6 +137,25 @@ export default function Messages() {
   const conversations = (list.data?.conversations ?? []).filter(
     (row) => !needle || row.other.name.toLowerCase().includes(needle),
   );
+  /*
+    المفضّلةُ قسمٌ وبقيّةُ المحادثات قسمٌ — **بقرار المالك**، ولكلٍّ رأسٌ يُطوى
+    ويُفتح كقسمَي «متصل» و«غير متصل» في الأصدقاء. والبحثُ يفتح القسمين: من
+    يبحث عن اسمٍ لا يُخفى عنه ما وجده. وبلا مفضّلةٍ لا رأسَ لها.
+  */
+  const [folded, setFolded] = useState({ pinned: false, rest: false });
+  const favs = conversations.filter((row) => row.pinned);
+  const rest = conversations.filter((row) => !row.pinned);
+  const shut = (head: "pinned" | "rest") => folded[head] && !needle;
+  const rows: (Row | Head)[] = conversations.length
+    ? [
+        ...(favs.length
+          ? [{ id: "head-pinned", head: "pinned", count: favs.length } as Head, ...(shut("pinned") ? [] : favs)]
+          : []),
+        ...(rest.length
+          ? [{ id: "head-rest", head: "rest", count: rest.length } as Head, ...(shut("rest") ? [] : rest)]
+          : []),
+      ]
+    : [];
   const talking = new Set((list.data?.conversations ?? []).map((row) => row.other.id));
   const groups = (groupList.data?.groups ?? []).filter(
     (row) => !needle || row.name.toLowerCase().includes(needle),
@@ -198,7 +220,7 @@ export default function Messages() {
         // التمريرُ يطوي صفّاً مسحوباً مفتوحاً (القاعدة ٢١٣).
         onScrollBeginDrag={scrolled}
         keyboardShouldPersistTaps="handled"
-        data={conversations}
+        data={rows}
         ListHeaderComponent={
           groups.length > 0 ? (
             <View style={{ paddingBottom: 4 }}>
@@ -266,7 +288,26 @@ export default function Messages() {
         refreshControl={
           <RefreshControl {...pullRefresh} tintColor={colors.clay} />
         }
-        renderItem={({ item }) => (
+        renderItem={({ item: entry }) => {
+          if ("head" in entry) {
+            const open = !shut(entry.head);
+            return (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ expanded: open }}
+                onPress={() => setFolded((was) => ({ ...was, [entry.head]: !was[entry.head] }))}
+                style={{ flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 20, marginTop: 12, marginBottom: 2 }}
+              >
+                {entry.head === "pinned" ? <StarIcon size={14} color={colors.gold} /> : null}
+                <Text style={{ flex: 1, color: colors.ink, fontSize: 13.5, fontWeight: "700" }}>
+                  {entry.head === "pinned" ? "المفضّلة" : "المحادثات"} ({ar(entry.count)})
+                </Text>
+                <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600" }}>{open ? "إخفاء" : "إظهار"}</Text>
+              </Pressable>
+            );
+          }
+          const item = entry;
+          return (
           <SwipeRow
             onDelete={() => void drop.mutate(item.id)}
             confirmLabel="حذف المحادثة"
@@ -314,7 +355,8 @@ export default function Messages() {
             ) : null}
           </Pressable>
           </SwipeRow>
-        )}
+          );
+        }}
         ListEmptyComponent={
           list.isLoading ? (
             <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import { useKeyboardInset } from "../lib/keyboard";
 import * as Location from "expo-location";
 import { Text, TextInput } from "./type";
 import { CloseIcon, PinIcon, SearchIcon } from "./icons";
@@ -103,9 +104,29 @@ export function StoryPlaceSheet({ onPick, onClose }: { onPick: (place: PickedPla
   }, [query, fix]);
 
   const list = found ?? around;
+  // نافذةٌ في نصف الشاشة كبقيّة النوافذ — تصعد فوق الكيبورد حين يُبحث فيها.
+  const { height } = useWindowDimensions();
+  const lift = useKeyboardInset();
 
   return (
-    <View style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, backgroundColor: "rgba(8,13,18,.82)", paddingTop: 54, paddingHorizontal: 16 }}>
+    <Pressable
+      accessibilityLabel="إغلاق"
+      onPress={onClose}
+      style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, backgroundColor: "rgba(8,13,18,.55)", justifyContent: "flex-end" }}
+    >
+    <Pressable
+      onPress={() => {}}
+      style={{
+        height: Math.min(height * 0.62, height - lift - 60),
+        marginBottom: lift,
+        backgroundColor: "#16222D",
+        borderTopLeftRadius: 22,
+        borderTopRightRadius: 22,
+        paddingTop: 10,
+        paddingHorizontal: 16,
+      }}
+    >
+      <View style={{ alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: "rgba(255,255,255,.25)", marginBottom: 10 }} />
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 }}>
         <Text style={{ flex: 1, color: "#fff", fontSize: 17, fontWeight: "800" }}>وين أنت؟</Text>
         <Pressable
@@ -135,7 +156,7 @@ export function StoryPlaceSheet({ onPick, onClose }: { onPick: (place: PickedPla
       ) : list.length === 0 ? (
         <Text style={{ color: "rgba(255,255,255,.7)", fontSize: 13, textAlign: "center", marginTop: 24 }}>ما لقينا أماكن هنا.</Text>
       ) : (
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 40 }}>
+        <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 34 }}>
           {list.map((place) => (
             <Pressable
               key={place.id}
@@ -157,6 +178,7 @@ export function StoryPlaceSheet({ onPick, onClose }: { onPick: (place: PickedPla
           ))}
         </ScrollView>
       )}
-    </View>
+    </Pressable>
+    </Pressable>
   );
 }
