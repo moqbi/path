@@ -37,9 +37,10 @@ export function NoteRow({ note }: { note: Note }) {
           />
         ) : (
           /* خبرُ المتجر لا صاحب له، فرسمُ الصنف مكان الصورة. */
+          // رسمُ الصنف المرفوع كاملاً بشفافيته بلا قرصٍ ولا قصّ — كالجوّال.
           <span
-            className="block h-11 w-11 rounded-full"
-            style={note.item ? itemPaint(note.item) : { background: "var(--color-chip)" }}
+            className={note.item?.mediaId ? "block h-11 w-11" : "block h-11 w-11 rounded-full"}
+            style={note.item ? itemPaint(note.item, "contain") : { background: "var(--color-chip)" }}
           />
         )}
         <span

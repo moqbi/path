@@ -291,23 +291,27 @@ export default function Notifications() {
                     mediaId={item.person.avatarMediaId}
                   />
                 ) : (
-                  /* خبرُ المتجر لا صاحب له، فرسمُ الصنف مكان الصورة. */
-                  <View
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 22,
-                      overflow: "hidden",
-                      backgroundColor: firstColor(item.item?.spec, colors.chip),
-                    }}
-                  >
-                    {item.item?.mediaId ? (
-                      <MediaImage
-                        mediaId={item.item.mediaId}
-                        style={{ width: 44, height: 44 }}
-                      />
-                    ) : null}
-                  </View>
+                  /*
+                    خبرُ المتجر لا صاحب له، فرسمُ الصنف مكان الصورة — **كاملاً بشفافيته**
+                    بلا قرصٍ ملوّنٍ تحته ولا قصّ: إطارٌ أو تميمةٌ مرفوعةٌ PNG كانت تُحبس في
+                    دائرةٍ بلون الصنف فتُقرأ زرّاً لا رسماً. والقرصُ لما لا رسمَ له إلا تدرّجه.
+                  */
+                  item.item?.mediaId ? (
+                    <MediaImage
+                      mediaId={item.item.mediaId}
+                      resizeMode="contain"
+                      style={{ width: 44, height: 44 }}
+                    />
+                  ) : (
+                    <View
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 22,
+                        backgroundColor: firstColor(item.item?.spec, colors.chip),
+                      }}
+                    />
+                  )
                 )}
                 <KindBadge note={item} />
               </View>
