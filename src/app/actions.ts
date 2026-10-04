@@ -61,6 +61,13 @@ const newAccount = z.object({
   name: z.string().trim().min(2, "اكتب اسمك").max(40, "الاسم طويل"),
   email: z.string().trim().toLowerCase().email("بريد غير صالح"),
   password: z.string().min(8, "كلمة المرور ثمانية أحرف فأكثر"),
+  /** رقمُ عضويّةِ من دعاه (القاعدة ٢٤٣) — والعربيةُ تُحوَّل كما تُكتب. */
+  inviterNo: z
+    .string()
+    .optional()
+    .transform((v) => (v ?? "").replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))).trim())
+    .refine((v) => v === "" || (/^\d{1,9}$/.test(v) && Number(v) > 0), "رقم العضوية غير صالح")
+    .transform((v) => (v === "" ? undefined : Number(v))),
 });
 
 export async function signUp(
@@ -71,6 +78,7 @@ export async function signUp(
     name: formData.get("name"),
     email: formData.get("email"),
     password: formData.get("password"),
+    inviterNo: formData.get("inviterNo") ?? undefined,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };

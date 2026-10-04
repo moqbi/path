@@ -1,13 +1,14 @@
-import { SITE_URL, hasSite } from "@athar/shared";
 import { useBarSpace } from "../../components/glass-bar";
 import { scrolled } from "../../lib/scrolled";
 import { useMemo, useRef, useState } from "react";
-import { View, SectionList, Pressable, ActivityIndicator, Alert, Share, Animated, RefreshControl } from "react-native";
+import { View, SectionList, Pressable, ActivityIndicator, Alert, Animated, RefreshControl } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { ProfileHead } from "../../components/profile-head";
+import { ShareProfileSheet } from "../../components/share-profile";
+import { InviteProgress } from "../../components/invite-progress";
 import { Spot } from "../../components/spot";
 import { COVER_HEIGHT, CoverLayer, StretchCover, useStretch } from "../../components/cover";
 import { useTabTop } from "../../lib/tab-top";
@@ -123,6 +124,7 @@ export default function Me() {
   const { y: scrollY, onScroll } = useStretch();
   const list = useRef<SectionList<Moment>>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const refreshMe = useSession((state) => state.refresh);
   const reload = () => {
     playRefresh();
@@ -170,22 +172,8 @@ export default function Me() {
 
         <Pressable
           accessibilityLabel="مشاركة الملف"
-          /*
-            الرابط برقم العضوية لا بمعرّف الحساب (القاعدة ٨٧): الرقم
-            قصيرٌ يُقرأ ويُقال، والمعرّف سلسلةٌ لا تُحفظ. وكان يُشارَك
-            بالمعرّف، فالرابط لا يُقرأ ولا يُملى على أحد.
-          */
-          /*
-            والنطاق من البيئة لا من الكود: ما دام لم يُحسم بعد، تُشارَك
-            العضويةُ وحدها — رسالةٌ بلا رابط خيرٌ من رابطٍ إلى لا شيء.
-          */
-          onPress={() =>
-            void Share.share({
-              message: hasSite()
-                ? `ملف ${me.name} في آثار · عضوية رقم ${ar(me.memberNo)}\n${SITE_URL}/u/${me.memberNo}`
-                : `ملف ${me.name} في آثار · عضوية رقم ${ar(me.memberNo)}`,
-            })
-          }
+          // رابطٌ أو رمز QR برقم العضوية (القاعدة ٨٧) — في نافذةٍ واحدة.
+          onPress={() => setSharing(true)}
           style={{
             width: 38,
             height: 38,
@@ -305,6 +293,15 @@ export default function Me() {
           )
         }
       />
+
+      {sharing ? (
+        <ShareProfileSheet
+          name={me.name}
+          memberNo={me.memberNo}
+          onClose={() => setSharing(false)}
+          footer={<InviteProgress />}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

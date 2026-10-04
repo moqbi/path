@@ -1,4 +1,4 @@
-import { View, Pressable, Modal } from "react-native";
+import { View, Pressable, Modal, KeyboardAvoidingView, Platform } from "react-native";
 import { Text } from "./type";
 import { colors } from "../theme/tokens";
 
@@ -20,29 +20,32 @@ export function Sheet({
 }) {
   return (
     <Modal transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={{ flex: 1, backgroundColor: "rgba(14,26,36,.42)" }} onPress={onClose} />
+      {/* حقلٌ في النافذة (من دعاك؟) يصعد فوق الكيبورد لا تحته. */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <Pressable style={{ flex: 1, backgroundColor: "rgba(14,26,36,.42)" }} onPress={onClose} />
 
-      <View
-        style={{
-          backgroundColor: colors.paper,
-          borderTopLeftRadius: 24,
-          borderTopRightRadius: 24,
-          borderTopWidth: 1,
-          borderTopColor: colors.line,
-          paddingHorizontal: 20,
-          paddingTop: 12,
-          paddingBottom: 32,
-        }}
-      >
-        {/* مقبضٌ يقول إنّ النافذة تُغلق بسحبها. */}
-        <View style={{ width: 44, height: 4, borderRadius: 2, backgroundColor: colors.line, alignSelf: "center", marginBottom: 12 }} />
+        <View
+          style={{
+            backgroundColor: colors.paper,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            borderTopWidth: 1,
+            borderTopColor: colors.line,
+            paddingHorizontal: 20,
+            paddingTop: 12,
+            paddingBottom: 32,
+          }}
+        >
+          {/* مقبضٌ يقول إنّ النافذة تُغلق بسحبها. */}
+          <View style={{ width: 44, height: 4, borderRadius: 2, backgroundColor: colors.line, alignSelf: "center", marginBottom: 12 }} />
 
-        <Text style={{ color: colors.ink2, fontSize: 13, fontWeight: "700", textAlign: "center", marginBottom: 8 }}>
-          {title}
-        </Text>
+          <Text style={{ color: colors.ink2, fontSize: 13, fontWeight: "700", textAlign: "center", marginBottom: 8 }}>
+            {title}
+          </Text>
 
-        {children}
-      </View>
+          {children}
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

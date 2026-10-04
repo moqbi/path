@@ -28,6 +28,7 @@ export async function requestSignup(input: {
   name: string;
   email: string;
   password: string;
+  inviterNo?: number;
 }): Promise<SignupResult> {
   const taken = await prisma.user.findUnique({
     where: { email: input.email },
@@ -43,6 +44,7 @@ export async function requestSignup(input: {
     passwordHash: await hashPassword(input.password),
     tokenHash: digest(token),
     expiresAt: new Date(Date.now() + UNVERIFIED_MINUTES * 60_000),
+    inviterNo: input.inviterNo ?? null,
   };
 
   /*
@@ -121,6 +123,18 @@ export async function activateSignup(
     }),
     prisma.pendingSignup.delete({ where: { id: row.id } }),
   ]);
+
+  // من دعاه (القاعدة ٢٤٣): رقمٌ خاطئ في النموذج لا يُسقط حساباً قام.
+  if (row.inviterNo) {
+    const inviter = await prisma.user
+      .findUnique({ where: { memberNo: row.inviterNo }, select: { id: true } })
+      .catch(() => null);
+    if (inviter && inviter.id !== user.id) {
+      await prisma.user
+        .update({ where: { id: user.id }, data: { invitedById: inviter.id } })
+        .catch(() => {});
+    }
+  }
 
   return { userId: user.id };
 }

@@ -119,7 +119,7 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
         },
       },
       messageOf: { select: { conversation: { select: { aId: true, bId: true } } } },
-      groupMessageOf: { select: { groupId: true } },
+      groupMessageOf: { select: { groupId: true, createdAt: true } },
       groupPhotoOf: { select: { id: true } },
     },
   });
@@ -137,9 +137,11 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
   if (groupId) {
     const seat = await prisma.chatGroupMember.findUnique({
       where: { groupId_userId: { groupId, userId } },
-      select: { userId: true },
+      select: { joinedAt: true },
     });
-    return Boolean(seat);
+    if (!seat) return false;
+    // صورةُ رسالةٍ قبل انضمامه ليست له كالرسالة نفسها (القاعدة ٢٤٢).
+    return !media.groupMessageOf || media.groupMessageOf.createdAt >= seat.joinedAt;
   }
 
   if (media.moment) return canSeeMoment(userId, media.moment.id);

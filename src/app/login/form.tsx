@@ -297,6 +297,22 @@ export function LoginForm({
                   color: "#f7f5ef",
                 }}
               />
+              {newcomer ? (
+                <input
+                  name="inviterNo"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={9}
+                  placeholder="رقم عضوية من دعاك — اختياري"
+                  className="rounded-xl px-4 text-[14.5px] outline-none"
+                  style={{
+                    height: 52,
+                    background: "rgba(247,245,239,.1)",
+                    border: "1px solid rgba(247,245,239,.22)",
+                    color: "#f7f5ef",
+                  }}
+                />
+              ) : null}
 
               {form.error ? (
                 <p role="alert" className="text-[12.5px] font-medium" style={{ color: "#ff9d84" }}>

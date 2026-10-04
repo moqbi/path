@@ -94,7 +94,7 @@ async function issue(
  *
  * **ولا توكنَ يُردّ هنا**: لا حساب بعدُ فلا جلسة.
  */
-export async function register(input: { email: string; password: string; name: string }) {
+export async function register(input: { email: string; password: string; name: string; inviterNo?: number }) {
   const taken = await prisma.user.findUnique({ where: { email: input.email }, select: { id: true } });
   if (taken) throw badRequest("هذا البريد مسجّل — سجّل الدخول به");
 
@@ -104,6 +104,7 @@ export async function register(input: { email: string; password: string; name: s
     passwordHash: await hashPassword(input.password),
     tokenHash: createHash("sha256").update(token).digest("hex"),
     expiresAt: new Date(Date.now() + UNVERIFIED_MINUTES * 60_000),
+    inviterNo: input.inviterNo ?? null,
   };
 
   // وطلبٌ ثانٍ بالبريد نفسه يحلّ محلّ الأوّل: من لم تصله الرسالة يعيد،

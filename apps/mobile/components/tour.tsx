@@ -5,6 +5,7 @@ import Svg, { Path } from "react-native-svg";
 import { Text } from "./type";
 import { measureSpot, type Rect } from "./spot";
 import { useRouter } from "expo-router";
+import { api } from "../lib/api";
 import { useFan } from "./composer-fan";
 import { getItem, setItem } from "../lib/store";
 import { colors } from "../theme/tokens";
@@ -76,7 +77,7 @@ const STEPS: Step[] = [
  * خطوةُ الجولة في مخزنٍ لا في حالة المكوّن: «أعد الجولة» في الإعدادات
  * يبدؤها من شاشةٍ أخرى.
  */
-const useTour = create<{ step: number | null }>(() => ({ step: null }));
+const useTour = create<{ step: number | null; first: boolean }>(() => ({ step: null, first: false }));
 
 /** يبدأ الجولةَ من أوّلها — من الإعدادات لمن تخطّاها أو فاتته. */
 export function startTour() {
@@ -123,7 +124,12 @@ export function Tour() {
         مهلةٌ تسبق الجولة: نافذةُ إذن التنبيهات تُطلب مع الدخول، والشريطُ
         السفليّ يُرسم بعد الشاشة — ولا دائرة بلا هدف.
       */
-      if (seen !== "1") timer = setTimeout(() => startTour(), 1800);
+      if (seen !== "1") {
+        timer = setTimeout(() => {
+          startTour();
+          useTour.setState({ first: true });
+        }, 1800);
+      }
     });
     return () => clearTimeout(timer);
   }, []);
@@ -183,10 +189,24 @@ export function Tour() {
 
   // الإغلاقُ أوّلاً ثمّ الحفظ: مخزنٌ يفشل لا يحبس الشاشة تحت الجولة.
   function close() {
-    setStep(null);
+    const first = useTour.getState().first;
+    useTour.setState({ step: null, first: false });
     useFan.setState({ open: false });
     router.navigate("/" as never);
     void setItem(KEY, "1").catch(() => {});
+    /*
+      وبعد أوّل جولةٍ يُفتح ملفُّ حساب الإدارة (القاعدة ٢٤٣): الحسابُ الجديد
+      خطُّه الزمنيّ فارغٌ لا صديقَ فيه بعد، ومن وجد شاشةً ميّتة لا يعود.
+      الحسابُ مفتوح (القاعدة ٢٢١) فإضافتُه تُقبل في الحال وتملأ الخطّ بأخباره.
+      ورقمُه من اللوحة لا من الكود، وبلا حسابٍ لا شيء.
+    */
+    if (first) {
+      void api<{ account: { id: string } | null }>("/v1/site/support")
+        .then(({ account }) => {
+          if (account) router.push(`/u/${account.id}` as never);
+        })
+        .catch(() => {});
+    }
   }
 
   if (step === null) return null;

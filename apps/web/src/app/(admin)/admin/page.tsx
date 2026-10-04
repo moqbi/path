@@ -42,6 +42,7 @@ import { ItemImage } from "./item-image";
 import { ItemCover } from "./item-cover";
 import { BundleItems } from "./bundle";
 import { CollectionsView, ItemCollection, ItemPlans } from "./store-extras";
+import { InvitesView } from "./invites";
 import { coinText, ar, relative, riyals } from "@/lib/format";
 import { parsePalette } from "@/lib/theme";
 import { ReportContext } from "./report-context";
@@ -93,6 +94,7 @@ const STORE_VIEWS = [
   { key: "cats", label: "التصنيفات" },
   { key: "collections", label: "المجموعات" },
   { key: "packs", label: "باقات النقاط" },
+  { key: "invites", label: "الدعوات" },
 ] as const;
 
 /** حقلٌ باسمه: الصفّ العاري من الحقول لا يقول ما يُكتب فيه. */
@@ -418,7 +420,7 @@ export default async function AdminPage({
   searchParams: Promise<{ s?: string; v?: string; q?: string }>;
 }) {
   const { s: raw, v, q } = await searchParams;
-  const view = v === "cats" || v === "packs" || v === "collections" ? v : "items";
+  const view = v === "cats" || v === "packs" || v === "collections" || v === "invites" ? v : "items";
   const user = await currentUser();
   if (!user) redirect("/login");
 
@@ -1018,7 +1020,7 @@ export default async function AdminPage({
               >
                 {tab.label}
                 <span className="mr-1.5 text-[11px] opacity-70">
-                  {tab.key === "collections"
+                  {tab.key === "collections" || tab.key === "invites"
                     ? ""
                     : ar(tab.key === "items" ? items.length : tab.key === "cats" ? categories.length : packs.length)}
                 </span>
@@ -1029,6 +1031,8 @@ export default async function AdminPage({
 
         {view === "collections" ? (
           <CollectionsView />
+        ) : view === "invites" ? (
+          <InvitesView />
         ) : view === "packs" ? (
           <>
             <p className="mb-3 px-1 text-[11.5px] leading-relaxed text-muted">

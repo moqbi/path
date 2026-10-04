@@ -56,7 +56,7 @@ async function requireRunner(userId: string) {
 async function seat(userId: string, groupId: string) {
   const row = await prisma.chatGroupMember.findUnique({
     where: { groupId_userId: { groupId, userId } },
-    select: { lastReadAt: true },
+    select: { lastReadAt: true, joinedAt: true },
   });
   if (!row) throw notFound("المجموعة غير موجودة");
   return row;
@@ -99,6 +99,7 @@ export async function list(userId: string) {
     where: { userId },
     select: {
       lastReadAt: true,
+      joinedAt: true,
       group: {
         select: {
           id: true,
@@ -106,7 +107,6 @@ export async function list(userId: string) {
           photoMediaId: true,
           updatedAt: true,
           _count: { select: { members: true } },
-          messages: { select: MESSAGE, orderBy: { createdAt: "desc" }, take: 1 },
         },
       },
     },
@@ -120,7 +120,12 @@ export async function list(userId: string) {
       photoMediaId: row.group.photoMediaId,
       updatedAt: row.group.updatedAt,
       members: row.group._count.members,
-      last: row.group.messages[0] ?? null,
+      // ما قبل الانضمام ليس له (القاعدة ٢٤٢) — ولا آخرُ رسالةٍ منه في القائمة.
+      last: await prisma.groupMessage.findFirst({
+        where: { groupId: row.group.id, createdAt: { gte: row.joinedAt } },
+        select: MESSAGE,
+        orderBy: { createdAt: "desc" },
+      }),
       unseen: await prisma.groupMessage.count({
         where: { groupId: row.group.id, senderId: { not: userId }, createdAt: { gt: row.lastReadAt } },
       }),
@@ -151,7 +156,7 @@ export async function thread(
   groupId: string,
   options: { cursor?: string; limit: number },
 ) {
-  await seat(userId, groupId);
+  const { joinedAt } = await seat(userId, groupId);
 
   const group = await prisma.chatGroup.findUnique({
     where: { id: groupId },
@@ -165,8 +170,9 @@ export async function thread(
   });
   if (!group) throw notFound("المجموعة غير موجودة");
 
+  // العضوُ الجديد يقرأ من يوم انضمامه لا أرشيفَ ما قبله (القاعدة ٢٤٢).
   const rows = await prisma.groupMessage.findMany({
-    where: { groupId },
+    where: { groupId, createdAt: { gte: joinedAt } },
     select: MESSAGE,
     orderBy: { createdAt: "desc" },
     take: options.limit + 1,

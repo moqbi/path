@@ -26,6 +26,8 @@ export const registerInput = z.object({
   email,
   password,
   name: z.string().trim().min(2, "اكتب اسمك").max(40),
+  /** رقمُ عضويّةِ من دعاه (القاعدة ٢٤٣) — اختياريّ. */
+  inviterNo: z.coerce.number().int().positive().max(100_000_000).optional(),
 });
 
 export const loginInput = z.object({ email, password });

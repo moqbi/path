@@ -1797,3 +1797,39 @@ export async function revokePlus(userId: string): Promise<void> {
   });
   revalidatePath("/admin");
 }
+
+/**
+ * برنامجُ الدعوات (القاعدة ٢٤٣): تفعيلٌ وإيقاف ورقمان.
+ *
+ * والإعلانُ للجميع يقرعه كنسُ الخادم — هذا المشروع بلا خدمة التنبيهات
+ * (كجديد المتجر، القاعدة ١٧٧): التفعيلُ يترك `announcedAt` فارغاً فيُعلَن
+ * مرّةً، والإيقافُ يمسحه فيُعلَن ثانيةً إن فُعّل.
+ */
+const invitesInput = z.object({
+  enabled: z.boolean(),
+  every: z.coerce.number().int().min(1, "عدد المدعوّين ١ فأكثر").max(1000),
+  coins: z.coerce.number().int().min(1, "النقاط ١ فأكثر").max(50_000),
+});
+
+export async function saveInvites(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  await requireAdmin("store");
+  const parsed = invitesInput.safeParse({
+    enabled: formData.get("enabled") === "on",
+    every: formData.get("every"),
+    coins: formData.get("coins"),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
+
+  const before = await prisma.inviteProgram.findUnique({ where: { id: "main" } });
+  const { enabled, every, coins } = parsed.data;
+  await prisma.inviteProgram.upsert({
+    where: { id: "main" },
+    create: { id: "main", enabled, every, coins, announcedAt: null },
+    update: { enabled, every, coins, ...(enabled ? {} : { announcedAt: null }) },
+  });
+
+  revalidatePath("/admin");
+  if (enabled && !before?.enabled) return { ok: "فُعّل البرنامج — يصل التنبيه للجميع خلال دقائق" };
+  if (!enabled && before?.enabled) return { ok: "أُوقف البرنامج" };
+  return { ok: "حُفظ" };
+}
