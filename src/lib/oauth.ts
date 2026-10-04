@@ -1,5 +1,6 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { prisma } from "@/lib/db";
+import { cookieInviter, linkInviter } from "@/lib/invite-ref";
 
 import { sendVerify } from "@/lib/email-tokens";
 
@@ -241,6 +242,9 @@ export async function upsertIdentity(identity: Identity) {
     },
     select: { id: true, email: true, name: true },
   });
+
+  // ومن دعاه برابط الدعوة (القاعدة ٢٤٣).
+  await linkInviter(user.id, await cookieInviter());
 
   // وبريدٌ لم يؤكّده مزوّدُه يُؤكَّد برسالةٍ كما يفعل التسجيل بالبريد.
   if (!identity.emailVerified && user.email) {

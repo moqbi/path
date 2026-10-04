@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { savedInviter } from "../lib/invite-ref";
 import { View, Pressable, Animated, Easing, Keyboard, Platform, useWindowDimensions } from "react-native";
 import { Text, TextInput } from "../components/type";
 import Svg, {
@@ -187,13 +188,6 @@ const FIELD = {
  * والمقدّمة مرفوعةٌ من السياق (`position: absolute`) كما في الويب: هناك
  * تصير كذلك عند ظهور النموذج، فلا تدفع ما تحتها.
  */
-/** «١٢» أو «12» — رقمٌ صحيح أو لا شيء. */
-function inviterNo(value: string): number | undefined {
-  const latin = value.replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))).trim();
-  const n = Number(latin);
-  return latin && Number.isInteger(n) && n > 0 ? n : undefined;
-}
-
 export default function Login() {
   const router = useRouter();
   const { deleted } = useLocalSearchParams<{ deleted?: string }>();
@@ -215,8 +209,6 @@ export default function Login() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  // رقمُ عضويّةِ من دعاه (القاعدة ٢٤٣) — اختياريّ، والعربيةُ تُحوَّل.
-  const [inviter, setInviter] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [notice, setNotice] = useState<string | null>(
@@ -366,7 +358,8 @@ export default function Login() {
             name: name.trim(),
             email: email.trim(),
             password,
-            ...(inviterNo(inviter) ? { inviterNo: inviterNo(inviter) } : {}),
+            // الداعي من رابطٍ فُتح قبل التسجيل لا من حقل (القاعدة ٢٤٣).
+            inviterNo: await savedInviter(),
           }),
         });
         setSent("أرسلنا رابطاً إلى بريدك — افتحه ليُفتح حسابك.");
@@ -557,17 +550,6 @@ export default function Login() {
                 textContentType={newcomer ? "newPassword" : "password"}
                 onSubmitEditing={submit}
               />
-              {newcomer ? (
-                <TextInput
-                  style={FIELD}
-                  value={inviter}
-                  onChangeText={setInviter}
-                  placeholder="رقم عضوية من دعاك — اختياري"
-                  placeholderTextColor="rgba(247,245,239,.5)"
-                  keyboardType="number-pad"
-                  maxLength={9}
-                />
-              ) : null}
 
               {error ? (
                 <Text

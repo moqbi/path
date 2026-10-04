@@ -10,13 +10,17 @@ import { inviteLine } from "../lib/invite-line";
  * من دعا أصدقاءه إلى آثار ينال نقاطاً: كلُّ `every` مدعوّين = `coins` نقطة.
  * والمشرفُ يفعّله ويوقفه ويضبط رقميه من اللوحة.
  *
- * **والمدعوُّ يُعدّ حين ينشر أوّل لحظةٍ له** لا حين يُنشئ حسابه: حسابٌ لا
- * يكتب شيئاً لا يُضيف إلى دائرة أحد، وعشرةُ حساباتٍ فارغة تُصنع في دقائق
- * فتصير النقاطُ مِنحةً لمن يعرف كيف يُنشئ بريداً. ولحظاتُ النظام
- * («انضم»، «غيّر صورته») ليست نشراً.
+ * **والدعوةُ بالرابط وحده** — بقرار المالك: حقلٌ يُكتب فيه رقمُ الداعي كان
+ * يجعل من يُنشئ حساباتٍ وهميّة يكتب فيها رقمَ حسابه الأساسيّ. فالجوّالُ يحفظ
+ * صاحبَ رابط `/u/<رقم>` الذي فُتح قبل التسجيل ويُرسله بعده، والويبُ بكوكي.
+ *
+ * **والرابطُ وحده لا يمنع الوهميّ** — من يتحايل يفتح رابطه هو — فالعدُّ
+ * بالجهاز (`AccessEvent.device`، معرّفٌ يولّده التطبيق ويبقى بعد حذفه —
+ * القاعدة ١٩٤): المدعوُّ يُعدّ حين **ينشر أوّل لحظةٍ له من جوّال**، و**لا
+ * يشارك الداعيَ جهازاً**، و**الجهازُ الواحد يُعدّ مرّةً** مهما سُجّل عليه من
+ * حسابات. ولحظاتُ النظام («انضم»، «غيّر صورته») ليست نشراً، وحسابُ الويب
+ * وحده (بلا جهاز) لا يُعدّ.
  */
-const POSTED = ["PHOTO", "PLACE", "THOUGHT", "MUSIC", "SLEEP", "WAKE"] as const;
-
 /** أيّامٌ يُقبل فيها «من دعاك؟» بعد التسجيل — لمن دخل بمزوّدٍ بلا نموذج. */
 export const CLAIM_DAYS = 7;
 
@@ -73,15 +77,47 @@ export async function claim(userId: string, inviterNo: number) {
   return { ok: true };
 }
 
-/** عددُ من دعاهم ونشروا — ومن سجّلوا ولم ينشروا بعد. */
+/**
+ * كم مدعوّاً يُعدّ لكلّ داعٍ — بشروط الجهاز أعلاه. أوّلُ جهازٍ للمدعوّ هو
+ * بصمتُه، و`COUNT(DISTINCT …)` يجعل الجهازَ الواحد مدعوّاً واحداً.
+ */
+async function qualifiedBy(inviterId?: string) {
+  return prisma.$queryRaw<{ id: string; n: bigint; given: number }[]>`
+    WITH invitee AS (
+      SELECT u."id", u."invitedById" AS inviter,
+        (SELECT ae."device" FROM "AccessEvent" ae
+          WHERE ae."userId" = u."id" AND ae."device" <> ''
+          ORDER BY ae."firstAt" ASC LIMIT 1) AS device
+      FROM "User" u
+      WHERE u."invitedById" IS NOT NULL
+        AND (${inviterId ?? null}::text IS NULL OR u."invitedById" = ${inviterId ?? null}::text)
+        AND EXISTS (
+          SELECT 1 FROM "Moment" m
+          WHERE m."authorId" = u."id"
+            AND m."kind"::text IN ('PHOTO', 'PLACE', 'THOUGHT', 'MUSIC', 'SLEEP', 'WAKE')
+        )
+    )
+    SELECT inviter."id", COUNT(DISTINCT i.device) AS n, inviter."inviteRewards" AS given
+    FROM invitee i
+    JOIN "User" inviter ON inviter."id" = i.inviter
+    WHERE i.device IS NOT NULL
+      -- أيُّ جهازٍ دخل منه المدعوُّ دخل منه الداعي أيضاً = حسابُه هو لا صديقُه.
+      AND NOT EXISTS (
+        SELECT 1 FROM "AccessEvent" theirs
+        JOIN "AccessEvent" mine ON mine."device" = theirs."device" AND mine."userId" = i.inviter
+        WHERE theirs."userId" = i."id" AND theirs."device" <> ''
+      )
+    GROUP BY inviter."id", inviter."inviteRewards"
+  `;
+}
+
+/** عددُ من سجّلوا برابطي — ومن يُعدّ منهم. */
 async function counts(userId: string) {
-  const [joined, qualified] = await Promise.all([
+  const [joined, rows] = await Promise.all([
     prisma.user.count({ where: { invitedById: userId } }),
-    prisma.user.count({
-      where: { invitedById: userId, moments: { some: { kind: { in: [...POSTED] } } } },
-    }),
+    qualifiedBy(userId),
   ]);
-  return { joined, qualified };
+  return { joined, qualified: Number(rows[0]?.n ?? 0) };
 }
 
 /** ما يعرضه التطبيق: البرنامج وتقدّمي فيه، وهل ما زال لي أن أقول من دعاني. */
@@ -123,19 +159,7 @@ export async function rewardInvites(): Promise<number> {
   const p = await program();
   if (!p.enabled || p.every < 1 || p.coins < 1) return 0;
 
-  const rows = await prisma.$queryRaw<{ id: string; n: bigint; given: number }[]>`
-    SELECT inviter."id", COUNT(*) AS n, inviter."inviteRewards" AS given
-    FROM "User" invitee
-    JOIN "User" inviter ON inviter."id" = invitee."invitedById"
-    WHERE EXISTS (
-      SELECT 1 FROM "Moment" m
-      WHERE m."authorId" = invitee."id"
-        AND m."kind"::text IN ('PHOTO', 'PLACE', 'THOUGHT', 'MUSIC', 'SLEEP', 'WAKE')
-    )
-    GROUP BY inviter."id", inviter."inviteRewards"
-    HAVING COUNT(*) / ${p.every} > inviter."inviteRewards"
-    LIMIT 200
-  `;
+  const rows = (await qualifiedBy()).filter((row) => Math.floor(Number(row.n) / p.every) > row.given);
 
   let paid = 0;
   for (const row of rows) {

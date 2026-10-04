@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "@/lib/db";
+import { linkInviter } from "@/lib/invite-ref";
 import { appUrl } from "@/lib/site-url";
 import { letterHtml, sendMail } from "@/lib/mail";
 import { hashPassword } from "@/lib/auth";
@@ -124,17 +125,8 @@ export async function activateSignup(
     prisma.pendingSignup.delete({ where: { id: row.id } }),
   ]);
 
-  // من دعاه (القاعدة ٢٤٣): رقمٌ خاطئ في النموذج لا يُسقط حساباً قام.
-  if (row.inviterNo) {
-    const inviter = await prisma.user
-      .findUnique({ where: { memberNo: row.inviterNo }, select: { id: true } })
-      .catch(() => null);
-    if (inviter && inviter.id !== user.id) {
-      await prisma.user
-        .update({ where: { id: user.id }, data: { invitedById: inviter.id } })
-        .catch(() => {});
-    }
-  }
+  // من دعاه (القاعدة ٢٤٣) — من رابط الدعوة، ولا يُسقط حساباً قام.
+  await linkInviter(user.id, row.inviterNo);
 
   return { userId: user.id };
 }

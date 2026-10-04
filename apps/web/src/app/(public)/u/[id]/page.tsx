@@ -221,7 +221,7 @@ export default async function SharedProfile({ params }: Props) {
         </dl>
 
         <div className="mt-5 w-full">
-          <OpenInApp userId={person.id} store={mine} />
+          <OpenInApp memberNo={person.memberNo} store={mine} />
         </div>
 
         {/*
@@ -245,6 +245,19 @@ export default async function SharedProfile({ params }: Props) {
             <StoreButton store="App Store" href={ios} />
             <StoreButton store="Google Play" href={android} />
           </div>
+
+          {/*
+            الدعوةُ بالرابط وحده (القاعدة ٢٤٣): التطبيقُ يحفظ صاحبَ هذا الرابط
+            حين يُفتح به — والمتجرُ لا يحمل الرابط معه، فمن نزّله للتوّ يعود إليه
+            مرّةً قبل أن يسجّل. والمتصفّحُ يحفظه بكوكي في `/app/i/<رقم>`.
+          */}
+          <p className="mt-4 text-[11.5px] leading-relaxed text-muted">
+            بعد التنزيل ارجع لهذا الرابط واضغط «افتح الملف في التطبيق» قبل ما تسجّل — أو{" "}
+            <a href={`/app/i/${person.memberNo}`} className="font-semibold text-clay-ink underline">
+              سجّل من المتصفح
+            </a>
+            .
+          </p>
         </div>
       </div>
     </article>

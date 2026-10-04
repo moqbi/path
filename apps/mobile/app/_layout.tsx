@@ -16,6 +16,7 @@ import {
 import { Tajawal_400Regular, Tajawal_700Bold } from "@expo-google-fonts/tajawal";
 import { Montserrat_500Medium, Montserrat_700Bold } from "@expo-google-fonts/montserrat";
 import { useSession } from "../lib/session";
+import { claimSavedInviter, watchInviteLinks } from "../lib/invite-ref";
 import { primeAccess } from "../lib/api";
 import { markFirstSeen } from "../lib/rate";
 import { watchCity } from "../lib/arrive";
@@ -85,6 +86,9 @@ function Gate() {
   const segments = useSegments();
   const router = useRouter();
 
+  // رابطُ ملفٍّ فُتح قبل التسجيل يقول من دعاه (القاعدة ٢٤٣).
+  useEffect(() => watchInviteLinks(), []);
+
   useEffect(() => {
     void primeAccess().then(restore);
     // ختمُ أوّل فتحٍ لطلب التقييم: يُكتب مرّةً ولا يزيد (`lib/rate.ts`).
@@ -106,6 +110,8 @@ function Gate() {
   useEffect(() => {
     if (!me) return;
     void enablePush();
+    // ومن دخل وفي جهازه رابطُ داعٍ يُربط به — الخادمُ يقبله لحسابٍ جديد وحده.
+    void claimSavedInviter();
   }, [me?.id]);
 
   /*
