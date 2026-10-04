@@ -30,7 +30,7 @@ export function NameTag({
   return (
     <>
       {isPlus ? (
-        <VerifiedIcon size={Math.min(24, Math.max(16, Math.round(size * 1.6)))} color={colors.clay} />
+        <VerifiedIcon size={Math.min(20, Math.max(13, Math.round(size * 1.3)))} color={colors.clay} />
       ) : null}
       <TagPill tag={tag ?? (isPlus ? SUPPORTER_TAG : null)} size={size} />
     </>

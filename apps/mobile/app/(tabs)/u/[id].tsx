@@ -17,7 +17,7 @@ import { GiftButton } from "../../../components/gift-sheet";
 import { MessageIcon, StarIcon, WithIcon } from "../../../components/icons";
 import { api } from "../../../lib/api";
 import { keys, type Moment } from "../../../lib/queries";
-import { ar, membership } from "../../../lib/format";
+import { ar } from "../../../lib/format";
 import { useSession } from "../../../lib/session";
 import { colors } from "../../../theme/tokens";
 import { EdgeBack } from "../../../components/edge-back";
@@ -237,7 +237,9 @@ function Profile() {
                   tag={who.tag}
                   handle={who.handle}
                   bio={who.bio}
-                  meta={`عضوية رقم ${ar(who.memberNo)}${who.city ? ` · ${who.city}` : ""} · لك معانا ${membership(who.createdAt)}`}
+                  memberNo={who.memberNo}
+                  city={who.city}
+                  since={who.createdAt}
                   mediaId={who.avatarMediaId}
                   frame={who.frame}
                   charm={who.charm}

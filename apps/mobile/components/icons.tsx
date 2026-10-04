@@ -198,6 +198,14 @@ export const CameraIcon = ({ size = 20, color = "currentColor" }: Props) => (
   </Svg>
 );
 
+/** لقطةُ شاشة (القاعدة ٢٤٠): أركانُ القصّ الأربعة حول نقطة. */
+export const ScreenshotIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M4 8.5V6a2 2 0 0 1 2-2h2.5M15.5 4H18a2 2 0 0 1 2 2v2.5M20 15.5V18a2 2 0 0 1-2 2h-2.5M8.5 20H6a2 2 0 0 1-2-2v-2.5" />
+    <Circle cx={12} cy={12} r={2.6} />
+  </Svg>
+);
+
 export const FlameIcon = ({ size = 20, color = "currentColor" }: Props) => (
   <Svg {...stroke(size, color)}>
     <Path d="M12 3s5 4.2 5 8.5a5 5 0 0 1-10 0C7 9 9 7 9 7s.5 2.5 2 2.5S12 3 12 3Z" />

@@ -103,6 +103,7 @@ export async function list(userId: string) {
         select: {
           id: true,
           name: true,
+          photoMediaId: true,
           updatedAt: true,
           _count: { select: { members: true } },
           messages: { select: MESSAGE, orderBy: { createdAt: "desc" }, take: 1 },
@@ -116,6 +117,7 @@ export async function list(userId: string) {
     seats.map(async (row) => ({
       id: row.group.id,
       name: row.group.name,
+      photoMediaId: row.group.photoMediaId,
       updatedAt: row.group.updatedAt,
       members: row.group._count.members,
       last: row.group.messages[0] ?? null,
@@ -156,6 +158,7 @@ export async function thread(
     select: {
       id: true,
       name: true,
+      photoMediaId: true,
       createdById: true,
       members: { select: { user: { select: PERSON } }, orderBy: { joinedAt: "asc" } },
     },
@@ -176,6 +179,7 @@ export async function thread(
   return {
     id: group.id,
     name: group.name,
+    photoMediaId: group.photoMediaId,
     members: group.members.map((row) => row.user),
     canManage: await canRunGroups(userId),
     messages: [...page].reverse(),
@@ -274,6 +278,28 @@ export async function rename(userId: string, groupId: string, name: string) {
   return { ok: true };
 }
 
+/**
+ * صورةُ المجموعة (القاعدة ٢٤١) — للمشرف وحده كالاسم. ملفٌّ رفعه هو وجاهز وصورةٌ لا
+ * غيرُها، والسابقةُ تذهب ببكسلاتها (القاعدة ١٠٤). و`null` يُزيلها.
+ */
+export async function setPhoto(userId: string, groupId: string, mediaId: string | null) {
+  await requireRunner(userId);
+  const group = await prisma.chatGroup.findUnique({ where: { id: groupId }, select: { photoMediaId: true } });
+  if (!group) throw notFound("المجموعة غير موجودة");
+  if (mediaId) {
+    const media = await prisma.media.findFirst({
+      where: { id: mediaId, ownerId: userId, ready: true },
+      select: { mime: true },
+    });
+    if (!media) throw notFound("الملف غير موجود");
+    if (!media.mime.startsWith("image/")) throw badRequest("صيغة غير مدعومة");
+  }
+  if (group.photoMediaId === mediaId) return { photoMediaId: mediaId };
+  await prisma.chatGroup.update({ where: { id: groupId }, data: { photoMediaId: mediaId } });
+  if (group.photoMediaId) await dropMedia([group.photoMediaId]);
+  return { photoMediaId: mediaId };
+}
+
 export async function addMembers(userId: string, groupId: string, ids: string[]) {
   await requireRunner(userId);
   const group = await prisma.chatGroup.findUnique({
@@ -307,8 +333,12 @@ export async function remove(userId: string, groupId: string) {
     where: { groupId, mediaId: { not: null } },
     select: { mediaId: true },
   });
+  const photo = await prisma.chatGroup.findUnique({ where: { id: groupId }, select: { photoMediaId: true } });
   await prisma.chatGroup.deleteMany({ where: { id: groupId } });
-  await dropMedia(files.flatMap((row) => (row.mediaId ? [row.mediaId] : [])));
+  await dropMedia([
+    ...files.flatMap((row) => (row.mediaId ? [row.mediaId] : [])),
+    ...(photo?.photoMediaId ? [photo.photoMediaId] : []),
+  ]);
   return { ok: true };
 }
 

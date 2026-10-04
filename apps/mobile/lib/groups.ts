@@ -24,6 +24,8 @@ export type GroupLine = {
 export type GroupRow = {
   id: string;
   name: string;
+  /** صورتُها (القاعدة ٢٤١) — خادمٌ أقدم لا يرسلها. */
+  photoMediaId?: string | null;
   updatedAt: string;
   members: number;
   last: GroupLine | null;
@@ -33,6 +35,7 @@ export type GroupRow = {
 export type GroupThread = {
   id: string;
   name: string;
+  photoMediaId?: string | null;
   members: GroupPerson[];
   canManage: boolean;
   messages: GroupLine[];

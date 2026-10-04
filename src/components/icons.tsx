@@ -87,6 +87,14 @@ export const EyeIcon = ({ size = 20, className }: IconProps) => (
   </svg>
 );
 
+/** لقطةُ شاشة (القاعدة ٢٤٠): أركانُ القصّ الأربعة حول نقطة — كالجوّال. */
+export const ScreenshotIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M4 8.5V6a2 2 0 0 1 2-2h2.5M15.5 4H18a2 2 0 0 1 2 2v2.5M20 15.5V18a2 2 0 0 1-2 2h-2.5M8.5 20H6a2 2 0 0 1-2-2v-2.5" />
+    <circle cx="12" cy="12" r="2.6" />
+  </svg>
+);
+
 export const LockIcon = ({ size = 20, className }: IconProps) => (
   <svg {...base(size)} className={className}>
     <rect x="5" y="10.5" width="14" height="9.5" rx="2.4" />

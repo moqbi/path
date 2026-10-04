@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { deleteStory, reactStory, seeStory } from "@/app/actions";
 import { Avatar } from "@/components/ui";
-import { CloseIcon, EyeIcon } from "@/components/icons";
+import { CloseIcon, EyeIcon, ScreenshotIcon } from "@/components/icons";
 import { filterCss, vignetteCss } from "@/components/story-composer";
 import { StoryTexts, type StoryText } from "@/components/story-texts";
 import { StoryStickers, type StorySticker } from "@/components/story-stickers";
@@ -22,7 +22,7 @@ type Story = {
   at: string;
   seen: number;
   /** من شاهدها — لصاحبها وحده، وفارغةٌ لغيره. */
-  viewers: { id: string; name: string; avatarMediaId: string | null; seenAt: string; reaction: string | null }[];
+  viewers: { id: string; name: string; avatarMediaId: string | null; seenAt: string; reaction: string | null; screenshot: boolean }[];
   video: boolean;
   seconds: number | null;
   filter: string | null;
@@ -333,8 +333,16 @@ export function StoryViewer({
                       ) : null}
                     </span>
                     <span className="min-w-0 grow">
-                      <span dir="auto" className="block truncate text-[14px] font-semibold">
-                        {person.name}
+                      <span className="flex items-center gap-1.5">
+                        <span dir="auto" className="min-w-0 truncate text-[14px] font-semibold">
+                          {person.name}
+                        </span>
+                        {/* صوّر الشاشة وهي مفتوحة (القاعدة ٢٤٠) — يقوله الجوّال، والمتصفّحُ لا يعرفه. */}
+                        {person.screenshot ? (
+                          <span title="صوّر الشاشة" className="shrink-0 text-live">
+                            <ScreenshotIcon size={15} />
+                          </span>
+                        ) : null}
                       </span>
                       <span className="block text-[11.5px]" style={{ color: person.reaction ? "var(--color-clay-ink)" : "var(--color-faint)" }}>
                         {person.reaction ? "شاهدها وتفاعل" : "شاهدها وما تفاعل"}

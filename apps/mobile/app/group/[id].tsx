@@ -9,6 +9,7 @@ import { ChatLine, bubbleStyle, needsHead } from "../../components/chat-line";
 import { MediaImage } from "../../components/media-image";
 import { viewPhoto } from "../../components/photo-viewer";
 import { ScreenHeader } from "../../components/screen-header";
+import { GroupFace } from "../../components/group-face";
 import { CameraIcon, WithIcon } from "../../components/icons";
 import { api } from "../../lib/api";
 import { uploadFile } from "../../lib/upload";
@@ -120,7 +121,8 @@ export default function Group() {
             hitSlop={8}
             style={{ flexDirection: "row", alignItems: "center", gap: 5 }}
           >
-            <WithIcon size={18} color="#f7f5ef" />
+            {/* وجهُ المجموعة بصورتها إن كانت (القاعدة ٢٤١). */}
+            {data?.photoMediaId ? <GroupFace photoMediaId={data.photoMediaId} size={26} /> : <WithIcon size={18} color="#f7f5ef" />}
             {data ? <Text style={{ color: "#f7f5ef", fontSize: 12.5, fontWeight: "600" }}>{ar(data.members.length)}</Text> : null}
           </Pressable>
         }

@@ -15,7 +15,8 @@ import { ReportButton } from "../../components/report-sheet";
 import { Sheet } from "../../components/sheet";
 import { Filtered } from "../../components/filtered";
 import { StoryVideo } from "../../components/story-video";
-import { CloseIcon, EyeIcon, LockIcon } from "../../components/icons";
+import { CloseIcon, EyeIcon, LockIcon, ScreenshotIcon } from "../../components/icons";
+import { useScreenshot } from "../../lib/screenshot";
 import { api, baseUrl, currentAccess } from "../../lib/api";
 import { storiesQuery } from "../../lib/story-prefetch";
 import type { StoryRing } from "../../lib/queries";
@@ -59,6 +60,8 @@ type Viewer = {
   charm: { spec: string; mediaId: string | null } | null;
   seenAt: string;
   reaction?: Face | null;
+  /** صوّرها (القاعدة ٢٤٠) — خادمٌ أقدم لا يرسله. */
+  screenshot?: boolean;
 };
 
 /**
@@ -90,7 +93,12 @@ export default function StoryViewer() {
   // من شاهدها: نافذةٌ فوق القصة، والعدُّ يقف ما دامت مفتوحة.
   const [watching, setWatching] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const paused = held || watching || dragging;
+  /*
+    الصوتُ يُنتظر قبل أن يبدأ العدّ: كان الشريطُ يمضي والصوتُ يُجلب، فيبدأ بعد
+    ثانيةٍ ويضيع أوّلُه — والقصّةُ بصوتها طولُها طولُ مقطعها (القاعدة ٢٣٨).
+  */
+  const [waiting, setWaiting] = useState(false);
+  const paused = held || watching || dragging || waiting;
   const started = useRef(Date.now());
   // الوقفةُ لا تبدأ الشريحة من أوّلها: ما مضى منها يُحفظ ويُستأنف منه.
   const elapsed = useRef(0);
@@ -132,8 +140,11 @@ export default function StoryViewer() {
   const audioId = !video ? story?.audioMediaId ?? null : null;
   useEffect(() => {
     setAudible(false);
+    setWaiting(Boolean(audioId));
     if (!audioId) return;
     let alive = true;
+    // صوتٌ لا يصل في أربع ثوانٍ لا يحبس القصّة: تمضي صامتةً خيرٌ من أن تقف.
+    const giveUp = setTimeout(() => alive && setWaiting(false), 4000);
     void Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
     Audio.Sound.createAsync(
       { uri: `${baseUrl}/v1/media/${audioId}`, headers: { authorization: `Bearer ${currentAccess()}` } },
@@ -148,12 +159,17 @@ export default function StoryViewer() {
         // يبدأ من حيث وصل العدّ: التحميلُ قد يتأخّر عن الصورة لحظة.
         void sound
           .setPositionAsync(elapsed.current)
-          .then(() => alive && setAudible(true))
-          .catch(() => {});
+          .then(() => {
+            if (!alive) return;
+            setAudible(true);
+            setWaiting(false);
+          })
+          .catch(() => alive && setWaiting(false));
       })
-      .catch(() => {});
+      .catch(() => alive && setWaiting(false));
     return () => {
       alive = false;
+      clearTimeout(giveUp);
       const sound = voice.current;
       voice.current = null;
       setAudible(false);
@@ -230,10 +246,12 @@ export default function StoryViewer() {
     [client, id],
   );
 
+  // «من أوّلها»: يُعاد العدُّ والصوتُ والمقطعُ دون أن تتبدّل الشريحة.
+  const [round, setRound] = useState(0);
   useEffect(() => {
     elapsed.current = 0;
     setProgress(0);
-  }, [index]);
+  }, [index, round]);
 
   useEffect(() => {
     if (paused || !story) return;
@@ -249,7 +267,7 @@ export default function StoryViewer() {
       setProgress(done);
     }, 60);
     return () => clearInterval(tick);
-  }, [index, paused, span, stories.length, router, story]);
+  }, [index, round, paused, span, stories.length, router, story]);
 
   const screen = Dimensions.get("window");
 
@@ -307,6 +325,14 @@ export default function StoryViewer() {
   };
   const veil = drop.interpolate({ inputRange: [0, screen.height * 0.6], outputRange: [1, 0], extrapolate: "clamp" });
 
+  // لقطةُ الشاشة تُقال لصاحبها مرّةً لكل قصّة (القاعدة ٢٤٠).
+  const shot = useRef(new Set<string>());
+  useScreenshot(() => {
+    if (!story || mine || shot.current.has(story.id)) return;
+    shot.current.add(story.id);
+    void api(`/v1/stories/${story.id}/screenshot`, { method: "POST" }).catch(() => {});
+  });
+
   if (feed.isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: "#0b1219", alignItems: "center", justifyContent: "center" }}>
@@ -325,6 +351,28 @@ export default function StoryViewer() {
       </SafeAreaView>
     );
   }
+
+  /*
+    اليمينُ يُعيد القصّةَ من أوّلها — **بقرار المالك** — وضغطةٌ ثانيةٌ في أوّل
+    ثانيةٍ منها ترجع إلى التي قبلها: هكذا يُعاد المشهدُ ويُرجَع إلى ما قبله
+    بالضغطة نفسها.
+  */
+  function restart() {
+    if (elapsed.current < 1000 && index > 0) {
+      step(index - 1);
+      return;
+    }
+    elapsed.current = 0;
+    setProgress(0);
+    setRound((n) => n + 1);
+    void voice.current?.setPositionAsync(0).catch(() => {});
+  }
+
+  /*
+    الضغطُ المطوّل يُوقف، والإفلاتُ يُكمل — لا ينتقل: كانت الضغطةُ تُعدّ نقرةً عند
+    الإفلات فتمضي إلى التالية. و`onLongPress` وحده يمنع `onPress` بعده.
+  */
+  const HOLD = 250;
 
   function step(next: number) {
     if (next < 0) return;
@@ -349,6 +397,7 @@ export default function StoryViewer() {
           width={screen.width}
           height={screen.height}
           paused={paused}
+          key={`${story.id}-${round}`}
         />
       ) : (
         <Filtered
@@ -362,19 +411,23 @@ export default function StoryViewer() {
       {/* نصوصُها فوقها بموضعها ومقاسها — لا محروقةً في الصورة. */}
       <StoryTexts texts={story.texts} width={screen.width} height={screen.height} />
 
-      {/* نصفان للتنقّل: يمينٌ يرجع ويسارٌ يتقدّم، والضغط المطوّل يوقف. */}
+      {/* نصفان: يمينٌ يُعيدها من أوّلها ويسارٌ يتقدّم، والضغطُ المطوّل يوقف ولا ينتقل. */}
       <Pressable
-        accessibilityLabel="السابق"
+        accessibilityLabel="من البداية"
         style={{ position: "absolute", top: 0, bottom: 0, right: 0, width: "50%" }}
         onPressIn={() => setHeld(true)}
         onPressOut={() => setHeld(false)}
-        onPress={() => step(index - 1)}
+        delayLongPress={HOLD}
+        onLongPress={() => undefined}
+        onPress={restart}
       />
       <Pressable
         accessibilityLabel="التالي"
         style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: "50%" }}
         onPressIn={() => setHeld(true)}
         onPressOut={() => setHeld(false)}
+        delayLongPress={HOLD}
+        onLongPress={() => undefined}
         onPress={() => step(index + 1)}
       />
 
@@ -567,9 +620,17 @@ export default function StoryViewer() {
                     ) : null}
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 14, fontWeight: "600", color: colors.ink }} numberOfLines={1}>
-                      {person.name}
-                    </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <Text style={{ fontSize: 14, fontWeight: "600", color: colors.ink, flexShrink: 1 }} numberOfLines={1}>
+                        {person.name}
+                      </Text>
+                      {/* صوّر الشاشة وهي مفتوحة (القاعدة ٢٤٠). */}
+                      {person.screenshot ? (
+                        <View accessibilityLabel="صوّر الشاشة">
+                          <ScreenshotIcon size={15} color={colors.live} />
+                        </View>
+                      ) : null}
+                    </View>
                     <Text style={{ fontSize: 11.5, color: person.reaction ? colors.clayInk : colors.faint }}>
                       {person.reaction ? "شاهدها وتفاعل" : "شاهدها وما تفاعل"}
                     </Text>

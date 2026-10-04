@@ -4,7 +4,7 @@ import * as Haptics from "expo-haptics";
 import * as Notifications from "expo-notifications";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Tabs, usePathname, useRouter } from "expo-router";
+import { Tabs, usePathname } from "expo-router";
 import { Text } from "./type";
 import { Avatar } from "./avatar";
 import { Spot } from "./spot";
@@ -87,7 +87,6 @@ export function GlassBar({
   onLongHome,
 }: BarProps & { onLongHome: () => void }) {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const path = usePathname();
   const me = useSession((s) => s.me);
   const unseen = useNoteCount().data?.unseen ?? 0;
@@ -112,7 +111,7 @@ export function GlassBar({
 
   const current = state.routes[state.index]?.name;
   // ملفُّ الصديق يُضيء «الأصدقاء»: من هناك يُفتح (القاعدة ٤٢).
-  const active = path.startsWith("/u/") ? "circle" : current;
+  const active = path.startsWith("/u/") ? "circle" : current === "messages" ? "chats" : current;
 
   const go = (name: string) => {
     const route = state.routes.find((r) => r.name === name);
@@ -149,10 +148,10 @@ export function GlassBar({
       key: "chats",
       label: "المحادثات",
       spot: "tab.chats",
-      onPress: () => router.push("/messages" as never),
-      render: () => (
+      onPress: () => go("messages"),
+      render: (on) => (
         <View>
-          <MessageIcon size={ICON} color={OFF} />
+          <MessageIcon size={ICON} color={on ? ON : OFF} />
           {unread > 0 ? <Badge count={unread} /> : null}
         </View>
       ),
@@ -284,7 +283,7 @@ export function GlassBar({
       moveTo(index);
       itemsRef.current[index]?.onPress();
     }
-    // ما لم يغيّر التبويب (المحادثاتُ شاشةٌ فوقه، أو التبويبُ نفسه) يعود القرصُ إلى مكانه.
+    // ما لم يغيّر التبويب (التبويبُ نفسه) يعود القرصُ إلى مكانه.
     setTimeout(() => {
       if (hoverRef.current === null && activeRef.current >= 0) moveTo(activeRef.current);
     }, 280);

@@ -55,6 +55,15 @@ export const groupRoutes = new Hono()
     c.json(await groups.markRead(me(c), c.req.valid("param").id)),
   )
 
+  // صورةُ المجموعة — `null` يُزيلها (القاعدة ٢٤١).
+  .put(
+    "/:id/photo",
+    requireActive,
+    zValidator("param", byId),
+    zValidator("json", z.object({ mediaId: cuid.nullable() })),
+    async (c) => c.json(await groups.setPhoto(me(c), c.req.valid("param").id, c.req.valid("json").mediaId)),
+  )
+
   .patch("/:id", requireActive, zValidator("param", byId), zValidator("json", z.object({ name })), async (c) =>
     c.json(await groups.rename(me(c), c.req.valid("param").id, c.req.valid("json").name)),
   )

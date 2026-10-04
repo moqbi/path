@@ -332,6 +332,8 @@ model StoryView {
   /// تفاعلُ المشاهد بأحد الوجوه الخمسة (القاعدة ٣) — فارغٌ: شاهد ولم يتفاعل.
   reaction  ReactionKind?
   reactedAt DateTime?
+  /// صوّر الشاشةَ وهي مفتوحة (القاعدة ٢٤٠) — يراه صاحبُها في «من شاهد».
+  screenshotAt DateTime?
 
   story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -814,11 +816,14 @@ model Message {
 model ChatGroup {
   id          String   @id @default(cuid())
   name        String
+  /// صورةُ المجموعة يختارها المشرف (القاعدة ٢٤١) — لأعضائها وحدهم كرسائلها.
+  photoMediaId String?  @unique
   createdById String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @default(now()) @updatedAt
 
   createdBy User?             @relation("GroupCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  photo     Media?            @relation("GroupPhoto", fields: [photoMediaId], references: [id], onDelete: SetNull)
   members   ChatGroupMember[]
   messages  GroupMessage[]
 
@@ -889,6 +894,7 @@ model Media {
   storyAudio Story?     @relation("StoryAudio")
   messageOf  Message?   @relation("MessageMedia")
   groupMessageOf GroupMessage? @relation("GroupMessageMedia")
+  groupPhotoOf   ChatGroup?    @relation("GroupPhoto")
   moment     Moment?    @relation("MomentMedia")
   storeItem  StoreItem? @relation("StoreItemMedia")
   storeCover StoreItem? @relation("StoreItemCover")

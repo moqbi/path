@@ -30,6 +30,10 @@ export const storyRoutes = new Hono()
   )
 
   /** تفاعلُ المشاهد بأحد الوجوه الخمسة — أو `null` يرفعه. */
+  // لقطةُ الشاشة: إيصالٌ كالمشاهدة، وسقفُه يمنع المرشّة.
+  .post("/:id/screenshot", rateLimitUser(120, 3600), zValidator("param", byId), async (c) =>
+    c.json(await stories.screenshot(me(c), c.req.valid("param").id)),
+  )
   .post("/:id/react", rateLimitUser(120, 3600), zValidator("param", byId), zValidator("json", storyReactInput), async (c) =>
     c.json(await stories.react(me(c), c.req.valid("param").id, c.req.valid("json").kind)),
   )
