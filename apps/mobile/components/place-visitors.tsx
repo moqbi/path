@@ -87,7 +87,7 @@ export function PlaceVisitors() {
 
   return (
     <Modal transparent animationType="fade" onRequestClose={close} statusBarTranslucent>
-      <Pressable style={{ flex: 1, backgroundColor: "rgba(8,14,20,.38)" }} onPress={close} />
+      <Pressable style={{ flex: 1, backgroundColor: "transparent" }} onPress={close} />
 
       <Animated.View
         {...pan.panHandlers}
@@ -100,7 +100,7 @@ export function PlaceVisitors() {
           transform: [{ translateY: drag }],
           borderRadius: 30,
           shadowColor: "#000",
-          shadowOpacity: 0.3,
+          shadowOpacity: 0.18,
           shadowRadius: 24,
           shadowOffset: { width: 0, height: 10 },
           elevation: 18,
@@ -111,20 +111,20 @@ export function PlaceVisitors() {
             borderRadius: 30,
             overflow: "hidden",
             borderWidth: 1,
-            borderColor: "rgba(255,255,255,.16)",
+            borderColor: "rgba(14,26,36,0.36)",
             // الزجاجُ نفسه الذي في الشريط السفليّ (القاعدة ٢٢٨).
-            backgroundColor: Platform.OS === "android" ? "rgba(20,24,28,.94)" : "rgba(20,24,28,.6)",
+            backgroundColor: Platform.OS === "android" ? "rgba(253,252,248,.96)" : "rgba(14,26,36,0.06)",
           }}
         >
           {Platform.OS !== "android" ? (
             <BlurView
               intensity={70}
-              tint="systemUltraThinMaterialDark"
+              tint="systemUltraThinMaterialLight"
               style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0 }}
             />
           ) : null}
 
-          <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: "rgba(255,255,255,.3)", alignSelf: "center", marginTop: 10 }} />
+          <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: "rgba(14,26,36,0.18)", alignSelf: "center", marginTop: 10 }} />
 
           {/* الرأس: المكان، ثمّ زرّ الإغلاق. */}
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, paddingTop: 12, paddingBottom: 14 }}>
@@ -141,10 +141,10 @@ export function PlaceVisitors() {
               <PinIcon size={20} color={colors.live} />
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text numberOfLines={1} style={{ color: "#fff", fontSize: 17, fontWeight: "700" }}>
+              <Text numberOfLines={1} style={{ color: colors.ink, fontSize: 17, fontWeight: "700" }}>
                 {moment.placeName}
               </Text>
-              <Text style={{ color: "rgba(255,255,255,.62)", fontSize: 12, marginTop: 2 }}>
+              <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
                 {`من كان هنا خلال ${days} أيام`}
               </Text>
             </View>
@@ -153,35 +153,35 @@ export function PlaceVisitors() {
               accessibilityLabel="إغلاق"
               onPress={close}
               hitSlop={8}
-              style={{ width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.12)" }}
+              style={{ width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(14,26,36,0.072)" }}
             >
-              <CloseIcon size={16} color="#fff" />
+              <CloseIcon size={16} color={colors.ink} />
             </Pressable>
           </View>
 
-          <View style={{ height: 1, backgroundColor: "rgba(255,255,255,.1)", marginHorizontal: 18 }} />
+          <View style={{ height: 1, backgroundColor: "rgba(14,26,36,0.06)", marginHorizontal: 18 }} />
 
           <ScrollView style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 10 }}>
             {query.isLoading ? (
-              <ActivityIndicator color="#fff" style={{ marginVertical: 28 }} />
+              <ActivityIndicator color={colors.ink} style={{ marginVertical: 28 }} />
             ) : query.isError ? (
-              <Text style={{ color: "rgba(255,255,255,.7)", textAlign: "center", marginVertical: 24 }}>
+              <Text style={{ color: colors.muted, textAlign: "center", marginVertical: 24 }}>
                 تعذّر جلب الزوّار
               </Text>
             ) : empty ? (
               <View style={{ alignItems: "center", paddingVertical: 22, paddingHorizontal: 20, gap: 6 }}>
-                <WithIcon size={22} color="rgba(255,255,255,.55)" />
-                <Text style={{ color: "#fff", fontSize: 14, fontWeight: "600", textAlign: "center" }}>
+                <WithIcon size={22} color={colors.faint} />
+                <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "600", textAlign: "center" }}>
                   ما زاره أحدٌ من دائرتك مؤخّراً
                 </Text>
-                <Text style={{ color: "rgba(255,255,255,.55)", fontSize: 12, textAlign: "center" }}>
+                <Text style={{ color: colors.faint, fontSize: 12, textAlign: "center" }}>
                   {`أوّلُ من يزوره منهم خلال ${days} أيام يظهر هنا`}
                 </Text>
               </View>
             ) : (
               <>
                 {friends.length > 0 ? (
-                  <Text style={{ color: "rgba(255,255,255,.55)", fontSize: 11.5, fontWeight: "700", marginHorizontal: 8, marginBottom: 4 }}>
+                  <Text style={{ color: colors.faint, fontSize: 11.5, fontWeight: "700", marginHorizontal: 8, marginBottom: 4 }}>
                     {`من دائرتك · ${ar(friends.length)}`}
                   </Text>
                 ) : null}
@@ -196,7 +196,7 @@ export function PlaceVisitors() {
                       paddingHorizontal: 8,
                       paddingVertical: 9,
                       borderRadius: 18,
-                      backgroundColor: pressed ? "rgba(255,255,255,.08)" : "transparent",
+                      backgroundColor: pressed ? "rgba(14,26,36,0.048)" : "transparent",
                     })}
                   >
                     <Avatar
@@ -208,12 +208,12 @@ export function PlaceVisitors() {
                     />
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <Text numberOfLines={1} style={{ color: "#fff", fontSize: 14.5, fontWeight: "700", flexShrink: 1, writingDirection: "auto" }}>
+                        <Text numberOfLines={1} style={{ color: colors.ink, fontSize: 14.5, fontWeight: "700", flexShrink: 1, writingDirection: "auto" }}>
                           {person.name}
                         </Text>
                         <NameTag isPlus={person.isPlus} tag={person.tag} size={10} />
                       </View>
-                      <Text style={{ color: "rgba(255,255,255,.58)", fontSize: 12, marginTop: 2 }}>
+                      <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
                         {`زاره ${relative(new Date(person.visitedAt))}`}
                       </Text>
                     </View>
@@ -231,11 +231,11 @@ export function PlaceVisitors() {
                       paddingHorizontal: 12,
                       paddingVertical: 12,
                       borderRadius: 18,
-                      backgroundColor: "rgba(255,255,255,.07)",
+                      backgroundColor: "rgba(14,26,36,0.042)",
                     }}
                   >
-                    <WithIcon size={18} color={colors.gold} />
-                    <Text style={{ color: "rgba(255,255,255,.85)", fontSize: 13, flex: 1 }}>
+                    <WithIcon size={18} color={colors.clayInk} />
+                    <Text style={{ color: colors.ink2, fontSize: 13, flex: 1 }}>
                       {friends.length > 0
                         ? `و${ar(data.others)} غيرهم من مستخدمي آثار زاروه`
                         : `${ar(data.others)} من مستخدمي آثار زاروه`}
@@ -263,11 +263,11 @@ export function PlaceVisitors() {
               marginBottom: 16,
               height: 48,
               borderRadius: 24,
-              backgroundColor: pressed ? "rgba(255,255,255,.22)" : "rgba(255,255,255,.14)",
+              backgroundColor: pressed ? "rgba(14,26,36,0.132)" : "rgba(14,26,36,0.084)",
             })}
           >
-            <PinIcon size={15} color="#fff" />
-            <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}>افتح في الخرائط</Text>
+            <PinIcon size={15} color={colors.ink} />
+            <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "700" }}>افتح في الخرائط</Text>
           </Pressable>
         </View>
       </Animated.View>

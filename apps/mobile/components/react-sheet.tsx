@@ -114,17 +114,17 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
                 gap: 8,
                 height: 48,
                 borderRadius: 24,
-                backgroundColor: locked ? "rgba(246,185,59,.22)" : "rgba(255,255,255,.1)",
+                backgroundColor: locked ? "rgba(246,185,59,.22)" : "rgba(14,26,36,0.06)",
               }}
             >
-              {locked ? <LockIcon size={16} color={colors.gold} /> : <UnlockIcon size={16} color="#fff" />}
-              <Text style={{ color: locked ? colors.gold : "#fff", fontSize: 13.5, fontWeight: "700" }}>
+              {locked ? <LockIcon size={16} color={colors.clayInk} /> : <UnlockIcon size={16} color={colors.ink} />}
+              <Text style={{ color: locked ? colors.clayInk : colors.ink, fontSize: 13.5, fontWeight: "700" }}>
                 {locked ? "التعليقات مقفلة" : "التعليقات مفتوحة"}
               </Text>
             </Pressable>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, height: 48, paddingHorizontal: 16, borderRadius: 24, backgroundColor: "rgba(255,255,255,.1)" }}>
-              <EyeIcon size={16} color="#fff" />
-              <Text style={{ color: "#fff", fontSize: 13.5, fontWeight: "700" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, height: 48, paddingHorizontal: 16, borderRadius: 24, backgroundColor: "rgba(14,26,36,0.06)" }}>
+              <EyeIcon size={16} color={colors.ink} />
+              <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "700" }}>
                 {audience.data ? ar(audience.data.views) : "…"}
               </Text>
             </View>
@@ -146,7 +146,7 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
                       borderRadius: 28,
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor: on ? "rgba(246,185,59,.3)" : pressed ? "rgba(255,255,255,.16)" : "rgba(255,255,255,.08)",
+                      backgroundColor: on ? "rgba(246,185,59,.3)" : pressed ? "rgba(14,26,36,0.096)" : "rgba(14,26,36,0.048)",
                       transform: [{ scale: pressed ? 1.12 : 1 }],
                     })}
                   >
@@ -172,21 +172,21 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
                   <Pressable
                     accessibilityLabel="كل الإيموجي"
                     onPress={() => setBoard((v) => !v)}
-                    style={{ marginLeft: "auto", height: 36, paddingHorizontal: 12, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.1)" }}
+                    style={{ marginLeft: "auto", height: 36, paddingHorizontal: 12, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(14,26,36,0.06)" }}
                   >
-                    <Text style={{ color: "#fff", fontSize: 12.5, fontWeight: "700" }}>{board ? "إخفاء" : "كل الإيموجي"}</Text>
+                    <Text style={{ color: colors.ink, fontSize: 12.5, fontWeight: "700" }}>{board ? "إخفاء" : "كل الإيموجي"}</Text>
                   </Pressable>
                 </View>
                 {board ? (
                   <ScrollView
                     nestedScrollEnabled
                     keyboardShouldPersistTaps="handled"
-                    style={{ maxHeight: 220, marginTop: 8, borderRadius: 18, backgroundColor: "rgba(255,255,255,.07)" }}
+                    style={{ maxHeight: 220, marginTop: 8, borderRadius: 18, backgroundColor: "rgba(14,26,36,0.042)" }}
                     contentContainerStyle={{ padding: 6 }}
                   >
                     {EMOJI_GROUPS.map((group) => (
                       <View key={group.label}>
-                        <Text style={{ color: "rgba(255,255,255,.55)", fontSize: 10.5, fontWeight: "600", padding: 4 }}>{group.label}</Text>
+                        <Text style={{ color: colors.faint, fontSize: 10.5, fontWeight: "600", padding: 4 }}>{group.label}</Text>
                         <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
                           {group.items.map((emoji) => (
                             <Pressable
@@ -211,8 +211,8 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
                 }}
                 style={{ flexDirection: "row", alignItems: "center", gap: 8, height: 40, paddingHorizontal: 14, borderRadius: 20, backgroundColor: "rgba(246,185,59,.14)", alignSelf: "flex-start" }}
               >
-                <LockIcon size={14} color={colors.gold} />
-                <Text style={{ color: colors.gold, fontSize: 12.5, fontWeight: "700" }}>كل الإيموجي مع آثار+</Text>
+                <LockIcon size={14} color={colors.clayInk} />
+                <Text style={{ color: colors.clayInk, fontSize: 12.5, fontWeight: "700" }}>كل الإيموجي مع آثار+</Text>
               </Pressable>
             )}
           </>
@@ -220,9 +220,9 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
 
         {/* التعليق — أو سطرُ القفل لغير صاحبها. */}
         {locked && !author ? (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, height: 44, paddingHorizontal: 14, borderRadius: 22, backgroundColor: "rgba(255,255,255,.07)" }}>
-            <LockIcon size={14} color="rgba(255,255,255,.6)" />
-            <Text style={{ color: "rgba(255,255,255,.7)", fontSize: 12.5, fontWeight: "600" }}>أقفل صاحبُ اللحظة التعليقات</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, height: 44, paddingHorizontal: 14, borderRadius: 22, backgroundColor: "rgba(14,26,36,0.042)" }}>
+            <LockIcon size={14} color={colors.muted} />
+            <Text style={{ color: colors.muted, fontSize: 12.5, fontWeight: "600" }}>أقفل صاحبُ اللحظة التعليقات</Text>
           </View>
         ) : (
           <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
@@ -230,7 +230,7 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
               value={body}
               onChangeText={setBody}
               placeholder={author ? "علّق على لحظتك…" : "اكتب تعليقك…"}
-              placeholderTextColor="rgba(255,255,255,.45)"
+              placeholderTextColor={colors.faint}
               maxLength={500}
               multiline
               accessibilityLabel="تعليق"
@@ -240,12 +240,12 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
                 minHeight: 46,
                 maxHeight: 120,
                 borderRadius: 23,
-                backgroundColor: "rgba(255,255,255,.1)",
+                backgroundColor: "rgba(14,26,36,0.06)",
                 paddingHorizontal: 16,
                 paddingTop: 13,
                 paddingBottom: 13,
                 fontSize: 14,
-                color: "#fff",
+                color: colors.ink,
               }}
             />
             <Pressable
@@ -257,13 +257,13 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
                 borderRadius: 23,
                 alignItems: "center",
                 justifyContent: "center",
-                backgroundColor: body.trim() ? colors.clay : "rgba(255,255,255,.1)",
+                backgroundColor: body.trim() ? colors.clay : "rgba(14,26,36,0.06)",
               }}
             >
               {comment.isPending ? (
                 <ActivityIndicator size="small" color={colors.onBrand} />
               ) : (
-                <Text style={{ color: body.trim() ? colors.onBrand : "rgba(255,255,255,.45)", fontSize: 13.5, fontWeight: "700" }}>إرسال</Text>
+                <Text style={{ color: body.trim() ? colors.onBrand : "rgba(14,26,36,0.27)", fontSize: 13.5, fontWeight: "700" }}>إرسال</Text>
               )}
             </Pressable>
           </View>
@@ -273,7 +273,7 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
         {author || moderate ? (
           asking ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Text style={{ flex: 1, color: "#fff", fontSize: 13, fontWeight: "600" }}>
+              <Text style={{ flex: 1, color: colors.ink, fontSize: 13, fontWeight: "600" }}>
                 {author ? "تحذف اللحظة؟ تذهب معها التفاعلات والتعليقات." : "تحذفها بصلاحية الإشراف؟ يُكتب في السجلّ باسمك."}
               </Text>
               <Pressable
@@ -284,10 +284,10 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
                 }}
                 style={{ height: 38, paddingHorizontal: 16, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: colors.live }}
               >
-                <Text style={{ color: "#fff", fontSize: 12.5, fontWeight: "700" }}>احذفها</Text>
+                <Text style={{ color: "#FFFFFF", fontSize: 12.5, fontWeight: "700" }}>احذفها</Text>
               </Pressable>
               <Pressable onPress={() => setAsking(false)} style={{ height: 38, paddingHorizontal: 10, justifyContent: "center" }}>
-                <Text style={{ color: "rgba(255,255,255,.7)", fontSize: 12.5, fontWeight: "600" }}>تراجع</Text>
+                <Text style={{ color: colors.muted, fontSize: 12.5, fontWeight: "600" }}>تراجع</Text>
               </Pressable>
             </View>
           ) : (
@@ -295,8 +295,8 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
               onPress={() => setAsking(true)}
               style={{ flexDirection: "row", alignItems: "center", gap: 8, height: 44, paddingHorizontal: 14, borderRadius: 22, backgroundColor: "rgba(255,122,90,.14)", alignSelf: "flex-start" }}
             >
-              <TrashIcon size={15} color="#ff9d84" />
-              <Text style={{ color: "#ff9d84", fontSize: 13, fontWeight: "700" }}>
+              <TrashIcon size={15} color={colors.live} />
+              <Text style={{ color: colors.live, fontSize: 13, fontWeight: "700" }}>
                 {author ? "احذف اللحظة" : "احذفها بصلاحية الإشراف"}
               </Text>
             </Pressable>
