@@ -34,10 +34,21 @@ export const mediaRoutes = new Hono()
     c.json(await upload.presign(me(c), c.req.valid("json")), 201),
   )
 
-  /** اعتماد ما رُفع بعد فحص بايتاته. */
-  .post("/:id/commit", zValidator("param", z.object({ id: cuid })), async (c) =>
-    c.json(await upload.commit(me(c), c.req.valid("param").id)),
-  )
+  /**
+   * اعتماد ما رُفع بعد فحص بايتاته.
+   *
+   * ومعه `start` اختياريّاً: من أين تبدأ ثلاثون ثانيةُ مقطع القصّة (القاعدة
+   * ٢٤٩). يُقرأ بلا مدقّق: النسخُ القديمة ترسل الطلب بلا جسمٍ أصلاً.
+   */
+  .post("/:id/commit", zValidator("param", z.object({ id: cuid })), async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { start?: unknown };
+    const start = Number(body.start);
+    return c.json(
+      await upload.commit(me(c), c.req.valid("param").id, {
+        start: Number.isFinite(start) ? Math.max(0, Math.min(start, 3600)) : 0,
+      }),
+    );
+  })
 
   .get("/:id", zValidator("param", z.object({ id: cuid })), async (c) => {
     const { id } = c.req.valid("param");

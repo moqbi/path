@@ -2,7 +2,9 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "@athar/db";
 import {
   ANIMATED_SIDE,
+  AVATAR_SIDE,
   LIMITS,
+  STORY_VIDEO_SOURCE,
   MIME,
   SOUND_SOURCE,
   STORY_SECONDS,
@@ -11,7 +13,17 @@ import {
 } from "@athar/shared";
 import { cloudReady, deleteObjects, getObject, headObject, presignUrl, putObject } from "@athar/storage";
 import { badRequest, forbidden, notFound } from "../lib/errors";
-import { NoFfmpeg, NoProbe, Silent, extractAudio, measure, probeClip, processImage } from "../lib/process";
+import {
+  NoFfmpeg,
+  NoProbe,
+  Silent,
+  compressStoryVideo,
+  extractAudio,
+  measure,
+  probeClip,
+  processImage,
+  squareAvatar,
+} from "../lib/process";
 
 /**
  * الرفع في خطوتين: رابطٌ مؤقّت ثم اعتماد.
@@ -31,12 +43,19 @@ const RULES: Record<PresignInput["purpose"], Rule> = {
   AVATAR: { mimes: [...MIME.image, ...MIME.animated], max: LIMITS.animated },
   COVER: { mimes: MIME.image, max: LIMITS.image },
   MOMENT: { mimes: MIME.image, max: LIMITS.image },
-  STORY: { mimes: [...MIME.image, ...MIME.video], max: LIMITS.video },
+  // المقطعُ يُرفع كما صُوِّر ويُقصّ ويُضغط هنا (القاعدة ٢٤٩)، والصورةُ حدُّها `LIMITS.video`.
+  STORY: { mimes: [...MIME.image, ...MIME.video], max: STORY_VIDEO_SOURCE.bytes },
   MESSAGE: { mimes: MIME.image, max: LIMITS.image },
   VOICE: { mimes: MIME.audio, max: LIMITS.audio },
   // مصدرُ صوت القصّة (القاعدة ٢٣٨): مقطعٌ من الاستديو أو ملفُّ صوت — يُسحب صوتُه وتُرمى صورتُه.
   SOUND: { mimes: [...MIME.video, ...MIME.audio, "audio/wav"], max: SOUND_SOURCE.bytes },
 };
+
+/** حدُّ الحجم لهذا الغرض وهذا النوع: صورةُ القصّة لا تأخذ حدَّ مصدر المقطع. */
+function maxFor(purpose: PresignInput["purpose"], mime: string): number {
+  if (purpose === "STORY" && mime.startsWith("image/")) return LIMITS.video;
+  return RULES[purpose].max;
+}
 
 /** امتدادٌ يُشتقّ من النوع — ليُقرأ المفتاح في لوحة السحابة. */
 const EXT: Record<string, string> = {
@@ -73,7 +92,7 @@ export async function presign(userId: string, input: PresignInput) {
   const rule = RULES[input.purpose];
   const mime = baseMime(input.mime);
   if (!rule.mimes.includes(mime)) throw badRequest("صيغة غير مدعومة");
-  if (input.bytes > rule.max) throw badRequest("الملف كبير");
+  if (input.bytes > maxFor(input.purpose, mime)) throw badRequest("الملف كبير");
 
   // الصورة المتحركة ميزة اشتراك، وصورة العرض وحدها تقبلها.
   if ((MIME.animated as readonly string[]).includes(mime) && input.purpose !== "AVATAR") {
@@ -177,7 +196,7 @@ async function reject(mediaId: string, key: string | null, message: string) {
  * يذهب هو وكائنه في اللحظة نفسها: ملفٌّ مرفوضٌ يبقى في الدلو هو ملفٌّ
  * لا يعرف أحدٌ أنّه هناك.
  */
-export async function commit(userId: string, mediaId: string) {
+export async function commit(userId: string, mediaId: string, options: { start?: number } = {}) {
   const media = await prisma.media.findUnique({
     where: { id: mediaId },
     select: { id: true, ownerId: true, key: true, mime: true, purpose: true, ready: true },
@@ -192,7 +211,7 @@ export async function commit(userId: string, mediaId: string) {
   const head = await headObject(media.key);
   if (!head) throw badRequest("لم يصل الملف");
   if (head.bytes === 0) throw await reject(media.id, media.key, "الملف فارغ");
-  if (head.bytes > rule.max) throw await reject(media.id, media.key, "الملف كبير");
+  if (head.bytes > maxFor(purpose, media.mime)) throw await reject(media.id, media.key, "الملف كبير");
 
   // يُنزَّل كاملاً: البصمة من أوّله، والمعالجة والمدّة من كلّه. والحدّ
   // فُحص قبل التنزيل، فلا يُجرّ إلى الذاكرة ما يتجاوزه.
@@ -236,7 +255,11 @@ export async function commit(userId: string, mediaId: string) {
     throw await reject(media.id, media.key, "يُقبل JPEG أو PNG أو WebP فقط");
   }
 
-  const shaped = await shape(media.id, media.key, actual, purpose, moving, bytes);
+  if (purpose === "STORY" && actual.startsWith("image/") && bytes.length > LIMITS.video) {
+    throw await reject(media.id, media.key, "الملف كبير");
+  }
+
+  const shaped = await shape(media.id, media.key, actual, purpose, moving, bytes, options.start ?? 0);
 
   const ready = await prisma.media.update({
     where: { id: media.id },
@@ -260,6 +283,7 @@ async function shape(
   purpose: PresignInput["purpose"],
   moving: boolean,
   bytes: Uint8Array,
+  start = 0,
 ): Promise<{ mime: string; width: number; height: number; seconds?: number; peaks?: number[] }> {
   /*
     مصدرُ الصوت يُستبدل بصوته وحده: المقطعُ الأصليّ لا يبقى في الدلو لحظةً بعد
@@ -284,7 +308,8 @@ async function shape(
 
   if (isImage && !moving) {
     try {
-      const out = await processImage(bytes, mime);
+      // صورةُ العرض مربّعٌ ٣٢٠ (القاعدة ٢٤٨)، وما سواها يُصغَّر بنسبته.
+      const out = purpose === "AVATAR" ? await squareAvatar(bytes, mime, AVATAR_SIDE) : await processImage(bytes, mime);
       // المفتاح يحمل امتداد الأصل؛ والنوع يُقدَّم من الصفّ لا من الامتداد.
       await putObject(key, out.bytes, out.mime);
       return { mime: out.mime, width: out.width, height: out.height };
@@ -318,6 +343,27 @@ async function shape(
   }
 
   /*
+    مقطعُ القصّة يُقصّ ويُضغط (القاعدة ٢٤٩): ثلاثون ثانيةً من حيث اختار صاحبُه،
+    والناتجُ يُكتب مكان الأصل — فلا يبقى المصدرُ الكبير في الدلو.
+  */
+  if (purpose === "STORY") {
+    let out: Awaited<ReturnType<typeof compressStoryVideo>> | null = null;
+    try {
+      out = await compressStoryVideo(bytes, EXT[mime] ?? "bin", start, STORY_SECONDS);
+    } catch (problem) {
+      if (!(problem instanceof NoFfmpeg)) throw await reject(mediaId, key, "تعذّرت قراءة المقطع");
+      // بلا ffmpeg يبقى الطريقُ القديم: المصدرُ نفسه بحدّه ومدّته، والسطرُ ليُثبَّت.
+      console.error("[media] ffmpeg مفقود على هذا الخادم — مقطعُ القصّة لا يُضغط");
+      if (bytes.length > LIMITS.video) throw await reject(mediaId, key, "الملف كبير");
+    }
+    if (out) {
+      if (out.bytes.length > LIMITS.video) throw await reject(mediaId, key, "تعذّر ضغط المقطع — اختر جزءاً أقصر");
+      await putObject(key, out.bytes, "video/mp4");
+      return { mime: "video/mp4", width: out.width, height: out.height, seconds: Math.min(out.seconds, STORY_SECONDS) };
+    }
+  }
+
+  /*
     وخادمٌ بلا ffprobe لا يردّ ملفاً سليماً: عطلُ بيئةٍ لا ملفٌّ فاسد،
     وصاحبُ المقطع لا يد له فيه. فيمرّ بحدّ بايتاته — `LIMITS.audio`
     للصوت و`LIMITS.video` للمقطع — ومدّتُه تُفحص حيث تُستعمل: عند
@@ -339,7 +385,7 @@ async function shape(
   // آثار+. الحدّ الأعلى هنا، والتمييز بينهما عند الإرسال حيث يُعرف المشترك.
   const cap = purpose === "STORY" ? STORY_SECONDS : VOICE_SECONDS.plus;
   if (clip.seconds > cap) {
-    throw await reject(mediaId, key, purpose === "STORY" ? "المقطع أطول من ٢٠ ثانية" : "التسجيل طويل");
+    throw await reject(mediaId, key, purpose === "STORY" ? "المقطع أطول من ٣٠ ثانية" : "التسجيل طويل");
   }
 
   return { mime, width: clip.width, height: clip.height, seconds: clip.seconds };

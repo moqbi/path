@@ -59,6 +59,28 @@ export async function processImage(input: Uint8Array, mime: string): Promise<Pro
 }
 
 /**
+ * صورةُ العرض مربّعٌ ٣٢٠×٣٢٠ (القاعدة ٢٤٨) — **بقرار المالك**: كانت تُحفظ
+ * بمقاسها حتى ١٦٠٠، فمن ضغط صورةَ صديقه رآها بملء الشاشة كما صُوِّرت. تُقصّ من
+ * وسطها على ما فيه وجهٌ أو تفصيل (`attention`)، وتُكتب WebP — وPNG يبقى PNG
+ * لشفافيّته. وأكبرُ ما تُعرض فيه الصورةُ في التطبيق دون ذلك.
+ */
+export async function squareAvatar(input: Uint8Array, mime: string, side: number): Promise<Processed> {
+  const pipeline = sharp(Buffer.from(input), { failOn: "error" })
+    .rotate()
+    .resize({ width: side, height: side, fit: "cover", position: "attention" });
+  const out =
+    mime === "image/png"
+      ? await pipeline.png({ compressionLevel: 9 }).toBuffer({ resolveWithObject: true })
+      : await pipeline.webp({ quality: 86 }).toBuffer({ resolveWithObject: true });
+  return {
+    bytes: new Uint8Array(out.data),
+    mime: mime === "image/png" ? "image/png" : "image/webp",
+    width: out.info.width,
+    height: out.info.height,
+  };
+}
+
+/**
  * مقاس الصورة المتحركة بلا إعادة ترميز.
  *
  * المتحركة تُترك كما هي: إعادة كتابتها تكسر حلقتها أو تضاعف حجمها،
@@ -236,6 +258,46 @@ export async function trimAudio(input: Uint8Array, start: number, length: number
     const bytes = new Uint8Array(await readFile(out));
     if (bytes.length === 0) throw new Silent();
     return { bytes, seconds: Math.max(1, Math.round(length)) };
+  } finally {
+    await rm(folder, { recursive: true, force: true });
+  }
+}
+
+/**
+ * مقطعُ القصّة يُقصّ ويُضغط على الخادم (القاعدة ٢٤٩) — **بقرار المالك**: كان
+ * يُردّ «الملف كبير» أو «أطول من ٣٠ ثانية» فلا يُنشر. الآن يُؤخذ منه
+ * `length` ثانيةً من `start` الذي اختاره صاحبُه، ويُكتب H.264 بضلعٍ قصيرٍ ٧٢٠
+ * وAAC — يُشغَّل على كلّ جهاز، وثلاثون ثانيةً منه دون تسعة ميغا. ويُعاد
+ * ترميزُه لا يُنسخ: النسخُ يقصّ على أقرب إطارٍ مفتاحيّ فيبدأ قبل ما اختير.
+ * والمقطعُ الصامت يمرّ (`0:a?`)، و`faststart` يبدأ التشغيلَ قبل التنزيل.
+ */
+export async function compressStoryVideo(
+  input: Uint8Array,
+  extension: string,
+  start: number,
+  length: number,
+): Promise<{ bytes: Uint8Array; seconds: number; width: number; height: number }> {
+  const folder = await mkdtemp(join(tmpdir(), "athr-"));
+  const source = join(folder, `in.${extension}`);
+  const out = join(folder, "out.mp4");
+  try {
+    await writeFile(source, input);
+    await ffmpeg([
+      "-ss", Math.max(0, start).toFixed(2),
+      "-i", source,
+      "-t", length.toFixed(2),
+      "-map", "0:v:0", "-map", "0:a?",
+      "-vf", "scale='if(gt(iw,ih),-2,min(720,iw))':'if(gt(iw,ih),min(720,ih),-2)',fps=30",
+      "-c:v", "libx264", "-preset", "veryfast", "-crf", "27",
+      "-maxrate", "2200k", "-bufsize", "4400k", "-pix_fmt", "yuv420p",
+      "-c:a", "aac", "-b:a", "96k", "-ac", "2",
+      "-movflags", "+faststart",
+      out,
+    ]);
+    const bytes = new Uint8Array(await readFile(out));
+    if (bytes.length === 0) throw new Error("مقطعٌ فارغ");
+    const clip = await probeClip(bytes, "mp4");
+    return { bytes, seconds: clip.seconds, width: clip.width, height: clip.height };
   } finally {
     await rm(folder, { recursive: true, force: true });
   }

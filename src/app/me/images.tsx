@@ -43,6 +43,7 @@ export function ProfileImages({
         <ImagePicker
           label="غيّر صورتك"
           maxSize={512}
+          square={320}
           animated={isPlus}
           onError={(message) => onError?.(message)}
           onPicked={(file, width, height) => {
