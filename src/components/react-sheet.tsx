@@ -17,10 +17,9 @@ import { ar } from "@/lib/format";
 
 type Mine = { kind: string; emoji: string | null } | null;
 
-// زجاجٌ صافٍ: الحبرُ داكن والأقراصُ ظلٌّ خفيف — لا كهرمانيّ نصّاً على فاتح (القاعدة ٧).
-const SOFT = "rgba(14,26,36,.06)";
-const DIM = "var(--color-muted)";
-const GOLD = "var(--color-clay-ink)";
+const SOFT = "rgba(255,255,255,.1)";
+const DIM = "rgba(255,255,255,.62)";
+const GOLD = "#F6B93B";
 
 /**
  * لوحةُ التفاعل في نافذةٍ زجاجيّة (القاعدة ٢٤٧) — نسخةُ
@@ -116,7 +115,7 @@ export function ReactSheet({
                 });
               }}
               className="flex h-12 grow items-center justify-center gap-2 rounded-full text-[13.5px] font-bold"
-              style={{ background: locked ? "rgba(246,185,59,.22)" : SOFT, color: locked ? GOLD : "var(--color-ink)" }}
+              style={{ background: locked ? "rgba(246,185,59,.22)" : SOFT, color: locked ? GOLD : "#fff" }}
             >
               {locked ? <LockIcon size={16} /> : <UnlockIcon size={16} />}
               {locked ? "التعليقات مقفلة" : "التعليقات مفتوحة"}
@@ -141,7 +140,7 @@ export function ReactSheet({
                     style={{
                       width: 56,
                       height: 56,
-                      background: on ? "rgba(246,185,59,.3)" : "rgba(14,26,36,.05)",
+                      background: on ? "rgba(246,185,59,.3)" : "rgba(255,255,255,.08)",
                       animation: "athr-pop 320ms cubic-bezier(.18,1.4,.4,1) both",
                       animationDelay: `${index * 34}ms`,
                     }}
@@ -177,10 +176,10 @@ export function ReactSheet({
                   </button>
                 </div>
                 {board ? (
-                  <div className="no-bar mt-2 overflow-y-auto rounded-[18px] p-1.5" style={{ maxHeight: 220, background: "rgba(14,26,36,.045)" }}>
+                  <div className="no-bar mt-2 overflow-y-auto rounded-[18px] p-1.5" style={{ maxHeight: 220, background: "rgba(255,255,255,.07)" }}>
                     {EMOJI_GROUPS.map((group) => (
                       <div key={group.label}>
-                        <p className="p-1 text-[10.5px] font-semibold" style={{ color: "var(--color-faint)" }}>
+                        <p className="p-1 text-[10.5px] font-semibold" style={{ color: "rgba(255,255,255,.55)" }}>
                           {group.label}
                         </p>
                         <div className="grid grid-cols-8">
@@ -214,7 +213,7 @@ export function ReactSheet({
         )}
 
         {locked && !author ? (
-          <p className="flex h-11 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-semibold" style={{ background: "rgba(14,26,36,.045)", color: "var(--color-muted)" }}>
+          <p className="flex h-11 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-semibold" style={{ background: "rgba(255,255,255,.07)", color: "rgba(255,255,255,.7)" }}>
             <LockIcon size={14} />
             أقفل صاحبُ اللحظة التعليقات
           </p>
@@ -239,7 +238,7 @@ export function ReactSheet({
               maxLength={500}
               rows={1}
               aria-label="تعليق"
-              className="min-w-0 grow resize-none rounded-[23px] px-4 py-3 text-[14px] text-ink outline-none placeholder:text-faint"
+              className="min-w-0 grow resize-none rounded-[23px] px-4 py-3 text-[14px] text-white outline-none placeholder:text-white/45"
               style={{ minHeight: 46, maxHeight: 120, background: SOFT }}
             />
             <button
@@ -248,7 +247,7 @@ export function ReactSheet({
               className="h-[46px] shrink-0 rounded-[23px] px-[18px] text-[13.5px] font-bold"
               style={{
                 background: body.trim() ? "var(--color-clay)" : SOFT,
-                color: body.trim() ? "var(--color-on-brand)" : "var(--color-faint)",
+                color: body.trim() ? "var(--color-on-brand)" : "rgba(255,255,255,.45)",
               }}
             >
               إرسال
@@ -283,7 +282,7 @@ export function ReactSheet({
               type="button"
               onClick={() => setAsking(true)}
               className="flex h-11 w-fit items-center gap-2 rounded-full px-3.5 text-[13px] font-bold"
-              style={{ background: "rgba(255,122,90,.12)", color: "var(--color-live)" }}
+              style={{ background: "rgba(255,122,90,.14)", color: "#ff9d84" }}
             >
               <TrashIcon size={15} />
               {author ? "احذف اللحظة" : "احذفها بصلاحية الإشراف"}
@@ -294,7 +293,7 @@ export function ReactSheet({
             type="button"
             onClick={() => setReporting(true)}
             className="flex h-10 w-fit items-center gap-2 rounded-full px-3.5 text-[12.5px] font-semibold"
-            style={{ background: "rgba(14,26,36,.045)", color: DIM }}
+            style={{ background: "rgba(255,255,255,.07)", color: DIM }}
           >
             <FlagIcon size={14} />
             بلاغ

@@ -6,7 +6,7 @@ import { CloseIcon } from "@/components/icons";
 
 /**
  * النافذةُ الزجاجيّة — نسخةُ `apps/mobile/components/glass-sheet.tsx` (القاعدة ٢٤٧):
- * زجاجٌ صافٍ بلا لونٍ — **بقرار المالك** — طافٍ فوق أسفل الشاشة **بلا حجابٍ خلفه** — **بقرار المالك**، فالصفحةُ
+ * زجاجٌ داكن طافٍ فوق أسفل الشاشة **بلا حجابٍ خلفه** — **بقرار المالك**، فالصفحةُ
  * تبقى كما هي وراءها. وتُغلق بالضغط خارجها، وبـEsc، وبسحب رأسها إلى أسفل.
  *
  * **والسحبُ من رأسها وحده** لا من جسمها: فيه لوحةُ إيموجي تُمرَّر وحقلُ كتابة.
@@ -111,12 +111,12 @@ export function GlassSheet({
           display: "flex",
           flexDirection: "column",
           borderRadius: 30,
-          border: "1px solid rgba(255,255,255,.6)",
-          background: "rgba(255,255,255,.34)",
-          backdropFilter: "blur(30px) saturate(1.6)",
-          WebkitBackdropFilter: "blur(30px) saturate(1.6)",
-          boxShadow: "0 10px 40px rgba(14,26,36,.18)",
-          color: "var(--color-ink)",
+          border: "1px solid rgba(255,255,255,.16)",
+          background: "rgba(20,24,28,.8)",
+          backdropFilter: "blur(28px) saturate(1.4)",
+          WebkitBackdropFilter: "blur(28px) saturate(1.4)",
+          boxShadow: "0 10px 40px rgba(0,0,0,.38)",
+          color: "#fff",
           animation: "athr-glass-up 260ms cubic-bezier(.2,1.2,.4,1) both",
         }}
       >
@@ -124,13 +124,13 @@ export function GlassSheet({
           <span
             aria-hidden="true"
             className="mx-auto mt-2.5 block rounded-full"
-            style={{ width: 40, height: 4, background: "rgba(14,26,36,.18)" }}
+            style={{ width: 40, height: 4, background: "rgba(255,255,255,.3)" }}
           />
           <div className="flex items-center gap-3 px-[18px] pb-3.5 pt-3">
             <div className="min-w-0 grow">
               <p className="truncate text-[17px] font-bold">{title}</p>
               {subtitle ? (
-                <p className="mt-0.5 truncate text-[12px]" style={{ color: "var(--color-muted)" }}>
+                <p className="mt-0.5 truncate text-[12px]" style={{ color: "rgba(255,255,255,.62)" }}>
                   {subtitle}
                 </p>
               ) : null}
@@ -140,12 +140,12 @@ export function GlassSheet({
               aria-label="إغلاق"
               onClick={() => close.current()}
               className="flex shrink-0 items-center justify-center rounded-full"
-              style={{ width: 34, height: 34, background: "rgba(14,26,36,.07)" }}
+              style={{ width: 34, height: 34, background: "rgba(255,255,255,.12)" }}
             >
               <CloseIcon size={16} />
             </button>
           </div>
-          <div className="mx-[18px] h-px" style={{ background: "rgba(14,26,36,.06)" }} />
+          <div className="mx-[18px] h-px" style={{ background: "rgba(255,255,255,.1)" }} />
         </div>
         <div className="no-bar min-h-0 grow overflow-y-auto">{children}</div>
       </div>
