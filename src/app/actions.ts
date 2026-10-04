@@ -2337,6 +2337,40 @@ export async function reportComment(
   return { ok: "وصلنا بلاغك. نقرأه ونتصرّف." };
 }
 
+/**
+ * بلاغٌ عن لحظة — من نافذة التفاعل الزجاجيّة (القاعدة ٢٤٧)، كبابِ الخادم: واحدٌ
+ * من كل شخص، ولا عن لحظته، ولا عن لحظةٍ لا يراها («ما عادت موجودة»).
+ */
+export async function reportMoment(
+  momentId: string,
+  reason: string,
+  note?: string,
+): Promise<{ ok?: string; error?: string }> {
+  const user = await requireUser();
+  if (!(REPORT_REASONS as readonly string[]).includes(reason)) return { error: "اختر سبباً" };
+  if (!hit(`report:${user.id}`, 20, 60 * 60_000)) return { error: TOO_MANY };
+
+  const moment = await prisma.moment.findUnique({ where: { id: momentId }, select: { authorId: true, text: true } });
+  if (!moment || !(await canSeeMoment(user.id, momentId))) return { error: "ما عادت موجودة" };
+  if (moment.authorId === user.id) return { error: "هذه لحظتك" };
+
+  const clean = note?.trim().slice(0, 500) || null;
+  await prisma.report.upsert({
+    where: { reporterId_target_targetId: { reporterId: user.id, target: "MOMENT", targetId: momentId } },
+    update: { reason: reason as (typeof REPORT_REASONS)[number], note: clean },
+    create: {
+      target: "MOMENT",
+      targetId: momentId,
+      reporterId: user.id,
+      reportedId: moment.authorId,
+      reason: reason as (typeof REPORT_REASONS)[number],
+      note: clean,
+      snippet: moment.text?.slice(0, 500) ?? null,
+    },
+  });
+  return { ok: "وصلنا بلاغك. نقرأه ونتصرّف." };
+}
+
 // ───────────────────────────── الذكريات وآثرك السنويّ (القاعدة ٢٣٥) ─────────────────────────────
 
 /** «×» على بطاقة اليوم: تُطوى لليوم على الجهازين وتعود غداً. */

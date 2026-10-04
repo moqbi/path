@@ -27,6 +27,7 @@ export function EditProfileSheet({
   coverMediaId,
   coverSpec,
   coverY,
+  startOpen = false,
 }: {
   name: string;
   /** المشترك يرفع صورة عرضٍ متحركة. */
@@ -40,8 +41,9 @@ export function EditProfileSheet({
   coverMediaId: string | null;
   coverSpec: string | null;
   coverY: number;
+  startOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(startOpen);
   const [pictureError, setPictureError] = useState<string | null>(null);
 
   useEffect(() => {

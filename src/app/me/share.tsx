@@ -49,9 +49,12 @@ function Qr({ value, size }: { value: string; size: number }) {
 export function ShareProfile({
   name,
   memberNo,
+  trigger,
 }: {
   name: string;
   memberNo: number;
+  /** زرٌّ آخر يفتح النافذة نفسها — خطوةُ «ادعُ أوّل صديق» في بطاقة الترحيب. */
+  trigger?: (open: () => void) => React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
@@ -79,6 +82,7 @@ export function ShareProfile({
 
   return (
     <>
+      {trigger ? trigger(() => setOpen(true)) : (
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -88,6 +92,7 @@ export function ShareProfile({
       >
         <ShareIcon size={18} />
       </button>
+      )}
 
       {open ? (
         <Sheet title="شارك ملفك" onClose={() => setOpen(false)}>

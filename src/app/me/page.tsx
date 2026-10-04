@@ -23,7 +23,13 @@ const MONTHS = [
   "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر",
 ];
 
-export default async function ProfilePage() {
+export default async function ProfilePage({
+  searchParams,
+}: {
+  /** `?edit=1` يفتح نافذة التعديل — خطوةُ «ضع صورتك» في بطاقة الترحيب. */
+  searchParams: Promise<{ edit?: string }>;
+}) {
+  const startEdit = (await searchParams).edit === "1";
   const user = await currentUser();
   if (!user) redirect("/login");
 
@@ -185,6 +191,7 @@ export default async function ProfilePage() {
               coverMediaId={user.coverMediaId}
               coverSpec={user.background?.spec ?? null}
               coverY={user.coverY}
+              startOpen={startEdit}
             />
             <Accessories
               /* والحزمة لا تُلبَس: ما فيها من أصناف مُلّك وحده، فهو ما يُعرض. */

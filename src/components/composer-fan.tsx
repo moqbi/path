@@ -55,6 +55,14 @@ export function ComposerFan() {
   // إجراءات الخادم التي تعيد التوجيه يجب أن تُستدعى داخل انتقال.
   const [, start] = useTransition();
 
+  // بطاقةُ الترحيب تفتح القوس من خطوة «انشر أوّل لحظة» (القاعدة ٢٤٦).
+  useEffect(() => {
+    const onOpen = () => toggle(true);
+    window.addEventListener("athr:fan", onOpen);
+    return () => window.removeEventListener("athr:fan", onOpen);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // الهروب يغلق القائمة، ومنع تمرير الصفحة خلف الغطاء.
   useEffect(() => {
     if (!open) return;

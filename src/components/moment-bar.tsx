@@ -1,19 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { addComment, deleteMoment, markSeenMany, react, removeMomentAsAdmin } from "@/app/actions";
-import { AuthorPanel } from "@/components/author-panel";
+import { markSeenMany, react } from "@/app/actions";
 import { LockIcon } from "@/components/icons";
-import { CUSTOM, EmojiBoard, facesFor, ReactionGlyph } from "@/components/reactions";
+import { ReactionGlyph } from "@/components/reactions";
+import { ReactSheet } from "@/components/react-sheet";
 
 type Mine = { kind: string; emoji: string | null } | null;
 
 /**
- * شريط اللحظة: زرّ واحد في يسار المنشور. بالضغط عليه تُفتح الوجوه
- * ومساحة التعليق معاً.
- *
- * ويُغلق نفسه بعد اختيار وجه أو إرسال تعليق، وبالضغط خارجه بلا شيء —
- * فالصندوق المفتوح على كل منشور ضجيج، والعودة إليه ضغطةٌ واحدة.
+ * شريط اللحظة: زرّ واحد في يسار المنشور. بالضغط عليه تُفتح نافذةٌ زجاجيّة
+ * فيها الوجوه والتعليق والحذف أو البلاغ (القاعدة ٢٤٧، كالجوّال) — والبطاقةُ
+ * لا تتحرّك. وتُغلق بعد اختيار وجه أو إرسال تعليق، وبالضغط خارجها.
  */
 export function MomentBar({
   momentId,
@@ -62,16 +60,12 @@ export function MomentBar({
   locked?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [board, setBoard] = useState(false);
-  const [asking, setAsking] = useState(false);
   const [popped, setPopped] = useState(false);
-  const [body, setBody] = useState("");
   // القفلُ هنا لا في لوحة صاحبها: يُرى على الزرّ نفسه قبل أن يُفتح.
   const [isLocked, setLocked] = useState(locked);
   useEffect(() => setLocked(locked), [locked]);
-  const [pending, start] = useTransition();
+  const [, start] = useTransition();
   const root = useRef<HTMLDivElement>(null);
-  const faces = facesFor(momentKind);
 
   // ما ظهر نصفُه على الشاشة ثانيةً يُكتب «شافها» — منه لوحةُ صاحب اللحظة.
   useEffect(() => {
@@ -95,35 +89,6 @@ export function MomentBar({
     };
   }, [author, momentId]);
 
-  // ضغطةٌ خارج الشريط تطويه — ما لم يكن هناك تعليق نصف مكتوب يضيع.
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (event: PointerEvent) => {
-      if (root.current?.contains(event.target as Node)) return;
-      if (body.trim().length > 0) return;
-      setOpen(false);
-    };
-    /*
-      والتمريرُ يطويه كذلك — من مرّر عن لوحةٍ لا يريدها. والمسموعُ عجلةُ
-      الفأرة وحركةُ الإصبع لا حدثُ `scroll`: تركيزُ حقل التعليق عند الفتح
-      يمرّر الصفحة إليه، فكانت اللوحة ستُطوى لحظةَ تُفتح. وما داخلها (صفُّ
-      الوجوه) لا يُحسب.
-    */
-    const onScroll = (event: Event) => {
-      if (root.current?.contains(event.target as Node)) return;
-      if (body.trim().length > 0) return;
-      setOpen(false);
-    };
-    document.addEventListener("pointerdown", onDown);
-    document.addEventListener("wheel", onScroll, { passive: true });
-    document.addEventListener("touchmove", onScroll, { passive: true });
-    return () => {
-      document.removeEventListener("pointerdown", onDown);
-      document.removeEventListener("wheel", onScroll);
-      document.removeEventListener("touchmove", onScroll);
-    };
-  }, [open, body]);
-
   // البطاقة قد تكون رابطاً، فيجب أن يقف الحدث هنا وإلا فُتحت اللحظة.
   const stop = (event: React.SyntheticEvent) => {
     event.preventDefault();
@@ -143,8 +108,6 @@ export function MomentBar({
     // الوجه فعلٌ كامل بنفسه: يُختار فيُطوى الشريط، ويُفتح ثانيةً لمن أراد
     // أن يكتب بعده.
     setOpen(false);
-    setBoard(false);
-    setAsking(false);
     start(() => void react(momentId, kind, emoji));
   }
 
@@ -160,7 +123,6 @@ export function MomentBar({
           aria-expanded={open}
           onClick={(event) => {
             stop(event);
-            setBoard(false);
             setOpen((v) => !v);
           }}
           // دائرة بحجم الوجه لا أكبر: الإطار الواسع كان يبدو زرّاً غريباً
@@ -207,7 +169,6 @@ export function MomentBar({
           aria-expanded={open}
           onClick={(event) => {
             stop(event);
-            setBoard(false);
             setOpen((v) => !v);
           }}
           // دائرة بحجم الوجه لا أكبر: الإطار الواسع كان يبدو زرّاً غريباً
@@ -246,170 +207,18 @@ export function MomentBar({
       {inset ? null : extra}
 
       {open ? (
-        <div className={`mt-2 flex flex-col gap-2 ${inset ? "px-3" : ""}`}>
-          {author ? <AuthorPanel momentId={momentId} locked={isLocked} onLocked={setLocked} /> : null}
-          <div className={`flex items-center gap-0.5 ${author ? "!hidden" : ""}`}>
-            {faces.map((kind, index) => (
-              <button
-                key={kind}
-                type="button"
-                aria-label={kind}
-                onClick={(event) => {
-                  stop(event);
-                  choose(kind);
-                }}
-                className="flex h-10 w-9 items-center justify-center rounded-xl hover:bg-chip"
-                style={{
-                  animation: "athr-pop 320ms cubic-bezier(.18,1.4,.4,1) both",
-                  animationDelay: `${index * 34}ms`,
-                }}
-              >
-                <ReactionGlyph kind={kind} size={25} />
-              </button>
-            ))}
-
-            <span className="mx-0.5 h-6 w-px bg-line" />
-
-            {isPlus ? (
-              <>
-                {CUSTOM.slice(0, 2).map((emoji, index) => (
-                  <button
-                    key={emoji}
-                    type="button"
-                    onClick={(event) => {
-                      stop(event);
-                      choose("CUSTOM", emoji);
-                    }}
-                    className="flex h-10 w-9 items-center justify-center rounded-xl text-[21px] leading-none hover:bg-chip"
-                    style={{
-                      animation: "athr-pop 320ms cubic-bezier(.18,1.4,.4,1) both",
-                      animationDelay: `${(faces.length + index) * 34}ms`,
-                    }}
-                  >
-                    {emoji}
-                  </button>
-                ))}
-                {/* «＋» يفتح الكيبورد كاملاً — الاشتراك يَعِد بكل الإيموجي لا باثنين. */}
-                <button
-                  type="button"
-                  aria-label="كل الإيموجي"
-                  aria-expanded={board}
-                  onClick={(event) => {
-                    stop(event);
-                    setBoard((v) => !v);
-                  }}
-                  className="flex h-10 w-9 items-center justify-center rounded-xl text-[18px] font-bold leading-none hover:bg-chip"
-                  style={{ color: "var(--color-clay-ink)" }}
-                >
-                  {board ? "×" : "＋"}
-                </button>
-              </>
-            ) : (
-              <a
-                href="/subscribe"
-                aria-label="الإيموجي الحر لمشتركي آثار+"
-                className="flex h-10 w-9 items-center justify-center rounded-xl"
-                style={{ color: "var(--color-gold-ink)" }}
-              >
-                <LockIcon size={16} />
-              </a>
-            )}
-          </div>
-
-          {board && !author ? (
-            <EmojiBoard onPick={(emoji) => choose("CUSTOM", emoji)} stop={stop} />
-          ) : null}
-
-          {author || moderate ? (
-            <div className="flex items-center justify-end">
-              {asking ? (
-                <span className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={pending}
-                    onClick={(event) => {
-                      stop(event);
-                      setOpen(false);
-                      setAsking(false);
-                      start(() =>
-                        void (author
-                          ? deleteMoment(momentId)
-                          : removeMomentAsAdmin(momentId, null)),
-                      );
-                    }}
-                    className="h-8 rounded-full px-3 text-[11.5px] font-bold disabled:opacity-60"
-                    style={{ background: "var(--color-live)", color: "#fff" }}
-                  >
-                    أحذفها
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      stop(event);
-                      setAsking(false);
-                    }}
-                    className="h-8 rounded-full px-2.5 text-[11.5px] font-semibold text-muted"
-                  >
-                    تراجع
-                  </button>
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    stop(event);
-                    setAsking(true);
-                  }}
-                  className="h-8 rounded-full px-2.5 text-[11.5px] font-semibold"
-                  style={{ color: "var(--color-live)" }}
-                >
-                  {author ? "احذف اللحظة" : "احذفها بصلاحية الإشراف"}
-                </button>
-              )}
-            </div>
-          ) : null}
-
-          {isLocked && !author ? (
-            <p className="flex h-9 items-center gap-1.5 text-[12px] font-semibold text-muted">
-              <LockIcon size={14} />
-              أقفل صاحبُ اللحظة التعليقات
-            </p>
-          ) : (
-          <form
-            action={() => {
-              const text = body.trim();
-              if (!text) return;
-              const data = new FormData();
-              data.set("body", text);
-              setBody("");
-              setOpen(false);
-              start(() => void addComment(momentId, data));
-            }}
-            className="flex items-center gap-2"
-          >
-            <input
-              name="body"
-              value={body}
-              onChange={(event) => setBody(event.target.value)}
-              placeholder="علّق…"
-              maxLength={500}
-              aria-label="تعليق"
-              autoFocus
-              className="h-9 min-w-0 grow rounded-full border border-line bg-paper px-3.5 text-[12.5px] text-ink outline-none placeholder:text-faint focus:border-clay"
-            />
-            {body.trim() ? (
-              <button
-                type="submit"
-                disabled={pending}
-                className="h-9 shrink-0 rounded-full px-3.5 text-[12px] font-bold disabled:opacity-60"
-                style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
-              >
-                إرسال
-              </button>
-            ) : null}
-          </form>
-          )}
-        </div>
+        <ReactSheet
+          momentId={momentId}
+          momentKind={momentKind}
+          mine={mine}
+          isPlus={isPlus}
+          author={author}
+          moderate={moderate}
+          locked={isLocked}
+          onLocked={setLocked}
+          onChoose={choose}
+          onClose={() => setOpen(false)}
+        />
       ) : null}
 
       {footer}

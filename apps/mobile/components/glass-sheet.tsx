@@ -54,9 +54,11 @@ export function GlassSheet({
   ).current;
 
   return (
-    <Modal transparent animationType="fade" onRequestClose={close} statusBarTranslucent>
+    <Modal transparent animationType="slide" onRequestClose={close} statusBarTranslucent>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <Pressable style={{ flex: 1, backgroundColor: "rgba(8,14,20,.38)" }} onPress={close} />
+        {/* بلا حجابٍ داكن — **بقرار المالك**: النافذةُ طافيةٌ فوق الشاشة كما هي،
+            والضغطُ في أيّ مكانٍ خارجها يُغلقها. */}
+        <Pressable style={{ flex: 1 }} onPress={close} />
 
         <Animated.View
           style={{
@@ -66,7 +68,7 @@ export function GlassSheet({
             transform: [{ translateY: drag }],
             borderRadius: 30,
             shadowColor: "#000",
-            shadowOpacity: 0.3,
+            shadowOpacity: 0.38,
             shadowRadius: 24,
             shadowOffset: { width: 0, height: 10 },
             elevation: 18,

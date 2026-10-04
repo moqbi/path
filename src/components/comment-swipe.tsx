@@ -68,19 +68,34 @@ export function CommentSwipe({
           {children}
         </SwipeRow>
       )}
-      {reporting ? <ReportSheet commentId={commentId} onClose={() => setReporting(false)} /> : null}
+      {reporting ? (
+        <ReportSheet
+          title="بلاغ عن تعليق"
+          send={(reason, note) => reportComment(commentId, reason, note)}
+          onClose={() => setReporting(false)}
+        />
+      ) : null}
     </>
   );
 }
 
-function ReportSheet({ commentId, onClose }: { commentId: string; onClose: () => void }) {
+/** نافذةُ البلاغ — واحدةٌ للتعليق واللحظة، والإجراءُ يُمرَّر. */
+export function ReportSheet({
+  title,
+  send,
+  onClose,
+}: {
+  title: string;
+  send: (reason: string, note: string) => Promise<{ ok?: string; error?: string }>;
+  onClose: () => void;
+}) {
   const [reason, setReason] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [said, setSaid] = useState<{ ok?: string; error?: string } | null>(null);
   const [pending, start] = useTransition();
 
   return (
-    <Sheet title="بلاغ عن تعليق" onClose={onClose}>
+    <Sheet title={title} onClose={onClose}>
       {said?.ok ? (
         <div className="flex flex-col items-center gap-4 py-4">
           <p className="text-center text-[13.5px] text-ink">{said.ok}</p>
@@ -134,7 +149,7 @@ function ReportSheet({ commentId, onClose }: { commentId: string; onClose: () =>
             disabled={!reason || pending}
             onClick={() =>
               start(async () => {
-                if (reason) setSaid(await reportComment(commentId, reason, note));
+                if (reason) setSaid(await send(reason, note));
               })
             }
             className="h-12 rounded-xl text-[14px] font-bold disabled:opacity-60"

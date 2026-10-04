@@ -14,6 +14,10 @@ import { TimelineHead } from "@/components/timeline-head";
 import { VerifyBanner } from "@/components/verify-banner";
 import { MemoriesCard } from "@/components/memories-card";
 import { today as memoriesToday } from "@/lib/memories";
+import { WelcomeCard } from "@/components/welcome-card";
+import { WeeklyCard } from "@/components/weekly-card";
+import { welcome } from "@/lib/welcome";
+import { weeklyFor, weeklyOpen } from "@/lib/weekly";
 import { AthrHeaderMark } from "@/components/brand";
 import { MessageIcon, SparkIcon } from "@/components/icons";
 import { ar, dayLabel, membership } from "@/lib/format";
@@ -43,11 +47,14 @@ export default async function TimelinePage({
   // «آثارنا» من مزايا آثار+ — من اختارها بلا اشتراكٍ يُؤخذ إلى صفحته.
   if (view === "together" && !user.isPlus) redirect("/subscribe");
 
-  const [unread, ids, memories] = await Promise.all([
+  const [unread, ids, memories, hello, week] = await Promise.all([
     unreadCount(user.id),
     circleIds(user.id),
     // بطاقةُ اليوم في العدسة الأولى وحدها (القاعدة ٢٣٥).
     view === "" ? memoriesToday(user.id) : Promise.resolve(null),
+    // والترحيبُ (القاعدة ٢٤٦) وملخّصُ الجمعة (القاعدة ٢٤٥) كالجوّال — ولا يُسقط فشلُهما الخطّ.
+    view === "" ? welcome(user.id).catch(() => null) : Promise.resolve(null),
+    view === "" && weeklyOpen() ? weeklyFor(user.id).catch(() => null) : Promise.resolve(null),
   ]);
 
   const moments =
@@ -201,6 +208,8 @@ export default async function TimelinePage({
           </p>
         ) : null}
 
+        {hello?.show ? <WelcomeCard data={hello} name={user.name} memberNo={user.memberNo} /> : null}
+        {week ? <WeeklyCard week={week} /> : null}
         {memories ? <MemoriesCard data={memories} /> : null}
 
         {view === "together" && friend ? (
