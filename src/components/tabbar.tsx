@@ -7,25 +7,35 @@ import {
   CircleIcon,
   HomeIcon,
   LockIcon,
+  MessageIcon,
   StoreIcon,
   UserIcon,
   WithIcon,
 } from "@/components/icons";
+import { Avatar } from "@/components/ui";
+import { ar } from "@/lib/format";
 
+/**
+ * ستّةُ أبوابٍ كالجوّال (القاعدة ٢٢٨): المحادثاتُ بين الأصدقاء والإشعارات،
+ * و«أنا» صورةُ صاحبها.
+ */
 const TABS = [
   { href: "/", label: "اللحظات", Icon: HomeIcon },
   { href: "/circle", label: "الأصدقاء", Icon: CircleIcon },
+  { href: "/messages", label: "المحادثات", Icon: MessageIcon },
   { href: "/notifications", label: "الإشعارات", Icon: BellIcon },
   { href: "/store", label: "المتجر", Icon: StoreIcon },
   { href: "/me", label: "أنا", Icon: UserIcon },
 ];
+
+const PILL = 62;
 
 /**
  * ما له عمودٌ على سطح المكتب لا يتكرّر في شريط الوسط — **بقرار المالك**
  * (القاعدة ٢٠٠): الأصدقاءُ يميناً، و«أنا» والإشعاراتُ يساراً. وعلى الجوّال
  * والنافذةِ الضيّقة يبقى الشريطُ خمسةً كما كان.
  */
-const DESK_ELSEWHERE = new Set(["/circle", "/notifications", "/me"]);
+const DESK_ELSEWHERE = new Set(["/circle", "/messages", "/notifications", "/me"]);
 
 /** الضغطة المطوّلة: نصف ثانية تقريباً، وأي تحريك للإصبع يلغيها. */
 const HOLD_MS = 450;
@@ -65,10 +75,15 @@ const LENSES = [
 export function TabBarNav({
   active,
   news = 0,
+  unread = 0,
   view = "",
+  me = null,
 }: {
   active: string;
   news?: number;
+  /** ما لم يُقرأ من المحادثات — رقمٌ لا نقطة (القاعدة ١٥١). */
+  unread?: number;
+  me?: { name: string; avatarMediaId: string | null } | null;
   /** العدسة المفتوحة في الخط الزمني: "" أو "private" أو "together". */
   view?: string;
 }) {
@@ -110,7 +125,7 @@ export function TabBarNav({
 
       {/* الأصناف تنطلق من فوق تبويب «اللحظات» في الطرف الأيمن. */}
       <div className="shell-fixed z-30">
-        <div className="relative mb-[62px] mr-[6px] h-14 w-[74px]">
+        <div className="relative mb-[84px] mr-[14px] h-14 w-[74px]">
           {hidden.map((item, index) => (
             <Link
               key={item.href}
@@ -152,42 +167,77 @@ export function TabBarNav({
         </div>
       </div>
 
-      <nav className="tabbar sticky bottom-0 z-10">
-        <div className="flex items-stretch justify-around px-1.5 pb-1.5 pt-1">
+      {/*
+        زجاجٌ عائم — **بقرار المالك** (القاعدة ٢٢٨، كالجوّال): قرصٌ فوق المحتوى
+        لا شريطٌ ملتصق، والمحتوى يمرّ تحته مغبّشاً (`.glassbar` يترك له مكانه في
+        آخر التمرير). أيقوناتٌ بلا أسماء — الاسمُ لقارئ الشاشة.
+      */}
+      <nav className="glassbar shell-fixed z-10" style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}>
+        <div
+          className="pointer-events-auto mx-3 flex items-center justify-around px-1.5"
+          style={{
+            height: PILL,
+            borderRadius: PILL / 2,
+            background: "rgba(20,24,28,.48)",
+            backdropFilter: "blur(22px) saturate(1.5)",
+            WebkitBackdropFilter: "blur(22px) saturate(1.5)",
+            border: "1px solid rgba(255,255,255,.14)",
+            boxShadow: "0 8px 26px rgba(14,26,36,.28)",
+          }}
+        >
           {TABS.map(({ href, label: base, Icon }) => {
             const on = href === active;
             const moments = href === "/";
             // تبويب اللحظات يحمل اسم العدسة المفتوحة.
             const label = moments ? lens.label : base;
             const dot = href === "/notifications" && news > 0 && !on;
+            const count = href === "/messages" && unread > 0 ? unread : 0;
             return (
               <Link
                 key={href}
                 href={href}
+                aria-label={label}
+                title={label}
                 aria-current={on ? "page" : undefined}
                 onPointerDown={moments ? hold : undefined}
                 onPointerUp={moments ? release : undefined}
                 onPointerLeave={moments ? release : undefined}
                 onPointerCancel={moments ? release : undefined}
                 onContextMenu={moments ? (event) => event.preventDefault() : undefined}
-                className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 py-1${
-                  DESK_ELSEWHERE.has(href) ? " desk-hide" : ""
-                }`}
-                style={{
-                  color: on ? "var(--color-clay-ink)" : "var(--color-muted)",
-                  touchAction: "manipulation",
-                }}
+                className={`flex flex-1 items-center justify-center${DESK_ELSEWHERE.has(href) ? " desk-hide" : ""}`}
+                style={{ height: PILL - 14, touchAction: "manipulation" }}
               >
-                <span className="relative">
-                  <Icon size={19} />
+                <span
+                  className="relative flex items-center justify-center rounded-full transition-colors"
+                  style={{
+                    width: 46,
+                    height: PILL - 16,
+                    background: on ? "rgba(255,255,255,.2)" : "transparent",
+                    color: on ? "#ffffff" : "rgba(255,255,255,.78)",
+                  }}
+                >
+                  {href === "/me" && me ? (
+                    <span className="block rounded-full" style={{ boxShadow: on ? "0 0 0 2px #fff" : "0 0 0 1.5px rgba(255,255,255,.5)" }}>
+                      <Avatar name={me.name} mediaId={me.avatarMediaId} size={28} />
+                    </span>
+                  ) : (
+                    <Icon size={23} />
+                  )}
+                  {count ? (
+                    <span
+                      className="absolute flex items-center justify-center rounded-full px-1 text-[9.5px] font-bold"
+                      style={{ top: 2, right: 4, minWidth: 17, height: 17, background: "var(--color-live)", color: "#fff" }}
+                    >
+                      {count > 99 ? "+٩٩" : ar(count)}
+                    </span>
+                  ) : null}
                   {dot ? (
                     <span
-                      className="absolute -left-1 -top-0.5 block h-1.5 w-1.5 rounded-full"
-                      style={{ background: "var(--color-clay)" }}
+                      className="absolute block rounded-full"
+                      style={{ bottom: 9, right: 10, width: 8, height: 8, background: "var(--color-live)" }}
                     />
                   ) : null}
                 </span>
-                <span className="text-[9.5px] font-medium">{label}</span>
               </Link>
             );
           })}

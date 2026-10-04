@@ -202,6 +202,24 @@ h3 {
  * وحدها كانت تطير إلى حافة الشاشة اليسرى على المتصفح العريض وتخرج من
  * الهيكل تماماً، فيبدو زر النشر مفقوداً.
  */
+/*
+ * الشريطُ السفليّ عائم (القاعدة ٢٢٨): المحتوى يمرّ تحته، فيُترك في آخر كلّ
+ * منطقة تمريرٍ مكانُه ليُقرأ آخرُها فوقه لا تحته.
+ */
+.screen:has(.glassbar) .scroll-area::after {
+  content: "";
+  display: block;
+  height: calc(96px + env(safe-area-inset-bottom));
+}
+
+/* على سطح المكتب يبقى في الشريط بابان (القاعدة ٢٠٠)، فالقرصُ بمقاسهما لا بعرض العمود. */
+@media (min-width: 1200px) {
+  .desk .glassbar > div {
+    max-width: 200px;
+    margin-inline: auto;
+  }
+}
+
 .shell-fixed {
   position: fixed;
   bottom: 0;
