@@ -23,6 +23,7 @@ import { watchCity } from "../lib/arrive";
 import { Suspended } from "../components/suspended";
 import { PhotoViewer } from "../components/photo-viewer";
 import { PlaceVisitors } from "../components/place-visitors";
+import { ReactSheet } from "../components/react-sheet";
 import { Tour } from "../components/tour";
 import { applyTheme, colors, themeStore, veil } from "../theme/tokens";
 import { dismissOpen } from "../lib/swipe-open";
@@ -273,6 +274,8 @@ function Gate() {
     <PhotoViewer />
     {/* «من كان هنا» لصاحب لحظة المكان — في الجذر للسبب نفسه. */}
     <PlaceVisitors />
+    {/* ولوحةُ التفاعل نافذةٌ زجاجيّة كذلك (القاعدة ٢٤٧). */}
+    <ReactSheet />
     {/* الجولةُ طبقةٌ فوق المكدّس كلّه، لمن دخل وحده. */}
     {me ? <Tour key={me.id} /> : null}
     </>

@@ -36,6 +36,7 @@ import { sweep as sweepStories } from "./services/stories";
 import { morningBell } from "./services/morning";
 import { memoryRoutes, recapRoutes } from "./routes/v1/memories";
 import { inviteRoutes } from "./routes/v1/invites";
+import { archiveRoutes } from "./routes/v1/archive";
 import { sweepPendingSignups } from "./services/auth";
 import { UNVERIFIED_MINUTES } from "@athar/shared";
 
@@ -175,6 +176,7 @@ app.route("/v1/site", siteRoutes);
 app.route("/v1/places", placeRoutes);
 app.route("/v1/memories", memoryRoutes);
 app.route("/v1/invites", inviteRoutes);
+app.route("/v1/archive", archiveRoutes);
 app.route("/v1/recap", recapRoutes);
 app.route("/v1/webhooks", webhookRoutes);
 /** بابُ اللوحة — الدور يُفحص فيه لا في العرض. */

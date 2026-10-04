@@ -263,8 +263,18 @@ export default function Me() {
             </View>
 
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 4 }}>
-              <Text style={{ color: colors.ink, fontSize: 15, fontWeight: "700" }}>لحظاتي</Text>
-              <Text style={{ color: colors.muted, fontSize: 12 }}>{ar(s?.moments ?? 0)}</Text>
+              <Text style={{ color: colors.ink, fontSize: 15, fontWeight: "700" }}>
+                لحظاتي <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "400" }}>{ar(s?.moments ?? 0)}</Text>
+              </Text>
+              {/* «أرشيفي» و«سنتك في كتاب» (القاعدة ٢٤٤): بابُهما عند لحظاتك لا بعد آخرها. */}
+              <Pressable
+                onPress={() => router.push("/me/archive" as never)}
+                hitSlop={8}
+                style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, height: 32, borderRadius: 16, backgroundColor: colors.goldSoft }}
+              >
+                <BookIcon size={14} color={colors.clayInk} />
+                <Text style={{ color: colors.clayInk, fontSize: 12.5, fontWeight: "700" }}>أرشيفي وكتاب سنتي</Text>
+              </Pressable>
             </View>
           </>
         }

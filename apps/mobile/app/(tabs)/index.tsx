@@ -1,4 +1,6 @@
 import { MemoriesCard } from "../../components/memories-card";
+import { WelcomeCard } from "../../components/welcome-card";
+import { WeeklyCard } from "../../components/weekly-card";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useBarSpace } from "../../components/glass-bar";
 import { scrolled } from "../../lib/scrolled";
@@ -601,7 +603,16 @@ function LensHead({
   }
 
   // العدسةُ الأولى: بطاقةُ اليوم — ذكرياتٌ ومناسباتٌ و«آثرك» (القاعدة ٢٣٥).
-  if (view !== "together") return <MemoriesCard />;
+  // ومعها ترحيبُ الحساب الجديد (القاعدة ٢٤٦) وملخّصُ الجمعة (القاعدة ٢٤٥).
+  if (view !== "together") {
+    return (
+      <>
+        <WelcomeCard />
+        <WeeklyCard />
+        <MemoriesCard />
+      </>
+    );
+  }
 
   if (friend) {
     return (
