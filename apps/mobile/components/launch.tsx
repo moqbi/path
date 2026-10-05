@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, Animated, Easing, Image, Platform, StyleSheet, View, useWindowDimensions } from "react-native";
+import { AccessibilityInfo, Animated, Easing, Image, StyleSheet, View, useWindowDimensions } from "react-native";
 import Svg, { Circle, Defs, Path, RadialGradient, Rect, Stop } from "react-native-svg";
 
 /**
@@ -29,21 +29,16 @@ const ICONS = [
   require("../assets/launch/morning.png"),
   require("../assets/launch/sleep.png"),
 ];
-// الشعارُ ٨٨٣×٥٨٥.
-const MARK_RATIO = 585 / 883;
+const MARK_RATIO = 905 / 1203;
 
 /*
-  الظلّ على الصورة نفسها وفي آبل وحدها: هناك يتبع حدودَ الرسم الشفّاف كـ`drop-shadow`
-  في الرسم الأصليّ، وفي غيرها يُرسم صندوقاً حول الصورة.
+  الظلالُ مرسومةٌ في الصور نفسها بهامشٍ حولها (`drop-shadow` في الرسم الأصليّ):
+  ظلُّ آبل على صورةٍ يُقصّ عند حدودها، فكان وهجُ الشعار ينقطع بخطٍّ مستقيم من
+  أسفله ويساره. والهامشُ متناظر فالمركزُ لا يتحرّك.
+  الشعارُ ٨٨٣×٥٨٥ داخل لوحةٍ ١٢٠٣×٩٠٥، والأيقونةُ ٨٨ داخل ١٣٦.
 */
-const LOGO_SHADOW =
-  Platform.OS === "ios"
-    ? { shadowColor: "#ff741a", shadowOpacity: 0.21, shadowRadius: 10, shadowOffset: { width: 0, height: 18 } }
-    : {};
-const ICON_SHADOW =
-  Platform.OS === "ios"
-    ? { shadowColor: "#000", shadowOpacity: 0.4, shadowRadius: 4, shadowOffset: { width: 0, height: 6 } }
-    : {};
+const MARK_PAD = 1203 / 883;
+const ICON_PAD = 136 / 88;
 
 const T = {
   logoIn: 250,
@@ -188,17 +183,23 @@ export function Launch({ onDone }: { onDone: () => void }) {
           return (
             <Animated.View
               key={i}
-              style={{ position: "absolute", width: iconSize, height: iconSize, transform: [{ rotate }] }}
+              style={{
+                position: "absolute",
+                width: iconSize * ICON_PAD,
+                height: iconSize * ICON_PAD,
+                alignItems: "center",
+                justifyContent: "center",
+                transform: [{ rotate }],
+              }}
             >
               <Animated.Image
                 source={source}
                 resizeMode="contain"
                 style={{
-                  width: iconSize,
-                  height: iconSize,
+                  width: iconSize * ICON_PAD,
+                  height: iconSize * ICON_PAD,
                   opacity,
                   transform: [{ translateY: lift }, { scale }],
-                  ...ICON_SHADOW,
                 }}
               />
             </Animated.View>
@@ -213,7 +214,7 @@ export function Launch({ onDone }: { onDone: () => void }) {
         >
           <Image
             source={require("../assets/launch/mark.png")}
-            style={{ width: logoW, height: logoW * MARK_RATIO, ...LOGO_SHADOW }}
+            style={{ width: logoW * MARK_PAD, height: logoW * MARK_PAD * MARK_RATIO }}
             resizeMode="contain"
           />
         </Animated.View>
