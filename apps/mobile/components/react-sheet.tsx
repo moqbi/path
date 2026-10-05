@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { create } from "zustand";
 import { Text, TextInput } from "./type";
-import { GlassSheet } from "./glass-sheet";
+import { GlassSheet, SheetScrollView } from "./glass-sheet";
 import { ReactionGlyph, facesFor, CUSTOM, EMOJI_GROUPS } from "./reactions";
 import { EyeIcon, LockIcon, TrashIcon, UnlockIcon } from "./icons";
 import { ReportButton } from "./report-sheet";
@@ -94,7 +94,8 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
       subtitle={author ? "قفلُ التعليقات ومن شاهدها" : locked ? "التعليقات مقفلة — التفاعل مفتوح" : "وجهٌ أو تعليق"}
       onClose={close}
     >
-      <ScrollView
+      <SheetScrollView
+        name="body"
         style={{ flexGrow: 0 }}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 16, gap: 14 }}
@@ -178,7 +179,8 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
                   </Pressable>
                 </View>
                 {board ? (
-                  <ScrollView
+                  <SheetScrollView
+                    name="emoji"
                     nestedScrollEnabled
                     keyboardShouldPersistTaps="handled"
                     style={{ maxHeight: 220, marginTop: 8, borderRadius: 18, backgroundColor: "rgba(255,255,255,.07)" }}
@@ -200,7 +202,7 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
                         </View>
                       </View>
                     ))}
-                  </ScrollView>
+                  </SheetScrollView>
                 ) : null}
               </View>
             ) : (
@@ -306,7 +308,7 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
             <ReportButton target="MOMENT" targetId={momentId} tone="glass" />
           </View>
         )}
-      </ScrollView>
+      </SheetScrollView>
     </GlassSheet>
   );
 }

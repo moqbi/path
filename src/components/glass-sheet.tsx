@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Portal } from "@/components/sheet";
 import { CloseIcon } from "@/components/icons";
 
@@ -9,7 +9,7 @@ import { CloseIcon } from "@/components/icons";
  * زجاجٌ داكن طافٍ فوق أسفل الشاشة **بلا حجابٍ خلفه** — **بقرار المالك**، فالصفحةُ
  * تبقى كما هي وراءها. وتُغلق بالضغط خارجها، وبـEsc، وبسحب رأسها إلى أسفل.
  *
- * **والسحبُ من رأسها وحده** لا من جسمها: فيه لوحةُ إيموجي تُمرَّر وحقلُ كتابة.
+ * **والسحبُ إلى أسفل من أيّ موضعٍ فيها** ما دام جسمُها في أعلاه (وبالفأرة من رأسها).
  * وتُرسم على جسد الصفحة (القاعدة ٩٢)، فـ`.shell-fixed` لا تصلها — عرضُها هنا.
  */
 export function GlassSheet({
@@ -28,6 +28,10 @@ export function GlassSheet({
 }) {
   const box = useRef<HTMLDivElement>(null);
   const head = useRef<HTMLDivElement>(null);
+  const body = useRef<HTMLDivElement>(null);
+  // العنصرُ في حالةٍ لا في مرجعٍ وحده: البوّابةُ ترسم ما فيها بعد أوّل رسمة، فتأثيرٌ
+  // يقرأ المرجعَ ساعتها يجده فارغاً ولا يركّب مستمعاً — وكان السحبُ لا يعمل.
+  const [sheetEl, setSheetEl] = useState<HTMLDivElement | null>(null);
   const close = useRef(onClose);
   close.current = onClose;
   const holding = useRef(keep);
@@ -52,54 +56,111 @@ export function GlassSheet({
   }, []);
 
   // سحبُ الرأس إلى أسفل: النافذةُ تتبع الإصبع، وما تجاوز ٩٠ يُغلقها.
+  // السحبُ إلى أسفل من أيّ موضعٍ فيها — **بقرار المالك**، كالجوّال — ما دام جسمُها
+  // في أعلاه: تتبع الإصبع وتصغر وتبهت، وما تجاوز الحدّ أو أُفلت بسرعةٍ يُكمل نزولَه
+  // ويُغلقها، وإلّا عادت. والالتقاطُ بعد أن تثبت السحبةُ رأسيّةً، فالنقرُ والكتابةُ لهما.
   useEffect(() => {
-    const el = head.current;
-    const sheet = box.current;
-    if (!el || !sheet) return;
+    const sheet = sheetEl;
+    const scroller = body.current;
+    if (!sheet) return;
+    let startX = 0;
     let startY: number | null = null;
+    let startAt = 0;
     let dy = 0;
-    const paint = (value: number) => {
-      sheet.style.transition = value ? "none" : "transform 180ms ease-out";
-      sheet.style.transform = `translateX(-50%) translateY(${value}px)`;
+    let dragging = false;
+    const paint = (value: number, animate: boolean) => {
+      const shrink = 1 - Math.min(value, 320) / 4000;
+      sheet.style.transition = animate ? "transform 220ms cubic-bezier(.4,0,1,1), opacity 220ms" : "none";
+      sheet.style.transform = `translateX(-50%) translateY(${value}px) scale(${shrink})`;
+      sheet.style.opacity = String(1 - Math.min(value, 320) / 800);
+    };
+    const reset = () => {
+      sheet.style.transition = "transform 260ms cubic-bezier(.2,1.3,.4,1), opacity 200ms";
+      sheet.style.transform = "translateX(-50%)";
+      sheet.style.opacity = "1";
     };
     const start = (event: PointerEvent) => {
-      if ((event.target as HTMLElement).closest("button")) return;
+      if (event.pointerType === "mouse" && !head.current?.contains(event.target as Node)) return;
+      if ((event.target as HTMLElement).closest("button, a, input, textarea")) return;
+      if (scroller && scroller.scrollTop > 2 && !head.current?.contains(event.target as Node)) return;
+      startX = event.clientX;
       startY = event.clientY;
+      startAt = event.timeStamp;
       dy = 0;
-      el.setPointerCapture(event.pointerId);
+      dragging = false;
     };
     const move = (event: PointerEvent) => {
       if (startY === null) return;
-      dy = Math.max(0, event.clientY - startY);
-      paint(dy);
+      const dx = event.clientX - startX;
+      dy = event.clientY - startY;
+      if (!dragging) {
+        if (dy > 8 && dy > Math.abs(dx) * 1.4) {
+          dragging = true;
+          sheet.setPointerCapture(event.pointerId);
+        } else if (Math.abs(dx) > 10 || dy < -8) {
+          startY = null;
+          return;
+        } else return;
+      }
+      event.preventDefault();
+      paint(Math.max(0, dy), false);
     };
-    const end = () => {
+    const end = (event: PointerEvent) => {
       if (startY === null) return;
       startY = null;
-      if (dy > 90) close.current();
-      else paint(0);
+      if (!dragging) return;
+      dragging = false;
+      const fast = dy / Math.max(1, event.timeStamp - startAt) > 0.9;
+      if (dy > 90 || fast) {
+        paint(window.innerHeight, true);
+        setTimeout(() => close.current(), 210);
+      } else reset();
     };
-    el.addEventListener("pointerdown", start);
-    el.addEventListener("pointermove", move);
-    el.addEventListener("pointerup", end);
-    el.addEventListener("pointercancel", end);
+    // اللمسُ: المتصفّحُ يأخذ السحبة تمريراً ويُلغي `pointer` — فيُمنع ذلك ما دام
+    // الجسمُ في أعلاه والإصبعُ ينزل (مستمعٌ أصليّ `passive: false` — القاعدة ١٤).
+    let touchY = 0;
+    const touchStart = (event: TouchEvent) => {
+      touchY = event.touches[0]?.clientY ?? 0;
+    };
+    const touchMove = (event: TouchEvent) => {
+      const down = (event.touches[0]?.clientY ?? 0) - touchY > 0;
+      const top = !scroller || scroller.scrollTop <= 2;
+      if (dragging || (down && top && startY !== null)) event.preventDefault();
+    };
+    sheet.addEventListener("touchstart", touchStart, { passive: true });
+    sheet.addEventListener("touchmove", touchMove, { passive: false });
+    sheet.addEventListener("pointerdown", start);
+    sheet.addEventListener("pointermove", move);
+    sheet.addEventListener("pointerup", end);
+    sheet.addEventListener("pointercancel", end);
     return () => {
-      el.removeEventListener("pointerdown", start);
-      el.removeEventListener("pointermove", move);
-      el.removeEventListener("pointerup", end);
-      el.removeEventListener("pointercancel", end);
+      sheet.removeEventListener("touchstart", touchStart);
+      sheet.removeEventListener("touchmove", touchMove);
+      sheet.removeEventListener("pointerdown", start);
+      sheet.removeEventListener("pointermove", move);
+      sheet.removeEventListener("pointerup", end);
+      sheet.removeEventListener("pointercancel", end);
     };
-  }, []);
+  }, [sheetEl]);
 
   return (
     <Portal>
       <div
-        ref={box}
+        ref={(el) => {
+          box.current = el;
+          setSheetEl(el);
+        }}
         role="dialog"
         aria-label={title}
         // الضغطُ داخلها لا يصعد إلى رابط اللحظة تحتها (القاعدة ٢٨) — والبوّابةُ
         // تُصعِد أحداث React في شجرة المكوّنات لا في المستند.
         onClick={(event) => event.stopPropagation()}
+        // ومثلُها أحداثُ المؤشّر: كانت تصعد إلى صفّ سحبٍ (`SwipeRow`) فوق البطاقة
+        // فيحاول إفلاتَ مؤشّرٍ أمسكته النافذة ويرمي خطأً.
+        onPointerDown={(event) => event.stopPropagation()}
+        onPointerMove={(event) => event.stopPropagation()}
+        onPointerUp={(event) => event.stopPropagation()}
+        onPointerCancel={(event) => event.stopPropagation()}
         className="fixed z-50 overflow-hidden"
         style={{
           left: "50%",
@@ -117,7 +178,8 @@ export function GlassSheet({
           WebkitBackdropFilter: "blur(28px) saturate(1.4)",
           boxShadow: "0 10px 40px rgba(0,0,0,.38)",
           color: "#fff",
-          animation: "athr-glass-up 260ms cubic-bezier(.2,1.2,.4,1) both",
+          // `backwards` لا `both`: ما يبقى بعد الحركة يكتب فوق `transform` الذي يرسمه السحب.
+          animation: "athr-glass-up 260ms cubic-bezier(.2,1.2,.4,1) backwards",
         }}
       >
         <div ref={head} className="shrink-0 cursor-grab select-none" style={{ touchAction: "none" }}>
@@ -147,7 +209,9 @@ export function GlassSheet({
           </div>
           <div className="mx-[18px] h-px" style={{ background: "rgba(255,255,255,.1)" }} />
         </div>
-        <div className="no-bar min-h-0 grow overflow-y-auto">{children}</div>
+        <div ref={body} className="no-bar min-h-0 grow overflow-y-auto" style={{ overscrollBehavior: "contain" }}>
+          {children}
+        </div>
       </div>
     </Portal>
   );

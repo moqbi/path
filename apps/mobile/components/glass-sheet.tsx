@@ -1,5 +1,6 @@
-import { useRef } from "react";
-import { Animated, Dimensions, KeyboardAvoidingView, Modal, PanResponder, Platform, Pressable, View } from "react-native";
+import { createContext, useCallback, useContext, useRef } from "react";
+import { Animated, Dimensions, Easing, KeyboardAvoidingView, Modal, PanResponder, Platform, Pressable, ScrollView, View } from "react-native";
+import type { NativeScrollEvent, NativeSyntheticEvent, ScrollViewProps } from "react-native";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "./type";
@@ -8,15 +9,36 @@ import { CloseIcon } from "./icons";
 const DISMISS = 90;
 
 /**
+ * ما في جسم النافذة من قوائمَ تُمرَّر يقول هنا أهو في أعلاه: السحبُ إلى أسفل
+ * يُغلق النافذة ما دامت كلُّها في أعلاها، ويمرّر القائمةَ إن لم تكن.
+ */
+const Scrolls = createContext<((key: string, top: boolean) => void) | null>(null);
+
+/** `onScroll` لقائمةٍ داخل `GlassSheet`: تُبلغ النافذةَ أهي في أعلاها. */
+export function useSheetScroll(key: string) {
+  const report = useContext(Scrolls);
+  return useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => report?.(key, event.nativeEvent.contentOffset.y <= 2),
+    [report, key],
+  );
+}
+
+/**
  * النافذةُ الزجاجيّة — قشرةٌ واحدة لـ«من كان هنا» (القاعدة ٢٣٠) ولوحة التفاعل
  * (القاعدة ٢٤٧): زجاجُ الشريط السفليّ نفسه (القاعدة ٢٢٨)، طافيةٌ فوق أسفل
  * الشاشة، وتُغلق بالضغط خارجها وبسحبها إلى أسفل (القاعدة ٧٨) وتتبع الإصبع.
  *
- * **والسحبُ من رأسها وحده** لا من جسمها: في جسمها لوحةُ إيموجي تُمرَّر
- * وحقلُ كتابة، وسحبٌ يُلتقط من أيّ مكانٍ كان سيأخذ تمريرَ اللوحة.
+ * **والسحبُ إلى أسفل من أيّ موضعٍ فيها** ما دامت قوائمُها في أعلاها
+ * (`useSheetScroll`) — فلوحةُ الإيموجي وما يُمرَّر لا تُؤخذ منهما سحبتُهما.
  * وتصعد فوق الكيبورد (`KeyboardAvoidingView`) فحقلُ التعليق يُرى وهو يُكتب.
  * وتُركَّب في الجذر (القاعدة ١٣٧).
  */
+/** قائمةٌ تُمرَّر داخل النافذة وتُبلغها أهي في أعلاها. */
+export function SheetScrollView({ name, ...props }: ScrollViewProps & { name: string }) {
+  const onScroll = useSheetScroll(name);
+  return <ScrollView {...props} onScroll={onScroll} scrollEventThrottle={16} />;
+}
+
 export function GlassSheet({
   icon,
   title,
@@ -34,24 +56,49 @@ export function GlassSheet({
   const drag = useRef(new Animated.Value(0)).current;
   const height = Dimensions.get("window").height;
 
-  const close = () => {
-    onClose();
-    drag.setValue(0);
-  };
+  // لا إعادةَ لـ`drag` بعد الإغلاق: النافذةُ تُزال من الشجرة، وإعادتُها إلى
+  // الصفر قبل ذلك كانت تُرجعها إلى مكانها لحظةً قبل أن تختفي.
+  const close = () => onClose();
 
+  // قوائمُ الجسم في أعلاها؟ — بلا قائمةٍ مُبلِغة فالجسمُ كلّه «في أعلاه».
+  const away = useRef(new Set<string>()).current;
+  const report = useCallback(
+    (key: string, top: boolean) => {
+      if (top) away.delete(key);
+      else away.add(key);
+    },
+    [away],
+  );
+
+  // السحبُ إلى أسفل من أيّ موضعٍ فيها — **بقرار المالك** — تتبعه وتصغر وتبهت
+  // قليلاً، وما تجاوز الحدّ أو أُفلت بسرعةٍ يُكمل نزولَه ويُغلقها، وإلّا عادت.
+  const downward = (g: { dx: number; dy: number }) => g.dy > 8 && g.dy > Math.abs(g.dx) * 1.4;
   const pan = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) => g.dy > 6 && Math.abs(g.dy) > Math.abs(g.dx),
+      // الالتقاطُ في طور الهبوط: الزرُّ والقائمةُ تحت الإصبع كانا يأخذان السحبة.
+      onMoveShouldSetPanResponderCapture: (_, g) => downward(g) && away.size === 0,
+      onMoveShouldSetPanResponder: (_, g) => downward(g),
+      onPanResponderTerminationRequest: () => false,
       onPanResponderMove: (_, g) => drag.setValue(Math.max(0, g.dy)),
       onPanResponderRelease: (_, g) => {
-        if (g.dy > DISMISS || g.vy > 1.2) {
-          Animated.timing(drag, { toValue: height, duration: 180, useNativeDriver: true }).start(close);
+        if (g.dy > DISMISS || g.vy > 1.1) {
+          Animated.timing(drag, {
+            toValue: height,
+            duration: 220,
+            easing: Easing.in(Easing.cubic),
+            useNativeDriver: true,
+          }).start(({ finished }) => finished && close());
         } else {
-          Animated.spring(drag, { toValue: 0, useNativeDriver: true }).start();
+          Animated.spring(drag, { toValue: 0, useNativeDriver: true, bounciness: 6 }).start();
         }
       },
+      onPanResponderTerminate: () => Animated.spring(drag, { toValue: 0, useNativeDriver: true }).start(),
     }),
   ).current;
+
+  // الأثر: تصغر حتى ٩٢٪ وتبهت حتى ٦٠٪ كلّما نزلت.
+  const scale = drag.interpolate({ inputRange: [0, 320], outputRange: [1, 0.92], extrapolate: "clamp" });
+  const fade = drag.interpolate({ inputRange: [0, 320], outputRange: [1, 0.6], extrapolate: "clamp" });
 
   return (
     <Modal transparent animationType="slide" onRequestClose={close} statusBarTranslucent>
@@ -61,11 +108,13 @@ export function GlassSheet({
         <Pressable style={{ flex: 1 }} onPress={close} />
 
         <Animated.View
+          {...pan.panHandlers}
           style={{
             marginHorizontal: 10,
             marginBottom: Math.max(insets.bottom, 12),
             maxHeight: height * 0.78,
-            transform: [{ translateY: drag }],
+            transform: [{ translateY: drag }, { scale }],
+            opacity: fade,
             borderRadius: 30,
             shadowColor: "#000",
             shadowOpacity: 0.38,
@@ -87,7 +136,7 @@ export function GlassSheet({
               <BlurView intensity={70} tint="systemUltraThinMaterialDark" style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0 }} />
             ) : null}
 
-            <View {...pan.panHandlers}>
+            <View>
               <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: "rgba(255,255,255,.3)", alignSelf: "center", marginTop: 10 }} />
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, paddingTop: 12, paddingBottom: 14 }}>
                 {icon ? (
@@ -118,7 +167,7 @@ export function GlassSheet({
               <View style={{ height: 1, backgroundColor: "rgba(255,255,255,.1)", marginHorizontal: 18 }} />
             </View>
 
-            {children}
+            <Scrolls.Provider value={report}>{children}</Scrolls.Provider>
           </View>
         </Animated.View>
       </KeyboardAvoidingView>
