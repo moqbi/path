@@ -19,11 +19,15 @@ export const REACTION_SRC: Record<string, string> = {
   GASP: asset("/reactions/gasp.png"),
   SAD: asset("/reactions/sad.png"),
   LOVE: asset("/reactions/love.png"),
+  CAMERA: asset("/reactions/camera.png"),
+  CHAT: asset("/reactions/chat.png"),
+  PIN: asset("/reactions/pin.png"),
   SLEEPY: asset("/reactions/sleepy.png"),
 };
 
 /** الوجوه العامة، ثم النوم — يُعرض لكل اللحظات وهو الأنسب للحظة نوم. */
-const OPEN_FACES = ["SMILE", "LAUGH", "GASP", "SAD", "LOVE"] as const;
+// والكاميرا والفقاعة والدبّوس بعد الوجوه الخمسة على كل لحظة (القاعدة ٢٥٧).
+const OPEN_FACES = ["SMILE", "LAUGH", "GASP", "SAD", "LOVE", "CAMERA", "CHAT", "PIN"] as const;
 
 /**
  * الوجوه المعروضة للحظة.

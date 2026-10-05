@@ -127,7 +127,8 @@ export function ReactSheet({
           </div>
         ) : (
           <>
-            <div className="flex justify-between">
+            {/* صفٌّ واحدٌ يُمرَّر يميناً ويساراً لا صفّان (القاعدة ٢٥٧). */}
+            <div className="no-bar -mx-4 flex gap-2.5 overflow-x-auto px-4 py-1">
               {faces.map((kind, index) => {
                 const on = mine?.kind === kind;
                 return (
@@ -136,7 +137,7 @@ export function ReactSheet({
                     type="button"
                     aria-label={kind}
                     onClick={() => onChoose(kind)}
-                    className="flex items-center justify-center rounded-full transition-transform hover:scale-110 active:scale-110"
+                    className="flex shrink-0 items-center justify-center rounded-full transition-transform hover:scale-110 active:scale-110"
                     style={{
                       width: 56,
                       height: 56,

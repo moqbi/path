@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ActivityIndicator, Pressable, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { create } from "zustand";
@@ -132,8 +132,16 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
           </View>
         ) : (
           <>
-            {/* الوجوه الخمسة كبيرةً — القاعدة ٣ — والمختارُ في قرصٍ مضيء. */}
-            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+            {/*
+              التفاعلاتُ كبيرةً — القاعدة ٣ — والمختارُ في قرصٍ مضيء. صفٌّ واحدٌ يُمرَّر
+              يميناً ويساراً لا صفّان (القاعدة ٢٥٧): ثمانيةٌ بـ٥٦ لا تتّسع لشاشة.
+            */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ marginHorizontal: -16, flexGrow: 0 }}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 10, flexDirection: "row", direction: "rtl" }}
+            >
               {faces.map((kind) => {
                 const on = mine?.kind === kind;
                 return (
@@ -155,7 +163,7 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
                   </Pressable>
                 );
               })}
-            </View>
+            </ScrollView>
 
             {/* الإيموجي الحرّ — لمشتركي آثار+، ولغيرهم بابُ الاشتراك. */}
             {isPlus ? (
