@@ -59,11 +59,30 @@ export function PlaceVisitors() {
   };
 
   // تُغلق بسحبها إلى أسفل (القاعدة ٧٨) وتتبع الإصبع.
+  // واللمسةُ التي لا يأخذها أحد — الرأسُ ومقبضُه وعنوانُه — تأخذها النافذةُ من أوّلها
+  // (القاعدة ٢٤٧): بلا مستجيبٍ ساعةَ البدء لا تُسأل عن الحركة بعدها على الجهاز.
+  const downward = (g: { dx: number; dy: number }) => g.dy > 6 && Math.abs(g.dy) > Math.abs(g.dx);
+  const pulling = useRef(false);
   const pan = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) => g.dy > 6 && Math.abs(g.dy) > Math.abs(g.dx),
-      onPanResponderMove: (_, g) => drag.setValue(Math.max(0, g.dy)),
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, g) => downward(g),
+      onPanResponderGrant: (_, g) => {
+        pulling.current = downward(g);
+      },
+      // ما لم تثبت السحبةُ نازلةً تُسلَّم اللمسةُ للقائمة تُمرَّر.
+      onPanResponderTerminationRequest: () => !pulling.current,
+      onPanResponderTerminate: () => {
+        pulling.current = false;
+        Animated.spring(drag, { toValue: 0, useNativeDriver: true }).start();
+      },
+      onPanResponderMove: (_, g) => {
+        if (!pulling.current && downward(g)) pulling.current = true;
+        if (pulling.current) drag.setValue(Math.max(0, g.dy));
+      },
       onPanResponderRelease: (_, g) => {
+        if (!pulling.current) return;
+        pulling.current = false;
         if (g.dy > DISMISS || g.vy > 1.2) {
           Animated.timing(drag, { toValue: height, duration: 180, useNativeDriver: true }).start(close);
         } else {
