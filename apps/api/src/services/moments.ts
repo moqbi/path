@@ -14,7 +14,8 @@ import { push } from "./push";
 /**
  * جمهور اللحظة.
  *
- * `CIRCLE` أو تصنيفٌ يملكه الناشر أو أشخاصٌ بأعيانهم من دائرته. وحين لا
+ * `CIRCLE` أو تصنيفٌ يملكه الناشر أو الدائرةُ ما عدا تصنيفاً منها أو
+ * أشخاصٌ بأعيانهم من دائرته. وحين لا
  * يُذكر جمهورٌ يُطبَّق تصنيفه الافتراضي من الخصوصية — «من يمكنه رؤية
  * لحظاتي» — فالإعداد يعمل بلا أن يتذكّره أحد.
  *
@@ -29,14 +30,15 @@ export async function readAudience(userId: string, input: MomentInput) {
     return { audience: "PICKED" as const, audienceGroupId: null, viewers };
   }
 
-  if (input.audience === "GROUP") {
+  // تصنيفٌ يراها وحده، أو تصنيفٌ يُستثنى منها والدائرةُ كلُّها سواه (القاعدة ٢٥٥).
+  if (input.audience === "GROUP" || input.audience === "EXCEPT") {
     if (!input.audienceGroupId) throw badRequest("اختر التصنيف");
     const group = await prisma.friendGroup.findFirst({
       where: { id: input.audienceGroupId, ownerId: userId },
       select: { id: true },
     });
     if (!group) throw notFound("التصنيف غير موجود");
-    return { audience: "GROUP" as const, audienceGroupId: group.id, viewers: [] };
+    return { audience: input.audience, audienceGroupId: group.id, viewers: [] };
   }
 
   const row = await prisma.user.findUnique({

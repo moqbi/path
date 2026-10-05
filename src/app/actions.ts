@@ -303,7 +303,8 @@ async function attachTags(momentId: string, authorId: string, userIds: string[])
 /**
  * جمهور اللحظة من النموذج.
  *
- * `audience` إما `CIRCLE` أو معرّف تصنيف أو `PICKED` ومعها المختارون.
+ * `audience` إما `CIRCLE` أو معرّف تصنيف أو `PICKED` ومعها المختارون، أو
+ * `EXCEPT` ومعها `exceptGroup` — الدائرةُ ما عدا ذلك التصنيف.
  * وحين لا يختار الناشر شيئاً يُطبَّق تصنيفه الافتراضي من الخصوصية —
  * «من يمكنه رؤية لحظاتي» — فالإعداد يعمل بلا أن يتذكّره أحد.
  */
@@ -311,12 +312,22 @@ async function readAudience(
   formData: FormData,
   user: { id: string },
 ): Promise<{
-  audience: "CIRCLE" | "GROUP" | "PICKED";
+  audience: "CIRCLE" | "GROUP" | "PICKED" | "EXCEPT";
   audienceGroupId: string | null;
   viewers: string[];
 }> {
   const raw = String(formData.get("audience") ?? "").trim();
   const circle = new Set(await circleIds(user.id));
+
+  // الدائرةُ كلُّها ما عدا تصنيفاً (القاعدة ٢٥٥).
+  if (raw === "EXCEPT") {
+    const group = await prisma.friendGroup.findFirst({
+      where: { id: String(formData.get("exceptGroup") ?? ""), ownerId: user.id },
+      select: { id: true },
+    });
+    if (!group) throw new Error("اختر التصنيف الذي لا يراها");
+    return { audience: "EXCEPT", audienceGroupId: group.id, viewers: [] };
+  }
 
   if (raw === "PICKED") {
     const viewers = formData

@@ -10,6 +10,25 @@ import { PrintButton } from "./print-button";
 
 type Moment = Awaited<ReturnType<typeof book>>["moments"][number];
 
+const WEEKDAYS = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+
+const names = (list: string[]) =>
+  list.length <= 1 ? list.join("") : `${list.slice(0, -1).join("، ")} و${list.at(-1)}`;
+
+/** لمن كانت اللحظة الخاصّة — بلسان صاحبها (القاعدة ٢٥٦). */
+function privateNote(moment: Moment): string | null {
+  const p = moment.private;
+  if (!p) return null;
+  if (p.audience === "PICKED") return p.people.length ? `لحظة خاصة — شاركتها مع ${names(p.people)}` : "لحظة خاصة";
+  if (p.audience === "GROUP") return p.group ? `لحظة خاصة — لتصنيف ${p.group}` : "لحظة خاصة";
+  return p.group ? `لحظة خاصة — للكل ما عدا ${p.group}` : "لحظة خاصة";
+}
+
+function clock(at: Date): string {
+  const h = at.getHours();
+  return `${ar(h % 12 || 12)}:${ar(String(at.getMinutes()).padStart(2, "0"))} ${h < 12 ? "ص" : "م"}`;
+}
+
 function line(moment: Moment): string {
   switch (moment.kind) {
     case "PLACE":
@@ -28,9 +47,8 @@ function line(moment: Moment): string {
 }
 
 /**
- * «سنتك في كتاب» على الويب (القاعدة ٢٤٤): صفحاتٌ تُقرأ ثمّ تُطبع — كلُّ لحظةٍ
- * صفحة (`break-after`) — فالطباعةُ ورقٌ حقيقيّ أو PDF يُحفظ. كانت بطاقةً
- * تَعِد «مطبوعة ومرسلة لبابك» ولا خدمةَ خلفها.
+ * «سنتك في كتاب» على الويب (القاعدة ٢٤٤): صفحاتٌ تُقرأ ثمّ تُطبع — **كلُّ يومٍ
+ * صفحة** ولحظاتُه مرقّمةٌ فيها (القاعدة ٢٥٦) — فالطباعةُ ورقٌ حقيقيّ أو PDF يُحفظ.
  */
 export default async function BookPage({ params }: { params: Promise<{ year: string }> }) {
   const user = await currentUser();
@@ -40,18 +58,19 @@ export default async function BookPage({ params }: { params: Promise<{ year: str
   const data = await book(user.id, year);
   const s = data.stats;
 
-  const sections: { month: number; items: Moment[] }[] = [];
-  for (const moment of data.moments) {
-    const month = moment.createdAt.getMonth();
+  const sections: { month: number; days: typeof data.days }[] = [];
+  for (const day of data.days) {
+    const month = Number(day.day.slice(5, 7)) - 1;
     const last = sections.at(-1);
-    if (last && last.month === month) last.items.push(moment);
-    else sections.push({ month, items: [moment] });
+    if (last && last.month === month) last.days.push(day);
+    else sections.push({ month, days: [day] });
   }
 
   return (
     <div className="screen book">
       <style>{`
-        .book .page { break-after: page; break-inside: avoid; }
+        .book .page { break-after: page; }
+        .book .moment { break-inside: avoid; }
         @media print {
           .screen, .scroll-area, .shell { height: auto !important; overflow: visible !important; }
           .chrome, .tabbar, .no-print, nav { display: none !important; }
@@ -62,7 +81,9 @@ export default async function BookPage({ params }: { params: Promise<{ year: str
       <ScreenHeader title={`كتاب ${ar(year)}`} back="/archive" mark />
       <main className="scroll-area px-5 pb-10 pt-4">
         <div className="no-print mb-4 flex items-center justify-between gap-3">
-          <p className="text-[12px] text-muted">{ar(data.moments.length)} لحظة — كلّ لحظة صفحة</p>
+          <p className="text-[12px] text-muted">
+            {ar(data.moments.length)} لحظة في {ar(data.days.length)} يوماً — كلّ يوم صفحة
+          </p>
           <PrintButton />
         </div>
 
@@ -112,30 +133,64 @@ export default async function BookPage({ params }: { params: Promise<{ year: str
             <section className="page mb-4 flex flex-col items-center justify-center rounded-3xl p-8" style={{ background: "var(--color-gold-soft)", minHeight: 240 }}>
               <p className="text-[14px] font-bold" style={{ color: "var(--color-clay-ink)" }}>{ar(year)}</p>
               <p className="mt-1 text-[42px] font-extrabold">{MONTHS[section.month]}</p>
-              <p className="mt-1 text-[13px] text-muted">{ar(section.items.length)} لحظة</p>
+              <p className="mt-1 text-[13px] text-muted">{ar(section.days.reduce((sum, day) => sum + day.moments.length, 0))} لحظة</p>
             </section>
-            {section.items.map((moment) => (
-              <Link key={moment.id} href={`/m/${moment.id}`} className="page mb-4 block overflow-hidden rounded-3xl border border-line bg-card">
-                {moment.mediaId ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={`${BASE}/api/media/${moment.mediaId}`}
-                    alt=""
-                    className="w-full object-cover"
-                    style={{ aspectRatio: "5 / 4", objectPosition: `${moment.photoX ?? 50}% ${moment.photoY ?? 50}%` }}
-                  />
-                ) : null}
-                <div className="p-5">
-                  <p className="mb-2 text-[12.5px] text-muted">
-                    {ar(moment.createdAt.getDate())} {MONTHS[moment.createdAt.getMonth()]}
-                    {moment.placeName && moment.kind !== "PLACE" ? ` · ${moment.placeName}` : ""}
-                  </p>
-                  {line(moment) ? (
-                    <p className={moment.mediaId ? "text-[15px] leading-relaxed" : "text-[21px] font-bold leading-relaxed"}>{line(moment)}</p>
-                  ) : null}
-                </div>
-              </Link>
-            ))}
+            {section.days.map((day) => {
+              const [y, m, d] = day.day.split("-").map(Number);
+              return (
+                <section key={day.day} className="page mb-4 rounded-3xl border border-line bg-card p-5">
+                  <div className="mb-4 flex items-baseline justify-between border-b-2 pb-2" style={{ borderColor: "#F6B93B" }}>
+                    <p className="text-[24px] font-extrabold">
+                      {ar(d)} {MONTHS[m - 1]}
+                    </p>
+                    <p className="text-[12.5px] text-muted">
+                      {WEEKDAYS[new Date(y, m - 1, d).getDay()]} · {ar(day.moments.length)} لحظة
+                    </p>
+                  </div>
+                  <ol className="flex flex-col gap-4">
+                    {day.moments.map((moment, index) => {
+                      const note = privateNote(moment);
+                      return (
+                        <li key={moment.id} className="moment flex gap-2.5">
+                          <span
+                            className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full text-[12.5px] font-extrabold"
+                            style={{ background: "var(--color-night)", color: "#F6B93B" }}
+                          >
+                            {ar(index + 1)}
+                          </span>
+                          <Link href={`/m/${moment.id}`} className="block min-w-0 flex-1">
+                            <p className="mb-1 text-[11.5px] text-muted">
+                              {clock(moment.createdAt)}
+                              {moment.placeName && moment.kind !== "PLACE" ? ` · ${moment.placeName}` : ""}
+                            </p>
+                            {moment.mediaId ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={`${BASE}/api/media/${moment.mediaId}`}
+                                alt=""
+                                className="mb-1.5 w-full rounded-xl object-cover"
+                                style={{ aspectRatio: "5 / 4", objectPosition: `${moment.photoX ?? 50}% ${moment.photoY ?? 50}%` }}
+                              />
+                            ) : null}
+                            {line(moment) ? (
+                              <p className={moment.mediaId ? "text-[14.5px] leading-relaxed" : "text-[16.5px] font-bold leading-relaxed"}>
+                                {line(moment)}
+                              </p>
+                            ) : null}
+                            {moment.with.length ? <p className="mt-0.5 text-[12.5px] text-ink-2">مع {names(moment.with)}</p> : null}
+                            {note ? (
+                              <p className="mt-1.5 inline-block rounded-lg px-2 py-0.5 text-[11.5px]" style={{ background: "var(--color-gold-soft)", color: "var(--color-clay-ink)" }}>
+                                {note}
+                              </p>
+                            ) : null}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </section>
+              );
+            })}
           </div>
         ))}
 

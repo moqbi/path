@@ -44,7 +44,7 @@ export const momentInput = z.object({
   photoX: z.number().int().min(0).max(100).optional(),
   photoY: z.number().int().min(0).max(100).optional(),
   with: z.array(cuid).max(20).optional(),
-  audience: z.enum(["CIRCLE", "GROUP", "PICKED"]).default("CIRCLE"),
+  audience: z.enum(["CIRCLE", "GROUP", "PICKED", "EXCEPT"]).default("CIRCLE"),
   audienceGroupId: cuid.optional(),
   viewers: z.array(cuid).max(150).optional(),
   lat: z.coerce.number().min(-90).max(90).optional(),

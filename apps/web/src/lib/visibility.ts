@@ -47,6 +47,8 @@ export async function visibleWhere(userId: string) {
         audienceGroup: { members: { some: { userId } } },
       },
       { audience: "PICKED" as const, viewers: { some: { userId } } },
+      // الكلُّ ما عدا تصنيفاً: من ليس فيه. وتصنيفٌ حُذف لا يفتحها لأحد (القاعدة ٢٥٥).
+      { audience: "EXCEPT" as const, audienceGroup: { members: { none: { userId } } } },
     ],
   };
 }

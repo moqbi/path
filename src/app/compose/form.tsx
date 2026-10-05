@@ -51,6 +51,8 @@ export function ComposeForm({
   // الجمهور: «CIRCLE»، أو معرّف تصنيف، أو «PICKED» ومعها المختارون.
   const [audience, setAudience] = useState<string>(defaultGroupId ?? "CIRCLE");
   const [viewers, setViewers] = useState<string[]>([]);
+  // «الكل ما عدا…»: التصنيفُ الذي لا يراها (القاعدة ٢٥٥).
+  const [except, setExcept] = useState<string | null>(null);
   // أيّ قائمةِ أشخاصٍ مفتوحة الآن — الاختيار في نافذة لا في جدارِ أزرار.
   const [sheet, setSheet] = useState<"with" | "viewers" | null>(null);
   const [wantPlace, setWantPlace] = useState(kind === "PLACE");
@@ -111,7 +113,8 @@ export function ComposeForm({
 
   const ready =
     (kind === "PLACE" ? fix !== null : kind === "MUSIC" ? musicUrl.trim().length > 8 : true) &&
-    (audience !== "PICKED" || viewers.length > 0);
+    (audience !== "PICKED" || viewers.length > 0) &&
+    (audience !== "EXCEPT" || except !== null);
 
   const nameOf = (id: string) => friends.find((friend) => friend.id === id)?.name ?? "";
   /** «مع فلان»، «مع فلان و٢ آخرين» — لا جدار أسماء. */
@@ -386,6 +389,7 @@ export function ComposeForm({
             {[
               { id: "CIRCLE", label: "كل أصدقائي" },
               ...groups.map((group) => ({ id: group.id, label: group.name })),
+              ...(groups.length ? [{ id: "EXCEPT", label: "الكل ما عدا…" }] : []),
               { id: "PICKED", label: "أشخاص أختارهم" },
             ].map((option) => {
               const on = audience === option.id;
@@ -409,6 +413,33 @@ export function ComposeForm({
               );
             })}
           </div>
+
+          {audience === "EXCEPT" ? (
+            <div className="mt-3">
+              <p className="mb-2 text-[11.5px] text-faint">يشوفها كل أصدقائك ما عدا تصنيف:</p>
+              <div className="flex flex-wrap gap-2">
+                {groups.map((group) => {
+                  const on = except === group.id;
+                  return (
+                    <button
+                      key={group.id}
+                      type="button"
+                      onClick={() => setExcept(group.id)}
+                      className="min-h-11 rounded-full border px-4 text-[13px] font-medium"
+                      style={{
+                        background: on ? "var(--color-clay-soft)" : "var(--color-card)",
+                        borderColor: on ? "var(--color-clay)" : "var(--color-line)",
+                        color: on ? "var(--color-clay)" : "var(--color-ink)",
+                      }}
+                    >
+                      {group.name}
+                    </button>
+                  );
+                })}
+              </div>
+              {except ? <input type="hidden" name="exceptGroup" value={except} /> : null}
+            </div>
+          ) : null}
 
           {audience === "PICKED" ? (
             <div className="mt-3">
@@ -434,7 +465,11 @@ export function ComposeForm({
             ? "يشوفها أصدقاؤك فقط"
             : audience === "PICKED"
               ? `يشوفها ${viewers.length ? `${ar(viewers.length)} اخترتهم` : "من تختارهم"}`
-              : `يشوفها تصنيف ${groups.find((group) => group.id === audience)?.name ?? ""}`}
+              : audience === "EXCEPT"
+                ? except
+                  ? `يشوفها أصدقاؤك ما عدا ${groups.find((group) => group.id === except)?.name ?? ""}`
+                  : "اختر التصنيف الذي لا يراها"
+                : `يشوفها تصنيف ${groups.find((group) => group.id === audience)?.name ?? ""}`}
         </p>
         <button
           type="submit"

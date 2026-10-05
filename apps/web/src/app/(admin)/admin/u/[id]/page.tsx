@@ -198,7 +198,7 @@ export default async function ModeratedProfile({
                 </span>
                 {moment.audience !== "CIRCLE" ? (
                   <span className="text-[11px] text-faint">
-                    · {moment.audience === "GROUP" ? "تصنيف" : "أشخاص"}
+                    · {moment.audience === "GROUP" ? "تصنيف" : moment.audience === "EXCEPT" ? "ما عدا تصنيف" : "أشخاص"}
                   </span>
                 ) : null}
               </div>

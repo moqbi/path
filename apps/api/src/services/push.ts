@@ -255,32 +255,6 @@ async function deliver(messages: Record<string, unknown>[]): Promise<Ticket[]> {
   return payload.data ?? [];
 }
 
-/**
- * تنبيهٌ تجريبيّ لصاحب الجلسة — بلا أبواب التفضيل والوضع الهادئ.
- *
- * يردّ ما قالته خدمة Expo لكل جهاز، فيُعرف من الشاشة نفسها أين انقطع
- * الطريق: لا جهاز مسجّل، أو مفتاح آبل ناقص، أو وصل.
- */
-export async function testPush(userId: string) {
-  const devices = await prisma.deviceToken.findMany({ where: { userId }, select: { token: true, platform: true } });
-  if (devices.length === 0) return { devices: 0, results: [] as string[] };
-  const tickets = await deliver(
-    devices.map((device) => ({
-      to: device.token,
-      title: "آثار مومنتس",
-      body: "تنبيهٌ تجريبيّ — التنبيهات تعمل",
-      ...SOUNDS.athar,
-      data: {},
-    })),
-  );
-  return {
-    devices: devices.length,
-    results: tickets.map((ticket) =>
-      ticket.status === "ok" ? "ok" : `${ticket.details?.error ?? "error"}: ${ticket.message ?? ""}`.trim(),
-    ),
-  };
-}
-
 /** تسجيلُ جهازٍ لصاحب الجلسة — والرمزُ ينتقل إليه إن كان لغيره. */
 export async function registerDevice(userId: string, token: string, platform: string) {
   await prisma.deviceToken.upsert({

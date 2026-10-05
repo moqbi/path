@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, FlatList, ActivityIndicator, Pressable } from "react-native";
+import { View, FlatList, ActivityIndicator, Pressable, Alert, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -8,32 +8,51 @@ import { ScreenHeader } from "../../../components/screen-header";
 import { MediaImage } from "../../../components/media-image";
 import { Avatar } from "../../../components/avatar";
 import { AthrMark } from "../../../components/brand";
-import { BookIcon, MoonIcon, MusicIcon, PinIcon, PlaneIcon, SunIcon } from "../../../components/icons";
+import { BookIcon, MoonIcon, MusicIcon, PinIcon, PlaneIcon, PrivateIcon, SunIcon } from "../../../components/icons";
 import { api } from "../../../lib/api";
-import { ar, MONTHS } from "../../../lib/format";
-import { momentLine, type ArchiveMoment, type Book } from "../../../lib/archive";
+import { ar, MONTHS, timeOfDay } from "../../../lib/format";
+import { momentLine, privateNote, withNames, type Book, type BookMoment } from "../../../lib/archive";
+import { canDownloadBook, downloadBook } from "../../../lib/book-pdf";
 import { colors } from "../../../theme/tokens";
+
+type Day = { day: string; moments: BookMoment[] };
 
 type Page =
   | { type: "cover" }
   | { type: "intro" }
   | { type: "month"; month: number; count: number }
-  | { type: "moment"; moment: ArchiveMoment }
+  | { type: "day"; day: Day }
   | { type: "end" };
 
+const WEEKDAYS = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+
+/** صفحاتُ الأيّام من الخادم، أو تُجمَّع هنا من قائمةٍ مسطّحة يردّها خادمٌ قديم. */
+function daysOf(book: Book): Day[] {
+  if (book.days) return book.days;
+  const out: Day[] = [];
+  for (const moment of book.moments) {
+    const at = new Date(moment.createdAt);
+    const key = `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, "0")}-${String(at.getDate()).padStart(2, "0")}`;
+    const last = out.at(-1);
+    if (last && last.day === key) last.moments.push(moment);
+    else out.push({ day: key, moments: [moment] });
+  }
+  return out;
+}
+
 /**
- * «سنتك في كتاب» (القاعدة ٢٤٤) — **بقرار المالك**: كانت بطاقةً تَعِد «مطبوعة
- * ومرسلة لبابك» ولا شيء خلفها. صارت كتاباً يُقرأ في التطبيق: غلافٌ باسمه
- * وسنته، ومقدّمةٌ بأرقامها ومدنها وأكثرِ مكانٍ وأغنية، ثمّ فاصلٌ لكلّ شهر،
- * ثمّ لحظةٌ في كلّ صفحة، وخاتمة. والصفحاتُ تُقلَب إلى أسفل صفحةً صفحة
- * (`pagingEnabled`) — التقليبُ الأفقيّ في جذرٍ من اليمين يتنازع مع اتجاهه.
- * والطباعةُ ليست هنا: لا مطبعةَ خلفنا، ووعدٌ بلا خدمةٍ خلفه لا يُكتب.
+ * «سنتك في كتاب» (القاعدة ٢٤٤) — **صفحةٌ لكلّ يوم** (القاعدة ٢٥٦، **بقرار المالك**):
+ * «٥ أكتوبر» ولحظاتُه فيه مرقّمةً ١، ٢، ٣ بترتيبها، والخاصّةُ تقول لمن كانت.
+ * غلافٌ ومقدّمةٌ وفاصلٌ لكلّ شهر وخاتمة. والصفحاتُ بطاقاتٌ بطولها لا شاشاتٌ
+ * تُقلَب: يومٌ فيه عشرُ لحظاتٍ لا يتّسع لشاشةٍ واحدة، وتمريرٌ داخل تقليبٍ
+ * من الاتجاه نفسه يتنازعان الإصبع. و**«تحميل PDF»** يحفظه كتاباً بصفحاتٍ حقيقيّة.
+ * والحدُّ حدُّ الأرشيف: السنةُ كاملةً لآثار+، وآخرُ ستّة أشهر لغيره.
  */
 export default function YearBook() {
   const router = useRouter();
   const { year } = useLocalSearchParams<{ year: string }>();
-  const [height, setHeight] = useState(0);
-  const [index, setIndex] = useState(0);
+  const { height } = useWindowDimensions();
+  const [saving, setSaving] = useState(false);
 
   const book = useQuery({
     queryKey: ["archive", "book", year],
@@ -43,48 +62,78 @@ export default function YearBook() {
   const data = book.data;
   const pages: Page[] = [];
   if (data) {
+    const days = daysOf(data);
     pages.push({ type: "cover" }, { type: "intro" });
     let last = -1;
-    for (const moment of data.moments) {
-      const month = new Date(moment.createdAt).getMonth();
+    for (const day of days) {
+      const month = Number(day.day.slice(5, 7)) - 1;
       if (month !== last) {
-        pages.push({ type: "month", month, count: data.moments.filter((m) => new Date(m.createdAt).getMonth() === month).length });
+        const count = days
+          .filter((d) => Number(d.day.slice(5, 7)) - 1 === month)
+          .reduce((sum, d) => sum + d.moments.length, 0);
+        pages.push({ type: "month", month, count });
         last = month;
       }
-      pages.push({ type: "moment", moment });
+      pages.push({ type: "day", day });
     }
     pages.push({ type: "end" });
   }
 
+  const download = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await downloadBook(Number(year));
+    } catch (problem) {
+      Alert.alert("تعذّر تحميل الكتاب", problem instanceof Error ? problem.message : "حاول مرة ثانية");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: colors.night }}>
-      <ScreenHeader title={`كتاب ${ar(Number(year))}`} back="/me/archive" />
-      <View style={{ flex: 1 }} onLayout={(event) => setHeight(event.nativeEvent.layout.height)}>
-        {!data || !height ? (
-          <ActivityIndicator style={{ marginTop: 40 }} color={colors.clay} />
-        ) : (
-          <FlatList
-            data={pages}
-            keyExtractor={(_, i) => String(i)}
-            pagingEnabled
-            showsVerticalScrollIndicator={false}
-            getItemLayout={(_, i) => ({ length: height, offset: height * i, index: i })}
-            onMomentumScrollEnd={(event) => setIndex(Math.round(event.nativeEvent.contentOffset.y / height))}
-            renderItem={({ item }) => (
-              <View style={{ height, padding: 18 }}>
-                <View style={{ flex: 1, borderRadius: 22, backgroundColor: colors.card, overflow: "hidden" }}>
-                  <PageBody page={item} book={data} onOpen={(id) => router.push(`/m/${id}` as never)} />
-                </View>
-              </View>
-            )}
-          />
-        )}
-        {data && height ? (
-          <Text style={{ position: "absolute", bottom: 26, alignSelf: "center", color: colors.faint, fontSize: 11 }}>
-            {ar(index + 1)} / {ar(pages.length)}
-          </Text>
-        ) : null}
-      </View>
+      <ScreenHeader
+        title={`كتاب ${ar(Number(year))}`}
+        back="/me/archive"
+        right={
+          data ? (
+            <Pressable
+              onPress={download}
+              disabled={saving}
+              accessibilityLabel="تحميل الكتاب PDF"
+              style={{ height: 34, paddingHorizontal: 12, borderRadius: 17, backgroundColor: "rgba(255,255,255,.12)", alignItems: "center", justifyContent: "center", opacity: canDownloadBook ? 1 : 0.6 }}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color="#F6B93B" />
+              ) : (
+                <Text style={{ color: "#F6B93B", fontSize: 12.5, fontWeight: "700" }}>تحميل PDF</Text>
+              )}
+            </Pressable>
+          ) : null
+        }
+      />
+      {!data ? (
+        <ActivityIndicator style={{ marginTop: 40 }} color={colors.clay} />
+      ) : (
+        <FlatList
+          data={pages}
+          keyExtractor={(page, i) => (page.type === "day" ? page.day.day : `${page.type}-${i}`)}
+          contentContainerStyle={{ padding: 18, gap: 14, direction: "rtl" }}
+          renderItem={({ item }) => (
+            <View
+              style={{
+                minHeight: item.type === "day" ? undefined : item.type === "month" ? height * 0.3 : height * 0.55,
+                borderRadius: 22,
+                backgroundColor: colors.card,
+                overflow: "hidden",
+              }}
+            >
+              <PageBody page={item} book={data} onOpen={(id) => router.push(`/m/${id}` as never)} />
+            </View>
+          )}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -160,33 +209,70 @@ function PageBody({ page, book, onOpen }: { page: Page; book: Book; onOpen: (id:
     );
   }
 
-  const moment = page.moment;
-  const date = new Date(moment.createdAt);
-  const icon =
-    moment.kind === "PLACE" ? <PinIcon size={18} color={colors.clayInk} /> :
-    moment.kind === "MUSIC" ? <MusicIcon size={18} color={colors.clayInk} /> :
-    moment.kind === "CITY" ? <PlaneIcon size={18} color={colors.clayInk} /> :
-    moment.kind === "SLEEP" ? <MoonIcon size={18} color={colors.clayInk} /> :
-    moment.kind === "WAKE" ? <SunIcon size={18} color={colors.clayInk} /> :
-    <BookIcon size={18} color={colors.clayInk} />;
-  const line = momentLine(moment);
+  const [y, m, d] = page.day.day.split("-").map(Number);
+  const weekday = WEEKDAYS[new Date(y, m - 1, d).getDay()];
   return (
-    <Pressable onPress={() => onOpen(moment.id)} style={{ flex: 1 }}>
-      {moment.mediaId ? (
-        <MediaImage mediaId={moment.mediaId} style={{ width: "100%", flex: 1 }} position={moment.photoX != null ? { x: moment.photoX, y: moment.photoY ?? 50 } : undefined} />
-      ) : null}
-      <View style={{ padding: 20, gap: 10, flex: moment.mediaId ? 0 : 1, justifyContent: moment.mediaId ? "flex-start" : "center" }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+    <View style={{ padding: 18 }}>
+      <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", borderBottomWidth: 2, borderBottomColor: "#F6B93B", paddingBottom: 8, marginBottom: 14 }}>
+        <Text style={{ color: colors.ink, fontSize: 24, fontWeight: "800" }}>
+          {ar(d)} {MONTHS[m - 1]}
+        </Text>
+        <Text style={{ color: colors.muted, fontSize: 12.5 }}>
+          {weekday} · {ar(page.day.moments.length)} لحظة
+        </Text>
+      </View>
+      <View style={{ gap: 16 }}>
+        {page.day.moments.map((moment, index) => (
+          <DayMoment key={moment.id} moment={moment} n={index + 1} onOpen={onOpen} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+/** لحظةٌ في صفحة يومها: رقمُها، وساعتُها، وصورتُها، وسطرُها، ولمن كانت. */
+function DayMoment({ moment, n, onOpen }: { moment: BookMoment; n: number; onOpen: (id: string) => void }) {
+  const icon =
+    moment.kind === "PLACE" ? <PinIcon size={14} color={colors.clayInk} /> :
+    moment.kind === "MUSIC" ? <MusicIcon size={14} color={colors.clayInk} /> :
+    moment.kind === "CITY" ? <PlaneIcon size={14} color={colors.clayInk} /> :
+    moment.kind === "SLEEP" ? <MoonIcon size={14} color={colors.clayInk} /> :
+    moment.kind === "WAKE" ? <SunIcon size={14} color={colors.clayInk} /> :
+    <BookIcon size={14} color={colors.clayInk} />;
+  const line = momentLine(moment);
+  const together = withNames(moment);
+  const note = privateNote(moment);
+  return (
+    <Pressable onPress={() => onOpen(moment.id)} style={{ flexDirection: "row", gap: 10 }}>
+      <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: colors.night, alignItems: "center", justifyContent: "center" }}>
+        <Text style={{ color: "#F6B93B", fontSize: 12.5, fontWeight: "800" }}>{ar(n)}</Text>
+      </View>
+      <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           {icon}
-          <Text style={{ color: colors.muted, fontSize: 12.5 }}>
-            {ar(date.getDate())} {MONTHS[date.getMonth()]}
+          <Text style={{ color: colors.muted, fontSize: 11.5 }}>
+            {timeOfDay(new Date(moment.createdAt))}
             {moment.placeName && moment.kind !== "PLACE" ? ` · ${moment.placeName}` : ""}
           </Text>
         </View>
+        {moment.mediaId ? (
+          <MediaImage
+            mediaId={moment.mediaId}
+            style={{ width: "100%", aspectRatio: 5 / 4, borderRadius: 12 }}
+            position={moment.photoX != null ? { x: moment.photoX, y: moment.photoY ?? 50 } : undefined}
+          />
+        ) : null}
         {line ? (
-          <Text style={{ color: colors.ink, fontSize: moment.mediaId ? 15 : 22, fontWeight: moment.mediaId ? "500" : "700", lineHeight: moment.mediaId ? 26 : 36 }}>
+          <Text style={{ color: colors.ink, fontSize: moment.mediaId ? 14.5 : 16.5, fontWeight: moment.mediaId ? "500" : "700", lineHeight: moment.mediaId ? 24 : 28 }}>
             {line}
           </Text>
+        ) : null}
+        {together ? <Text style={{ color: colors.ink2, fontSize: 12.5 }}>{together}</Text> : null}
+        {note ? (
+          <View style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: colors.goldSoft, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+            <PrivateIcon size={12} color={colors.clayInk} />
+            <Text style={{ color: colors.clayInk, fontSize: 11.5 }}>{note}</Text>
+          </View>
         ) : null}
       </View>
     </Pressable>

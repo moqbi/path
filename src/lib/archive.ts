@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
+import { dayKey, riyadhDay } from "@/lib/riyadh-day";
 
 
 /**
@@ -94,19 +95,48 @@ export async function book(userId: string, year: number) {
   const end = new Date(Date.UTC(year + 1, 0, 1, -3));
   const lower = from && from > start ? from : start;
 
-  const [me, rows] = await Promise.all([
+  const [me, found] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: { name: true, memberNo: true, avatarMediaId: true },
     }),
     prisma.moment.findMany({
       where: { authorId: userId, kind: { in: [...KINDS] }, createdAt: { gte: lower, lt: end } },
-      select,
+      select: {
+        ...select,
+        audience: true,
+        audienceGroup: { select: { name: true } },
+        viewers: { select: { user: { select: { name: true } } } },
+        tags: { select: { user: { select: { name: true } } } },
+      },
       orderBy: { createdAt: "asc" },
       take: 1000,
     }),
   ]);
   if (!me) throw new Error("الحساب غير موجود");
+
+  // اللحظةُ الخاصّة تقول لمن كانت، و«مع» كما كُتبت — نسخةُ الخادم حرفاً بحرف (القاعدة ٢٥٦).
+  const rows = found.map(({ audience, audienceGroup, viewers, tags, ...moment }) => ({
+    ...moment,
+    with: tags.map((tag) => tag.user.name),
+    private:
+      audience === "CIRCLE"
+        ? null
+        : {
+            audience,
+            group: audienceGroup?.name ?? null,
+            people: audience === "PICKED" ? viewers.map((viewer) => viewer.user.name) : [],
+          },
+  }));
+
+  // صفحةٌ لكلّ يوم بتوقيت الرياض.
+  const days: { day: string; moments: typeof rows }[] = [];
+  for (const row of rows) {
+    const key = dayKey(riyadhDay(row.createdAt));
+    const last = days.at(-1);
+    if (last && last.day === key) last.moments.push(row);
+    else days.push({ day: key, moments: [row] });
+  }
 
   const count = (kind: string) => rows.filter((row) => row.kind === kind).length;
   const tally = (values: (string | null)[]) => {
@@ -134,6 +164,7 @@ export async function book(userId: string, year: number) {
       topPlace: places[0] ? { name: places[0][0], visits: places[0][1] } : null,
       topSong: songs[0]?.[0] ?? null,
     },
+    days,
     moments: rows,
   };
 }

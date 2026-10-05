@@ -27,6 +27,7 @@ import { ReactSheet } from "../components/react-sheet";
 import { Tour } from "../components/tour";
 import { applyTheme, colors, themeStore, veil } from "../theme/tokens";
 import { dismissOpen } from "../lib/swipe-open";
+import { Launch, useLaunch } from "../components/launch";
 
 /**
  * العربية من اليمين — قراراً لا إعداداً، وفي البيئات الثلاث معاً.
@@ -305,10 +306,27 @@ export default function RootLayout() {
     Montserrat_700Bold,
   });
 
-  if (!fontsReady && !fontsError) {
-    return <View style={{ flex: 1, backgroundColor: colors.paper }} />;
-  }
+  /*
+    شاشةُ الانطلاق المتحرّكة فوق كل شيء — حتى فوق انتظار الخطوط — فلا
+    يومض بين شاشة النظام وبينها ورقٌ فارغ. والتطبيقُ يُحمَّل تحتها.
+  */
+  const [launching, endLaunch] = useLaunch();
+  const intro = launching ? <Launch onDone={endLaunch} /> : null;
 
+  // وفي موضعٍ ثابتٍ من الشجرة: لو تبدّل أبوه حين تجهز الخطوط لبدأت الحركةُ من أوّلها.
+  return (
+    <View style={{ flex: 1 }}>
+      {!fontsReady && !fontsError ? (
+        <View style={{ flex: 1, backgroundColor: colors.paper }} />
+      ) : (
+        <App />
+      )}
+      {intro}
+    </View>
+  );
+}
+
+function App() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={client}>

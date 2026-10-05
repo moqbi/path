@@ -57,12 +57,20 @@ describe("شرط الرؤية", () => {
     expect(where.authorId.in).toEqual(["me"]);
   });
 
-  it("والجمهورُ أربعةُ أبواب لا بابٌ واحد", async () => {
+  it("والجمهورُ خمسةُ أبواب لا بابٌ واحد", async () => {
     const where = await visibleWhere("me");
     const kinds = where.OR.map((one: Record<string, unknown>) =>
       one.authorId ? "MINE" : (one.audience as string),
     );
-    // لحظاتي، والدائرة، والتصنيف، والأشخاص بأعيانهم — ولا خامس.
-    expect(kinds).toEqual(["MINE", "CIRCLE", "GROUP", "PICKED"]);
+    // لحظاتي، والدائرة، والتصنيف، والأشخاص بأعيانهم، والكلُّ ما عدا تصنيفاً — ولا سادس.
+    expect(kinds).toEqual(["MINE", "CIRCLE", "GROUP", "PICKED", "EXCEPT"]);
+  });
+
+  it("و«ما عدا» تُفتح لمن ليس في التصنيف وحده (القاعدة ٢٥٥)", async () => {
+    const where = await visibleWhere("me");
+    const except = where.OR.find((one: Record<string, unknown>) => one.audience === "EXCEPT");
+    // `none` لا `some`: عضوُ التصنيف المستثنى لا يراها. وعلاقةٌ مطلوبة —
+    // تصنيفٌ حُذف لا يُطابق شيئاً، فلا تنفتح لحظةٌ لمن استُثني بحذفه.
+    expect(except).toEqual({ audience: "EXCEPT", audienceGroup: { members: { none: { userId: "me" } } } });
   });
 });
