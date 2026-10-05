@@ -4,6 +4,7 @@ import { cuid } from "@athar/shared";
 import { zValidator } from "../../lib/validate";
 import { requireAuth, me } from "../../middleware/auth";
 import * as archive from "../../services/archive";
+import { bookHtml } from "../../services/book-print";
 
 const pageQuery = z.object({
   cursor: cuid.optional(),
@@ -18,4 +19,8 @@ export const archiveRoutes = new Hono()
   .get("/years", async (c) => c.json(await archive.years(me(c))))
   .get("/book/:year", zValidator("param", byYear), async (c) =>
     c.json(await archive.book(me(c), c.req.valid("param").year)),
+  )
+  // الكتابُ صفحةً تُطبع PDF على الجهاز (القاعدة ٢٥٦).
+  .get("/book/:year/print", zValidator("param", byYear), async (c) =>
+    c.json(await bookHtml(me(c), c.req.valid("param").year)),
   );

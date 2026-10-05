@@ -1,5 +1,6 @@
 import { prisma } from "@athar/db";
 import { badRequest, notFound } from "../lib/errors";
+import { dayKey, riyadhDay } from "../lib/riyadh-day";
 
 /**
  * «أرشيفي» و«سنتك في كتاب» (القاعدة ٢٤٤) — لصاحبها وحده: لا معرّفَ حسابٍ في
@@ -81,7 +82,7 @@ export async function years(userId: string) {
 }
 
 /**
- * «سنتك في كتاب»: لحظاتُ السنة من أوّلها مرتّبةً كصفحات، ومعها ما يُكتب في
+ * «سنتك في كتاب»: لحظاتُ السنة من أوّلها، **صفحةٌ لكلّ يوم** (القاعدة ٢٥٦)، ومعها ما يُكتب في
  * مقدّمته — كم لحظة، وكم صورة، والمدن، وأكثرُ مكانٍ عاد إليه، وأغانيه.
  * والسنةُ سنةُ الرياض (القاعدة ٢٣٥).
  */
@@ -92,19 +93,52 @@ export async function book(userId: string, year: number) {
   const end = new Date(Date.UTC(year + 1, 0, 1, -3));
   const lower = from && from > start ? from : start;
 
-  const [me, rows] = await Promise.all([
+  const [me, found] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: { name: true, memberNo: true, avatarMediaId: true },
     }),
     prisma.moment.findMany({
       where: { authorId: userId, kind: { in: [...KINDS] }, createdAt: { gte: lower, lt: end } },
-      select,
+      select: {
+        ...select,
+        audience: true,
+        audienceGroup: { select: { name: true } },
+        viewers: { select: { user: { select: { name: true } } } },
+        tags: { select: { user: { select: { name: true } } } },
+      },
       orderBy: { createdAt: "asc" },
       take: 1000,
     }),
   ]);
   if (!me) throw notFound("الحساب غير موجود");
+
+  /*
+    اللحظةُ الخاصّة تقول في الكتاب لمن كانت (القاعدة ٢٥٦): «شاركتها مع فلان
+    وفلان»، أو «لتصنيف العائلة»، أو «للكل ما عدا العمل». والكتابُ لصاحبه وحده،
+    فأسماءُ مختاريه وتصنيفاتُه له أن يقرأها. و«مع» الإشارةُ كما كُتبت.
+  */
+  const rows = found.map(({ audience, audienceGroup, viewers, tags, ...moment }) => ({
+    ...moment,
+    with: tags.map((tag) => tag.user.name),
+    private:
+      audience === "CIRCLE"
+        ? null
+        : {
+            audience,
+            group: audienceGroup?.name ?? null,
+            people: audience === "PICKED" ? viewers.map((viewer) => viewer.user.name) : [],
+          },
+  }));
+
+  // صفحةٌ لكلّ يوم بتوقيت الرياض، ولحظاتُه مرقّمةً فيه بترتيبها.
+  const days: { day: string; moments: typeof rows }[] = [];
+  for (const row of rows) {
+    const key = dayKey(riyadhDay(row.createdAt));
+    const last = days.at(-1);
+    if (last && last.day === key) last.moments.push(row);
+    else days.push({ day: key, moments: [row] });
+  }
 
   const count = (kind: string) => rows.filter((row) => row.kind === kind).length;
   const tally = (values: (string | null)[]) => {
@@ -132,6 +166,8 @@ export async function book(userId: string, year: number) {
       topPlace: places[0] ? { name: places[0][0], visits: places[0][1] } : null,
       topSong: songs[0]?.[0] ?? null,
     },
+    days,
+    // النسخُ قبل صفحات الأيّام تقرأ القائمةَ مسطّحة.
     moments: rows,
   };
 }

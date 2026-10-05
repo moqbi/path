@@ -1,6 +1,6 @@
 "use client";
 
-/** الطباعةُ من المتصفّح — ومنها «احفظ PDF»: لا مطبعةَ خلفنا (القاعدة ٢٤٤). */
+/** «تحميل PDF» نافذةُ طباعة المتصفّح — ومنها «احفظ PDF» (القاعدة ٢٥٦). */
 export function PrintButton() {
   return (
     <button
@@ -9,7 +9,7 @@ export function PrintButton() {
       className="no-print brand-gradient h-11 rounded-full px-5 text-[14px] font-bold"
       style={{ color: "var(--color-on-brand)" }}
     >
-      اطبعه أو احفظه PDF
+      تحميل PDF
     </button>
   );
 }
