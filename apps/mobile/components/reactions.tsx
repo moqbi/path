@@ -13,11 +13,17 @@ const SOURCES: Record<string, number> = {
   GASP: require("../assets/reactions/gasp.png"),
   SAD: require("../assets/reactions/sad.png"),
   LOVE: require("../assets/reactions/love.png"),
+  CAMERA: require("../assets/reactions/camera.png"),
+  CHAT: require("../assets/reactions/chat.png"),
+  PIN: require("../assets/reactions/pin.png"),
   SLEEPY: require("../assets/reactions/sleepy.png"),
 };
 
-/** الوجوه العامة، ويُزاد وجه النوم للحظات النوم وحدها. */
-const OPEN_FACES = ["SMILE", "LAUGH", "GASP", "SAD", "LOVE"] as const;
+/**
+ * التفاعلاتُ العامّة: الوجوهُ الخمسة ثمّ الكاميرا والفقاعة والدبّوس (القاعدة ٢٥٧) —
+ * والدبّوسُ لما يُقال لمن وصل مدينةً أخرى. ويُزاد وجهُ النوم للحظات النوم وحدها.
+ */
+const OPEN_FACES = ["SMILE", "LAUGH", "GASP", "SAD", "LOVE", "CAMERA", "CHAT", "PIN"] as const;
 
 export const facesFor = (kind?: string): readonly string[] =>
   kind === "SLEEP" ? [...OPEN_FACES, "SLEEPY"] : OPEN_FACES;

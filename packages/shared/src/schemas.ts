@@ -57,7 +57,7 @@ export const momentInput = z.object({
 export const commentInput = z.object({ body: z.string().trim().min(1).max(500) });
 
 export const reactionInput = z.object({
-  kind: z.enum(["SMILE", "LAUGH", "GASP", "SAD", "LOVE", "SLEEPY", "CUSTOM"]),
+  kind: z.enum(["SMILE", "LAUGH", "GASP", "SAD", "LOVE", "CAMERA", "CHAT", "PIN", "SLEEPY", "CUSTOM"]),
   emoji: z.string().max(8).optional(),
 });
 
