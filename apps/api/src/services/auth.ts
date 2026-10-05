@@ -212,12 +212,13 @@ export async function oauth(input: {
 }) {
   /*
      تيك توك يأتي بشيفرةٍ لا برمز: تُبادَل هنا بسرّ العميل (`exchangeTikTok`)،
-     وبعنوان العودة الذي طلبها به الجوّال حرفاً بحرف.
+     وبعنوان العودة الذي طلبها به الجوّال حرفاً بحرف — وهو عنوانُ الويب نفسه
+     (`/api/tiktok/finish` يرتدّ بالجوّال إليه): عنوانٌ واحدٌ يُسجَّل عندها.
   */
   let token = input.idToken;
   if (input.provider === "TIKTOK") {
     try {
-      token = await exchangeTikTok(input.idToken, appUrl("/tiktok/callback"));
+      token = await exchangeTikTok(input.idToken, appUrl("/api/tiktok/finish"));
     } catch (problem) {
       if (problem instanceof Error && problem.message.includes("غير مفعّل")) throw problem;
       throw unauthorized("تعذّر التحقّق من الرمز");
