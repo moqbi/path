@@ -317,9 +317,8 @@ TIKTOK_CLIENT_SECRET="..."
 ```
 
 > **تيك توك** (developers.tiktok.com ← تطبيق ← Login Kit، نطاقُ `user.info.basic`):
-> عنوانا العودة **كلاهما** في «Redirect URI» على منصّة Web:
-> `https://atharmts.com/app/tiktok/callback` (الجوّال) و
-> `https://atharmts.com/app/api/tiktok/finish` (الويب). والسرُّ في `.env` على الخادم
+> عنوانُ العودة في «Redirect URI» على منصّة Web — **واحدٌ للويب والجوّال**:
+> `https://atharmts.com/app/api/tiktok/finish`. والسرُّ في `.env` على الخادم
 > وحده — لا في التطبيق ولا في المستودع.
 
 > **ونطاقُ المرسِل يُثبَت في بريفو أوّلاً** (Senders & Domains): سجلّا

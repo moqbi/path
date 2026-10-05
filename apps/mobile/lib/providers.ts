@@ -229,7 +229,7 @@ export async function finishSnap(code: string, verifier: string): Promise<Me> {
 }
 
 export function tiktokReady(): boolean {
-  return Boolean(tiktokKey) && Boolean(appUrl("/tiktok/callback"));
+  return Boolean(tiktokKey) && Boolean(appUrl("/api/tiktok/finish"));
 }
 
 /**
@@ -237,17 +237,18 @@ export function tiktokReady(): boolean {
  *
  * **الشيفرةُ تُبادَل على خادمنا لا هنا**: عميلُ تيك توك يحتاج سرّاً في المبادلة،
  * والسرُّ في التطبيق ليس سرّاً. فالجهازُ يفتح صفحتَها، وتعود إلى
- * `/tiktok/callback` على موقعنا (تيك توك لا تقبل إلا HTTPS) فترتدّ إلى
+ * `/api/tiktok/finish` على موقعنا — عنوانُ الويب نفسه (تيك توك لا تقبل إلا HTTPS) — فيرتدّ إلى
  * `athar://tiktok` بالشيفرة والحارس — كسناب. ويُفحص الحارسُ هنا، ثمّ تذهب
  * الشيفرةُ إلى `/v1/auth/oauth` فيبادلها الخادم ويسأل عن صاحبها.
  *
  * ويردّ `null` حين يُلغي المستخدم: الإلغاء ليس خطأً يُعرض.
  */
 export async function promptTikTokLogin(): Promise<Me | null> {
-  const redirectUri = appUrl("/tiktok/callback");
+  const redirectUri = appUrl("/api/tiktok/finish");
   if (!tiktokKey || !redirectUri) throw new Error("الدخول بتيك توك غير مفعّل في هذه النسخة.");
 
-  const state = Crypto.randomUUID();
+  // `app.` يقول لبابِ الويب «هذا الجوّال» فيرتدّ به إلى التطبيق لا يفتح جلسة متصفّح.
+  const state = `app.${Crypto.randomUUID()}`;
   const query = [
     ["client_key", tiktokKey],
     ["response_type", "code"],
