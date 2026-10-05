@@ -48,19 +48,20 @@ export async function GET(request: NextRequest) {
   return NextResponse.redirect(appUrl("/") || new URL(`${BASE}/`, request.url));
 }
 
-/** صفحةُ الارتداد إلى `athar://tiktok` — كـ`/tiktok/callback`: تُرسم ثمّ ترتدّ، والزرُّ لمن لم يرتدّ به جهازُه. */
+/**
+ * الارتدادُ إلى `athar://tiktok` بتحويلٍ مباشر لا بصفحة — **بقرار المالك**: كانت صفحةٌ
+ * تومض نصف ثانيةٍ بزرّ «افتح التطبيق». ونافذةُ الدخول في الجهاز
+ * (`ASWebAuthenticationSession`) تلتقط التحويلَ إلى مخطّط التطبيق قبل أن يُرسم شيء،
+ * وهي وحدها من يصل هنا بحارس `app.` — لا متصفّحٌ عاديّ يُعلَّق على بياض.
+ */
 function bounce(params: URLSearchParams) {
   const query = new URLSearchParams();
   for (const key of ["code", "state", "error", "error_description"]) {
     const value = params.get(key);
     if (value) query.set(key, value);
   }
-  const deep = `athar://tiktok?${query.toString()}`;
-  const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>العودة إلى آثار</title></head>
-<body style="margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;font-family:system-ui;background:#0E1A24;color:#f7f5ef;text-align:center;padding:24px">
-<p style="font-size:15px;font-weight:600;margin:0">نرجعك إلى آثار…</p>
-<a href="${deep.replace(/&/g, "&amp;").replace(/"/g, "&quot;")}" style="background:linear-gradient(90deg,#F6B93B,#FF7A5A);color:#0E1A24;font-weight:700;padding:14px 24px;border-radius:12px;text-decoration:none">افتح التطبيق</a>
-<script>setTimeout(function(){location.href=${JSON.stringify(deep).replace(/</g, "\\u003c")}},400)</script>
-</body></html>`;
-  return new NextResponse(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+  return new NextResponse(null, {
+    status: 302,
+    headers: { location: `athar://tiktok?${query.toString()}`, "cache-control": "no-store" },
+  });
 }
