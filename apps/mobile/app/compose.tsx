@@ -65,6 +65,8 @@ export default function Compose() {
   const [asking, setAsking] = useState(false);
   const [withIds, setWithIds] = useState<string[]>([]);
   const [audience, setAudience] = useState("CIRCLE");
+  // «الكل ما عدا…»: التصنيفُ الذي لا يراها (القاعدة ٢٥٥).
+  const [except, setExcept] = useState<string | null>(null);
   const [viewers, setViewers] = useState<string[]>([]);
   const [sheet, setSheet] = useState<"with" | "viewers" | null>(null);
 
@@ -260,13 +262,14 @@ export default function Compose() {
   }
 
   const ready =
-    kind === "MUSIC"
+    (kind === "MUSIC"
       ? musicUrl.trim().length > 6
       : kind === "THOUGHT"
         ? text.trim().length > 0
         : kind === "PLACE"
           ? !!fix
-          : !!picture || text.trim().length > 0;
+          : !!picture || text.trim().length > 0) &&
+    (audience !== "EXCEPT" || except !== null);
 
   async function publish() {
     if (!ready || busy) return;
@@ -289,8 +292,13 @@ export default function Compose() {
           photoY: mediaId ? photoPos.y : undefined,
           musicUrl: kind === "MUSIC" ? musicUrl.trim() : undefined,
           with: withIds.length ? withIds : undefined,
-          audience: audience === "CIRCLE" || audience === "PICKED" ? audience : "GROUP",
-          audienceGroupId: audience !== "CIRCLE" && audience !== "PICKED" ? audience : undefined,
+          audience: audience === "CIRCLE" || audience === "PICKED" || audience === "EXCEPT" ? audience : "GROUP",
+          audienceGroupId:
+            audience === "EXCEPT"
+              ? (except ?? undefined)
+              : audience !== "CIRCLE" && audience !== "PICKED"
+                ? audience
+                : undefined,
           viewers: audience === "PICKED" ? viewers : undefined,
           lat: fix?.lat,
           lng: fix?.lng,
@@ -581,6 +589,7 @@ export default function Compose() {
               {[
                 { id: "CIRCLE", label: "كل أصدقائي" },
                 ...groups.map((g) => ({ id: g.id, label: g.name })),
+                ...(groups.length ? [{ id: "EXCEPT", label: "الكل ما عدا…" }] : []),
                 { id: "PICKED", label: "أشخاص أختارهم" },
               ].map((option) => {
                 const on = audience === option.id;
@@ -600,6 +609,24 @@ export default function Compose() {
                 );
               })}
             </View>
+
+            {audience === "EXCEPT" ? (
+              <View style={{ marginTop: 12 }}>
+                <Text style={{ color: colors.faint, fontSize: 11.5, marginBottom: 8, textAlign: "right" }}>
+                  يشوفها كل أصدقائك ما عدا تصنيف:
+                </Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  {groups.map((g) => {
+                    const on = except === g.id;
+                    return (
+                      <Pressable key={g.id} onPress={() => setExcept(g.id)} style={chip(on)}>
+                        <Text style={{ fontSize: 13, color: on ? colors.clayInk : colors.ink }}>{g.name}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : null}
 
             {audience === "PICKED" ? (
               <View style={{ marginTop: 12 }}>
@@ -627,7 +654,11 @@ export default function Compose() {
                 ? "يشوفها أصدقاؤك فقط"
                 : audience === "PICKED"
                   ? `يشوفها ${viewers.length ? `${ar(viewers.length)} اخترتهم` : "من تختارهم"}`
-                  : `يشوفها تصنيف ${groups.find((g) => g.id === audience)?.name ?? ""}`}
+                  : audience === "EXCEPT"
+                    ? except
+                      ? `يشوفها أصدقاؤك ما عدا ${groups.find((g) => g.id === except)?.name ?? ""}`
+                      : "اختر التصنيف الذي لا يراها"
+                    : `يشوفها تصنيف ${groups.find((g) => g.id === audience)?.name ?? ""}`}
             </Text>
           </View>
 
