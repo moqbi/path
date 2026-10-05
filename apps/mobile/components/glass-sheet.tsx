@@ -73,14 +73,29 @@ export function GlassSheet({
   // السحبُ إلى أسفل من أيّ موضعٍ فيها — **بقرار المالك** — تتبعه وتصغر وتبهت
   // قليلاً، وما تجاوز الحدّ أو أُفلت بسرعةٍ يُكمل نزولَه ويُغلقها، وإلّا عادت.
   const downward = (g: { dx: number; dy: number }) => g.dy > 8 && g.dy > Math.abs(g.dx) * 1.4;
+  const pulling = useRef(false);
   const pan = useRef(
     PanResponder.create({
+      // اللمسةُ على ما لا يأخذها أحد — الرأسُ ومقبضُه وعنوانُه وما بين الأزرار — تأخذها
+      // النافذة من أوّلها. بلا ذلك لا مستجيبَ ساعةَ البدء، ولا تُسأل النافذةُ عن الحركة
+      // بعدها على الجهاز: كان السحبُ يعمل من فوق زرٍّ أو قائمة ولا يعمل من الرأس.
+      // والزرُّ أعمقُ منها فيُسأل قبلها، فالضغطُ يبقى للأزرار (ومنها «×»).
+      onStartShouldSetPanResponder: () => true,
       // الالتقاطُ في طور الهبوط: الزرُّ والقائمةُ تحت الإصبع كانا يأخذان السحبة.
       onMoveShouldSetPanResponderCapture: (_, g) => downward(g) && away.size === 0,
       onMoveShouldSetPanResponder: (_, g) => downward(g),
-      onPanResponderTerminationRequest: () => false,
-      onPanResponderMove: (_, g) => drag.setValue(Math.max(0, g.dy)),
+      onPanResponderGrant: (_, g) => {
+        pulling.current = downward(g);
+      },
+      // ما لم تثبت السحبةُ نازلةً تُسلَّم اللمسةُ لمن يطلبها — قائمةٌ تُمرَّر إلى أعلى.
+      onPanResponderTerminationRequest: () => !pulling.current,
+      onPanResponderMove: (_, g) => {
+        if (!pulling.current && downward(g)) pulling.current = true;
+        if (pulling.current) drag.setValue(Math.max(0, g.dy));
+      },
       onPanResponderRelease: (_, g) => {
+        if (!pulling.current) return;
+        pulling.current = false;
         if (g.dy > DISMISS || g.vy > 1.1) {
           Animated.timing(drag, {
             toValue: height,
@@ -92,7 +107,10 @@ export function GlassSheet({
           Animated.spring(drag, { toValue: 0, useNativeDriver: true, bounciness: 6 }).start();
         }
       },
-      onPanResponderTerminate: () => Animated.spring(drag, { toValue: 0, useNativeDriver: true }).start(),
+      onPanResponderTerminate: () => {
+        pulling.current = false;
+        Animated.spring(drag, { toValue: 0, useNativeDriver: true }).start();
+      },
     }),
   ).current;
 
