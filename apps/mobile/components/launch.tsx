@@ -32,13 +32,12 @@ const ICONS = [
 const MARK_RATIO = 905 / 1203;
 
 /*
-  الظلالُ مرسومةٌ في الصور نفسها بهامشٍ حولها (`drop-shadow` في الرسم الأصليّ):
-  ظلُّ آبل على صورةٍ يُقصّ عند حدودها، فكان وهجُ الشعار ينقطع بخطٍّ مستقيم من
-  أسفله ويساره. والهامشُ متناظر فالمركزُ لا يتحرّك.
-  الشعارُ ٨٨٣×٥٨٥ داخل لوحةٍ ١٢٠٣×٩٠٥، والأيقونةُ ٨٨ داخل ١٣٦.
+  وهجُ الشعار مرسومٌ في الصورة نفسها بهامشٍ حولها، أخفَّ من الرسم الأصليّ بطلب
+  المالك: ظلُّ آبل على صورةٍ يُقصّ عند حدودها، فكان ينقطع بخطٍّ مستقيم من أسفله
+  ويساره. والهامشُ متناظر فالمركزُ لا يتحرّك — الشعارُ ٨٨٣×٥٨٥ داخل ١٢٠٣×٩٠٥.
+  والأيقوناتُ بلا ظلّ، بطلبه أيضاً.
 */
 const MARK_PAD = 1203 / 883;
-const ICON_PAD = 136 / 88;
 
 const T = {
   logoIn: 250,
@@ -185,10 +184,8 @@ export function Launch({ onDone }: { onDone: () => void }) {
               key={i}
               style={{
                 position: "absolute",
-                width: iconSize * ICON_PAD,
-                height: iconSize * ICON_PAD,
-                alignItems: "center",
-                justifyContent: "center",
+                width: iconSize,
+                height: iconSize,
                 transform: [{ rotate }],
               }}
             >
@@ -196,8 +193,8 @@ export function Launch({ onDone }: { onDone: () => void }) {
                 source={source}
                 resizeMode="contain"
                 style={{
-                  width: iconSize * ICON_PAD,
-                  height: iconSize * ICON_PAD,
+                  width: iconSize,
+                  height: iconSize,
                   opacity,
                   transform: [{ translateY: lift }, { scale }],
                 }}
