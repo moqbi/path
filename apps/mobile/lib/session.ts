@@ -52,6 +52,8 @@ export type Me = {
   coverX: number;
   coverZoom: number;
   shareLocation: boolean;
+  /** وضعُ التخفّي لمشتركي آثار+ (القاعدة ٢٥١). نسخةُ خادمٍ قديمة لا ترسله. */
+  hideOnline?: boolean;
   notifyOnTag: boolean;
   /** هل على الحساب كلمةُ مرور؟ من دخل بمزوّدٍ لا كلمةَ له حتى يضعها. */
   hasPassword?: boolean;

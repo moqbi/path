@@ -164,6 +164,11 @@ export const privacyInput = z.object({
    * مطلوباً لسقط طلبُ الجديدة، ولو كُتب افتراضاً لأطفأه في كل حفظ.
    */
   notifyOnTag: z.boolean().optional(),
+  /**
+   * وضعُ التخفّي لمشتركي آثار+ (القاعدة ٢٥١) — اختياريٌّ لنسخٍ قديمة لا ترسله،
+   * ولا يُكتب إلا إن أُرسل.
+   */
+  hideOnline: z.boolean().optional(),
 });
 
 /**

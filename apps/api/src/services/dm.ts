@@ -23,6 +23,8 @@ const PERSON = {
   name: true,
   isPlus: true,
   lastSeenAt: true,
+  // وضعُ التخفّي — يُقرأ ليُحجب به الحضور ثمّ يُحذف من الردّ (`maskPresence`).
+  hideOnline: true,
   avatarMediaId: true,
   frame: { select: { spec: true, mediaId: true, frameHole: true } },
   charm: { select: { spec: true, mediaId: true } },

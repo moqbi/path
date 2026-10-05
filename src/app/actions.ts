@@ -1155,6 +1155,8 @@ export async function savePrivacy(formData: FormData): Promise<void> {
       viewGroupId: pick("viewGroupId"),
       interactGroupId: pick("interactGroupId"),
       shareLocation: formData.get("shareLocation") === "on",
+      // وضعُ التخفّي لمشتركي آثار+ وحدهم (القاعدة ٢٥١): يُفحص هنا لا في الشاشة.
+      hideOnline: formData.get("hideOnline") === "on" && user.isPlus,
       // وإشعارُ الإشارة انتقل إلى «التنبيهات» — فلا يُكتب من هنا بحال:
       // نموذجٌ لا يحمل الحقل كان سيطفئه في كل حفظٍ للخصوصية.
     },

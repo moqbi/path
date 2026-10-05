@@ -1,3 +1,4 @@
+import { maskPresence } from "@/lib/presence";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
@@ -74,6 +75,7 @@ export default async function CirclePage({
       isPlus: true,
       city: true,
       lastSeenAt: true,
+      hideOnline: true,
       avatarMediaId: true,
       frame: { select: { spec: true, mediaId: true, frameHole: true } },
       charm: { select: { spec: true, mediaId: true } },
@@ -81,7 +83,7 @@ export default async function CirclePage({
       moments: { select: { createdAt: true }, orderBy: { createdAt: "desc" }, take: 1 },
     },
     orderBy: { name: "asc" },
-  });
+  }).then(maskPresence);
 
   const groupOf = new Map<string, { id: string; name: string }>();
   for (const group of groups) {
@@ -138,10 +140,14 @@ export default async function CirclePage({
 
       <main className="scroll-area px-5 pb-4 pt-3">
         {requests.length > 0 ? (
-          <section className="mb-5">
-            <p className="mb-2 text-[11.5px] font-semibold tracking-wide text-faint">
-              طلبات ({ar(requests.length)})
-            </p>
+          // قسمٌ يُطوى ويُفتح — **بقرار المالك**، كالجوّال. و`details` يحفظ حالتَه بلا جافاسكربت.
+          <details open className="group mb-5">
+            <summary className="mb-2 flex cursor-pointer list-none items-center gap-2 text-[11.5px] font-semibold tracking-wide text-faint [&::-webkit-details-marker]:hidden">
+              <span className="h-2 w-2 rounded-full" style={{ background: "var(--color-clay)" }} />
+              <span className="grow">طلبات الصداقة ({ar(requests.length)})</span>
+              <span className="text-[12px] text-muted group-open:hidden">إظهار</span>
+              <span className="hidden text-[12px] text-muted group-open:inline">إخفاء</span>
+            </summary>
             <div className="flex flex-col gap-2">
               {requests.map((request) => (
                 <div
@@ -185,7 +191,7 @@ export default async function CirclePage({
                 </div>
               ))}
             </div>
-          </section>
+          </details>
         ) : null}
 
         {tab === "friends" ? (

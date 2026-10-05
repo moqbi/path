@@ -207,6 +207,9 @@ model User {
   shareLocation   Boolean @default(true)
   /// إشعار حين يُشار إليّ في لحظة.
   notifyOnTag     Boolean @default(true)
+  /// وضعُ التخفّي لمشتركي آثار+: لا يُرى «متصل» ولا «آخر ظهور».
+  /// يسري ما دام الاشتراكُ قائماً — يُقرأ مع `isPlus` لا وحده.
+  hideOnline      Boolean @default(false)
 
   /// التنبيهات: ما يصل الجهاز ومتى.
   /// حقلٌ لكل نوع لا قائمةٌ في نصّ: الاستعلام يقرأ ما يحتاجه وحده،

@@ -1,3 +1,4 @@
+import { maskPresence } from "@/lib/presence";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { unreadCount } from "@/lib/dm";
@@ -26,12 +27,13 @@ export async function FriendsPanel({ userId }: { userId: string }) {
         name: true,
         isPlus: true,
         lastSeenAt: true,
+        hideOnline: true,
         avatarMediaId: true,
         frame: { select: { spec: true, mediaId: true, frameHole: true } },
         charm: { select: { spec: true, mediaId: true } },
         tag: { select: { name: true, bg: true, fg: true } },
       },
-    }),
+    }).then(maskPresence),
     prisma.friendship.count({ where: { addresseeId: userId, status: "PENDING" } }),
     unreadCount(userId),
   ]);

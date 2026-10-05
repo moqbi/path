@@ -78,7 +78,12 @@
       [
         "expo-notifications",
         {
-          "color": "#F6B93B"
+          "color": "#F6B93B",
+          "sounds": [
+            "./assets/sounds/athr_general.wav",
+            "./assets/sounds/athr_dm.wav",
+            "./assets/sounds/athr_athar.wav"
+          ]
         }
       ],
       "expo-apple-authentication",

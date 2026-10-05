@@ -26,6 +26,27 @@ export type PushKind =
   /** الذكرياتُ ومناسباتُ الصداقة وآثرك السنويّ (القاعدة ٢٣٥). */
   | "MEMORY";
 
+/**
+ * صوتُ كلّ نوعٍ وقناتُه على أندرويد (القاعدة ٢٥٣): عامٌّ لما يفعله الأصدقاء،
+ * وصوتٌ للمحادثات، وصوتٌ لما يأتي من آثار نفسها. والملفّاتُ في بناء الجوّال؛
+ * بناءٌ قديمٌ بلاها يُسمع صوتَ النظام في آبل وقناتَه الافتراضيّة في أندرويد.
+ */
+const SOUNDS = {
+  general: { sound: "athr_general.wav", channelId: "general" },
+  dm: { sound: "athr_dm.wav", channelId: "dm" },
+  athar: { sound: "athr_athar.wav", channelId: "athar" },
+} as const;
+const SOUND_OF: Record<PushKind, keyof typeof SOUNDS> = {
+  DM: "dm",
+  FRIEND: "general",
+  TAG: "general",
+  REACTION: "general",
+  COMMENT: "general",
+  STORE: "athar",
+  GRANT: "athar",
+  MEMORY: "athar",
+};
+
 /** أيُّ حقلٍ في `User` يحرس هذا النوع. */
 const GATE: Record<PushKind, string | null> = {
   DM: "notifyDm",
@@ -117,7 +138,7 @@ export async function push(message: PushMessage): Promise<void> {
         to: device.token,
         title: message.title,
         body: message.body,
-        sound: "default",
+        ...SOUNDS[SOUND_OF[message.kind]],
         ...(badge === null ? null : { badge }),
         data: message.path ? { path: message.path } : {},
       })),
@@ -175,7 +196,7 @@ export async function broadcast(kind: PushKind, title: string, body: string, pat
           to: device.token,
           title,
           body,
-          sound: "default",
+          ...SOUNDS[SOUND_OF[kind]],
           data: path ? { path } : {},
         })),
       );
@@ -248,7 +269,7 @@ export async function testPush(userId: string) {
       to: device.token,
       title: "آثار مومنتس",
       body: "تنبيهٌ تجريبيّ — التنبيهات تعمل",
-      sound: "default",
+      ...SOUNDS.athar,
       data: {},
     })),
   );

@@ -1,4 +1,5 @@
 import "server-only";
+import { maskPresence } from "@/lib/presence";
 import { prisma } from "@/lib/db";
 import { circleIds } from "@/lib/circle";
 import { sweepStories } from "@/lib/stories";
@@ -33,6 +34,8 @@ const PERSON = {
   name: true,
   isPlus: true,
   lastSeenAt: true,
+  // وضعُ التخفّي — يُقرأ ليُحجب به الحضورُ ثمّ يُحذف (`maskPresence`).
+  hideOnline: true,
   avatarMediaId: true,
   frame: { select: { spec: true, mediaId: true, frameHole: true } },
   charm: { select: { spec: true, mediaId: true } },
@@ -68,7 +71,7 @@ export async function conversationsFor(userId: string) {
   });
 
   return rows.map((row) => {
-    const other = row.a.id === userId ? row.b : row.a;
+    const other = maskPresence(row.a.id === userId ? row.b : row.a);
     const last = row.messages[0] ?? null;
     return {
       id: row.id,
@@ -112,7 +115,7 @@ export async function conversationFor(userId: string, conversationId: string) {
 
   return {
     ...conversation,
-    other: conversation.a.id === userId ? conversation.b : conversation.a,
+    other: maskPresence(conversation.a.id === userId ? conversation.b : conversation.a),
   };
 }
 
