@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
+import { BASE } from "@/lib/base";
 import { createSession } from "@/lib/auth";
 import { readIdentity, upsertIdentity } from "@/lib/oauth";
 import { SITE_URL, appUrl } from "@/lib/site-url";
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
   */
   const back = (reason: string, detail?: string) => {
     console.error("[snap]", reason, detail ?? "");
-    return NextResponse.redirect(appUrl(`/login?snap=${reason}`) || new URL(`/login?snap=${reason}`, request.url));
+    return NextResponse.redirect(appUrl(`/login?snap=${reason}`) || new URL(`${BASE}/login?snap=${reason}`, request.url));
   };
 
   const code = request.nextUrl.searchParams.get("code");
@@ -69,5 +70,5 @@ export async function GET(request: NextRequest) {
     return back("fail", problem instanceof Error ? problem.message : String(problem));
   }
 
-  return NextResponse.redirect(appUrl("/") || new URL("/", request.url));
+  return NextResponse.redirect(appUrl("/") || new URL(`${BASE}/`, request.url));
 }

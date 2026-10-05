@@ -1,4 +1,5 @@
 import { prisma } from "@athar/db";
+import { inviteLine } from "../lib/invite-line";
 import { blockedWith } from "./visibility";
 
 export type NoteKind = "REACTION" | "COMMENT" | "TAG" | "FRIEND" | "MESSAGE" | "GIFT" | "STORE";
@@ -98,7 +99,7 @@ async function derive(userId: string, limit: number): Promise<Note[]> {
 
   const person = { select: { id: true, name: true, avatarMediaId: true } };
 
-  const [reactions, comments, tags, friendships, messages, gifts, fresh, grants, plusGifts] = await Promise.all([
+  const [reactions, comments, tags, friendships, messages, gifts, fresh, grants, plusGifts, invites] = await Promise.all([
     prisma.reaction.findMany({
       where: { moment: { authorId: userId }, userId: { not: userId } },
       select: {
@@ -203,7 +204,7 @@ async function derive(userId: string, limit: number): Promise<Note[]> {
     // نقاطٌ منحتها الإدارة (القاعدة ١٩٨) — خبرٌ من التطبيق لا من صديق.
     prisma.coinGrant.findMany({
       where: { userId },
-      select: { id: true, coins: true, note: true, createdAt: true },
+      select: { id: true, coins: true, note: true, invites: true, createdAt: true },
       orderBy: { createdAt: "desc" },
       take: 10,
     }),
@@ -213,6 +214,11 @@ async function derive(userId: string, limit: number): Promise<Note[]> {
       select: { id: true, plan: true, doneAt: true, createdAt: true, giver: person },
       orderBy: { doneAt: "desc" },
       take: limit,
+    }),
+    // إعلانُ برنامج الدعوات (القاعدة ٢٤٣) — خبرٌ من التطبيق ما دام مفعّلاً.
+    prisma.inviteProgram.findFirst({
+      where: { id: "main", enabled: true, announcedAt: { not: null } },
+      select: { every: true, coins: true, announcedAt: true },
     }),
   ]);
 
@@ -294,12 +300,23 @@ async function derive(userId: string, limit: number): Promise<Note[]> {
       href: "store",
       item: { spec: row.spec, mediaId: row.mediaId },
     })),
+    ...(invites?.announcedAt
+      ? [
+          {
+            id: `i-${invites.announcedAt.getTime()}`,
+            kind: "STORE" as const,
+            at: invites.announcedAt,
+            text: `ادعُ أصدقاءك إلى آثار — ${inviteLine(invites.every, invites.coins)}`,
+            href: "me",
+          },
+        ]
+      : []),
     ...grants.map((row) => ({
       // `k-` لا `c-`: الأخيرةُ للتعليقات.
       id: `k-${row.id}`,
       kind: "STORE" as const,
       at: row.createdAt,
-      text: grantText(row.coins, row.note),
+      text: grantText(row.coins, row.note, row.invites),
       href: "store",
     })),
     ...messages.map((row) => ({
@@ -361,7 +378,9 @@ export async function clearAll(userId: string): Promise<void> {
 }
 
 /** «لأنك تستحق! تمّ منحك ٥٠٠ نقطة من قبل الإدارة» — بنصّ المالك (القاعدة ١٩٨). */
-export function grantText(coins: number, note: string | null): string {
+export function grantText(coins: number, note: string | null, invites?: number | null): string {
   const n = coins.toLocaleString("ar-SA");
+  // مكافأةُ دعوات (القاعدة ٢٤٣) لا منحٌ من الإدارة.
+  if (invites) return `دعوت ${invites.toLocaleString("ar-SA")} أصدقاء إلى آثار — لك ${n} نقطة`;
   return `لأنك تستحق! تمّ منحك ${n} نقطة من قبل الإدارة${note ? ` — ${note}` : ""}`;
 }

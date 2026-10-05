@@ -16,6 +16,8 @@ const PERSON = {
   city: true,
   isPlus: true,
   lastSeenAt: true,
+  // وضعُ التخفّي — يُقرأ ليُحجب به الحضور ثمّ يُحذف من الردّ (`maskPresence`).
+  hideOnline: true,
   avatarMediaId: true,
   // الصنف الملبوس يُقرأ كاملاً: من ضغط صورةً وأعجبه إطارُها يرى اسمه
   // وسعره من مكانه، فلا يبحث عنه في المتجر.

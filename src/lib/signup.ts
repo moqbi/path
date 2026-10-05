@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "@/lib/db";
+import { linkInviter } from "@/lib/invite-ref";
 import { appUrl } from "@/lib/site-url";
 import { letterHtml, sendMail } from "@/lib/mail";
 import { hashPassword } from "@/lib/auth";
@@ -28,6 +29,7 @@ export async function requestSignup(input: {
   name: string;
   email: string;
   password: string;
+  inviterNo?: number;
 }): Promise<SignupResult> {
   const taken = await prisma.user.findUnique({
     where: { email: input.email },
@@ -43,6 +45,7 @@ export async function requestSignup(input: {
     passwordHash: await hashPassword(input.password),
     tokenHash: digest(token),
     expiresAt: new Date(Date.now() + UNVERIFIED_MINUTES * 60_000),
+    inviterNo: input.inviterNo ?? null,
   };
 
   /*
@@ -121,6 +124,9 @@ export async function activateSignup(
     }),
     prisma.pendingSignup.delete({ where: { id: row.id } }),
   ]);
+
+  // من دعاه (القاعدة ٢٤٣) — من رابط الدعوة، ولا يُسقط حساباً قام.
+  await linkInviter(user.id, row.inviterNo);
 
   return { userId: user.id };
 }

@@ -3,7 +3,7 @@ import { promisify } from "node:util";
 import { prisma } from "@athar/db";
 import { consume, sendReset, sendVerify } from "./email-tokens";
 import { letterHtml, sendMail } from "./mail";
-import { readIdentity, upsertIdentity } from "./oauth";
+import { exchangeTikTok, readIdentity, upsertIdentity } from "./oauth";
 import { TOKEN, UNVERIFIED_MINUTES, appUrl } from "@athar/shared";
 import { hashToken, newFamily, readRefresh, signAccess, signRefresh } from "../lib/tokens";
 import { badRequest, forbidden, unauthorized } from "../lib/errors";
@@ -94,7 +94,7 @@ async function issue(
  *
  * **ولا توكنَ يُردّ هنا**: لا حساب بعدُ فلا جلسة.
  */
-export async function register(input: { email: string; password: string; name: string }) {
+export async function register(input: { email: string; password: string; name: string; inviterNo?: number }) {
   const taken = await prisma.user.findUnique({ where: { email: input.email }, select: { id: true } });
   if (taken) throw badRequest("هذا البريد مسجّل — سجّل الدخول به");
 
@@ -104,6 +104,7 @@ export async function register(input: { email: string; password: string; name: s
     passwordHash: await hashPassword(input.password),
     tokenHash: createHash("sha256").update(token).digest("hex"),
     expiresAt: new Date(Date.now() + UNVERIFIED_MINUTES * 60_000),
+    inviterNo: input.inviterNo ?? null,
   };
 
   // وطلبٌ ثانٍ بالبريد نفسه يحلّ محلّ الأوّل: من لم تصله الرسالة يعيد،
@@ -204,12 +205,25 @@ export async function resendVerify(userId: string) {
  * بالبريد: بابٌ ثانٍ يتجاوز الإيقاف ليس إيقافاً.
  */
 export async function oauth(input: {
-  provider: "GOOGLE" | "APPLE" | "SNAP";
+  provider: "GOOGLE" | "APPLE" | "SNAP" | "TIKTOK";
   idToken: string;
   name?: string | null;
   device?: string;
 }) {
-  const identity = await readIdentity(input.provider, input.idToken, input.name ?? null);
+  /*
+     تيك توك يأتي بشيفرةٍ لا برمز: تُبادَل هنا بسرّ العميل (`exchangeTikTok`)،
+     وبعنوان العودة الذي طلبها به الجوّال حرفاً بحرف.
+  */
+  let token = input.idToken;
+  if (input.provider === "TIKTOK") {
+    try {
+      token = await exchangeTikTok(input.idToken, appUrl("/tiktok/callback"));
+    } catch (problem) {
+      if (problem instanceof Error && problem.message.includes("غير مفعّل")) throw problem;
+      throw unauthorized("تعذّر التحقّق من الرمز");
+    }
+  }
+  const identity = await readIdentity(input.provider, token, input.name ?? null);
   const { userId } = await upsertIdentity(identity);
 
   const row = await prisma.user.findUnique({

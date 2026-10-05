@@ -28,6 +28,8 @@ import {
   createCoinPack,
   updateCoinPack,
   deleteCoinPack,
+  restoreMember,
+  vacantMembers,
 } from "@/app/actions";
 import { itemPaint, ScreenHeader, TagPill } from "@/components/ui";
 import { Saver } from "./saver";
@@ -42,6 +44,7 @@ import { ItemImage } from "./item-image";
 import { ItemCover } from "./item-cover";
 import { BundleItems } from "./bundle";
 import { CollectionsView, ItemCollection, ItemPlans } from "./store-extras";
+import { InvitesView } from "./invites";
 import { coinText, ar, relative, riyals } from "@/lib/format";
 import { parsePalette } from "@/lib/theme";
 import { ReportContext } from "./report-context";
@@ -93,6 +96,7 @@ const STORE_VIEWS = [
   { key: "cats", label: "التصنيفات" },
   { key: "collections", label: "المجموعات" },
   { key: "packs", label: "باقات النقاط" },
+  { key: "invites", label: "الدعوات" },
 ] as const;
 
 /** حقلٌ باسمه: الصفّ العاري من الحقول لا يقول ما يُكتب فيه. */
@@ -407,6 +411,7 @@ const SECTIONS = [
   { key: "site", label: "الموقع", store: false },
   { key: "team", label: "الصلاحيات", store: false, owner: true },
   { key: "files", label: "الملفات", store: false, owner: true },
+  { key: "vacant", label: "العضويات المحذوفة", store: false, owner: true },
   { key: "support", label: "الدعم", store: false, reports: true },
   { key: "reports", label: "البلاغات", store: false, reports: true },
   { key: "words", label: "الكلمات", store: false },
@@ -418,7 +423,7 @@ export default async function AdminPage({
   searchParams: Promise<{ s?: string; v?: string; q?: string }>;
 }) {
   const { s: raw, v, q } = await searchParams;
-  const view = v === "cats" || v === "packs" || v === "collections" ? v : "items";
+  const view = v === "cats" || v === "packs" || v === "collections" || v === "invites" ? v : "items";
   const user = await currentUser();
   if (!user) redirect("/login");
 
@@ -1018,7 +1023,7 @@ export default async function AdminPage({
               >
                 {tab.label}
                 <span className="mr-1.5 text-[11px] opacity-70">
-                  {tab.key === "collections"
+                  {tab.key === "collections" || tab.key === "invites"
                     ? ""
                     : ar(tab.key === "items" ? items.length : tab.key === "cats" ? categories.length : packs.length)}
                 </span>
@@ -1029,6 +1034,8 @@ export default async function AdminPage({
 
         {view === "collections" ? (
           <CollectionsView />
+        ) : view === "invites" ? (
+          <InvitesView />
         ) : view === "packs" ? (
           <>
             <p className="mb-3 px-1 text-[11.5px] leading-relaxed text-muted">
@@ -1764,6 +1771,7 @@ export default async function AdminPage({
         ) : null}
 
         {section === "files" ? <Files /> : null}
+        {section === "vacant" ? <Vacant /> : null}
 
         {section === "support" ? (
           <>
@@ -2110,6 +2118,72 @@ function megabytes(bytes: number): string {
  * الرقمان يقولان حالَ النقل بلا تخمين، والزرّ لمن لا يريد انتظار
  * الكنسة — والنقل يجري وحده معها على كل حال.
  */
+/**
+ * العضويّات المحذوفة (القاعدة ٢٥٢) — للمالك: رقمٌ ذهب صاحبُه يبقى بلا أحد، ومنها
+ * يُنشأ حسابٌ ببريدٍ وكلمة مرور على الرقم نفسه.
+ */
+async function Vacant() {
+  const numbers = await vacantMembers();
+  return (
+    <>
+      <h2 className="mb-1 text-[15px] font-bold">العضويات المحذوفة</h2>
+      <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
+        أرقامٌ حُذفت حساباتُها فبقيت بلا صاحب — لا تُعطى تلقائياً لمن يسجّل بعدها. افتح رقماً
+        واكتب اسماً وبريداً وكلمة مرور فيُنشأ عليه حسابٌ مؤكَّد البريد، يدخل به صاحبُه من
+        التطبيق أو الموقع.
+      </p>
+      {numbers.length === 0 ? (
+        <p className="rounded-2xl border border-line bg-card p-4 text-[13px] text-muted">لا عضويات محذوفة.</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {numbers.map((no) => (
+            <details key={no} className="rounded-2xl border border-line bg-card">
+              <summary className="flex cursor-pointer list-none items-center gap-2 p-3.5 text-[13.5px] font-bold">
+                <span>عضوية رقم {no}</span>
+                <span className="mr-auto text-[11.5px] font-semibold text-muted">أنشئ عليها حساباً</span>
+              </summary>
+              <Saver action={restoreMember.bind(null, no)} className="flex flex-col gap-2.5 border-t border-line p-3.5">
+                <input
+                  name="name"
+                  required
+                  maxLength={40}
+                  placeholder="الاسم"
+                  className="h-11 rounded-xl border border-line bg-paper px-3 text-[13px] text-ink outline-none placeholder:text-faint"
+                />
+                <input
+                  name="email"
+                  type="email"
+                  required
+                  dir="ltr"
+                  placeholder="البريد"
+                  className="h-11 rounded-xl border border-line bg-paper px-3 text-[13px] text-ink outline-none placeholder:text-faint"
+                />
+                <input
+                  name="password"
+                  type="password"
+                  required
+                  minLength={8}
+                  dir="ltr"
+                  autoComplete="new-password"
+                  placeholder="كلمة المرور (٨ أحرف على الأقل)"
+                  className="h-11 rounded-xl border border-line bg-paper px-3 text-[13px] text-ink outline-none placeholder:text-faint"
+                />
+                <button
+                  type="submit"
+                  className="h-11 rounded-xl text-[13px] font-bold"
+                  style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+                >
+                  أنشئ الحساب على العضوية {no}
+                </button>
+              </Saver>
+            </details>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 async function Files() {
   const state = await storageState();
 

@@ -46,6 +46,7 @@ export async function me(userId: string) {
       // وجودُها وحده يُرسَل لا هي: الشاشة تسأل «أضبطُها أم أغيّرها؟».
       passwordHash: true,
       shareLocation: true,
+      hideOnline: true,
       notifyOnTag: true,
       notifyDm: true,
       notifyFriend: true,
@@ -155,8 +156,15 @@ export async function savePrivacy(
     interactGroupId?: string | null;
     shareLocation: boolean;
     notifyOnTag?: boolean;
+    hideOnline?: boolean;
   },
 ) {
+  // التخفّي لمشتركي آثار+ وحدهم — يُفحص هنا لا في الشاشة: الطلبُ يُرسل بيد.
+  // وإطفاؤه مسموحٌ دائماً، فمن انتهى اشتراكُه يستطيع أن يُطفئه.
+  if (input.hideOnline) {
+    const me = await prisma.user.findUnique({ where: { id: userId }, select: { isPlus: true } });
+    if (!me?.isPlus) throw forbidden("وضع التخفي لمشتركي آثار+");
+  }
   const groups = await prisma.friendGroup.findMany({
     where: { ownerId: userId },
     select: { id: true },
@@ -173,6 +181,7 @@ export async function savePrivacy(
       // ولا يُكتب إلا إن أُرسل: نسخةٌ جديدة من التطبيق تتركه لشاشة
       // التنبيهات، فكتابتُه افتراضاً تطفئه في كل حفظٍ للخصوصية.
       ...(input.notifyOnTag === undefined ? {} : { notifyOnTag: input.notifyOnTag }),
+      ...(input.hideOnline === undefined ? {} : { hideOnline: input.hideOnline }),
     },
   });
   return { ok: true };

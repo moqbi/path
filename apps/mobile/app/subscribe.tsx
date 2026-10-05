@@ -6,7 +6,7 @@ import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ScreenHeader } from "../components/screen-header";
 import { Sheet } from "../components/sheet";
-import { BookIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, StoreIcon, VerifiedIcon, WithIcon } from "../components/icons";
+import { BookIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, PrivateIcon, StoreIcon, VerifiedIcon, WithIcon } from "../components/icons";
 import { TagPill } from "../components/name-tag";
 import { SITE_URL, SUPPORTER_TAG, hasSite } from "@athar/shared";
 import { api } from "../lib/api";
@@ -51,6 +51,12 @@ const PERKS = [
     body: "العائلة، الشلة، الشغل — كل وحدة بخصوصيتها",
     // النجمةُ صارت للتوثيق، فللدوائر رسمُها.
     icon: <CircleIcon size={18} color={colors.gold} />,
+  },
+  {
+    // وضعُ التخفّي (القاعدة ٢٥١).
+    title: "وضع التخفي",
+    body: "ما يظهر لأحد إنك متصل ولا آخر ظهور لك · من الخصوصية",
+    icon: <PrivateIcon size={18} color={colors.gold} />,
   },
   {
     title: "رسالة صوتية دقيقتان",

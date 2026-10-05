@@ -3,7 +3,8 @@
 import { useState } from "react";
 
 /**
- * «افتح في التطبيق» — رابطُ التطبيق نفسه (`athar://u/<id>`).
+ * «افتح في التطبيق» — رابطُ التطبيق نفسه (`athar://u/<رقم العضوية>`): الرقمُ لا
+ * المعرّف، فيقرأ منه التطبيقُ من دعاه (القاعدة ٢٤٣) ويحلّه إلى الملف (القاعدة ٢٢٥).
  *
  * ومن لم يُنزّله: المتصفّح لا يعرف `athar://` فيبقى في الصفحة. فإن بقيت
  * الصفحةُ ظاهرةً بعد لحظة — لم ينتقل شيء — **يُعرض** زرُّ المتجر ولا يُرسَل
@@ -16,7 +17,7 @@ import { useState } from "react";
  * فلا تُرى هذه الصفحة أصلاً. وهي لمن لم ينزّله، أو لمتصفّحٍ داخليّ لا يمرّر
  * الروابط إلى النظام.
  */
-export function OpenInApp({ userId, store }: { userId: string; store: string | null }) {
+export function OpenInApp({ memberNo, store }: { memberNo: number; store: string | null }) {
   const [said, setSaid] = useState<string | null>(null);
   const [offer, setOffer] = useState(false);
 
@@ -29,7 +30,7 @@ export function OpenInApp({ userId, store }: { userId: string; store: string | n
     };
     document.addEventListener("visibilitychange", gone);
 
-    window.location.href = `athar://u/${userId}`;
+    window.location.href = `athar://u/${memberNo}`;
 
     window.setTimeout(() => {
       document.removeEventListener("visibilitychange", gone);

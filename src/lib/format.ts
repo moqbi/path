@@ -34,7 +34,7 @@ export function timeOfDay(date: Date): string {
   return `${ar(hour12)}:${ar(String(minutes).padStart(2, "0"))} ${suffix}`;
 }
 
-const MONTHS = [
+export const MONTHS = [
   "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
   "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر",
 ];

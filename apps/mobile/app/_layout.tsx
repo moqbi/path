@@ -16,12 +16,14 @@ import {
 import { Tajawal_400Regular, Tajawal_700Bold } from "@expo-google-fonts/tajawal";
 import { Montserrat_500Medium, Montserrat_700Bold } from "@expo-google-fonts/montserrat";
 import { useSession } from "../lib/session";
+import { claimSavedInviter, watchInviteLinks } from "../lib/invite-ref";
 import { primeAccess } from "../lib/api";
 import { markFirstSeen } from "../lib/rate";
 import { watchCity } from "../lib/arrive";
 import { Suspended } from "../components/suspended";
 import { PhotoViewer } from "../components/photo-viewer";
 import { PlaceVisitors } from "../components/place-visitors";
+import { ReactSheet } from "../components/react-sheet";
 import { Tour } from "../components/tour";
 import { applyTheme, colors, themeStore, veil } from "../theme/tokens";
 import { dismissOpen } from "../lib/swipe-open";
@@ -85,6 +87,9 @@ function Gate() {
   const segments = useSegments();
   const router = useRouter();
 
+  // رابطُ ملفٍّ فُتح قبل التسجيل يقول من دعاه (القاعدة ٢٤٣).
+  useEffect(() => watchInviteLinks(), []);
+
   useEffect(() => {
     void primeAccess().then(restore);
     // ختمُ أوّل فتحٍ لطلب التقييم: يُكتب مرّةً ولا يزيد (`lib/rate.ts`).
@@ -106,6 +111,8 @@ function Gate() {
   useEffect(() => {
     if (!me) return;
     void enablePush();
+    // ومن دخل وفي جهازه رابطُ داعٍ يُربط به — الخادمُ يقبله لحسابٍ جديد وحده.
+    void claimSavedInviter();
   }, [me?.id]);
 
   /*
@@ -267,6 +274,8 @@ function Gate() {
     <PhotoViewer />
     {/* «من كان هنا» لصاحب لحظة المكان — في الجذر للسبب نفسه. */}
     <PlaceVisitors />
+    {/* ولوحةُ التفاعل نافذةٌ زجاجيّة كذلك (القاعدة ٢٤٧). */}
+    <ReactSheet />
     {/* الجولةُ طبقةٌ فوق المكدّس كلّه، لمن دخل وحده. */}
     {me ? <Tour key={me.id} /> : null}
     </>

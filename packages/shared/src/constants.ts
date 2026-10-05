@@ -38,6 +38,17 @@ export const STORY_TIME_STYLES = ["digital", "clock", "pill", "date"] as const;
  */
 export const SOUND_SOURCE = { seconds: 600, bytes: 40_000_000 } as const;
 
+/**
+ * مصدرُ مقطع القصّة قبل ضغطه (القاعدة ٢٤٩): يُرفع كما صُوِّر — حتى ١٥٠ ميغا
+ * وعشر دقائق — فيقصّ الخادمُ منه `STORY_SECONDS` من حيث اختار صاحبُه ويضغطه
+ * إلى ما دون `LIMITS.video`. كان الحدُّ تسعة ميغا للمصدر نفسه، فمقطعٌ عاديّ من
+ * الآيفون يُردّ «الملف كبير» قبل أن يُنظر فيه.
+ */
+export const STORY_VIDEO_SOURCE = { seconds: 600, bytes: 150_000_000 } as const;
+
+/** صورةُ العرض مربّعٌ بهذا الضلع (القاعدة ٢٤٨) — أكبرُ ما تُعرض فيه. */
+export const AVATAR_SIDE = 320;
+
 /** عرضُ الشاشة الذي يُقاس به مقاسُ النصّ — يُكبَّر ويُصغَّر بنسبته على كل جهاز. */
 export const STORY_TEXT_BASE = 390;
 export const STORY_TEXT_COLORS = [

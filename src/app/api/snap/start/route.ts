@@ -1,6 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+// `redirect()` في معالج المسار لا يسبق الجذرَ `/app` (القاعدة ١٢٢) — كان يُرسل إلى ٤٠٤.
+import { BASE } from "@/lib/base";
 import { SITE_URL, appUrl } from "@/lib/site-url";
 
 /**
@@ -23,7 +25,7 @@ const SCOPES = [
 
 export async function GET() {
   const clientId = process.env.SNAP_CLIENT_ID;
-  if (!clientId || !SITE_URL) redirect("/login?snap=off");
+  if (!clientId || !SITE_URL) redirect(`${BASE}/login?snap=off`);
 
   const verifier = randomBytes(48).toString("base64url");
   const challenge = createHash("sha256").update(verifier).digest("base64url");

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
+import { IncognitoBox } from "./incognito";
 import { prisma } from "@/lib/db";
 import { createGroup, deleteGroup, savePrivacy } from "@/app/actions";
 import { ScreenHeader } from "@/components/ui";
@@ -38,6 +39,7 @@ export default async function SettingsPage() {
         viewGroupId: true,
         interactGroupId: true,
         shareLocation: true,
+        hideOnline: true,
         notifyOnTag: true,
         notifyDm: true,
         notifyFriend: true,
@@ -165,6 +167,16 @@ export default async function SettingsPage() {
                 defaultChecked={settings?.shareLocation !== false}
                 className="h-6 w-6 shrink-0 accent-[#f6b93b]"
               />
+            </label>
+
+            <label className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-card p-4">
+              <span className="min-w-0 grow">
+                <span className="block text-[13.5px] font-semibold">وضع التخفي — آثار+</span>
+                <span className="mt-0.5 block text-[11.5px] text-muted">
+                  لا يظهر لأصدقائك إن كنت متصلاً ولا آخر ظهورك
+                </span>
+              </span>
+              <IncognitoBox initial={settings?.hideOnline === true} isPlus={user.isPlus} />
             </label>
 
             <button

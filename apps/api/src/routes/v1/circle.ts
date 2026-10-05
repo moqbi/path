@@ -1,3 +1,4 @@
+import { maskPresence } from "../../lib/presence";
 import { Hono } from "hono";
 import { z } from "zod";
 import { cuid, friendGroupInput, groupInput, pageQuery } from "@athar/shared";
@@ -18,9 +19,9 @@ const byId = z.object({ id: cuid });
 export const circleRoutes = new Hono()
   .use("*", requireAuth)
 
-  .get("/", async (c) => c.json(await circle.circle(me(c))))
-  .get("/suggestions", async (c) => c.json({ people: await circle.suggestions(me(c)) }))
-  .get("/blocked", async (c) => c.json({ people: await circle.blockedList(me(c)) }))
+  .get("/", async (c) => c.json(maskPresence(await circle.circle(me(c)))))
+  .get("/suggestions", async (c) => c.json(maskPresence({ people: await circle.suggestions(me(c)) })))
+  .get("/blocked", async (c) => c.json(maskPresence({ people: await circle.blockedList(me(c)) })))
 
   /** التصنيفات: يملكها صاحبها ولا يراها من صُنّف فيها. */
   .post("/groups", zValidator("json", groupInput), async (c) =>
@@ -84,7 +85,7 @@ export const userRoutes = new Hono()
   })
 
   .get("/:id", zValidator("param", byId), async (c) =>
-    c.json(await circle.userProfile(me(c), c.req.valid("param").id)),
+    c.json(maskPresence(await circle.userProfile(me(c), c.req.valid("param").id))),
   )
 
   .get(

@@ -14,11 +14,14 @@ export async function shrink(
   file: File,
   max: number,
   keepAlpha: boolean,
+  /** مربّعٌ بهذا الضلع يُقصّ من وسط الصورة — صورةُ العرض ٣٢٠ (القاعدة ٢٤٨). */
+  square?: number,
 ): Promise<Picked> {
   const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
-  const width = Math.round(bitmap.width * scale);
-  const height = Math.round(bitmap.height * scale);
+  const crop = square ? Math.min(bitmap.width, bitmap.height) : 0;
+  const scale = square ? Math.min(1, square / crop) : Math.min(1, max / Math.max(bitmap.width, bitmap.height));
+  const width = square ? Math.round(crop * scale) : Math.round(bitmap.width * scale);
+  const height = square ? width : Math.round(bitmap.height * scale);
 
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -26,7 +29,11 @@ export async function shrink(
 
   const context = canvas.getContext("2d");
   if (!context) throw new Error("تعذّر تجهيز الصورة");
-  context.drawImage(bitmap, 0, 0, width, height);
+  if (square) {
+    context.drawImage(bitmap, (bitmap.width - crop) / 2, (bitmap.height - crop) / 2, crop, crop, 0, 0, width, height);
+  } else {
+    context.drawImage(bitmap, 0, 0, width, height);
+  }
   bitmap.close();
 
   // JPEG يمحو الشفافية بخلفيةٍ سوداء — والتميمة شعارٌ شفّاف، فتبقى PNG.
@@ -104,6 +111,7 @@ async function asIs(file: File): Promise<Picked> {
 export function ImagePicker({
   onPicked,
   maxSize = 1600,
+  square,
   keepAlpha = false,
   animated = false,
   accept = "image/jpeg,image/png,image/webp",
@@ -122,6 +130,8 @@ export function ImagePicker({
     height: number,
   ) => void | string | Promise<void | string>;
   maxSize?: number;
+  /** يقصّ مربّعاً بهذا الضلع من وسط الصورة — صورةُ العرض (القاعدة ٢٤٨). */
+  square?: number;
   /** يُبقي الشفافية (PNG): للشعارات التي تُعلَّق على صورةٍ تحتها. */
   keepAlpha?: boolean;
   /** يقبل صورةً متحركة ويرفعها بملفها — لمشتركي آثار+. */
@@ -155,7 +165,7 @@ export function ImagePicker({
           setError(null);
           const moving = animated && (file.type === "image/gif" || file.type === "image/webp");
           try {
-            const image = moving ? await asIs(file) : await shrink(file, maxSize, keepAlpha);
+            const image = moving ? await asIs(file) : await shrink(file, maxSize, keepAlpha, square);
             // الخطأ الذي يردّه الخادم يُعرض كما هو: «فشل صامت» أسوأ من رسالة.
             const said = await onPicked(image.file, image.width, image.height);
             if (typeof said === "string") setError(said);

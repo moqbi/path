@@ -3,6 +3,8 @@ import * as AppleAuth from "expo-apple-authentication";
 import * as Google from "expo-auth-session/providers/google";
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
+import * as Crypto from "expo-crypto";
+import * as Linking from "expo-linking";
 import { api, saveTokens } from "./api";
 import type { Me } from "./session";
 import { appUrl } from "@athar/shared";
@@ -43,7 +45,7 @@ type Session = { user: Me; accessToken: string; refreshToken: string };
  * فمن لم يلتقطه التطبيقُ حينها لم يعد يجده في الرمز أبداً.
  */
 async function exchange(
-  provider: "GOOGLE" | "APPLE" | "SNAP",
+  provider: "GOOGLE" | "APPLE" | "SNAP" | "TIKTOK",
   idToken: string,
   name: string | null,
 ): Promise<Me> {
@@ -131,11 +133,14 @@ const SNAP_SCOPES = [
  * احتياطٌ لخادمٍ قديمٍ لا يعرف البابَ.
  */
 let snapClient: string = process.env.EXPO_PUBLIC_SNAP_CLIENT_ID ?? "";
+/** مفتاحُ تيك توك العامّ من الخادم وحده — لا احتياطَ في البناء: بلا سرّه على الخادم لا مبادلة. */
+let tiktokKey = "";
 
 export async function loadProviders(): Promise<void> {
   try {
-    const answer = await api<{ snap: string | null }>("/v1/auth/providers");
+    const answer = await api<{ snap: string | null; tiktok?: string | null }>("/v1/auth/providers");
     snapClient = answer.snap ?? "";
+    tiktokKey = answer.tiktok ?? "";
   } catch {
     // خادمٌ بلا البابِ بعد: يبقى ما في البناء.
   }
@@ -221,4 +226,54 @@ export async function finishSnap(code: string, verifier: string): Promise<Me> {
   if (!token.accessToken) throw new Error("ما وصل رمزٌ من سناب");
 
   return exchange("SNAP", token.accessToken, null);
+}
+
+export function tiktokReady(): boolean {
+  return Boolean(tiktokKey) && Boolean(appUrl("/tiktok/callback"));
+}
+
+/**
+ * الدخول بتيك توك (القاعدة ١٢١ج).
+ *
+ * **الشيفرةُ تُبادَل على خادمنا لا هنا**: عميلُ تيك توك يحتاج سرّاً في المبادلة،
+ * والسرُّ في التطبيق ليس سرّاً. فالجهازُ يفتح صفحتَها، وتعود إلى
+ * `/tiktok/callback` على موقعنا (تيك توك لا تقبل إلا HTTPS) فترتدّ إلى
+ * `athar://tiktok` بالشيفرة والحارس — كسناب. ويُفحص الحارسُ هنا، ثمّ تذهب
+ * الشيفرةُ إلى `/v1/auth/oauth` فيبادلها الخادم ويسأل عن صاحبها.
+ *
+ * ويردّ `null` حين يُلغي المستخدم: الإلغاء ليس خطأً يُعرض.
+ */
+export async function promptTikTokLogin(): Promise<Me | null> {
+  const redirectUri = appUrl("/tiktok/callback");
+  if (!tiktokKey || !redirectUri) throw new Error("الدخول بتيك توك غير مفعّل في هذه النسخة.");
+
+  const state = Crypto.randomUUID();
+  const query = [
+    ["client_key", tiktokKey],
+    ["response_type", "code"],
+    ["scope", "user.info.basic"],
+    ["redirect_uri", redirectUri],
+    ["state", state],
+  ]
+    .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+    .join("&");
+
+  const result = await WebBrowser.openAuthSessionAsync(
+    `https://www.tiktok.com/v2/auth/authorize/?${query}`,
+    "athar://tiktok",
+  );
+  if (result.type !== "success") return null;
+
+  const params = Linking.parse(result.url).queryParams ?? {};
+  const one = (key: string) => {
+    const value = params[key];
+    return typeof value === "string" ? value : null;
+  };
+  // من رفض الإذن في صفحتها يعود بـ`error` لا بشيفرة — إلغاءٌ لا عطل.
+  if (one("error")) return null;
+  if (one("state") !== state) throw new Error("انتهت مهلة المحاولة. حاول مرة ثانية.");
+  const code = one("code");
+  if (!code) throw new Error("ما وصلت شيفرةٌ من تيك توك");
+
+  return exchange("TIKTOK", code, null);
 }

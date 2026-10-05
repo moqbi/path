@@ -33,8 +33,8 @@ export function ReportButton({
   target: ReportTarget;
   targetId: string;
   label?: string;
-  /** الهادئ في شريط التفاعل، والظاهر في القصة والمحادثة. */
-  tone?: "quiet" | "loud";
+  /** الهادئ في شريط التفاعل، والظاهر في القصة والمحادثة، والزجاجيّ في نافذة التفاعل. */
+  tone?: "quiet" | "loud" | "glass";
 }) {
   const [open, setOpen] = useState(false);
 
@@ -52,11 +52,11 @@ export function ReportButton({
           borderRadius: 999,
           borderWidth: tone === "loud" ? 1 : 0,
           borderColor: colors.line,
-          backgroundColor: tone === "loud" ? colors.card : "transparent",
+          backgroundColor: tone === "loud" ? colors.card : tone === "glass" ? "rgba(255,255,255,.1)" : "transparent",
         }}
       >
-        <ShieldIcon size={13} color={colors.muted} />
-        <Text style={{ color: colors.muted, fontSize: 11.5, fontWeight: "600" }}>{label}</Text>
+        <ShieldIcon size={13} color={tone === "glass" ? "rgba(255,255,255,.75)" : colors.muted} />
+        <Text style={{ color: tone === "glass" ? "rgba(255,255,255,.75)" : colors.muted, fontSize: 11.5, fontWeight: "600" }}>{label}</Text>
       </Pressable>
 
       {open ? (

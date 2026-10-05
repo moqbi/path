@@ -89,6 +89,12 @@ export const authRoutes = new Hono()
      «قيد المراجعة» بعد نشر نسختنا، ومعرّفٌ مدموجٌ في النسخة لا يُبدَّل إلا
      ببناءٍ ومراجعةِ آبل. فارغٌ = الزرّ يختفي.
   */
-  .get("/providers", (c) => c.json({ snap: process.env.SNAP_CLIENT_ID || null }))
+  .get("/providers", (c) =>
+    c.json({
+      snap: process.env.SNAP_CLIENT_ID || null,
+      // ومفتاحُ تيك توك العامّ وحده — سرُّه لا يخرج من الخادم، وبلا السرّ لا زرّ.
+      tiktok: process.env.TIKTOK_CLIENT_SECRET ? process.env.TIKTOK_CLIENT_KEY || null : null,
+    }),
+  )
 
   .get("/me", requireAuth, async (c) => c.json({ user: await auth.profile(me(c)) }));

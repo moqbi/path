@@ -7,7 +7,7 @@ import { BETA_DEVICES, CONTACT_REASONS, TOPIC_LABEL, type ContactReason } from "
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { createSession, destroySession, requireUser, verifyPassword } from "@/lib/auth";
+import { createSession, destroySession, hashPassword, requireUser, verifyPassword } from "@/lib/auth";
 import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
 import { dropMedia, migrateToCloud, storeSiteShot, storeUpload } from "@/lib/media";
 import { cloudReady, probeBucket } from "@/lib/storage";
@@ -1796,4 +1796,113 @@ export async function revokePlus(userId: string): Promise<void> {
     data: { adminId: admin.id, action: "PLUS_REVOKED", targetId: userId, ownerId: userId },
   });
   revalidatePath("/admin");
+}
+
+/**
+ * برنامجُ الدعوات (القاعدة ٢٤٣): تفعيلٌ وإيقاف ورقمان.
+ *
+ * والإعلانُ للجميع يقرعه كنسُ الخادم — هذا المشروع بلا خدمة التنبيهات
+ * (كجديد المتجر، القاعدة ١٧٧): التفعيلُ يترك `announcedAt` فارغاً فيُعلَن
+ * مرّةً، والإيقافُ يمسحه فيُعلَن ثانيةً إن فُعّل.
+ */
+const invitesInput = z.object({
+  enabled: z.boolean(),
+  every: z.coerce.number().int().min(1, "عدد المدعوّين ١ فأكثر").max(1000),
+  coins: z.coerce.number().int().min(1, "النقاط ١ فأكثر").max(50_000),
+});
+
+export async function saveInvites(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  await requireAdmin("store");
+  const parsed = invitesInput.safeParse({
+    enabled: formData.get("enabled") === "on",
+    every: formData.get("every"),
+    coins: formData.get("coins"),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
+
+  const before = await prisma.inviteProgram.findUnique({ where: { id: "main" } });
+  const { enabled, every, coins } = parsed.data;
+  await prisma.inviteProgram.upsert({
+    where: { id: "main" },
+    create: { id: "main", enabled, every, coins, announcedAt: null },
+    update: { enabled, every, coins, ...(enabled ? {} : { announcedAt: null }) },
+  });
+
+  revalidatePath("/admin");
+  if (enabled && !before?.enabled) return { ok: "فُعّل البرنامج — يصل التنبيه للجميع خلال دقائق" };
+  if (!enabled && before?.enabled) return { ok: "أُوقف البرنامج" };
+  return { ok: "حُفظ" };
+}
+
+
+// ───────────────────────────── العضويّات المحذوفة (القاعدة ٢٥٢) ─────────────────────────────
+
+/**
+ * أرقامُ العضويّة التي لا صاحبَ لها اليوم — حُذف حسابُها. الرقمُ لا يُعاد
+ * تلقائياً (القاعدة ١٥)، فهذه القائمةُ وحدها تعرفها: من ١ إلى أبعد ما بلغته
+ * المتسلسلة، ما ليس عليه حساب. وتُقرأ من القاعدة لا من سجلٍّ يُكتب عند الحذف:
+ * ما حُذف قبل هذا الباب يظهر فيها كذلك.
+ */
+export async function vacantMembers(): Promise<number[]> {
+  await requireOwner();
+  const rows = await prisma.$queryRaw<{ n: number }[]>`
+    WITH top AS (
+      SELECT GREATEST(
+        COALESCE((SELECT MAX("memberNo") FROM "User"), 0),
+        COALESCE((SELECT last_value FROM "User_memberNo_seq"), 0)
+      ) AS m
+    )
+    SELECT n::int AS n FROM top, generate_series(1, top.m) AS n
+    WHERE NOT EXISTS (SELECT 1 FROM "User" u WHERE u."memberNo" = n)
+    ORDER BY n
+    LIMIT 500`;
+  return rows.map((row) => Number(row.n));
+}
+
+const restoreInput = z.object({
+  name: z.string().trim().min(1, "اكتب الاسم").max(40),
+  email: z.string().trim().toLowerCase().email("البريد غير صحيح"),
+  password: z.string().min(8, "كلمة المرور ثمانية أحرف على الأقل").max(128),
+});
+
+/**
+ * حسابٌ جديد على رقمٍ محذوف — **للمالك وحده**، كمنح الصلاحيات: الرقمُ الصغير
+ * يُعطى ولا يُؤخذ. يُكتب الرقمُ صراحةً فلا تمسّه المتسلسلة، وقيدُ الفرادة
+ * يحرسه إن أخذه أحدٌ بين العرض والحفظ. والبريدُ مؤكَّد — المالك كتبه بيده —
+ * وأوّلُ لحظةٍ «انضم» كبقيّة أبواب الإنشاء (القاعدة ١٤٨).
+ */
+export async function restoreMember(memberNo: number, _prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  await requireOwner();
+  if (!Number.isInteger(memberNo) || memberNo < 1) return { error: "رقم غير صالح" };
+  const parsed = restoreInput.safeParse({
+    name: formData.get("name"),
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "تحقّق من الحقول" };
+  const { name, email, password } = parsed.data;
+
+  const [taken, used] = await Promise.all([
+    prisma.user.findUnique({ where: { memberNo }, select: { id: true } }),
+    prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, select: { id: true } }),
+  ]);
+  if (taken) return { error: `العضوية ${memberNo} صار لها صاحب` };
+  if (used) return { error: "هذا البريد مسجّل على حسابٍ آخر" };
+
+  try {
+    await prisma.user.create({
+      data: {
+        memberNo,
+        name,
+        email,
+        passwordHash: await hashPassword(password),
+        emailVerifiedAt: new Date(),
+        moments: { create: { kind: "JOINED" } },
+      },
+    });
+  } catch {
+    return { error: "تعذّر الإنشاء — ربما أُخذ الرقم أو البريد للتوّ" };
+  }
+  revalidatePath("/admin");
+  return { ok: `أُنشئت العضوية ${memberNo}` };
 }

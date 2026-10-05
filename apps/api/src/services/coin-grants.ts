@@ -1,5 +1,6 @@
 import { prisma } from "@athar/db";
 import { push } from "./push";
+import { grantText } from "./notifications";
 
 /**
  * جرسُ النقاط الممنوحة (القاعدة ١٩٨).
@@ -11,7 +12,7 @@ import { push } from "./push";
 export async function pushCoinGrants(limit = 300): Promise<number> {
   const rows = await prisma.coinGrant.findMany({
     where: { pushedAt: null },
-    select: { id: true, userId: true, coins: true, note: true },
+    select: { id: true, userId: true, coins: true, note: true, invites: true },
     orderBy: { createdAt: "asc" },
     take: limit,
   });
@@ -27,8 +28,11 @@ export async function pushCoinGrants(limit = 300): Promise<number> {
     await push({
       userId: row.userId,
       kind: "GRANT",
-      title: "لأنك تستحق!",
-      body: `تمّ منحك ${row.coins.toLocaleString("ar-SA")} نقطة من قبل الإدارة${row.note ? ` — ${row.note}` : ""}`,
+      // مكافأةُ الدعوات تمرّ من هنا أيضاً (القاعدة ٢٤٣) — بسطرها لا بسطر الإدارة.
+      title: row.invites ? "مكافأة الدعوات" : "لأنك تستحق!",
+      body: row.invites
+        ? grantText(row.coins, row.note, row.invites)
+        : `تمّ منحك ${row.coins.toLocaleString("ar-SA")} نقطة من قبل الإدارة${row.note ? ` — ${row.note}` : ""}`,
       path: "/store",
     });
   }

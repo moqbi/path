@@ -23,7 +23,13 @@ const MONTHS = [
   "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر",
 ];
 
-export default async function ProfilePage() {
+export default async function ProfilePage({
+  searchParams,
+}: {
+  /** `?edit=1` يفتح نافذة التعديل — خطوةُ «ضع صورتك» في بطاقة الترحيب. */
+  searchParams: Promise<{ edit?: string }>;
+}) {
+  const startEdit = (await searchParams).edit === "1";
   const user = await currentUser();
   if (!user) redirect("/login");
 
@@ -61,7 +67,6 @@ export default async function ProfilePage() {
   ]);
 
   const joined = `${MONTHS[user.createdAt.getMonth()]} ${ar(user.createdAt.getFullYear())}`;
-  const tiles = moments.filter((m) => m.imageSpec).slice(0, 5);
 
   const days: { label: string; items: typeof mine }[] = [];
   for (const moment of mine) {
@@ -186,6 +191,7 @@ export default async function ProfilePage() {
               coverMediaId={user.coverMediaId}
               coverSpec={user.background?.spec ?? null}
               coverY={user.coverY}
+              startOpen={startEdit}
             />
             <Accessories
               /* والحزمة لا تُلبَس: ما فيها من أصناف مُلّك وحده، فهو ما يُعرض. */
@@ -228,8 +234,20 @@ export default async function ProfilePage() {
       >
         {/* لحظاتي أسفل زرّ التعديل مباشرة — هذا ما يُفتح التبويب لأجله. */}
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-[15px] font-bold">لحظاتي</h2>
-          <span className="text-[12px] text-muted">{ar(mine.length)}</span>
+          <h2 className="text-[15px] font-bold">
+            لحظاتي <span className="text-[12px] font-normal text-muted">{ar(moments.length)}</span>
+          </h2>
+          {/*
+            «أرشيفي» و«سنتك في كتاب» (القاعدة ٢٤٤): كانا بطاقتين بعد آخر لحظة لا
+            يفتحان شيئاً. صارا صفحةً بابُها هنا عند لحظاتك.
+          */}
+          <Link
+            href="/archive"
+            className="flex items-center gap-1.5 rounded-full px-3 text-[12.5px] font-bold"
+            style={{ height: 32, background: "var(--color-gold-soft)", color: "var(--color-clay-ink)" }}
+          >
+            <BookIcon size={14} /> أرشيفي وكتاب سنتي
+          </Link>
         </div>
 
         {mine.length === 0 ? (
@@ -258,54 +276,6 @@ export default async function ProfilePage() {
             ))}
           </div>
         )}
-
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-[14.5px] font-semibold">أرشيفك</h2>
-          <span className="text-[12px] text-clay">
-            {user.isPlus ? "كامل" : "آخر ٦ أشهر"}
-          </span>
-        </div>
-
-        {moments.length === 0 ? (
-          <p className="rounded-2xl border border-line bg-card px-4 py-8 text-center text-[13px] text-muted">
-            ما نشرت شي بعد.
-          </p>
-        ) : (
-          <div className="mb-5 grid grid-cols-3 gap-2">
-            {tiles.map((m) => (
-              <Link
-                key={m.id}
-                href={`/m/${m.id}`}
-                className="rounded-xl"
-                style={{ aspectRatio: "1", background: m.imageSpec ?? "var(--color-chip)" }}
-              />
-            ))}
-            <div
-              className="flex items-center justify-center rounded-xl bg-chip text-[12px] text-muted"
-              style={{ aspectRatio: "1" }}
-            >
-              {ar(Math.max(0, moments.length - tiles.length))}+
-            </div>
-          </div>
-        )}
-
-        <div
-          className="mb-6 flex items-center gap-3 rounded-2xl border p-4"
-          style={{ background: "var(--color-gold-soft)", borderColor: "var(--color-gold-line)" }}
-        >
-          <span
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-            style={{ background: "var(--color-gold-line)", color: "var(--color-gold-bright)" }}
-          >
-            <BookIcon size={20} />
-          </span>
-          <div className="grow">
-            <p className="mb-0.5 text-[13.5px] font-semibold">سنتك في كتاب</p>
-            <p className="text-[11.5px] text-muted">
-              {ar(moments.length)} لحظة، مطبوعة ومرسلة لبابك
-            </p>
-          </div>
-        </div>
 
         {/*
            و`a` لا `Link`: اللوحة خارج جذر التطبيق (`/app` — القاعدة

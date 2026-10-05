@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { cancelPlus, subscribe } from "@/app/actions";
-import { BookIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, StoreIcon, VerifiedIcon, WithIcon } from "@/components/icons";
+import { BookIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, PrivateIcon, StoreIcon, VerifiedIcon, WithIcon } from "@/components/icons";
 import { TagPill } from "@/components/ui";
 import { SUPPORTER_TAG } from "@/lib/supporter";
 import { ScreenHeader } from "@/components/ui";
@@ -37,6 +37,12 @@ const PERKS = [
     title: "دوائر منفصلة",
     body: "العائلة، الشلة، الشغل — كل وحدة بخصوصيتها",
     icon: <CircleIcon size={18} />,
+  },
+  {
+    // وضعُ التخفّي (القاعدة ٢٥١).
+    title: "وضع التخفي",
+    body: "ما يظهر لأحد إنك متصل ولا آخر ظهور لك · من الخصوصية",
+    icon: <PrivateIcon size={18} />,
   },
   {
     title: "رسالة صوتية دقيقتان",

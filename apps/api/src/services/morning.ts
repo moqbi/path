@@ -3,6 +3,7 @@ import { ar, dayKey, riyadhDay, riyadhHour } from "../lib/riyadh-day";
 import { memoriesFor, memorySentence, occasionsFor } from "./memories";
 import { openYear, recapStatus } from "./recap";
 import { inQuietHours, push } from "./push";
+import { riyadhWeekday, weeklyFor, weeklySentence } from "./weekly";
 
 /**
  * جرسُ الصباح (القاعدة ٢٣٥): الساعة التاسعة بتوقيت الرياض — **بقرار المالك**.
@@ -90,6 +91,15 @@ async function compose(userId: string, today: ReturnType<typeof riyadhDay>, reca
         path: `/recap/${recapYear}`,
       };
     }
+  }
+
+  /*
+    والجمعةُ جرسُها «أسبوعك في دائرتك» (القاعدة ٢٤٥) — **بقرار المالك**: جرسٌ
+    واحدٌ في اليوم يبقى، والذكرى في البطاقة لمن يفتح. وأسبوعٌ ساكنٌ لا يُقرع له.
+  */
+  if (riyadhWeekday() === 5) {
+    const week = await weeklyFor(userId);
+    if (week) return { recap: null, title: "أسبوعك في دائرتك", body: weeklySentence(week), path: "/" };
   }
 
   const [memories, occasions] = await Promise.all([memoriesFor(userId, today), occasionsFor(userId, today)]);

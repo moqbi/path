@@ -5,7 +5,6 @@ import { prisma } from "@/lib/db";
 import { circleIds } from "@/lib/circle";
 import { privateTimeline, timeline } from "@/lib/feed";
 import { friendshipSince, togetherMoments } from "@/lib/together";
-import { unreadCount } from "@/lib/dm";
 import { MomentCard } from "@/components/moment-card";
 import { ComposerFan } from "@/components/composer-fan";
 import { Avatar, Empty, NameTag } from "@/components/ui";
@@ -14,8 +13,12 @@ import { TimelineHead } from "@/components/timeline-head";
 import { VerifyBanner } from "@/components/verify-banner";
 import { MemoriesCard } from "@/components/memories-card";
 import { today as memoriesToday } from "@/lib/memories";
+import { WelcomeCard } from "@/components/welcome-card";
+import { WeeklyCard } from "@/components/weekly-card";
+import { welcome } from "@/lib/welcome";
+import { weeklyFor, weeklyOpen } from "@/lib/weekly";
 import { AthrHeaderMark } from "@/components/brand";
-import { MessageIcon, SparkIcon } from "@/components/icons";
+import { SparkIcon } from "@/components/icons";
 import { ar, dayLabel, membership } from "@/lib/format";
 
 const MONTHS = [
@@ -43,11 +46,13 @@ export default async function TimelinePage({
   // «آثارنا» من مزايا آثار+ — من اختارها بلا اشتراكٍ يُؤخذ إلى صفحته.
   if (view === "together" && !user.isPlus) redirect("/subscribe");
 
-  const [unread, ids, memories] = await Promise.all([
-    unreadCount(user.id),
+  const [ids, memories, hello, week] = await Promise.all([
     circleIds(user.id),
     // بطاقةُ اليوم في العدسة الأولى وحدها (القاعدة ٢٣٥).
     view === "" ? memoriesToday(user.id) : Promise.resolve(null),
+    // والترحيبُ (القاعدة ٢٤٦) وملخّصُ الجمعة (القاعدة ٢٤٥) كالجوّال — ولا يُسقط فشلُهما الخطّ.
+    view === "" ? welcome(user.id).catch(() => null) : Promise.resolve(null),
+    view === "" && weeklyOpen() ? weeklyFor(user.id).catch(() => null) : Promise.resolve(null),
   ]);
 
   const moments =
@@ -119,23 +124,6 @@ export default async function TimelinePage({
             آثار+
           </Link>
 
-          <Link
-            href="/messages"
-            aria-label="المحادثات"
-            // ٤٠ لا ٤٤: القرص الأكبر كان يرفع الرأس عن بقية التبويبات.
-            className="relative flex h-10 w-10 items-center justify-center"
-            style={{ color: "var(--color-chrome-ink)" }}
-          >
-            <MessageIcon size={21} />
-            {unread > 0 ? (
-              <span
-                className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold"
-                style={{ background: "var(--color-live)", color: "var(--color-on-brand)" }}
-              >
-                {ar(unread)}
-              </span>
-            ) : null}
-          </Link>
         </div>
       </header>
 
@@ -201,6 +189,8 @@ export default async function TimelinePage({
           </p>
         ) : null}
 
+        {hello?.show ? <WelcomeCard data={hello} name={user.name} memberNo={user.memberNo} /> : null}
+        {week ? <WeeklyCard week={week} /> : null}
         {memories ? <MemoriesCard data={memories} /> : null}
 
         {view === "together" && friend ? (

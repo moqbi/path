@@ -49,6 +49,8 @@ export default function Settings() {
   const [view, setView] = useState<string | null>(me?.viewGroupId ?? null);
   const [interact, setInteract] = useState<string | null>(me?.interactGroupId ?? null);
   const [place, setPlace] = useState(me?.shareLocation !== false);
+  // وضعُ التخفّي — مطفأٌ افتراضاً، ولمشتركي آثار+ وحدهم (القاعدة ٢٥١).
+  const [hidden, setHidden] = useState(Boolean(me?.hideOnline && me?.isPlus));
   const [said, setSaid] = useState<string | null>(null);
   const [name, setName] = useState("");
 
@@ -62,6 +64,7 @@ export default function Settings() {
           viewGroupId: view,
           interactGroupId: interact,
           shareLocation: place,
+          hideOnline: hidden,
           // وإشعارُ الإشارة يُحفظ من «التنبيهات»، فلا يُرسل من هنا.
         }),
       }),
@@ -142,6 +145,21 @@ export default function Settings() {
               note="مطفأً تُنشر المدينة وحدها بلا اسم المكان ولا إحداثياته"
               value={place}
               onChange={setPlace}
+            />
+            <View style={{ height: 1, backgroundColor: colors.line, marginHorizontal: 16 }} />
+            <Toggle
+              title="وضع التخفي — آثار+"
+              note="لا يظهر لأصدقائك إن كنت متصلاً ولا آخر ظهورك"
+              value={hidden}
+              onChange={(next) => {
+                // غيرُ المشترك لا يُفعّله: يرتدّ المفتاحُ مطفأً ويُؤخذ إلى صفحة الاشتراك.
+                if (next && !me.isPlus) {
+                  setHidden(false);
+                  router.push("/subscribe" as never);
+                  return;
+                }
+                setHidden(next);
+              }}
             />
           </View>
 

@@ -9,9 +9,10 @@ import { ScreenHeader } from "../../components/screen-header";
 import { FilterStrip, Filtered } from "../../components/filtered";
 import { StoryVideo } from "../../components/story-video";
 import { api } from "../../lib/api";
-import { uploadFile } from "../../lib/upload";
+import { uploadFile, uploadStoryVideo } from "../../lib/upload";
+import { VideoWindowBar, VideoWindowPreview } from "../../components/video-window";
 import { ar } from "../../lib/format";
-import { STORY_SECONDS, STORY_STICKERS, STORY_TEXTS, STORY_TIME_STYLES, type StorySticker, type StoryText } from "@athar/shared";
+import { STORY_SECONDS, STORY_VIDEO_SOURCE, STORY_STICKERS, STORY_TEXTS, STORY_TIME_STYLES, type StorySticker, type StoryText } from "@athar/shared";
 import { EditableStickers, StickerFace, TIME_STYLE_NAMES } from "../../components/story-stickers";
 import { StoryPlaceSheet } from "../../components/story-place-sheet";
 import { StorySound, type SoundChoice } from "../../components/story-sound";
@@ -32,6 +33,8 @@ type Draft = {
   height: number;
   video: boolean;
   seconds: number;
+  /** أوّلُ النافذة المختارة من مقطعٍ أطول من الحدّ (القاعدة ٢٤٩). */
+  start: number;
 };
 
 /**
@@ -92,6 +95,7 @@ export default function NewStory() {
       height: shot.height,
       video: shot.video,
       seconds: shot.seconds,
+      start: 0,
     });
     if (shot.video) dropSound();
   });
@@ -122,7 +126,8 @@ export default function NewStory() {
     const result = await Picker.launchImageLibraryAsync({
       mediaTypes: ["images", "videos"],
       quality: 0.85,
-      videoMaxDuration: STORY_SECONDS,
+      // آبل تُصدّر المقطع بدقّة ٧٢٠ فيصغر الرفع؛ والقصُّ والضغطُ على الخادم.
+      videoExportPreset: Picker.VideoExportPreset.H264_1280x720,
     });
     if (result.canceled || !result.assets[0]) return;
 
@@ -130,9 +135,9 @@ export default function NewStory() {
     const video = (asset.type ?? "image") === "video";
     const seconds = video ? Math.round((asset.duration ?? 0) / 1000) : 0;
 
-    // الحدّ يُقال هنا لا بعد الرفع: من صوّر ثلاثين ثانيةً يعرف قبل أن ينتظر.
-    if (video && seconds > STORY_SECONDS) {
-      setError(`الحدّ ${ar(STORY_SECONDS)} ثانية — هذا ${ar(seconds)}`);
+    // الأطولُ من الحدّ لا يُردّ: يُختار منه ثلاثون ثانيةً بشريط القصّ (القاعدة ٢٤٩).
+    if (video && seconds > STORY_VIDEO_SOURCE.seconds) {
+      setError(`المقطع طويل جداً — اختر مقطعاً أقصر من ${ar(STORY_VIDEO_SOURCE.seconds / 60)} دقائق`);
       return;
     }
 
@@ -143,6 +148,7 @@ export default function NewStory() {
       height: asset.height,
       video,
       seconds,
+      start: 0,
     });
     if (video) dropSound();
   }
@@ -157,13 +163,22 @@ export default function NewStory() {
     setError(null);
 
     try {
-      const mediaId = await uploadFile(draft.uri, draft.mime, "STORY", draft);
+      // المقطعُ يُقصّ ويُضغط على الخادم، ومدّتُه ما خرج لا ما اختير.
+      let mediaId: string;
+      let seconds = draft.seconds;
+      if (draft.video) {
+        const done = await uploadStoryVideo(draft.uri, draft.mime, draft.start, draft);
+        mediaId = done.mediaId;
+        seconds = done.seconds || Math.min(draft.seconds, STORY_SECONDS);
+      } else {
+        mediaId = await uploadFile(draft.uri, draft.mime, "STORY", draft);
+      }
       await api("/v1/stories", {
         method: "POST",
         body: JSON.stringify({
           mediaId,
           filter: filter || undefined,
-          seconds: draft.video ? draft.seconds : undefined,
+          seconds: draft.video ? Math.max(1, Math.round(seconds)) : undefined,
           texts: texts.length ? texts : undefined,
           audience: only ? picked : undefined,
           stickers: stickers.length ? stickers : undefined,
@@ -202,7 +217,11 @@ export default function NewStory() {
           {draft ? (
             draft.video ? (
               /* المقطع يُشغَّل ويُعاد قبل أن يُرسل — لا صورةٌ ساكنة منه. */
-              <StoryVideo source={draft.uri} local width={previewWidth} height={previewHeight} />
+              draft.seconds > STORY_SECONDS ? (
+                <VideoWindowPreview uri={draft.uri} start={draft.start} width={previewWidth} height={previewHeight} />
+              ) : (
+                <StoryVideo source={draft.uri} local width={previewWidth} height={previewHeight} />
+              )
             ) : !filter ? (
               <Image source={{ uri: draft.uri }} style={{ width: "100%", height: "100%" }} resizeMode="contain" />
             ) : (
@@ -298,10 +317,21 @@ export default function NewStory() {
         ) : null}
 
         {draft && draft.video ? (
-          <Text style={{ color: colors.muted, fontSize: 11.5, lineHeight: 21 }}>
-            فيديو {ar(draft.seconds)} ثانية · الحدّ {ar(STORY_SECONDS)}
-            {"\n"}الفلاتر للصور — المقطع يُنشر كما صُوِّر.
-          </Text>
+          <View style={{ gap: 12 }}>
+            {draft.seconds > STORY_SECONDS ? (
+              <VideoWindowBar
+                seconds={draft.seconds}
+                start={draft.start}
+                onChange={(start) => setDraft((d) => (d ? { ...d, start } : d))}
+              />
+            ) : null}
+            <Text style={{ color: colors.muted, fontSize: 11.5, lineHeight: 21 }}>
+              {draft.seconds > STORY_SECONDS
+                ? `يُنشر ${ar(STORY_SECONDS)} ثانية ويُضغط تلقائياً`
+                : `فيديو ${ar(draft.seconds)} ثانية · يُضغط تلقائياً`}
+              {"\n"}الفلاتر للصور — المقطع يُنشر كما صُوِّر.
+            </Text>
+          </View>
         ) : draft ? (
           <>
             <Text style={{ color: colors.faint, fontSize: 11.5, fontWeight: "600", marginBottom: 10 }}>

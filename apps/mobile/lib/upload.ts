@@ -67,11 +67,26 @@ export async function uploadSound(
   return { mediaId: done.mediaId, seconds: done.commit.seconds ?? 0, peaks: done.commit.peaks ?? [] };
 }
 
+/**
+ * مقطعُ القصّة (القاعدة ٢٤٩): يُرفع كما صُوِّر بلا تصغير، ومعه `start` — من أين
+ * تبدأ ثلاثون ثانيته — فيقصّه الخادمُ ويضغطه، ويردّ مدّتَه بعد القصّ.
+ */
+export async function uploadStoryVideo(
+  uri: string,
+  mime: string,
+  start: number,
+  size: { width: number; height: number },
+): Promise<{ mediaId: string; seconds: number }> {
+  const done = await send(uri, mime, "STORY", size, { start });
+  return { mediaId: done.mediaId, seconds: done.commit.seconds ?? 0 };
+}
+
 async function send(
   uri: string,
   mime: string,
   purpose: Purpose,
   size: { width: number; height: number },
+  extra?: { start: number },
 ): Promise<{ mediaId: string; commit: { seconds?: number; peaks?: number[] } }> {
 
   const blob = await (await fetch(uri)).blob();
@@ -100,6 +115,7 @@ async function send(
   // الاعتماد يفحص البايتات: ما لم يُعتمد لا يُربط بلحظةٍ ولا يُقدَّم.
   const commit = await api<{ seconds?: number; peaks?: number[] }>(`/v1/media/${ticket.mediaId}/commit`, {
     method: "POST",
+    ...(extra ? { body: JSON.stringify(extra) } : {}),
   });
   return { mediaId: ticket.mediaId, commit };
 }

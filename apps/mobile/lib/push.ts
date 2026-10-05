@@ -6,6 +6,17 @@ import { api } from "./api";
 import { openThread } from "./open-thread";
 
 /**
+ * ثلاثةُ أصواتٍ للتنبيهات (القاعدة ٢٥٣) — **بقرار المالك**: الأذنُ تعرف ما جرى
+ * قبل أن تُرى الشاشة. الملفّاتُ في `assets/sounds` تُحزَم في البناء (`app.json`
+ * ← `expo-notifications sounds`)، والخادمُ يختار الصوتَ والقناةَ بنوع التنبيه.
+ */
+const SOUND_CHANNELS = [
+  { id: "general", name: "التفاعلات والتعليقات والطلبات", sound: "athr_general.wav" },
+  { id: "dm", name: "المحادثات", sound: "athr_dm.wav" },
+  { id: "athar", name: "آثار والذكريات والمناسبات", sound: "athr_athar.wav" },
+] as const;
+
+/**
  * تنبيهاتُ الجهاز.
  *
  * **ولا يُطلب الإذن عند الإقلاع**: من فتح التطبيق أوّل مرّةٍ لم يُعطَ
@@ -91,13 +102,22 @@ async function registerPush(): Promise<{
     }
   }
 
-  // أندرويد يحتاج قناةً وإلّا وصل التنبيه صامتاً بلا بانر.
+  // أندرويد يحتاج قناةً وإلّا وصل التنبيه صامتاً بلا بانر — ولكلّ صوتٍ قناتُه:
+  // صوتُ القناة يُضبط عند إنشائها ولا يُغيَّر بعدها (القاعدة ٢٥٣).
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("default", {
       name: "التنبيهات",
       importance: Notifications.AndroidImportance.DEFAULT,
       lightColor: "#F6B93B",
     });
+    for (const channel of SOUND_CHANNELS) {
+      await Notifications.setNotificationChannelAsync(channel.id, {
+        name: channel.name,
+        importance: Notifications.AndroidImportance.HIGH,
+        sound: channel.sound,
+        lightColor: "#F6B93B",
+      });
+    }
   }
 
   const { data: token } = await Notifications.getExpoPushTokenAsync({

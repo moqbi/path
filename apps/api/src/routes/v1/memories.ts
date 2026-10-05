@@ -6,6 +6,8 @@ import { requireActive, requireAuth, me } from "../../middleware/auth";
 import { rateLimitUser } from "../../middleware/rate-limit";
 import * as memories from "../../services/memories";
 import * as recap from "../../services/recap";
+import { weeklyFor, weeklyOpen } from "../../services/weekly";
+import { welcome } from "../../services/welcome";
 
 const byId = z.object({ id: cuid });
 const byYear = z.object({ year: z.coerce.number().int().min(2024).max(2100) });
@@ -25,6 +27,12 @@ export const memoryRoutes = new Hono()
 
   /** بطاقةُ اليوم أعلى اللحظات. */
   .get("/today", async (c) => c.json(await memories.today(me(c))))
+
+  /** «أسبوعك في دائرتك» — الجمعةَ والسبتَ وحدهما (القاعدة ٢٤٥). */
+  .get("/weekly", async (c) => c.json({ week: weeklyOpen() ? await weeklyFor(me(c)) : null }))
+
+  /** بطاقةُ الترحيب للحساب الجديد (القاعدة ٢٤٦). */
+  .get("/welcome", async (c) => c.json(await welcome(me(c))))
 
   /** «×»: تُطوى لليوم وتعود غداً بما يقع فيه. */
   .post("/today/dismiss", async (c) => c.json(await memories.dismiss(me(c))))

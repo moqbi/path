@@ -25,7 +25,7 @@ function audiences(name: string): string[] {
 }
 
 export type Identity = {
-  provider: "GOOGLE" | "APPLE" | "SNAP";
+  provider: "GOOGLE" | "APPLE" | "SNAP" | "TIKTOK";
   subject: string;
   email: string | null;
   /** آبل لا تعطي الاسم إلا مرّةً واحدة وقت أوّل موافقة، فيأتي من الجهاز. */
@@ -134,6 +134,70 @@ async function readSnap(accessToken: string): Promise<Identity> {
 }
 
 /**
+ * تيك توك: **شيفرةٌ تُبادَل بسرٍّ لا يملكه الجهاز**.
+ *
+ * بخلاف سناب، عميلُها يحتاج `client_secret` في المبادلة، والسرُّ في التطبيق
+ * ليس سرّاً (القاعدة ١٢١ب). فالجهازُ يأتي بالشيفرة وحدها، ونحن نبادلها هنا
+ * ونسأل تيك توك عن صاحب الرمز. **ولا بريدَ** — كسناب، يربطه صاحبُه من الإعدادات.
+ *
+ * و`redirect_uri` في المبادلة هو نفسُه الذي طُلبت به الشيفرة حرفاً بحرف، وإلّا
+ * رُدّت: الجوّالُ يعود إلى `/tiktok/callback` والويبُ إلى `/api/tiktok/finish`.
+ */
+export async function exchangeTikTok(code: string, redirectUri: string): Promise<string> {
+  const key = process.env.TIKTOK_CLIENT_KEY;
+  const secret = process.env.TIKTOK_CLIENT_SECRET;
+  if (!key || !secret) throw badRequest("الدخول بتيك توك غير مفعّل");
+
+  const response = await fetch("https://open.tiktokapis.com/v2/oauth/token/", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_key: key,
+      client_secret: secret,
+      code,
+      grant_type: "authorization_code",
+      redirect_uri: redirectUri,
+    }),
+  });
+  // تيك توك تردّ الخطأ أحياناً بـ٢٠٠ وفيه `error` — فالحالتان تُفحصان. ولا تُكتب الشيفرة.
+  const payload = (await response.json().catch(() => ({}))) as {
+    access_token?: string;
+    error?: string;
+    error_description?: string;
+  };
+  if (!response.ok || !payload.access_token) {
+    console.error("[tiktok] token", response.status, payload.error ?? "", payload.error_description ?? "");
+    throw new Error("تعذّرت مبادلة الشيفرة");
+  }
+  return payload.access_token;
+}
+
+async function readTikTok(accessToken: string): Promise<Identity> {
+  if (!process.env.TIKTOK_CLIENT_KEY) throw badRequest("الدخول بتيك توك غير مفعّل");
+
+  const response = await fetch("https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name", {
+    headers: { authorization: `Bearer ${accessToken}` },
+  });
+  const payload = (await response.json().catch(() => ({}))) as {
+    data?: { user?: { open_id?: string; display_name?: string } };
+    error?: { code?: string; message?: string };
+  };
+  const user = payload.data?.user;
+  if (!response.ok || !user?.open_id) {
+    console.error("[tiktok] user/info", response.status, payload.error?.code ?? "", payload.error?.message ?? "");
+    throw new Error("تعذّر التحقّق من الرمز");
+  }
+
+  return {
+    provider: "TIKTOK",
+    subject: user.open_id,
+    email: null,
+    name: user.display_name ?? null,
+    emailVerified: false,
+  };
+}
+
+/**
  * سببُ خطأٍ نصّاً، ومعه سببُه إن كان له سبب.
  *
  * `fetch` في Node تردّ «fetch failed» لكلّ عطلٍ في الشبكة — عنوانٌ لا
@@ -153,13 +217,14 @@ function why(problem: unknown): string {
 }
 
 export async function readIdentity(
-  provider: "GOOGLE" | "APPLE" | "SNAP",
+  provider: "GOOGLE" | "APPLE" | "SNAP" | "TIKTOK",
   idToken: string,
   name: string | null,
 ): Promise<Identity> {
   try {
     if (provider === "APPLE") return await readApple(idToken, name);
     if (provider === "SNAP") return await readSnap(idToken);
+    if (provider === "TIKTOK") return await readTikTok(idToken);
     return await readGoogle(idToken);
   } catch (problem) {
     if (problem instanceof Error && problem.message.includes("غير مفعّل")) throw problem;
@@ -221,7 +286,7 @@ export async function upsertIdentity(identity: Identity) {
      وغيرُ سناب لا بدّ له من بريد: آبل وقوقل تعطيانه، وغيابُه عندهما
      يعني رمزاً ناقصاً لا حساباً بلا بريد.
   */
-  if (!identity.email && identity.provider !== "SNAP") {
+  if (!identity.email && identity.provider !== "SNAP" && identity.provider !== "TIKTOK") {
     throw badRequest("لم يعطنا المزوّد بريداً — جرّب الدخول بالبريد");
   }
 

@@ -312,7 +312,15 @@ GOOGLE_CLIENT_IDS="...ios...,...android...,...web..."
 APPLE_CLIENT_IDS="app.athar.mobile,app.athar.signin"
 NEXT_PUBLIC_GOOGLE_CLIENT_ID="...web..."
 SNAP_CLIENT_ID="..."
+TIKTOK_CLIENT_KEY="..."
+TIKTOK_CLIENT_SECRET="..."
 ```
+
+> **تيك توك** (developers.tiktok.com ← تطبيق ← Login Kit، نطاقُ `user.info.basic`):
+> عنوانا العودة **كلاهما** في «Redirect URI» على منصّة Web:
+> `https://atharmts.com/app/tiktok/callback` (الجوّال) و
+> `https://atharmts.com/app/api/tiktok/finish` (الويب). والسرُّ في `.env` على الخادم
+> وحده — لا في التطبيق ولا في المستودع.
 
 > **ونطاقُ المرسِل يُثبَت في بريفو أوّلاً** (Senders & Domains): سجلّا
 > DKIM وSPF على `atharmts.com`، وإلّا رُفض الإرسال أو ذهب إلى «المهملات».

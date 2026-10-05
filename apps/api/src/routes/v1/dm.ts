@@ -1,3 +1,4 @@
+import { maskPresence } from "../../lib/presence";
 import { Hono } from "hono";
 import { z } from "zod";
 import { cuid, messageInput, pageQuery } from "@athar/shared";
@@ -25,7 +26,7 @@ const sendInput = z.object({
 export const dmRoutes = new Hono()
   .use("*", requireAuth)
 
-  .get("/", async (c) => c.json(await dm.list(me(c))))
+  .get("/", async (c) => c.json(maskPresence(await dm.list(me(c)))))
   .get("/unread", async (c) => c.json(await dm.unreadCount(me(c))))
 
   /** فتح محادثةٍ مع صديق — تُنشأ إن لم تكن. */
@@ -39,7 +40,7 @@ export const dmRoutes = new Hono()
     "/:id",
     zValidator("param", byId),
     zValidator("query", pageQuery),
-    async (c) => c.json(await dm.thread(me(c), c.req.valid("param").id, c.req.valid("query"))),
+    async (c) => c.json(maskPresence(await dm.thread(me(c), c.req.valid("param").id, c.req.valid("query")))),
   )
 
   .post("/:id/messages", zValidator("param", byId), zValidator("json", sendInput), async (c) => {

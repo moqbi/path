@@ -51,7 +51,17 @@ const PROVIDERS = [
   { key: "apple", label: "Apple", mark: <AppleMark /> },
   { key: "google", label: "Google", mark: <GoogleMark /> },
   { key: "snap", label: "Snapchat", mark: <SnapMark /> },
+  { key: "tiktok", label: "TikTok", mark: <TikTokMark /> },
 ];
+
+/** ما يقوله العائدُ من مزوّدٍ فشل — كان يُردّ إلى الشاشة صامتاً. */
+const PROVIDER_NOTICE: Record<string, string> = {
+  off: "هذا الباب غير مفعّل الآن. استخدم البريد أو مزوّداً آخر.",
+  cancel: "ألغيت الدخول. تقدر تحاول مرة ثانية.",
+  bad: "انتهت مهلة المحاولة. حاول مرة ثانية.",
+  token: "تعذّر الدخول. حاول مرة ثانية.",
+  fail: "تعذّر الدخول. حاول مرة ثانية.",
+};
 
 export function LoginForm({
   photo,
@@ -87,6 +97,11 @@ export function LoginForm({
     // العودة إلى هذه الشاشة بعد الحذف تحتاج جملة تؤكد أن ما طُلب قد تمّ.
     deleted ? "حُذف حسابك وكل ما فيه. تسعدنا عودتك متى شئت." : null,
   );
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const reason = query.get("tiktok") ?? query.get("snap");
+    if (reason && PROVIDER_NOTICE[reason]) setNotice(PROVIDER_NOTICE[reason]);
+  }, []);
   // قوقل يُحمَّل عند أوّل عرضٍ لأزرار المزوّدين، ويفتح نافذته عند الضغط.
   const askGoogle = useGoogleLogin(setNotice);
 
@@ -297,7 +312,6 @@ export function LoginForm({
                   color: "#f7f5ef",
                 }}
               />
-
               {form.error ? (
                 <p role="alert" className="text-[12.5px] font-medium" style={{ color: "#ff9d84" }}>
                   {form.error}
@@ -348,6 +362,11 @@ export function LoginForm({
                       setNotice(null);
                       if (provider.key === "google") {
                         askGoogle();
+                        return;
+                      }
+                      if (provider.key === "tiktok") {
+                        // البدءُ والمبادلةُ على الخادم: السرُّ هناك.
+                        window.location.href = `${BASE}/api/tiktok/start`;
                         return;
                       }
                       if (provider.key === "snap") {
@@ -427,6 +446,23 @@ function SnapMark() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="#FFFC00" stroke="#0E1A24" strokeWidth="1">
       <path d="M12 2.6c2.7 0 4.5 2 4.5 4.6 0 .8-.1 1.6-.1 2 .3.2.8.2 1.2 0 .5-.2 1 .1 1.1.5.1.5-.2.9-.9 1.2-.6.3-1.2.4-1.1.9.2.9 2 2.9 3.6 3.3.4.1.5.4.4.7-.2.6-1.4.9-2.3 1-.3 0-.4.3-.5.7 0 .3-.1.6-.5.6-.5 0-1.1-.2-1.9-.1-.8.1-1.5.5-2.2 1.1-.4.3-.9.5-1.3.5s-.9-.2-1.3-.5c-.7-.6-1.4-1-2.2-1.1-.8-.1-1.4.1-1.9.1-.4 0-.5-.3-.5-.6-.1-.4-.2-.7-.5-.7-.9-.1-2.1-.4-2.3-1-.1-.3 0-.6.4-.7 1.6-.4 3.4-2.4 3.6-3.3.1-.5-.5-.6-1.1-.9-.7-.3-1-.7-.9-1.2.1-.4.6-.7 1.1-.5.4.2.9.2 1.2 0 0-.4-.1-1.2-.1-2C7.5 4.6 9.3 2.6 12 2.6Z" />
+    </svg>
+  );
+}
+
+/**
+ * نوتةُ تيك توك بظلّيها السماويّ والورديّ — نسخةُ الجوّال حرفاً بحرف.
+ * المسارُ من Simple Icons (CC0).
+ */
+const TIKTOK_PATH =
+  "M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z";
+
+function TikTokMark() {
+  return (
+    <svg width="22" height="22" viewBox="-1 -1 26 26">
+      <path d={TIKTOK_PATH} fill="#25F4EE" transform="translate(-0.9 -0.9)" />
+      <path d={TIKTOK_PATH} fill="#FE2C55" transform="translate(0.9 0.9)" />
+      <path d={TIKTOK_PATH} fill="#0E1A24" />
     </svg>
   );
 }

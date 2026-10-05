@@ -55,7 +55,12 @@ export default function Circle() {
   /* صفٌّ يُسحب يوقف تمرير القائمة: وإلّا تحرّكت الشاشةُ كلّها مع الإصبع. */
   const [swiping, setSwiping] = useState(false);
   /* قسما «أصدقائي» — ما طُوي منهما يبقى رأسُه وحده. */
-  const [folded, setFolded] = useState<{ online: boolean; offline: boolean }>({ online: false, offline: false });
+  // والطلباتُ قسمٌ يُطوى كقسمَي المتصلين — **بقرار المالك**.
+  const [folded, setFolded] = useState<{ online: boolean; offline: boolean; requests: boolean }>({
+    online: false,
+    offline: false,
+    requests: false,
+  });
   const circle = useCircle();
   const rings = useRings();
   /*
@@ -245,10 +250,19 @@ export default function Circle() {
 
             {data && data.requests.length > 0 ? (
             <View style={{ paddingHorizontal: 16, paddingTop: 14 }}>
-              <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "700", marginBottom: 8 }}>
-                طلبات ({ar(data.requests.length)})
-              </Text>
-              {data.requests.map((request) => (
+              <Pressable
+                onPress={() => setFolded((was) => ({ ...was, requests: !was.requests }))}
+                style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}
+              >
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.clay }} />
+                <Text style={{ flex: 1, color: colors.ink, fontSize: 14, fontWeight: "700" }}>
+                  طلبات الصداقة ({ar(data.requests.length)})
+                </Text>
+                <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600" }}>
+                  {folded.requests ? "إظهار" : "إخفاء"}
+                </Text>
+              </Pressable>
+              {folded.requests ? null : data.requests.map((request) => (
                 <View
                   key={request.id}
                   style={{

@@ -26,6 +26,8 @@ export const registerInput = z.object({
   email,
   password,
   name: z.string().trim().min(2, "اكتب اسمك").max(40),
+  /** رقمُ عضويّةِ من دعاه (القاعدة ٢٤٣) — اختياريّ. */
+  inviterNo: z.coerce.number().int().positive().max(100_000_000).optional(),
 });
 
 export const loginInput = z.object({ email, password });
@@ -162,6 +164,11 @@ export const privacyInput = z.object({
    * مطلوباً لسقط طلبُ الجديدة، ولو كُتب افتراضاً لأطفأه في كل حفظ.
    */
   notifyOnTag: z.boolean().optional(),
+  /**
+   * وضعُ التخفّي لمشتركي آثار+ (القاعدة ٢٥١) — اختياريٌّ لنسخٍ قديمة لا ترسله،
+   * ولا يُكتب إلا إن أُرسل.
+   */
+  hideOnline: z.boolean().optional(),
 });
 
 /**
@@ -237,8 +244,8 @@ export const deviceInput = z.object({
  * موافقة، فمن لم يلتقطه التطبيقُ حينها لم يعد يجده في الرمز.
  */
 export const oauthInput = z.object({
-  provider: z.enum(["GOOGLE", "APPLE", "SNAP"]),
-  /** رمزُ هويّةٍ من آبل وقوقل، ورمزُ وصولٍ من سناب. */
+  provider: z.enum(["GOOGLE", "APPLE", "SNAP", "TIKTOK"]),
+  /** رمزُ هويّةٍ من آبل وقوقل، ورمزُ وصولٍ من سناب، وشيفرةٌ من تيك توك تُبادَل على الخادم. */
   idToken: z.string().min(20).max(4000),
   name: z.string().trim().max(60).nullish(),
 });
