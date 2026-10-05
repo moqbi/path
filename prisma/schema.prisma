@@ -1258,11 +1258,12 @@ model DeviceToken {
   @@index([userId])
 }
 
-/// مزوّدُ الدخول — وسناب ثالثٌ يأتي بعد آبل وقوقل.
+/// مزوّدُ الدخول — آبل وقوقل وسناب وتيك توك.
 enum AuthProvider {
   GOOGLE
   APPLE
   SNAP
+  TIKTOK
 }
 
 /**
