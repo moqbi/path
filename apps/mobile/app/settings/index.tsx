@@ -11,7 +11,6 @@ import { Sheet } from "../../components/sheet";
 import { openIn } from "../../lib/browse";
 import { api } from "../../lib/api";
 import { appleReady, confirmWithApple } from "../../lib/providers";
-import { testPush } from "../../lib/push";
 import { startTour } from "../../components/tour";
 import { keys } from "../../lib/queries";
 import { useSession } from "../../lib/session";
@@ -864,8 +863,6 @@ function NotifyPrefs() {
   const [said, setSaid] = useState<string | null>(null);
 
   const quiet = from !== null && to !== null;
-  const [tried, setTried] = useState<string | null>(null);
-  const trial = useMutation({ mutationFn: testPush, onSuccess: setTried });
 
   const save = useMutation({
     mutationFn: () =>
@@ -943,23 +940,6 @@ function NotifyPrefs() {
         </Text>
       ) : null}
 
-      {/* تنبيهٌ تجريبيّ يقول أين وقف الطريق إن لم يصل. */}
-      <Pressable
-        onPress={() => { setTried(null); trial.mutate(); }}
-        disabled={trial.isPending}
-        style={{ marginTop: 12, height: 44, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, alignItems: "center", justifyContent: "center" }}
-      >
-        {trial.isPending ? (
-          <ActivityIndicator color={colors.clay} />
-        ) : (
-          <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600" }}>جرّب تنبيهاً</Text>
-        )}
-      </Pressable>
-      {tried ? (
-        <Text selectable style={{ color: colors.muted, fontSize: 12, lineHeight: 19, marginTop: 8, textAlign: "center" }}>
-          {tried}
-        </Text>
-      ) : null}
     </View>
   );
 }

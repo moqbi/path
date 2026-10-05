@@ -68,10 +68,7 @@ export async function enablePush(): Promise<string | null> {
   }
 }
 
-/**
- * التسجيلُ نفسه، ويقول أين وقف: الإقلاعُ يبلعه، وزرُّ «جرّب تنبيهاً»
- * في الإعدادات يعرضه — فلا يبقى «لم يصل شيء» بلا سبب.
- */
+/** التسجيلُ نفسه، ويقول أين وقف — والإقلاعُ يبلعه. */
 async function registerPush(): Promise<{
   token: string | null;
   reason?: string;
@@ -133,26 +130,6 @@ async function registerPush(): Promise<{
     }),
   });
   return { token };
-}
-
-/** يسجّل الجهاز ثمّ يطلب تنبيهاً تجريبيّاً، ويردّ ما جرى نصّاً يُقرأ. */
-export async function testPush(): Promise<string> {
-  let step = "تسجيل الجهاز";
-  try {
-    const { token, reason } = await registerPush();
-    if (!token) return reason ?? "تعذّر تسجيل الجهاز";
-    step = "الإرسال";
-    const reply = await api<{ devices: number; results: string[] }>(
-      "/v1/me/devices/test",
-      { method: "POST" },
-    );
-    if (reply.devices === 0) return "لم يُسجَّل جهازٌ عند الخادم";
-    const failed = reply.results.filter((row) => row !== "ok");
-    if (failed.length === 0) return "أُرسل — يصلك التنبيه خلال ثوانٍ";
-    return `رفضته خدمة التنبيهات: ${failed.join(" · ")}`;
-  } catch (problem) {
-    return `تعذّر ${step}: ${problem instanceof Error ? problem.message : String(problem)}`;
-  }
 }
 
 /** نزعُ الجهاز عند الخروج: من خرج لا تصله تنبيهاتُ حسابه. */
