@@ -168,7 +168,7 @@ export async function viewers(userId: string, storyId: string) {
     من تفاعل أوّلاً بأحدث تفاعل، ثمّ من شاهد ولم يتفاعل بأحدث مشاهدة — **بقرار
     المالك**: الوجهُ فوق صورته يقول ما قاله، وغيابُه يقول «شاهد وسكت».
   */
-  const at = (row: (typeof rows)[number]) => (row.reactedAt ?? row.seenAt).getTime();
+  const at = (row: (typeof rows)[number]) => ((row.reaction && row.reactedAt) || row.seenAt).getTime();
   return [...rows]
     .sort((a, b) => (a.reaction ? 0 : 1) - (b.reaction ? 0 : 1) || at(b) - at(a))
     .map((row) => ({ ...row.user, seenAt: row.seenAt, reaction: row.reaction, screenshot: Boolean(row.screenshotAt) }));
@@ -287,7 +287,9 @@ async function cutSound(userId: string, input: { mediaId: string; start: number;
 /**
  * تفاعلُ المشاهد بأحد الوجوه الخمسة — **بقرار المالك**. والتفاعلُ مشاهدةٌ
  * أيضاً، فيُكتب في صفّ الإيصال نفسه بشروطه نفسها: لمن يرى القصّة، ولا لصاحبها.
- * و`null` يرفعه. والجرسُ لتفاعلٍ جديدٍ أو مختلف لا لتكراره.
+ * و`null` يرفعه. والجرسُ **مرّةً لكل مشاهدٍ على القصّة**: `reactedAt` لا يُمسح
+ * برفع التفاعل، فمن بدّل الوجه أو رفعه وأعاده لا يُقرع لصاحبها جرسٌ ثانٍ —
+ * كانت خمسُ ضغطاتٍ بين الوجوه خمسةَ تنبيهات.
  */
 export async function react(userId: string, storyId: string, kind: "SMILE" | "LAUGH" | "GASP" | "SAD" | "LOVE" | null) {
   const story = await prisma.story.findFirst({
@@ -300,16 +302,16 @@ export async function react(userId: string, storyId: string, kind: "SMILE" | "LA
 
   const before = await prisma.storyView.findUnique({
     where: { storyId_userId: { storyId, userId } },
-    select: { reaction: true },
+    select: { reactedAt: true },
   });
-  const data = { reaction: kind, reactedAt: kind ? new Date() : null };
+  const data = kind ? { reaction: kind, reactedAt: new Date() } : { reaction: null };
   await prisma.storyView.upsert({
     where: { storyId_userId: { storyId, userId } },
     create: { storyId, userId, ...data },
     update: data,
   });
 
-  if (kind && before?.reaction !== kind) {
+  if (kind && !before?.reactedAt) {
     const who = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
     void push({
       userId: story.authorId,

@@ -3,7 +3,7 @@ import { Animated, View, Pressable, Platform, PanResponder } from "react-native"
 import * as Haptics from "expo-haptics";
 import * as Notifications from "expo-notifications";
 import { BlurView } from "expo-blur";
-import { LiquidGlass } from "../lib/liquid-glass";
+import { LiquidGlass, LiquidLens } from "../lib/liquid-glass";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Tabs, usePathname } from "expo-router";
 import { Text } from "./type";
@@ -243,7 +243,7 @@ export function GlassBar({
     const to = { x: slot.x + 2, w: slot.w - 4 };
     if (spring) {
       // النقرُ وحده يُومض العدسة؛ بعد السحب تختفي ساعةَ يُرفع الإصبع لا بعد ثوانٍ.
-      if (LiquidGlass && hoverRef.current === null && Date.now() - releasedAt.current > 600) {
+      if (LiquidLens && hoverRef.current === null && Date.now() - releasedAt.current > 600) {
         setFlash(true);
         if (flashTimer.current) clearTimeout(flashTimer.current);
         flashTimer.current = setTimeout(() => setFlash(false), 260);
@@ -413,7 +413,7 @@ export function GlassBar({
                   inputRange: [0, 1],
                   outputRange: ["rgba(255,255,255,0)", "rgba(255,255,255,.35)"],
                 }),
-                opacity: measured && showPill && !(LiquidGlass && (hover !== null || flash)) ? 1 : 0,
+                opacity: measured && showPill && !(LiquidLens && (hover !== null || flash)) ? 1 : 0,
                 transform: [{ scale: lift.interpolate({ inputRange: [0, 1], outputRange: [1, 1.14] }) }],
               }}
             />
@@ -450,7 +450,7 @@ export function GlassBar({
                       transform: [{ scale: big ? 1.18 : 1 }],
                     }}
                   >
-                    <Spot id={item.spot}>{item.render(on, LiquidGlass && big ? colors.clay : on ? ON : OFF)}</Spot>
+                    <Spot id={item.spot}>{item.render(on, LiquidLens && big ? colors.clay : on ? ON : OFF)}</Spot>
                   </View>
                 </Pressable>
               );
@@ -461,7 +461,7 @@ export function GlassBar({
               لا يُلبس شفافيّةً ولا قصّاً — زجاجُ آبل تحت `opacity` أو داخل
               `overflow: hidden` لا يُرسم — فيظهر ويختفي بنمطه (`none` ↔ `clear`).
             */}
-            {LiquidGlass && measured ? (
+            {LiquidLens && measured ? (
               <Animated.View
                 pointerEvents="none"
                 style={{
@@ -477,7 +477,7 @@ export function GlassBar({
                   ],
                 }}
               >
-                <LiquidGlass
+                <LiquidLens
                   glassEffectStyle={{ style: hover !== null || flash ? "clear" : "none", animate: true, animationDuration: 0.14 }}
                   isInteractive
                   colorScheme="dark"

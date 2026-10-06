@@ -24,3 +24,21 @@ if (Platform.OS === "ios" && requireOptionalNativeModule("ExpoGlassEffect")) {
 }
 
 export const LiquidGlass = view;
+
+/**
+ * عدسةُ الشريط زجاجٌ فوق زجاج — وعلى آيفون ١٢ وما قبله (A14، `iPhone13,x`) يرسمها
+ * iOS 26 قرصاً رمادياً معتماً أكبر من التبويب بدل عدسةٍ تكسر ما تحتها. فتلك الأجهزة
+ * تبقى على القرص المرسوم تحت الأيقونة، والشريطُ نفسُه زجاجٌ حقيقيّ كما هو.
+ */
+function lensCapable() {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const id = (require("expo-device") as typeof import("expo-device")).modelId as string | null;
+    const major = /^iPhone(\d+),/.exec(id ?? "")?.[1];
+    return !major || Number(major) >= 14;
+  } catch {
+    return true;
+  }
+}
+
+export const LiquidLens = view && lensCapable() ? view : null;
