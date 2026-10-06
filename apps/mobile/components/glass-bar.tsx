@@ -41,13 +41,12 @@ export function barBottom(inset: number) {
 
 const ICON = 23;
 /*
-  زجاجُ آبل الحقيقيّ — **بقرار المالك**، كشريط iOS 26 نفسه: صافٍ يتلوّن بما تحته،
-  والقرصُ المفتوح عدسةٌ تكبّر ما تحتها وتتلألأ مع الإصبع. فالأيقوناتُ عليه حبرٌ
-  داكنٌ والمفتوحُ بلون العلامة. وبلا الوحدة يبقى الزجاجُ المغبّش الداكن بأيقوناتٍ
-  بيضاء كما كان (`lib/liquid-glass.ts`).
+  زجاجُ آبل الحقيقيّ — **بقرار المالك**، بهويّة الشريط الداكنة: زجاجٌ داكنٌ يتلوّن
+  بما تحته وأيقوناتٌ بيضاء، والقرصُ تحت الإصبع عدسةٌ زجاجيّة تكبر. وبلا الوحدة
+  يبقى الزجاجُ المغبّش الداكن كما كان (`lib/liquid-glass.ts`).
 */
-const ON = LiquidGlass ? "#a8730f" : "#ffffff";
-const OFF = LiquidGlass ? "rgba(20,33,43,.72)" : "rgba(255,255,255,.78)";
+const ON = "#ffffff";
+const OFF = "rgba(255,255,255,.78)";
 
 function Badge({ count }: { count?: number }) {
   // رقمٌ للمحادثات (القاعدة ١٥١)، ونقطةٌ لما سواها.
@@ -335,7 +334,9 @@ export function GlassBar({
           style={{
             flex: 1,
             borderRadius: PILL / 2,
-            overflow: "hidden",
+            // زجاجُ آبل لا يُرسم داخل قصّ، والعدسةُ تكبر خارج حدّ الشريط — فالحدُّ
+            // على الزجاج نفسه (`borderRadius`) لا على الحاوية.
+            overflow: LiquidGlass ? "visible" : "hidden",
             borderWidth: LiquidGlass ? 0 : 1,
             borderColor: "rgba(255,255,255,.16)",
             // أندرويد لا يغبّش بلا طريقةٍ تجريبيّة، فالأرضيةُ الداكنة تكفيه وحدها.
@@ -349,8 +350,9 @@ export function GlassBar({
           {LiquidGlass ? (
             <LiquidGlass
               glassEffectStyle="regular"
-              colorScheme="light"
-              style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0 }}
+              colorScheme="dark"
+              tintColor="rgba(14,26,36,.45)"
+              style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, borderRadius: PILL / 2 }}
             />
           ) : Platform.OS !== "android" ? (
             <BlurView intensity={60} tint="systemUltraThinMaterialDark" style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0 }} />
@@ -376,34 +378,46 @@ export function GlassBar({
                 left: x,
                 width: w,
                 borderRadius: (PILL - 16) / 2,
-                overflow: "hidden",
                 backgroundColor: LiquidGlass
-                  ? lift.interpolate({ inputRange: [0, 1], outputRange: ["rgba(20,33,43,.07)", "rgba(255,255,255,0)"] })
+                  ? "rgba(255,255,255,.14)"
                   : lift.interpolate({
                       inputRange: [0, 1],
                       outputRange: ["rgba(255,255,255,.18)", "rgba(255,255,255,.28)"],
                     }),
-                borderWidth: LiquidGlass ? 0 : 1,
+                borderWidth: 1,
                 borderColor: lift.interpolate({
                   inputRange: [0, 1],
                   outputRange: ["rgba(255,255,255,0)", "rgba(255,255,255,.35)"],
                 }),
                 opacity: measured && showPill ? 1 : 0,
-                // العدسةُ تكبر تحت الإصبع أكثر من القرص — كعدسة شريط النظام.
-                transform: [{ scale: lift.interpolate({ inputRange: [0, 1], outputRange: [1, LiquidGlass ? 1.32 : 1.14] }) }],
+                transform: [{ scale: lift.interpolate({ inputRange: [0, 1], outputRange: [1, 1.14] }) }],
               }}
-            >
-              {LiquidGlass ? (
-                <Animated.View style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, opacity: lift }}>
-                  <LiquidGlass
-                    glassEffectStyle="clear"
-                    isInteractive
-                    colorScheme="light"
-                    style={{ flex: 1, borderRadius: (PILL - 16) / 2 }}
-                  />
-                </Animated.View>
-              ) : null}
-            </Animated.View>
+            />
+            {/*
+              العدسة: زجاجٌ مستقلّ يظهر تحت الإصبع. لا يُلبس شفافيّةً ولا قصّاً —
+              زجاجُ آبل تحت `opacity` أو داخل `overflow: hidden` لا يُرسم — فيظهر
+              ويختفي بنمطه نفسه (`none` ↔ `clear`) وآبل تحرّكه.
+            */}
+            {LiquidGlass && measured ? (
+              <Animated.View
+                pointerEvents="none"
+                style={{
+                  position: "absolute",
+                  top: 4,
+                  height: PILL - 10,
+                  left: x,
+                  width: w,
+                  transform: [{ scale: lift.interpolate({ inputRange: [0, 1], outputRange: [1, 1.3] }) }],
+                }}
+              >
+                <LiquidGlass
+                  glassEffectStyle={{ style: hover !== null ? "clear" : "none", animate: true, animationDuration: 0.25 }}
+                  isInteractive
+                  colorScheme="dark"
+                  style={{ flex: 1, borderRadius: (PILL - 10) / 2 }}
+                />
+              </Animated.View>
+            ) : null}
             {items.map((item, index) => {
               const on = hover === null ? item.key === active : hover === index;
               const big = hover === index;
