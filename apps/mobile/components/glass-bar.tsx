@@ -218,7 +218,12 @@ export function GlassBar({
   const x = useRef(new Animated.Value(0)).current;
   const w = useRef(new Animated.Value(0)).current;
   const lift = useRef(new Animated.Value(0)).current;
+  // تمطّطُ العدسة بسرعة الإصبع — كعدسة شريط النظام: تطول وهي تُسحب وتعود حين تقف.
+  const stretch = useRef(new Animated.Value(0)).current;
   const [hover, setHover] = useState<number | null>(null);
+  // العدسةُ تظهر لحظةَ الانتقال بالنقر أيضاً، لا مع السحب وحده.
+  const [flash, setFlash] = useState(false);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [measured, setMeasured] = useState(false);
   const hoverRef = useRef<number | null>(null);
   const itemsRef = useRef(items);
@@ -234,6 +239,11 @@ export function GlassBar({
     if (!slot) return;
     const to = { x: slot.x + 2, w: slot.w - 4 };
     if (spring) {
+      if (LiquidGlass && hoverRef.current === null) {
+        setFlash(true);
+        if (flashTimer.current) clearTimeout(flashTimer.current);
+        flashTimer.current = setTimeout(() => setFlash(false), 450);
+      }
       Animated.spring(x, { toValue: to.x, useNativeDriver: false, speed: 22, bounciness: 7 }).start();
       Animated.spring(w, { toValue: to.w, useNativeDriver: false, speed: 22, bounciness: 7 }).start();
     } else {
@@ -285,6 +295,7 @@ export function GlassBar({
     hoverRef.current = null;
     setHover(null);
     Animated.spring(lift, { toValue: 0, useNativeDriver: false, speed: 18, bounciness: 6 }).start();
+    Animated.spring(stretch, { toValue: 0, useNativeDriver: false, speed: 16, bounciness: 10 }).start();
     if (index !== null) {
       moveTo(index);
       itemsRef.current[index]?.onPress();
@@ -306,7 +317,15 @@ export function GlassBar({
         Animated.spring(lift, { toValue: 1, useNativeDriver: false, speed: 20, bounciness: 8 }).start();
         follow(event.nativeEvent.pageX);
       },
-      onPanResponderMove: (event) => follow(event.nativeEvent.pageX),
+      onPanResponderMove: (event, g) => {
+        follow(event.nativeEvent.pageX);
+        Animated.spring(stretch, {
+          toValue: Math.min(Math.abs(g.vx) * 0.12, 0.28),
+          useNativeDriver: false,
+          speed: 30,
+          bounciness: 0,
+        }).start();
+      },
       onPanResponderRelease: (event) => release(event.nativeEvent.pageX),
       onPanResponderTerminate: () => release(null),
       onPanResponderTerminationRequest: () => false,
@@ -389,35 +408,10 @@ export function GlassBar({
                   inputRange: [0, 1],
                   outputRange: ["rgba(255,255,255,0)", "rgba(255,255,255,.35)"],
                 }),
-                opacity: measured && showPill ? 1 : 0,
+                opacity: measured && showPill && !(LiquidGlass && (hover !== null || flash)) ? 1 : 0,
                 transform: [{ scale: lift.interpolate({ inputRange: [0, 1], outputRange: [1, 1.14] }) }],
               }}
             />
-            {/*
-              العدسة: زجاجٌ مستقلّ يظهر تحت الإصبع. لا يُلبس شفافيّةً ولا قصّاً —
-              زجاجُ آبل تحت `opacity` أو داخل `overflow: hidden` لا يُرسم — فيظهر
-              ويختفي بنمطه نفسه (`none` ↔ `clear`) وآبل تحرّكه.
-            */}
-            {LiquidGlass && measured ? (
-              <Animated.View
-                pointerEvents="none"
-                style={{
-                  position: "absolute",
-                  top: 4,
-                  height: PILL - 10,
-                  left: x,
-                  width: w,
-                  transform: [{ scale: lift.interpolate({ inputRange: [0, 1], outputRange: [1, 1.3] }) }],
-                }}
-              >
-                <LiquidGlass
-                  glassEffectStyle={{ style: hover !== null ? "clear" : "none", animate: true, animationDuration: 0.25 }}
-                  isInteractive
-                  colorScheme="dark"
-                  style={{ flex: 1, borderRadius: (PILL - 10) / 2 }}
-                />
-              </Animated.View>
-            ) : null}
             {items.map((item, index) => {
               const on = hover === null ? item.key === active : hover === index;
               const big = hover === index;
@@ -456,6 +450,35 @@ export function GlassBar({
                 </Pressable>
               );
             })}
+            {/*
+              العدسة — كعدسة شريط النظام: زجاجٌ صافٍ **فوق** الأيقونات لا تحتها، فيكسر
+              ما تحته ويكبّره ويلوّن حافّته. أطولُ من الشريط ويتمطّط بسرعة الإصبع.
+              لا يُلبس شفافيّةً ولا قصّاً — زجاجُ آبل تحت `opacity` أو داخل
+              `overflow: hidden` لا يُرسم — فيظهر ويختفي بنمطه (`none` ↔ `clear`).
+            */}
+            {LiquidGlass && measured ? (
+              <Animated.View
+                pointerEvents="none"
+                style={{
+                  position: "absolute",
+                  top: -7,
+                  height: PILL + 14,
+                  left: Animated.add(x, -10),
+                  width: Animated.add(w, 20),
+                  transform: [
+                    { scaleX: Animated.add(lift.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }), stretch) },
+                    { scaleY: Animated.subtract(lift.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }), Animated.multiply(stretch, 0.35)) },
+                  ],
+                }}
+              >
+                <LiquidGlass
+                  glassEffectStyle={{ style: hover !== null || flash ? "clear" : "none", animate: true, animationDuration: 0.22 }}
+                  isInteractive
+                  colorScheme="dark"
+                  style={{ flex: 1, borderRadius: (PILL + 14) / 2 }}
+                />
+              </Animated.View>
+            ) : null}
           </View>
         </View>
       </View>
