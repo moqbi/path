@@ -100,7 +100,7 @@ export async function book(userId: string, year: number) {
   const [me, found, circleList, blocks] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
-      select: { name: true, memberNo: true, avatarMediaId: true },
+      select: { name: true, memberNo: true, avatarMediaId: true, gender: true },
     }),
     prisma.moment.findMany({
       where: { authorId: userId, kind: { in: [...KINDS] }, createdAt: { gte: lower, lt: end } },
@@ -152,8 +152,8 @@ export async function book(userId: string, year: number) {
       ...moment,
       with: withNames,
       echo,
-      story: leadOf({ ...moment, with: withNames }),
-      echoText: echo ? echoText(echo) : null,
+      story: leadOf({ ...moment, with: withNames }, me.gender),
+      echoText: echo ? echoText(echo, me.gender) : null,
       private:
         audience === "CIRCLE"
           ? null
@@ -212,7 +212,7 @@ export async function book(userId: string, year: number) {
       topPlace: places[0] ? { name: places[0][0], visits: places[0][1] } : null,
       topSong: songs[0]?.[0] ?? null,
       circle: circleStats,
-      circleLines: circleLines(circleStats),
+      circleLines: circleLines(circleStats, me.gender),
     },
     days,
     moments: rows,

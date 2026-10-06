@@ -152,6 +152,8 @@ export const profileInput = z.object({
   handle: z.string().trim().max(21).optional(),
   bio: z.string().trim().max(160).optional(),
   city: z.string().trim().max(40).optional(),
+  /** صيغةُ خطاب الكتاب (القاعدة ٢٦٠) — اختياريٌّ لنسخٍ قديمة لا ترسله، و`null` يمسحه. */
+  gender: z.enum(["MALE", "FEMALE", "UNSPECIFIED"]).nullable().optional(),
 });
 
 export const privacyInput = z.object({

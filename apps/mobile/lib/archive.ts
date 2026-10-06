@@ -72,7 +72,8 @@ export function privateNote(moment: BookMoment): string | null {
   if (!p) return null;
   if (p.audience === "PICKED") return p.people.length ? `لحظة خاصة — شاركتها مع ${names(p.people)}` : "لحظة خاصة";
   if (p.audience === "GROUP") return p.group ? `لحظة خاصة — لتصنيف ${p.group}` : "لحظة خاصة";
-  return p.group ? `لحظة خاصة — للكل ما عدا ${p.group}` : "لحظة خاصة";
+  // «الكل ما عدا» عامّةٌ لا خاصّة — بقرار المالك: يُقال لمن لم تكن، بلا «خاصة».
+  return p.group ? `للكل ما عدا ${p.group}` : null;
 }
 
 export const withNames = (moment: BookMoment) => (moment.with?.length ? `مع ${names(moment.with)}` : null);

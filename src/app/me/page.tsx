@@ -185,6 +185,7 @@ export default async function ProfilePage({
               handle={user.handle}
               bio={user.bio}
               city={user.city}
+              gender={user.gender}
               avatarMediaId={user.avatarMediaId}
               frame={user.frame}
               charm={user.charm}

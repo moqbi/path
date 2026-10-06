@@ -248,7 +248,7 @@ export function MomentCard({
         «خاصة» تحت الساعة — يراها صاحبُها ومن اختارهم، فيعرف كلٌّ منهم أنّ
         اللحظة لم تُوجَّه إلى الدائرة كلّها (القاعدة ٢٠٦).
       */}
-      {moment.audience && moment.audience !== "CIRCLE" ? (
+      {moment.audience === "PICKED" || moment.audience === "GROUP" ? (
         <View
           accessibilityLabel="لحظة خاصة"
           style={{

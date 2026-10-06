@@ -54,6 +54,8 @@ export type Me = {
   shareLocation: boolean;
   /** وضعُ التخفّي لمشتركي آثار+ (القاعدة ٢٥١). نسخةُ خادمٍ قديمة لا ترسله. */
   hideOnline?: boolean;
+  /** صيغةُ خطاب الكتاب (القاعدة ٢٦٠): فارغٌ = مذكّر كما كان. نسخةُ خادمٍ قديمة لا ترسله. */
+  gender?: "MALE" | "FEMALE" | "UNSPECIFIED" | null;
   notifyOnTag: boolean;
   /** هل على الحساب كلمةُ مرور؟ من دخل بمزوّدٍ لا كلمةَ له حتى يضعها. */
   hasPassword?: boolean;

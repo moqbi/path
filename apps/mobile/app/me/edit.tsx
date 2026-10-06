@@ -42,6 +42,7 @@ export default function EditProfile() {
   const [handle, setHandle] = useState(me?.handle ?? "");
   const [bio, setBio] = useState(me?.bio ?? "");
   const [city, setCity] = useState(me?.city ?? "");
+  const [gender, setGender] = useState(me?.gender ?? null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [pictureError, setPictureError] = useState<string | null>(null);
@@ -69,6 +70,8 @@ export default function EditProfile() {
           handle: handle.trim(),
           bio: bio.trim(),
           city: city.trim(),
+          // يُرسَل حين اختاره وحده — فارغُه لا يمسح شيئاً (القاعدة ٢٦٠).
+          ...(gender ? { gender } : {}),
         }),
       });
       await refresh();
@@ -197,6 +200,40 @@ export default function EditProfile() {
                 placeholderTextColor={colors.faint}
                 style={INPUT}
               />
+            </Field>
+
+            <Field label="كيف يخاطبك كتاب سنتك؟">
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                {(
+                  [
+                    ["MALE", "ذكر"],
+                    ["FEMALE", "أنثى"],
+                    ["UNSPECIFIED", "أفضّل ألّا أقول"],
+                  ] as const
+                ).map(([value, label]) => {
+                  const on = gender === value;
+                  return (
+                    <Pressable
+                      key={value}
+                      onPress={() => setGender(value)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: on }}
+                      style={{
+                        flex: value === "UNSPECIFIED" ? 1.6 : 1,
+                        alignItems: "center",
+                        paddingVertical: 10,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: on ? colors.clay : colors.line,
+                        backgroundColor: on ? colors.clay : colors.paper,
+                      }}
+                    >
+                      <Text style={{ color: on ? colors.onBrand : colors.ink, fontSize: 13, fontWeight: on ? "700" : "500" }}>{label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <Text style={{ color: colors.faint, fontSize: 11.5, marginTop: 6 }}>لا يظهر لأحد — يستعمله كتاب سنتك ليخاطبك بصيغتك.</Text>
             </Field>
 
             {error ? (

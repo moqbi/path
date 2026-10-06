@@ -98,7 +98,7 @@ export async function book(userId: string, year: number) {
   const [me, found, circleList, blockedList] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
-      select: { name: true, memberNo: true, avatarMediaId: true },
+      select: { name: true, memberNo: true, avatarMediaId: true, gender: true },
     }),
     prisma.moment.findMany({
       where: { authorId: userId, kind: { in: [...KINDS] }, createdAt: { gte: lower, lt: end } },
@@ -156,9 +156,9 @@ export async function book(userId: string, year: number) {
       with: withNames,
       echo,
       /** ما فعله صاحبُها بلسان الراوي: «كنت تسمع…»، «رحت إلى… وكان معك…». */
-      story: leadOf({ ...moment, with: withNames }),
+      story: leadOf({ ...moment, with: withNames }, me.gender),
       /** ما جرى حولها: من تفاعل وبماذا، وما كُتب له — والاقتباسُ في `echo.quote`. */
-      echoText: echo ? echoText(echo) : null,
+      echoText: echo ? echoText(echo, me.gender) : null,
       private:
         audience === "CIRCLE"
           ? null
@@ -218,7 +218,7 @@ export async function book(userId: string, year: number) {
       topSong: songs[0]?.[0] ?? null,
       circle: circleStats,
       /** أسطرُ المقدّمة عن الدائرة جاهزةً — الأوجهُ الثلاثة تقرؤها ولا تكتبها. */
-      circleLines: circleLines(circleStats),
+      circleLines: circleLines(circleStats, me.gender),
     },
     days,
     // النسخُ قبل صفحات الأيّام تقرأ القائمةَ مسطّحة.
