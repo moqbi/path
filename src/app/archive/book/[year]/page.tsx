@@ -6,6 +6,7 @@ import { Avatar, ScreenHeader } from "@/components/ui";
 import { AthrMark } from "@/components/brand";
 import { BASE } from "@/lib/base";
 import { ar, MONTHS } from "@/lib/format";
+import { ReactionGlyph } from "@/components/reactions";
 import { PrintButton } from "./print-button";
 
 type Moment = Awaited<ReturnType<typeof book>>["moments"][number];
@@ -18,6 +19,8 @@ const MUTED = "#8a949a";
 const KICKER = "#b07d1c";
 const NIGHT = "#0E1A24";
 const GOLD = "#F6B93B";
+// صوتُ الراوي — بنّيٌّ دافئ يفصله عن كلام صاحب اللحظة (القاعدة ٢٥٩).
+const STORY = "#6a5420";
 
 const WEEKDAYS = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 
@@ -36,23 +39,6 @@ function privateNote(moment: Moment): string | null {
 function clock(at: Date): string {
   const h = at.getHours();
   return `${ar(h % 12 || 12)}:${ar(String(at.getMinutes()).padStart(2, "0"))} ${h < 12 ? "ص" : "م"}`;
-}
-
-function line(moment: Moment): string {
-  switch (moment.kind) {
-    case "PLACE":
-      return moment.placeName ?? "مكان";
-    case "MUSIC":
-      return moment.musicTitle ? `${moment.musicTitle}${moment.musicArtist ? ` — ${moment.musicArtist}` : ""}` : "أغنية";
-    case "CITY":
-      return `وصلت إلى ${moment.text ?? moment.placeCity ?? ""}`;
-    case "SLEEP":
-      return "نمت";
-    case "WAKE":
-      return "صحيت";
-    default:
-      return moment.text ?? "";
-  }
 }
 
 /**
@@ -145,6 +131,16 @@ export default async function BookPage({ params }: { params: Promise<{ year: str
               </div>
             ))}
           </div>
+          {s.circleLines.length ? (
+            <div className="mt-5 border-t pt-3.5" style={{ borderColor: RULE }}>
+              <p className="mb-1.5 text-[10.5px] tracking-[3px]" style={{ color: KICKER }}>دائرتك</p>
+              {s.circleLines.map((text) => (
+                <p key={text} className="text-[13px] leading-[1.85]" style={{ color: "#3c4a52" }}>
+                  {text}
+                </p>
+              ))}
+            </div>
+          ) : null}
           {data.partial ? <p className="mt-4 text-[11px]" style={{ color: MUTED }}>هذا الكتاب من آخر ستة أشهر — السنة كاملة مع آثار+.</p> : null}
         </section>
 
@@ -178,6 +174,9 @@ export default async function BookPage({ params }: { params: Promise<{ year: str
                     {day.moments.map((moment, index) => {
                       const note = privateNote(moment);
                       const last = index === count - 1;
+                      // ما فعله يُروى، وكلامُه هو يبقى كما كتبه (القاعدة ٢٥٩).
+                      const own = moment.kind === "PHOTO" || moment.kind === "THOUGHT" ? (moment.text ?? "") : "";
+                      const quote = moment.echo?.quote;
                       return (
                         <li key={moment.id} className="moment flex gap-3">
                           <span className="flex w-[22px] shrink-0 flex-col items-center">
@@ -189,8 +188,13 @@ export default async function BookPage({ params }: { params: Promise<{ year: str
                           <Link href={`/m/${moment.id}`} className={`block min-w-0 flex-1 ${last ? "" : "pb-5"}`}>
                             <p className="mb-1.5 mt-[3px] text-[11px]" style={{ color: MUTED }}>
                               {clock(moment.createdAt)}
-                              {moment.placeName && moment.kind !== "PLACE" ? ` · ${moment.placeName}` : ""}
+                              {moment.placeName && moment.kind === "PHOTO" ? ` · ${moment.placeName}` : ""}
                             </p>
+                            {moment.story ? (
+                              <p className="mb-2 text-[13.5px] leading-[1.8]" style={{ color: STORY }}>
+                                {moment.story}
+                              </p>
+                            ) : null}
                             {moment.mediaId ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
@@ -200,13 +204,24 @@ export default async function BookPage({ params }: { params: Promise<{ year: str
                                 style={{ aspectRatio: "5 / 4", objectPosition: `${moment.photoX ?? 50}% ${moment.photoY ?? 50}%`, boxShadow: "0 6px 16px rgba(14,26,36,.08)" }}
                               />
                             ) : null}
-                            {line(moment) ? (
-                              <p className={moment.mediaId ? "text-[14px] leading-[1.8]" : "display text-[18px] font-bold leading-[1.55]"}>{line(moment)}</p>
+                            {own ? (
+                              <p className={moment.mediaId ? "text-[14px] leading-[1.8]" : "display text-[18px] font-bold leading-[1.55]"}>{own}</p>
                             ) : null}
-                            {moment.with.length ? (
-                              <p className="mt-1 text-[12px]" style={{ color: "#3c4a52" }}>
-                                مع <b>{names(moment.with)}</b>
+                            {moment.echoText ? (
+                              <p className="mt-2.5 flex items-start gap-2 text-[12.5px] leading-[1.75]" style={{ color: "#3c4a52" }}>
+                                {moment.echo?.top ? (
+                                  <span className="mt-0.5 shrink-0">
+                                    <ReactionGlyph kind={moment.echo.top.kind} emoji={moment.echo.top.emoji} size={20} />
+                                  </span>
+                                ) : null}
+                                <span className="min-w-0 flex-1">{moment.echoText}</span>
                               </p>
+                            ) : null}
+                            {quote ? (
+                              <blockquote className="mt-1.5 rounded-l-lg border-r-2 px-3 py-2 text-[13.5px] leading-[1.8]" style={{ borderColor: GOLD, background: "#F6EFDD" }}>
+                                «{quote.text}»
+                                <cite className="mt-0.5 block text-[11px] not-italic" style={{ color: "#8a7a55" }}>— {quote.name}</cite>
+                              </blockquote>
                             ) : null}
                             {note ? (
                               <p className="mt-2 inline-block rounded-md border px-2 py-0.5 text-[11px]" style={{ background: "#FBF1DA", borderColor: "#EBD9AE", color: "#8a5f10" }}>

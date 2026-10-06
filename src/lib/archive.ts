@@ -1,6 +1,8 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { dayKey, riyadhDay } from "@/lib/riyadh-day";
+import { circleLines, circleYear, echoOf, echoText, leadOf } from "@/lib/book-story";
+import { circleIds } from "@/lib/circle";
 
 
 /**
@@ -95,7 +97,7 @@ export async function book(userId: string, year: number) {
   const end = new Date(Date.UTC(year + 1, 0, 1, -3));
   const lower = from && from > start ? from : start;
 
-  const [me, found] = await Promise.all([
+  const [me, found, circleList, blocks] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: { name: true, memberNo: true, avatarMediaId: true },
@@ -108,26 +110,60 @@ export async function book(userId: string, year: number) {
         audienceGroup: { select: { name: true } },
         viewers: { select: { user: { select: { name: true } } } },
         tags: { select: { user: { select: { name: true } } } },
+        reactions: {
+          where: { userId: { not: userId } },
+          select: { userId: true, kind: true, emoji: true, createdAt: true, user: { select: { name: true } } },
+        },
+        comments: {
+          where: { userId: { not: userId } },
+          select: { userId: true, body: true, user: { select: { name: true } } },
+          orderBy: { createdAt: "asc" },
+        },
       },
       orderBy: { createdAt: "asc" },
       take: 1000,
     }),
+    circleIds(userId),
+    prisma.block.findMany({
+      where: { OR: [{ blockerId: userId }, { blockedId: userId }] },
+      select: { blockerId: true, blockedId: true },
+    }),
   ]);
   if (!me) throw new Error("الحساب غير موجود");
+  const circle = new Set(circleList);
+  const blocked = new Set(blocks.map((row) => (row.blockerId === userId ? row.blockedId : row.blockerId)));
 
   // اللحظةُ الخاصّة تقول لمن كانت، و«مع» كما كُتبت — نسخةُ الخادم حرفاً بحرف (القاعدة ٢٥٦).
-  const rows = found.map(({ audience, audienceGroup, viewers, tags, ...moment }) => ({
-    ...moment,
-    with: tags.map((tag) => tag.user.name),
-    private:
-      audience === "CIRCLE"
-        ? null
-        : {
-            audience,
-            group: audienceGroup?.name ?? null,
-            people: audience === "PICKED" ? viewers.map((viewer) => viewer.user.name) : [],
-          },
-  }));
+  // والراوي (القاعدة ٢٥٩) — كالخادم حرفاً بحرف.
+  const raw = new Map(
+    found.map((moment) => [
+      moment.id,
+      {
+        reactions: moment.reactions.map(({ user, ...reaction }) => ({ ...reaction, name: user.name })),
+        comments: moment.comments.map(({ user, ...comment }) => ({ ...comment, name: user.name })),
+      },
+    ]),
+  );
+  const rows = found.map(({ audience, audienceGroup, viewers, tags, reactions: _r, comments: _c, ...moment }) => {
+    const entry = raw.get(moment.id)!;
+    const echo = echoOf(entry.reactions, entry.comments, circle, blocked);
+    const withNames = tags.map((tag) => tag.user.name);
+    return {
+      ...moment,
+      with: withNames,
+      echo,
+      story: leadOf({ ...moment, with: withNames }),
+      echoText: echo ? echoText(echo) : null,
+      private:
+        audience === "CIRCLE"
+          ? null
+          : {
+              audience,
+              group: audienceGroup?.name ?? null,
+              people: audience === "PICKED" ? viewers.map((viewer) => viewer.user.name) : [],
+            },
+    };
+  });
 
   // صفحةٌ لكلّ يوم بتوقيت الرياض.
   const days: { day: string; moments: typeof rows }[] = [];
@@ -147,6 +183,18 @@ export async function book(userId: string, year: number) {
   const places = tally(rows.filter((row) => row.kind === "PLACE").map((row) => row.placeName));
   const cities = tally(rows.map((row) => row.placeCity ?? (row.kind === "CITY" ? row.text : null)));
   const songs = tally(rows.filter((row) => row.kind === "MUSIC").map((row) => row.musicTitle));
+  const circleStats = circleYear(
+    rows.map((row) => ({
+      id: row.id,
+      day: dayKey(riyadhDay(row.createdAt)),
+      line: headline(row),
+      with: row.with,
+      echo: row.echo,
+    })),
+    raw,
+    circle,
+    blocked,
+  );
 
   return {
     year,
@@ -163,8 +211,37 @@ export async function book(userId: string, year: number) {
       cities: cities.slice(0, 6).map(([name]) => name),
       topPlace: places[0] ? { name: places[0][0], visits: places[0][1] } : null,
       topSong: songs[0]?.[0] ?? null,
+      circle: circleStats,
+      circleLines: circleLines(circleStats),
     },
     days,
     moments: rows,
   };
+}
+
+/** عنوانُ اللحظة في سطرٍ واحد — لـ«أكثرُ لحظةٍ حرّكت دائرتك». */
+function headline(moment: {
+  kind: string;
+  text: string | null;
+  placeName: string | null;
+  placeCity: string | null;
+  musicTitle: string | null;
+}): string {
+  const short = (value: string) => (value.length > 60 ? `${value.slice(0, 59)}…` : value);
+  switch (moment.kind) {
+    case "PLACE":
+      return moment.placeName ?? "مكان";
+    case "MUSIC":
+      return moment.musicTitle ?? "أغنية";
+    case "CITY":
+      return `وصلت إلى ${moment.text ?? moment.placeCity ?? ""}`.trim();
+    case "SLEEP":
+      return "نمت";
+    case "WAKE":
+      return "صحيت";
+    case "PHOTO":
+      return moment.text ? short(moment.text) : "صورة";
+    default:
+      return moment.text ? short(moment.text) : "خاطرة";
+  }
 }

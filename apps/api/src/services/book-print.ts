@@ -31,29 +31,24 @@ const MARK = SITE_URL
   ? `<img class="logo" src="${SITE_URL}/athr-mark.png" alt="">`
   : `<div class="mark"></div>`;
 
+/** رسمُ التفاعل من الموقع كالشعار — وبلا نطاقٍ تُكتب الجملةُ وحدها. */
+const GLYPH: Record<string, string> = {
+  SMILE: "smile", LAUGH: "laugh", GASP: "gasp", SAD: "sad", LOVE: "love",
+  CAMERA: "camera", CHAT: "chat", PIN: "pin", SLEEPY: "sleepy",
+};
+function glyph(top: { kind: string; emoji: string | null } | null | undefined): string {
+  if (!top) return "";
+  if (top.kind === "CUSTOM") return top.emoji ? `<span class="glyph emoji">${esc(top.emoji)}</span>` : "";
+  const file = GLYPH[top.kind];
+  return file && SITE_URL ? `<img class="glyph" src="${SITE_URL}/app/reactions/${file}.png" alt="">` : "";
+}
+
 const esc = (value: string) =>
   value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
 /** «فلان وفلان»، «فلان وفلان وفلان» — بالواو العربيّة لا بالفاصلة وحدها. */
 const names = (list: string[]) =>
   list.length <= 1 ? list.join("") : `${list.slice(0, -1).join("، ")} و${list.at(-1)}`;
-
-function line(moment: Moment): string {
-  switch (moment.kind) {
-    case "PLACE":
-      return moment.placeName ?? "مكان";
-    case "MUSIC":
-      return moment.musicTitle ? `${moment.musicTitle}${moment.musicArtist ? ` — ${moment.musicArtist}` : ""}` : "أغنية";
-    case "CITY":
-      return `وصلت إلى ${moment.text ?? moment.placeCity ?? ""}`.trim();
-    case "SLEEP":
-      return "نمت";
-    case "WAKE":
-      return "صحيت";
-    default:
-      return moment.text ?? "";
-  }
-}
 
 /** لمن كانت اللحظة الخاصّة — بلسان صاحبها. */
 export function privateNote(moment: Moment): string | null {
@@ -200,6 +195,15 @@ h2 { font-size: 26px; font-weight: 800; margin-top: 3mm; }
   box-shadow: 0 1px 0 #E4DCC8, 0 6px 16px rgba(14,26,36,.08); }
 .with { font-size: 11.5px; color: #3c4a52; margin-top: 1.5mm; }
 .with b { font-weight: 700; }
+.story { font-size: 12.5px; line-height: 1.85; color: #6a5420; margin-bottom: 2.5mm; }
+.echo { display: flex; align-items: flex-start; gap: 2.5mm; margin-top: 3mm; font-size: 11.5px; line-height: 1.75; color: #3c4a52; }
+.glyph { width: 20px; height: 20px; flex: 0 0 20px; margin-top: 1px; }
+.glyph.emoji { font-size: 16px; line-height: 20px; text-align: center; }
+.quote { margin-top: 2mm; padding: 2.5mm 4mm; border-right: 2px solid #F6B93B; background: #F6EFDD; border-radius: 8px 0 0 8px;
+  font-size: 12.5px; line-height: 1.8; color: #182830; }
+.quote cite { display: block; font-style: normal; font-size: 10.5px; color: #8a7a55; margin-top: 1mm; }
+.circle { margin-top: 8mm; padding-top: 5mm; border-top: 1px solid #E4DCC8; }
+.circle p { font-size: 12.5px; line-height: 1.9; color: #3c4a52; }
 .private { display: inline-block; font-size: 10.5px; color: #8a5f10; border: 1px solid #EBD9AE; background: #FBF1DA; border-radius: 6px; padding: 1.5px 7px; margin-top: 2mm; }
 
 /* الخاتمة */
@@ -256,6 +260,7 @@ export async function bookHtml(userId: string, year: number): Promise<{ html: st
       <h2>سنتك بالأرقام</h2>
       <div class="numbers">${tiles.map(([n, label]) => `<div><b>${ar(n)}</b><span>${label}</span></div>`).join("")}</div>
       ${facts.length ? `<div class="facts">${facts.map(([k, v]) => `<div class="fact"><span class="k">${k}</span><span>${v}</span></div>`).join("")}</div>` : ""}
+      ${s.circleLines.length ? `<div class="circle"><div class="kicker">دائرتك</div>${s.circleLines.map((text) => `<p>${esc(text)}</p>`).join("")}</div>` : ""}
       ${data.partial ? `<p class="note">هذا الكتاب من آخر ستة أشهر — السنة كاملة مع آثار+.</p>` : ""}
     </section>`);
 
@@ -280,17 +285,21 @@ export async function bookHtml(userId: string, year: number): Promise<{ html: st
     const items = day.moments
       .map((moment, index) => {
         const photo = moment.mediaId ? photos.get(moment.mediaId) : undefined;
-        const text = line(moment);
-        const where = moment.placeName && moment.kind !== "PLACE" ? ` · ${esc(moment.placeName)}` : "";
+        // كلامُه هو يبقى كما كتبه، وما سواه يرويه الراوي (القاعدة ٢٥٩).
+        const own = moment.kind === "PHOTO" || moment.kind === "THOUGHT" ? (moment.text ?? "") : "";
+        const where = moment.placeName && moment.kind === "PHOTO" ? ` · ${esc(moment.placeName)}` : "";
         const note = privateNote(moment);
+        const quote = moment.echo?.quote;
         return `
           <div class="moment">
             <div class="num">${ar(index + 1)}</div>
             <div class="body">
               <div class="meta">${clock(moment.createdAt)}${where}</div>
+              ${moment.story ? `<div class="story">${esc(moment.story)}</div>` : ""}
               ${photo ? `<img class="photo" src="${photo}" style="object-position:${moment.photoX ?? 50}% ${moment.photoY ?? 50}%">` : ""}
-              ${text ? `<div class="text${photo ? "" : " big"}">${esc(text)}</div>` : ""}
-              ${moment.with.length ? `<div class="with">مع <b>${esc(names(moment.with))}</b></div>` : ""}
+              ${own ? `<div class="text${photo ? "" : " big"}">${esc(own)}</div>` : ""}
+              ${moment.echoText ? `<div class="echo">${glyph(moment.echo?.top)}<span>${esc(moment.echoText)}</span></div>` : ""}
+              ${quote ? `<div class="quote">«${esc(quote.text)}»<cite>— ${esc(quote.name)}</cite></div>` : ""}
               ${note ? `<div class="private">${esc(note)}</div>` : ""}
             </div>
           </div>`;

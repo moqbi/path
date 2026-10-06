@@ -9,6 +9,7 @@ import { MediaImage } from "../../../components/media-image";
 import { Avatar } from "../../../components/avatar";
 import { AthrMark } from "../../../components/brand";
 import { PrivateIcon } from "../../../components/icons";
+import { ReactionGlyph } from "../../../components/reactions";
 import { api } from "../../../lib/api";
 import { ar, MONTHS, timeOfDay } from "../../../lib/format";
 import { momentLine, privateNote, withNames, type Book, type BookMoment } from "../../../lib/archive";
@@ -151,6 +152,8 @@ const MUTED = "#8a949a";
 const KICKER = "#b07d1c";
 const NIGHT = "#0E1A24";
 const GOLD = "#F6B93B";
+// صوتُ الراوي: بنّيٌّ دافئ يفصله عن كلام صاحب اللحظة (القاعدة ٢٥٩).
+const STORY = "#6a5420";
 
 function Gold({ center }: { center?: boolean }) {
   return <View style={{ width: 36, height: 2, borderRadius: 2, backgroundColor: GOLD, alignSelf: center ? "center" : "flex-start" }} />;
@@ -227,6 +230,16 @@ function PageBody({ page, book, onOpen }: { page: Page; book: Book; onOpen: (id:
             ))}
           </View>
         ) : null}
+        {s.circleLines?.length ? (
+          <View style={{ marginTop: 20, paddingTop: 14, borderTopWidth: 1, borderTopColor: RULE }}>
+            <Text style={{ color: KICKER, fontSize: 10.5, letterSpacing: 3, marginBottom: 6 }}>دائرتك</Text>
+            {s.circleLines.map((text) => (
+              <Text key={text} style={{ color: "#3c4a52", fontSize: 13, lineHeight: 24 }}>
+                {text}
+              </Text>
+            ))}
+          </View>
+        ) : null}
         {book.partial ? (
           <Text style={{ color: MUTED, fontSize: 11, marginTop: 16 }}>هذا الكتاب من آخر ستة أشهر — السنة كاملة مع آثار+.</Text>
         ) : null}
@@ -294,9 +307,17 @@ function PageBody({ page, book, onOpen }: { page: Page; book: Book; onOpen: (id:
 
 /** لحظةٌ في صفحة يومها: رقمُها على خطّ اليوم، وساعتُها، وصورتُها، وسطرُها، ولمن كانت. */
 function DayMoment({ moment, n, last, onOpen }: { moment: BookMoment; n: number; last: boolean; onOpen: (id: string) => void }) {
-  const line = momentLine(moment);
-  const together = withNames(moment);
+  // الراوي (القاعدة ٢٥٩): ما فعله يُروى، وكلامُه هو يبقى كما كتبه. وخادمٌ قديمٌ بلا
+  // جملةٍ يُرسم بسطره كما كان.
+  const told = Boolean(moment.story);
+  const line = told
+    ? moment.kind === "PHOTO" || moment.kind === "THOUGHT"
+      ? (moment.text ?? "")
+      : ""
+    : momentLine(moment);
+  const together = told ? null : withNames(moment);
   const note = privateNote(moment);
+  const quote = moment.echo?.quote;
   return (
     <Pressable onPress={() => onOpen(moment.id)} style={{ flexDirection: "row", gap: 12 }}>
       <View style={{ width: 22, alignItems: "center" }}>
@@ -308,8 +329,9 @@ function DayMoment({ moment, n, last, onOpen }: { moment: BookMoment; n: number;
       <View style={{ flex: 1, minWidth: 0, paddingBottom: last ? 0 : 20 }}>
         <Text style={{ color: MUTED, fontSize: 11, marginBottom: 6, marginTop: 3 }}>
           {timeOfDay(new Date(moment.createdAt))}
-          {moment.placeName && moment.kind !== "PLACE" ? ` · ${moment.placeName}` : ""}
+          {moment.placeName && (told ? moment.kind === "PHOTO" : moment.kind !== "PLACE") ? ` · ${moment.placeName}` : ""}
         </Text>
+        {told ? <Text style={{ color: STORY, fontSize: 13.5, lineHeight: 24, marginBottom: 8 }}>{moment.story}</Text> : null}
         {moment.mediaId ? (
           <MediaImage
             mediaId={moment.mediaId}
@@ -325,6 +347,22 @@ function DayMoment({ moment, n, last, onOpen }: { moment: BookMoment; n: number;
           )
         ) : null}
         {together ? <Text style={{ color: "#3c4a52", fontSize: 12, marginTop: 4 }}>{together}</Text> : null}
+        {moment.echoText ? (
+          <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, marginTop: 10 }}>
+            {moment.echo?.top ? (
+              <View style={{ marginTop: 2 }}>
+                <ReactionGlyph kind={moment.echo.top.kind} emoji={moment.echo.top.emoji} size={20} />
+              </View>
+            ) : null}
+            <Text style={{ flex: 1, color: "#3c4a52", fontSize: 12.5, lineHeight: 22 }}>{moment.echoText}</Text>
+          </View>
+        ) : null}
+        {quote ? (
+          <View style={{ marginTop: 6, paddingVertical: 8, paddingHorizontal: 12, borderRightWidth: 2, borderRightColor: GOLD, backgroundColor: "#F6EFDD", borderTopLeftRadius: 8, borderBottomLeftRadius: 8 }}>
+            <Text style={{ color: INK, fontSize: 13.5, lineHeight: 24 }}>«{quote.text}»</Text>
+            <Text style={{ color: "#8a7a55", fontSize: 11, marginTop: 2 }}>— {quote.name}</Text>
+          </View>
+        ) : null}
         {note ? (
           <View style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#FBF1DA", borderWidth: 1, borderColor: "#EBD9AE", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, marginTop: 7 }}>
             <PrivateIcon size={11} color="#8a5f10" />

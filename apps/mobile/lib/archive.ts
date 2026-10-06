@@ -23,7 +23,22 @@ export type ArchivePage = {
 
 /** لمن كانت اللحظة الخاصّة — يُكتب في الكتاب (القاعدة ٢٥٦). */
 export type BookPrivate = { audience: "GROUP" | "PICKED" | "EXCEPT"; group: string | null; people: string[] };
-export type BookMoment = ArchiveMoment & { with?: string[]; private?: BookPrivate | null };
+/** صدى اللحظة في دائرتها (القاعدة ٢٥٩): أكثرُ تفاعلٍ وصلها وتعليقٌ يُقتبس. */
+export type BookEcho = {
+  reactions: number;
+  top: { kind: string; emoji: string | null; count: number } | null;
+  reactors: string[];
+  comments: number;
+  quote: { name: string; text: string } | null;
+};
+export type BookMoment = ArchiveMoment & {
+  with?: string[];
+  private?: BookPrivate | null;
+  /** جملةُ الراوي — خادمٌ قديمٌ بلاها يُرسم بسطره كما كان. */
+  story?: string;
+  echoText?: string | null;
+  echo?: BookEcho | null;
+};
 
 export type Book = {
   year: number;
@@ -40,6 +55,8 @@ export type Book = {
     cities: string[];
     topPlace: { name: string; visits: number } | null;
     topSong: string | null;
+    /** ما وصله من دائرته في السنة، أسطراً جاهزة (القاعدة ٢٥٩). */
+    circleLines?: string[];
   };
   moments: BookMoment[];
   /** صفحةٌ لكلّ يوم بتوقيت الرياض — خادمٌ قديم بلاها يُجمَّع منه هنا. */
