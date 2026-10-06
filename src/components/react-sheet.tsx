@@ -139,14 +139,14 @@ export function ReactSheet({
                     onClick={() => onChoose(kind)}
                     className="flex shrink-0 items-center justify-center rounded-full transition-transform hover:scale-110 active:scale-110"
                     style={{
-                      width: 56,
-                      height: 56,
+                      width: 64,
+                      height: 64,
                       background: on ? "rgba(246,185,59,.3)" : "rgba(255,255,255,.08)",
                       animation: "athr-pop 320ms cubic-bezier(.18,1.4,.4,1) both",
                       animationDelay: `${index * 34}ms`,
                     }}
                   >
-                    <ReactionGlyph kind={kind} size={36} />
+                    <ReactionGlyph kind={kind} size={46} />
                   </button>
                 );
               })}

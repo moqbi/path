@@ -127,42 +127,86 @@ async function thumbs(ids: string[], width: number): Promise<Map<string, string>
 const CSS = `
 @page { size: A5; margin: 0; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { direction: rtl; background: #fff; color: #182830;
+html, body { direction: rtl; background: #FBF8F1; color: #182830;
   font-family: "IBM Plex Sans Arabic", "SF Arabic", "Geeza Pro", system-ui, sans-serif;
   -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-.page { width: 148mm; min-height: 210mm; padding: 14mm 12mm; page-break-after: always; break-after: page; position: relative; }
+body { counter-reset: folio; }
+h1, h2, .display { font-family: "Tajawal", "IBM Plex Sans Arabic", sans-serif; }
+.page { width: 148mm; min-height: 210mm; padding: 16mm 14mm 18mm; page-break-after: always; break-after: page;
+  position: relative; background: #FBF8F1; }
 .page:last-child { page-break-after: auto; break-after: auto; }
-.night { background: #0E1A24; color: #f7f5ef; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-.cover .year { font-size: 64px; font-weight: 800; margin-top: 18px; }
-.cover .avatar { width: 78px; height: 78px; border-radius: 50%; object-fit: cover; margin-top: 26px; border: 3px solid #F6B93B; }
-.cover .name { font-size: 22px; font-weight: 800; margin-top: 12px; }
-.cover .member { font-size: 12px; opacity: .6; margin-top: 4px; }
-.cover .motto { color: #F6B93B; font-weight: 700; margin-top: 34px; font-size: 15px; }
-h2 { font-size: 22px; font-weight: 800; margin-bottom: 14px; }
-.stats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-.stat { flex: 1 1 40%; background: #F4F0E6; border-radius: 14px; padding: 12px; }
-.stat b { display: block; font-size: 26px; }
-.stat span { font-size: 12px; color: #6b7880; }
-.facts p { font-size: 14px; line-height: 1.8; }
-.note { font-size: 11.5px; color: #6b7880; margin-top: 12px; }
-.month { background: #FCEFD2; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.month .y { color: #9a6a12; font-weight: 700; }
-.month .m { font-size: 46px; font-weight: 800; }
-.day-head { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 2px solid #F6B93B; padding-bottom: 8px; margin-bottom: 14px; }
-.day-head .t { font-size: 24px; font-weight: 800; }
-.day-head .w { font-size: 13px; color: #6b7880; }
-.moment { display: flex; gap: 10px; margin-bottom: 14px; break-inside: avoid; page-break-inside: avoid; }
-.num { flex: 0 0 26px; height: 26px; border-radius: 13px; background: #0E1A24; color: #F6B93B; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.folio { counter-increment: folio; }
+.folio::after { content: counter(folio, arabic-indic); position: absolute; bottom: 9mm; left: 14mm;
+  font-size: 9px; color: #9aa4a8; letter-spacing: .5px; }
+.folio::before { content: attr(data-run); position: absolute; bottom: 9mm; right: 14mm;
+  font-size: 9px; color: #9aa4a8; }
+.rule { height: 1px; background: #E4DCC8; }
+.gold { height: 2px; width: 36px; background: #F6B93B; border-radius: 2px; }
+
+/* الغلاف */
+.night { background: radial-gradient(120% 80% at 50% 30%, #1d3a46 0%, #0E1A24 60%, #08121a 100%); color: #f7f5ef; }
+.cover { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 26mm; }
+.cover .eyebrow { margin-top: 14mm; font-size: 11px; letter-spacing: 4px; color: rgba(247,245,239,.55); }
+.cover .year { font-size: 92px; font-weight: 800; line-height: 1; margin-top: 4mm; }
+.cover .gold { margin: 8mm auto 0; }
+.cover .who { position: absolute; bottom: 30mm; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; }
+.cover .avatar { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 2px solid #F6B93B; padding: 2px; background: #0E1A24; }
+.cover .name { font-size: 19px; font-weight: 800; margin-top: 10px; }
+.cover .member { font-size: 10.5px; color: rgba(247,245,239,.5); margin-top: 3px; }
+.cover .motto { position: absolute; bottom: 14mm; left: 0; right: 0; color: #F6B93B; font-size: 12px; letter-spacing: 1px; }
+.logo { width: 84px; height: auto; }
+.mark { width: 56px; height: 56px; border-radius: 16px; background: linear-gradient(135deg, #F6B93B, #FF7A5A); }
+
+/* سنتك بالأرقام */
+.kicker { font-size: 10.5px; letter-spacing: 3px; color: #b07d1c; }
+h2 { font-size: 26px; font-weight: 800; margin-top: 3mm; }
+.numbers { display: grid; grid-template-columns: 1fr 1fr; margin-top: 10mm; border-top: 1px solid #E4DCC8; }
+.numbers div { padding: 6mm 0 5mm; border-bottom: 1px solid #E4DCC8; }
+.numbers div:nth-child(odd) { border-left: 1px solid #E4DCC8; padding-left: 5mm; }
+.numbers div:nth-child(even) { padding-right: 5mm; }
+.numbers b { display: block; font-family: "Tajawal", sans-serif; font-size: 40px; font-weight: 800; line-height: 1.05; }
+.numbers span { font-size: 11px; color: #6b7880; }
+.facts { margin-top: 8mm; }
+.fact { display: flex; gap: 4mm; padding: 3.2mm 0; border-bottom: 1px solid #EFE8D8; font-size: 13px; line-height: 1.6; }
+.fact .k { flex: 0 0 26mm; color: #8a7a55; font-size: 11px; padding-top: 1px; }
+.note { font-size: 10.5px; color: #8a949a; margin-top: 6mm; line-height: 1.7; }
+
+/* فاصلُ الشهر */
+.month { display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 30mm; }
+.month .ghost { position: absolute; top: 10mm; left: 8mm; font-family: "Tajawal", sans-serif; font-size: 200px; font-weight: 800; color: #F1E8D2; line-height: 1; }
+.month .y { font-size: 11px; letter-spacing: 3px; color: #b07d1c; }
+.month .m { font-family: "Tajawal", sans-serif; font-size: 54px; font-weight: 800; line-height: 1.1; margin-top: 2mm; position: relative; }
+.month .gold { margin-top: 5mm; }
+.month .c { font-size: 12px; color: #6b7880; margin-top: 4mm; }
+
+/* صفحةُ اليوم */
+.day-head { display: flex; align-items: flex-end; gap: 4mm; padding-bottom: 4mm; border-bottom: 1px solid #E4DCC8; margin-bottom: 6mm; }
+.day-head .d { font-family: "Tajawal", sans-serif; font-size: 52px; font-weight: 800; line-height: .9; }
+.day-head .mw { flex: 1; padding-bottom: 1mm; }
+.day-head .mo { font-family: "Tajawal", sans-serif; font-size: 17px; font-weight: 800; }
+.day-head .wd { font-size: 11px; color: #6b7880; margin-top: 1px; }
+.day-head .count { font-size: 10.5px; color: #8a7a55; border: 1px solid #E4DCC8; border-radius: 20px; padding: 2px 9px; margin-bottom: 1mm; }
+.timeline { position: relative; }
+.moment { position: relative; display: flex; gap: 4mm; padding-bottom: 6mm; break-inside: avoid; page-break-inside: avoid; }
+.moment::before { content: ""; position: absolute; right: 10px; top: 24px; bottom: 0; width: 1px; background: #E4DCC8; }
+.moment:last-child::before { display: none; }
+.num { flex: 0 0 21px; height: 21px; border-radius: 50%; background: #0E1A24; color: #F6B93B;
+  font-size: 10.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; position: relative; z-index: 1; }
 .body { flex: 1; min-width: 0; }
-.meta { font-size: 11.5px; color: #6b7880; margin-bottom: 4px; }
-.text { font-size: 15px; line-height: 1.75; white-space: pre-wrap; word-wrap: break-word; }
-.text.big { font-size: 17px; font-weight: 700; }
-.photo { width: 100%; max-height: 95mm; object-fit: cover; border-radius: 12px; margin: 4px 0 6px; display: block; }
-.with { font-size: 12.5px; color: #3c4a52; margin-top: 3px; }
-.private { display: inline-block; font-size: 11.5px; color: #9a6a12; background: #FCEFD2; border-radius: 8px; padding: 3px 8px; margin-top: 6px; }
-.end .big { font-size: 20px; font-weight: 800; margin-top: 16px; }
-.logo { width: 96px; height: auto; }
-.mark { width: 64px; height: 64px; border-radius: 16px; background: linear-gradient(135deg, #F6B93B, #FF7A5A); }
+.meta { font-size: 10.5px; color: #8a949a; margin-bottom: 2mm; letter-spacing: .2px; }
+.text { font-size: 13.5px; line-height: 1.8; white-space: pre-wrap; word-wrap: break-word; }
+.text.big { font-family: "Tajawal", sans-serif; font-size: 18px; font-weight: 700; line-height: 1.55; }
+.photo { width: 100%; aspect-ratio: 5 / 4; max-height: 88mm; object-fit: cover; border-radius: 10px; margin-bottom: 2.5mm; display: block;
+  box-shadow: 0 1px 0 #E4DCC8, 0 6px 16px rgba(14,26,36,.08); }
+.with { font-size: 11.5px; color: #3c4a52; margin-top: 1.5mm; }
+.with b { font-weight: 700; }
+.private { display: inline-block; font-size: 10.5px; color: #8a5f10; border: 1px solid #EBD9AE; background: #FBF1DA; border-radius: 6px; padding: 1.5px 7px; margin-top: 2mm; }
+
+/* الخاتمة */
+.end { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.end .big { font-family: "Tajawal", sans-serif; font-size: 22px; font-weight: 800; margin-top: 8mm; line-height: 1.5; }
+.end .gold { margin: 6mm auto 0; }
+.end .sub { font-size: 12px; color: rgba(247,245,239,.6); margin-top: 5mm; }
 `;
 
 /** الكتابُ صفحةَ HTML واحدة، والجوّالُ يطبعها. */
@@ -175,34 +219,44 @@ export async function bookHtml(userId: string, year: number): Promise<{ html: st
     data.avatarMediaId ? thumb(data.avatarMediaId, 240) : Promise.resolve(null),
   ]);
 
+  const run = `آثار مومنتس · ${ar(year)}`;
   const pages: string[] = [];
   pages.push(`
     <section class="page night cover">
       ${MARK}
-      <div class="year">${ar(year)}</div>
-      ${avatar ? `<img class="avatar" src="${avatar}">` : ""}
-      <div class="name">${esc(data.name)}</div>
-      <div class="member">عضوية رقم ${ar(data.memberNo)}</div>
+      <div class="eyebrow">كتاب السنة</div>
+      <div class="year display">${ar(year)}</div>
+      <div class="gold"></div>
+      <div class="who">
+        ${avatar ? `<img class="avatar" src="${avatar}">` : ""}
+        <div class="name display">${esc(data.name)}</div>
+        <div class="member">عضوية رقم ${ar(data.memberNo)}</div>
+      </div>
       <div class="motto">لحظاتك، مع ناسك.</div>
     </section>`);
 
   const tiles = [
     [s.moments, "لحظة"],
+    [data.days.length, "يوماً كتبت فيها"],
     [s.photos, "صورة"],
     [s.places, "مكان"],
     [s.songs, "أغنية"],
+    [s.cities.length, "مدينة"],
   ].filter(([n]) => Number(n) > 0);
+  const facts = [
+    s.cities.length ? ["مدنك", esc(s.cities.join("، "))] : null,
+    s.topPlace
+      ? ["أكثر مكان رجعت له", `${esc(s.topPlace.name)}${s.topPlace.visits > 1 ? ` — ${ar(s.topPlace.visits)} مرّات` : ""}`]
+      : null,
+    s.topSong ? ["أغنيتك", esc(s.topSong)] : null,
+  ].filter(Boolean) as string[][];
   pages.push(`
-    <section class="page">
+    <section class="page folio" data-run="${run}">
+      <div class="kicker">مقدّمة</div>
       <h2>سنتك بالأرقام</h2>
-      <div class="stats">${tiles.map(([n, label]) => `<div class="stat"><b>${ar(n)}</b><span>${label}</span></div>`).join("")}</div>
-      <div class="facts">
-        <p>${ar(data.days.length)} يوماً كتبت فيها لحظة</p>
-        ${s.cities.length ? `<p>مدنك: ${esc(s.cities.join("، "))}</p>` : ""}
-        ${s.topPlace ? `<p>أكثر مكان رجعت له: ${esc(s.topPlace.name)}${s.topPlace.visits > 1 ? ` — ${ar(s.topPlace.visits)} مرّات` : ""}</p>` : ""}
-        ${s.topSong ? `<p>أغنيتك: ${esc(s.topSong)}</p>` : ""}
-      </div>
-      ${data.partial ? `<p class="note">الكتاب من آخر ستة أشهر — السنة كاملة مع آثار+.</p>` : ""}
+      <div class="numbers">${tiles.map(([n, label]) => `<div><b>${ar(n)}</b><span>${label}</span></div>`).join("")}</div>
+      ${facts.length ? `<div class="facts">${facts.map(([k, v]) => `<div class="fact"><span class="k">${k}</span><span>${v}</span></div>`).join("")}</div>` : ""}
+      ${data.partial ? `<p class="note">هذا الكتاب من آخر ستة أشهر — السنة كاملة مع آثار+.</p>` : ""}
     </section>`);
 
   let month = -1;
@@ -210,17 +264,19 @@ export async function bookHtml(userId: string, year: number): Promise<{ html: st
     const m = Number(day.day.slice(5, 7)) - 1;
     if (m !== month) {
       month = m;
-      const count = data.days
-        .filter((d) => Number(d.day.slice(5, 7)) - 1 === m)
-        .reduce((sum, d) => sum + d.moments.length, 0);
+      const inMonth = data.days.filter((d) => Number(d.day.slice(5, 7)) - 1 === m);
+      const count = inMonth.reduce((sum, d) => sum + d.moments.length, 0);
       pages.push(`
-        <section class="page month">
+        <section class="page month folio" data-run="${run}">
+          <div class="ghost">${ar(m + 1)}</div>
           <div class="y">${ar(year)}</div>
           <div class="m">${MONTHS[m]}</div>
-          <div class="note">${ar(count)} لحظة</div>
+          <div class="gold"></div>
+          <div class="c">${ar(count)} لحظة في ${ar(inMonth.length)} ${inMonth.length === 1 ? "يوم" : "أيام"}</div>
         </section>`);
     }
-    const { title, weekday } = dayTitle(day.day);
+    const [, mm, dd] = day.day.split("-").map(Number);
+    const { weekday } = dayTitle(day.day);
     const items = day.moments
       .map((moment, index) => {
         const photo = moment.mediaId ? photos.get(moment.mediaId) : undefined;
@@ -234,29 +290,34 @@ export async function bookHtml(userId: string, year: number): Promise<{ html: st
               <div class="meta">${clock(moment.createdAt)}${where}</div>
               ${photo ? `<img class="photo" src="${photo}" style="object-position:${moment.photoX ?? 50}% ${moment.photoY ?? 50}%">` : ""}
               ${text ? `<div class="text${photo ? "" : " big"}">${esc(text)}</div>` : ""}
-              ${moment.with.length ? `<div class="with">مع ${esc(names(moment.with))}</div>` : ""}
+              ${moment.with.length ? `<div class="with">مع <b>${esc(names(moment.with))}</b></div>` : ""}
               ${note ? `<div class="private">${esc(note)}</div>` : ""}
             </div>
           </div>`;
       })
       .join("");
     pages.push(`
-      <section class="page">
-        <div class="day-head"><span class="t">${title}</span><span class="w">${weekday} · ${ar(day.moments.length)} لحظة</span></div>
-        ${items}
+      <section class="page folio" data-run="${run}">
+        <div class="day-head">
+          <span class="d">${ar(dd)}</span>
+          <span class="mw"><div class="mo">${MONTHS[mm - 1]}</div><div class="wd">${weekday}</div></span>
+          <span class="count">${ar(day.moments.length)} ${day.moments.length === 1 ? "لحظة" : "لحظات"}</span>
+        </div>
+        <div class="timeline">${items}</div>
       </section>`);
   }
 
   pages.push(`
     <section class="page night end">
       ${MARK}
-      <div class="big">${ar(s.moments)} لحظة تركت أثرها في ${ar(year)}</div>
-      <div class="note" style="color:rgba(247,245,239,.6)">والصفحة الجاية تكتبها أنت.</div>
+      <div class="big">${ar(s.moments)} لحظة تركت أثرها<br>في ${ar(year)}</div>
+      <div class="gold"></div>
+      <div class="sub">والصفحة الجاية تكتبها أنت.</div>
     </section>`);
 
   const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;700&family=Tajawal:wght@700;800&display=swap" rel="stylesheet">
 <style>${CSS}</style></head><body>${pages.join("")}</body></html>`;
   return { html, name: `athar-${year}` };
 }

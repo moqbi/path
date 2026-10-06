@@ -10,6 +10,15 @@ import { PrintButton } from "./print-button";
 
 type Moment = Awaited<ReturnType<typeof book>>["moments"][number];
 
+// ورقُ الكتاب وحبرُه — كالـPDF (`apps/api/src/services/book-print.ts`) لا ألوانُ الثيم.
+const PAPER = "#FBF8F1";
+const INK = "#182830";
+const RULE = "#E4DCC8";
+const MUTED = "#8a949a";
+const KICKER = "#b07d1c";
+const NIGHT = "#0E1A24";
+const GOLD = "#F6B93B";
+
 const WEEKDAYS = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 
 const names = (list: string[]) =>
@@ -36,11 +45,11 @@ function line(moment: Moment): string {
     case "MUSIC":
       return moment.musicTitle ? `${moment.musicTitle}${moment.musicArtist ? ` — ${moment.musicArtist}` : ""}` : "أغنية";
     case "CITY":
-      return `وصل إلى ${moment.text ?? moment.placeCity ?? ""}`;
+      return `وصلت إلى ${moment.text ?? moment.placeCity ?? ""}`;
     case "SLEEP":
-      return "نام";
+      return "نمت";
     case "WAKE":
-      return "صحى";
+      return "صحيت";
     default:
       return moment.text ?? "";
   }
@@ -70,11 +79,13 @@ export default async function BookPage({ params }: { params: Promise<{ year: str
     <div className="screen book">
       <style>{`
         .book .page { break-after: page; }
+        .book .sheet { border-radius: 6px; box-shadow: 0 1px 2px rgba(14,26,36,.08), 0 10px 28px rgba(14,26,36,.12); }
+        .book .display { font-family: var(--font-display); }
         .book .moment { break-inside: avoid; }
         @media print {
           .screen, .scroll-area, .shell { height: auto !important; overflow: visible !important; }
           .chrome, .tabbar, .no-print, nav { display: none !important; }
-          .book .page { min-height: 96vh; margin: 0 !important; border: 0 !important; }
+          .book .page { min-height: 96vh; margin: 0 !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
           body { background: #fff !important; }
         }
       `}</style>
@@ -87,79 +98,96 @@ export default async function BookPage({ params }: { params: Promise<{ year: str
           <PrintButton />
         </div>
 
-        <section className="page mb-4 flex flex-col items-center justify-center rounded-3xl p-8 text-center" style={{ background: "var(--color-night)", minHeight: 520 }}>
-          <AthrMark size={64} />
-          <p className="mt-6 text-[56px] font-extrabold leading-none" style={{ color: "#f7f5ef" }}>{ar(year)}</p>
-          <div className="mt-8 flex flex-col items-center">
-            <Avatar name={data.name} mediaId={data.avatarMediaId} size={76} />
-            <p className="mt-3 text-[20px] font-extrabold" style={{ color: "#f7f5ef" }}>{data.name}</p>
-            <p className="text-[12px]" style={{ color: "rgba(247,245,239,.6)" }}>عضوية رقم {ar(data.memberNo)}</p>
+        <section className="page sheet mb-6 flex flex-col items-center px-6 pb-8 pt-12 text-center" style={{ background: NIGHT, minHeight: 560 }}>
+          <AthrMark size={60} />
+          <p className="mt-7 text-[11px] tracking-[3px]" style={{ color: "rgba(247,245,239,.55)" }}>كتاب السنة</p>
+          <p className="display mt-1 text-[80px] font-extrabold leading-none" style={{ color: "#f7f5ef" }}>{ar(year)}</p>
+          <span className="mt-5 block h-[2px] w-9 rounded" style={{ background: GOLD }} />
+          <div className="mt-auto flex flex-col items-center pt-16">
+            <Avatar name={data.name} mediaId={data.avatarMediaId} size={64} />
+            <p className="display mt-2.5 text-[19px] font-extrabold" style={{ color: "#f7f5ef" }}>{data.name}</p>
+            <p className="text-[11px]" style={{ color: "rgba(247,245,239,.5)" }}>عضوية رقم {ar(data.memberNo)}</p>
           </div>
-          <p className="mt-10 text-[15px] font-bold" style={{ color: "#F6B93B" }}>لحظاتك، مع ناسك.</p>
+          <p className="mt-7 text-[12.5px] tracking-[1px]" style={{ color: GOLD }}>لحظاتك، مع ناسك.</p>
         </section>
 
-        <section className="page mb-4 rounded-3xl border border-line bg-card p-6">
-          <h2 className="mb-4 text-[22px] font-extrabold">سنتك بالأرقام</h2>
-          <div className="mb-4 grid grid-cols-2 gap-2.5">
+        <section className="page sheet mb-6 p-6" style={{ background: PAPER, color: INK }}>
+          <p className="text-[10.5px] tracking-[3px]" style={{ color: KICKER }}>مقدّمة</p>
+          <h2 className="display text-[26px] font-extrabold">سنتك بالأرقام</h2>
+          <div className="mt-5 grid grid-cols-2 border-t" style={{ borderColor: RULE }}>
             {[
               [s.moments, "لحظة"],
+              [data.days.length, "يوماً كتبت فيها"],
               [s.photos, "صورة"],
               [s.places, "مكان"],
               [s.songs, "أغنية"],
+              [s.cities.length, "مدينة"],
             ]
               .filter(([n]) => Number(n) > 0)
-              .map(([n, label]) => (
-                <div key={label} className="rounded-2xl bg-paper p-3.5">
-                  <p className="text-[28px] font-extrabold">{ar(n)}</p>
-                  <p className="text-[12px] text-muted">{label}</p>
+              .map(([n, label], i) => (
+                <div key={String(label)} className="border-b py-4" style={{ borderColor: RULE, ...(i % 2 ? { paddingRight: 14 } : { paddingLeft: 14, borderLeft: `1px solid ${RULE}` }) }}>
+                  <p className="display text-[36px] font-extrabold leading-tight">{ar(n)}</p>
+                  <p className="text-[11.5px]" style={{ color: "#6b7880" }}>{label}</p>
                 </div>
               ))}
           </div>
-          <div className="flex flex-col gap-2 text-[14px] text-ink-2">
-            {s.cities.length ? <p>مدنك: {s.cities.join("، ")}</p> : null}
-            {s.topPlace ? (
-              <p>
-                أكثر مكان رجعت له: {s.topPlace.name}
-                {s.topPlace.visits > 1 ? ` — ${ar(s.topPlace.visits)} مرّات` : ""}
-              </p>
-            ) : null}
-            {s.topSong ? <p>أغنيتك: {s.topSong}</p> : null}
-            {data.partial ? <p className="text-[11.5px] text-muted">الكتاب من آخر ستة أشهر — السنة كاملة مع آثار+.</p> : null}
+          <div className="mt-4">
+            {(
+              [
+                s.cities.length ? ["مدنك", s.cities.join("، ")] : null,
+                s.topPlace ? ["أكثر مكان رجعت له", `${s.topPlace.name}${s.topPlace.visits > 1 ? ` — ${ar(s.topPlace.visits)} مرّات` : ""}`] : null,
+                s.topSong ? ["أغنيتك", s.topSong] : null,
+              ].filter(Boolean) as string[][]
+            ).map(([k, v]) => (
+              <div key={k} className="flex gap-3 border-b py-2.5 text-[13.5px]" style={{ borderColor: "#EFE8D8" }}>
+                <span className="w-[92px] shrink-0 pt-0.5 text-[11.5px]" style={{ color: "#8a7a55" }}>{k}</span>
+                <span className="min-w-0 flex-1">{v}</span>
+              </div>
+            ))}
           </div>
+          {data.partial ? <p className="mt-4 text-[11px]" style={{ color: MUTED }}>هذا الكتاب من آخر ستة أشهر — السنة كاملة مع آثار+.</p> : null}
         </section>
 
         {sections.map((section) => (
           <div key={section.month}>
-            <section className="page mb-4 flex flex-col items-center justify-center rounded-3xl p-8" style={{ background: "var(--color-gold-soft)", minHeight: 240 }}>
-              <p className="text-[14px] font-bold" style={{ color: "var(--color-clay-ink)" }}>{ar(year)}</p>
-              <p className="mt-1 text-[42px] font-extrabold">{MONTHS[section.month]}</p>
-              <p className="mt-1 text-[13px] text-muted">{ar(section.days.reduce((sum, day) => sum + day.moments.length, 0))} لحظة</p>
+            <section className="page sheet relative mb-6 flex flex-col justify-end overflow-hidden p-6 pb-8" style={{ background: PAPER, color: INK, minHeight: 340 }}>
+              <span className="display absolute left-4 top-1 text-[150px] font-extrabold leading-none" style={{ color: "#F1E8D2" }}>{ar(section.month + 1)}</span>
+              <p className="relative text-[11px] tracking-[3px]" style={{ color: KICKER }}>{ar(year)}</p>
+              <p className="display relative text-[46px] font-extrabold leading-tight">{MONTHS[section.month]}</p>
+              <span className="relative mt-2.5 block h-[2px] w-9 rounded" style={{ background: GOLD }} />
+              <p className="relative mt-2.5 text-[12px]" style={{ color: "#6b7880" }}>
+                {ar(section.days.reduce((sum, day) => sum + day.moments.length, 0))} لحظة
+              </p>
             </section>
             {section.days.map((day) => {
               const [y, m, d] = day.day.split("-").map(Number);
+              const count = day.moments.length;
               return (
-                <section key={day.day} className="page mb-4 rounded-3xl border border-line bg-card p-5">
-                  <div className="mb-4 flex items-baseline justify-between border-b-2 pb-2" style={{ borderColor: "#F6B93B" }}>
-                    <p className="text-[24px] font-extrabold">
-                      {ar(d)} {MONTHS[m - 1]}
-                    </p>
-                    <p className="text-[12.5px] text-muted">
-                      {WEEKDAYS[new Date(y, m - 1, d).getDay()]} · {ar(day.moments.length)} لحظة
-                    </p>
+                <section key={day.day} className="page sheet mb-6 p-5" style={{ background: PAPER, color: INK }}>
+                  <div className="mb-4 flex items-end gap-3 border-b pb-3" style={{ borderColor: RULE }}>
+                    <span className="display text-[46px] font-extrabold leading-[1]">{ar(d)}</span>
+                    <span className="min-w-0 flex-1 pb-0.5">
+                      <span className="display block text-[17px] font-extrabold">{MONTHS[m - 1]}</span>
+                      <span className="block text-[11.5px]" style={{ color: "#6b7880" }}>{WEEKDAYS[new Date(y, m - 1, d).getDay()]}</span>
+                    </span>
+                    <span className="mb-1 rounded-full border px-2.5 py-0.5 text-[11px]" style={{ borderColor: RULE, color: "#8a7a55" }}>
+                      {ar(count)} {count === 1 ? "لحظة" : "لحظات"}
+                    </span>
                   </div>
-                  <ol className="flex flex-col gap-4">
+                  <ol>
                     {day.moments.map((moment, index) => {
                       const note = privateNote(moment);
+                      const last = index === count - 1;
                       return (
-                        <li key={moment.id} className="moment flex gap-2.5">
-                          <span
-                            className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full text-[12.5px] font-extrabold"
-                            style={{ background: "var(--color-night)", color: "#F6B93B" }}
-                          >
-                            {ar(index + 1)}
+                        <li key={moment.id} className="moment flex gap-3">
+                          <span className="flex w-[22px] shrink-0 flex-col items-center">
+                            <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full text-[11px] font-bold" style={{ background: NIGHT, color: GOLD }}>
+                              {ar(index + 1)}
+                            </span>
+                            {last ? null : <span className="mt-0.5 w-px flex-1" style={{ background: RULE }} />}
                           </span>
-                          <Link href={`/m/${moment.id}`} className="block min-w-0 flex-1">
-                            <p className="mb-1 text-[11.5px] text-muted">
+                          <Link href={`/m/${moment.id}`} className={`block min-w-0 flex-1 ${last ? "" : "pb-5"}`}>
+                            <p className="mb-1.5 mt-[3px] text-[11px]" style={{ color: MUTED }}>
                               {clock(moment.createdAt)}
                               {moment.placeName && moment.kind !== "PLACE" ? ` · ${moment.placeName}` : ""}
                             </p>
@@ -168,18 +196,20 @@ export default async function BookPage({ params }: { params: Promise<{ year: str
                               <img
                                 src={`${BASE}/api/media/${moment.mediaId}`}
                                 alt=""
-                                className="mb-1.5 w-full rounded-xl object-cover"
-                                style={{ aspectRatio: "5 / 4", objectPosition: `${moment.photoX ?? 50}% ${moment.photoY ?? 50}%` }}
+                                className="mb-2 w-full rounded-[10px] object-cover"
+                                style={{ aspectRatio: "5 / 4", objectPosition: `${moment.photoX ?? 50}% ${moment.photoY ?? 50}%`, boxShadow: "0 6px 16px rgba(14,26,36,.08)" }}
                               />
                             ) : null}
                             {line(moment) ? (
-                              <p className={moment.mediaId ? "text-[14.5px] leading-relaxed" : "text-[16.5px] font-bold leading-relaxed"}>
-                                {line(moment)}
+                              <p className={moment.mediaId ? "text-[14px] leading-[1.8]" : "display text-[18px] font-bold leading-[1.55]"}>{line(moment)}</p>
+                            ) : null}
+                            {moment.with.length ? (
+                              <p className="mt-1 text-[12px]" style={{ color: "#3c4a52" }}>
+                                مع <b>{names(moment.with)}</b>
                               </p>
                             ) : null}
-                            {moment.with.length ? <p className="mt-0.5 text-[12.5px] text-ink-2">مع {names(moment.with)}</p> : null}
                             {note ? (
-                              <p className="mt-1.5 inline-block rounded-lg px-2 py-0.5 text-[11.5px]" style={{ background: "var(--color-gold-soft)", color: "var(--color-clay-ink)" }}>
+                              <p className="mt-2 inline-block rounded-md border px-2 py-0.5 text-[11px]" style={{ background: "#FBF1DA", borderColor: "#EBD9AE", color: "#8a5f10" }}>
                                 {note}
                               </p>
                             ) : null}
@@ -194,12 +224,15 @@ export default async function BookPage({ params }: { params: Promise<{ year: str
           </div>
         ))}
 
-        <section className="page flex flex-col items-center justify-center rounded-3xl p-8 text-center" style={{ background: "var(--color-night)", minHeight: 300 }}>
+        <section className="page sheet flex flex-col items-center justify-center p-8 text-center" style={{ background: NIGHT, minHeight: 340 }}>
           <AthrMark size={48} />
-          <p className="mt-4 text-[20px] font-extrabold" style={{ color: "#f7f5ef" }}>
-            {ar(s.moments)} لحظة تركت أثرها في {ar(year)}
+          <p className="display mt-5 text-[21px] font-extrabold leading-relaxed" style={{ color: "#f7f5ef" }}>
+            {ar(s.moments)} لحظة تركت أثرها
+            <br />
+            في {ar(year)}
           </p>
-          <p className="mt-2 text-[13px]" style={{ color: "rgba(247,245,239,.6)" }}>والصفحة الجاية تكتبها أنت.</p>
+          <span className="mt-3.5 block h-[2px] w-9 rounded" style={{ background: GOLD }} />
+          <p className="mt-3 text-[12.5px]" style={{ color: "rgba(247,245,239,.6)" }}>والصفحة الجاية تكتبها أنت.</p>
         </section>
       </main>
     </div>
