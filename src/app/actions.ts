@@ -1307,6 +1307,10 @@ export async function unblockUser(targetId: string): Promise<void> {
   revalidatePath("/settings/blocked");
 }
 
+function genderOf(value: FormDataEntryValue | null) {
+  return value === "MALE" || value === "FEMALE" || value === "UNSPECIFIED" ? value : null;
+}
+
 /** الملف الشخصي: الاسم والمعرّف والنبذة والمدينة. */
 export async function saveProfile(
   _prev: AdminResult,
@@ -1338,6 +1342,8 @@ export async function saveProfile(
       handle: rawHandle || null,
       bio: String(formData.get("bio") ?? "").trim().slice(0, BIO_MAX) || null,
       ...cityInput(String(formData.get("city") ?? ""), user.city),
+      // صيغةُ خطاب الكتاب (القاعدة ٢٦٠): قائمةٌ مغلقة، وما سواها يُمسح لا يُكتب.
+      ...(formData.has("gender") ? { gender: genderOf(formData.get("gender")) } : {}),
     },
   });
 

@@ -18,12 +18,14 @@ export function EditProfileForm({
   handle,
   bio,
   city,
+  gender,
   onSaved,
 }: {
   name: string;
   handle: string | null;
   bio: string | null;
   city: string | null;
+  gender?: "MALE" | "FEMALE" | "UNSPECIFIED" | null;
   /** تُستدعى بعد حفظٍ ناجح — النافذة تُغلق نفسها. */
   onSaved?: () => void;
 }) {
@@ -85,6 +87,29 @@ export function EditProfileForm({
         className={FIELD}
         style={{ height: 48 }}
       />
+
+      {/* صيغةُ خطاب الكتاب (القاعدة ٢٦٠) — لا تُرسل حتى يُختار شيء، فلا يمسح الحفظُ شيئاً. */}
+      <fieldset className="flex flex-col gap-1.5">
+        <legend className="mb-1.5 text-[12.5px] font-semibold text-ink-2">كيف يخاطبك كتاب سنتك؟</legend>
+        <div className="flex gap-2">
+          {(
+            [
+              ["MALE", "ذكر"],
+              ["FEMALE", "أنثى"],
+              ["UNSPECIFIED", "أفضّل ألّا أقول"],
+            ] as const
+          ).map(([value, label]) => (
+            <label
+              key={value}
+              className="flex grow cursor-pointer items-center justify-center rounded-xl border border-line bg-card py-2.5 text-[13px] has-[:checked]:border-clay has-[:checked]:bg-clay has-[:checked]:font-bold has-[:checked]:text-on-brand"
+            >
+              <input type="radio" name="gender" value={value} defaultChecked={gender === value} className="sr-only" />
+              {label}
+            </label>
+          ))}
+        </div>
+        <p className="text-[11.5px] text-faint">لا يظهر لأحد — يستعمله كتاب سنتك ليخاطبك بصيغتك.</p>
+      </fieldset>
 
       {state?.error ? (
         <p role="alert" className="text-[12.5px]" style={{ color: "var(--color-live)" }}>

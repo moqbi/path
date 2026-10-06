@@ -77,66 +77,82 @@ const clock = (at: Date | string) =>
     timeZone: "Asia/Riyadh",
   }).format(new Date(at));
 
+/**
+ * صوتُ الراوي بجنس صاحب الكتاب (`User.gender`، القاعدة ٢٦٠): مذكّرٌ لمن لم يختر —
+ * كما كان قبل الحقل — ومؤنّثٌ بالكسرة حيث يلتبس الرسم («رحتِ»، «معكِ»)، ومحايدٌ لمن
+ * اختار «أفضّل ألّا أقول» بجملٍ اسميّةٍ لا تخاطب أحداً بجنس.
+ */
+export type Gender = "MALE" | "FEMALE" | "UNSPECIFIED" | null | undefined;
+type Voice = "m" | "f" | "n";
+const voiceOf = (gender: Gender): Voice => (gender === "FEMALE" ? "f" : gender === "UNSPECIFIED" ? "n" : "m");
+const pick = (v: Voice, m: string, f: string, n: string) => (v === "f" ? f : v === "n" ? n : m);
+
 /** ما فعله صاحبُ اللحظة — بلسان الراوي إليه. */
-export function leadOf(moment: StoryMoment): string {
+export function leadOf(moment: StoryMoment, gender?: Gender): string {
+  const v = voiceOf(gender);
   const withThem = moment.with?.length ? listNames(moment.with) : null;
+  const along = (lead: string) => (withThem ? `${lead}${pick(v, "معك", "معكِ", "في الصحبة")} ${withThem}` : "");
   switch (moment.kind) {
     case "MUSIC": {
       const song = moment.musicTitle ? `«${moment.musicTitle}»` : "أغنية";
       const by = moment.musicArtist ? ` لـ${moment.musicArtist}` : "";
-      return `كنت تسمع ${song}${by}${withThem ? `، ومعك ${withThem}` : ""}.`;
+      return `${pick(v, "كنت تسمع", "كنتِ تسمعين", "على السمّاعة:")} ${song}${by}${along("، و")}.`;
     }
     case "PLACE": {
       const where = moment.placeName ?? "مكانٍ";
       const city = moment.placeCity && moment.placeCity !== moment.placeName ? ` في ${moment.placeCity}` : "";
-      return `رحت إلى ${where}${city}${withThem ? `، وكان معك ${withThem}` : ""}.`;
+      return `${pick(v, "رحت إلى", "رحتِ إلى", "مشوارٌ إلى")} ${where}${city}${along(pick(v, "، وكان ", "، وكان ", "، و"))}.`;
     }
     case "PHOTO": {
       const where = moment.placeName ? ` في ${moment.placeName}` : "";
-      return `التقطت هذه الصورة${where}${withThem ? ` مع ${withThem}` : ""}.`;
+      return `${pick(v, "التقطت هذه الصورة", "التقطتِ هذه الصورة", "صورةٌ")}${where}${withThem ? ` مع ${withThem}` : ""}.`;
     }
     case "THOUGHT":
-      return `كتبت ما في خاطرك${withThem ? `، وكان معك ${withThem}` : ""}.`;
+      return `${pick(v, "كتبت ما في خاطرك", "كتبتِ ما في خاطركِ", "خاطرةٌ من القلب")}${along(pick(v, "، وكان ", "، وكان ", "، و"))}.`;
     case "CITY":
-      return `وصلت إلى ${moment.text ?? moment.placeCity ?? "مدينةٍ جديدة"}.`;
+      return `${pick(v, "وصلت إلى", "وصلتِ إلى", "الوصولُ إلى")} ${moment.text ?? moment.placeCity ?? "مدينةٍ جديدة"}.`;
     case "SLEEP":
-      return `نمت الساعة ${clock(moment.createdAt)}.`;
+      return `${pick(v, "نمت", "نمتِ", "النومُ")} الساعة ${clock(moment.createdAt)}.`;
     case "WAKE":
-      return `صحيت الساعة ${clock(moment.createdAt)}.`;
+      return `${pick(v, "صحيت", "صحيتِ", "الصحوُ")} الساعة ${clock(moment.createdAt)}.`;
     default:
       return "";
   }
 }
 
-/** ما جرى حولها: من تفاعل وبماذا، وكم كُتب لك فيها. */
-export function echoText(echo: Echo): string {
+/** ما جرى حولها: من تفاعل وبماذا، وكم كُتب له فيها. */
+export function echoText(echo: Echo, gender?: Gender): string {
+  const v = voiceOf(gender);
+  const circle = pick(v, "دائرتك", "دائرتكِ", "الدائرة");
+  const got = pick(v, "وأكثرُ ما وصلك", "وأكثرُ ما وصلكِ", "وأكثرُ ما وصلها");
+  const wrote = pick(v, "وكُتب لك فيها", "وكُتب لكِ فيها", "وكُتب فيها");
   const parts: string[] = [];
   if (echo.reactions === 1 && echo.top) {
     const who = echo.reactors[0];
     parts.push(
       who
-        ? `وتفاعلت دائرتك معها: ${who} ${reactionWord(echo.top, false)}.`
+        ? `وتفاعلت ${circle} معها: ${who} ${reactionWord(echo.top, false)}.`
         : `ووصلها تفاعلٌ ${reactionWord(echo.top, false)}.`,
     );
   } else if (echo.reactions > 1 && echo.top) {
     const most = reactionWord(echo.top, true);
     if (echo.reactors.length && echo.reactors.length >= echo.reactions) {
-      parts.push(`وتفاعلت دائرتك معها: ${listNames(echo.reactors)}، وأكثرُ ما وصلك ${most}.`);
+      parts.push(`وتفاعلت ${circle} معها: ${listNames(echo.reactors)}، ${got} ${most}.`);
     } else {
       const some = echo.reactors.length ? `، منهم ${listNames(echo.reactors)}` : "";
-      parts.push(`وتفاعل معها ${ar(echo.reactions)} من دائرتك${some}، وأكثرُ ما وصلك ${most}.`);
+      parts.push(`وتفاعل معها ${ar(echo.reactions)} من ${circle}${some}، ${got} ${most}.`);
     }
   }
   const said = times(echo.comments, "تعليقٌ", "تعليقان", "تعليقات", "تعليقاً");
-  if (echo.comments === 1 && echo.quote) parts.push("وكُتب لك فيها:");
-  else if (echo.comments > 1 && echo.quote) parts.push(`وكُتب لك فيها ${said}، ${echo.comments === 2 ? "أحدهما" : "منها"}:`);
-  else if (echo.comments > 1) parts.push(`وكُتب لك فيها ${said}.`);
+  if (echo.comments === 1 && echo.quote) parts.push(`${wrote}:`);
+  else if (echo.comments > 1 && echo.quote) parts.push(`${wrote} ${said}، ${echo.comments === 2 ? "أحدهما" : "منها"}:`);
+  else if (echo.comments > 1) parts.push(`${wrote} ${said}.`);
   return parts.join(" ");
 }
 
 /** جملةُ الراوي كاملةً — والاقتباسُ يُرسم بعدها وحده. */
-export function storyOf(moment: StoryMoment, echo: Echo | null): string {
-  return [leadOf(moment), echo ? echoText(echo) : ""].filter(Boolean).join(" ");
+export function storyOf(moment: StoryMoment, echo: Echo | null, gender?: Gender): string {
+  return [leadOf(moment, gender), echo ? echoText(echo, gender) : ""].filter(Boolean).join(" ");
 }
 
 /** التعليقُ المقتبس: أطولُ ما كُتب له، مقصوصاً عند ١٦٠. */
@@ -280,24 +296,29 @@ export function circleYear(
 }
 
 /** أسطرُ مقدّمة الكتاب عن الدائرة — نصٌّ جاهز تقرؤه الأوجهُ الثلاثة. */
-export function circleLines(year: CircleYear): string[] {
+export function circleLines(year: CircleYear, gender?: Gender): string[] {
+  const v = voiceOf(gender);
+  const yours = pick(v, "دائرتك", "دائرتكِ", "الدائرة");
+  const got = pick(v, "وصلك", "وصلكِ", "وصل");
   const lines: string[] = [];
   if (year.reactions || year.comments) {
-    const got = [
+    const tally = [
       year.reactions ? times(year.reactions, "تفاعلٌ واحد", "تفاعلان", "تفاعلات", "تفاعلاً") : null,
       year.comments ? times(year.comments, "تعليقٌ واحد", "تعليقان", "تعليقات", "تعليقاً") : null,
     ].filter(Boolean);
-    lines.push(`وصلك من دائرتك هذه السنة ${got.join(" و")}.`);
+    lines.push(`${got} من ${yours} هذه السنة ${tally.join(" و")}.`);
   }
-  if (year.topReaction) lines.push(`وأكثرُ ما وصلك ${reactionWord(year.topReaction, true)}.`);
-  if (year.closest)
+  if (year.topReaction) lines.push(`وأكثرُ ما ${got} ${reactionWord(year.topReaction, true)}.`);
+  if (year.closest) {
+    const count = times(year.closest.count, "مرّةً واحدة", "مرّتين", "مرّات", "مرّة");
+    lines.push(`${pick(v, "أقربُ دائرتك تفاعلاً معك", "أقربُ دائرتكِ تفاعلاً معكِ", "الأقربُ تفاعلاً")}: ${year.closest.name} — ${count}.`);
+  }
+  if (year.companion) {
+    const count = times(year.companion.count, "لحظةٍ واحدة", "لحظتين", "لحظات", "لحظة");
     lines.push(
-      `أقربُ دائرتك تفاعلاً معك: ${year.closest.name} — ${times(year.closest.count, "مرّةً واحدة", "مرّتين", "مرّات", "مرّة")}.`,
+      `${pick(v, "رفيقُ لحظاتك", "رفيقُ لحظاتكِ", "رفيقُ اللحظات")}: ${year.companion.name} — ${pick(v, "كان معك", "كان معكِ", "حاضرٌ")} في ${count}.`,
     );
-  if (year.companion)
-    lines.push(
-      `رفيقُ لحظاتك: ${year.companion.name} — كان معك في ${times(year.companion.count, "لحظةٍ واحدة", "لحظتين", "لحظات", "لحظة")}.`,
-    );
-  if (year.loudest) lines.push(`وأكثرُ لحظةٍ حرّكت دائرتك: «${year.loudest.line}».`);
+  }
+  if (year.loudest) lines.push(`وأكثرُ لحظةٍ حرّكت ${yours}: «${year.loudest.line}».`);
   return lines;
 }

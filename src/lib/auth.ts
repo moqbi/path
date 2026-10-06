@@ -150,6 +150,8 @@ export type SessionUser = {
   emailVerifiedAt: Date | null;
   city: string | null;
   bio: string | null;
+  /** صيغةُ خطاب الكتاب (القاعدة ٢٦٠). */
+  gender: "MALE" | "FEMALE" | "UNSPECIFIED" | null;
   isPlus: boolean;
   coins: number;
   createdAt: Date;
@@ -196,6 +198,7 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
       emailVerifiedAt: true,
       city: true,
       bio: true,
+      gender: true,
       isPlus: true,
       plusUntil: true,
       coins: true,
@@ -236,6 +239,7 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
     emailVerifiedAt: user.emailVerifiedAt,
     city: user.city,
     bio: user.bio,
+    gender: user.gender,
     isPlus: active,
     coins: user.coins,
     createdAt: user.createdAt,

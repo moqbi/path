@@ -57,7 +57,7 @@ export function privateNote(moment: Moment): string | null {
   if (p.audience === "PICKED")
     return p.people.length ? `لحظة خاصة — شاركتها مع ${names(p.people)}` : "لحظة خاصة";
   if (p.audience === "GROUP") return p.group ? `لحظة خاصة — لتصنيف ${p.group}` : "لحظة خاصة";
-  if (p.audience === "EXCEPT") return p.group ? `لحظة خاصة — للكل ما عدا ${p.group}` : "لحظة خاصة";
+  if (p.audience === "EXCEPT") return p.group ? `للكل ما عدا ${p.group}` : null;
   return "لحظة خاصة";
 }
 

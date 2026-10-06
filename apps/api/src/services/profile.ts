@@ -47,6 +47,7 @@ export async function me(userId: string) {
       passwordHash: true,
       shareLocation: true,
       hideOnline: true,
+      gender: true,
       notifyOnTag: true,
       notifyDm: true,
       notifyFriend: true,
@@ -109,7 +110,13 @@ export async function stats(userId: string) {
  */
 export async function saveProfile(
   userId: string,
-  input: { name: string; handle?: string; bio?: string; city?: string },
+  input: {
+    name: string;
+    handle?: string;
+    bio?: string;
+    city?: string;
+    gender?: "MALE" | "FEMALE" | "UNSPECIFIED" | null;
+  },
 ) {
   const name = input.name.trim().slice(0, 40);
   if (!name) throw badRequest("الاسم مطلوب");
@@ -136,8 +143,10 @@ export async function saveProfile(
       bio: (input.bio ?? "").trim().slice(0, BIO_MAX) || null,
       // ما كتبه بيده يبقى (`cityLocked`)، ولا يكتب فوقه التحديد التلقائيّ.
       ...(input.city === undefined ? {} : cityInput(input.city, current?.city ?? null)),
+      // نسخةٌ قديمةٌ لا ترسله فلا يُمسّ (القاعدة ٢٦٠).
+      ...(input.gender === undefined ? {} : { gender: input.gender }),
     },
-    select: { id: true, name: true, handle: true, bio: true, city: true },
+    select: { id: true, name: true, handle: true, bio: true, city: true, gender: true },
   });
   return user;
 }

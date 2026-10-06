@@ -21,6 +21,7 @@ export function EditProfileSheet({
   handle,
   bio,
   city,
+  gender,
   avatarMediaId,
   frame,
   charm,
@@ -35,6 +36,7 @@ export function EditProfileSheet({
   handle: string | null;
   bio: string | null;
   city: string | null;
+  gender: "MALE" | "FEMALE" | "UNSPECIFIED" | null;
   avatarMediaId: string | null;
   frame: Frame;
   charm?: { spec: string; mediaId: string | null } | null;
@@ -144,6 +146,7 @@ export function EditProfileSheet({
                 handle={handle}
                 bio={bio}
                 city={city}
+                gender={gender}
                 onSaved={() => setOpen(false)}
               />
             </div>

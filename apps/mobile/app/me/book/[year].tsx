@@ -365,7 +365,7 @@ function DayMoment({ moment, n, last, onOpen }: { moment: BookMoment; n: number;
         ) : null}
         {note ? (
           <View style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#FBF1DA", borderWidth: 1, borderColor: "#EBD9AE", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, marginTop: 7 }}>
-            <PrivateIcon size={11} color="#8a5f10" />
+            {moment.private?.audience === "EXCEPT" ? null : <PrivateIcon size={11} color="#8a5f10" />}
             <Text style={{ color: "#8a5f10", fontSize: 11 }}>{note}</Text>
           </View>
         ) : null}

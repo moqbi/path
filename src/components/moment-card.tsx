@@ -243,7 +243,7 @@ function Row({
         mediaId={moment.author.avatarMediaId}
         charm={moment.author.charm}
         at={moment.createdAt}
-        hidden={moment.audience !== "CIRCLE"}
+        hidden={moment.audience === "PICKED" || moment.audience === "GROUP"}
       />
       <div className="min-w-0 grow">{children}</div>
     </article>
