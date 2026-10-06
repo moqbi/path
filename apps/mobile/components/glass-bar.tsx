@@ -24,6 +24,8 @@ import { colors } from "../theme/tokens";
  * وحدها فلا تُبلغ من غيرها. وهي شاشةٌ في المكدّس لا تبويب: تُفتح فوقه.
  */
 const PILL = 62;
+/** ما تزيده العدسةُ على عرض التبويب — فتخرج بيضاويّةً كعدسة شريط النظام. */
+const LENS_WIDEN = 40;
 
 /** خصائصُ الشريط كما يمرّرها `Tabs` — من النوع نفسه لا من حزمةٍ لا نعتمد عليها مباشرةً. */
 type BarProps = Parameters<NonNullable<React.ComponentProps<typeof Tabs>["tabBar"]>>[0];
@@ -132,7 +134,7 @@ export function GlassBar({
     spot: string;
     onPress: () => void;
     onLongPress?: () => void;
-    render: (on: boolean) => React.ReactNode;
+    render: (on: boolean, tint: string) => React.ReactNode;
   }[] = [
     {
       key: "index",
@@ -141,23 +143,23 @@ export function GlassBar({
       onPress: () => go("index"),
       // الضغطةُ المطوّلة بابُ العدستين (القاعدة ٢٦).
       onLongPress: onLongHome,
-      render: (on) => <HomeIcon size={ICON} color={on ? ON : OFF} />,
+      render: (on, tint) => <HomeIcon size={ICON} color={tint} />,
     },
     {
       key: "circle",
       label: "الأصدقاء",
       spot: "tab.circle",
       onPress: () => go("circle"),
-      render: (on) => <CircleIcon size={ICON} color={on ? ON : OFF} />,
+      render: (on, tint) => <CircleIcon size={ICON} color={tint} />,
     },
     {
       key: "chats",
       label: "المحادثات",
       spot: "tab.chats",
       onPress: () => go("messages"),
-      render: (on) => (
+      render: (on, tint) => (
         <View>
-          <MessageIcon size={ICON} color={on ? ON : OFF} />
+          <MessageIcon size={ICON} color={tint} />
           {unread > 0 ? <Badge count={unread} /> : null}
         </View>
       ),
@@ -167,9 +169,9 @@ export function GlassBar({
       label: "الإشعارات",
       spot: "tab.notifications",
       onPress: () => go("notifications"),
-      render: (on) => (
+      render: (on, tint) => (
         <View>
-          <BellIcon size={ICON} color={on ? ON : OFF} />
+          <BellIcon size={ICON} color={tint} />
           {unseen > 0 && !on ? <Badge /> : null}
         </View>
       ),
@@ -179,14 +181,14 @@ export function GlassBar({
       label: "المتجر",
       spot: "tab.store",
       onPress: () => go("store"),
-      render: (on) => <StoreIcon size={ICON} color={on ? ON : OFF} />,
+      render: (on, tint) => <StoreIcon size={ICON} color={tint} />,
     },
     {
       key: "me",
       label: "أنا",
       spot: "tab.me",
       onPress: () => go("me"),
-      render: (on) => (
+      render: (on, tint) => (
         <View
           style={{
             width: 32,
@@ -195,7 +197,7 @@ export function GlassBar({
             alignItems: "center",
             justifyContent: "center",
             borderWidth: 1.5,
-            borderColor: on ? ON : "transparent",
+            borderColor: on ? tint : "transparent",
           }}
         >
           <Avatar name={me?.name ?? ""} size={27} mediaId={me?.avatarMediaId ?? null} />
@@ -224,6 +226,7 @@ export function GlassBar({
   // العدسةُ تظهر لحظةَ الانتقال بالنقر أيضاً، لا مع السحب وحده.
   const [flash, setFlash] = useState(false);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const releasedAt = useRef(0);
   const [measured, setMeasured] = useState(false);
   const hoverRef = useRef<number | null>(null);
   const itemsRef = useRef(items);
@@ -239,10 +242,11 @@ export function GlassBar({
     if (!slot) return;
     const to = { x: slot.x + 2, w: slot.w - 4 };
     if (spring) {
-      if (LiquidGlass && hoverRef.current === null) {
+      // النقرُ وحده يُومض العدسة؛ بعد السحب تختفي ساعةَ يُرفع الإصبع لا بعد ثوانٍ.
+      if (LiquidGlass && hoverRef.current === null && Date.now() - releasedAt.current > 600) {
         setFlash(true);
         if (flashTimer.current) clearTimeout(flashTimer.current);
-        flashTimer.current = setTimeout(() => setFlash(false), 450);
+        flashTimer.current = setTimeout(() => setFlash(false), 260);
       }
       Animated.spring(x, { toValue: to.x, useNativeDriver: false, speed: 22, bounciness: 7 }).start();
       Animated.spring(w, { toValue: to.w, useNativeDriver: false, speed: 22, bounciness: 7 }).start();
@@ -292,6 +296,7 @@ export function GlassBar({
 
   const release = (pageX: number | null) => {
     const index = pageX === null ? null : indexAt(pageX);
+    releasedAt.current = Date.now();
     hoverRef.current = null;
     setHover(null);
     Animated.spring(lift, { toValue: 0, useNativeDriver: false, speed: 18, bounciness: 6 }).start();
@@ -445,7 +450,7 @@ export function GlassBar({
                       transform: [{ scale: big ? 1.18 : 1 }],
                     }}
                   >
-                    <Spot id={item.spot}>{item.render(on)}</Spot>
+                    <Spot id={item.spot}>{item.render(on, LiquidGlass && big ? colors.clay : on ? ON : OFF)}</Spot>
                   </View>
                 </Pressable>
               );
@@ -461,10 +466,11 @@ export function GlassBar({
                 pointerEvents="none"
                 style={{
                   position: "absolute",
-                  top: -7,
-                  height: PILL + 14,
-                  left: Animated.add(x, -10),
-                  width: Animated.add(w, 20),
+                  // بيضاويّةٌ لا دائرة: أعرضُ من التبويب بمرّةٍ ونصف، وأطولُ من الشريط قليلاً.
+                  top: -4,
+                  height: PILL + 8,
+                  left: Animated.add(x, -LENS_WIDEN / 2),
+                  width: Animated.add(w, LENS_WIDEN),
                   transform: [
                     { scaleX: Animated.add(lift.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }), stretch) },
                     { scaleY: Animated.subtract(lift.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }), Animated.multiply(stretch, 0.35)) },
@@ -472,10 +478,10 @@ export function GlassBar({
                 }}
               >
                 <LiquidGlass
-                  glassEffectStyle={{ style: hover !== null || flash ? "clear" : "none", animate: true, animationDuration: 0.22 }}
+                  glassEffectStyle={{ style: hover !== null || flash ? "clear" : "none", animate: true, animationDuration: 0.14 }}
                   isInteractive
                   colorScheme="dark"
-                  style={{ flex: 1, borderRadius: (PILL + 14) / 2 }}
+                  style={{ flex: 1, borderRadius: (PILL + 8) / 2 }}
                 />
               </Animated.View>
             ) : null}
