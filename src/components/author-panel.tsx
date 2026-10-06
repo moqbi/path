@@ -113,9 +113,9 @@ export function AuthorFaces({ momentId }: { momentId: string }) {
           {reaction ? (
             <span
               className="absolute flex items-center justify-center rounded-full border border-line bg-card"
-              style={{ top: -3, insetInlineStart: -3, width: 20, height: 20 }}
+              style={{ top: -5, insetInlineStart: -5, width: 24, height: 24 }}
             >
-              <ReactionGlyph kind={reaction.kind} emoji={reaction.emoji} size={13} />
+              <ReactionGlyph kind={reaction.kind} emoji={reaction.emoji} size={17} />
             </span>
           ) : null}
         </Link>

@@ -47,11 +47,11 @@ export function Reactors({
           <View
             style={{
               position: "absolute",
-              top: -size * 0.1,
-              insetInlineStart: -size * 0.1,
-              width: size * 0.62,
-              height: size * 0.62,
-              borderRadius: size * 0.31,
+              top: -size * 0.14,
+              insetInlineStart: -size * 0.14,
+              width: size * 0.75,
+              height: size * 0.75,
+              borderRadius: size * 0.375,
               alignItems: "center",
               justifyContent: "center",
               backgroundColor: colors.card,
@@ -59,7 +59,7 @@ export function Reactors({
               borderColor: colors.line,
             }}
           >
-            <ReactionGlyph kind={reaction.kind} emoji={reaction.emoji} size={size * 0.42} />
+            <ReactionGlyph kind={reaction.kind} emoji={reaction.emoji} size={size * 0.53} />
           </View>
         </Pressable>
       ))}
@@ -104,11 +104,11 @@ export function AuthorFaces({ momentId }: { momentId: string }) {
             <View
               style={{
                 position: "absolute",
-                top: -3,
-                insetInlineStart: -3,
-                width: 20,
-                height: 20,
-                borderRadius: 10,
+                top: -5,
+                insetInlineStart: -5,
+                width: 24,
+                height: 24,
+                borderRadius: 12,
                 alignItems: "center",
                 justifyContent: "center",
                 backgroundColor: colors.card,
@@ -116,7 +116,7 @@ export function AuthorFaces({ momentId }: { momentId: string }) {
                 borderColor: colors.line,
               }}
             >
-              <ReactionGlyph kind={reaction.kind} emoji={reaction.emoji} size={13} />
+              <ReactionGlyph kind={reaction.kind} emoji={reaction.emoji} size={17} />
             </View>
           ) : null}
         </Pressable>
