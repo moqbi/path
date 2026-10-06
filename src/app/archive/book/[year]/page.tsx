@@ -142,7 +142,7 @@ export default async function BookPage({ params }: { params: Promise<{ year: str
               ))}
             </div>
           ) : null}
-          {data.partial ? <p className="mt-4 text-[11px]" style={{ color: MUTED }}>هذا الكتاب من آخر ستة أشهر — السنة كاملة مع آثار+.</p> : null}
+          {data.partial ? <p className="mt-4 text-[11px]" style={{ color: MUTED }}>هذا الكتاب من آخر ستة أشهر من سنتك — السنة كاملة مع آثار+.</p> : null}
         </section>
 
         {sections.map((section) => (

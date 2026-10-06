@@ -241,7 +241,7 @@ function PageBody({ page, book, onOpen }: { page: Page; book: Book; onOpen: (id:
           </View>
         ) : null}
         {book.partial ? (
-          <Text style={{ color: MUTED, fontSize: 11, marginTop: 16 }}>هذا الكتاب من آخر ستة أشهر — السنة كاملة مع آثار+.</Text>
+          <Text style={{ color: MUTED, fontSize: 11, marginTop: 16 }}>هذا الكتاب من آخر ستة أشهر من سنتك — السنة كاملة مع آثار+.</Text>
         ) : null}
       </View>
     );
