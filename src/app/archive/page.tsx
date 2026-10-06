@@ -16,11 +16,11 @@ function line(moment: Row): string {
     case "MUSIC":
       return moment.musicTitle ?? "أغنية";
     case "CITY":
-      return `وصل إلى ${moment.text ?? moment.placeCity ?? ""}`;
+      return `وصلت إلى ${moment.text ?? moment.placeCity ?? ""}`;
     case "SLEEP":
-      return "نام";
+      return "نمت";
     case "WAKE":
-      return "صحى";
+      return "صحيت";
     default:
       return moment.text ?? "";
   }

@@ -68,11 +68,11 @@ export function momentLine(moment: ArchiveMoment): string {
     case "MUSIC":
       return moment.musicTitle ? `${moment.musicTitle}${moment.musicArtist ? ` — ${moment.musicArtist}` : ""}` : "أغنية";
     case "CITY":
-      return `وصل إلى ${moment.text ?? moment.placeCity ?? ""}`.trim();
+      return `وصلت إلى ${moment.text ?? moment.placeCity ?? ""}`.trim();
     case "SLEEP":
-      return "نام";
+      return "نمت";
     case "WAKE":
-      return "صحى";
+      return "صحيت";
     default:
       return moment.text ?? "";
   }

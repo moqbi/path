@@ -8,7 +8,7 @@ import { ScreenHeader } from "../../../components/screen-header";
 import { MediaImage } from "../../../components/media-image";
 import { Avatar } from "../../../components/avatar";
 import { AthrMark } from "../../../components/brand";
-import { BookIcon, MoonIcon, MusicIcon, PinIcon, PlaneIcon, PrivateIcon, SunIcon } from "../../../components/icons";
+import { PrivateIcon } from "../../../components/icons";
 import { api } from "../../../lib/api";
 import { ar, MONTHS, timeOfDay } from "../../../lib/format";
 import { momentLine, privateNote, withNames, type Book, type BookMoment } from "../../../lib/archive";
@@ -119,14 +119,19 @@ export default function YearBook() {
         <FlatList
           data={pages}
           keyExtractor={(page, i) => (page.type === "day" ? page.day.day : `${page.type}-${i}`)}
-          contentContainerStyle={{ padding: 18, gap: 14, direction: "rtl" }}
+          contentContainerStyle={{ padding: 20, gap: 22, direction: "rtl" }}
           renderItem={({ item }) => (
             <View
               style={{
-                minHeight: item.type === "day" ? undefined : item.type === "month" ? height * 0.3 : height * 0.55,
-                borderRadius: 22,
-                backgroundColor: colors.card,
+                minHeight: item.type === "day" ? undefined : item.type === "month" ? height * 0.42 : height * 0.62,
+                borderRadius: 6,
+                backgroundColor: PAPER,
                 overflow: "hidden",
+                shadowColor: "#000",
+                shadowOpacity: 0.35,
+                shadowRadius: 14,
+                shadowOffset: { width: 0, height: 8 },
+                elevation: 6,
               }}
             >
               <PageBody page={item} book={data} onOpen={(id) => router.push(`/m/${id}` as never)} />
@@ -138,50 +143,92 @@ export default function YearBook() {
   );
 }
 
+// ورقُ الكتاب وحبرُه — كالـPDF حرفاً بحرف (`book-print.ts`)، لا ألوانُ الثيم.
+const PAPER = "#FBF8F1";
+const INK = "#182830";
+const RULE = "#E4DCC8";
+const MUTED = "#8a949a";
+const KICKER = "#b07d1c";
+const NIGHT = "#0E1A24";
+const GOLD = "#F6B93B";
+
+function Gold({ center }: { center?: boolean }) {
+  return <View style={{ width: 36, height: 2, borderRadius: 2, backgroundColor: GOLD, alignSelf: center ? "center" : "flex-start" }} />;
+}
+
 function PageBody({ page, book, onOpen }: { page: Page; book: Book; onOpen: (id: string) => void }) {
   if (page.type === "cover") {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.night, padding: 24 }}>
-        <AthrMark size={64} />
-        <Text style={{ color: "#f7f5ef", fontSize: 54, fontWeight: "800", marginTop: 24 }}>{ar(book.year)}</Text>
-        <View style={{ marginTop: 28, alignItems: "center" }}>
-          <Avatar name={book.name} mediaId={book.avatarMediaId} size={72} />
-          <Text style={{ color: "#f7f5ef", fontSize: 20, fontWeight: "800", marginTop: 10 }}>{book.name}</Text>
-          <Text style={{ color: "rgba(247,245,239,.6)", fontSize: 12, marginTop: 2 }}>عضوية رقم {ar(book.memberNo)}</Text>
+      <View style={{ flex: 1, alignItems: "center", backgroundColor: NIGHT, paddingTop: 44, paddingBottom: 28, paddingHorizontal: 24 }}>
+        <AthrMark size={60} />
+        <Text style={{ color: "rgba(247,245,239,.55)", fontSize: 11, letterSpacing: 3, marginTop: 28 }}>كتاب السنة</Text>
+        <Text face="display" style={{ color: "#f7f5ef", fontSize: 78, fontWeight: "700", lineHeight: 92, marginTop: 4 }}>{ar(book.year)}</Text>
+        <View style={{ marginTop: 14 }}>
+          <Gold center />
         </View>
-        <Text style={{ color: "#F6B93B", fontSize: 15, fontWeight: "700", marginTop: 36 }}>لحظاتك، مع ناسك.</Text>
+        <View style={{ flex: 1 }} />
+        <Avatar name={book.name} mediaId={book.avatarMediaId} size={64} />
+        <Text face="display" style={{ color: "#f7f5ef", fontSize: 19, fontWeight: "700", marginTop: 10 }}>{book.name}</Text>
+        <Text style={{ color: "rgba(247,245,239,.5)", fontSize: 11, marginTop: 2 }}>عضوية رقم {ar(book.memberNo)}</Text>
+        <Text style={{ color: GOLD, fontSize: 12.5, letterSpacing: 1, marginTop: 26 }}>لحظاتك، مع ناسك.</Text>
       </View>
     );
   }
 
   if (page.type === "intro") {
     const s = book.stats;
-    const rows = [
-      [ar(s.moments), "لحظة"],
-      [ar(s.photos), "صورة"],
-      [ar(s.places), "مكان"],
-      [ar(s.songs), "أغنية"],
-    ].filter(([n]) => n !== "٠");
+    const days = daysOf(book).length;
+    const tiles = (
+      [
+        [s.moments, "لحظة"],
+        [days, "يوماً كتبت فيها"],
+        [s.photos, "صورة"],
+        [s.places, "مكان"],
+        [s.songs, "أغنية"],
+        [s.cities.length, "مدينة"],
+      ] as [number, string][]
+    ).filter(([n]) => n > 0);
+    const facts = [
+      s.cities.length ? ["مدنك", s.cities.join("، ")] : null,
+      s.topPlace ? ["أكثر مكان رجعت له", `${s.topPlace.name}${s.topPlace.visits > 1 ? ` — ${ar(s.topPlace.visits)} مرّات` : ""}`] : null,
+      s.topSong ? ["أغنيتك", s.topSong] : null,
+    ].filter(Boolean) as [string, string][];
     return (
-      <View style={{ flex: 1, padding: 24, justifyContent: "center", gap: 20 }}>
-        <Text style={{ color: colors.ink, fontSize: 24, fontWeight: "800" }}>سنتك بالأرقام</Text>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-          {rows.map(([n, label]) => (
-            <View key={label} style={{ flexGrow: 1, minWidth: "45%", borderRadius: 16, backgroundColor: colors.paper, padding: 14 }}>
-              <Text style={{ color: colors.ink, fontSize: 28, fontWeight: "800" }}>{n}</Text>
-              <Text style={{ color: colors.muted, fontSize: 12 }}>{label}</Text>
+      <View style={{ padding: 24 }}>
+        <Text style={{ color: KICKER, fontSize: 10.5, letterSpacing: 3 }}>مقدّمة</Text>
+        <Text face="display" style={{ color: INK, fontSize: 26, fontWeight: "700", marginTop: 2 }}>سنتك بالأرقام</Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 20, borderTopWidth: 1, borderTopColor: RULE }}>
+          {tiles.map(([n, label], i) => (
+            <View
+              key={label}
+              style={{
+                width: "50%",
+                paddingVertical: 16,
+                paddingLeft: i % 2 ? 0 : 14,
+                paddingRight: i % 2 ? 14 : 0,
+                borderBottomWidth: 1,
+                borderBottomColor: RULE,
+                borderLeftWidth: i % 2 ? 0 : 1,
+                borderLeftColor: RULE,
+              }}
+            >
+              <Text face="display" style={{ color: INK, fontSize: 36, fontWeight: "700", lineHeight: 42 }}>{ar(n)}</Text>
+              <Text style={{ color: "#6b7880", fontSize: 11.5 }}>{label}</Text>
             </View>
           ))}
         </View>
-        {s.cities.length ? <Line icon={<PlaneIcon size={16} color={colors.clayInk} />} text={`مدنك: ${s.cities.join("، ")}`} /> : null}
-        {s.topPlace ? (
-          <Line icon={<PinIcon size={16} color={colors.clayInk} />} text={`أكثر مكان رجعت له: ${s.topPlace.name}${s.topPlace.visits > 1 ? ` — ${ar(s.topPlace.visits)} مرّات` : ""}`} />
+        {facts.length ? (
+          <View style={{ marginTop: 18 }}>
+            {facts.map(([k, v]) => (
+              <View key={k} style={{ flexDirection: "row", gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#EFE8D8" }}>
+                <Text style={{ width: 92, color: "#8a7a55", fontSize: 11.5, paddingTop: 2 }}>{k}</Text>
+                <Text style={{ flex: 1, color: INK, fontSize: 13.5 }}>{v}</Text>
+              </View>
+            ))}
+          </View>
         ) : null}
-        {s.topSong ? <Line icon={<MusicIcon size={16} color={colors.clayInk} />} text={`أغنيتك: ${s.topSong}`} /> : null}
         {book.partial ? (
-          <Text style={{ color: colors.muted, fontSize: 11.5 }}>
-            الكتاب من آخر ستة أشهر — السنة كاملة مع آثار+.
-          </Text>
+          <Text style={{ color: MUTED, fontSize: 11, marginTop: 16 }}>هذا الكتاب من آخر ستة أشهر — السنة كاملة مع آثار+.</Text>
         ) : null}
       </View>
     );
@@ -189,101 +236,102 @@ function PageBody({ page, book, onOpen }: { page: Page; book: Book; onOpen: (id:
 
   if (page.type === "month") {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.goldSoft }}>
-        <Text style={{ color: colors.clayInk, fontSize: 14, fontWeight: "700" }}>{ar(book.year)}</Text>
-        <Text style={{ color: colors.ink, fontSize: 44, fontWeight: "800", marginTop: 6 }}>{MONTHS[page.month]}</Text>
-        <Text style={{ color: colors.muted, fontSize: 13, marginTop: 6 }}>{ar(page.count)} لحظة</Text>
+      <View style={{ flex: 1, justifyContent: "flex-end", padding: 24, paddingBottom: 32 }}>
+        <Text
+          face="display"
+          style={{ position: "absolute", top: 4, left: 16, color: "#F1E8D2", fontSize: 150, fontWeight: "700", lineHeight: 170 }}
+        >
+          {ar(page.month + 1)}
+        </Text>
+        <Text style={{ color: KICKER, fontSize: 11, letterSpacing: 3 }}>{ar(book.year)}</Text>
+        <Text face="display" style={{ color: INK, fontSize: 46, fontWeight: "700", lineHeight: 56, marginTop: 2 }}>{MONTHS[page.month]}</Text>
+        <View style={{ marginTop: 10 }}>
+          <Gold />
+        </View>
+        <Text style={{ color: "#6b7880", fontSize: 12, marginTop: 10 }}>{ar(page.count)} لحظة</Text>
       </View>
     );
   }
 
   if (page.type === "end") {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: colors.night }}>
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: NIGHT }}>
         <AthrMark size={48} />
-        <Text style={{ color: "#f7f5ef", fontSize: 20, fontWeight: "800", marginTop: 16, textAlign: "center" }}>
-          {ar(book.stats.moments)} لحظة تركت أثرها في {ar(book.year)}
+        <Text face="display" style={{ color: "#f7f5ef", fontSize: 21, fontWeight: "700", marginTop: 18, textAlign: "center", lineHeight: 32 }}>
+          {ar(book.stats.moments)} لحظة تركت أثرها{"\n"}في {ar(book.year)}
         </Text>
-        <Text style={{ color: "rgba(247,245,239,.6)", fontSize: 13, marginTop: 8 }}>والصفحة الجاية تكتبها أنت.</Text>
+        <View style={{ marginTop: 14 }}>
+          <Gold center />
+        </View>
+        <Text style={{ color: "rgba(247,245,239,.6)", fontSize: 12.5, marginTop: 12 }}>والصفحة الجاية تكتبها أنت.</Text>
       </View>
     );
   }
 
   const [y, m, d] = page.day.day.split("-").map(Number);
   const weekday = WEEKDAYS[new Date(y, m - 1, d).getDay()];
+  const count = page.day.moments.length;
   return (
-    <View style={{ padding: 18 }}>
-      <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", borderBottomWidth: 2, borderBottomColor: "#F6B93B", paddingBottom: 8, marginBottom: 14 }}>
-        <Text style={{ color: colors.ink, fontSize: 24, fontWeight: "800" }}>
-          {ar(d)} {MONTHS[m - 1]}
-        </Text>
-        <Text style={{ color: colors.muted, fontSize: 12.5 }}>
-          {weekday} · {ar(page.day.moments.length)} لحظة
-        </Text>
+    <View style={{ padding: 20 }}>
+      <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 12, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: RULE, marginBottom: 16 }}>
+        <Text face="display" style={{ color: INK, fontSize: 46, fontWeight: "700", lineHeight: 48 }}>{ar(d)}</Text>
+        <View style={{ flex: 1, paddingBottom: 3 }}>
+          <Text face="display" style={{ color: INK, fontSize: 17, fontWeight: "700" }}>{MONTHS[m - 1]}</Text>
+          <Text style={{ color: "#6b7880", fontSize: 11.5 }}>{weekday}</Text>
+        </View>
+        <View style={{ borderWidth: 1, borderColor: RULE, borderRadius: 20, paddingHorizontal: 9, paddingVertical: 2, marginBottom: 4 }}>
+          <Text style={{ color: "#8a7a55", fontSize: 11 }}>
+            {ar(count)} {count === 1 ? "لحظة" : "لحظات"}
+          </Text>
+        </View>
       </View>
-      <View style={{ gap: 16 }}>
-        {page.day.moments.map((moment, index) => (
-          <DayMoment key={moment.id} moment={moment} n={index + 1} onOpen={onOpen} />
-        ))}
-      </View>
+      {page.day.moments.map((moment, index) => (
+        <DayMoment key={moment.id} moment={moment} n={index + 1} last={index === count - 1} onOpen={onOpen} />
+      ))}
     </View>
   );
 }
 
-/** لحظةٌ في صفحة يومها: رقمُها، وساعتُها، وصورتُها، وسطرُها، ولمن كانت. */
-function DayMoment({ moment, n, onOpen }: { moment: BookMoment; n: number; onOpen: (id: string) => void }) {
-  const icon =
-    moment.kind === "PLACE" ? <PinIcon size={14} color={colors.clayInk} /> :
-    moment.kind === "MUSIC" ? <MusicIcon size={14} color={colors.clayInk} /> :
-    moment.kind === "CITY" ? <PlaneIcon size={14} color={colors.clayInk} /> :
-    moment.kind === "SLEEP" ? <MoonIcon size={14} color={colors.clayInk} /> :
-    moment.kind === "WAKE" ? <SunIcon size={14} color={colors.clayInk} /> :
-    <BookIcon size={14} color={colors.clayInk} />;
+/** لحظةٌ في صفحة يومها: رقمُها على خطّ اليوم، وساعتُها، وصورتُها، وسطرُها، ولمن كانت. */
+function DayMoment({ moment, n, last, onOpen }: { moment: BookMoment; n: number; last: boolean; onOpen: (id: string) => void }) {
   const line = momentLine(moment);
   const together = withNames(moment);
   const note = privateNote(moment);
   return (
-    <Pressable onPress={() => onOpen(moment.id)} style={{ flexDirection: "row", gap: 10 }}>
-      <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: colors.night, alignItems: "center", justifyContent: "center" }}>
-        <Text style={{ color: "#F6B93B", fontSize: 12.5, fontWeight: "800" }}>{ar(n)}</Text>
-      </View>
-      <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          {icon}
-          <Text style={{ color: colors.muted, fontSize: 11.5 }}>
-            {timeOfDay(new Date(moment.createdAt))}
-            {moment.placeName && moment.kind !== "PLACE" ? ` · ${moment.placeName}` : ""}
-          </Text>
+    <Pressable onPress={() => onOpen(moment.id)} style={{ flexDirection: "row", gap: 12 }}>
+      <View style={{ width: 22, alignItems: "center" }}>
+        <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: NIGHT, alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ color: GOLD, fontSize: 11, fontWeight: "700" }}>{ar(n)}</Text>
         </View>
+        {last ? null : <View style={{ flex: 1, width: 1, backgroundColor: RULE, marginTop: 2 }} />}
+      </View>
+      <View style={{ flex: 1, minWidth: 0, paddingBottom: last ? 0 : 20 }}>
+        <Text style={{ color: MUTED, fontSize: 11, marginBottom: 6, marginTop: 3 }}>
+          {timeOfDay(new Date(moment.createdAt))}
+          {moment.placeName && moment.kind !== "PLACE" ? ` · ${moment.placeName}` : ""}
+        </Text>
         {moment.mediaId ? (
           <MediaImage
             mediaId={moment.mediaId}
-            style={{ width: "100%", aspectRatio: 5 / 4, borderRadius: 12 }}
+            style={{ width: "100%", aspectRatio: 5 / 4, borderRadius: 10, marginBottom: 8 }}
             position={moment.photoX != null ? { x: moment.photoX, y: moment.photoY ?? 50 } : undefined}
           />
         ) : null}
         {line ? (
-          <Text style={{ color: colors.ink, fontSize: moment.mediaId ? 14.5 : 16.5, fontWeight: moment.mediaId ? "500" : "700", lineHeight: moment.mediaId ? 24 : 28 }}>
-            {line}
-          </Text>
+          moment.mediaId ? (
+            <Text style={{ color: INK, fontSize: 14, lineHeight: 25 }}>{line}</Text>
+          ) : (
+            <Text face="display" style={{ color: INK, fontSize: 18, fontWeight: "700", lineHeight: 28 }}>{line}</Text>
+          )
         ) : null}
-        {together ? <Text style={{ color: colors.ink2, fontSize: 12.5 }}>{together}</Text> : null}
+        {together ? <Text style={{ color: "#3c4a52", fontSize: 12, marginTop: 4 }}>{together}</Text> : null}
         {note ? (
-          <View style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: colors.goldSoft, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
-            <PrivateIcon size={12} color={colors.clayInk} />
-            <Text style={{ color: colors.clayInk, fontSize: 11.5 }}>{note}</Text>
+          <View style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#FBF1DA", borderWidth: 1, borderColor: "#EBD9AE", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, marginTop: 7 }}>
+            <PrivateIcon size={11} color="#8a5f10" />
+            <Text style={{ color: "#8a5f10", fontSize: 11 }}>{note}</Text>
           </View>
         ) : null}
       </View>
     </Pressable>
-  );
-}
-
-function Line({ icon, text }: { icon: React.ReactNode; text: string }) {
-  return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-      {icon}
-      <Text style={{ flex: 1, color: colors.ink2, fontSize: 14 }}>{text}</Text>
-    </View>
   );
 }

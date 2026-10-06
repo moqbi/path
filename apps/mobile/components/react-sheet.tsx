@@ -150,16 +150,16 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
                     accessibilityLabel={kind}
                     onPress={() => choose(kind)}
                     style={({ pressed }) => ({
-                      width: 56,
-                      height: 56,
-                      borderRadius: 28,
+                      width: 64,
+                      height: 64,
+                      borderRadius: 32,
                       alignItems: "center",
                       justifyContent: "center",
                       backgroundColor: on ? "rgba(246,185,59,.3)" : pressed ? "rgba(255,255,255,.16)" : "rgba(255,255,255,.08)",
                       transform: [{ scale: pressed ? 1.12 : 1 }],
                     })}
                   >
-                    <ReactionGlyph kind={kind} size={36} />
+                    <ReactionGlyph kind={kind} size={46} />
                   </Pressable>
                 );
               })}
