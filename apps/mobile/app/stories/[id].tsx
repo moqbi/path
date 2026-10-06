@@ -411,23 +411,23 @@ export default function StoryViewer() {
       {/* نصوصُها فوقها بموضعها ومقاسها — لا محروقةً في الصورة. */}
       <StoryTexts texts={story.texts} width={screen.width} height={screen.height} />
 
-      {/* نصفان: يمينٌ يُعيدها من أوّلها ويسارٌ يتقدّم، والضغطُ المطوّل يوقف ولا ينتقل. */}
+      {/* نصفان: يمينٌ يُعيدها من أوّلها ويسارٌ يتقدّم، والضغطُ المطوّل يوقف ولا ينتقل.
+          والوقفةُ من الضغط المطوّل وحده: كانت تبدأ مع أوّل لمسة، فكلُّ نقرةٍ توقف
+          الصوتَ وتُعيده — ومثلُها وجوهُ التفاعل، فلا وقفةَ عليها أصلاً. */}
       <Pressable
         accessibilityLabel="من البداية"
         style={{ position: "absolute", top: 0, bottom: 0, right: 0, width: "50%" }}
-        onPressIn={() => setHeld(true)}
         onPressOut={() => setHeld(false)}
         delayLongPress={HOLD}
-        onLongPress={() => undefined}
+        onLongPress={() => setHeld(true)}
         onPress={restart}
       />
       <Pressable
         accessibilityLabel="التالي"
         style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: "50%" }}
-        onPressIn={() => setHeld(true)}
         onPressOut={() => setHeld(false)}
         delayLongPress={HOLD}
-        onLongPress={() => undefined}
+        onLongPress={() => setHeld(true)}
         onPress={() => step(index + 1)}
       />
 
@@ -529,8 +529,6 @@ export default function StoryViewer() {
                   key={face}
                   accessibilityLabel={on ? "ارفع التفاعل" : "تفاعل"}
                   onPress={() => react(face)}
-                  onPressIn={() => setHeld(true)}
-                  onPressOut={() => setHeld(false)}
                   hitSlop={4}
                   style={{
                     width: 46,
