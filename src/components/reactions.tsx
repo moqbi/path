@@ -352,14 +352,15 @@ export function Reactors({
           <span
             className="absolute flex items-center justify-center rounded-full"
             style={{
-              top: -size * 0.1,
-              left: -size * 0.1,
+              top: -size * 0.14,
+              left: -size * 0.14,
+              width: size * 0.75,
+              height: size * 0.75,
               background: "var(--color-card)",
-              padding: 1,
               boxShadow: "0 1px 3px rgba(14,26,36,.16)",
             }}
           >
-            <ReactionGlyph kind={reaction.kind} emoji={reaction.emoji} size={size * 0.5} />
+            <ReactionGlyph kind={reaction.kind} emoji={reaction.emoji} size={size * 0.53} />
           </span>
         </Link>
       ))}
