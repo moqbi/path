@@ -73,13 +73,19 @@ export async function archive(userId: string, options: { cursor?: string; limit:
 
 /** السنواتُ التي فيها لحظات — شرائحُ «سنتك في كتاب». */
 export async function years(userId: string) {
-  const from = await since(userId);
+  const free = (await since(userId)) !== null;
+  // اليومُ والسنةُ بتوقيت الرياض (+٣ بلا توقيتٍ صيفيّ). وغيرُ المشترك يرى السنةَ التي في
+  // آخر ستّة أشهرٍ منها لحظات — كحدّ الكتاب نفسه، فلا تظهر سنةٌ يُفتح كتابُها فارغاً.
+  const now = new Date();
   const rows = await prisma.$queryRaw<{ year: number; n: bigint }[]>`
-    SELECT EXTRACT(YEAR FROM "createdAt" AT TIME ZONE 'Asia/Riyadh')::int AS year, COUNT(*) AS n
+    SELECT EXTRACT(YEAR FROM "createdAt" + interval '3 hours')::int AS year, COUNT(*) AS n
     FROM "Moment"
     WHERE "authorId" = ${userId}
       AND "kind"::text IN ('PHOTO', 'PLACE', 'THOUGHT', 'MUSIC', 'SLEEP', 'WAKE', 'CITY')
-      AND (${from}::timestamp IS NULL OR "createdAt" >= ${from}::timestamp)
+      AND (NOT ${free} OR "createdAt" >= LEAST(
+        date_trunc('year', "createdAt" + interval '3 hours') + interval '1 year' - interval '3 hours',
+        ${now}::timestamp
+      ) - make_interval(days => ${FREE_ARCHIVE_DAYS}))
     GROUP BY 1 ORDER BY 1 DESC
   `;
   return { years: rows.map((row) => ({ year: row.year, moments: Number(row.n) })) };
@@ -92,10 +98,13 @@ export async function years(userId: string) {
  */
 export async function book(userId: string, year: number) {
   if (!Number.isInteger(year) || year < 2024 || year > 2100) throw new Error("سنة غير صالحة");
-  const from = await since(userId);
+  const free = (await since(userId)) !== null;
   const start = new Date(Date.UTC(year, 0, 1, -3));
   const end = new Date(Date.UTC(year + 1, 0, 1, -3));
-  const lower = from && from > start ? from : start;
+  // غيرُ المشترك: آخرُ ستّة أشهرٍ **من السنة نفسها** لا من اليوم — كتابُ سنةٍ مضت يبقى
+  // من يوليو إلى ديسمبر ولا يتقلّص كلّما مرّ الوقت. والسنةُ الجارية حتى اليوم.
+  const tail = new Date(Math.min(end.getTime(), Date.now()) - FREE_ARCHIVE_DAYS * 86_400_000);
+  const lower = free && tail > start ? tail : start;
 
   const [me, found, circleList, blocks] = await Promise.all([
     prisma.user.findUnique({
@@ -201,7 +210,7 @@ export async function book(userId: string, year: number) {
     name: me.name,
     memberNo: me.memberNo,
     avatarMediaId: me.avatarMediaId,
-    partial: Boolean(from && from > start),
+    partial: lower > start,
     stats: {
       moments: rows.length,
       photos: count("PHOTO"),

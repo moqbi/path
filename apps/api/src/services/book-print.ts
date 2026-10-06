@@ -261,7 +261,7 @@ export async function bookHtml(userId: string, year: number): Promise<{ html: st
       <div class="numbers">${tiles.map(([n, label]) => `<div><b>${ar(n)}</b><span>${label}</span></div>`).join("")}</div>
       ${facts.length ? `<div class="facts">${facts.map(([k, v]) => `<div class="fact"><span class="k">${k}</span><span>${v}</span></div>`).join("")}</div>` : ""}
       ${s.circleLines.length ? `<div class="circle"><div class="kicker">دائرتك</div>${s.circleLines.map((text) => `<p>${esc(text)}</p>`).join("")}</div>` : ""}
-      ${data.partial ? `<p class="note">هذا الكتاب من آخر ستة أشهر — السنة كاملة مع آثار+.</p>` : ""}
+      ${data.partial ? `<p class="note">هذا الكتاب من آخر ستة أشهر من سنتك — السنة كاملة مع آثار+.</p>` : ""}
     </section>`);
 
   let month = -1;
