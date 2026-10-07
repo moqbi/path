@@ -376,8 +376,9 @@ export function GlassBar({
       1,
       Animated.multiply(
         x.interpolate({
-          inputRange: [center - slot.w, center, center + slot.w],
-          outputRange: [0, 1, 0],
+          // يغيب كلّه ما دام تحت العدسة — حتى وهي بين تبويبين — ويعود حين تتجاوزه.
+          inputRange: [center - slot.w / 2 - 30, center - slot.w / 2, center + slot.w / 2, center + slot.w / 2 + 30],
+          outputRange: [0, 1, 1, 0],
           extrapolate: "clamp",
         }),
         lift,
@@ -581,13 +582,36 @@ export function GlassBar({
                   ],
                 }}
               >
-                <LiquidLens
-                  glassEffectStyle={{ style: lensOn ? "clear" : "none", animate: true, animationDuration: 0.12 }}
-                  isInteractive
-                  colorScheme="dark"
-                  tintColor="rgba(14,26,36,.28)"
-                  style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, borderRadius: (PILL + 8) / 2 }}
-                />
+                {/*
+                  **العدسةُ نفسُها صافيةٌ لا زجاجٌ مغبّش** — زجاجُ آبل فوق زجاج الشريط يخرج
+                  رمادياً معتماً يُذيب ما تحته، وما فوقه يُقرأ طبقتين. فالعدسةُ هنا قرصٌ داكنٌ
+                  شفيفٌ بحافّةٍ مضيئة، يظهر ويختفي بشفافيّته (لا زجاجَ فيه يمنعها)، وما فيها
+                  النسخةُ المكبَّرة وحدها.
+                */}
+                <Animated.View
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    borderRadius: (PILL + 8) / 2,
+                    backgroundColor: "rgba(10,16,22,.42)",
+                    borderWidth: 1.5,
+                    borderColor: "rgba(255,255,255,.55)",
+                    opacity: lift,
+                  }}
+                >
+                  <View
+                    style={{
+                      flex: 1,
+                      margin: 2,
+                      borderRadius: (PILL + 8) / 2,
+                      borderWidth: 1,
+                      borderColor: "rgba(140,190,255,.22)",
+                    }}
+                  />
+                </Animated.View>
                 {/*
                   **ما تحت العدسة نسخةٌ مكبَّرةٌ واضحة** كعدسة شريط الهاتف: الزجاجُ وحده
                   يغبّش ما تحته، وبين تبويبين كان يُرى واحدٌ منهما. فالصفُّ كلُّه يُرسم ثانيةً
@@ -607,7 +631,7 @@ export function GlassBar({
                     opacity: lift,
                   }}
                 >
-                  <View style={{ flex: 1, transform: [{ scale: 1.36 }] }}>
+                  <View style={{ flex: 1, transform: [{ scale: 1.25 }] }}>
                     <Animated.View
                       style={{
                         position: "absolute",
