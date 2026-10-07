@@ -1,4 +1,5 @@
 import { BlockIcon, MessageIcon, UserMinusIcon } from "../../components/icons";
+import { TabBackdrop } from "../../components/tab-backdrop";
 import { useBarSpace } from "../../components/glass-bar";
 import { scrolled } from "../../lib/scrolled";
 import { useCallback, useState } from "react";
@@ -140,6 +141,7 @@ export default function Circle() {
 
   return (
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
+      <TabBackdrop />
       <ScreenHeader
         title="الأصدقاء"
         right={

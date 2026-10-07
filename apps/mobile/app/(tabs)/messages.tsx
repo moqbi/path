@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TabBackdrop } from "../../components/tab-backdrop";
 import { scrolled } from "../../lib/scrolled";
 import { View, FlatList, Pressable, ActivityIndicator, RefreshControl } from "react-native";
 import { Text, TextInput } from "../../components/type";
@@ -177,6 +178,7 @@ export default function Messages() {
     // المحادثاتُ تبويبٌ في الشريط (القاعدة ٢٦١): لا رجوعَ منها، فلا سحبَ حافّة.
     <>
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
+      <TabBackdrop />
       <ScreenHeader
         title="المحادثات"
         right={
