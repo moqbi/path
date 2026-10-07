@@ -1,8 +1,17 @@
 diff --git a/build/native-tabs/NativeBottomTabs/NativeTabsView.js b/build/native-tabs/NativeBottomTabs/NativeTabsView.js
-index 106de95d46a52d344b5743a8423a47571195148f..7fdd88f48f5d174be681181ccc372b4ca3b60632 100644
+index 106de95d46a52d344b5743a8423a47571195148f..f00e146be49637d3c976a8d9c8a3dff6d5f2ef6a 100644
 --- a/build/native-tabs/NativeBottomTabs/NativeTabsView.js
 +++ b/build/native-tabs/NativeBottomTabs/NativeTabsView.js
-@@ -160,6 +160,10 @@ function convertOptionsIconToPropsIcon_4_16(icon) {
+@@ -108,6 +108,8 @@ function NativeTabsView(props) {
+     onNativeFocusChange={({ nativeEvent: { tabKey } }) => {
+             const descriptor = descriptors[tabKey];
+             const route = descriptor.route;
++            // آثار: `tabPress` كشريط React Navigation — ضغطةُ التبويب المفتوح ترجع إلى أعلاه.
++            navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+             navigation.dispatch({
+                 type: 'JUMP_TO',
+                 target: state.key,
+@@ -160,6 +162,10 @@ function convertOptionsIconToPropsIcon_4_16(icon) {
          return { sfSymbolName: icon.sf };
      }
      else if ('src' in icon && icon.src) {

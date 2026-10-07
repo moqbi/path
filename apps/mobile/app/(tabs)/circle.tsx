@@ -1,8 +1,9 @@
 import { BlockIcon, MessageIcon, UserMinusIcon } from "../../components/icons";
+import { useTabTop } from "../../lib/tab-top";
 import { TabBackdrop } from "../../components/tab-backdrop";
 import { useBarSpace } from "../../components/glass-bar";
 import { scrolled } from "../../lib/scrolled";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { View, FlatList, Pressable, ScrollView, ActivityIndicator, RefreshControl } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -48,6 +49,9 @@ const onlineNow = (lastSeenAt: string | null) =>
   Boolean(lastSeenAt) && Date.now() - new Date(lastSeenAt as string).getTime() < 3 * 60_000;
 
 export default function Circle() {
+  // ضغطةُ التبويب المفتوح ترجع إلى أعلاه (القاعدة ١٥٧).
+  const list = useRef<Pick<FlatList, "scrollToOffset"> | null>(null);
+  useTabTop(() => list.current?.scrollToOffset({ offset: 0, animated: true }));
   // المحتوى يمرّ تحت الشريط الزجاجيّ، وآخرُه يُقرأ فوقه (القاعدة ٢٢٨).
   const barSpace = useBarSpace();
   const [tab, setTab] = useState<Tab>("friends");
@@ -154,6 +158,7 @@ export default function Circle() {
       />
 
       <FlatList
+        ref={(node) => { list.current = node; }}
         // التمريرُ يطوي صفّاً مسحوباً مفتوحاً (القاعدة ٢١٣).
         onScrollBeginDrag={scrolled}
         /*
