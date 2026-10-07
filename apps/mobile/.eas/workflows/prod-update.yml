@@ -1,0 +1,26 @@
+# تحديثٌ لنسخ المتجر وTestFlight على قناة `production` — بقرار المالك وحده (القاعدة ٢٣٩).
+# يصل إلى كلّ بناءٍ بالإصدار نفسه (`runtimeVersion` = رقمُ الإصدار)، فوحدةٌ أصليّة جديدة
+# بعد البناء تُسقطه عند الإقلاع (القاعدة ١٢٤) — قارن `package.json` و`app.json` بالبناء أوّلاً.
+#
+# والمتغيّراتُ متغيّراتُ ملفّ `production` في `eas.json` حرفاً بحرف: لا معرّفَ سناب
+# (القاعدة ١٧٢) ولا مفتاحَ RevenueCat التجريبيّ — ما في نسخة التطوير لا يدخل هنا.
+name: Production update
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  update:
+    name: Publish to production
+    type: update
+    env:
+      EXPO_PUBLIC_API_URL: https://atharmts.com
+      EXPO_PUBLIC_SITE_URL: https://atharmts.com
+      EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: 186550074028-pve7oubeech3slm7i02jgf48l9cboo3v.apps.googleusercontent.com
+      EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: 186550074028-ndj4lmrokmnv02snc6luvbdfes68pm45.apps.googleusercontent.com
+      EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: 186550074028-c8sechd2sqdoa849lbstjs82smlvlr0i.apps.googleusercontent.com
+      EXPO_PUBLIC_RC_IOS_KEY: appl_kvEJJEfYfvzLeTiuyRCivnbNhJJ
+    params:
+      branch: production
+      platform: ios
+      message: Production update
