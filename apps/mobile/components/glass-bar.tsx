@@ -217,17 +217,23 @@ export function GlassBar({
   const slots = useRef<{ x: number; w: number }[]>([]);
   const rowX = useRef(0);
   const row = useRef<View>(null);
+  /*
+    **الحركةُ كلُّها على الخيط الأصليّ** (`useNativeDriver: true`): كانت تحرّك
+    `left` و`width` على خيط جافاسكربت، والنقرُ يبدأ رسمَ الشاشة الجديدة على الخيط
+    نفسه في اللحظة نفسها — فتتقطّع العدسةُ وهي تنزلق. الآن إزاحةٌ وتكبيرٌ وحدهما،
+    والتبويباتُ بعرضٍ واحد (`flex: 1`) فلا يتغيّر عرضُ القرص.
+  */
   const x = useRef(new Animated.Value(0)).current;
-  const w = useRef(new Animated.Value(0)).current;
   const lift = useRef(new Animated.Value(0)).current;
   // تمطّطُ العدسة بسرعة الإصبع — كعدسة شريط النظام: تطول وهي تُسحب وتعود حين تقف.
   const stretch = useRef(new Animated.Value(0)).current;
   const [hover, setHover] = useState<number | null>(null);
-  // العدسةُ تظهر لحظةَ الانتقال بالنقر أيضاً، لا مع السحب وحده.
-  const [flash, setFlash] = useState(false);
-  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // العدسةُ تظهر طوالَ الانتقال بالنقر — من التبويب إلى التبويب — لا ومضةً قصيرة.
+  const [lensAt, setLensAt] = useState<number | null>(null);
+  const lensRun = useRef(0);
   const releasedAt = useRef(0);
-  const [measured, setMeasured] = useState(false);
+  const [slotW, setSlotW] = useState(0);
+  const measured = slotW > 0;
   const hoverRef = useRef<number | null>(null);
   const itemsRef = useRef(items);
   itemsRef.current = items;
@@ -236,24 +242,43 @@ export function GlassBar({
   const activeRef = useRef(activeIndex);
   activeRef.current = activeIndex;
   const showPill = hover !== null || (activeIndex >= 0 && active !== "me");
+  const lensOn = hover !== null || lensAt !== null;
 
-  const moveTo = (index: number, spring = true) => {
+  const spring = (value: Animated.Value, toValue: number, speed: number, bounciness: number) =>
+    Animated.spring(value, { toValue, useNativeDriver: true, speed, bounciness });
+
+  const moveTo = (index: number, animate = true) => {
     const slot = slots.current[index];
     if (!slot) return;
-    const to = { x: slot.x + 2, w: slot.w - 4 };
-    if (spring) {
-      // النقرُ وحده يُومض العدسة؛ بعد السحب تختفي ساعةَ يُرفع الإصبع لا بعد ثوانٍ.
-      if (LiquidLens && hoverRef.current === null && Date.now() - releasedAt.current > 600) {
-        setFlash(true);
-        if (flashTimer.current) clearTimeout(flashTimer.current);
-        flashTimer.current = setTimeout(() => setFlash(false), 260);
-      }
-      Animated.spring(x, { toValue: to.x, useNativeDriver: false, speed: 22, bounciness: 7 }).start();
-      Animated.spring(w, { toValue: to.w, useNativeDriver: false, speed: 22, bounciness: 7 }).start();
-    } else {
-      x.setValue(to.x);
-      w.setValue(to.w);
+    const to = slot.x + 2;
+    if (!animate) {
+      x.setValue(to);
+      return;
     }
+    // بعد السحب لا تُعاد العدسة: تختفي ساعةَ يُرفع الإصبع.
+    const pulse = hoverRef.current === null && Date.now() - releasedAt.current > 600;
+    if (!pulse) {
+      spring(x, to, 22, 6).start();
+      return;
+    }
+    /*
+      النقرُ كعدسة شريط النظام: ترتفع العدسةُ في مكانها، وتنزلق إلى التبويب الجديد
+      وهي تتمطّط، وتُكبّر ما تمرّ فوقه، ثمّ تهبط حين تستقرّ.
+    */
+    const run = ++lensRun.current;
+    setLensAt(index);
+    spring(lift, 1, 26, 4).start();
+    Animated.sequence([
+      Animated.timing(stretch, { toValue: 0.22, duration: 110, useNativeDriver: true }),
+      spring(stretch, 0, 14, 12),
+    ]).start();
+    spring(x, to, 13, 5).start(() => {
+      if (run !== lensRun.current || hoverRef.current !== null) return;
+      spring(lift, 0, 18, 4).start();
+      setTimeout(() => {
+        if (run === lensRun.current) setLensAt(null);
+      }, 120);
+    });
   };
 
   // القرصُ يتبع التبويبَ المفتوح حين لا يكون إصبعٌ على الشريط.
@@ -279,13 +304,10 @@ export function GlassBar({
   const follow = (pageX: number) => {
     const local = pageX - rowX.current;
     const first = slots.current[0];
-    const widths = slots.current;
     if (!first) return;
-    const slotW = first.w;
-    const min = Math.min(...widths.map((s) => s.x)) + 2;
-    const max = Math.max(...widths.map((s) => s.x)) + 2;
-    x.setValue(Math.min(max, Math.max(min, local - slotW / 2 + 2)));
-    w.setValue(slotW - 4);
+    const min = Math.min(...slots.current.map((s) => s.x)) + 2;
+    const max = Math.max(...slots.current.map((s) => s.x)) + 2;
+    x.setValue(Math.min(max, Math.max(min, local - first.w / 2 + 2)));
     const index = indexAt(pageX);
     if (index !== hoverRef.current) {
       hoverRef.current = index;
@@ -299,8 +321,8 @@ export function GlassBar({
     releasedAt.current = Date.now();
     hoverRef.current = null;
     setHover(null);
-    Animated.spring(lift, { toValue: 0, useNativeDriver: false, speed: 18, bounciness: 6 }).start();
-    Animated.spring(stretch, { toValue: 0, useNativeDriver: false, speed: 16, bounciness: 10 }).start();
+    spring(lift, 0, 18, 6).start();
+    spring(stretch, 0, 16, 10).start();
     if (index !== null) {
       moveTo(index);
       itemsRef.current[index]?.onPress();
@@ -311,6 +333,28 @@ export function GlassBar({
     }, 280);
   };
 
+  /*
+    **ما تحت العدسة يكبر بقدر قربه منها** لا قفزاً بحالة: كلُّ أيقونةٍ تقرأ موضعَ
+    العدسة، فتكبر وهي تمرّ فوقها وتصغر وهي تبتعد — كما يُكبّر شريطُ النظام ما تحت
+    عدسته. وبلا عدسةٍ مرفوعة لا تكبير.
+  */
+  const magnify = (index: number) => {
+    const slot = slots.current[index];
+    if (!slot || !measured) return 1;
+    const center = slot.x + 2;
+    return Animated.add(
+      1,
+      Animated.multiply(
+        x.interpolate({
+          inputRange: [center - slot.w, center, center + slot.w],
+          outputRange: [0, 0.3, 0],
+          extrapolate: "clamp",
+        }),
+        lift,
+      ),
+    );
+  };
+
   const pan = useRef(
     PanResponder.create({
       // النقرُ يبقى للأزرار، والسحبةُ الأفقيّة تُؤخذ منها.
@@ -319,17 +363,14 @@ export function GlassBar({
         row.current?.measureInWindow((left) => {
           rowX.current = left;
         });
-        Animated.spring(lift, { toValue: 1, useNativeDriver: false, speed: 20, bounciness: 8 }).start();
+        lensRun.current++;
+        setLensAt(null);
+        spring(lift, 1, 20, 8).start();
         follow(event.nativeEvent.pageX);
       },
       onPanResponderMove: (event, g) => {
         follow(event.nativeEvent.pageX);
-        Animated.spring(stretch, {
-          toValue: Math.min(Math.abs(g.vx) * 0.12, 0.28),
-          useNativeDriver: false,
-          speed: 30,
-          bounciness: 0,
-        }).start();
+        spring(stretch, Math.min(Math.abs(g.vx) * 0.12, 0.28), 30, 0).start();
       },
       onPanResponderRelease: (event) => release(event.nativeEvent.pageX),
       onPanResponderTerminate: () => release(null),
@@ -398,28 +439,34 @@ export function GlassBar({
               style={{
                 position: "absolute",
                 top: 7,
+                left: 0,
                 height: PILL - 16,
-                left: x,
-                width: w,
+                width: Math.max(slotW - 4, 0),
                 borderRadius: (PILL - 16) / 2,
-                backgroundColor: LiquidGlass
-                  ? "rgba(255,255,255,.14)"
-                  : lift.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: ["rgba(255,255,255,.18)", "rgba(255,255,255,.28)"],
-                    }),
-                borderWidth: 1,
-                borderColor: lift.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ["rgba(255,255,255,0)", "rgba(255,255,255,.35)"],
-                }),
-                opacity: measured && showPill && !(LiquidLens && (hover !== null || flash)) ? 1 : 0,
-                transform: [{ scale: lift.interpolate({ inputRange: [0, 1], outputRange: [1, 1.14] }) }],
+                backgroundColor: LiquidGlass ? "rgba(255,255,255,.14)" : "rgba(255,255,255,.18)",
+                opacity: measured && showPill && !(LiquidLens && lensOn) ? 1 : 0,
+                transform: [
+                  { translateX: x },
+                  { scale: lift.interpolate({ inputRange: [0, 1], outputRange: [1, 1.14] }) },
+                ],
               }}
-            />
+            >
+              {/* إضاءةُ الرفع طبقةٌ بشفافيّةٍ لا لونٌ يُحسب: الشفافيّةُ تمشي على الخيط الأصليّ. */}
+              <Animated.View
+                style={{
+                  flex: 1,
+                  borderRadius: (PILL - 16) / 2,
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,.35)",
+                  backgroundColor: "rgba(255,255,255,.1)",
+                  opacity: lift,
+                }}
+              />
+            </Animated.View>
             {items.map((item, index) => {
               const on = hover === null ? item.key === active : hover === index;
-              const big = hover === index;
+              // تحت العدسة: ما يمرّ عليه الإصبع، أو وجهةُ النقر وهي تنزلق إليها.
+              const big = hover === index || (hover === null && lensAt === index);
               return (
                 <Pressable
                   key={item.key}
@@ -427,8 +474,8 @@ export function GlassBar({
                     const { x: left, width } = event.nativeEvent.layout;
                     slots.current[index] = { x: left, w: width };
                     if (slots.current.filter(Boolean).length === items.length && !measured) {
-                      setMeasured(true);
                       if (activeIndex >= 0) moveTo(activeIndex, false);
+                      setSlotW(slots.current[0]!.w);
                     }
                   }}
                   accessibilityRole="button"
@@ -439,7 +486,7 @@ export function GlassBar({
                   delayLongPress={450}
                   style={{ flex: 1, height: PILL - 14, alignItems: "center", justifyContent: "center" }}
                 >
-                  <View
+                  <Animated.View
                     style={{
                       height: PILL - 14,
                       alignSelf: "stretch",
@@ -447,11 +494,11 @@ export function GlassBar({
                       borderRadius: (PILL - 14) / 2,
                       alignItems: "center",
                       justifyContent: "center",
-                      transform: [{ scale: big ? 1.18 : 1 }],
+                      transform: [{ scale: magnify(index) }],
                     }}
                   >
                     <Spot id={item.spot}>{item.render(on, LiquidLens && big ? colors.clay : on ? ON : OFF)}</Spot>
-                  </View>
+                  </Animated.View>
                 </Pressable>
               );
             })}
@@ -466,19 +513,20 @@ export function GlassBar({
                 pointerEvents="none"
                 style={{
                   position: "absolute",
-                  // بيضاويّةٌ لا دائرة: أعرضُ من التبويب بمرّةٍ ونصف، وأطولُ من الشريط قليلاً.
+                  // بيضاويّةٌ لا دائرة: أعرضُ من التبويب، وأطولُ من الشريط قليلاً.
                   top: -4,
                   height: PILL + 8,
-                  left: Animated.add(x, -LENS_WIDEN / 2),
-                  width: Animated.add(w, LENS_WIDEN),
+                  left: -LENS_WIDEN / 2,
+                  width: slotW - 4 + LENS_WIDEN,
                   transform: [
-                    { scaleX: Animated.add(lift.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }), stretch) },
-                    { scaleY: Animated.subtract(lift.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }), Animated.multiply(stretch, 0.35)) },
+                    { translateX: x },
+                    { scaleX: Animated.add(lift.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.12] }), stretch) },
+                    { scaleY: Animated.subtract(lift.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.12] }), Animated.multiply(stretch, 0.35)) },
                   ],
                 }}
               >
                 <LiquidLens
-                  glassEffectStyle={{ style: hover !== null || flash ? "clear" : "none", animate: true, animationDuration: 0.14 }}
+                  glassEffectStyle={{ style: lensOn ? "clear" : "none", animate: true, animationDuration: 0.12 }}
                   isInteractive
                   colorScheme="dark"
                   style={{ flex: 1, borderRadius: (PILL + 8) / 2 }}
