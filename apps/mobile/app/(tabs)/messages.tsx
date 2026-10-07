@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useTabTop } from "../../lib/tab-top";
 import { TabBackdrop } from "../../components/tab-backdrop";
 import { scrolled } from "../../lib/scrolled";
 import { View, FlatList, Pressable, ActivityIndicator, RefreshControl } from "react-native";
@@ -83,6 +84,9 @@ function Last({ row, meId }: { row: Row; meId: string }) {
 }
 
 export default function Messages() {
+  // ضغطةُ التبويب المفتوح ترجع إلى أعلاه (القاعدة ١٥٧).
+  const listRef = useRef<Pick<FlatList, "scrollToOffset"> | null>(null);
+  useTabTop(() => listRef.current?.scrollToOffset({ offset: 0, animated: true }));
   const me = useSession((s) => s.me);
   const router = useRouter();
   const barSpace = useBarSpace();
@@ -223,6 +227,7 @@ export default function Messages() {
       </View>
 
       <FlatList
+        ref={(node) => { listRef.current = node; }}
         // التمريرُ يطوي صفّاً مسحوباً مفتوحاً (القاعدة ٢١٣).
         onScrollBeginDrag={scrolled}
         keyboardShouldPersistTaps="handled"

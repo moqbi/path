@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useTabTop } from "../../lib/tab-top";
 import { TabBackdrop } from "../../components/tab-backdrop";
 import { useBarSpace } from "../../components/glass-bar";
 import { View, ScrollView, Pressable, ActivityIndicator, RefreshControl } from "react-native";
@@ -33,6 +34,9 @@ function Row({ title, flame = false, children }: { title: string; flame?: boolea
  * المحدودة — صفوفٌ تُشتقّ من الأصناف لا تُرصف يدوياً.
  */
 export default function Store() {
+  // ضغطةُ التبويب المفتوح ترجع إلى أعلاه (القاعدة ١٥٧).
+  const list = useRef<ScrollView | null>(null);
+  useTabTop(() => list.current?.scrollTo({ y: 0, animated: true }));
   // المحتوى يمرّ تحت الشريط الزجاجيّ، وآخرُه يُقرأ فوقه (القاعدة ٢٢٨).
   const barSpace = useBarSpace();
   const router = useRouter();
@@ -162,6 +166,7 @@ export default function Store() {
         <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
       ) : (
         <ScrollView
+        ref={list}
           contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: barSpace + 8 }}
           refreshControl={
             <RefreshControl {...pullRefresh} tintColor={colors.clay} />

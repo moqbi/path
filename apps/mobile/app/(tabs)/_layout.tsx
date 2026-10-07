@@ -33,24 +33,24 @@ export default function TabsLayout() {
         tintColor={colors.clay}
         badgeBackgroundColor={colors.live}
       >
-        <NativeTabs.Trigger name="index">
+        <NativeTabs.Trigger name="index" disableScrollToTop>
           <Icon sf={{ default: "house", selected: "house.fill" }} />
           <Label>اللحظات</Label>
         </NativeTabs.Trigger>
-        <NativeTabs.Trigger name="circle">
+        <NativeTabs.Trigger name="circle" disableScrollToTop>
           <Icon sf={{ default: "person.2", selected: "person.2.fill" }} />
           <Label>الأصدقاء</Label>
         </NativeTabs.Trigger>
-        <NativeTabs.Trigger name="messages">
+        <NativeTabs.Trigger name="messages" disableScrollToTop>
           <Icon sf={{ default: "bubble.left", selected: "bubble.left.fill" }} />
           <Label>المحادثات</Label>
           {unread > 0 ? <Badge>{unread > 99 ? "+٩٩" : ar(unread)}</Badge> : <Badge hidden />}
         </NativeTabs.Trigger>
-        <NativeTabs.Trigger name="store">
+        <NativeTabs.Trigger name="store" disableScrollToTop>
           <Icon sf={{ default: "bag", selected: "bag.fill" }} />
           <Label>المتجر</Label>
         </NativeTabs.Trigger>
-        <NativeTabs.Trigger name="me">
+        <NativeTabs.Trigger name="me" disableScrollToTop>
           {avatar ? (
             <Icon src={avatar} />
           ) : (
