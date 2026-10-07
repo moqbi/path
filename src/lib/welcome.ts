@@ -40,7 +40,7 @@ export async function welcome(userId: string) {
     // حسابُ الإدارة (القاعدة ٢٢١): أخبارُ التطبيق تملأ الخطّ قبل أن يأتي الأصدقاء.
     support: own ? circle.includes(own.id) : true,
   };
-  if (Object.values(steps).every(Boolean)) return { show: false as const };
+  // ولا تختفي بإكمالها — **بقرار المالك**: «٤ من ٤» ترحيبٌ أيضاً، والأسبوعان و«×» يطويانها.
 
   return {
     show: true as const,
