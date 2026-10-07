@@ -236,6 +236,9 @@ export function GlassBar({
   // تمطّطُ العدسة بسرعة الإصبع — كعدسة شريط النظام: تطول وهي تُسحب وتعود حين تقف.
   const stretch = useRef(new Animated.Value(0)).current;
   const [hover, setHover] = useState<number | null>(null);
+  // الإصبعُ على الشريط: حالةٌ تتبدّل مرّتين في السحبة لا مع كلّ أيقونة.
+  const [dragging, setDragging] = useState(false);
+  const velocity = useRef(0);
   // العدسةُ تظهر طوالَ الانتقال بالنقر — من التبويب إلى التبويب — لا ومضةً قصيرة.
   const [lensAt, setLensAt] = useState<number | null>(null);
   const lensRun = useRef(0);
@@ -252,11 +255,15 @@ export function GlassBar({
   const activeIndex = items.findIndex((item) => item.key === active);
   const activeRef = useRef(activeIndex);
   activeRef.current = activeIndex;
-  const showPill = hover !== null || (activeIndex >= 0 && active !== "me");
-  const lensOn = hover !== null || lensAt !== null;
+  const showPill = dragging || (activeIndex >= 0 && active !== "me");
+  const lensOn = dragging || lensAt !== null;
 
-  const spring = (value: Animated.Value, toValue: number, speed: number, bounciness: number) =>
-    Animated.spring(value, { toValue, useNativeDriver: true, speed, bounciness });
+  /*
+    نابضٌ بصلابةٍ وتخميد لا بسرعةٍ وارتداد: ينطلق دون قفزةٍ أولى ويستقرّ بتجاوزٍ
+    خفيف — كحركة عدسة شريط النظام.
+  */
+  const spring = (value: Animated.Value, toValue: number, stiffness: number, damping: number) =>
+    Animated.spring(value, { toValue, useNativeDriver: true, stiffness, damping, mass: 1 });
 
   const moveTo = (index: number, animate = true) => {
     const slot = slots.current[index];
@@ -270,7 +277,7 @@ export function GlassBar({
     // بعد السحب لا تُعاد العدسة: تختفي ساعةَ يُرفع الإصبع.
     const pulse = hoverRef.current === null && Date.now() - releasedAt.current > 600;
     if (!pulse) {
-      spring(x, to, 22, 6).start();
+      spring(x, to, 260, 26).start();
       return;
     }
     /*
@@ -279,14 +286,14 @@ export function GlassBar({
     */
     const run = ++lensRun.current;
     setLensAt(index);
-    spring(lift, 1, 26, 4).start();
+    spring(lift, 1, 420, 28).start();
     Animated.sequence([
-      Animated.timing(stretch, { toValue: 0.22, duration: 110, useNativeDriver: true }),
-      spring(stretch, 0, 14, 12),
+      Animated.timing(stretch, { toValue: 0.18, duration: 120, useNativeDriver: true }),
+      spring(stretch, 0, 200, 14),
     ]).start();
-    spring(x, to, 13, 5).start(() => {
+    spring(x, to, 170, 20).start(() => {
       if (run !== lensRun.current || hoverRef.current !== null) return;
-      spring(lift, 0, 18, 4).start();
+      spring(lift, 0, 260, 24).start();
       setTimeout(() => {
         if (run === lensRun.current) setLensAt(null);
       }, 120);
@@ -323,8 +330,12 @@ export function GlassBar({
     const index = indexAt(pageX);
     if (index !== hoverRef.current) {
       hoverRef.current = index;
-      setHover(index);
-      void Haptics.selectionAsync().catch(() => undefined);
+      /*
+        **لا رسمَ ولا نقرةَ مع كلّ أيقونة**: كان كلُّ عبورٍ يُعيد رسمَ الشريط كلّه ويقرع
+        نقرةً، فتُحسّ السحبةُ متقطّعة. مع زجاج آبل النسخةُ داخل العدسة تقول ما تحتها،
+        فالحالةُ لغيره وحده.
+      */
+      if (!LiquidLens) setHover(index);
     }
   };
 
@@ -333,8 +344,11 @@ export function GlassBar({
     releasedAt.current = Date.now();
     hoverRef.current = null;
     setHover(null);
-    spring(lift, 0, 18, 6).start();
-    spring(stretch, 0, 16, 10).start();
+    setDragging(false);
+    velocity.current = 0;
+    spring(lift, 0, 260, 24).start();
+    spring(stretch, 0, 200, 14).start();
+    if (index !== null && index !== activeRef.current) void Haptics.selectionAsync().catch(() => undefined);
     if (index !== null) {
       moveTo(index);
       itemsRef.current[index]?.onPress();
@@ -350,9 +364,30 @@ export function GlassBar({
     العدسة، فتكبر وهي تمرّ فوقها وتصغر وهي تبتعد — كما يُكبّر شريطُ النظام ما تحت
     عدسته. وبلا عدسةٍ مرفوعة لا تكبير.
   */
+  /*
+    **وما تحت العدسة من الأصل يغيب بقدر قربه منها**: النسخةُ المكبَّرة داخلها تحلّ
+    محلّه، وكان الأصلُ يُرى تحتها ظلّاً مزدوجاً.
+  */
+  const under = (index: number) => {
+    const slot = slots.current[index];
+    if (!slot || !measured || !LiquidLens) return 1;
+    const center = slot.x + 2;
+    return Animated.subtract(
+      1,
+      Animated.multiply(
+        x.interpolate({
+          inputRange: [center - slot.w, center, center + slot.w],
+          outputRange: [0, 1, 0],
+          extrapolate: "clamp",
+        }),
+        lift,
+      ),
+    );
+  };
+
   const magnify = (index: number) => {
     const slot = slots.current[index];
-    // مع زجاج آبل التكبيرُ نسخةٌ داخل العدسة (`LensCopy`)، فلا تكبر الأصليّةُ تحتها.
+    // مع زجاج آبل التكبيرُ نسخةٌ داخل العدسة، فلا تكبر الأصليّةُ تحتها.
     if (!slot || !measured || LiquidLens) return 1;
     const center = slot.x + 2;
     return Animated.add(
@@ -378,12 +413,18 @@ export function GlassBar({
         });
         lensRun.current++;
         setLensAt(null);
-        spring(lift, 1, 20, 8).start();
+        setDragging(true);
+        spring(lift, 1, 420, 28).start();
         follow(event.nativeEvent.pageX);
       },
       onPanResponderMove: (event, g) => {
         follow(event.nativeEvent.pageX);
-        spring(stretch, Math.min(Math.abs(g.vx) * 0.12, 0.28), 30, 0).start();
+        /*
+          التمطّطُ قيمةٌ تُكتب لا نابضٌ يُطلق مع كلّ حدث: نابضٌ جديدٌ ستّين مرّةً في
+          الثانية يُنشئ عقدةً أصليّةً لكلٍّ منها فيتقطّع. والسرعةُ تُنعَّم فلا ترجف.
+        */
+        velocity.current = velocity.current * 0.7 + Math.abs(g.vx) * 0.3;
+        stretch.setValue(Math.min(velocity.current * 0.12, 0.24));
       },
       onPanResponderRelease: (event) => release(event.nativeEvent.pageX),
       onPanResponderTerminate: () => release(null),
@@ -508,6 +549,7 @@ export function GlassBar({
                       borderRadius: (PILL - 14) / 2,
                       alignItems: "center",
                       justifyContent: "center",
+                      opacity: under(index),
                       transform: [{ scale: magnify(index) }],
                     }}
                   >
@@ -543,6 +585,7 @@ export function GlassBar({
                   glassEffectStyle={{ style: lensOn ? "clear" : "none", animate: true, animationDuration: 0.12 }}
                   isInteractive
                   colorScheme="dark"
+                  tintColor="rgba(14,26,36,.28)"
                   style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, borderRadius: (PILL + 8) / 2 }}
                 />
                 {/*
@@ -564,7 +607,7 @@ export function GlassBar({
                     opacity: lift,
                   }}
                 >
-                  <View style={{ flex: 1, transform: [{ scale: 1.22 }] }}>
+                  <View style={{ flex: 1, transform: [{ scale: 1.36 }] }}>
                     <Animated.View
                       style={{
                         position: "absolute",
