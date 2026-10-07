@@ -36,13 +36,15 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+      # لا `expo/expo-github-action`: يُنصّب eas-cli بـyarn في مستودعٍ يُعلن pnpm فيسقط
+      # بـ«exit code 1». و`npm i -g` خارج المستودع لا يقرأ `packageManager`.
+      - name: Install eas-cli
+        working-directory: ${{ runner.temp }}
+        run: npm install --global eas-cli@latest
       - name: Publish
         working-directory: apps/mobile
         env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EXPO_PUBLIC_API_URL: https://atharmts.com
           EXPO_PUBLIC_SITE_URL: https://atharmts.com
           EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: 186550074028-pve7oubeech3slm7i02jgf48l9cboo3v.apps.googleusercontent.com
