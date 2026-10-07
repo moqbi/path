@@ -23,7 +23,9 @@ type Welcome =
       steps: { avatar: boolean; friend: boolean; moment: boolean; support: boolean };
     };
 
-const KEY = "athr.welcome.closed";
+// لكلّ حسابٍ مفتاحُه — **بقرار المالك**: كان واحداً للجهاز، فمن طواها بحسابٍ طُويت عن
+// كلّ حسابٍ يدخل الجهازَ بعده. والقديمُ (`athr.welcome.closed`) لا يُقرأ.
+const keyOf = (id: string) => `athr.welcome.closed.${id}`;
 
 /**
  * بطاقةُ الترحيب أعلى اللحظات (القاعدة ٢٤٦) — **بقرار المالك**: الحسابُ الجديد
@@ -36,23 +38,26 @@ export function WelcomeCard() {
   const [closed, setClosed] = useState<boolean | null>(null);
   const [sharing, setSharing] = useState(false);
   const welcome = useQuery({
-    queryKey: ["welcome"],
+    queryKey: ["welcome", me?.id],
     queryFn: () => api<Welcome>("/v1/memories/welcome"),
     staleTime: 60_000,
   });
 
+  const meId = me?.id;
   useEffect(() => {
-    void getItem(KEY)
+    if (!meId) return;
+    setClosed(null);
+    void getItem(keyOf(meId))
       .catch(() => null)
       .then((value) => setClosed(value === "1"));
-  }, []);
+  }, [meId]);
 
   const data = welcome.data;
   if (!me || closed !== false || !data?.show) return null;
 
   const close = () => {
     setClosed(true);
-    void setItem(KEY, "1").catch(() => {});
+    void setItem(keyOf(me.id), "1").catch(() => {});
   };
 
   const steps = [

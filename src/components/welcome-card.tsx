@@ -9,7 +9,8 @@ import type { welcome } from "@/lib/welcome";
 
 type Shown = Extract<Awaited<ReturnType<typeof welcome>>, { show: true }>;
 
-const KEY = "athr.welcome.closed";
+// لكلّ حسابٍ مفتاحُه: متصفّحٌ يُدخَل منه بحسابين لا يطوي البطاقةَ عن الثاني.
+const keyOf = (memberNo: number) => `athr.welcome.closed.${memberNo}`;
 
 /**
  * بطاقةُ الترحيب أعلى اللحظات (القاعدة ٢٤٦) — نسخةُ
@@ -21,17 +22,17 @@ export function WelcomeCard({ data, name, memberNo }: { data: Shown; name: strin
   const [closed, setClosed] = useState<boolean | null>(null);
   useEffect(() => {
     try {
-      setClosed(window.localStorage.getItem(KEY) === "1");
+      setClosed(window.localStorage.getItem(keyOf(memberNo)) === "1");
     } catch {
       setClosed(false);
     }
-  }, []);
+  }, [memberNo]);
   if (closed !== false) return null;
 
   const close = () => {
     setClosed(true);
     try {
-      window.localStorage.setItem(KEY, "1");
+      window.localStorage.setItem(keyOf(memberNo), "1");
     } catch {
       // المخزنُ مغلق: تُطوى لهذه الصفحة وحدها.
     }
