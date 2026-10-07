@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from "react";
-import { AppState, I18nManager, Platform, View, ActivityIndicator, StyleSheet } from "react-native";
+import { AppState, Appearance, I18nManager, Platform, View, ActivityIndicator, StyleSheet } from "react-native";
 import { MediaImage } from "../components/media-image";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as Notifications from "expo-notifications";
@@ -28,6 +28,14 @@ import { Tour } from "../components/tour";
 import { applyTheme, colors, themeStore, veil } from "../theme/tokens";
 import { dismissOpen } from "../lib/swipe-open";
 import { Launch, useLaunch } from "../components/launch";
+
+/*
+  شريطُ آبل داكن — **بقرار المالك** (القاعدة ٢٦١): زجاجُه يتبع مظهرَ التطبيق، و`app.json`
+  يثبّته فاتحاً. فيُقلب المظهرُ داكناً هنا (`overrideUserInterfaceStyle`) بلا بناء،
+  وشاشاتُنا بألوانٍ مكتوبة لا تتبعه — يتبعه ما يرسمه النظام: الشريطُ والكيبوردُ
+  ونوافذُ التنبيه وشريطُ الحالة. وأندرويد على شريطه المرسوم فلا يُمسّ.
+*/
+if (Platform.OS === "ios") Appearance.setColorScheme?.("dark");
 
 /**
  * العربية من اليمين — قراراً لا إعداداً، وفي البيئات الثلاث معاً.

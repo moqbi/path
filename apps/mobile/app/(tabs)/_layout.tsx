@@ -32,6 +32,8 @@ export default function TabsLayout() {
         backBehavior="history"
         tintColor={colors.clay}
         badgeBackgroundColor={colors.live}
+        // قبل iOS 26 زجاجٌ داكن بالمادّة؛ ومن ٢٦ يتبع المظهرَ الداكن (`_layout.tsx`).
+        blurEffect="systemChromeMaterialDark"
       >
         <NativeTabs.Trigger name="index" disableScrollToTop>
           <Icon sf={{ default: "house", selected: "house.fill" }} />
