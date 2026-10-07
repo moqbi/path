@@ -11,13 +11,17 @@ import { supportAccount } from "@/lib/support-account";
  * أو بـ«×» (على الجهاز).
  */
 const DAYS = 14;
+// يومُ نشر النسخة ٢٩ — **بقرار المالك** تظهر للجميع لا للجدد وحدهم: الأسبوعان يُعدّان من
+// الأبعد بين التسجيل وهذا اليوم، فمن سجّل قبله يراها الآن وتنتهي عنده كما تنتهي عند غيره.
+const SHOWN_FROM = new Date("2026-10-07T00:00:00+03:00");
 
 export async function welcome(userId: string) {
   const me = await prisma.user.findUnique({
     where: { id: userId },
     select: { createdAt: true, avatarMediaId: true, memberNo: true },
   });
-  if (!me || Date.now() - me.createdAt.getTime() > DAYS * 86_400_000) return { show: false as const };
+  const start = Math.max(me?.createdAt.getTime() ?? 0, SHOWN_FROM.getTime());
+  if (!me || Date.now() - start > DAYS * 86_400_000) return { show: false as const };
 
   const [circle, support, posted] = await Promise.all([
     circleIds(userId),
