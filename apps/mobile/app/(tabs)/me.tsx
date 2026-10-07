@@ -1,4 +1,5 @@
 import { useBarSpace } from "../../components/glass-bar";
+import { TabBackdrop } from "../../components/tab-backdrop";
 import { scrolled } from "../../lib/scrolled";
 import { useMemo, useRef, useState } from "react";
 import { View, SectionList, Pressable, ActivityIndicator, Alert, Animated, RefreshControl } from "react-native";
@@ -150,6 +151,7 @@ export default function Me() {
 
   return (
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
+      <TabBackdrop />
       {/* الرأس: العلامة، ففاصل، فاسم الشاشة — والمشاركة في الطرف المقابل. */}
       <View
         style={{

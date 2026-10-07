@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TabBackdrop } from "../../components/tab-backdrop";
 import { useBarSpace } from "../../components/glass-bar";
 import { View, ScrollView, Pressable, ActivityIndicator, RefreshControl } from "react-native";
 import { Text } from "../../components/type";
@@ -85,6 +86,7 @@ export default function Store() {
 
   return (
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
+      <TabBackdrop />
       <View
         style={{
           flexDirection: "row",

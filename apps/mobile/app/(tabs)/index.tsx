@@ -1,4 +1,5 @@
 import { MemoriesCard } from "../../components/memories-card";
+import { TabBackdrop } from "../../components/tab-backdrop";
 import { WelcomeCard } from "../../components/welcome-card";
 import { WeeklyCard } from "../../components/weekly-card";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -246,6 +247,7 @@ export default function Timeline() {
       }}
     >
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
+      <TabBackdrop />
       {/*
         الرأس: العلامة ثم ATHAR، و«آثار+» قبل الرسائل.
 

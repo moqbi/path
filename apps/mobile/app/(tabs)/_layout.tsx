@@ -4,6 +4,8 @@ import { NativeTabs, Icon, Label, Badge } from "expo-router/unstable-native-tabs
 import { GlassBar, useAppBadge } from "../../components/glass-bar";
 import { ar } from "../../lib/format";
 import { colors } from "../../theme/tokens";
+import { useSession } from "../../lib/session";
+import { useTabAvatar } from "../../lib/tab-avatar";
 
 /**
  * التبويباتُ الخمسة: اللحظات، الأصدقاء، المحادثات، المتجر، أنا.
@@ -21,6 +23,8 @@ import { colors } from "../../theme/tokens";
  */
 export default function TabsLayout() {
   const { unread } = useAppBadge();
+  // «أنا» صورةُ صاحبها كما كانت في الشريط الزجاجيّ (القاعدة ٢٢٨).
+  const avatar = useTabAvatar(useSession((state) => state.me?.avatarMediaId));
 
   if (Platform.OS === "ios") {
     return (
@@ -47,7 +51,11 @@ export default function TabsLayout() {
           <Label>المتجر</Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="me">
-          <Icon sf={{ default: "person.crop.circle", selected: "person.crop.circle.fill" }} />
+          {avatar ? (
+            <Icon src={avatar} />
+          ) : (
+            <Icon sf={{ default: "person.crop.circle", selected: "person.crop.circle.fill" }} />
+          )}
           <Label>أنا</Label>
         </NativeTabs.Trigger>
       </NativeTabs>
