@@ -9,7 +9,7 @@ import { Tabs, usePathname } from "expo-router";
 import { Text } from "./type";
 import { Avatar } from "./avatar";
 import { Spot } from "./spot";
-import { BellIcon, CircleIcon, HomeIcon, MessageIcon, StoreIcon } from "./icons";
+import { CircleIcon, HomeIcon, MessageIcon, StoreIcon } from "./icons";
 import { useSession } from "../lib/session";
 import { useNoteCount, useUnreadDm } from "../lib/queries";
 import { ar } from "../lib/format";
@@ -89,23 +89,15 @@ function Badge({ count }: { count?: number }) {
   );
 }
 
-export function GlassBar({
-  state,
-  navigation,
-  onLongHome,
-}: BarProps & { onLongHome: () => void }) {
-  const insets = useSafeAreaInsets();
-  const path = usePathname();
-  const me = useSession((s) => s.me);
+/*
+  الرقمُ على أيقونة التطبيق يتبع النقطتين نفسيهما: ما لم يُقرأ من الإشعارات
+  والرسائل. الخادمُ يرسله مع كلّ تنبيه والتطبيقُ مغلق، وهنا يُضبط وهو مفتوح —
+  فيختفي حين تُقرأ ولا يبقى رقمُ آخرِ تنبيه. وبالخروج يُصفَّر.
+  وهو في تخطيط التبويبات لا في الشريط: شريطُ آبل الأصليّ لا يمرّ بهذا الملفّ.
+*/
+export function useAppBadge() {
   const unseen = useNoteCount().data?.unseen ?? 0;
   const unread = useUnreadDm().data?.unread ?? 0;
-
-  /*
-    الرقمُ على أيقونة التطبيق يتبع النقطتين نفسيهما: ما لم يُقرأ من الإشعارات
-    والرسائل. الخادمُ يرسله مع كلّ تنبيه والتطبيقُ مغلق، وهنا يُضبط وهو مفتوح —
-    فيختفي حين تُقرأ ولا يبقى رقمُ آخرِ تنبيه. وبالخروج يُصفَّر: لا رقمَ لحسابٍ
-    خرج منه صاحبُه.
-  */
   useEffect(() => {
     if (Platform.OS === "web") return;
     void Notifications.setBadgeCountAsync(unseen + unread).catch(() => undefined);
@@ -116,6 +108,15 @@ export function GlassBar({
     },
     [],
   );
+  return { unseen, unread };
+}
+
+export function GlassBar({ state, navigation }: BarProps) {
+  const insets = useSafeAreaInsets();
+  const path = usePathname();
+  const me = useSession((s) => s.me);
+  const unread = useUnreadDm().data?.unread ?? 0;
+
 
   const current = state.routes[state.index]?.name;
   // ملفُّ الصديق يُضيء «الأصدقاء»: من هناك يُفتح (القاعدة ٤٢).
@@ -149,8 +150,6 @@ export function GlassBar({
       label: "اللحظات",
       spot: "tab.index",
       onPress: () => go("index"),
-      // الضغطةُ المطوّلة بابُ العدستين (القاعدة ٢٦).
-      onLongPress: onLongHome,
       render: (on, tint) => <HomeIcon size={ICON} color={tint} />,
     },
     {
@@ -169,18 +168,6 @@ export function GlassBar({
         <View>
           <MessageIcon size={ICON} color={tint} />
           {unread > 0 ? <Badge count={unread} /> : null}
-        </View>
-      ),
-    },
-    {
-      key: "notifications",
-      label: "الإشعارات",
-      spot: "tab.notifications",
-      onPress: () => go("notifications"),
-      render: (on, tint) => (
-        <View>
-          <BellIcon size={ICON} color={tint} />
-          {unseen > 0 && !on ? <Badge /> : null}
         </View>
       ),
     },

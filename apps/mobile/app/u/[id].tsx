@@ -1,26 +1,25 @@
 import { useEffect, useState } from "react";
-import { useBarSpace } from "../../../components/glass-bar";
-import { scrolled } from "../../../lib/scrolled";
-import { markSeen } from "../../../lib/seen";
+import { useBarSpace } from "../../components/glass-bar";
+import { scrolled } from "../../lib/scrolled";
+import { markSeen } from "../../lib/seen";
 import { View, Pressable, ActivityIndicator, Animated, RefreshControl } from "react-native";
-import { Text } from "../../../components/type";
+import { Text } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ProfileHead } from "../../../components/profile-head";
-import { COVER_HEIGHT, CoverLayer, StretchCover, useStretch } from "../../../components/cover";
-import { playRefresh } from "../../../lib/sound";
-import { MediaImage } from "../../../components/media-image";
-import { MomentCard } from "../../../components/moment-card";
-import { ScreenHeader } from "../../../components/screen-header";
-import { GiftButton } from "../../../components/gift-sheet";
-import { MessageIcon, StarIcon, WithIcon } from "../../../components/icons";
-import { api } from "../../../lib/api";
-import { keys, type Moment } from "../../../lib/queries";
-import { ar } from "../../../lib/format";
-import { useSession } from "../../../lib/session";
-import { colors } from "../../../theme/tokens";
-import { EdgeBack } from "../../../components/edge-back";
+import { ProfileHead } from "../../components/profile-head";
+import { COVER_HEIGHT, CoverLayer, StretchCover, useStretch } from "../../components/cover";
+import { playRefresh } from "../../lib/sound";
+import { MediaImage } from "../../components/media-image";
+import { MomentCard } from "../../components/moment-card";
+import { ScreenHeader } from "../../components/screen-header";
+import { GiftButton } from "../../components/gift-sheet";
+import { MessageIcon, StarIcon, WithIcon } from "../../components/icons";
+import { api } from "../../lib/api";
+import { keys, type Moment } from "../../lib/queries";
+import { ar } from "../../lib/format";
+import { useSession } from "../../lib/session";
+import { colors } from "../../theme/tokens";
 
 type Person = {
   id: string;
@@ -164,8 +163,8 @@ function Profile() {
   };
 
   return (
-    // السحبُ من الحافّة رجوع (القاعدة ٢١٧): الملفُّ داخل التبويبات بلا إيماءةٍ أصليّة.
-    <EdgeBack fallback="/circle">
+    // شاشةٌ في المكدّس فوق الشريط (القاعدة ٢٦١): سحبةُ آبل الأصليّة رجوعُها.
+    <>
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       {/*
         زرُّ رجوعٍ فوقه — **بقرار المالك**، ونقضاً للقاعدة ٤٢: الملفُّ يُفتح
@@ -372,7 +371,7 @@ function Profile() {
         />
       )}
     </SafeAreaView>
-    </EdgeBack>
+    </>
   );
 }
 

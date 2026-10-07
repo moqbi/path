@@ -8,7 +8,6 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Avatar } from "../../components/avatar";
 import { SwipeRow } from "../../components/swipe-row";
 import { ScreenHeader } from "../../components/screen-header";
-import { EdgeBack } from "../../components/edge-back";
 import { useBarSpace } from "../../components/glass-bar";
 import { Ticks, receiptOf } from "../../components/receipt";
 import { CameraIcon, MicIcon, PlusIcon, SearchIcon, StarIcon, TrashIcon } from "../../components/icons";
@@ -175,15 +174,11 @@ export default function Messages() {
   });
 
   return (
-    /*
-      المحادثاتُ شاشةٌ داخل التبويبات لا فوقها — **بقرار المالك**: الشريطُ الزجاجيّ
-      يبقى تحتها كما تحت ملفّ الصديق (القاعدة ٤٢)، والسحبُ من الحافّة رجوعُها.
-    */
-    <EdgeBack fallback="/">
+    // المحادثاتُ تبويبٌ في الشريط (القاعدة ٢٦١): لا رجوعَ منها، فلا سحبَ حافّة.
+    <>
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       <ScreenHeader
         title="المحادثات"
-        back="/"
         right={
           // إنشاءُ المجموعة للمشرف وحده (القاعدة ٢١٥).
           me?.canGroups ? (
@@ -411,6 +406,6 @@ export default function Messages() {
         </Pressable>
       </Modal>
     </SafeAreaView>
-    </EdgeBack>
+    </>
   );
 }
