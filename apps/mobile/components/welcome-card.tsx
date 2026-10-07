@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Text } from "./type";
 import { CameraIcon, CheckIcon, CloseIcon, ShareIcon, SparkIcon, PlusIcon } from "./icons";
@@ -42,6 +42,14 @@ export function WelcomeCard() {
     queryFn: () => api<Welcome>("/v1/memories/welcome"),
     staleTime: 60_000,
   });
+  // الخطواتُ تُشطب من القاعدة، فتُسأل كلّما عاد إلى اللحظات: يضع صورته أو ينشر أو يضيف
+  // ثمّ يرجع — وكان الردُّ محفوظاً دقيقةً فتبقى الخطوةُ غيرَ مشطوبةٍ بعد أن فعلها.
+  const { refetch } = welcome;
+  useFocusEffect(
+    useCallback(() => {
+      void refetch();
+    }, [refetch]),
+  );
 
   const meId = me?.id;
   useEffect(() => {
