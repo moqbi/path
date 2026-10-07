@@ -14,11 +14,11 @@ import { MomentCard, SPINE_W } from "../../components/moment-card";
 import { COVER_HEIGHT, CoverLayer } from "../../components/cover";
 import { Avatar } from "../../components/avatar";
 import { AthrMark } from "../../components/brand";
-import { ClockIcon, RefreshIcon, SparkIcon, StarIcon } from "../../components/icons";
+import { BellIcon, ClockIcon, HomeIcon, PrivateIcon, RefreshIcon, SparkIcon, StarIcon, WithIcon } from "../../components/icons";
 import { ComposerFan } from "../../components/composer-fan";
 import { Spot } from "../../components/spot";
 import { PlusEnded } from "../../components/plus-ended";
-import { useCircle, useFeed, useTogether, useUnreadDm, type Moment } from "../../lib/queries";
+import { useCircle, useFeed, useNoteCount, useTogether, useUnreadDm, type Moment } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { ar, dayLabel, membership, MONTHS, timeOfDay } from "../../lib/format";
 import { useTabTop } from "../../lib/tab-top";
@@ -59,6 +59,7 @@ export default function Timeline() {
   const together = useTogether(withId);
   const circle = useCircle();
   const unread = useUnreadDm();
+  const unseen = useNoteCount().data?.unseen ?? 0;
   // العودةُ من محادثةٍ قُرئت تُعيد العدّ: الخطّ الزمنيّ لا يُفكّ من الشجرة.
   const recount = unread.refetch;
   useFocusEffect(
@@ -291,6 +292,35 @@ export default function Timeline() {
           </Pressable>
           </Spot>
 
+          {/*
+            الإشعاراتُ أيقونةٌ هنا لا تبويب — **بقرار المالك** (القاعدة ٢٦١): شريطُ
+            آبل خمسةُ تبويبات، والإشعاراتُ تُفتح فوقه. والنقطةُ لما لم يُقرأ (القاعدة ٢٣١).
+          */}
+          <Spot id="header.bell">
+            <Pressable
+              onPress={() => router.push("/notifications" as never)}
+              hitSlop={6}
+              accessibilityLabel="الإشعارات"
+              style={{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.08)" }}
+            >
+              <BellIcon size={20} color={colors.chromeInk} />
+              {unseen > 0 ? (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 8,
+                    right: 9,
+                    width: 9,
+                    height: 9,
+                    borderRadius: 5,
+                    backgroundColor: colors.live,
+                    borderWidth: 1.5,
+                    borderColor: colors.chrome,
+                  }}
+                />
+              ) : null}
+            </Pressable>
+          </Spot>
         </View>
       </View>
 
@@ -489,12 +519,25 @@ export default function Timeline() {
                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.line }} />
               </View>
               <Text style={{ color: colors.ink2, fontSize: 15, fontWeight: "700" }}>{section.title}</Text>
+              {section === days[0] ? (
+                <>
+                  <View style={{ flex: 1 }} />
+                  <Lenses view={view} isPlus={me.isPlus} />
+                </>
+              ) : null}
             </View>
           )}
           renderItem={({ item }) => (
             <MomentCard moment={item} viewerId={me.id} isPlus={me.isPlus} moderate={me.canModerate} />
           )}
           ListHeaderComponent={
+            <>
+            {days.length === 0 ? (
+              <View style={{ flexDirection: "row", paddingVertical: 16 }}>
+                <View style={{ flex: 1 }} />
+                <Lenses view={view} isPlus={me.isPlus} />
+              </View>
+            ) : null}
             <LensHead
               view={view}
               friend={friend}
@@ -505,6 +548,7 @@ export default function Timeline() {
               onPick={(id) => router.setParams({ view: "together", with: id, from: undefined } as never)}
               onClear={() => router.setParams({ view: "together", with: "" })}
             />
+            </>
           }
           ListEmptyComponent={
             (view === "together" ? together.isLoading : feed.isLoading) ? (
@@ -694,5 +738,66 @@ function LensHead({
         ))}
       </View>
     </View>
+  );
+}
+
+/**
+ * العدساتُ الثلاث بجانب «اليوم» — **بقرار المالك** (القاعدة ٢٦١): كانت ضغطةً
+ * مطوّلة على تبويب اللحظات، وشريطُ آبل لا ضغطةَ مطوّلة فيه. قرصٌ واحد بهيئة زرّ
+ * «أرشيفي وكتاب سنتي» في «أنا»، والمفتوحةُ مضيئةٌ فيه. و«آثارنا» لغير المشترك
+ * تأخذه إلى صفحة الاشتراك (القاعدة ١٥٩).
+ */
+function Lenses({ view, isPlus }: { view: string; isPlus: boolean }) {
+  const router = useRouter();
+  const items = [
+    { key: "", label: "اللحظات", Icon: HomeIcon },
+    { key: "private", label: "الخاصة", Icon: PrivateIcon },
+    { key: "together", label: "آثارنا", Icon: WithIcon },
+  ] as const;
+  return (
+    <Spot id="lens.switch">
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          height: 32,
+          padding: 2,
+          borderRadius: 16,
+          backgroundColor: colors.goldSoft,
+        }}
+      >
+        {items.map(({ key, label, Icon }) => {
+          const on = view === key;
+          return (
+            <Pressable
+              key={key || "all"}
+              hitSlop={4}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              onPress={() => {
+                if (on) return;
+                if (key === "together" && !isPlus) {
+                  router.push("/subscribe" as never);
+                  return;
+                }
+                router.setParams({ view: key || undefined, with: undefined, from: undefined } as never);
+              }}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+                height: 28,
+                paddingHorizontal: 9,
+                borderRadius: 14,
+                backgroundColor: on ? colors.card : "transparent",
+              }}
+            >
+              <Icon size={13} color={on ? colors.clayInk : colors.muted} />
+              <Text style={{ color: on ? colors.clayInk : colors.muted, fontSize: 12, fontWeight: "700" }}>{label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </Spot>
   );
 }

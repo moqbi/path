@@ -1,24 +1,24 @@
 import { useCallback, useMemo, useState } from "react";
-import { useBarSpace } from "../../components/glass-bar";
-import { scrolled } from "../../lib/scrolled";
+import { useBarSpace } from "../components/glass-bar";
+import { scrolled } from "../lib/scrolled";
 import { Alert } from "react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { SwipeRow } from "../../components/swipe-row";
-import { api } from "../../lib/api";
-import { keys } from "../../lib/queries";
+import { SwipeRow } from "../components/swipe-row";
+import { api } from "../lib/api";
+import { keys } from "../lib/queries";
 import { View, SectionList, Pressable, ScrollView, ActivityIndicator, RefreshControl } from "react-native";
-import { Text } from "../../components/type";
+import { Text } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Avatar, firstColor } from "../../components/avatar";
-import { MediaImage } from "../../components/media-image";
-import { ScreenHeader } from "../../components/screen-header";
-import { ReactionGlyph } from "../../components/reactions";
-import { MessageIcon, SparkIcon, StoreIcon, TagIcon, WithIcon, TrashIcon } from "../../components/icons";
-import { useNotes, type Note } from "../../lib/queries";
-import { usePullRefresh } from "../../lib/refresh";
-import { dayLabel, relative } from "../../lib/format";
-import { colors } from "../../theme/tokens";
+import { Avatar, firstColor } from "../components/avatar";
+import { MediaImage } from "../components/media-image";
+import { ScreenHeader } from "../components/screen-header";
+import { ReactionGlyph } from "../components/reactions";
+import { MessageIcon, SparkIcon, StoreIcon, TagIcon, WithIcon, TrashIcon } from "../components/icons";
+import { useNotes, type Note } from "../lib/queries";
+import { usePullRefresh } from "../lib/refresh";
+import { dayLabel, relative } from "../lib/format";
+import { colors } from "../theme/tokens";
 
 /**
  * الوجهة تُفكّ هنا.
@@ -184,6 +184,7 @@ export default function Notifications() {
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       <ScreenHeader
         title="الإشعارات"
+        back="/"
         right={
           (notes.data?.notes ?? []).some((note) => !gone.has(note.id)) ? (
             <Pressable onPress={askClear} hitSlop={8}>
