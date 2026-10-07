@@ -125,7 +125,15 @@ export function GlassBar({
     const route = state.routes.find((r) => r.name === name);
     if (!route) return;
     const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
-    if (active !== name && !event.defaultPrevented) navigation.navigate(name as never);
+    if (active !== name && !event.defaultPrevented) {
+      /*
+        **العدسةُ تنطلق قبل الشاشة**: كانت تنتظر رسمَ التبويب الجديد ثمّ تتحرّك —
+        «تعلق ثمّ تثبت». الحركةُ على الخيط الأصليّ، فتُرسَل أوّلاً ويُرسم التبويبُ بعدها.
+      */
+      const index = itemsRef.current.findIndex((item) => item.key === (name === "messages" ? "chats" : name));
+      if (index >= 0 && targetRef.current !== index) moveTo(index);
+      navigation.navigate(name as never);
+    }
   };
 
   const items: {
@@ -233,6 +241,9 @@ export function GlassBar({
   const lensRun = useRef(0);
   const releasedAt = useRef(0);
   const [slotW, setSlotW] = useState(0);
+  const [rowW, setRowW] = useState(0);
+  // التبويبُ الذي تمضي إليه العدسة — فلا تُطلق مرّتين: من النقر ثمّ من تبدّل التبويب.
+  const targetRef = useRef(-1);
   const measured = slotW > 0;
   const hoverRef = useRef<number | null>(null);
   const itemsRef = useRef(items);
@@ -250,6 +261,7 @@ export function GlassBar({
   const moveTo = (index: number, animate = true) => {
     const slot = slots.current[index];
     if (!slot) return;
+    targetRef.current = index;
     const to = slot.x + 2;
     if (!animate) {
       x.setValue(to);
@@ -283,7 +295,7 @@ export function GlassBar({
 
   // القرصُ يتبع التبويبَ المفتوح حين لا يكون إصبعٌ على الشريط.
   useEffect(() => {
-    if (measured && hoverRef.current === null && activeIndex >= 0) moveTo(activeIndex);
+    if (measured && hoverRef.current === null && activeIndex >= 0 && targetRef.current !== activeIndex) moveTo(activeIndex);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeIndex, measured]);
 
@@ -329,7 +341,7 @@ export function GlassBar({
     }
     // ما لم يغيّر التبويب (التبويبُ نفسه) يعود القرصُ إلى مكانه.
     setTimeout(() => {
-      if (hoverRef.current === null && activeRef.current >= 0) moveTo(activeRef.current);
+      if (hoverRef.current === null && activeRef.current >= 0 && targetRef.current !== activeRef.current) moveTo(activeRef.current);
     }, 280);
   };
 
@@ -340,7 +352,8 @@ export function GlassBar({
   */
   const magnify = (index: number) => {
     const slot = slots.current[index];
-    if (!slot || !measured) return 1;
+    // مع زجاج آبل التكبيرُ نسخةٌ داخل العدسة (`LensCopy`)، فلا تكبر الأصليّةُ تحتها.
+    if (!slot || !measured || LiquidLens) return 1;
     const center = slot.x + 2;
     return Animated.add(
       1,
@@ -426,11 +439,12 @@ export function GlassBar({
           <View
             ref={row}
             {...pan.panHandlers}
-            onLayout={() =>
+            onLayout={(event) => {
+              setRowW(event.nativeEvent.layout.width);
               row.current?.measureInWindow((left) => {
                 rowX.current = left;
-              })
-            }
+              });
+            }}
             style={{ flex: 1, flexDirection: "row", alignItems: "center", paddingHorizontal: 6 }}
           >
             {/* القرصُ الزجاجيّ: ينزلق بين التبويبات ويتبع الإصبع ويكبر تحته. */}
@@ -529,8 +543,50 @@ export function GlassBar({
                   glassEffectStyle={{ style: lensOn ? "clear" : "none", animate: true, animationDuration: 0.12 }}
                   isInteractive
                   colorScheme="dark"
-                  style={{ flex: 1, borderRadius: (PILL + 8) / 2 }}
+                  style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, borderRadius: (PILL + 8) / 2 }}
                 />
+                {/*
+                  **ما تحت العدسة نسخةٌ مكبَّرةٌ واضحة** كعدسة شريط الهاتف: الزجاجُ وحده
+                  يغبّش ما تحته، وبين تبويبين كان يُرى واحدٌ منهما. فالصفُّ كلُّه يُرسم ثانيةً
+                  داخلها بلون الثيم، مكبّراً حول وسطها، ومزاحاً بعكس حركتها فيبقى كلُّ رسمٍ
+                  فوق أصله — فيُرى نصفا التبويبين معاً حين تقف بينهما. والقصُّ على غلافٍ
+                  أخٍ للزجاج لا عليه: زجاجُ آبل لا يُرسم داخل قصّ.
+                */}
+                <Animated.View
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    borderRadius: (PILL + 8) / 2,
+                    overflow: "hidden",
+                    opacity: lift,
+                  }}
+                >
+                  <View style={{ flex: 1, transform: [{ scale: 1.22 }] }}>
+                    <Animated.View
+                      style={{
+                        position: "absolute",
+                        top: 4,
+                        // `left` صريحٌ: بلا طرفٍ يجلس المطلقُ في جهة البداية — اليمين هنا.
+                        left: 0,
+                        height: PILL,
+                        width: rowW,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        paddingHorizontal: 6,
+                        transform: [{ translateX: Animated.add(Animated.multiply(x, -1), LENS_WIDEN / 2) }],
+                      }}
+                    >
+                      {items.map((item) => (
+                        <View key={item.key} style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                          {item.render(false, colors.clay)}
+                        </View>
+                      ))}
+                    </Animated.View>
+                  </View>
+                </Animated.View>
               </Animated.View>
             ) : null}
           </View>
