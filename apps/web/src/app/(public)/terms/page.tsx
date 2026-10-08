@@ -1,14 +1,76 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { DocIndex, DocSection, PageBody, PageHero } from "@/components/page-shell";
+import { DocIndex, DocSection, EnglishSummary, PageBody, PageHero } from "@/components/page-shell";
 
-export const metadata: Metadata = { title: "شروط الاستخدام · آثار مومنتس" };
+export const metadata: Metadata = { title: "شروط الاستخدام · Terms of Service · آثار مومنتس ATHAR Moments" };
 
 export default function TermsPage() {
   return (
     <>
-      <PageHero eyebrow="القانوني" title="شروط الاستخدام" lead="ما لك وما عليك في آثار: حسابك، وما يُنشر، والمتجر والاشتراك." />
+      <PageHero eyebrow="القانوني" title="شروط الاستخدام" lead="ما لك وما عليك في آثار: حسابك، وما يُنشر، والمتجر والاشتراك.">
+        <p lang="en" dir="ltr" className="mt-3 text-[13px]" style={{ color: "#cfd8df", fontFamily: "var(--font-latin)" }}>
+          ATHAR Moments — Terms of Service · <a href="#english" className="underline">English summary</a>
+        </p>
+      </PageHero>
       <PageBody narrow>
+        <p className="doc-card text-[14px] leading-[1.9] text-ink-2">
+          هذه شروط استخدام تطبيق <strong>«آثار مومنتس» (ATHAR Moments)</strong> على iPhone
+          وAndroid، والموقع atharmts.com وتطبيق الويب فيه.
+        </p>
+
+        <EnglishSummary title="ATHAR Moments — Terms of Service (English summary)" updated="October 2026">
+          <p>
+            These Terms govern your use of the <strong>ATHAR Moments</strong> app (&ldquo;ATHAR&rdquo;,
+            &ldquo;we&rdquo;) for iPhone and Android and the website atharmts.com. By creating an account or
+            signing in to ATHAR Moments you agree to these Terms and to our{" "}
+            <Link href="/privacy" className="underline">Privacy Policy</Link>. The Arabic text below is the
+            authoritative version.
+          </p>
+          <ul>
+            <li>
+              <strong>Your account:</strong> one account per person. You are responsible for what is posted
+              from it. You must be at least 13 years old.
+            </li>
+            <li>
+              <strong>Prohibited content:</strong> harassment, threats or doxxing; hate, violence or sexual
+              content; spam and automated accounts; anything that violates the laws of Saudi Arabia.{" "}
+              <strong>There is zero tolerance for objectionable content or abusive users.</strong>
+            </li>
+            <li>
+              <strong>Reporting and blocking:</strong> any moment, story, comment or message can be reported
+              in the app, and any user can be blocked. We review reports within 24 hours, remove violating
+              content and suspend or delete the offending account.
+            </li>
+            <li>
+              <strong>Your content:</strong> what you post remains yours. You grant us permission to store it
+              and show it only to the people you choose; this ends when you delete it or your account. Do not
+              post material you do not have the right to share.
+            </li>
+            <li>
+              <strong>Store and subscription:</strong> store items (frames, themes, charms) are digital
+              cosmetics with no cash value. ATHAR+ is an auto-renewing subscription purchased and cancelled
+              through the App Store or Google Play; refunds follow that store&rsquo;s policy. The 150-friend
+              circle limit is never sold.
+            </li>
+            <li>
+              <strong>Termination:</strong> you may delete your account at any time in the app or at{" "}
+              <Link href="/delete-account" className="underline">atharmts.com/delete-account</Link>. We may
+              suspend accounts that break these Terms and will tell you why.
+            </li>
+            <li>
+              <strong>No absolute warranties:</strong> we work to keep the service available and your data
+              safe, but cannot guarantee zero downtime or errors.
+            </li>
+            <li>
+              <strong>Governing law:</strong> the laws of the Kingdom of Saudi Arabia.
+            </li>
+            <li>
+              <strong>Contact:</strong> support@atharmts.com ·{" "}
+              <Link href="/contact" className="underline">atharmts.com/contact</Link>.
+            </li>
+          </ul>
+        </EnglishSummary>
+
         <DocIndex
           updated="أكتوبر ٢٠٢٦"
           sections={[
@@ -25,7 +87,8 @@ export default function TermsPage() {
         <DocSection id="terms-1" index={1} title="حسابك">
           <p>
             حسابٌ واحد لشخصٍ واحد، ببريدٍ تملكه وكلمةِ مرورٍ تحفظها. أنت مسؤولٌ
-            عمّا يُنشر منه، فإن ضاع منك جهازُك غيّر كلمة مرورك.
+            عمّا يُنشر منه، فإن ضاع منك جهازُك غيّر كلمة مرورك. وآثار ليست لمن هم دون
+            الثالثة عشرة.
           </p>
         </DocSection>
 
