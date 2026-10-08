@@ -111,3 +111,22 @@ export function DocIndex({ updated, sections }: { updated: string; sections: { i
     </nav>
   );
 }
+
+/**
+ * ملخّصٌ إنجليزيّ في أوّل الخصوصية والشروط — مراجعو المزوّدين (تيك توك) لا
+ * يقرؤون العربية، وردّوا التطبيق لأنّهم لم يجدوا اسمه «ATHAR Moments» في
+ * الصفحتين. والنصُّ العربيّ تحته هو المرجع، والملخّصُ يقول ذلك.
+ */
+export function EnglishSummary({ title, updated, children }: { title: string; updated: string; children: React.ReactNode }) {
+  return (
+    <section id="english" lang="en" dir="ltr" className="doc-card scroll-mt-24 text-left" style={{ fontFamily: "var(--font-latin)" }}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-[17px] font-bold text-ink">{title}</h2>
+        <span className="text-[11.5px] text-faint">Last updated: {updated}</span>
+      </div>
+      <div className="mt-3 flex flex-col gap-2.5 text-[13.5px] leading-[1.75] text-ink-2">
+        {children}
+      </div>
+    </section>
+  );
+}

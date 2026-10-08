@@ -1,8 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { DocIndex, DocSection, PageBody, PageHero } from "@/components/page-shell";
+import { DocIndex, DocSection, EnglishSummary, PageBody, PageHero } from "@/components/page-shell";
 
-export const metadata: Metadata = { title: "سياسة الخصوصية · آثار مومنتس" };
+export const metadata: Metadata = { title: "سياسة الخصوصية · Privacy Policy · آثار مومنتس ATHAR Moments" };
 
 /**
  * سياسة الخصوصية — شرط المتجرين، ومطلبُ نظام حماية البيانات الشخصية
@@ -15,10 +15,69 @@ export const metadata: Metadata = { title: "سياسة الخصوصية · آث�
 export default function PrivacyPage() {
   return (
     <>
-      <PageHero eyebrow="القانوني" title="سياسة الخصوصية" lead="ما نجمعه، ولماذا، ومن يراه، وكم يبقى — وحقوقك فيه. بلغةٍ تُقرأ لا بفقرةٍ قانونيةٍ منسوخة." />
+      <PageHero eyebrow="القانوني" title="سياسة الخصوصية" lead="ما نجمعه، ولماذا، ومن يراه، وكم يبقى — وحقوقك فيه. بلغةٍ تُقرأ لا بفقرةٍ قانونيةٍ منسوخة.">
+        <p lang="en" dir="ltr" className="mt-3 text-[13px]" style={{ color: "#cfd8df", fontFamily: "var(--font-latin)" }}>
+          ATHAR Moments — Privacy Policy · <a href="#english" className="underline">English summary</a>
+        </p>
+      </PageHero>
       <PageBody narrow>
+        <p className="doc-card text-[14px] leading-[1.9] text-ink-2">
+          تنطبق هذه السياسة على تطبيق <strong>«آثار مومنتس» (ATHAR Moments)</strong> على
+          iPhone وAndroid، وعلى الموقع atharmts.com وتطبيق الويب فيه.
+        </p>
+
+        <EnglishSummary title="ATHAR Moments — Privacy Policy (English summary)" updated="October 2026">
+          <p>
+            This Privacy Policy applies to the <strong>ATHAR Moments</strong> app (&ldquo;ATHAR&rdquo;,
+            &ldquo;we&rdquo;) for iPhone and Android, and to the website atharmts.com. ATHAR Moments is a
+            private social network for a small circle of friends (up to 150). The Arabic text below is the
+            authoritative version.
+          </p>
+          <ul>
+            <li>
+              <strong>What we collect:</strong> your name, email and password (stored hashed with scrypt),
+              member number, and optional city, bio and gender; the moments, comments, reactions, stories,
+              messages, photos, audio and video you post; your location only when you choose to post a place
+              (converted to a place name and city on our server); your friends list; last-seen time; and your
+              IP address and a random app-generated device ID used only to fight fake accounts.
+            </li>
+            <li>
+              <strong>Sign in with Apple, Google, Snapchat or TikTok:</strong> if you choose one of these,
+              we receive only your account identifier and display name (and email, when the provider shares
+              it). We do not post to, read from, or access anything else in your account with that provider.
+            </li>
+            <li>
+              <strong>Why:</strong> only to run the app — deliver your moments to your circle, show your
+              profile, deliver messages, and moderate reported content. No ads, no selling or sharing of data
+              with advertisers.
+            </li>
+            <li>
+              <strong>Who sees your posts:</strong> only your circle, or the friends/groups you choose for each
+              moment. There is no public discovery or search by name or email.
+            </li>
+            <li>
+              <strong>Storage and retention:</strong> data in a PostgreSQL database and files in private
+              S3-compatible storage served only through our permission checks. Stories are deleted after one
+              day, private chats after 30 days, IP/device records after 90 days; moments stay until you delete
+              them or your account.
+            </li>
+            <li>
+              <strong>Your rights:</strong> delete your account at any time in the app or at{" "}
+              <Link href="/delete-account" className="underline">atharmts.com/delete-account</Link> (immediate
+              and permanent); edit your profile in the app; request a copy of your data via{" "}
+              <Link href="/contact" className="underline">atharmts.com/contact</Link>.
+            </li>
+            <li>
+              <strong>Children:</strong> ATHAR Moments is not for children under 13.
+            </li>
+            <li>
+              <strong>Contact:</strong> support@atharmts.com.
+            </li>
+          </ul>
+        </EnglishSummary>
+
         <DocIndex
-          updated="سبتمبر ٢٠٢٦"
+          updated="أكتوبر ٢٠٢٦"
           sections={[
             { id: "privacy-1", title: "ما نجمعه" },
             { id: "privacy-2", title: "لماذا نجمعه" },
@@ -42,6 +101,11 @@ export default function PrivacyPage() {
             <li>
               <strong>ما تنشره</strong>: لحظاتك وتعليقاتك وتفاعلاتك وقصصك
               ورسائلك الخاصة، وصورك وأصواتك ومقاطعك.
+            </li>
+            <li>
+              <strong>الدخول بآبل أو قوقل أو سناب شات أو تيك توك</strong>: إن اخترت
+              أحدها يصلنا معرّفُ حسابك عنده واسمُك الظاهر (وبريدُك إن أعطاه المزوّد)
+              — لا ننشر باسمك هناك، ولا نقرأ شيئاً آخر من حسابك عنده.
             </li>
             <li>
               <strong>موقعك</strong> حين تنشر لحظة مكان وتأذن بذلك: إحداثياتُك

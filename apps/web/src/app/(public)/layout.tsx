@@ -16,8 +16,8 @@ const COLUMNS = [
   {
     title: "القانوني",
     links: [
-      { href: "/privacy", label: "سياسة الخصوصية" },
-      { href: "/terms", label: "شروط الاستخدام" },
+      { href: "/privacy", label: "سياسة الخصوصية · Privacy Policy" },
+      { href: "/terms", label: "شروط الاستخدام · Terms of Service" },
       { href: "/delete-account", label: "حذف الحساب" },
     ],
   },
@@ -25,7 +25,6 @@ const COLUMNS = [
     title: "التواصل",
     links: [
       { href: "/contact", label: "اتصل بنا" },
-      { href: "/beta", label: "انضم إلى فريق التجربة" },
     ],
   },
 ];
@@ -63,7 +62,7 @@ export default async function PublicLayout({ children }: { children: React.React
   return (
     <div className="site">
       <header className="site-head">
-        <div className="wrap flex items-center justify-between py-3">
+        <div className="wrap flex items-center justify-between gap-3 py-3">
           {/*
             الاسم كاملاً حيث يتّسع، ومختصراً حيث لا يتّسع.
 
@@ -88,12 +87,29 @@ export default async function PublicLayout({ children }: { children: React.React
             </span>
           </Link>
 
+          {/*
+            الخصوصية والشروط في الرأس لا في الذيل وحده — **بقرار المالك**: ردّ
+            مراجعُ تيك توك التطبيقَ لأنّهما «لا تُريان بوضوح من الصفحة الرئيسية».
+            وباسمهما الإنجليزيّ معه، فالمراجعُ لا يقرأ العربية.
+          */}
+          <nav className="flex shrink-0 items-center gap-2.5 text-[11.5px] font-semibold sm:gap-5 sm:text-[12.5px]" aria-label="القانوني">
+            <Link href="/privacy" className="whitespace-nowrap opacity-85 hover:opacity-100">
+              <span className="hidden sm:inline">الخصوصية · </span>
+              <span style={{ fontFamily: "var(--font-latin)" }}>Privacy</span>
+            </Link>
+            <Link href="/terms" className="whitespace-nowrap opacity-85 hover:opacity-100">
+              <span className="hidden sm:inline">الشروط · </span>
+              <span style={{ fontFamily: "var(--font-latin)" }}>Terms</span>
+            </Link>
+          </nav>
+
           <Link
             href={download}
-            className="flex h-9 items-center gap-1.5 rounded-full px-4 text-[12.5px] font-bold"
+            className="flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-[12.5px] font-bold sm:px-4"
             style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
           >
-            حمّل التطبيق
+            {/* على شاشةٍ ٣٢٠ يتّسع الرأسُ لـ«حمّل» وحدها بجانب رابطَي الخصوصية والشروط. */}
+            حمّل<span className="hidden sm:inline"> التطبيق</span>
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M19 12H5M11 6l-6 6 6 6" />
             </svg>
