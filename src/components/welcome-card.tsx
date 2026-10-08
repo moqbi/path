@@ -107,7 +107,8 @@ export function WelcomeCard({ data, name, memberNo }: { data: Shown; name: strin
       </div>
 
       <div className="mt-1.5">
-        {steps.map((step) => {
+        {/* ما فُعل يُحذف — **بقرار المالك** — والخادمُ يطويها كلَّها حين تكتمل. */}
+        {steps.filter((step) => !step.done).map((step) => {
           const row = (
             <div className="flex items-center gap-3 py-2.5">
               <span

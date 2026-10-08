@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { Pressable, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { LayoutAnimation, Pressable, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Text } from "./type";
@@ -13,15 +13,19 @@ import { getItem, setItem } from "../lib/store";
 import { ar } from "../lib/format";
 import { colors } from "../theme/tokens";
 
-type Welcome =
-  | { show: false }
-  | {
-      show: true;
-      memberNo: number;
-      supportId: string | null;
-      supportName: string | null;
-      steps: { avatar: boolean; friend: boolean; moment: boolean; support: boolean };
-    };
+type Steps = { avatar: boolean; friend: boolean; moment: boolean; support: boolean };
+type Shown = {
+  show: true;
+  memberNo: number;
+  supportId: string | null;
+  supportName: string | null;
+  steps: Steps;
+};
+type Welcome = { show: false } | Shown;
+
+// ما فُعل للتوّ يبقى مشطوباً لحظةً ليُرى ثمّ يُطوى.
+const STRIKE_MS = 1400;
+const fold = () => LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
 
 // لكلّ حسابٍ مفتاحُه — **بقرار المالك**: كان واحداً للجهاز، فمن طواها بحسابٍ طُويت عن
 // كلّ حسابٍ يدخل الجهازَ بعده. والقديمُ (`athr.welcome.closed`) لا يُقرأ.
@@ -31,6 +35,11 @@ const keyOf = (id: string) => `athr.welcome.closed.${id}`;
  * بطاقةُ الترحيب أعلى اللحظات (القاعدة ٢٤٦) — **بقرار المالك**: الحسابُ الجديد
  * خطُّه فارغ، فتقول له البطاقةُ ما يفعل خطوةً خطوة، وكلُّ خطوةٍ زرٌّ يفعلها.
  * وما فُعل يُشطب من القاعدة لا من الجهاز، و«×» يطويها هنا.
+ *
+ * **وما شُطب يُحذف، وبإكمالها تختفي** — **بقرار المالك**: الخطوةُ التي فُعلت وهو
+ * يرى البطاقة (أو عاد إليها للتوّ) تُشطب لحظةً ثمّ تُطوى، وما كان مفعولاً قبل لا
+ * يُرسم أصلاً. والخادمُ يردّ `show: false` حين تكتمل، فتُرسم آخرُ نسخةٍ مشطوبةً
+ * كلُّها لحظةً ثمّ تختفي — لا تختفي فجأةً بلا أن يرى أنّه أكملها.
  */
 export function WelcomeCard() {
   const router = useRouter();
@@ -60,8 +69,40 @@ export function WelcomeCard() {
       .then((value) => setClosed(value === "1"));
   }, [meId]);
 
-  const data = welcome.data;
-  if (!me || closed !== false || !data?.show) return null;
+  // آخرُ ما عُرض، ومعه ما شوهد غيرَ مفعول: من هنا يُعرف ما فُعل «للتوّ».
+  const last = useRef<Shown | null>(null);
+  const pending = useRef<Partial<Record<keyof Steps, boolean>>>({});
+  const [leaving, setLeaving] = useState<Set<string>>(new Set());
+
+  const fresh = welcome.data;
+  const completed = Boolean(fresh && !fresh.show && last.current);
+  const data: Shown | null = fresh?.show
+    ? fresh
+    : completed && last.current
+      ? { ...last.current, steps: { avatar: true, friend: true, moment: true, support: true } }
+      : null;
+
+  useEffect(() => {
+    if (!data) return;
+    const just: string[] = [];
+    for (const key of Object.keys(data.steps) as (keyof Steps)[]) {
+      if (data.steps[key] && pending.current[key]) just.push(key);
+      pending.current[key] = !data.steps[key];
+    }
+    if (fresh?.show) last.current = fresh;
+    if (!just.length) return;
+    setLeaving((prev) => new Set([...prev, ...just]));
+    setTimeout(() => {
+      fold();
+      setLeaving((prev) => new Set([...prev].filter((key) => !just.includes(key))));
+      // اكتملت: آخرُ خطوةٍ رُئيت مشطوبة، فتذهب البطاقة.
+      if (completed) last.current = null;
+    }, STRIKE_MS);
+    // بلا إلغاءٍ عند جلبٍ جديد: مؤقّتٌ أُلغي يترك الخطوةَ مشطوبةً لا تُطوى أبداً.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fresh]);
+
+  if (!me || closed !== false || !data) return null;
 
   const close = () => {
     setClosed(true);
@@ -103,6 +144,11 @@ export function WelcomeCard() {
     },
   ];
   const done = steps.filter((step) => step.done).length;
+  // `pending` يُحدَّث بعد الرسم، فما فُعل للتوّ يُرسم مشطوباً من أوّل رسمةٍ بلا ومضة.
+  const shown = steps.filter(
+    (step) => !step.done || leaving.has(step.key) || pending.current[step.key as keyof Steps],
+  );
+  if (!shown.length) return null;
 
   return (
     <View
@@ -132,7 +178,7 @@ export function WelcomeCard() {
       </View>
 
       <View style={{ marginTop: 6 }}>
-        {steps.map((step) => (
+        {shown.map((step) => (
           <Pressable
             key={step.key}
             disabled={step.done}
