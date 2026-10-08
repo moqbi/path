@@ -51,15 +51,7 @@ export type Weekly = {
 
 export async function weeklyFor(userId: string, now = new Date()): Promise<Weekly | null> {
   const from = new Date(now.getTime() - WEEK);
-  const [ids, blocked, where, self] = await Promise.all([
-    circleIds(userId),
-    blockedWith(userId),
-    visibleWhere(userId),
-    prisma.user.findUnique({ where: { id: userId }, select: { isOpen: true } }),
-  ]);
-  // الحسابُ المفتوح يقبل كلَّ من أضافه (القاعدة ٢٢١)، فـ«أصدقاؤه الجدد» و«من انضمّ من
-  // دائرته» كلُّ من نزّل التطبيقَ هذا الأسبوع — غرباءُ لا دائرة. فالقسمان لا يُعرضان له.
-  const open = Boolean(self?.isOpen);
+  const [ids, blocked, where] = await Promise.all([circleIds(userId), blockedWith(userId), visibleWhere(userId)]);
   const hidden = new Set(blocked);
   const circle = ids.filter((id) => !hidden.has(id));
 
@@ -145,8 +137,8 @@ export async function weeklyFor(userId: string, now = new Date()): Promise<Weekl
       .map(([id, city]) => ({ person: byId.get(id)!, city }))
       .filter((row) => row.person)
       .slice(0, 8),
-    joined: open ? [] : joined,
-    newFriends: open ? [] : friendIds.map((id) => byId.get(id)).filter((person): person is Person => Boolean(person)).slice(0, 8),
+    joined,
+    newFriends: friendIds.map((id) => byId.get(id)).filter((person): person is Person => Boolean(person)).slice(0, 8),
     topMoment:
       top && top.score > 0 && byId.get(top.row.authorId)
         ? {
