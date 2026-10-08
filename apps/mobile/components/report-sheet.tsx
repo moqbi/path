@@ -4,6 +4,7 @@ import { Text, TextInput } from "./type";
 import { useMutation } from "@tanstack/react-query";
 import { CloseIcon, ShieldIcon } from "./icons";
 import { api } from "../lib/api";
+import { useKeyboardInset } from "../lib/keyboard";
 import { colors } from "../theme/tokens";
 
 /**
@@ -78,6 +79,8 @@ export function ReportSheet({
   const [reason, setReason] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [said, setSaid] = useState<{ ok?: string; error?: string } | null>(null);
+  // البطاقةُ تصعد فوق الكيبورد بقدره، وإلّا غطّى خانةَ الشرح وزرَّ الإرسال.
+  const lift = useKeyboardInset();
 
   const send = useMutation({
     mutationFn: () =>
@@ -94,7 +97,7 @@ export function ReportSheet({
     <Modal transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: "rgba(14,26,36,.55)" }} onPress={onClose} />
 
-      <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 28 }}>
+      <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 28, marginBottom: lift }}>
         <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={{ color: colors.ink, fontSize: 15.5, fontWeight: "700" }}>إبلاغ</Text>
