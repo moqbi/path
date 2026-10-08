@@ -438,7 +438,7 @@ export default function Circle() {
                 <NameTag isPlus={friend.isPlus} tag={friend.tag} size={10} />
               </View>
               <Text style={{ color: colors.faint, fontSize: 11.5 }}>
-                {[friend.city, presence(friend.lastSeenAt)].filter(Boolean).join(" · ")}
+                {[friend.city, presence(friend.lastSeenAt)].filter(Boolean).join("  |  ")}
               </Text>
             </View>
           </Pressable>

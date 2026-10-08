@@ -151,6 +151,8 @@ export const useCircle = () =>
         cap: number;
         left: number;
       }>("/v1/circle"),
+    // «متصل» يتبدّل كل دقيقة، فالقائمةُ تُسأل كل دقيقة ما دامت ظاهرة.
+    refetchInterval: 60_000,
   });
 
 export type Note = {
