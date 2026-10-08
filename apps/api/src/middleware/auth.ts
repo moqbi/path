@@ -3,6 +3,7 @@ import { prisma } from "@athar/db";
 import { readAccess, type Claims } from "../lib/tokens";
 import { forbidden, unauthorized } from "../lib/errors";
 import { recordAccess } from "../services/access";
+import { passed } from "../lib/throttle";
 
 /**
  * الهوية من التوكن وحده.
@@ -28,8 +29,25 @@ export const requireAuth: MiddlewareHandler = async (c, next) => {
   }
   // من أين دخل — لكشف الحسابات المرتبطة (القاعدة ١٩٤).
   recordAccess(c, c.get("user").sub);
+  markSeen(c.get("user").sub);
   await next();
 };
+
+/**
+ * الحضورُ يُختم من كل طلبٍ موثَّق، مرّةً كل دقيقة لكل حساب.
+ *
+ * كان يُختم في وصلة `/v1/live` وحدها — والجوّالُ لا يفتحها — فبقي «آخر ظهور»
+ * لمن يستعمل التطبيق على آخر مرّةٍ فتح فيها الموقع: «قبل ١١ يوماً» لمن كان
+ * هنا اليوم، و«متصل» لا يظهر لمتصل. والتطبيقُ المفتوح يسأل الخادمَ كل دقيقة
+ * (عدّادا الشارة)، فيبقى الختمُ طازجاً ما دام مفتوحاً. والمفتاحُ مفتاحُ الوصلة
+ * نفسه فلا يُكتبان معاً، والفشلُ يُبتلع: الحضورُ زينةٌ لا تُسقط طلباً.
+ */
+function markSeen(userId: string): void {
+  if (!passed(`seen:${userId}`, 60_000)) return;
+  void prisma.user
+    .update({ where: { id: userId }, data: { lastSeenAt: new Date() } })
+    .catch(() => undefined);
+}
 
 /**
  * المشرف يُقرأ من صفّه لا من توكنه.

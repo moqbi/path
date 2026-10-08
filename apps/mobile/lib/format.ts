@@ -84,14 +84,25 @@ export function membership(from: string): string {
   return count(Math.floor(days / 365.25), "سنة", "سنتان", "سنوات", "سنة");
 }
 
+/**
+ * «متصل الآن» أو «آخر ظهور …» — من ختم آخر طلبٍ للخادم (`requireAuth`).
+ * المتصلُ من ظهر في آخر ثلاث دقائق، والتطبيقُ المفتوح يسأل الخادمَ كل دقيقة
+ * فيبقى ختمُه طازجاً. وما بعدها بساعته لا بعددٍ تقريبيّ: «اليوم ٩:١٥ م»،
+ * و«أمس»، ثمّ اسمُ اليوم في الأسبوع، ثمّ التاريخ.
+ */
 export function presence(lastSeenAt: string | null | undefined): string {
   if (!lastSeenAt) return "";
-  const minutes = Math.floor((Date.now() - new Date(lastSeenAt).getTime()) / 60000);
+  const seen = new Date(lastSeenAt);
+  const minutes = Math.floor((Date.now() - seen.getTime()) / 60000);
   if (minutes < 3) return "متصل الآن";
-  if (minutes < 60) return `قبل ${ar(minutes)} دقيقة`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `قبل ${ar(hours)} ساعة`;
-  return `قبل ${ar(Math.floor(hours / 24))} يوم`;
+  if (minutes < 60) return `آخر ظهور قبل ${count(minutes, "دقيقة", "دقيقتين", "دقائق", "دقيقة")}`;
+
+  const day = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const days = Math.round((day(new Date()) - day(seen)) / 86_400_000);
+  if (days <= 0) return `آخر ظهور اليوم ${timeOfDay(seen)}`;
+  if (days === 1) return `آخر ظهور أمس ${timeOfDay(seen)}`;
+  if (days < 7) return `آخر ظهور ${WEEKDAYS[seen.getDay()]}`;
+  return `آخر ظهور ${ar(seen.getDate())} ${MONTHS[seen.getMonth()]}`;
 }
 
 /** مدّةُ الشراء كما يقرؤها المشتري: «يوم»، «يومان»، «٥ أيام»، «أسبوع»، «شهر». */
