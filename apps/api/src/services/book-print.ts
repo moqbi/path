@@ -127,7 +127,12 @@ html, body { direction: rtl; background: #FBF8F1; color: #182830;
   -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 body { counter-reset: folio; }
 h1, h2, .display { font-family: "Tajawal", "IBM Plex Sans Arabic", sans-serif; }
-.page { width: 148mm; min-height: 210mm; padding: 16mm 14mm 18mm; page-break-after: always; break-after: page;
+/*
+  الصفحةُ أقصرُ من ورقها بشعرة: الجوّال يطبع على ٥٩٥ نقطة (٢٠٩٫٩ مم)، وصفحةٌ
+  أدناها ٢١٠ مم كانت تفيض عنه بجزءٍ من المليمتر فيُدفع إلى ورقةٍ بيضاء بعد كلّ صفحة.
+  والأرضيةُ على الجسم بلونها، فلا يُرى الفرق في ذيل الصفحة الكريميّة.
+*/
+.page { width: 148mm; min-height: 209.5mm; padding: 16mm 14mm 18mm; page-break-after: always; break-after: page;
   position: relative; background: #FBF8F1; }
 .page:last-child { page-break-after: auto; break-after: auto; }
 .folio { counter-increment: folio; }
