@@ -66,12 +66,18 @@ export async function morningBell(now = new Date()): Promise<number> {
 
       try {
         const message = await compose(user.id, today, recapDue && user.recapPushedYear !== recapYear ? recapYear : null);
-        if (!message) continue;
-        if (message.recap) {
-          await prisma.user.update({ where: { id: user.id }, data: { recapPushedYear: message.recap } });
+        if (message) {
+          if (message.recap) {
+            await prisma.user.update({ where: { id: user.id }, data: { recapPushedYear: message.recap } });
+          }
+          await push({ userId: user.id, kind: "MEMORY", title: message.title, body: message.body, path: message.path });
+          sent += 1;
         }
-        await push({ userId: user.id, kind: "MEMORY", title: message.title, body: message.body, path: message.path });
-        sent += 1;
+        const occasion = await occasionBell(user.id, today);
+        if (occasion) {
+          await push({ userId: user.id, kind: "MEMORY", title: occasion.title, body: occasion.body, path: "/" });
+          sent += 1;
+        }
       } catch (problem) {
         console.error("✗ جرس الصباح", user.id, problem);
       }
@@ -99,19 +105,10 @@ async function compose(userId: string, today: ReturnType<typeof riyadhDay>, reca
   */
   if (riyadhWeekday() === 5) {
     const week = await weeklyFor(userId);
-    if (week) {
-      /*
-        ومناسبةُ صداقةٍ تقع يومَ الجمعة تُذكر في الجرس نفسه — **بقرار المالك**:
-        كانت تُترك للبطاقة وحدها، فيمرّ «مرّ شهر على صداقتك» بلا تنبيه.
-      */
-      const occasions = await occasionsFor(userId, today);
-      const occasion = occasions.find((one) => one.kind === "FRIENDVERSARY") ?? occasions[0];
-      const body = occasion ? `${weeklySentence(week)} — و${occasion.title}` : weeklySentence(week);
-      return { recap: null, title: "أسبوعك في دائرتك", body, path: "/" };
-    }
+    if (week) return { recap: null, title: "أسبوعك في دائرتك", body: weeklySentence(week), path: "/" };
   }
 
-  const [memories, occasions] = await Promise.all([memoriesFor(userId, today), occasionsFor(userId, today)]);
+  const memories = await memoriesFor(userId, today);
   const first = memories[0];
   if (first) {
     // الجملةُ الأوضح أوّلاً: «كنت في مقهى الشرفة» تقول أكثر من «نشرت صورة».
@@ -126,18 +123,24 @@ async function compose(userId: string, today: ReturnType<typeof riyadhDay>, reca
       months: first.months,
     });
     const more = memories.reduce((sum, group) => sum + group.moments.length, 0) - 1;
-    const tail = occasions.length ? `، و${occasions[0].title}` : more > 0 ? `، و${ar(more)} ${more === 1 ? "ذكرى أخرى" : "ذكريات أخرى"}` : "";
+    const tail = more > 0 ? `، و${ar(more)} ${more === 1 ? "ذكرى أخرى" : "ذكريات أخرى"}` : "";
     return { recap: null, title: "في مثل هذا اليوم", body: `${sentence}${tail}`, path: "/" };
   }
 
-  const occasion = occasions.find((one) => one.kind === "FRIENDVERSARY") ?? occasions[0];
-  if (occasion) {
-    return {
-      recap: null,
-      title: occasion.kind === "STREAK" ? "سلسلة تفاعل" : "مناسبة صداقة",
-      body: occasion.title,
-      path: "/",
-    };
-  }
   return null;
+}
+
+/**
+ * مناسبةُ الصداقة جرسٌ وحدها — **بقرار المالك**: لا تُطوى في جرس الذكرى ولا
+ * تُحجب بجرس الجمعة. يومُها يومٌ يُنبَّه له صاحبُه فيفتح التطبيق ويرى بطاقتها.
+ */
+async function occasionBell(userId: string, today: ReturnType<typeof riyadhDay>) {
+  const occasions = await occasionsFor(userId, today);
+  const occasion = occasions.find((one) => one.kind === "FRIENDVERSARY") ?? occasions[0];
+  if (!occasion) return null;
+  const more = occasions.length - 1;
+  return {
+    title: occasion.kind === "STREAK" ? "سلسلة تفاعل" : "مناسبة صداقة",
+    body: more > 0 ? `${occasion.title}، و${ar(more)} ${more === 1 ? "مناسبة أخرى" : "مناسبات أخرى"}` : occasion.title,
+  };
 }
