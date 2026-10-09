@@ -56,7 +56,7 @@ export function StoryStrip({ rings, meId }: { rings: StoryRing[]; meId: string }
         >
           <PlusIcon size={22} color={colors.clayInk} />
         </Pressable>
-        <Text numberOfLines={1} style={{ color: colors.muted, fontSize: 10.5, textAlign: "center" }}>
+        <Text numberOfLines={1} style={{ color: colors.groundMuted, fontSize: 10.5, textAlign: "center" }}>
           قصة جديدة
         </Text>
       </View>
@@ -91,7 +91,7 @@ function Ring({ ring, label }: { ring: StoryRing; label: string }) {
           justifyContent: "center",
           // التدرّج حلقةً: لونٌ واحد يقوم مقامه — والفرق بين «جديد»
           // و«مقروء» يبقى ظاهراً وهو المقصود.
-          backgroundColor: ring.fresh ? colors.clay : colors.line,
+          backgroundColor: ring.fresh ? colors.clay : colors.groundLine,
         }}
       >
         <View style={{ width: "100%", height: "100%", borderRadius: 29, backgroundColor: colors.paper, padding: 2, alignItems: "center", justifyContent: "center" }}>
@@ -101,13 +101,13 @@ function Ring({ ring, label }: { ring: StoryRing; label: string }) {
         {ring.private ? (
           <View
             accessibilityLabel="قصة خاصة"
-            style={{ position: "absolute", bottom: -1, left: -1, width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center", backgroundColor: colors.night, borderWidth: 2, borderColor: colors.paper }}
+            style={{ position: "absolute", bottom: -1, left: -1, width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay, borderWidth: 2, borderColor: colors.paper }}
           >
-            <LockIcon size={11} color="#f7f5ef" />
+            <LockIcon size={11} color={colors.onBrand} />
           </View>
         ) : null}
       </View>
-      <Text numberOfLines={1} style={{ color: colors.ink2, fontSize: 10.5, textAlign: "center" }}>
+      <Text numberOfLines={1} style={{ color: colors.groundInk2, fontSize: 10.5, textAlign: "center" }}>
         {label}
       </Text>
     </Pressable>
