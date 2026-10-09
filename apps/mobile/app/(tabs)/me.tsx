@@ -230,10 +230,10 @@ export default function Me() {
             <View style={{ alignItems: "center", paddingHorizontal: 20 }}>
               {/* أربعة أرقام بأيقوناتها. */}
               <View style={{ flexDirection: "row", alignItems: "stretch", maxWidth: 330, width: "100%", marginTop: 14, marginBottom: 6 }}>
-                <Stat first icon={<BookIcon size={14} color={colors.groundInk2} />} value={ar(s?.moments ?? 0)} label="لحظة" />
-                <Stat first={false} icon={<WithIcon size={14} color={colors.groundInk2} />} value={ar(s?.friends ?? 0)} label="صديق" />
-                <Stat first={false} icon={<GiftIcon size={14} color={colors.groundInk2} />} value={ar(s?.sent ?? 0)} label="أهديت" />
-                <Stat first={false} icon={<GiftIcon size={14} color={colors.groundInk2} />} value={ar(s?.got ?? 0)} label="أُهدي لك" />
+                <Stat first icon={<BookIcon size={14} color={colors.ink2} />} value={ar(s?.moments ?? 0)} label="لحظة" />
+                <Stat first={false} icon={<WithIcon size={14} color={colors.ink2} />} value={ar(s?.friends ?? 0)} label="صديق" />
+                <Stat first={false} icon={<GiftIcon size={14} color={colors.ink2} />} value={ar(s?.sent ?? 0)} label="أهديت" />
+                <Stat first={false} icon={<GiftIcon size={14} color={colors.ink2} />} value={ar(s?.got ?? 0)} label="أُهدي لك" />
               </View>
             </View>
 

@@ -61,7 +61,7 @@ const PIN_MAX = 3;
 /** خلاصةُ آخر رسالة: الصوت والصورة يُقالان لا يُتركان فارغين. */
 function Last({ row, meId }: { row: Row; meId: string }) {
   const last = row.last;
-  if (!last) return <Text style={{ color: colors.faint, fontSize: 12 }}>لا رسائل بعد</Text>;
+  if (!last) return <Text style={{ color: colors.groundFaint, fontSize: 12 }}>لا رسائل بعد</Text>;
 
   const mine = last.senderId === meId;
   const text =
@@ -74,9 +74,9 @@ function Last({ row, meId }: { row: Row; meId: string }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
       {mine ? <Ticks state={receiptOf(last)} size={14} /> : null}
-      {last.kind === "VOICE" ? <MicIcon size={12} color={colors.muted} /> : null}
-      {last.kind === "PHOTO" ? <CameraIcon size={12} color={colors.muted} /> : null}
-      <Text numberOfLines={1} style={{ flex: 1, color: colors.muted, fontSize: 12 }}>
+      {last.kind === "VOICE" ? <MicIcon size={12} color={colors.groundMuted} /> : null}
+      {last.kind === "PHOTO" ? <CameraIcon size={12} color={colors.groundMuted} /> : null}
+      <Text numberOfLines={1} style={{ flex: 1, color: colors.groundMuted, fontSize: 12 }}>
         {text}
       </Text>
     </View>
@@ -244,14 +244,14 @@ export default function Messages() {
                   <GroupFace photoMediaId={row.photoMediaId} size={46} />
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                      <Text numberOfLines={1} style={{ color: colors.ink, fontSize: 14, fontWeight: "600", flexShrink: 1, writingDirection: "auto" }}>
+                      <Text numberOfLines={1} style={{ color: colors.groundInk, fontSize: 14, fontWeight: "600", flexShrink: 1, writingDirection: "auto" }}>
                         {row.name}
                       </Text>
-                      <Text style={{ color: colors.faint, fontSize: 10.5 }}>
+                      <Text style={{ color: colors.groundFaint, fontSize: 10.5 }}>
                         {row.last ? relative(new Date(row.last.createdAt)) : `${ar(row.members)} عضو`}
                       </Text>
                     </View>
-                    <Text numberOfLines={1} style={{ color: colors.muted, fontSize: 12 }}>
+                    <Text numberOfLines={1} style={{ color: colors.groundMuted, fontSize: 12 }}>
                       {row.last
                         ? `${row.last.senderId === me?.id ? "أنت" : row.last.sender.name}: ${row.last.kind === "PHOTO" ? "صورة" : row.last.body}`
                         : "لا رسائل بعد"}
@@ -273,7 +273,7 @@ export default function Messages() {
         ListFooterComponent={
           others.length > 0 ? (
             <View style={{ paddingTop: 8 }}>
-              <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600", paddingHorizontal: 20, paddingBottom: 4 }}>
+              <Text style={{ color: colors.groundMuted, fontSize: 12, fontWeight: "600", paddingHorizontal: 20, paddingBottom: 4 }}>
                 أصدقاء بلا محادثة
               </Text>
               {others.map((person) => (
@@ -283,7 +283,7 @@ export default function Messages() {
                   style={{ flexDirection: "row", alignItems: "center", gap: 11, paddingHorizontal: 20, paddingVertical: 10 }}
                 >
                   <Avatar name={person.name} size={40} mediaId={person.avatarMediaId} frame={person.frame} charm={person.charm} />
-                  <Text numberOfLines={1} style={{ flex: 1, color: colors.ink, fontSize: 14, fontWeight: "600", writingDirection: "auto" }}>
+                  <Text numberOfLines={1} style={{ flex: 1, color: colors.groundInk, fontSize: 14, fontWeight: "600", writingDirection: "auto" }}>
                     {person.name}
                   </Text>
                   <Text style={{ color: colors.clayInk, fontSize: 12.5, fontWeight: "700" }}>ابدأ محادثة</Text>
@@ -342,13 +342,13 @@ export default function Messages() {
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <Text
                   numberOfLines={1}
-                  style={{ color: colors.ink, fontSize: 14, fontWeight: "600", flexShrink: 1, writingDirection: "auto" }}
+                  style={{ color: colors.groundInk, fontSize: 14, fontWeight: "600", flexShrink: 1, writingDirection: "auto" }}
                 >
                   {item.other.name}
                 </Text>
                 <NameTag isPlus={item.other.isPlus} tag={item.other.tag} size={10} />
                 {item.pinned ? <StarIcon size={12} color={colors.gold} /> : null}
-                <Text style={{ color: colors.faint, fontSize: 10.5 }}>
+                <Text style={{ color: colors.groundFaint, fontSize: 10.5 }}>
                   {item.last ? relative(new Date(item.last.createdAt)) : presence(item.other.lastSeenAt)}
                 </Text>
               </View>
@@ -371,13 +371,13 @@ export default function Messages() {
             <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
           ) : groups.length > 0 ? null : needle ? (
             others.length > 0 ? null : (
-              <Text style={{ color: colors.muted, fontSize: 13.5, textAlign: "center", marginTop: 40 }}>
+              <Text style={{ color: colors.groundMuted, fontSize: 13.5, textAlign: "center", marginTop: 40 }}>
                 لا أحد بهذا الاسم في دائرتك.
               </Text>
             )
           ) : (
             <View style={{ marginTop: 50, paddingHorizontal: 40 }}>
-              <Text style={{ color: colors.muted, fontSize: 13.5, textAlign: "center", lineHeight: 24 }}>
+              <Text style={{ color: colors.groundMuted, fontSize: 13.5, textAlign: "center", lineHeight: 24 }}>
                 لا محادثات بعد. افتح ملف صديقٍ وابدأ منه.
               </Text>
             </View>

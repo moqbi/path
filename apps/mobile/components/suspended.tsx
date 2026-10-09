@@ -28,7 +28,7 @@ export function Suspended({ until, reason }: { until: string; reason: string | n
   }).format(new Date(until));
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.paper }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.groundSolid }}>
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 28, direction: "rtl" }}>
         <View style={{ alignItems: "center" }}>
           <AthrMark size={64} />

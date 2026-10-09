@@ -32,6 +32,9 @@
   --color-faint: #8b96a1;
   --color-line: #d8d2c2;
 
+  /* أرضيةُ الشاشة — `paper` لحقول البطاقات، ويفترقان في ثيمٍ داكن الأرضية. */
+  --color-ground: #eae5d9;
+
   /* حبرُ ما يُكتب على الأرضية لا على بطاقة — الثيمُ يفصله عن حبر البطاقة. */
   --color-ground-ink: #14212b;
   --color-ground-ink-2: #3d4a55;
@@ -81,12 +84,12 @@
 }
 
 html {
-  background: var(--color-paper);
+  background: var(--color-ground);
   color-scheme: light;
 }
 
 body {
-  background: var(--color-paper);
+  background: var(--color-ground);
   color: var(--color-ink);
   font-family: var(--font-body);
   font-size: 15px;
@@ -171,7 +174,7 @@ h3 {
   max-width: 430px;
   margin-inline: auto;
   height: 100dvh;
-  background: var(--color-paper);
+  background: var(--color-ground);
   position: relative;
 }
 

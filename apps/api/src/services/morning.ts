@@ -99,7 +99,16 @@ async function compose(userId: string, today: ReturnType<typeof riyadhDay>, reca
   */
   if (riyadhWeekday() === 5) {
     const week = await weeklyFor(userId);
-    if (week) return { recap: null, title: "أسبوعك في دائرتك", body: weeklySentence(week), path: "/" };
+    if (week) {
+      /*
+        ومناسبةُ صداقةٍ تقع يومَ الجمعة تُذكر في الجرس نفسه — **بقرار المالك**:
+        كانت تُترك للبطاقة وحدها، فيمرّ «مرّ شهر على صداقتك» بلا تنبيه.
+      */
+      const occasions = await occasionsFor(userId, today);
+      const occasion = occasions.find((one) => one.kind === "FRIENDVERSARY") ?? occasions[0];
+      const body = occasion ? `${weeklySentence(week)} — و${occasion.title}` : weeklySentence(week);
+      return { recap: null, title: "أسبوعك في دائرتك", body, path: "/" };
+    }
   }
 
   const [memories, occasions] = await Promise.all([memoriesFor(userId, today), occasionsFor(userId, today)]);

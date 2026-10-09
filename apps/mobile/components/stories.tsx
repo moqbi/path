@@ -94,14 +94,14 @@ function Ring({ ring, label }: { ring: StoryRing; label: string }) {
           backgroundColor: ring.fresh ? colors.clay : colors.groundLine,
         }}
       >
-        <View style={{ width: "100%", height: "100%", borderRadius: 29, backgroundColor: colors.paper, padding: 2, alignItems: "center", justifyContent: "center" }}>
+        <View style={{ width: "100%", height: "100%", borderRadius: 29, backgroundColor: colors.groundSolid, padding: 2, alignItems: "center", justifyContent: "center" }}>
           <Avatar name={ring.name} size={52} mediaId={ring.avatarMediaId} frame={ring.frame} />
         </View>
         {/* قصّةٌ خاصّة: قفلٌ على الحلقة (القاعدة ٢١٩). */}
         {ring.private ? (
           <View
             accessibilityLabel="قصة خاصة"
-            style={{ position: "absolute", bottom: -1, left: -1, width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay, borderWidth: 2, borderColor: colors.paper }}
+            style={{ position: "absolute", bottom: -1, left: -1, width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay, borderWidth: 2, borderColor: colors.groundSolid }}
           >
             <LockIcon size={11} color={colors.onBrand} />
           </View>
