@@ -85,12 +85,12 @@ export default async function SubscribePage() {
           <span className="latin text-[12px] font-bold text-gold">ATHAR+</span>
         </span>
 
-        <h1 className="mb-2.5 text-[30px] font-bold leading-snug">
+        <h1 className="mb-2.5 text-[30px] font-bold leading-snug text-ground-ink">
           أصدقاؤك يبقون ١٥٠
           <br />
           <span className="brand-text">وكل شي غيرها يكبر</span>
         </h1>
-        <p className="mb-5 text-[13px] leading-loose text-muted">
+        <p className="mb-5 text-[13px] leading-loose text-ground-muted">
           لا نبيع أصدقاء إضافيين. نبيع ذاكرة أطول وتعبيراً أوسع.
         </p>
       </div>
@@ -105,18 +105,18 @@ export default async function SubscribePage() {
               {perk.icon}
             </span>
             <div className="grow">
-              <p className="mb-0.5 text-[14px] font-semibold">{perk.title}</p>
-              <p className="text-[12px] leading-relaxed text-muted">{perk.body}</p>
+              <p className="mb-0.5 text-[14px] font-semibold text-ground-ink">{perk.title}</p>
+              <p className="text-[12px] leading-relaxed text-ground-muted">{perk.body}</p>
             </div>
           </div>
         ))}
 
         {user.isPlus ? (
           <form action={cancelPlus} className="pt-4">
-            <p className="mb-3 text-[13px] text-muted">أنت مشترك في آثار+ حالياً.</p>
+            <p className="mb-3 text-[13px] text-ground-muted">أنت مشترك في آثار+ حالياً.</p>
             <button
               type="submit"
-              className="w-full rounded-xl border border-line text-[14px] font-semibold text-muted"
+              className="w-full rounded-xl border border-ground-line text-[14px] font-semibold text-ground-muted"
               style={{ height: 50 }}
             >
               إلغاء الاشتراك
@@ -127,7 +127,7 @@ export default async function SubscribePage() {
             <form action={monthly} className="grow">
               <button
                 type="submit"
-                className="w-full rounded-2xl border border-line px-3 py-4 text-center"
+                className="w-full rounded-2xl border border-line bg-card px-3 py-4 text-center"
               >
                 <span className="mb-1.5 block text-[11.5px] text-muted">شهري</span>
                 <span className="block text-[26px] font-bold">٢٥</span>
@@ -159,7 +159,7 @@ export default async function SubscribePage() {
         )}
       </main>
 
-      <p className="px-6 pb-8 pt-5 text-center text-[10.5px] leading-loose text-faint">
+      <p className="px-6 pb-8 pt-5 text-center text-[10.5px] leading-loose text-ground-faint">
         في النسخة الحقيقية يمر الدفع عبر متجر آبل أو جوجل إلزامياً · هنا تفعيل تجريبي فقط
       </p>
     </div>

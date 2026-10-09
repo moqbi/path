@@ -128,13 +128,17 @@ html, body { direction: rtl; background: #FBF8F1; color: #182830;
 body { counter-reset: folio; }
 h1, h2, .display { font-family: "Tajawal", "IBM Plex Sans Arabic", sans-serif; }
 /*
-  الصفحةُ أقصرُ من ورقها بشعرة: الجوّال يطبع على ٥٩٥ نقطة (٢٠٩٫٩ مم)، وصفحةٌ
-  أدناها ٢١٠ مم كانت تفيض عنه بجزءٍ من المليمتر فيُدفع إلى ورقةٍ بيضاء بعد كلّ صفحة.
-  والأرضيةُ على الجسم بلونها، فلا يُرى الفرق في ذيل الصفحة الكريميّة.
+  لا صفحةَ تملأ ورقتها: الجوّالُ يرسم المستند شريطاً طويلاً ويقطعه على ارتفاع الورقة،
+  وقياسُ الورقة بوحدات CSS يتغيّر بتصغيرٍ لا نملكه — فصفحةٌ تساويها تفيض بشعرةٍ
+  وتجرّ ورقةً بيضاء (جُرّبت ٢١٠ ثمّ ٢٠٩٫٥ وبقي). فكلُّ صفحةٍ **تبدأ** ورقةً جديدة
+  (`break-before`) ولا تُجبر ما بعدها، وأدناها ١٩٥ مم بفُسحةٍ واسعة؛ وما بقي من
+  الورقة كريميٌّ على كريميّ لا يُرى. والصفحاتُ الداكنة تمدّ لونها بظلٍّ تحتها حتى
+  حافّة الورقة، والصفحةُ بعدها تُرسم فوقه.
 */
-.page { width: 148mm; min-height: 209.5mm; padding: 16mm 14mm 18mm; page-break-after: always; break-after: page;
+.page { width: 148mm; min-height: 195mm; padding: 16mm 14mm 18mm; break-before: page; page-break-before: always;
   position: relative; background: #FBF8F1; }
-.page:last-child { page-break-after: auto; break-after: auto; }
+.page:first-child { break-before: auto; page-break-before: auto; }
+.night { height: 195mm; overflow: hidden; box-shadow: 0 18mm 0 0 #08121a; }
 .folio { counter-increment: folio; }
 .folio::after { content: counter(folio, arabic-indic); position: absolute; bottom: 9mm; left: 14mm;
   font-size: 9px; color: #9aa4a8; letter-spacing: .5px; }
