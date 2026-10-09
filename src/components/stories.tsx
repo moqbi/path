@@ -27,7 +27,7 @@ export function StoryStrip({
       <div className="flex w-[68px] shrink-0 flex-col items-center gap-1.5">
         {/* الاختيار ثم المعاينة والفلتر ثم النشر — لا رفعٌ فوريّ. */}
         <StoryComposer />
-        <span className="w-full truncate text-center text-[10.5px] text-muted">قصة جديدة</span>
+        <span className="w-full truncate text-center text-[10.5px] text-ground-muted">قصة جديدة</span>
       </div>
 
       {mine ? <Ring ring={mine} label="قصتي" /> : null}
@@ -50,7 +50,7 @@ function Ring({ ring, label }: { ring: StoryRing; label: string }) {
           padding: 2.5,
           background: ring.fresh
             ? "linear-gradient(140deg,#f6b93b,#ff7a5a)"
-            : "var(--color-line)",
+            : "var(--color-ground-line)",
         }}
       >
         <span
@@ -64,13 +64,13 @@ function Ring({ ring, label }: { ring: StoryRing; label: string }) {
           <span
             aria-label="قصة خاصة"
             className="absolute bottom-0 left-0 flex h-5 w-5 items-center justify-center rounded-full"
-            style={{ background: "var(--color-night)", color: "#f7f5ef", border: "2px solid var(--color-paper)" }}
+            style={{ background: "var(--color-clay)", color: "var(--color-on-brand)", border: "2px solid var(--color-paper)" }}
           >
             <LockIcon size={11} />
           </span>
         ) : null}
       </span>
-      <span className="w-full truncate text-center text-[10.5px] text-ink-2">{label}</span>
+      <span className="w-full truncate text-center text-[10.5px] text-ground-ink-2">{label}</span>
     </Link>
   );
 }
