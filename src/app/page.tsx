@@ -279,9 +279,9 @@ export default async function TimelinePage({
               <section key={day.label}>
                 <div className="relative flex items-center gap-3 py-4">
                   <div className="flex w-14 justify-center">
-                    <span className="block h-1.5 w-1.5 rounded-full bg-line" />
+                    <span className="block h-1.5 w-1.5 rounded-full bg-ground-line" />
                   </div>
-                  <h2 className="text-[15px] font-bold text-ink-2">{day.label}</h2>
+                  <h2 className="text-[15px] font-bold text-ground-ink-2">{day.label}</h2>
                 </div>
                 {day.items.map((moment) => (
                   <MomentCard

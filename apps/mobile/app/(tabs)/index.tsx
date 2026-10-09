@@ -518,9 +518,9 @@ export default function Timeline() {
           renderSectionHeader={({ section }) => (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 16 }}>
               <View style={{ width: SPINE_W, alignItems: "center" }}>
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.line }} />
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.groundLine }} />
               </View>
-              <Text style={{ color: colors.ink2, fontSize: 15, fontWeight: "700" }}>{section.title}</Text>
+              <Text style={{ color: colors.groundInk2, fontSize: 15, fontWeight: "700" }}>{section.title}</Text>
               {section === days[0] ? (
                 <>
                   <View style={{ flex: 1 }} />
@@ -642,7 +642,7 @@ function LensHead({
 }) {
   if (view === "private") {
     return (
-      <Text style={{ color: colors.muted, fontSize: 11.5, lineHeight: 19, paddingTop: 14, textAlign: "right" }}>
+      <Text style={{ color: colors.groundMuted, fontSize: 11.5, lineHeight: 19, paddingTop: 14, textAlign: "right" }}>
         ما نُشر لتصنيفٍ من أصدقائك أو لأشخاص بأعيانهم — غيرهم لا يراها أصلاً.
       </Text>
     );
@@ -707,7 +707,7 @@ function LensHead({
 
   return (
     <View style={{ paddingTop: 14 }}>
-      <Text style={{ color: colors.muted, fontSize: 11.5, lineHeight: 19, marginBottom: 8, textAlign: "right" }}>
+      <Text style={{ color: colors.groundMuted, fontSize: 11.5, lineHeight: 19, marginBottom: 8, textAlign: "right" }}>
         اختر صاحبك لترى ما جمعكما: إشارةٌ منه أو تفاعلٌ أو تعليق.
       </Text>
 

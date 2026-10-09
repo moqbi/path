@@ -132,12 +132,12 @@ export default async function ProfilePage({
         }
         identity={
           <>
-            <h1 className="flex flex-wrap items-center justify-center gap-2 text-center text-[20px] font-semibold">
+            <h1 className="flex flex-wrap items-center justify-center gap-2 text-center text-[20px] font-semibold text-ground-ink">
               {user.name}
               <NameTag isPlus={user.isPlus} tag={user.tag} size={12} />
             </h1>
             {user.handle ? (
-              <p dir="ltr" className="mt-0.5 text-center text-[13px] text-muted">
+              <p dir="ltr" className="mt-0.5 text-center text-[13px] text-ground-muted">
                 @{user.handle}
               </p>
             ) : null}
@@ -146,12 +146,12 @@ export default async function ProfilePage({
         fold={
           <>
             {user.bio ? (
-              <p className="mx-auto mt-2 max-w-[300px] text-center text-[12.5px] leading-relaxed text-ink-2">
+              <p className="mx-auto mt-2 max-w-[300px] text-center text-[12.5px] leading-relaxed text-ground-ink-2">
                 {user.bio}
               </p>
             ) : null}
 
-            <p className="mt-1.5 text-center text-[11.5px] text-muted">
+            <p className="mt-1.5 text-center text-[11.5px] text-ground-muted">
               عضوية رقم {ar(user.memberNo)}
               {user.city ? ` · ${user.city}` : ""} · انضم {joined}
             </p>
@@ -166,12 +166,12 @@ export default async function ProfilePage({
                 >
                   <span
                     className="mx-auto mb-1 flex h-7 w-7 items-center justify-center rounded-full"
-                    style={{ background: "var(--color-chip)", color: "var(--color-ink-2)" }}
+                    style={{ background: "var(--color-chip)", color: "var(--color-ground-ink-2)" }}
                   >
                     {stat.icon}
                   </span>
-                  <p className="text-[15px] font-bold leading-none">{stat.value}</p>
-                  <p className="mt-0.5 text-[10px] text-muted">{stat.label}</p>
+                  <p className="text-[15px] font-bold leading-none text-ground-ink">{stat.value}</p>
+                  <p className="mt-0.5 text-[10px] text-ground-muted">{stat.label}</p>
                 </div>
               ))}
             </div>
@@ -235,8 +235,8 @@ export default async function ProfilePage({
       >
         {/* لحظاتي أسفل زرّ التعديل مباشرة — هذا ما يُفتح التبويب لأجله. */}
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-[15px] font-bold">
-            لحظاتي <span className="text-[12px] font-normal text-muted">{ar(moments.length)}</span>
+          <h2 className="text-[15px] font-bold text-ground-ink">
+            لحظاتي <span className="text-[12px] font-normal text-ground-muted">{ar(moments.length)}</span>
           </h2>
           {/*
             «أرشيفي» و«سنتك في كتاب» (القاعدة ٢٤٤): كانا بطاقتين بعد آخر لحظة لا
@@ -261,9 +261,9 @@ export default async function ProfilePage({
               <section key={day.label}>
                 <div className="relative flex items-center gap-3 py-4">
                   <div className="flex w-14 justify-center">
-                    <span className="block h-1.5 w-1.5 rounded-full bg-line" />
+                    <span className="block h-1.5 w-1.5 rounded-full bg-ground-line" />
                   </div>
-                  <h3 className="text-[15px] font-bold text-ink-2">{day.label}</h3>
+                  <h3 className="text-[15px] font-bold text-ground-ink-2">{day.label}</h3>
                 </div>
                 {day.items.map((moment) => (
                   <MomentCard

@@ -23,7 +23,7 @@ export function SpineLine({ children }: { children: React.ReactNode }) {
           bottom: 0,
           insetInlineStart: SPINE_X,
           width: 1,
-          backgroundColor: colors.line,
+          backgroundColor: colors.groundLine,
         }}
       />
       {children}
@@ -36,9 +36,9 @@ export function DayMark({ label }: { label: string }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 16 }}>
       <View style={{ width: SPINE_W, alignItems: "center" }}>
-        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.line }} />
+        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.groundLine }} />
       </View>
-      <Text style={{ color: colors.ink2, fontSize: 15, fontWeight: "700" }}>{label}</Text>
+      <Text style={{ color: colors.groundInk2, fontSize: 15, fontWeight: "700" }}>{label}</Text>
     </View>
   );
 }

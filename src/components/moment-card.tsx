@@ -131,7 +131,7 @@ function Spine({
       >
         <Avatar name={name} size={46} frame={frame} mediaId={mediaId} charm={charm} />
       </Link>
-      <span className="text-[10px] font-semibold text-muted">{timeOfDay(at)}</span>
+      <span className="text-[10px] font-semibold text-ground-muted">{timeOfDay(at)}</span>
       {/*
         «خاصة» تحت الساعة — يراها صاحبُها ومن اختارهم، فيعرف كلٌّ منهم أنّ
         اللحظة لم تُوجَّه إلى الدائرة كلّها (القاعدة ٢٠٦).
@@ -403,16 +403,16 @@ export function EventLine({
       <EventIcon kind={kind} />
       <div className="min-w-0 grow pt-1">
         {moment.memoryOf ? <MemoryTag at={moment.memoryOf} /> : null}
-        <p dir="auto" className="text-[13.5px] font-semibold leading-snug text-ink">
+        <p dir="auto" className="text-[13.5px] font-semibold leading-snug text-ground-ink">
           {title}
         </p>
         {subtitle ? (
-          <p dir="auto" className="mt-0.5 truncate text-[12px] font-medium text-ink-2">
+          <p dir="auto" className="mt-0.5 truncate text-[12px] font-medium text-ground-ink-2">
             {subtitle}
           </p>
         ) : null}
         {withNames.length > 0 && kind !== "GIFT_SENT" && kind !== "GIFT_GOT" && kind !== "FRIEND_ADDED" ? (
-          <p className="mt-0.5 flex items-center gap-1.5 text-[11.5px] font-medium text-ink-2">
+          <p className="mt-0.5 flex items-center gap-1.5 text-[11.5px] font-medium text-ground-ink-2">
             <WithIcon size={12} />
             <WithNames people={moment.tags.map((t) => t.user)} viewerId={viewerId} />
           </p>

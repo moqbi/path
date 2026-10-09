@@ -216,7 +216,7 @@ export default function Circle() {
 
             {tab === "groups" ? (
               <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
-                <Text style={{ color: colors.muted, fontSize: 11.5, lineHeight: 19, marginBottom: 10 }}>
+                <Text style={{ color: colors.groundMuted, fontSize: 11.5, lineHeight: 19, marginBottom: 10 }}>
                   التصنيف لك وحدك: من صنّفته «عائلة» لا يرى تصنيفك ولا يراه غيرك.
                 </Text>
 
@@ -262,10 +262,10 @@ export default function Circle() {
                 style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}
               >
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.clay }} />
-                <Text style={{ flex: 1, color: colors.ink, fontSize: 14, fontWeight: "700" }}>
+                <Text style={{ flex: 1, color: colors.groundInk, fontSize: 14, fontWeight: "700" }}>
                   طلبات الصداقة ({ar(data.requests.length)})
                 </Text>
-                <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600" }}>
+                <Text style={{ color: colors.groundMuted, fontSize: 12, fontWeight: "600" }}>
                   {folded.requests ? "إظهار" : "إخفاء"}
                 </Text>
               </Pressable>
@@ -330,10 +330,10 @@ export default function Circle() {
                     backgroundColor: item.head === "online" ? colors.live : colors.faint,
                   }}
                 />
-                <Text style={{ flex: 1, color: colors.ink, fontSize: 13.5, fontWeight: "700" }}>
+                <Text style={{ flex: 1, color: colors.groundInk, fontSize: 13.5, fontWeight: "700" }}>
                   {item.head === "online" ? "متصل" : "غير متصل"} ({ar(item.count)})
                 </Text>
-                <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600" }}>
+                <Text style={{ color: colors.groundMuted, fontSize: 12, fontWeight: "600" }}>
                   {open ? "إخفاء" : "إظهار"}
                 </Text>
               </Pressable>
@@ -454,7 +454,7 @@ export default function Circle() {
           ) : (
             /* لكل بابٍ فراغُه. */
             <View style={{ paddingTop: 60, paddingHorizontal: 40 }}>
-              <Text style={{ color: colors.muted, fontSize: 13.5, textAlign: "center", lineHeight: 24 }}>
+              <Text style={{ color: colors.groundMuted, fontSize: 13.5, textAlign: "center", lineHeight: 24 }}>
                 {tab === "groups" && groupFilter
                   ? "ما في هذا التصنيف أحدٌ بعد. اختر «الكل» وصنّف من شئت."
                   : "دائرتك فارغة. لا بحث هنا — شارك رابط ملفك من «أنا» مع من تعرفهم، ومن يفتحه يضيفك."}

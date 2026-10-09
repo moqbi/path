@@ -248,11 +248,11 @@ export default async function FriendProfilePage({
             )}
           </div>
 
-          <h1 className="mb-1 flex flex-wrap items-center gap-2 text-[19px] font-bold">
+          <h1 className="mb-1 flex flex-wrap items-center gap-2 text-[19px] font-bold text-ground-ink">
             {person.name}
             <NameTag isPlus={person.isPlus} tag={person.tag} size={11} />
           </h1>
-          <p className="mb-4 text-[12.5px] text-muted">
+          <p className="mb-4 text-[12.5px] text-ground-muted">
             عضوية رقم {ar(person.memberNo)} · {person.city ? `${person.city} · ` : null}
             معك من {joined} · {ar(theirCircle.length)} من أصدقائه
           </p>
@@ -267,9 +267,9 @@ export default async function FriendProfilePage({
                 <section key={day.label}>
                   <div className="relative flex items-center gap-3 py-4">
                     <div className="flex w-14 justify-center">
-                      <span className="block h-1.5 w-1.5 rounded-full bg-line" />
+                      <span className="block h-1.5 w-1.5 rounded-full bg-ground-line" />
                     </div>
-                    <h2 className="text-[15px] font-bold text-ink-2">{day.label}</h2>
+                    <h2 className="text-[15px] font-bold text-ground-ink-2">{day.label}</h2>
                   </div>
                   {day.items.map((moment) => (
                     <MomentCard
@@ -407,11 +407,11 @@ function LockedProfile({
             )}
           </div>
 
-          <h1 className="mb-1 flex flex-wrap items-center gap-2 text-[19px] font-bold">
+          <h1 className="mb-1 flex flex-wrap items-center gap-2 text-[19px] font-bold text-ground-ink">
             {person.name}
             <NameTag isPlus={person.isPlus} tag={person.tag} size={11} />
           </h1>
-          <p className="mb-4 text-[12.5px] text-muted">
+          <p className="mb-4 text-[12.5px] text-ground-muted">
             عضوية رقم {ar(person.memberNo)} · {person.city ? `${person.city} · ` : null}
             في آثار من {joined}
             {mutual > 0

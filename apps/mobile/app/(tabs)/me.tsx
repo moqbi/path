@@ -51,8 +51,8 @@ function Stat({ icon, value, label, first }: { icon: React.ReactNode; value: str
       >
         {icon}
       </View>
-      <Text style={{ color: colors.ink, fontSize: 15, fontWeight: "700" }}>{value}</Text>
-      <Text style={{ color: colors.muted, fontSize: 10, marginTop: 2 }}>{label}</Text>
+      <Text style={{ color: colors.groundInk, fontSize: 15, fontWeight: "700" }}>{value}</Text>
+      <Text style={{ color: colors.groundMuted, fontSize: 10, marginTop: 2 }}>{label}</Text>
     </View>
   );
 }
@@ -230,10 +230,10 @@ export default function Me() {
             <View style={{ alignItems: "center", paddingHorizontal: 20 }}>
               {/* أربعة أرقام بأيقوناتها. */}
               <View style={{ flexDirection: "row", alignItems: "stretch", maxWidth: 330, width: "100%", marginTop: 14, marginBottom: 6 }}>
-                <Stat first icon={<BookIcon size={14} color={colors.ink2} />} value={ar(s?.moments ?? 0)} label="لحظة" />
-                <Stat first={false} icon={<WithIcon size={14} color={colors.ink2} />} value={ar(s?.friends ?? 0)} label="صديق" />
-                <Stat first={false} icon={<GiftIcon size={14} color={colors.ink2} />} value={ar(s?.sent ?? 0)} label="أهديت" />
-                <Stat first={false} icon={<GiftIcon size={14} color={colors.ink2} />} value={ar(s?.got ?? 0)} label="أُهدي لك" />
+                <Stat first icon={<BookIcon size={14} color={colors.groundInk2} />} value={ar(s?.moments ?? 0)} label="لحظة" />
+                <Stat first={false} icon={<WithIcon size={14} color={colors.groundInk2} />} value={ar(s?.friends ?? 0)} label="صديق" />
+                <Stat first={false} icon={<GiftIcon size={14} color={colors.groundInk2} />} value={ar(s?.sent ?? 0)} label="أهديت" />
+                <Stat first={false} icon={<GiftIcon size={14} color={colors.groundInk2} />} value={ar(s?.got ?? 0)} label="أُهدي لك" />
               </View>
             </View>
 
@@ -265,8 +265,8 @@ export default function Me() {
             </View>
 
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 4 }}>
-              <Text style={{ color: colors.ink, fontSize: 15, fontWeight: "700" }}>
-                لحظاتي <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "400" }}>{ar(s?.moments ?? 0)}</Text>
+              <Text style={{ color: colors.groundInk, fontSize: 15, fontWeight: "700" }}>
+                لحظاتي <Text style={{ color: colors.groundMuted, fontSize: 12, fontWeight: "400" }}>{ar(s?.moments ?? 0)}</Text>
               </Text>
               {/* «أرشيفي» و«سنتك في كتاب» (القاعدة ٢٤٤): بابُهما عند لحظاتك لا بعد آخرها. */}
               <Pressable
@@ -283,9 +283,9 @@ export default function Me() {
         renderSectionHeader={({ section }) => (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20, paddingVertical: 16 }}>
             <View style={{ width: SPINE_W, alignItems: "center" }}>
-              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.line }} />
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.groundLine }} />
             </View>
-            <Text style={{ color: colors.ink2, fontSize: 15, fontWeight: "700" }}>{section.title}</Text>
+            <Text style={{ color: colors.groundInk2, fontSize: 15, fontWeight: "700" }}>{section.title}</Text>
           </View>
         )}
         renderItem={({ item }) => (
