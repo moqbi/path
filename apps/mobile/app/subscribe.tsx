@@ -187,11 +187,11 @@ export default function Subscribe() {
           <Text face="latin" style={{ color: colors.goldInk, fontSize: 12, fontWeight: "700" }}>ATHAR+</Text>
         </View>
 
-        <Text style={{ color: colors.ink, fontSize: 30, fontWeight: "700", lineHeight: 42, marginBottom: 10 }}>
+        <Text style={{ color: colors.groundInk, fontSize: 30, fontWeight: "700", lineHeight: 42, marginBottom: 10 }}>
           أصدقاؤك يبقون ١٥٠{"\n"}
           <Text style={{ color: colors.clayInk }}>وكل شي غيرها يكبر</Text>
         </Text>
-        <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 26, marginBottom: 22 }}>
+        <Text style={{ color: colors.groundMuted, fontSize: 13, lineHeight: 26, marginBottom: 22 }}>
           لا نبيع أصدقاء إضافيين. نبيع ذاكرة أطول وتعبيراً أوسع.
         </Text>
 
@@ -201,23 +201,23 @@ export default function Subscribe() {
               {perk.icon}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "600", marginBottom: 2 }}>
+              <Text style={{ color: colors.groundInk, fontSize: 14, fontWeight: "600", marginBottom: 2 }}>
                 {perk.title}
               </Text>
-              <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 21 }}>{perk.body}</Text>
+              <Text style={{ color: colors.groundMuted, fontSize: 12, lineHeight: 21 }}>{perk.body}</Text>
             </View>
           </View>
         ))}
 
         {me?.isPlus ? (
           <View style={{ paddingTop: 16, gap: 10 }}>
-            <Text style={{ color: colors.muted, fontSize: 13 }}>أنت مشترك في آثار+ حالياً.</Text>
+            <Text style={{ color: colors.groundMuted, fontSize: 13 }}>أنت مشترك في آثار+ حالياً.</Text>
             {/* الإلغاء يجري في المتجر — لا آبل ولا جوجل تسمح به من داخل التطبيق. */}
             <Pressable
               onPress={() => void openManage()}
-              style={{ height: 50, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line }}
+              style={{ height: 50, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.groundLine }}
             >
-              <Text style={{ color: colors.muted, fontSize: 14, fontWeight: "600" }}>
+              <Text style={{ color: colors.groundMuted, fontSize: 14, fontWeight: "600" }}>
                 إدارة الاشتراك في المتجر
               </Text>
             </Pressable>
@@ -241,7 +241,7 @@ export default function Subscribe() {
                     borderRadius: 16,
                     borderWidth: picked ? 2 : offer.yearly ? 1.5 : 1,
                     borderColor: picked ? colors.clay : offer.yearly ? colors.gold : colors.line,
-                    backgroundColor: picked || offer.yearly ? colors.goldSoft : "transparent",
+                    backgroundColor: picked || offer.yearly ? colors.goldSoft : colors.card,
                     paddingVertical: 16,
                     paddingHorizontal: 12,
                     alignItems: "center",
@@ -307,23 +307,23 @@ export default function Subscribe() {
             لم يُفتح هناك صراحةً.
           */
           <View style={{ paddingTop: 12, gap: 10 }}>
-            <Text style={{ color: colors.muted, fontSize: 12.5, lineHeight: 24 }}>
+            <Text style={{ color: colors.groundMuted, fontSize: 12.5, lineHeight: 24 }}>
               الاشتراك يتمّ من داخل التطبيق على الجوّال عبر App Store أو Google Play.
             </Text>
             <View style={{ flexDirection: "row", gap: 10 }}>
               <Pressable
                 onPress={() => fake.mutate("MONTHLY")}
                 disabled={fake.isPending}
-                style={{ flex: 1, borderRadius: 16, borderWidth: 1, borderColor: colors.line, paddingVertical: 14, alignItems: "center" }}
+                style={{ flex: 1, borderRadius: 16, borderWidth: 1, borderColor: colors.groundLine, paddingVertical: 14, alignItems: "center" }}
               >
-                <Text style={{ color: colors.muted, fontSize: 12.5, fontWeight: "600" }}>تجربة: شهري</Text>
+                <Text style={{ color: colors.groundMuted, fontSize: 12.5, fontWeight: "600" }}>تجربة: شهري</Text>
               </Pressable>
               <Pressable
                 onPress={() => fake.mutate("YEARLY")}
                 disabled={fake.isPending}
-                style={{ flex: 1, borderRadius: 16, borderWidth: 1, borderColor: colors.line, paddingVertical: 14, alignItems: "center" }}
+                style={{ flex: 1, borderRadius: 16, borderWidth: 1, borderColor: colors.groundLine, paddingVertical: 14, alignItems: "center" }}
               >
-                <Text style={{ color: colors.muted, fontSize: 12.5, fontWeight: "600" }}>تجربة: سنوي</Text>
+                <Text style={{ color: colors.groundMuted, fontSize: 12.5, fontWeight: "600" }}>تجربة: سنوي</Text>
               </Pressable>
             </View>
           </View>
@@ -340,7 +340,7 @@ export default function Subscribe() {
           آبل (3.1.2)، وبغيابهما رُدّت النسخة: سطرٌ مختصر لا يقول متى يُخصم
           ولا كيف يُلغى، وروابطُ في الإعدادات لا يراها من يشتري.
         */}
-        <Text style={{ color: colors.muted, fontSize: 11, lineHeight: 21, textAlign: "center", paddingTop: 20 }}>
+        <Text style={{ color: colors.groundMuted, fontSize: 11, lineHeight: 21, textAlign: "center", paddingTop: 20 }}>
           {`اشتراك آثار+ يتجدّد تلقائياً بالسعر نفسه في نهاية كل مدّة (شهر أو سنة) ما لم يُلغَ قبل انتهائها بـ٢٤ ساعة على الأقل. يُخصم المبلغ من حساب ${
             Platform.OS === "ios" ? "Apple ID" : "Google Play"
           } عند تأكيد الشراء، ويمكنك إدارة الاشتراك وإلغاؤه من إعدادات حسابك في ${
