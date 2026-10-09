@@ -308,10 +308,10 @@ export default function Messages() {
                 style={{ flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 20, marginTop: 12, marginBottom: 2 }}
               >
                 {entry.head === "pinned" ? <StarIcon size={14} color={colors.gold} /> : null}
-                <Text style={{ flex: 1, color: colors.ink, fontSize: 13.5, fontWeight: "700" }}>
+                <Text style={{ flex: 1, color: colors.groundInk, fontSize: 13.5, fontWeight: "700" }}>
                   {entry.head === "pinned" ? "المفضّلة" : "المحادثات"} ({ar(entry.count)})
                 </Text>
-                <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600" }}>{open ? "إخفاء" : "إظهار"}</Text>
+                <Text style={{ color: colors.groundMuted, fontSize: 12, fontWeight: "600" }}>{open ? "إخفاء" : "إظهار"}</Text>
               </Pressable>
             );
           }

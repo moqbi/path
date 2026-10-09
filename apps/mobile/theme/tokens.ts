@@ -31,6 +31,17 @@ const DEFAULTS = {
   faint: "#8b96a1",
   line: "#d8d2c2",
 
+  /**
+   * حبرُ ما يُكتب على الأرضية مباشرةً لا على بطاقة — سطورُ الأحداث وعناوينُ
+   * الأيام والساعات والاسمُ والأرقام في الملف. ثيمٌ أرضيتُه داكنة وبطاقاتُه
+   * فاتحة يحتاج حبرين: حبرُ البطاقة الداكن يذوب في الأرضية.
+   */
+  groundInk: "#14212b",
+  groundInk2: "#3d4a55",
+  groundMuted: "#667380",
+  groundFaint: "#8b96a1",
+  groundLine: "#d8d2c2",
+
   clay: "#f6b93b",
   clayInk: "#a8730f",
   claySoft: "#faedd6",
@@ -70,6 +81,8 @@ type Palette = {
   onAccent: string;
   chrome: string;
   chromeInk: string;
+  /** اختياريّ: بلاه يُختار حبرُ البطاقة إن قُرئ على الأرضية، وإلّا ضدُّها. */
+  groundInk?: string;
 };
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
@@ -93,6 +106,33 @@ function mix(fg: string, bg: string, pct: number): string {
   return `#${one(ar, br)}${one(ag, bg_)}${one(ab, bb)}`;
 }
 
+/** إضاءةُ لونٍ نسبيّة كما في WCAG — نسخةُ `src/lib/theme.ts`. */
+function luminance(hex: string): number {
+  const n = Number.parseInt(hex.slice(1), 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => {
+    const v = c / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function contrast(a: string, b: string): number {
+  const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+}
+
+/**
+ * حبرُ الأرضية: ما اختاره المشرف، وإلّا حبرُ البطاقة إن قُرئ على الأرضية،
+ * وإلّا الأوضحُ من حبرين ثابتين — فثيمٌ قديمٌ بأرضيةٍ داكنة يُصلح نفسه بلا تعديل.
+ */
+export function groundInkOf(p: { paper: string; ink: string; groundInk?: string }): string {
+  if (p.groundInk) return p.groundInk;
+  if (contrast(p.ink, p.paper) >= 3) return p.ink;
+  const dark = "#14212b";
+  const light = "#f7f5ef";
+  return contrast(dark, p.paper) >= contrast(light, p.paper) ? dark : light;
+}
+
 /** يقرأ ألوان الثيم المحفوظة، ويردّ `null` لأيّ نقصٍ: نصفُ ثوبٍ لا يُلبس. */
 function parsePalette(raw: string | null | undefined): Palette | null {
   if (!raw) return null;
@@ -105,6 +145,7 @@ function parsePalette(raw: string | null | undefined): Palette | null {
       if (typeof value !== "string" || !HEX.test(value)) return null;
       out[key] = value;
     }
+    if (typeof data.groundInk === "string" && HEX.test(data.groundInk)) out.groundInk = data.groundInk;
     return out as Palette;
   } catch {
     return null;
@@ -133,6 +174,7 @@ export function applyTheme(raw: string | null | undefined, image = false): void 
   const p = parsePalette(raw);
   const paper = p?.paper ?? DEFAULTS.paper;
   const ground = image ? "transparent" : paper;
+  const gi = p ? groundInkOf(p) : DEFAULTS.groundInk;
   const next = p
     ? {
         ground,
@@ -145,6 +187,12 @@ export function applyTheme(raw: string | null | undefined, image = false): void 
         ink2: mix(p.ink, p.paper, 80),
         muted: mix(p.ink, p.paper, 60),
         faint: mix(p.ink, p.paper, 45),
+
+        groundInk: gi,
+        groundInk2: mix(gi, p.paper, 80),
+        groundMuted: mix(gi, p.paper, 60),
+        groundFaint: mix(gi, p.paper, 45),
+        groundLine: mix(gi, p.paper, 15),
 
         clay: p.accent,
         clayInk: mix(p.accent, p.ink, 62),

@@ -241,7 +241,7 @@ export function MomentCard({
           charm={moment.author.charm}
         />
       </Pressable>
-      <Text style={{ color: colors.muted, fontSize: 10, fontWeight: "600" }}>
+      <Text style={{ color: colors.groundMuted, fontSize: 10, fontWeight: "600" }}>
         {timeOfDay(new Date(moment.createdAt))}
       </Text>
       {/*
@@ -297,7 +297,7 @@ export function MomentCard({
         <EventIcon kind={moment.kind} />
         <View style={{ flex: 1, paddingTop: 2 }}>
           {moment.memoryOf ? <MemoryTag at={moment.memoryOf} /> : null}
-          <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600", lineHeight: 21 }}>
+          <Text style={{ color: colors.groundInk, fontSize: 13.5, fontWeight: "600", lineHeight: 21 }}>
             {/*
               اسمُ الصديق الجديد رابطٌ إلى ملفّه: الإشارةُ تحمل معرّفه، فمن قرأ
               «أصبح صديق فلان» يصل إلى فلان بضغطة. واللحظاتُ القديمة بلا إشارة
@@ -331,7 +331,7 @@ export function MomentCard({
             )}
           </Text>
           {subtitle ? (
-            <Text style={{ color: colors.ink2, fontSize: 12, fontWeight: "500", marginTop: 2 }}>
+            <Text style={{ color: colors.groundInk2, fontSize: 12, fontWeight: "500", marginTop: 2 }}>
               {subtitle}
             </Text>
           ) : null}
@@ -340,8 +340,8 @@ export function MomentCard({
           moment.kind !== "GIFT_GOT" &&
           moment.kind !== "FRIEND_ADDED" ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 }}>
-              <WithIcon size={12} color={colors.ink2} />
-              <Text style={{ color: colors.ink2, fontSize: 11.5, fontWeight: "500" }}>
+              <WithIcon size={12} color={colors.groundInk2} />
+              <Text style={{ color: colors.groundInk2, fontSize: 11.5, fontWeight: "500" }}>
                 {withLinks}
               </Text>
             </View>

@@ -32,6 +32,13 @@
   --color-faint: #8b96a1;
   --color-line: #d8d2c2;
 
+  /* حبرُ ما يُكتب على الأرضية لا على بطاقة — الثيمُ يفصله عن حبر البطاقة. */
+  --color-ground-ink: #14212b;
+  --color-ground-ink-2: #3d4a55;
+  --color-ground-muted: #667380;
+  --color-ground-faint: #8b96a1;
+  --color-ground-line: #d8d2c2;
+
   --color-clay: #f6b93b;
   --color-clay-ink: #a8730f;
   --color-clay-soft: #faedd6;

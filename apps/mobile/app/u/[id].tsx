@@ -176,7 +176,7 @@ function Profile() {
       {person.isLoading ? (
         <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
       ) : !who ? (
-        <Text style={{ color: colors.muted, fontSize: 13.5, textAlign: "center", marginTop: 50 }}>
+        <Text style={{ color: colors.groundMuted, fontSize: 13.5, textAlign: "center", marginTop: 50 }}>
           لا يوجد هذا الحساب.
         </Text>
       ) : (
@@ -363,7 +363,7 @@ function Profile() {
                 </Text>
               </View>
             ) : (
-              <Text style={{ color: colors.faint, fontSize: 12.5, textAlign: "center", paddingVertical: 24 }}>
+              <Text style={{ color: colors.groundFaint, fontSize: 12.5, textAlign: "center", paddingVertical: 24 }}>
                 لا لحظات تراها.
               </Text>
             )

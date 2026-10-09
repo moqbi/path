@@ -46,7 +46,7 @@ import { BundleItems } from "./bundle";
 import { CollectionsView, ItemCollection, ItemPlans } from "./store-extras";
 import { InvitesView } from "./invites";
 import { coinText, ar, relative, riyals } from "@/lib/format";
-import { parsePalette } from "@/lib/theme";
+import { groundInkOf, parsePalette } from "@/lib/theme";
 import { ReportContext } from "./report-context";
 import { linkedMany, type LinkedResult } from "@/lib/linked";
 
@@ -205,8 +205,29 @@ function PaletteFields({ palette }: { palette: Record<string, string> | null }) 
             />
           ))}
         </div>
+        {/*
+          حبرُ الأرضية: ما يُكتب على الأرضية لا على بطاقة — سطورُ الأحداث
+          وعناوينُ الأيام والاسمُ والأرقام في الملف. أرضيةٌ داكنة وبطاقاتٌ
+          فاتحة تحتاج حبرين، و«تلقائيّ» يختار بالتباين.
+        */}
+        <div className="flex flex-col gap-2 rounded-xl border border-line p-2">
+          <Color
+            name="palette.groundInk"
+            label="حبر الأرضية"
+            value={palette?.groundInk ?? groundInkOf({
+              paper: palette?.paper ?? "#eae5d9",
+              ink: palette?.ink ?? "#14212b",
+            })}
+          />
+          <Check
+            name="palette.groundAuto"
+            label="تلقائي: حبر البطاقات إن قُرئ على الأرضية، وإلّا الأوضح"
+            on={!palette?.groundInk}
+          />
+        </div>
         <p className="text-[10.5px] leading-relaxed text-faint">
-          بلا تفعيل يبقى الثيم خلفيةً فقط. وما عدا هذه السبعة يُشتقّ منها.
+          بلا تفعيل يبقى الثيم خلفيةً فقط. وما عدا هذه الألوان يُشتقّ منها.
+          حبرُ الأرضية لما يُكتب خارج البطاقات: الاسم والأرقام وسطور الأحداث وعناوين الأيام.
         </p>
       </div>
     </details>

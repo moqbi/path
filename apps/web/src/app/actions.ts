@@ -139,6 +139,11 @@ function readPalette(formData: FormData): string | null {
     if (!HEX_COLOR.test(value)) return null;
     out[key] = value.toLowerCase();
   }
+  // حبرُ الأرضية اختياريّ: «تلقائيّ» يتركه للتباين (`groundInkOf`).
+  if (formData.get("palette.groundAuto") !== "on") {
+    const ground = String(formData.get("palette.groundInk") ?? "").trim();
+    if (HEX_COLOR.test(ground)) out.groundInk = ground.toLowerCase();
+  }
   return JSON.stringify(out);
 }
 

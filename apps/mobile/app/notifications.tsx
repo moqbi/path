@@ -248,7 +248,7 @@ export default function Notifications() {
         renderSectionHeader={({ section }) => (
           <Text
             style={{
-              color: colors.faint,
+              color: colors.groundFaint,
               fontSize: 11.5,
               fontWeight: "600",
               letterSpacing: 0.3,
