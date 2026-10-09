@@ -18,7 +18,7 @@ export function SwipeRow({
   onSecond,
   secondLabel,
   icons = false,
-  surface = "var(--color-paper)",
+  surface = "var(--color-ground)",
   children,
 }: {
   onDelete: () => void | Promise<void>;

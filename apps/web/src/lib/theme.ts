@@ -93,13 +93,26 @@ export function groundInkOf(palette: Pick<Palette, "paper" | "ink" | "groundInk"
  * كلها تلبس ألوانه. وما عدا السبعة يُشتقّ بـ`color-mix` لا يُسأل عنه
  * المشرف — درجاتُ لونٍ واحد لا قراراتٌ مستقلة.
  */
+/**
+ * ورقُ الحقول: الأرضيةُ إن قُرئ عليها حبرُ البطاقة، وإلّا البطاقةُ بلمسةٍ من حبرها —
+ * ثيمٌ أرضيتُه داكنة وحبرُه داكن كان يُلبس كلَّ حقلٍ داخل بطاقةٍ فاتحة كتلةً داكنة.
+ * ونسختُه على الجوّال `fieldOf` في `theme/tokens.ts`.
+ */
+export function fieldOf(palette: Pick<Palette, "paper" | "card" | "ink">): string {
+  if (contrast(palette.ink, palette.paper) >= 3) return palette.paper;
+  return `color-mix(in srgb, ${palette.ink} 7%, ${palette.card})`;
+}
+
 export function themeVars(palette: Palette): React.CSSProperties {
-  const { paper, card, ink, accent, onAccent, chrome, chromeInk } = palette;
+  const { card, ink, accent, onAccent, chrome, chromeInk } = palette;
+  const paper = fieldOf(palette);
   const on = (fg: string, bg: string, pct: number) =>
     `color-mix(in srgb, ${fg} ${pct}%, ${bg})`;
   const ground = groundInkOf(palette);
+  const solid = palette.paper;
 
   return {
+    "--color-ground": palette.paper,
     "--color-paper": paper,
     "--color-card": card,
     "--color-chip": on(ink, paper, 10),
@@ -111,10 +124,10 @@ export function themeVars(palette: Palette): React.CSSProperties {
     "--color-faint": on(ink, paper, 45),
 
     "--color-ground-ink": ground,
-    "--color-ground-ink-2": on(ground, paper, 80),
-    "--color-ground-muted": on(ground, paper, 60),
-    "--color-ground-faint": on(ground, paper, 45),
-    "--color-ground-line": on(ground, paper, 15),
+    "--color-ground-ink-2": on(ground, solid, 80),
+    "--color-ground-muted": on(ground, solid, 60),
+    "--color-ground-faint": on(ground, solid, 45),
+    "--color-ground-line": on(ground, solid, 15),
 
     "--color-clay": accent,
     "--color-clay-ink": on(accent, ink, 62),

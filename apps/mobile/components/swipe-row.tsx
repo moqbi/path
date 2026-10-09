@@ -196,7 +196,7 @@ export function SwipeRow({
 
       <Animated.View
         {...pan.panHandlers}
-        style={{ backgroundColor: surface ?? colors.paper, transform: [{ translateX: shift }] }}
+        style={{ backgroundColor: surface ?? colors.groundSolid, transform: [{ translateX: shift }] }}
       >
         {children}
 

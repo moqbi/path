@@ -20,7 +20,7 @@ function Row({ title, flame = false, children }: { title: string; flame?: boolea
     <View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 }}>
         {flame ? <FlameIcon size={16} color={colors.live} /> : null}
-        <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "700" }}>{title}</Text>
+        <Text style={{ color: colors.groundInk, fontSize: 14, fontWeight: "700" }}>{title}</Text>
       </View>
       {children}
     </View>
@@ -180,7 +180,7 @@ export default function Store() {
                 </Row>
               ))
             ) : (
-              <Text style={{ color: colors.muted, fontSize: 13, textAlign: "center", marginTop: 30 }}>
+              <Text style={{ color: colors.groundMuted, fontSize: 13, textAlign: "center", marginTop: 30 }}>
                 ما فيه {kindTab.name} بعد.
               </Text>
             )
@@ -217,8 +217,8 @@ export default function Store() {
           ) : null}
 
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingBottom: 24 }}>
-            <InfoIcon size={13} color={colors.faint} />
-            <Text style={{ color: colors.faint, fontSize: 11, textAlign: "center" }}>
+            <InfoIcon size={13} color={colors.groundFaint} />
+            <Text style={{ color: colors.groundFaint, fontSize: 11, textAlign: "center" }}>
               لا صناديق عشوائية · كل صنف بسعره الواضح
             </Text>
           </View>

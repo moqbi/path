@@ -216,7 +216,7 @@ function Gate() {
   // قبل أن نعرف: لا شاشةَ دخولٍ تومض لمن هو داخلٌ أصلاً.
   if (!ready) {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.paper }}>
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.groundSolid }}>
         <ActivityIndicator color={colors.clay} />
       </View>
     );
@@ -325,7 +325,7 @@ export default function RootLayout() {
   return (
     <View style={{ flex: 1 }}>
       {!fontsReady && !fontsError ? (
-        <View style={{ flex: 1, backgroundColor: colors.paper }} />
+        <View style={{ flex: 1, backgroundColor: colors.groundSolid }} />
       ) : (
         <App />
       )}

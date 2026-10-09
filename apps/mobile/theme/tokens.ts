@@ -13,6 +13,8 @@ const DEFAULTS = {
    * و`paper` يبقى لما يُرسم على الورق داخل الشاشة من حقولٍ وأقراص.
    */
   ground: "#eae5d9",
+  /** أرضيةُ الثيم مصمتةً ولو كان للثيم صورة — لما يجب أن يطابقها (حلقةُ القصّة، الصفُّ المسحوب). */
+  groundSolid: "#eae5d9",
   card: "#fdfcf8",
   chip: "#ded8c9",
 
@@ -133,6 +135,11 @@ export function groundInkOf(p: { paper: string; ink: string; groundInk?: string 
   return contrast(dark, p.paper) >= contrast(light, p.paper) ? dark : light;
 }
 
+/** ورقُ الحقول: الأرضيةُ إن قُرئ عليها حبرُ البطاقة، وإلّا البطاقةُ بلمسةٍ من حبرها. */
+export function fieldOf(p: { paper: string; card: string; ink: string }): string {
+  return contrast(p.ink, p.paper) >= 3 ? p.paper : mix(p.ink, p.card, 7);
+}
+
 /** يقرأ ألوان الثيم المحفوظة، ويردّ `null` لأيّ نقصٍ: نصفُ ثوبٍ لا يُلبس. */
 function parsePalette(raw: string | null | undefined): Palette | null {
   if (!raw) return null;
@@ -175,18 +182,25 @@ export function applyTheme(raw: string | null | undefined, image = false): void 
   const paper = p?.paper ?? DEFAULTS.paper;
   const ground = image ? "transparent" : paper;
   const gi = p ? groundInkOf(p) : DEFAULTS.groundInk;
+  /*
+    `paper` لونان في الثوب الأصليّ: أرضيةُ الشاشة، وحقولُ البطاقات وأقراصُها.
+    ثيمٌ أرضيتُه داكنة وحبرُه داكن يُبقي الأولى ويُفتّح الثانية من بطاقته — وإلّا
+    كان كلُّ حقلٍ وخيارٍ داخل بطاقةٍ فاتحة كتلةً داكنة بحبرٍ داكن لا يُقرأ.
+  */
+  const field = p ? fieldOf(p) : DEFAULTS.paper;
   const next = p
     ? {
         ground,
-        paper: p.paper,
+        groundSolid: p.paper,
+        paper: field,
         card: p.card,
-        chip: mix(p.ink, p.paper, 10),
-        line: mix(p.ink, p.paper, 15),
+        chip: mix(p.ink, field, 10),
+        line: mix(p.ink, field, 15),
 
         ink: p.ink,
-        ink2: mix(p.ink, p.paper, 80),
-        muted: mix(p.ink, p.paper, 60),
-        faint: mix(p.ink, p.paper, 45),
+        ink2: mix(p.ink, field, 80),
+        muted: mix(p.ink, field, 60),
+        faint: mix(p.ink, field, 45),
 
         groundInk: gi,
         groundInk2: mix(gi, p.paper, 80),
@@ -213,7 +227,7 @@ export function applyTheme(raw: string | null | undefined, image = false): void 
         night: p.chrome,
         night2: mix(p.chromeInk, p.chrome, 10),
       }
-    : { ...DEFAULTS, ground };
+    : { ...DEFAULTS, ground, groundSolid: DEFAULTS.paper };
 
   // لا إعادةَ بناءٍ بلا تغيير: الجذر يقرأ هذا الرقم مع كلّ تحديثٍ لـ`me`.
   const same = (Object.keys(next) as (keyof typeof next)[]).every((k) => colors[k] === next[k]);
@@ -229,7 +243,7 @@ export function applyTheme(raw: string | null | undefined, image = false): void 
  * تُبقي النصّ مقروءاً ولا تطمس الصورة.
  */
 export function veil(): string {
-  const hex = colors.paper.replace("#", "");
+  const hex = colors.groundSolid.replace("#", "");
   const full = hex.length === 3 ? hex.split("").map((c) => c + c).join("") : hex.slice(0, 6);
   const n = parseInt(full, 16);
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},0.7)`;

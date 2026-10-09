@@ -55,7 +55,7 @@ function Ring({ ring, label }: { ring: StoryRing; label: string }) {
       >
         <span
           className="flex h-full w-full items-center justify-center rounded-full"
-          style={{ background: "var(--color-paper)", padding: 2 }}
+          style={{ background: "var(--color-ground)", padding: 2 }}
         >
           <Avatar name={ring.name} size={52} mediaId={ring.avatarMediaId} />
         </span>
@@ -64,7 +64,7 @@ function Ring({ ring, label }: { ring: StoryRing; label: string }) {
           <span
             aria-label="قصة خاصة"
             className="absolute bottom-0 left-0 flex h-5 w-5 items-center justify-center rounded-full"
-            style={{ background: "var(--color-clay)", color: "var(--color-on-brand)", border: "2px solid var(--color-paper)" }}
+            style={{ background: "var(--color-clay)", color: "var(--color-on-brand)", border: "2px solid var(--color-ground)" }}
           >
             <LockIcon size={11} />
           </span>
