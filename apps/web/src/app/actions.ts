@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { createSession, destroySession, hashPassword, requireUser, verifyPassword } from "@/lib/auth";
-import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
+import { HEX_COLOR, PALETTE_KEYS, paletteSpec, parsePalette } from "@/lib/theme";
 import { dropMedia, migrateToCloud, storeSiteShot, storeUpload } from "@/lib/media";
 import { cloudReady, probeBucket } from "@/lib/storage";
 import { forgetWords } from "@/lib/moderation";
@@ -147,6 +147,12 @@ function readPalette(formData: FormData): string | null {
   return JSON.stringify(out);
 }
 
+/** الثيمُ بألوانٍ يُرسم من ألوانه، فلا يُضبط التدرّجُ بيدٍ ثانيةً (`paletteSpec`). */
+function specFor(kind: string, palette: string | null, spec: string): string {
+  const colors = kind === "THEME" ? parsePalette(palette) : null;
+  return colors ? paletteSpec(colors) : spec;
+}
+
 /** نتيجة نموذج في اللوحة: رسالة تُعرض في الشاشة بدل استثناء يكسرها. */
 export type AdminResult = { ok?: string; error?: string } | null;
 
@@ -194,6 +200,7 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
 
   const { kind, name, priceCoins, spec, plusOnly, earnedAfterDays, categoryId, limited, hidden } =
     parsed.data;
+  const palette = readPalette(formData);
   const last = await prisma.storeItem.findFirst({
     orderBy: { sortOrder: "desc" },
     select: { sortOrder: true },
@@ -205,13 +212,13 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
       name,
       // الأسعار تُدخَل بالريال وتُخزَّن بالهللات، فلا تدخل كسور عشرية القاعدة.
       priceCoins,
-      spec,
+      spec: specFor(kind, palette, spec),
       plusOnly,
       earnedAfterDays: earnedAfterDays && earnedAfterDays > 0 ? earnedAfterDays : null,
       categoryId: categoryId || null,
       limited,
       hidden,
-      palette: readPalette(formData),
+      palette,
       sortOrder: (last?.sortOrder ?? 0) + 1,
     },
   });
@@ -254,19 +261,20 @@ export async function updateStoreItem(
     hidden,
     sortOrder,
   } = parsed.data;
+  const palette = readPalette(formData);
   await prisma.storeItem.update({
     where: { id: itemId },
     data: {
       kind,
       name,
       priceCoins,
-      spec,
+      spec: specFor(kind, palette, spec),
       plusOnly,
       earnedAfterDays: earnedAfterDays && earnedAfterDays > 0 ? earnedAfterDays : null,
       categoryId: categoryId || null,
       limited,
       hidden,
-      palette: readPalette(formData),
+      palette,
       sortOrder: sortOrder ?? undefined,
     },
   });

@@ -1312,7 +1312,7 @@ export default async function AdminPage({
                   </select>
                 </Field>
 
-                <Field label="تدرّج CSS" hint="يُرسم إن لم تُرفع صورة — الصورة تُضاف بعد الحفظ">
+                <Field label="تدرّج CSS" hint="يُرسم إن لم تُرفع صورة — والثيمُ بألوانٍ يُرسم من ألوانه وحدها">
                   <input
                     name="spec"
                     required
@@ -1515,7 +1515,7 @@ export default async function AdminPage({
                             </Field>
                           </div>
 
-                          <Field label="تدرّج CSS">
+                          <Field label="تدرّج CSS" hint={item.kind === "THEME" ? "الثيمُ بألوانٍ يُرسم من ألوانه وحدها" : undefined}>
                             <input
                               name="spec"
                               required

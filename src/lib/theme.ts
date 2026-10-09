@@ -49,6 +49,15 @@ function alpha(hex: string, a: number): string {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
+/**
+ * رسمُ الثيم في المتجر وغلافُه الاحتياطيّ من ألوانه نفسها: لمستُه فبطاقتُه
+ * فأرضيتُه. ثيمٌ بألوانٍ يُضبط مرّةً واحدة — حقلُ التدرّج كان يبقى كهرمانيّاً
+ * فتُعرض أيقونتُه بغير ألوانه. واللونُ الأوّل اللمسة: الجوّال يرسم الأوّل وحده.
+ */
+export function paletteSpec(palette: Palette): string {
+  return `linear-gradient(135deg,${palette.accent},${palette.card} 55%,${palette.paper})`;
+}
+
 /** إضاءةُ لونٍ نسبيّة كما في WCAG. */
 function luminance(hex: string): number {
   const n = Number.parseInt(hex.slice(1), 16);
