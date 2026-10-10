@@ -61,7 +61,7 @@ export async function circle(userId: string) {
     requests,
     groups: groups.map((g) => ({ id: g.id, name: g.name, count: g._count.members })),
     cap: CIRCLE_CAP,
-    left: Math.max(0, CIRCLE_CAP - ids.length),
+    left: Math.max(0, CIRCLE_CAP - (await circleSize(userId))),
   };
 }
 
@@ -224,7 +224,11 @@ export async function idByMemberNo(viewerId: string, memberNo: number) {
 
 /** عدد من في دائرة شخص. */
 async function circleSize(userId: string): Promise<number> {
-  return (await circleIds(userId)).length;
+  // المتابعةُ لا تأخذ خانةً من السقف (القاعدة ٢٦٣): مَن تابع حسابَ الإدارة
+  // تبقى له ١٥٠ صديقاً كاملة.
+  return prisma.friendship.count({
+    where: { status: "ACCEPTED", follow: false, OR: [{ requesterId: userId }, { addresseeId: userId }] },
+  });
 }
 
 /**
@@ -269,15 +273,21 @@ export async function requestFriend(userId: string, targetId: string) {
   });
   if (!target) throw notFound("لا يوجد هذا الحساب");
 
-  await assertRoomForBoth(userId, targetId);
+  // متابعةُ الحساب المفتوح لا تأخذ خانةً (القاعدة ٢٦٣)، فلا يُسأل السقف.
+  if (!target.isOpen) await assertRoomForBoth(userId, targetId);
 
   // طلبٌ قادمٌ من الطرف الآخر يُقبل بالطلب المقابل: لا يُنشأ طلبان.
   const incoming = await prisma.friendship.findUnique({
     where: { requesterId_addresseeId: { requesterId: targetId, addresseeId: userId } },
-    select: { id: true, status: true },
+    select: { id: true, status: true, follow: true },
   });
   if (incoming) {
     if (incoming.status === "PENDING") return acceptFriend(userId, incoming.id);
+    // الحسابُ المفتوح يُضيف متابِعَه صديقاً: المتابعةُ تصير صداقةً من الجهتين
+    // ومعها خانةٌ من سقف المتابِع (القاعدة ٢٦٣).
+    if (incoming.follow) {
+      await prisma.friendship.update({ where: { id: incoming.id }, data: { follow: false } });
+    }
     return { status: "ACCEPTED" as const };
   }
 
@@ -290,7 +300,7 @@ export async function requestFriend(userId: string, targetId: string) {
 
   // الحسابُ المفتوح يقبل بنفسه (القاعدة ٢٢١): لا أحدَ يقبل آلاف الطلبات بيده،
   // وطلبٌ معلّقٌ عند حساب الدعم بابٌ مغلقٌ في وجه من يسأل.
-  if (target.isOpen) return acceptFriend(targetId, row.id);
+  if (target.isOpen) return followOpen(userId, row.id);
 
   // الطلبُ يصل في الحال لا بعد انقضاء خبيئة إشعارات صاحبه.
   forgetNotifications(targetId);
@@ -361,6 +371,19 @@ export async function acceptFriend(userId: string, friendshipId: string) {
     ...lines,
   ]);
 
+  return { status: "ACCEPTED" as const };
+}
+
+/**
+ * متابعةُ الحساب المفتوح (القاعدة ٢٦٣): تُقبل في الحال بلا سطر «أصبح صديق»
+ * في خطّ أحدهما — ليست صداقة — ولا تأخذ خانةً من السقف.
+ */
+async function followOpen(userId: string, friendshipId: string) {
+  await prisma.friendship.update({
+    where: { id: friendshipId },
+    data: { status: "ACCEPTED", follow: true, acceptedAt: new Date() },
+  });
+  forgetNotifications(userId);
   return { status: "ACCEPTED" as const };
 }
 

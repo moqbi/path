@@ -79,6 +79,11 @@ const STEPS: Step[] = [
  */
 const useTour = create<{ step: number | null; first: boolean }>(() => ({ step: null, first: false }));
 
+/** هل الجولةُ ظاهرة؟ — بطاقةُ الإعلان تنتظرها ولا تتزاحم معها. */
+export function useTourOn() {
+  return useTour((state) => state.step !== null);
+}
+
 /** يبدأ الجولةَ من أوّلها — من الإعدادات لمن تخطّاها أو فاتته. */
 export function startTour() {
   useTour.setState({ step: 0 });

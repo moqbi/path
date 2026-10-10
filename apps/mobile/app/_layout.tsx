@@ -28,6 +28,7 @@ import { Tour } from "../components/tour";
 import { applyTheme, colors, themeStore, veil } from "../theme/tokens";
 import { dismissOpen } from "../lib/swipe-open";
 import { Launch, useLaunch } from "../components/launch";
+import { StorePromo } from "../components/store-promo";
 
 /*
   شريطُ آبل داكن — **بقرار المالك** (القاعدة ٢٦١): زجاجُه يتبع مظهرَ التطبيق، و`app.json`
@@ -287,6 +288,8 @@ function Gate() {
     <ReactSheet />
     {/* الجولةُ طبقةٌ فوق المكدّس كلّه، لمن دخل وحده. */}
     {me ? <Tour key={me.id} /> : null}
+    {/* بطاقةُ إعلان الصنف — بعد الجولة لا معها (القاعدة ٢٦٧). */}
+    {me ? <StorePromo key={`promo-${me.id}`} /> : null}
     </>
   );
 }

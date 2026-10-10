@@ -1,11 +1,12 @@
-import { BlockIcon, MessageIcon, UserMinusIcon } from "../../components/icons";
+import { BlockIcon, CheckIcon, MessageIcon, TagIcon, UserMinusIcon } from "../../components/icons";
+import { Sheet } from "../../components/sheet";
 import { useTabTop } from "../../lib/tab-top";
 import { TabBackdrop } from "../../components/tab-backdrop";
 import { useBarSpace } from "../../components/glass-bar";
 import { scrolled } from "../../lib/scrolled";
 import { useCallback, useRef, useState } from "react";
-import { View, FlatList, Pressable, ScrollView, ActivityIndicator, RefreshControl } from "react-native";
-import { Text } from "../../components/type";
+import { View, FlatList, Pressable, ActivityIndicator, RefreshControl } from "react-native";
+import { Text, TextInput } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -28,16 +29,11 @@ import { colors } from "../../theme/tokens";
  * وما بقي من السقف. والسقف مكتوبٌ دائماً: مئةٌ وخمسون قرارُ منتَج يُرى،
  * لا حدٌّ يُكتشف حين يُبلَغ.
  */
-/**
- * بابا الدائرة. و«مقترحون» ذهب — **بقرار المالك** (القاعدة ٢٢٧): الإضافةُ برابط
- * الملف الذي يعطيه صاحبُه، لا بقائمةٍ تعرض أصدقاء الأصدقاء.
- */
-const TABS = [
-  { key: "friends", label: "أصدقائي" },
-  { key: "groups", label: "تصنيفاتي" },
-] as const;
-
-type Tab = (typeof TABS)[number]["key"];
+/*
+  تبويبٌ واحد — **بقرار المالك** (القاعدة ٢٦٨): القصصُ في أعلاه ثمّ الأصدقاء،
+  و«تصنيفاتي» ذهبت بابًا مستقلّاً: التصنيفُ يُختار من سحبة صفّ الصديق نفسه.
+  و«مقترحون» ذهب قبلها (القاعدة ٢٢٧).
+*/
 
 type Member = NonNullable<ReturnType<typeof useCircle>["data"]>["members"][number];
 /** رأسُ قسمٍ في «أصدقائي»: متصلٌ أو غير متصل، يُطوى ويُفتح. */
@@ -54,9 +50,9 @@ export default function Circle() {
   useTabTop(() => list.current?.scrollToOffset({ offset: 0, animated: true }));
   // المحتوى يمرّ تحت الشريط الزجاجيّ، وآخرُه يُقرأ فوقه (القاعدة ٢٢٨).
   const barSpace = useBarSpace();
-  const [tab, setTab] = useState<Tab>("friends");
-  /* التصنيفُ المختار في «تصنيفاتي» — الفراغُ يعني «الكل». */
-  const [groupFilter, setGroupFilter] = useState("");
+  /* الصديقُ الذي تُفتح له نافذةُ التصنيف، واسمُ تصنيفٍ جديدٍ يُكتب فيها. */
+  const [picking, setPicking] = useState<Member | null>(null);
+  const [fresh, setFresh] = useState("");
   /* صفٌّ يُسحب يوقف تمرير القائمة: وإلّا تحرّكت الشاشةُ كلّها مع الإصبع. */
   const [swiping, setSwiping] = useState(false);
   /* قسما «أصدقائي» — ما طُوي منهما يبقى رأسُه وحده. */
@@ -117,6 +113,22 @@ export default function Circle() {
     onSettled: () => void client.invalidateQueries({ queryKey: keys.circle }),
   });
 
+  /* تصنيفٌ جديدٌ من النافذة نفسها، ويُصنَّف فيه الصديقُ في الحال. */
+  const addGroup = useMutation({
+    mutationFn: async ({ name, friendId }: { name: string; friendId: string }) => {
+      const { group } = await api<{ group: { id: string } }>("/v1/circle/groups", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      });
+      await api(`/v1/circle/${friendId}/group`, { method: "PUT", body: JSON.stringify({ groupId: group.id }) });
+    },
+    onSuccess: () => {
+      setFresh("");
+      setPicking(null);
+    },
+    onSettled: () => void client.invalidateQueries({ queryKey: keys.circle }),
+  });
+
   /* المحادثة من صفّ الصديق: السحبُ يكشفها مع الإزالة والحظر. */
   const talk = useMutation({
     mutationFn: (id: string) => api<{ id: string }>(`/v1/dm/with/${id}`, { method: "POST" }),
@@ -165,13 +177,7 @@ export default function Circle() {
           قائمةٌ واحدة لثلاثة أبواب: صفوفها تختلف شكلاً لا مكاناً، فتبقى
           الأبواب فوقها ثابتة ويتبدّل ما تحتها — كعدسات الخط الزمني.
         */
-        data={
-          (tab === "groups"
-            ? groupFilter
-              ? (data?.members ?? []).filter((member) => member.groupId === groupFilter)
-              : (data?.members ?? [])
-            : sectioned) as Row[]
-        }
+        data={sectioned}
         keyExtractor={(item) => item.id}
         scrollEnabled={!swiping}
         contentContainerStyle={{ paddingBottom: barSpace + 8, flexGrow: 1 }}
@@ -183,75 +189,6 @@ export default function Circle() {
         }
         ListHeaderComponent={
           <>
-            {/* البابان: أصدقائي وتصنيفاتي. */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}
-            >
-              {TABS.map((item) => {
-                const on = item.key === tab;
-                return (
-                  <Pressable
-                    key={item.key}
-                    onPress={() => setTab(item.key)}
-                    style={{
-                      height: 36,
-                      paddingHorizontal: 16,
-                      borderRadius: 999,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      borderWidth: 1,
-                      borderColor: on ? colors.clay : colors.line,
-                      backgroundColor: on ? colors.clay : colors.card,
-                    }}
-                  >
-                    <Text style={{ color: on ? colors.onBrand : colors.ink2, fontSize: 12.5, fontWeight: "600" }}>
-                      {item.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-
-            {tab === "groups" ? (
-              <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
-                <Text style={{ color: colors.groundMuted, fontSize: 11.5, lineHeight: 19, marginBottom: 10 }}>
-                  التصنيف لك وحدك: من صنّفته «عائلة» لا يرى تصنيفك ولا يراه غيرك.
-                </Text>
-
-                {/*
-                  التصنيفاتُ شرائحُ تُفلتر لا لافتاتٌ تُقرأ: اختيارُ «عائلة» يُبقي
-                  من صنّفتَهم عائلةً وحدهم، و«الكل» يعيد الجميع.
-                */}
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 6 }}>
-                  {[{ id: "", name: "الكل", count: data?.members.length ?? 0 }, ...groups].map((group) => {
-                    const on = groupFilter === group.id;
-                    return (
-                      <Pressable
-                        key={group.id || "all"}
-                        onPress={() => setGroupFilter(group.id)}
-                        style={{ height: 34, paddingHorizontal: 14, borderRadius: 999, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: on ? colors.clay : colors.line, backgroundColor: on ? colors.clay : colors.card }}
-                      >
-                        <Text style={{ color: on ? colors.onBrand : colors.ink2, fontSize: 12, fontWeight: on ? "700" : "400" }}>
-                          {group.name} ({ar(group.count)})
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                  <Pressable
-                    onPress={() => router.push("/settings" as never)}
-                    style={{ height: 34, paddingHorizontal: 14, borderRadius: 999, alignItems: "center", justifyContent: "center", borderWidth: 1, borderStyle: "dashed", borderColor: colors.line }}
-                  >
-                    <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600" }}>+ تصنيف</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ) : null}
-
-
-            {tab === "friends" ? (
-              <>
             {/* شريط القصص فوق الدائرة — مكانه في الويب نفسه. */}
             <StoryStrip rings={rings.data?.rings ?? []} meId={me?.id ?? ""} />
 
@@ -310,8 +247,6 @@ export default function Circle() {
               ))}
               </View>
             ) : null}
-              </>
-            ) : null}
           </>
         }
         renderItem={({ item }) => {
@@ -339,56 +274,6 @@ export default function Circle() {
               </Pressable>
             );
           }
-          if (tab === "groups") {
-            const member = item as Member;
-            return (
-              <View style={{ marginHorizontal: 16, marginTop: 8, borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, padding: 12, gap: 10 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                  <Avatar
-                    name={member.name}
-                    size={38}
-                    mediaId={member.avatarMediaId}
-                    frame={member.frame}
-                    charm={member.charm}
-                  />
-                  <Text
-                    numberOfLines={1}
-                    style={{ flexShrink: 1, minWidth: 0, color: colors.ink, fontSize: 14, fontWeight: "600", writingDirection: "auto" }}
-                  >
-                    {member.name}
-                  </Text>
-                  <NameTag isPlus={member.isPlus} tag={member.tag} size={10} />
-                </View>
-
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                  {groups.map((group) => {
-                    const on = member.groupId === group.id;
-                    return (
-                      <Pressable
-                        key={group.id}
-                        onPress={() => place.mutate({ id: member.id, groupId: on ? null : group.id })}
-                        style={{ height: 36, paddingHorizontal: 14, borderRadius: 999, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: on ? colors.clay : colors.line, backgroundColor: on ? colors.clay : "transparent" }}
-                      >
-                        <Text style={{ color: on ? colors.onBrand : colors.ink2, fontSize: 12, fontWeight: "600" }}>
-                          {group.name}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-
-                  {member.groupId ? (
-                    <Pressable
-                      onPress={() => place.mutate({ id: member.id, groupId: null })}
-                      style={{ height: 36, paddingHorizontal: 14, borderRadius: 999, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line }}
-                    >
-                      <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600" }}>بلا تصنيف</Text>
-                    </Pressable>
-                  ) : null}
-                </View>
-              </View>
-            );
-          }
-
           const friend = item as Member;
           return (
           /*
@@ -407,11 +292,13 @@ export default function Circle() {
             onSecond={() => void ban.mutate(friend.id)}
             secondLabel="حظر"
             lead={{ label: "محادثة", run: () => void talk.mutate(friend.id) }}
+            extra={{ label: "تصنيف", run: () => setPicking(friend) }}
             onSwiping={setSwiping}
             surface={colors.card}
             width={60}
             icons={{
               lead: <MessageIcon size={22} color={colors.onBrand} />,
+              extra: <TagIcon size={22} color={colors.night} />,
               second: <BlockIcon size={22} color="#f7f5ef" />,
               delete: <UserMinusIcon size={22} color="#fff" />,
             }}
@@ -455,14 +342,62 @@ export default function Circle() {
             /* لكل بابٍ فراغُه. */
             <View style={{ paddingTop: 60, paddingHorizontal: 40 }}>
               <Text style={{ color: colors.groundMuted, fontSize: 13.5, textAlign: "center", lineHeight: 24 }}>
-                {tab === "groups" && groupFilter
-                  ? "ما في هذا التصنيف أحدٌ بعد. اختر «الكل» وصنّف من شئت."
-                  : "دائرتك فارغة. لا بحث هنا — شارك رابط ملفك من «أنا» مع من تعرفهم، ومن يفتحه يضيفك."}
+                دائرتك فارغة. لا بحث هنا — شارك رابط ملفك من «أنا» مع من تعرفهم، ومن يفتحه يضيفك.
               </Text>
             </View>
           )
         }
       />
+
+      {/*
+        نافذةُ التصنيف (القاعدة ٢٦٨): تصنيفاتُك بعلامةٍ على الحاليّ، و«بلا تصنيف»،
+        ثمّ حقلٌ يُنشئ تصنيفاً ويضع الصديقَ فيه بضغطةٍ واحدة. والتصنيفُ لك
+        وحدك (القاعدة ٢٢): من صنّفته لا يراه.
+      */}
+      {picking ? (
+        <Sheet title={`تصنيف ${picking.name}`} onClose={() => { setPicking(null); setFresh(""); }}>
+          <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 20, marginBottom: 10 }}>
+            التصنيف لك وحدك — لا يراه هو ولا غيرك.
+          </Text>
+          {[...groups, { id: "", name: "بلا تصنيف", count: 0 }].map((group) => {
+            const on = (picking.groupId ?? "") === group.id;
+            return (
+              <Pressable
+                key={group.id || "none"}
+                onPress={() => {
+                  place.mutate({ id: picking.id, groupId: group.id || null });
+                  setPicking(null);
+                }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 10, height: 48, paddingHorizontal: 14, marginBottom: 6, borderRadius: 12, borderWidth: 1, borderColor: on ? colors.clay : colors.line, backgroundColor: on ? colors.claySoft : colors.paper }}
+              >
+                <Text style={{ flex: 1, color: group.id ? colors.ink : colors.muted, fontSize: 14, fontWeight: on ? "700" : "500" }}>
+                  {group.name}
+                </Text>
+                {on ? <CheckIcon size={18} color={colors.clay} /> : null}
+              </Pressable>
+            );
+          })}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 }}>
+            <TextInput
+              value={fresh}
+              onChangeText={(value) => setFresh(value.slice(0, 30))}
+              placeholder="تصنيف جديد… (عائلة، العمل)"
+              placeholderTextColor={colors.faint}
+              style={{ flex: 1, height: 46, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.paper, paddingHorizontal: 14, color: colors.ink, fontSize: 14, textAlign: "right" }}
+            />
+            <Pressable
+              disabled={!fresh.trim() || addGroup.isPending}
+              onPress={() => addGroup.mutate({ name: fresh.trim(), friendId: picking.id })}
+              style={{ height: 46, paddingHorizontal: 16, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay, opacity: !fresh.trim() || addGroup.isPending ? 0.5 : 1 }}
+            >
+              <Text style={{ color: colors.onBrand, fontSize: 13, fontWeight: "700" }}>إضافة تصنيف</Text>
+            </Pressable>
+          </View>
+          {addGroup.error ? (
+            <Text style={{ color: colors.live, fontSize: 12, marginTop: 8 }}>{(addGroup.error as Error).message}</Text>
+          ) : null}
+        </Sheet>
+      ) : null}
     </SafeAreaView>
   );
 }

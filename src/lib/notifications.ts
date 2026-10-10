@@ -96,6 +96,8 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
         }),
     prisma.friendship.findMany({
       where: {
+        // المتابعةُ ليست خبراً (القاعدة ٢٦٣).
+        follow: false,
         OR: [
           { requesterId: userId, status: "ACCEPTED" },
           { addresseeId: userId },

@@ -289,8 +289,12 @@ export async function momentsOf(
   });
 
   // والحظر فوق الانفتاح: من حظره صاحبُ الحساب — أو حظره هو — لا يقرأه.
+  // وصاحبُ الحساب المفتوح يقرأ لحظاتِه كلَّها: لحظتُه الخاصّة كانت تظهر في
+  // الخطّ وتغيب عن «أنا» لأنّ هذا البابَ قصرَه على ما وُجّه إلى الدائرة.
   const open =
-    author?.isOpen === true && !(await blockedWith(userId)).includes(authorId);
+    author?.isOpen === true &&
+    authorId !== userId &&
+    !(await blockedWith(userId)).includes(authorId);
 
   const where = open ? { audience: "CIRCLE" as const } : await visibleWhere(userId);
 

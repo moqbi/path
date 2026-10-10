@@ -54,11 +54,12 @@ export async function open(userId: string, otherId: string) {
 
   const circle = await circleIds(userId);
   if (!circle.includes(otherId)) {
-    const [other, blocked] = await Promise.all([
-      prisma.user.findUnique({ where: { id: otherId }, select: { isOpen: true } }),
+    // والحسابُ المفتوح يردّ على من يتابعه وإن لم يكن من دائرته (القاعدة ٢٦٣).
+    const [open, blocked] = await Promise.all([
+      prisma.user.count({ where: { id: { in: [userId, otherId] }, isOpen: true } }),
       blockedWith(userId),
     ]);
-    if (!other?.isOpen || blocked.includes(otherId)) throw forbidden("المحادثة بعد قبول الإضافة");
+    if (open === 0 || blocked.includes(otherId)) throw forbidden("المحادثة بعد قبول الإضافة");
   }
 
   const { aId, bId } = pairKey(userId, otherId);
@@ -74,7 +75,9 @@ export async function open(userId: string, otherId: string) {
 /** قائمة المحادثات وآخر رسالةٍ في كلٍّ وعدد ما لم يُقرأ. */
 export async function list(userId: string) {
   const rows = await prisma.conversation.findMany({
-    where: { OR: [{ aId: userId }, { bId: userId }] },
+    // محادثةٌ بلا رسالةٍ لا تُعرض: فتحُ المحادثة يُنشئ صفّها، فكان من ضغط
+    // «محادثة» في ملفّ أحدٍ ولم يكتب يظهر في قائمة الطرف الآخر.
+    where: { OR: [{ aId: userId }, { bId: userId }], messages: { some: {} } },
     select: {
       id: true,
       updatedAt: true,

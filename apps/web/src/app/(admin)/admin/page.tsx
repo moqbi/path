@@ -1327,7 +1327,11 @@ export default async function AdminPage({
                   <Check name="plusOnly" label="حصري لمشتركي آثار+" />
                   <Check name="limited" label="حزمة محدودة — تظهر في صفّ «حزم محدودة»" />
                   <Check name="hidden" label="مخفيّ عن المتجر — ومن اشتراه يبقى له" />
+                  <Check name="promo" label="بطاقة إعلان — تظهر لكل مستخدم مرّةً عند فتح التطبيق" />
                 </div>
+                <Field label="سطر بطاقة الإعلان (اختياري)">
+                  <input name="promoText" maxLength={140} placeholder="مثال: إطار رمضان وصل — لفترة محدودة" className={FIELD} style={{ height: 46 }} />
+                </Field>
 
                 <PaletteFields palette={null} />
 
@@ -1530,7 +1534,11 @@ export default async function AdminPage({
                             <Check name="plusOnly" label="حصري لمشتركي آثار+" on={item.plusOnly} />
                             <Check name="limited" label="حزمة محدودة" on={item.limited} />
                             <Check name="hidden" label="مخفيّ عن المتجر" on={item.hidden} />
+                            <Check name="promo" label="بطاقة إعلان عند فتح التطبيق" on={item.promoAt !== null} />
                           </div>
+                          <Field label="سطر بطاقة الإعلان (اختياري)">
+                            <input name="promoText" maxLength={140} defaultValue={item.promoText ?? ""} className={FIELD} style={{ height: 46 }} />
+                          </Field>
 
                           <PaletteFields palette={parsePalette(item.palette)} />
 

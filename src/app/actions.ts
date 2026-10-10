@@ -1074,7 +1074,25 @@ export async function requestFriend(targetId: string): Promise<void> {
   });
   if (!target || (await blockedWith(user.id)).includes(targetId)) throw new Error("لا يوجد هذا الحساب");
 
-  await assertRoomForBoth(user.id, targetId);
+  // متابعةُ الحساب المفتوح لا تأخذ خانةً فلا يُسأل السقف (القاعدة ٢٦٣).
+  if (!target.isOpen) await assertRoomForBoth(user.id, targetId);
+
+  // الحسابُ المفتوح يُضيف متابِعَه صديقاً: المتابعةُ تصير صداقةً من الجهتين.
+  const incoming = await prisma.friendship.findUnique({
+    where: { requesterId_addresseeId: { requesterId: targetId, addresseeId: user.id } },
+    select: { id: true, follow: true, status: true },
+  });
+  if (incoming) {
+    // وطلبٌ قادمٌ من الطرف الآخر يُقبل بالطلب المقابل: لا يُنشأ طلبان.
+    if (incoming.status === "PENDING") await befriend(incoming.id);
+    else if (incoming.follow) {
+      await prisma.friendship.update({ where: { id: incoming.id }, data: { follow: false } });
+    }
+    revalidatePath("/circle");
+    revalidatePath(`/u/${targetId}`);
+    return;
+  }
+
   const row = await prisma.friendship.upsert({
     where: { requesterId_addresseeId: { requesterId: user.id, addresseeId: targetId } },
     create: { requesterId: user.id, addresseeId: targetId },
@@ -1082,9 +1100,12 @@ export async function requestFriend(targetId: string): Promise<void> {
     select: { id: true, status: true },
   });
 
-  // الحسابُ المفتوح يقبل بنفسه (القاعدة ٢٢١).
+  // الحسابُ المفتوح يُتابَع في الحال، لا صداقةً ولا سطرَ «أصبح صديق» (القاعدة ٢٦٣).
   if (target.isOpen && row.status === "PENDING") {
-    await befriend(row.id);
+    await prisma.friendship.update({
+      where: { id: row.id },
+      data: { status: "ACCEPTED", follow: true, acceptedAt: new Date() },
+    });
     revalidatePath("/");
   }
 

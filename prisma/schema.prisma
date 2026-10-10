@@ -157,6 +157,8 @@ model User {
   notesClearedAt      DateTime?
   /// آخرُ فتحٍ لتبويب الإشعارات: ما قبله «قُرئ» فلا نقطةَ له على الأيقونة (القاعدة ٢٣١).
   notesSeenAt         DateTime?
+  /// آخرُ بطاقة إعلانٍ رآها (القاعدة ٢٦٧): ما فُعِّل بعده يُعرض مرّةً.
+  promoSeenAt         DateTime?
   /// يومُ الرياض (YYYY-MM-DD) الذي قُرع فيه جرسُ الذكريات — مرّةً في اليوم.
   memoriesPushedOn    String?
   /// يومُ الرياض الذي طوى فيه صاحبُه بطاقةَ الذكريات — تعود غداً.
@@ -445,6 +447,9 @@ model Friendship {
   createdAt   DateTime         @default(now())
   /// متى قُبلت — منه تُحسب مناسباتُ الصداقة. فارغٌ للقديم: يُقرأ `createdAt`.
   acceptedAt  DateTime?
+  /// متابعةٌ لا صداقة (القاعدة ٢٦٣): مَن أضاف الحسابَ المفتوح يتابعه — يرى ما
+  /// يكتبه للدائرة كلّها — ولا يدخل هو دائرةَ ذلك الحساب، ولا تُحسب في سقف أحد.
+  follow      Boolean          @default(false)
 
   requester User @relation("Requester", fields: [requesterId], references: [id], onDelete: Cascade)
   addressee User @relation("Addressee", fields: [addresseeId], references: [id], onDelete: Cascade)
@@ -677,6 +682,10 @@ model StoreItem {
   /// بعد: الكنسُ يلتقطه ويختمه (`announceStore`). والصنفُ المخفيّ لا يُعلَن
   /// حتى يُرفع، فالموسميُّ يُعلَن يوم يُعرض لا يوم أُعدّ.
   announcedAt DateTime?
+  /// بطاقةُ إعلانٍ تظهر في وسط الشاشة عند فتح التطبيق (القاعدة ٢٦٧): متى
+  /// فُعِّلت، وفارغٌ = لا بطاقة. وسطرٌ يكتبه المشرف عن الصنف تحت اسمه.
+  promoAt     DateTime?
+  promoText   String?
 
   categoryId   String?
   category     StoreCategory?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
@@ -882,6 +891,9 @@ model GroupMessage {
   mediaId   String?     @unique
   media     Media?      @relation("GroupMessageMedia", fields: [mediaId], references: [id], onDelete: SetNull)
   seconds   Int?
+  /// سطرُ حدثٍ لا رسالة (القاعدة ٢٦٤): «فلان أضاف فلان»، «فلان أزال فلان» —
+  /// يُرسم في وسط المحادثة على أرضيتها لا فقاعةً، و`senderId` من فعله.
+  system    Boolean     @default(false)
   createdAt DateTime    @default(now())
 
   group  ChatGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)

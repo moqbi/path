@@ -38,7 +38,7 @@ const TEXT_MAX = 250;
 const HINT: Record<Kind, string> = {
   PHOTO: "اكتب شي عن الصورة…",
   THOUGHT: "وش في بالك؟",
-  PLACE: "اكتب شي عن المكان… (اختياري)",
+  PLACE: "",
   MUSIC: "",
 };
 
@@ -412,7 +412,9 @@ export default function Compose() {
                 style={{ height: 52, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, paddingHorizontal: 16, fontSize: 13, color: colors.ink }}
               />
             </View>
-          ) : (
+          ) : kind === "PLACE" ? null : (
+            // لحظةُ المكان بلا صندوق نصّ (القاعدة ٢٦٥): المكانُ هو خبرُها، ونصٌّ
+            // فوقه يجعلها خاطرةً بدبّوس — ولمن أراد كلاماً خاطرةٌ يضيف لها موقعاً.
             <>
               <TextInput
                 value={text}

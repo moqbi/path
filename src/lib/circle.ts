@@ -10,10 +10,12 @@ export const CIRCLE_CAP = 150;
 
 /** معرّفات من في دائرة المستخدم (المقبولون فقط)، بلا المستخدم نفسه. */
 export async function circleIds(userId: string): Promise<string[]> {
+  // المتابِعُ ليس من دائرة من يتابعه (القاعدة ٢٦٣): صفُّ المتابعة يُقرأ من جهة
+  // صاحبه وحده — يرى به الحسابَ المفتوح، ولا يراه الحسابُ المفتوح به.
   const rows = await prisma.friendship.findMany({
     where: {
       status: "ACCEPTED",
-      OR: [{ requesterId: userId }, { addresseeId: userId }],
+      OR: [{ requesterId: userId }, { addresseeId: userId, follow: false }],
     },
     select: { requesterId: true, addresseeId: true },
   });
@@ -23,10 +25,12 @@ export async function circleIds(userId: string): Promise<string[]> {
   );
 }
 
+/** من يُحسب في السقف: الأصدقاءُ وحدهم — المتابعةُ لا تأخذ خانة (القاعدة ٢٦٣). */
 export async function circleSize(userId: string): Promise<number> {
   return prisma.friendship.count({
     where: {
       status: "ACCEPTED",
+      follow: false,
       OR: [{ requesterId: userId }, { addresseeId: userId }],
     },
   });
@@ -66,11 +70,12 @@ export async function assertRoomForBoth(a: string, b: string): Promise<void> {
 export async function canChat(userId: string, otherId: string): Promise<boolean> {
   if (userId === otherId) return false;
   if ((await circleIds(userId)).includes(otherId)) return true;
-  const [other, blocked] = await Promise.all([
-    prisma.user.findUnique({ where: { id: otherId }, select: { isOpen: true } }),
+  // والحسابُ المفتوح يردّ على من يتابعه وإن لم يكن من دائرته (القاعدة ٢٦٣).
+  const [open, blocked] = await Promise.all([
+    prisma.user.count({ where: { id: { in: [userId, otherId] }, isOpen: true } }),
     blockedWith(userId),
   ]);
-  return Boolean(other?.isOpen) && !blocked.includes(otherId);
+  return open > 0 && !blocked.includes(otherId);
 }
 
 /** عدد الأصدقاء المشتركين بين اثنين. */

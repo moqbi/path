@@ -150,7 +150,7 @@ export default function Messages() {
     ويُفتح كقسمَي «متصل» و«غير متصل» في الأصدقاء. والبحثُ يفتح القسمين: من
     يبحث عن اسمٍ لا يُخفى عنه ما وجده. وبلا مفضّلةٍ لا رأسَ لها.
   */
-  const [folded, setFolded] = useState({ pinned: false, rest: false });
+  const [folded, setFolded] = useState({ pinned: false, rest: false, groups: false });
   const favs = conversations.filter((row) => row.pinned);
   const rest = conversations.filter((row) => !row.pinned);
   const shut = (head: "pinned" | "rest") => folded[head] && !needle;
@@ -235,7 +235,21 @@ export default function Messages() {
         ListHeaderComponent={
           groups.length > 0 ? (
             <View style={{ paddingBottom: 4 }}>
-              {groups.map((row) => (
+              {/* المجموعاتُ قسمٌ يُطوى كالمفضّلة (القاعدة ٢٦٤) — والبحثُ يفتحه. */}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ expanded: !(folded.groups && !needle) }}
+                onPress={() => setFolded((was) => ({ ...was, groups: !was.groups }))}
+                style={{ flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 20, marginTop: 4, marginBottom: 2 }}
+              >
+                <Text style={{ flex: 1, color: colors.groundInk, fontSize: 13.5, fontWeight: "700" }}>
+                  المجموعات ({ar(groups.length)})
+                </Text>
+                <Text style={{ color: colors.groundMuted, fontSize: 12, fontWeight: "600" }}>
+                  {folded.groups && !needle ? "إظهار" : "إخفاء"}
+                </Text>
+              </Pressable>
+              {(folded.groups && !needle ? [] : groups).map((row) => (
                 <Pressable
                   key={row.id}
                   onPress={() => router.push(`/group/${row.id}` as never)}
@@ -253,7 +267,9 @@ export default function Messages() {
                     </View>
                     <Text numberOfLines={1} style={{ color: colors.groundMuted, fontSize: 12 }}>
                       {row.last
-                        ? `${row.last.senderId === me?.id ? "أنت" : row.last.sender.name}: ${row.last.kind === "PHOTO" ? "صورة" : row.last.body}`
+                        ? row.last.system
+                          ? row.last.body
+                          : `${row.last.senderId === me?.id ? "أنت" : row.last.sender.name}: ${row.last.kind === "PHOTO" ? "صورة" : row.last.body}`
                         : "لا رسائل بعد"}
                     </Text>
                   </View>

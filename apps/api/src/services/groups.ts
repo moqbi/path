@@ -36,6 +36,7 @@ const MESSAGE = {
   mediaId: true,
   senderId: true,
   createdAt: true,
+  system: true,
   sender: { select: PERSON },
 } as const;
 
@@ -317,18 +318,67 @@ export async function addMembers(userId: string, groupId: string, ids: string[])
   if (group._count.members + real.length > MEMBERS_MAX) {
     throw badRequest(`الحدّ ${MEMBERS_MAX} عضواً`);
   }
+  const present = new Set(
+    (
+      await prisma.chatGroupMember.findMany({
+        where: { groupId, userId: { in: real } },
+        select: { userId: true },
+      })
+    ).map((row) => row.userId),
+  );
+  const fresh = real.filter((id) => !present.has(id));
   await prisma.chatGroupMember.createMany({
-    data: real.map((id) => ({ groupId, userId: id })),
+    data: fresh.map((id) => ({ groupId, userId: id })),
     skipDuplicates: true,
   });
+  // بعد الانضمام لا قبله: العضوُ الجديد يقرأ من يوم انضمامه (القاعدة ٢٤٢)،
+  // وسطرُ إضافته أوّلُ ما يراه.
+  await eventLines(userId, groupId, fresh, "added");
   return { ok: true };
+}
+
+/**
+ * سطورُ أحداث المجموعة (القاعدة ٢٦٤): «فلان أضاف فلان»، «فلان أزال فلان من
+ * المجموعة»، «فلان غادر المجموعة». تُكتب نصّاً كاملاً فيقرؤها الجوّالُ القديم
+ * رسالةً عاديّة لا فراغاً، والجديدُ يرسمها سطراً في الوسط (`system`).
+ */
+async function eventLines(
+  actorId: string,
+  groupId: string,
+  targetIds: string[],
+  what: "added" | "removed" | "left",
+) {
+  if (targetIds.length === 0) return;
+  const people = await prisma.user.findMany({
+    where: { id: { in: [actorId, ...targetIds] } },
+    select: { id: true, name: true },
+  });
+  const name = new Map(people.map((row) => [row.id, row.name]));
+  const actor = name.get(actorId) ?? "المشرف";
+  await prisma.groupMessage.createMany({
+    data: targetIds.map((id) => ({
+      groupId,
+      senderId: actorId,
+      system: true,
+      body:
+        what === "left"
+          ? `${actor} غادر المجموعة`
+          : what === "added"
+            ? `${actor} أضاف ${name.get(id) ?? "عضواً"}`
+            : `${actor} أزال ${name.get(id) ?? "عضواً"} من المجموعة`,
+    })),
+  });
+  await prisma.chatGroup.update({ where: { id: groupId }, data: { updatedAt: new Date() } });
 }
 
 /** إخراجُ عضو: المشرف يُخرج غيره، وكلُّ عضوٍ يغادر بنفسه. */
 export async function removeMember(userId: string, groupId: string, memberId: string) {
   if (memberId !== userId) await requireRunner(userId);
   else await seat(userId, groupId);
-  await prisma.chatGroupMember.deleteMany({ where: { groupId, userId: memberId } });
+  const gone = await prisma.chatGroupMember.deleteMany({ where: { groupId, userId: memberId } });
+  if (gone.count > 0) {
+    await eventLines(userId, groupId, [memberId], memberId === userId ? "left" : "removed");
+  }
   return { ok: true };
 }
 

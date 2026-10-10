@@ -24,6 +24,7 @@ export function SwipeRow({
   surface,
   width = REVEAL,
   lead,
+  extra,
   radius = 0,
   onSwiping,
   icons,
@@ -47,6 +48,8 @@ export function SwipeRow({
    * الصفّ، وبلونٍ غير لون القطع — فلا يُضغط «إزالة» وهو يريد الكلام.
    */
   lead?: { label: string; run: () => void | Promise<void> };
+  /** فعلٌ رابعٌ أبعدُ من «محادثة»: «تصنيف» في صفّ الصديق (القاعدة ٢٦٨). */
+  extra?: { label: string; run: () => void | Promise<void> };
   /** انحناءُ الحواف حين يكون الصفّ قالباً لا سطراً. */
   radius?: number;
   /**
@@ -58,11 +61,11 @@ export function SwipeRow({
    * أيقوناتٌ بدل الكلمات — **بقرار المالك** في صفّ الصديق: ثلاثةُ أزرارٍ
    * بكلماتها تملأ نصفَ الصفّ. والكلمةُ تبقى اسماً للزرّ عند قارئ الشاشة.
    */
-  icons?: { delete: React.ReactNode; second?: React.ReactNode; lead?: React.ReactNode };
+  icons?: { delete: React.ReactNode; second?: React.ReactNode; lead?: React.ReactNode; extra?: React.ReactNode };
   children: React.ReactNode;
 }) {
   const second = onSecond && secondLabel ? { run: onSecond, label: secondLabel } : null;
-  const reveal = width * (1 + (second ? 1 : 0) + (lead ? 1 : 0));
+  const reveal = width * (1 + (second ? 1 : 0) + (lead ? 1 : 0) + (extra ? 1 : 0));
 
   const [busy, setBusy] = useState(false);
   /*
@@ -156,6 +159,16 @@ export function SwipeRow({
   return (
     <View ref={box} collapsable={false} style={{ position: "relative", overflow: "hidden", borderRadius: radius }}>
       <View style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: reveal, flexDirection: "row" }}>
+        {extra ? (
+          <Pressable
+            disabled={busy}
+            onPress={() => fire(extra.run)}
+            accessibilityLabel={extra.label}
+            style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 8, backgroundColor: colors.gold, opacity: busy ? 0.6 : 1 }}
+          >
+            {icons?.extra ?? <Text style={{ color: colors.night, fontSize: 13, fontWeight: "700" }}>{extra.label}</Text>}
+          </Pressable>
+        ) : null}
         {lead ? (
           <Pressable
             disabled={busy}

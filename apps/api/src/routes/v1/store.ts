@@ -19,6 +19,9 @@ export const storeRoutes = new Hono()
 
   .get("/", async (c) => c.json(await store.storefront(me(c))))
   .get("/mine", async (c) => c.json({ items: await store.myItems(me(c)) }))
+  // بطاقةُ الإعلان عند فتح التطبيق (القاعدة ٢٦٧): الأحدثُ ممّا لم يُرَ، ثمّ «رأيتُه».
+  .get("/promo", async (c) => c.json({ item: await store.promo(me(c)) }))
+  .post("/promo/seen", async (c) => c.json(await store.promoSeen(me(c))))
 
   // والمدّةُ اختياريّةٌ في الطلب: صنفٌ بلا مُددٍ يُشترى بلا `plan`.
   // والجسمُ يُقرأ بيدنا لا بمدقّق: نسخُ التطبيق القديمة ترسل الطلب بلا جسمٍ
