@@ -1,26 +1,46 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTabTop } from "../../lib/tab-top";
 import { TabBackdrop } from "../../components/tab-backdrop";
 import { useBarSpace } from "../../components/glass-bar";
 import { View, ScrollView, Pressable, ActivityIndicator, RefreshControl } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { AthrMark } from "../../components/brand";
-import { StoreGrid } from "../../components/store-grid";
+import { StoreGrid, STRIP_MAX } from "../../components/store-grid";
 import { FlameIcon, InfoIcon, SparkIcon } from "../../components/icons";
 import { useStore, type StoreItem } from "../../lib/queries";
 import { usePullRefresh } from "../../lib/refresh";
 import { coinText } from "../../lib/format";
 import { colors } from "../../theme/tokens";
 
-/** عنوان صفٍّ في «المميز» — واللهب رسمٌ لا إيموجي، كبقية أيقونات التطبيق. */
-function Row({ title, flame = false, children }: { title: string; flame?: boolean; children: React.ReactNode }) {
+/**
+ * عنوان صفٍّ في «المميز» — واللهب رسمٌ لا إيموجي، كبقية أيقونات التطبيق.
+ * و«عرض الكل» بجانبه حين يزيد القسم على عشرة (القاعدة ٢٦٦)، وضغطُه ثانيةً يطويه.
+ */
+function Row({
+  title,
+  flame = false,
+  more,
+  children,
+}: {
+  title: string;
+  flame?: boolean;
+  more?: { all: boolean; toggle: () => void } | null;
+  children: React.ReactNode;
+}) {
   return (
     <View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 }}>
         {flame ? <FlameIcon size={16} color={colors.live} /> : null}
-        <Text style={{ color: colors.groundInk, fontSize: 14, fontWeight: "700" }}>{title}</Text>
+        <Text style={{ flex: 1, color: colors.groundInk, fontSize: 14, fontWeight: "700" }}>{title}</Text>
+        {more ? (
+          <Pressable onPress={more.toggle} hitSlop={8}>
+            <Text style={{ color: colors.groundMuted, fontSize: 12.5, fontWeight: "600" }}>
+              {more.all ? "عرض أقلّ" : "عرض الكل"}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
       {children}
     </View>
@@ -46,10 +66,24 @@ export default function Store() {
   const pullRefresh = usePullRefresh(store.refetch);
   const [slug, setSlug] = useState("");
   const data = store.data;
+  // من بطاقة الإعلان: الصنفُ تُفتح بطاقتُه فوق المتجر (القاعدة ٢٦٧).
+  // والمعرّفُ يُمسك في الحالة ثمّ يُمسح من العنوان: لو بقي فيه لفُتحت البطاقة
+  // ثانيةً مع كلّ عودةٍ إلى التبويب، ولو مُسح وحده لأُغلقت لحظةَ فُتحت.
+  const params = useLocalSearchParams<{ item?: string }>();
+  const [held, setHeld] = useState<string | null>(null);
+  useEffect(() => {
+    if (!params.item) return;
+    setHeld(params.item);
+    router.setParams({ item: undefined } as never);
+  }, [params.item]);
+  const focused = data?.items.find((item) => item.id === held) ?? null;
 
-  const grid = (items: StoreItem[]) =>
+  // أقسامٌ فُتحت بـ«عرض الكل» — بعنوانها، وتُطوى بتغيير الشريحة.
+  const [all, setAll] = useState<Set<string>>(new Set());
+  const grid = (items: StoreItem[], strip = false) =>
     data ? (
       <StoreGrid
+        row={strip}
         items={items}
         owned={data.owned}
         expires={data.expires ?? {}}
@@ -59,6 +93,23 @@ export default function Store() {
         equipped={data.equipped}
       />
     ) : null;
+
+  /** قسمٌ صفٌّ أفقيٌّ بعشرة، و«عرض الكل» يجعله شبكةً بكلّ ما فيه (القاعدة ٢٦٦). */
+  const shelf = (title: string, items: StoreItem[], flame = false) => {
+    const open = all.has(title);
+    const toggle = () =>
+      setAll((was) => {
+        const next = new Set(was);
+        if (next.has(title)) next.delete(title);
+        else next.add(title);
+        return next;
+      });
+    return (
+      <Row key={title} title={title} flame={flame} more={items.length > STRIP_MAX ? { all: open, toggle } : null}>
+        {grid(items, !open)}
+      </Row>
+    );
+  };
 
   const category = data?.categories.find((row) => row.slug === slug) ?? null;
 
@@ -143,7 +194,10 @@ export default function Store() {
             return (
               <Pressable
                 key={chip.slug || "featured"}
-                onPress={() => setSlug(chip.slug)}
+                onPress={() => {
+                  setSlug(chip.slug);
+                  setAll(new Set());
+                }}
                 style={{
                   paddingHorizontal: 16,
                   paddingVertical: 8,
@@ -162,6 +216,21 @@ export default function Store() {
         </ScrollView>
       </View>
 
+      {focused && data ? (
+        <View style={{ height: 0, overflow: "hidden" }}>
+          <StoreGrid
+            items={[focused]}
+            focus={focused.id}
+            owned={data.owned}
+            expires={data.expires ?? {}}
+            isPlus={data.isPlus}
+            coins={data.coins}
+            daysHere={data.daysHere}
+            equipped={data.equipped}
+          />
+        </View>
+      ) : null}
+
       {store.isLoading ? (
         <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
       ) : (
@@ -174,11 +243,7 @@ export default function Store() {
         >
           {kindTab ? (
             grouped.length > 0 ? (
-              grouped.map((row) => (
-                <Row key={row.title} title={row.title}>
-                  {grid(row.items)}
-                </Row>
-              ))
+              grouped.map((row) => shelf(row.title, row.items))
             ) : (
               <Text style={{ color: colors.groundMuted, fontSize: 13, textAlign: "center", marginTop: 30 }}>
                 ما فيه {kindTab.name} بعد.
@@ -189,14 +254,10 @@ export default function Store() {
           ) : (
             <>
               {/* ترتيبُ «المميز» — **بقرار المالك**: الجديد، فالتمائم، فالإطارات، فالثيمات، فالمحدود. */}
-              <Row title="وصل حديثاً" flame>{grid(data?.rows.fresh ?? [])}</Row>
-              {(data?.rows.charms?.length ?? 0) > 0 ? (
-                <Row title="التمائم">{grid(data?.rows.charms ?? [])}</Row>
-              ) : null}
-              {(data?.rows.frames?.length ?? 0) > 0 ? (
-                <Row title="الإطارات">{grid(data?.rows.frames ?? [])}</Row>
-              ) : null}
-              <Row title="ثيمات آثار">{grid(data?.rows.themes ?? [])}</Row>
+              {shelf("وصل حديثاً", data?.rows.fresh ?? [], true)}
+              {(data?.rows.charms?.length ?? 0) > 0 ? shelf("التمائم", data?.rows.charms ?? []) : null}
+              {(data?.rows.frames?.length ?? 0) > 0 ? shelf("الإطارات", data?.rows.frames ?? []) : null}
+              {shelf("ثيمات آثار", data?.rows.themes ?? [])}
               {(data?.rows.bundles?.length ?? 0) > 0 ? (
                 <Row title="باقات">{grid(data?.rows.bundles ?? [])}</Row>
               ) : null}

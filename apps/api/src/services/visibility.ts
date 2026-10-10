@@ -20,8 +20,13 @@ export async function blockedWith(userId: string): Promise<string[]> {
 
 /** معرّفات الدائرة (المقبولون)، بلا صاحبها. */
 export async function circleIds(userId: string): Promise<string[]> {
+  // المتابِعُ ليس من دائرة من يتابعه (القاعدة ٢٦٣): صفُّ المتابعة يُقرأ من جهة
+  // صاحبه وحده — يرى به الحسابَ المفتوح، ولا يراه الحسابُ المفتوح به.
   const rows = await prisma.friendship.findMany({
-    where: { status: "ACCEPTED", OR: [{ requesterId: userId }, { addresseeId: userId }] },
+    where: {
+      status: "ACCEPTED",
+      OR: [{ requesterId: userId }, { addresseeId: userId, follow: false }],
+    },
     select: { requesterId: true, addresseeId: true },
   });
   return rows.map((row) => (row.requesterId === userId ? row.addresseeId : row.requesterId));

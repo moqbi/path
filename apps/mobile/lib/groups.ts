@@ -19,6 +19,8 @@ export type GroupLine = {
   senderId: string;
   createdAt: string;
   sender: GroupPerson;
+  /** سطرُ حدث: «فلان أضاف فلان» — يُرسم في الوسط لا فقاعةً (القاعدة ٢٦٤). خادمٌ قديم بلاه. */
+  system?: boolean;
 };
 
 export type GroupRow = {

@@ -140,6 +140,9 @@ async function derive(userId: string, limit: number): Promise<Note[]> {
         }),
     prisma.friendship.findMany({
       where: {
+        // المتابعةُ ليست خبراً (القاعدة ٢٦٣): لا «قبل طلبك» لمن تابع حسابَ الإدارة،
+        // ولا آلافُ «أضافك» في إشعارات ذلك الحساب.
+        follow: false,
         OR: [
           { requesterId: userId, status: "ACCEPTED" },
           { addresseeId: userId },

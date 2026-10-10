@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { View, Pressable, Modal } from "react-native";
+import { useEffect, useState } from "react";
+import { View, Pressable, Modal, ScrollView, useWindowDimensions } from "react-native";
 import { Text } from "./type";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MediaImage } from "./media-image";
@@ -28,7 +28,7 @@ const KIND_LABEL: Record<string, string> = {
  * وعرضُها كلِّها مربّعاً واحداً كان يجعل الإطار يُقرأ قرصاً والتميمة
  * لطخة.
  */
-function Preview({ item }: { item: StoreItem }) {
+export function Preview({ item }: { item: StoreItem }) {
   const paint = firstColor(item.spec, colors.chip);
 
   /*
@@ -153,6 +153,27 @@ function Preview({ item }: { item: StoreItem }) {
   );
 }
 
+/** حدُّ الصفّ الأفقيّ، وما زاد يُرى بـ«عرض الكل» (القاعدة ٢٦٦). */
+export const STRIP_MAX = 10;
+
+/** حاويةُ البطاقات: شبكةٌ تلتفّ، أو صفٌّ يُمرَّر أفقياً بعرض الشاشة. */
+function Shelf({ strip, children }: { strip: boolean; children: React.ReactNode }) {
+  if (!strip) {
+    return <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 24 }}>{children}</View>;
+  }
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      // الصفُّ يخرج إلى حافّتي الشاشة لا حشوة القائمة، وأعلاه فسحةٌ لشارة «محدودة».
+      style={{ marginHorizontal: -20, marginBottom: 24 }}
+      contentContainerStyle={{ flexDirection: "row", gap: 12, paddingHorizontal: 20, paddingTop: 8 }}
+    >
+      {children}
+    </ScrollView>
+  );
+}
+
 /**
  * شبكة الأصناف.
  *
@@ -168,7 +189,18 @@ export function StoreGrid({
   daysHere,
   equipped,
   expires = {},
+  row = false,
+  focus,
+  onFocused,
 }: {
+  /** صنفٌ تُفتح بطاقتُه في الحال — من بطاقة الإعلان (القاعدة ٢٦٧). */
+  focus?: string;
+  onFocused?: () => void;
+  /**
+   * صفٌّ واحدٌ يُمرَّر أفقياً بعشرةٍ على الأكثر (القاعدة ٢٦٦) — لأقسام المميز
+   * والمجموعات؛ و«عرض الكل» في رأس القسم يعيدها شبكة.
+   */
+  row?: boolean;
   items: StoreItem[];
   owned: string[];
   /** متى ينتهي ما اشتُري بمدّة — بمعرّف الصنف. */
@@ -179,9 +211,21 @@ export function StoreGrid({
   equipped: { frame: string | null; theme: string | null; charm: string | null };
 }) {
   const client = useQueryClient();
+  // بطاقةُ الصفّ بعرض بطاقة الشبكة تقريباً، ويظهر طرفُ الرابعة فيُعرف أنّه يُمرَّر.
+  const { width: screen } = useWindowDimensions();
+  const stripTile = Math.round((screen - 40 - 24) / 3.25);
   const [error, setError] = useState<string | null>(null);
   /* البطاقة المفتوحة: الضغطة تعرض لا تشتري. */
   const [open, setOpen] = useState<StoreItem | null>(null);
+  useEffect(() => {
+    if (!focus) return;
+    const hit = items.find((item) => item.id === focus);
+    if (!hit) return;
+    setPlanId(hit.plans?.[0]?.id ?? null);
+    setOpen(hit);
+    onFocused?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus, items.length]);
   /* نتيجةُ الشراء تُقال نافذةً: «تمّ الشراء» أو «رصيدك لا يكفي». */
   const [said, setSaid] = useState<{ ok?: string; error?: string } | null>(null);
   const [showing, setShowing] = useState(false);
@@ -517,8 +561,8 @@ export function StoreGrid({
         </View>
       ) : null}
 
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 24 }}>
-        {items.map((item) => {
+      <Shelf strip={row}>
+        {(row ? items.slice(0, STRIP_MAX) : items).map((item) => {
           const have = ownedSet.has(item.id);
           const worn = have && wornId(item) === item.id;
           const locked =
@@ -537,7 +581,7 @@ export function StoreGrid({
                 setOpen(item);
               }}
               style={{
-                width: "30.7%",
+                width: row ? stripTile : "30.7%",
                 alignItems: "center",
                 gap: 10,
                 paddingTop: 14,
@@ -607,7 +651,7 @@ export function StoreGrid({
             </Pressable>
           );
         })}
-      </View>
+      </Shelf>
     </>
   );
 }

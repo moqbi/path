@@ -29,7 +29,7 @@ const TEXT_MAX = 250;
 const HINT: Record<Kind, string> = {
   PHOTO: "اكتب شي عن الصورة…",
   THOUGHT: "وش في بالك؟",
-  PLACE: "اكتب شي عن المكان… (اختياري)",
+  PLACE: "",
   MUSIC: "",
 };
 
@@ -218,7 +218,8 @@ export function ComposeForm({
           </div>
         ) : null}
 
-        {kind === "MUSIC" ? null : (
+        {/* لحظةُ المكان بلا صندوق نصّ (القاعدة ٢٦٥). */}
+        {kind === "MUSIC" || kind === "PLACE" ? null : (
           <>
             <textarea
               name="text"

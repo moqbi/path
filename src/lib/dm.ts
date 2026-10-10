@@ -44,7 +44,8 @@ const PERSON = {
 
 export async function conversationsFor(userId: string) {
   const rows = await prisma.conversation.findMany({
-    where: { OR: [{ aId: userId }, { bId: userId }] },
+    // محادثةٌ بلا رسالةٍ لا تُعرض: فتحُها يُنشئ صفّها قبل أن يُكتب شيء.
+    where: { OR: [{ aId: userId }, { bId: userId }], messages: { some: {} } },
     select: {
       id: true,
       updatedAt: true,

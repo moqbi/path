@@ -156,7 +156,30 @@ export default function Group() {
             )
           }
           renderItem={({ item, index }) => {
+            // سطرُ الحدث على أرضية المجموعة في وسطها لا فقاعة (القاعدة ٢٦٤).
+            if (item.system) {
+              return (
+                <View style={{ alignItems: "center", paddingVertical: 8, paddingHorizontal: 24 }}>
+                  <Text
+                    style={{
+                      color: colors.groundMuted,
+                      fontSize: 12,
+                      lineHeight: 20,
+                      textAlign: "center",
+                      backgroundColor: colors.groundLine,
+                      borderRadius: 999,
+                      paddingHorizontal: 12,
+                      paddingVertical: 3,
+                      overflow: "hidden",
+                    }}
+                  >
+                    {item.body}
+                  </Text>
+                </View>
+              );
+            }
             const mine = item.senderId === me?.id;
+            const before = lines[index - 1];
             const canDrop = mine || Boolean(data?.canManage);
 
             return (
@@ -164,7 +187,7 @@ export default function Group() {
                 person={item.sender}
                 mine={mine}
                 at={item.createdAt}
-                head={needsHead(item, lines[index - 1])}
+                head={!before || before.system ? true : needsHead(item, before)}
                 meta={
                   shown === item.id ? (
                     <Pressable

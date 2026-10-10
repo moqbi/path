@@ -52,6 +52,31 @@ const FRESH = 3;
  */
 export const ACTIVE = () => ({ OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] });
 
+/** عمرُ بطاقة الإعلان: من لم يفتح التطبيق أسبوعين لا يُستقبل بإعلانٍ قديم. */
+const PROMO_DAYS = 14;
+
+/**
+ * بطاقةُ الإعلان (القاعدة ٢٦٧): أحدثُ صنفٍ ظاهرٍ فعّل له المشرفُ بطاقةً بعد
+ * آخر بطاقةٍ رآها صاحبُ الحساب — مرّةً لكلّ إعلان، لا مع كلّ فتح.
+ */
+export async function promo(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { promoSeenAt: true } });
+  const floor = new Date(Date.now() - PROMO_DAYS * 86_400_000);
+  const after = user?.promoSeenAt && user.promoSeenAt > floor ? user.promoSeenAt : floor;
+  const item = await prisma.storeItem.findFirst({
+    where: { hidden: false, promoAt: { gt: after } },
+    orderBy: { promoAt: "desc" },
+    select: { ...ITEM, promoText: true },
+  });
+  return item;
+}
+
+/** رآها: أغلقها أو فتح الصنف — فلا تعود إلا بإعلانٍ أحدث منها. */
+export async function promoSeen(userId: string) {
+  await prisma.user.update({ where: { id: userId }, data: { promoSeenAt: new Date() } });
+  return { ok: true };
+}
+
 export async function storefront(userId: string) {
   const [categories, collections, items, purchases, user] = await Promise.all([
     prisma.storeCategory.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),

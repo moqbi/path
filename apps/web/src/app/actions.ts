@@ -181,6 +181,16 @@ const categoryInput = z.object({
   sortOrder: z.coerce.number().int().min(0).max(999).optional(),
 });
 
+/**
+ * بطاقةُ الإعلان (القاعدة ٢٦٧): العلامةُ تفعّلها والسطرُ يُكتب تحت اسم الصنف.
+ * التفعيلُ يختم وقته مرّةً — إعادةُ الحفظ لا تُعيد البطاقة لمن رآها — والإطفاءُ يمسحه.
+ */
+function readPromo(formData: FormData, was: Date | null) {
+  const on = formData.get("promo") === "on";
+  const text = String(formData.get("promoText") ?? "").trim().slice(0, 140);
+  return { promoAt: on ? (was ?? new Date()) : null, promoText: text || null };
+}
+
 export async function createStoreItem(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
   await requireAdmin("store");
 
@@ -219,6 +229,7 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
       limited,
       hidden,
       palette,
+      ...readPromo(formData, null),
       sortOrder: (last?.sortOrder ?? 0) + 1,
     },
   });
@@ -262,9 +273,11 @@ export async function updateStoreItem(
     sortOrder,
   } = parsed.data;
   const palette = readPalette(formData);
+  const was = await prisma.storeItem.findUnique({ where: { id: itemId }, select: { promoAt: true } });
   await prisma.storeItem.update({
     where: { id: itemId },
     data: {
+      ...readPromo(formData, was?.promoAt ?? null),
       kind,
       name,
       priceCoins,
