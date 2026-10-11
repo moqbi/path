@@ -23,6 +23,7 @@ import { api } from "../../lib/api";
 import { keys, type Moment } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { ar, dayLabel } from "../../lib/format";
+import { useStatusNotes } from "../../lib/status-notes";
 import { colors } from "../../theme/tokens";
 
 const COVER = COVER_HEIGHT;
@@ -103,6 +104,8 @@ function Action({
 export default function Me() {
   // المحتوى يمرّ تحت الشريط الزجاجيّ، وآخرُه يُقرأ فوقه (القاعدة ٢٢٨).
   const barSpace = useBarSpace();
+  // النوتُ فوق الصورة (القاعدة ٢٦٩).
+  const statusNotes = useStatusNotes();
   const { me, signOut } = useSession();
   const router = useRouter();
   // حشوةُ الحافّة العليا في الرأس الداكن نفسه — انظر `components/screen-header.tsx`.
@@ -212,6 +215,7 @@ export default function Me() {
 
             {/* الصورةُ في طرف البداية، والاسمُ بجانبها (القاعدة ٢٣٣). */}
             <ProfileHead
+                  note={statusNotes.data?.notes.find((row) => row.authorId === me.id) ?? null}
               name={me.name}
               isPlus={me.isPlus}
               tag={me.tag}

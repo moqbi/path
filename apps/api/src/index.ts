@@ -37,6 +37,8 @@ import { morningBell } from "./services/morning";
 import { memoryRoutes, recapRoutes } from "./routes/v1/memories";
 import { inviteRoutes } from "./routes/v1/invites";
 import { archiveRoutes } from "./routes/v1/archive";
+import { musicRoutes, noteRoutes } from "./routes/v1/notes";
+import { sweep as sweepNotes } from "./services/notes";
 import { sweepPendingSignups } from "./services/auth";
 import { UNVERIFIED_MINUTES } from "@athar/shared";
 
@@ -108,6 +110,7 @@ setInterval(
     void sweepOld().catch((error) => console.error("✗ كنس المحادثات", error));
     void sweepGroups().catch((error) => console.error("✗ كنس المجموعات", error));
     void sweepStories().catch((error) => console.error("✗ كنس القصص", error));
+    void sweepNotes().catch((error) => console.error("✗ كنس النوت", error));
     void dripPlusCredit().catch((error) => console.error("✗ رصيد آثار+", error));
   },
   SWEEP_MINUTES * 60_000,
@@ -177,6 +180,8 @@ app.route("/v1/places", placeRoutes);
 app.route("/v1/memories", memoryRoutes);
 app.route("/v1/invites", inviteRoutes);
 app.route("/v1/archive", archiveRoutes);
+app.route("/v1/notes", noteRoutes);
+app.route("/v1/music", musicRoutes);
 app.route("/v1/recap", recapRoutes);
 app.route("/v1/webhooks", webhookRoutes);
 /** بابُ اللوحة — الدور يُفحص فيه لا في العرض. */

@@ -289,6 +289,8 @@ model User {
 
   stories         Story[]        @relation("StoryAuthor")
   storyViews      StoryView[]
+  notes           StatusNote[]
+  noteViews       NoteView[]
   groups          FriendGroup[]  @relation("GroupOwner")
   groupsIn        GroupMember[]
   momentsSeenBy   MomentViewer[]
@@ -373,6 +375,49 @@ model StoryView {
   @@index([userId])
 }
 
+/// النوت (القاعدة ٢٦٩): سطرٌ أو مقطعُ أغنيةٍ في فقاعةٍ فوق صورة صاحبه، يوماً ثمّ يذهب.
+/// واحدةٌ لكل حساب: الجديدةُ تحلّ محلّ القديمة. والأغنيةُ من دِيزر بمعرّفها —
+/// رابطُ المعاينة يُوقَّع لساعات، فيُطلب طازجاً عند كل استماع.
+model StatusNote {
+  id          String   @id @default(cuid())
+  authorId    String
+  text        String?
+  trackId     String?
+  trackTitle  String?
+  trackArtist String?
+  trackCover  String?
+  /// بدايةُ الثواني العشرين داخل معاينة الثلاثين.
+  trackStart  Int      @default(0)
+  /// تصنيفٌ يُقصر عليه — وفارغٌ: الدائرة كلّها.
+  groupId     String?
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  author User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  group  FriendGroup? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  views  NoteView[]
+
+  @@index([authorId])
+  @@index([expiresAt])
+}
+
+/// من رأى النوت، ومن سمع أغنيتها، وبماذا تفاعل — لصاحبها وحده.
+model NoteView {
+  id         String        @id @default(cuid())
+  noteId     String
+  userId     String
+  seenAt     DateTime      @default(now())
+  listenedAt DateTime?
+  reaction   ReactionKind?
+  reactedAt  DateTime?
+
+  note StatusNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([noteId, userId])
+  @@index([userId])
+}
+
 /// تصنيف داخل الدائرة: الأصدقاء، العائلة، الزملاء…
 /// يملكه صاحبه وحده — تصنيفك لشخصٍ لا يراه هو ولا غيرك.
 model FriendGroup {
@@ -384,6 +429,7 @@ model FriendGroup {
 
   owner   User          @relation("GroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members GroupMember[]
+  notes   StatusNote[]
   moments Moment[]      @relation("MomentGroup")
 
   @@unique([ownerId, name])

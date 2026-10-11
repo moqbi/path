@@ -19,6 +19,7 @@ import { api } from "../../lib/api";
 import { keys, type Moment } from "../../lib/queries";
 import { ar } from "../../lib/format";
 import { useSession } from "../../lib/session";
+import { useStatusNotes } from "../../lib/status-notes";
 import { colors } from "../../theme/tokens";
 
 type Person = {
@@ -103,6 +104,8 @@ function ByNumber({ memberNo }: { memberNo: string }) {
 function Profile() {
   // المحتوى يمرّ تحت الشريط الزجاجيّ، وآخرُه يُقرأ فوقه (القاعدة ٢٢٨).
   const barSpace = useBarSpace();
+  // النوتُ فوق الصورة (القاعدة ٢٦٩).
+  const statusNotes = useStatusNotes();
   const me = useSession((state) => state.me);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -231,6 +234,7 @@ function Profile() {
               {/* بهيئة «أنا» نفسها (القاعدة ٢٣٣): الصورةُ في طرف البداية والاسمُ بجانبها. */}
               <View style={{ marginHorizontal: -20 }}>
                 <ProfileHead
+                  note={statusNotes.data?.notes.find((row) => row.authorId === who.id) ?? null}
                   name={who.name}
                   isPlus={who.isPlus}
                   tag={who.tag}

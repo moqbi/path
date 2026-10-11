@@ -1,6 +1,8 @@
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { Text } from "./type";
 import { AvatarMenu, type WornItem } from "./avatar-menu";
+import { NoteBubble } from "./note-bubble";
+import { openNote } from "../lib/status-notes";
 import { frameBleed, type Charm, type Frame } from "./avatar";
 import { NameTag } from "./name-tag";
 import { colors } from "../theme/tokens";
@@ -30,7 +32,10 @@ export function ProfileHead({
   charm,
   frameItem,
   charmItem,
+  note,
 }: {
+  /** النوتُ فوق الصورة (القاعدة ٢٦٩) — ضغطُها يفتحها ويُسمع أغنيتها. */
+  note?: { id: string; text: string | null; trackTitle: string | null; trackArtist: string | null } | null;
   name: string;
   isPlus: boolean;
   tag?: { name: string; bg: string; fg: string } | null;
@@ -69,15 +74,26 @@ export function ProfileHead({
         جهة، ويلتصق الاسمُ بالغلاف حين يكون تحته معرّف.
       */}
       <View style={{ flexDirection: "row", alignItems: "flex-start", marginTop: -size / 2 }}>
-        <AvatarMenu
-          name={name}
-          size={size}
-          mediaId={mediaId}
-          frame={frame}
-          charm={charm}
-          frameItem={frameItem}
-          charmItem={charmItem}
-        />
+        <View>
+          <AvatarMenu
+            name={name}
+            size={size}
+            mediaId={mediaId}
+            frame={frame}
+            charm={charm}
+            frameItem={frameItem}
+            charmItem={charmItem}
+          />
+          {note ? (
+            <Pressable
+              accessibilityLabel="النوت"
+              onPress={() => openNote(note.id)}
+              style={{ position: "absolute", bottom: size - 6, left: -30, right: -30, alignItems: "center", zIndex: 3 }}
+            >
+              <NoteBubble text={note.text} trackTitle={note.trackTitle} trackArtist={note.trackArtist} />
+            </Pressable>
+          ) : null}
+        </View>
         {/* التميمةُ تتدلّى من ركن الصورة نحو الاسم (القاعدة ٥٩): مسافةٌ تتّسع لها. */}
         <View style={{ flex: 1, minWidth: 0, alignItems: "flex-start", paddingRight: 34, marginTop: size / 2 + 10 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, maxWidth: "100%" }}>
