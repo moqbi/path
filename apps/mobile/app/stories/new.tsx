@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { View, Pressable, ScrollView, Image, ActivityIndicator, Dimensions } from "react-native";
 import { Text } from "../../components/type";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import Svg, { Circle } from "react-native-svg";
 import * as Picker from "expo-image-picker";
 import { useQueryClient } from "@tanstack/react-query";
-import { ScreenHeader } from "../../components/screen-header";
 import { FilterStrip, Filtered } from "../../components/filtered";
 import { StoryVideo } from "../../components/story-video";
 import { api } from "../../lib/api";
@@ -17,11 +17,10 @@ import { EditableStickers, StickerFace, TIME_STYLE_NAMES } from "../../component
 import { StoryPlaceSheet } from "../../components/story-place-sheet";
 import { StorySound, type SoundChoice } from "../../components/story-sound";
 import { EditableTexts, TextEditor, freshText } from "../../components/story-texts";
-import { SourceSheet } from "../../components/source-sheet";
-import { takeShot } from "../../lib/capture";
+import { StoryCamera, GlassPill, SendMark, disc } from "../../components/story-camera";
 import { colors } from "../../theme/tokens";
 import { ClockIcon, CloseIcon, LockIcon, MusicIcon, PinIcon, StickerIcon, TrashIcon } from "../../components/icons";
-import { PeopleSheet, PickerButton, type Friend } from "../../components/people-sheet";
+import { PeopleSheet, type Friend } from "../../components/people-sheet";
 import { useCircle } from "../../lib/queries";
 
 /** أقصى مدّة لفيديو القصة — نفس حدّ الخادم. */
@@ -38,10 +37,11 @@ type Draft = {
 };
 
 /**
- * ناشر القصة: الاختيار ثم المعاينة والفلتر ثم النشر — لا رفعٌ فوريّ.
- *
- * والفلتر يُختار على المعاينة نفسها: اختيارُه من قائمةِ أسماءٍ بلا رؤية
- * تخمينٌ لا اختيار.
+ * ناشر القصة (القاعدة ٢٧٠) — **بقرار المالك**: يفتح على الكاميرا مباشرةً، وفي
+ * أسفلها شريطٌ زجاجيّ لصورةٍ أو فيديو وبجانب الغالق المعرض. واللقطةُ تصير
+ * محرّراً بملء الشاشة في المكان نفسه: النصُّ والملصقُ والفلترُ والموسيقى أدواتٌ
+ * في الطرف، والجمهورُ وسهمُ النشر في شريطٍ زجاجيّ أسفله. لا رفعٌ فوريّ
+ * (القاعدة ٩٦): المحرّرُ هو المعاينة.
  */
 export default function NewStory() {
   const router = useRouter();
@@ -60,7 +60,8 @@ export default function NewStory() {
   const [picked, setPicked] = useState<string[]>([]);
   const [choosing, setChoosing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [asking, setAsking] = useState(false);
+  const [panel, setPanel] = useState<"filter" | null>(null);
+  const insets = useSafeAreaInsets();
   const [texts, setTexts] = useState<StoryText[]>([]);
   // ما يُحرَّر الآن: نصٌّ قائم برقمه، أو «جديد»، أو لا شيء.
   const [editing, setEditing] = useState<number | "new" | null>(null);
@@ -77,28 +78,6 @@ export default function NewStory() {
   const [stickerAt, setStickerAt] = useState<number | null>(null);
 
   const screen = Dimensions.get("window");
-  /*
-    اللوحةُ بنسبة الشاشة نفسها: النصُّ يُحفظ بموضعه نسبةً منها، والعارضُ
-    يرسمه نسبةً من الشاشة كلّها — لوحةٌ بنسبةٍ أخرى تُزيحه عن مكانه.
-  */
-  const previewHeight = Math.min(520, screen.height * 0.58);
-  const previewWidth = Math.min(screen.width - 40, (previewHeight * screen.width) / screen.height);
-
-  /* العودة من الكاميرا — صورةً كانت أو مقطعاً. */
-  useFocusEffect(() => {
-    const shot = takeShot();
-    if (!shot) return;
-    setDraft({
-      uri: shot.uri,
-      mime: shot.mime,
-      width: shot.width,
-      height: shot.height,
-      video: shot.video,
-      seconds: shot.seconds,
-      start: 0,
-    });
-    if (shot.video) dropSound();
-  });
 
   /** المقطعُ له صوتُه: صوتُ القصّة وملصقُه للصور وحدها. */
   function dropSound() {
@@ -115,7 +94,6 @@ export default function NewStory() {
   }
 
   async function pick() {
-    setAsking(false);
     setError(null);
     const granted = await Picker.requestMediaLibraryPermissionsAsync();
     if (!granted.granted) {
@@ -194,225 +172,162 @@ export default function NewStory() {
     }
   }
 
-  return (
-    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
-      <ScreenHeader title="قصة" back="/circle" />
-
-      <ScrollView scrollEnabled={!dragging} contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 16 }}>
-        <View
-          style={{
-            alignSelf: "center",
-            width: previewWidth,
-            height: previewHeight,
-            borderRadius: 18,
-            borderWidth: 1,
-            borderColor: colors.line,
-            backgroundColor: "#0b1219",
-            overflow: "hidden",
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: 14,
+  // بلا لقطةٍ: الكاميرا نفسها — لا صفحةٌ قبلها (القاعدة ٢٧٠).
+  if (!draft) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#000" }}>
+        <StoryCamera
+          limit={STORY_SECONDS}
+          onClose={() => router.back()}
+          onLibrary={() => void pick()}
+          onShot={(shot) => {
+            setError(null);
+            setDraft({ ...shot, start: 0 });
+            if (shot.video) dropSound();
           }}
-        >
-          {draft ? (
-            draft.video ? (
-              /* المقطع يُشغَّل ويُعاد قبل أن يُرسل — لا صورةٌ ساكنة منه. */
-              draft.seconds > STORY_SECONDS ? (
-                <VideoWindowPreview uri={draft.uri} start={draft.start} width={previewWidth} height={previewHeight} />
-              ) : (
-                <StoryVideo source={draft.uri} local width={previewWidth} height={previewHeight} />
-              )
-            ) : !filter ? (
-              <Image source={{ uri: draft.uri }} style={{ width: "100%", height: "100%" }} resizeMode="contain" />
-            ) : (
-              <LocalFiltered uri={draft.uri} filter={filter} width={previewWidth} height={previewHeight} />
-            )
-          ) : (
-            <Text style={{ color: "rgba(255,255,255,.6)", fontSize: 12.5 }}>ما اخترت شي بعد</Text>
-          )}
-
-          {draft ? (
-            <EditableTexts
-              texts={texts}
-              width={previewWidth}
-              height={previewHeight}
-              onChange={(index, next) => setTexts((all) => all.map((item, i) => (i === index ? next : item)))}
-              onEdit={(index) => setEditing(index)}
-              onActive={setDragging}
-            />
-          ) : null}
-
-          {draft ? (
-            <EditableStickers
-              stickers={stickers}
-              width={previewWidth}
-              height={previewHeight}
-              onChange={(index, next) => setStickers((all) => all.map((item, i) => (i === index ? next : item)))}
-              onEdit={(index) => {
-                if (stickers[index]?.kind === "music") setSounding(true);
-                else setStickerAt(index);
-              }}
-              onActive={setDragging}
-            />
-          ) : null}
-        </View>
-
-        <View style={{ flexDirection: "row", gap: 10, marginBottom: 14 }}>
-          <Pressable
-            onPress={() => setAsking(true)}
-            style={{ flex: 1, height: 46, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
-          >
-            <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600" }}>
-              {draft ? "غيّر" : "صورة أو فيديو"}
-            </Text>
-          </Pressable>
-          {draft ? (
-            <Pressable
-              accessibilityLabel="أضف نصاً"
-              disabled={texts.length >= STORY_TEXTS}
-              onPress={() => setEditing("new")}
-              style={{
-                flex: 1,
-                height: 46,
-                borderRadius: 12,
-                alignItems: "center",
-                justifyContent: "center",
-                borderWidth: 1,
-                borderColor: colors.line,
-                backgroundColor: colors.card,
-                opacity: texts.length >= STORY_TEXTS ? 0.45 : 1,
-              }}
-            >
-              <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "700" }}>Aa  نص</Text>
-            </Pressable>
-          ) : null}
-          {draft ? (
-            <Pressable
-              accessibilityLabel="أضف ملصقاً"
-              disabled={full}
-              onPress={() => setTray(true)}
-              style={{
-                flex: 1,
-                height: 46,
-                borderRadius: 12,
-                flexDirection: "row",
-                gap: 6,
-                alignItems: "center",
-                justifyContent: "center",
-                borderWidth: 1,
-                borderColor: colors.line,
-                backgroundColor: colors.card,
-                opacity: full ? 0.45 : 1,
-              }}
-            >
-              <StickerIcon size={17} color={colors.ink} />
-              <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "700" }}>ملصق</Text>
-            </Pressable>
-          ) : null}
-        </View>
-        {texts.length || stickers.length ? (
-          <Text style={{ color: colors.faint, fontSize: 11, textAlign: "center", marginTop: -6, marginBottom: 12 }}>
-            اسحب النصّ أو الملصق لتحريكه، وكبّره بإصبعين، واضغطه لتعديله
-          </Text>
-        ) : null}
-
-        {draft && draft.video ? (
-          <View style={{ gap: 12 }}>
-            {draft.seconds > STORY_SECONDS ? (
-              <VideoWindowBar
-                seconds={draft.seconds}
-                start={draft.start}
-                onChange={(start) => setDraft((d) => (d ? { ...d, start } : d))}
-              />
-            ) : null}
-            <Text style={{ color: colors.muted, fontSize: 11.5, lineHeight: 21 }}>
-              {draft.seconds > STORY_SECONDS
-                ? `يُنشر ${ar(STORY_SECONDS)} ثانية ويُضغط تلقائياً`
-                : `فيديو ${ar(draft.seconds)} ثانية · يُضغط تلقائياً`}
-              {"\n"}الفلاتر للصور — المقطع يُنشر كما صُوِّر.
-            </Text>
-          </View>
-        ) : draft ? (
-          <>
-            <Text style={{ color: colors.faint, fontSize: 11.5, fontWeight: "600", marginBottom: 10 }}>
-              فلتر
-            </Text>
-            <FilterStrip uri={draft.uri} value={filter} onChange={setFilter} />
-          </>
-        ) : null}
-
+        />
         {error ? (
-          <Text accessibilityRole="alert" style={{ color: colors.live, fontSize: 12.5, marginTop: 14 }}>
+          <Text accessibilityRole="alert" style={{ position: "absolute", top: insets.top + 64, left: 20, right: 20, color: "#fff", backgroundColor: colors.live, borderRadius: 12, padding: 10, fontSize: 12.5, textAlign: "center", overflow: "hidden" }}>
             {error}
           </Text>
         ) : null}
-      </ScrollView>
+      </View>
+    );
+  }
 
-      <View style={{ paddingHorizontal: 20, paddingBottom: 26 }}>
-        <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
-          {[
-            { key: false, label: "أصدقائي كلهم" },
-            { key: true, label: "قصة خاصة" },
-          ].map((option) => {
-            const on = only === option.key;
-            return (
-              <Pressable
-                key={option.label}
-                onPress={() => {
-                  setOnly(option.key);
-                  if (option.key && picked.length === 0) setChoosing(true);
-                }}
-                style={{
-                  flex: 1,
-                  height: 40,
-                  borderRadius: 999,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                  borderWidth: 1,
-                  borderColor: on ? colors.clay : colors.line,
-                  backgroundColor: on ? colors.claySoft : colors.card,
-                }}
-              >
-                {option.key ? <LockIcon size={14} color={on ? colors.clayInk : colors.muted} /> : null}
-                <Text style={{ color: on ? colors.clayInk : colors.ink2, fontSize: 13, fontWeight: on ? "700" : "500" }}>
-                  {option.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        {only ? (
-          <View style={{ marginBottom: 10 }}>
-            <PickerButton
-              label={picked.length ? `يشوفها ${ar(picked.length)} من أصدقائك` : "اختر مين يشوفها"}
-              count={picked.length}
-              onOpen={() => setChoosing(true)}
-            />
-          </View>
-        ) : null}
-        <Text style={{ color: colors.faint, fontSize: 11, textAlign: "center", marginBottom: 12 }}>
-          تذهب بعد ٢٤ ساعة — من كل مكان
-        </Text>
-        <Pressable
-          onPress={publish}
-          disabled={!draft || busy}
-          style={{
-            height: 54,
-            borderRadius: 12,
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: colors.clay,
-            opacity: !draft || busy ? 0.45 : 1,
-          }}
-        >
-          {busy ? (
-            <ActivityIndicator color={colors.onBrand} />
-          ) : (
-            <Text style={{ color: colors.onBrand, fontSize: 15.5, fontWeight: "700" }}>انشر</Text>
-          )}
+  /** الرجوعُ من المحرّر إلى الكاميرا يمحو ما بُني على اللقطة. */
+  function discard() {
+    setDraft(null);
+    setFilter("");
+    setTexts([]);
+    setStickers([]);
+    setSound(null);
+    setPanel(null);
+    setError(null);
+  }
+
+  const long = draft.video && draft.seconds > STORY_SECONDS;
+
+  return (
+    <View style={{ flex: 1, backgroundColor: "#0b1219" }}>
+      {/* اللوحةُ بملء الشاشة كما يراها المشاهد — فالنصُّ والملصقُ يقعان حيث وُضعا. */}
+      {draft.video ? (
+        long ? (
+          <VideoWindowPreview uri={draft.uri} start={draft.start} width={screen.width} height={screen.height} />
+        ) : (
+          <StoryVideo source={draft.uri} local width={screen.width} height={screen.height} loop />
+        )
+      ) : !filter ? (
+        <Image source={{ uri: draft.uri }} style={{ width: screen.width, height: screen.height }} resizeMode="contain" />
+      ) : (
+        <LocalFiltered uri={draft.uri} filter={filter} width={screen.width} height={screen.height} />
+      )}
+
+      <EditableTexts
+        texts={texts}
+        width={screen.width}
+        height={screen.height}
+        onChange={(index, next) => setTexts((all) => all.map((item, i) => (i === index ? next : item)))}
+        onEdit={(index) => setEditing(index)}
+        onActive={setDragging}
+      />
+      <EditableStickers
+        stickers={stickers}
+        width={screen.width}
+        height={screen.height}
+        onChange={(index, next) => setStickers((all) => all.map((item, i) => (i === index ? next : item)))}
+        onEdit={(index) => {
+          if (stickers[index]?.kind === "music") setSounding(true);
+          else setStickerAt(index);
+        }}
+        onActive={setDragging}
+      />
+
+      {/* الأعلى: الرجوعُ إلى الكاميرا، والأدواتُ عموداً في الطرف المقابل. */}
+      <View
+        pointerEvents={dragging ? "none" : "box-none"}
+        style={{ position: "absolute", top: insets.top + 8, left: 16, right: 16, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", opacity: dragging ? 0.25 : 1 }}
+      >
+        <Pressable accessibilityLabel="صوّر غيرها" onPress={discard} hitSlop={12} style={disc}>
+          <CloseIcon size={20} color="#fff" />
         </Pressable>
+        <View style={{ gap: 12, alignItems: "center" }}>
+          <Tool label="نص" disabled={texts.length >= STORY_TEXTS} onPress={() => setEditing("new")}>
+            <Text style={{ color: "#fff", fontSize: 17, fontWeight: "800" }}>Aa</Text>
+          </Tool>
+          <Tool label="ملصق" disabled={full} onPress={() => setTray(true)}>
+            <StickerIcon size={21} color="#fff" />
+          </Tool>
+          {!draft.video ? (
+            <Tool label="فلتر" on={panel === "filter"} onPress={() => setPanel((one) => (one === "filter" ? null : "filter"))}>
+              <FilterMark />
+            </Tool>
+          ) : null}
+          {!draft.video ? (
+            <Tool label="موسيقى" disabled={!hasMusic && full} on={hasMusic} onPress={() => setSounding(true)}>
+              <MusicIcon size={20} color="#fff" />
+            </Tool>
+          ) : null}
+        </View>
+      </View>
+
+      {/* الأسفل: الفلترُ أو نافذةُ المقطع، ثمّ الجمهورُ والنشر في شريطٍ زجاجيّ. */}
+      <View pointerEvents={dragging ? "none" : "box-none"} style={{ position: "absolute", left: 0, right: 0, bottom: insets.bottom + 12, paddingHorizontal: 16, gap: 10, opacity: dragging ? 0.25 : 1 }}>
+        {panel === "filter" && !draft.video ? (
+          <GlassPill style={{ borderRadius: 20, padding: 10, paddingBottom: 6 }}>
+            <View style={{ flex: 1 }}>
+              <FilterStrip uri={draft.uri} value={filter} onChange={setFilter} />
+            </View>
+          </GlassPill>
+        ) : null}
+        {long ? (
+          <GlassPill style={{ borderRadius: 20, padding: 12 }}>
+            <View style={{ flex: 1, gap: 6 }}>
+              <VideoWindowBar seconds={draft.seconds} start={draft.start} onChange={(start) => setDraft((d) => (d ? { ...d, start } : d))} />
+              <Text style={{ color: "rgba(255,255,255,.75)", fontSize: 11, textAlign: "center" }}>
+                يُنشر {ar(STORY_SECONDS)} ثانية تختارها ويُضغط تلقائياً
+              </Text>
+            </View>
+          </GlassPill>
+        ) : null}
+        {error ? (
+          <Text accessibilityRole="alert" style={{ color: "#fff", backgroundColor: colors.live, borderRadius: 12, padding: 10, fontSize: 12.5, textAlign: "center", overflow: "hidden" }}>
+            {error}
+          </Text>
+        ) : null}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <GlassPill style={{ flex: 1 }}>
+            {[
+              { key: false, label: "أصدقائي كلهم" },
+              { key: true, label: only && picked.length ? `خاصة · ${ar(picked.length)}` : "قصة خاصة" },
+            ].map((option) => {
+              const on = only === option.key;
+              return (
+                <Pressable
+                  key={String(option.key)}
+                  onPress={() => {
+                    setOnly(option.key);
+                    if (option.key) setChoosing(true);
+                  }}
+                  style={{ flex: 1, height: 40, borderRadius: 20, flexDirection: "row", gap: 5, alignItems: "center", justifyContent: "center", backgroundColor: on ? "rgba(255,255,255,.92)" : "transparent" }}
+                >
+                  {option.key ? <LockIcon size={13} color={on ? "#000" : "#fff"} /> : null}
+                  <Text numberOfLines={1} style={{ color: on ? "#000" : "#fff", fontSize: 12.5, fontWeight: "700" }}>
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </GlassPill>
+          <Pressable
+            accessibilityLabel="انشر"
+            onPress={publish}
+            disabled={busy}
+            style={{ width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay, opacity: busy ? 0.6 : 1 }}
+          >
+            {busy ? <ActivityIndicator color={colors.onBrand} /> : <SendMark color={colors.onBrand} />}
+          </Pressable>
+        </View>
       </View>
 
       {choosing ? (
@@ -517,26 +432,7 @@ export default function NewStory() {
         />
       ) : null}
 
-      {/*
-        القصة تقبل الاثنين، فبابا الكاميرا اثنان: صورةٌ ومقطع. وسؤالٌ
-        واحد بثلاثة خيارات أوضح من شاشةِ كاميرا تُبدّل وضعها في داخلها —
-        من فتحها ليصوّر مقطعاً لا يبحث عن مفتاحٍ يحوّلها.
-      */}
-      <SourceSheet
-        open={asking}
-        title="قصّتك من أين؟"
-        onClose={() => setAsking(false)}
-        onCamera={() => {
-          setAsking(false);
-          router.push("/camera?mode=picture" as never);
-        }}
-        onVideo={() => {
-          setAsking(false);
-          router.push(`/camera?mode=video&seconds=${STORY_SECONDS}` as never);
-        }}
-        onLibrary={() => void pick()}
-      />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -675,5 +571,37 @@ function StickerEditor({
         </Pressable>
       </Pressable>
     </Pressable>
+  );
+}
+
+/** أداةٌ في عمود المحرّر: قرصٌ داكن واسمُها تحته. */
+function Tool({
+  label,
+  on = false,
+  disabled = false,
+  onPress,
+  children,
+}: {
+  label: string;
+  on?: boolean;
+  disabled?: boolean;
+  onPress: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Pressable accessibilityLabel={label} disabled={disabled} onPress={onPress} hitSlop={6} style={{ alignItems: "center", gap: 3, opacity: disabled ? 0.4 : 1 }}>
+      <View style={[disc, on ? { backgroundColor: colors.clay } : null]}>{children}</View>
+      <Text style={{ color: "#fff", fontSize: 10.5, fontWeight: "700", textShadowColor: "rgba(0,0,0,.6)", textShadowRadius: 4 }}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function FilterMark() {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Circle cx={9} cy={9.5} r={5.2} stroke="#fff" strokeWidth={1.7} />
+      <Circle cx={15} cy={9.5} r={5.2} stroke="#fff" strokeWidth={1.7} />
+      <Circle cx={12} cy={14.6} r={5.2} stroke="#fff" strokeWidth={1.7} />
+    </Svg>
   );
 }

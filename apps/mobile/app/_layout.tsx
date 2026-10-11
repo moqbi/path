@@ -282,6 +282,8 @@ function Gate() {
       />
       {/* النوتُ الجديدة تصعد من الأسفل فوق ما قبلها (القاعدة ٢٦٩). */}
       <Stack.Screen name="note/new" options={{ presentation: "fullScreenModal", animation: "slide_from_bottom" }} />
+      {/* والقصّةُ الجديدة كاميرا بملء الشاشة تصعد كذلك (القاعدة ٢٧٠). */}
+      <Stack.Screen name="stories/new" options={{ presentation: "fullScreenModal", animation: "slide_from_bottom", gestureEnabled: false }} />
     </Stack>
     {/* نافذةُ الصورة هنا لا في البطاقة: لا جدَّ لها يلتقط سحبتها. */}
     <PhotoViewer />
