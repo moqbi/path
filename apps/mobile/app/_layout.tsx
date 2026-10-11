@@ -24,6 +24,7 @@ import { Suspended } from "../components/suspended";
 import { PhotoViewer } from "../components/photo-viewer";
 import { PlaceVisitors } from "../components/place-visitors";
 import { ReactSheet } from "../components/react-sheet";
+import { CreateSheet, NoteSheet } from "../components/note-sheet";
 import { Tour } from "../components/tour";
 import { applyTheme, colors, themeStore, veil } from "../theme/tokens";
 import { dismissOpen } from "../lib/swipe-open";
@@ -279,6 +280,10 @@ function Gate() {
           contentStyle: { backgroundColor: "transparent", direction: "rtl" },
         }}
       />
+      {/* النوتُ الجديدة تصعد من الأسفل فوق ما قبلها (القاعدة ٢٦٩). */}
+      <Stack.Screen name="note/new" options={{ presentation: "fullScreenModal", animation: "slide_from_bottom" }} />
+      {/* والقصّةُ الجديدة كاميرا بملء الشاشة تصعد كذلك (القاعدة ٢٧٠). */}
+      <Stack.Screen name="stories/new" options={{ presentation: "fullScreenModal", animation: "slide_from_bottom", gestureEnabled: false }} />
     </Stack>
     {/* نافذةُ الصورة هنا لا في البطاقة: لا جدَّ لها يلتقط سحبتها. */}
     <PhotoViewer />
@@ -286,6 +291,9 @@ function Gate() {
     <PlaceVisitors />
     {/* ولوحةُ التفاعل نافذةٌ زجاجيّة كذلك (القاعدة ٢٤٧). */}
     <ReactSheet />
+    {/* النوت ونافذةُ «قصة أو نوت» — في الجذر للسبب نفسه (القاعدة ٢٦٩). */}
+    <NoteSheet />
+    <CreateSheet />
     {/* الجولةُ طبقةٌ فوق المكدّس كلّه، لمن دخل وحده. */}
     {me ? <Tour key={me.id} /> : null}
     {/* بطاقةُ إعلان الصنف — بعد الجولة لا معها (القاعدة ٢٦٧). */}

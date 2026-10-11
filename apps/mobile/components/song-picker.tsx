@@ -1,0 +1,291 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, FlatList, Image, PanResponder, Pressable, View, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Text, TextInput } from "./type";
+import { BackIcon, CheckIcon, CloseIcon, PauseIcon, PlayIcon, SearchIcon } from "./icons";
+import {
+  NOTE_SECONDS,
+  PREVIEW_SECONDS,
+  playClip,
+  previewOf,
+  stopClip,
+  useClip,
+  useTracks,
+  type Track,
+} from "../lib/status-notes";
+import { ar } from "../lib/format";
+
+const clock = (seconds: number) => {
+  const whole = Math.max(0, Math.round(seconds));
+  return `${ar(Math.floor(whole / 60))}:${ar(String(whole % 60).padStart(2, "0"))}`;
+};
+
+/**
+ * اختيارُ أغنية النوت (القاعدة ٢٦٩) — **بقرار المالك**، بهيئة إنستقرام: قائمةُ
+ * «الأكثر استماعاً» وفوقها بحث، والضغطةُ تُسمع المعاينة وتفتح شريط القصّ: نافذةُ
+ * عشرين ثانيةً تُسحب على الثلاثين، ثمّ علامةُ «تمّ».
+ *
+ * طبقةٌ داكنة لا `Modal` (القاعدة ١٢٦)، والبحثُ من خادمنا (`/v1/music`).
+ */
+export function SongPicker({
+  onPick,
+  onClose,
+}: {
+  onPick: (track: Track, start: number) => void;
+  onClose: () => void;
+}) {
+  const insets = useSafeAreaInsets();
+  const [query, setQuery] = useState("");
+  const [chosen, setChosen] = useState<Track | null>(null);
+  const tracks = useTracks(query);
+
+  useEffect(() => () => void stopClip(), []);
+
+  return (
+    <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(10,16,22,.97)", paddingTop: insets.top + 8 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 16, marginBottom: 12 }}>
+        <Pressable
+          accessibilityLabel={chosen ? "رجوع للقائمة" : "إغلاق"}
+          onPress={() => {
+            void stopClip();
+            if (chosen) setChosen(null);
+            else onClose();
+          }}
+          style={{ width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.12)" }}
+        >
+          {chosen ? <BackIcon size={18} color="#fff" /> : <CloseIcon size={16} color="#fff" />}
+        </Pressable>
+        <Text style={{ flex: 1, color: "#fff", fontSize: 16, fontWeight: "800" }}>{chosen ? "اختر المقطع" : "أغنية"}</Text>
+      </View>
+
+      {chosen ? (
+        <Trim track={chosen} onDone={(start) => onPick(chosen, start)} onOther={() => setChosen(null)} />
+      ) : (
+        <>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              marginHorizontal: 16,
+              height: 42,
+              paddingHorizontal: 12,
+              borderRadius: 12,
+              backgroundColor: "rgba(255,255,255,.1)",
+              marginBottom: 8,
+            }}
+          >
+            <SearchIcon size={16} color="rgba(255,255,255,.6)" />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="ابحث عن أغنية أو فنان"
+              placeholderTextColor="rgba(255,255,255,.45)"
+              returnKeyType="search"
+              style={{ flex: 1, color: "#fff", fontSize: 14, textAlign: "right" }}
+            />
+          </View>
+          <Text style={{ color: "rgba(255,255,255,.55)", fontSize: 11.5, fontWeight: "700", paddingHorizontal: 16, marginBottom: 4 }}>
+            {query.trim() ? "نتائج البحث" : "الأكثر استماعاً"}
+          </Text>
+          {tracks.isLoading ? (
+            <ActivityIndicator style={{ marginTop: 30 }} color="#fff" />
+          ) : tracks.isError ? (
+            <Text style={{ color: "#FF7A5A", fontSize: 13, textAlign: "center", marginTop: 30 }}>
+              {(tracks.error as Error).message}
+            </Text>
+          ) : (
+            <FlatList
+              data={tracks.data?.tracks ?? []}
+              keyExtractor={(item) => item.id}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+              ListEmptyComponent={
+                <Text style={{ color: "rgba(255,255,255,.6)", fontSize: 13, textAlign: "center", marginTop: 30 }}>ما لقينا شي بهالاسم.</Text>
+              }
+              renderItem={({ item }) => <Row track={item} onChoose={() => setChosen(item)} />}
+            />
+          )}
+          {/* شرطُ دِيزر: اسمُه حيث تُعرض أغانيه. */}
+          <Text style={{ position: "absolute", bottom: insets.bottom + 6, alignSelf: "center", color: "rgba(255,255,255,.35)", fontSize: 10 }}>
+            الأغاني من Deezer
+          </Text>
+        </>
+      )}
+    </View>
+  );
+}
+
+function Row({ track, onChoose }: { track: Track; onChoose: () => void }) {
+  const key = `pick:${track.id}`;
+  const clip = useClip(key);
+  return (
+    <Pressable onPress={onChoose} style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 8 }}>
+      {track.cover ? (
+        <Image source={{ uri: track.cover }} style={{ width: 48, height: 48, borderRadius: 8, backgroundColor: "rgba(255,255,255,.1)" }} />
+      ) : (
+        <View style={{ width: 48, height: 48, borderRadius: 8, backgroundColor: "rgba(255,255,255,.1)" }} />
+      )}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text numberOfLines={1} style={{ color: "#fff", fontSize: 14, fontWeight: "700", writingDirection: "auto" }}>
+          {track.title}
+        </Text>
+        <Text numberOfLines={1} style={{ color: "rgba(255,255,255,.6)", fontSize: 12, writingDirection: "auto" }}>
+          {track.artist} · {clock(track.duration)}
+        </Text>
+      </View>
+      {/* سماعٌ قبل الاختيار: الضغطةُ على الصفّ تختار، وهذا الزرّ يُسمع فقط. */}
+      <Pressable
+        accessibilityLabel={clip.playing ? "إيقاف" : "استمع"}
+        hitSlop={8}
+        onPress={async () => {
+          if (clip.playing || clip.loading) return void stopClip();
+          await playClip(key, await previewOf(track.id), 0, PREVIEW_SECONDS);
+        }}
+        style={{ width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.12)" }}
+      >
+        {clip.loading ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : clip.playing ? (
+          <PauseIcon size={14} color="#fff" />
+        ) : (
+          <PlayIcon size={14} color="#fff" />
+        )}
+      </Pressable>
+    </Pressable>
+  );
+}
+
+/**
+ * شريطُ القصّ: ثلاثون عموداً لثلاثين ثانية، وفوقها نافذةُ عشرين تُسحب. والزمنُ
+ * من اليسار إلى اليمين كأيّ شريط تشغيل (كصوت القصّة — القاعدة ٢٣٨). والأعمدةُ
+ * رسمٌ ثابتٌ من معرّف الأغنية لا موجتُها: المعاينةُ على دِيزر لا عندنا لنقرأها.
+ */
+function Trim({ track, onDone, onOther }: { track: Track; onDone: (start: number) => void; onOther: () => void }) {
+  const { width: screen } = useWindowDimensions();
+  const width = screen - 48;
+  const px = width / PREVIEW_SECONDS;
+  const span = PREVIEW_SECONDS - NOTE_SECONDS;
+  const [start, setStart] = useState(0);
+  const [url, setUrl] = useState<string | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  const key = `trim:${track.id}`;
+  const clip = useClip(key);
+
+  const bars = useMemo(() => {
+    let seed = Number(track.id.slice(-6)) || 7;
+    return Array.from({ length: 60 }, () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return 0.25 + (seed / 233280) * 0.75;
+    });
+  }, [track.id]);
+
+  const live = useRef({ start, url });
+  live.current = { start, url };
+  const from = useRef(0);
+
+  const play = (at: number, link = live.current.url) => {
+    if (link) void playClip(key, link, at, NOTE_SECONDS);
+  };
+
+  useEffect(() => {
+    let alive = true;
+    previewOf(track.id)
+      .then((link) => {
+        if (!alive) return;
+        setUrl(link);
+        play(0, link);
+      })
+      .catch((error: Error) => alive && setProblem(error.message));
+    return () => {
+      alive = false;
+      void stopClip();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [track.id]);
+
+  const pan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: () => {
+        from.current = live.current.start;
+      },
+      onPanResponderMove: (_e, g) => {
+        setStart(Math.max(0, Math.min(span, from.current + g.dx / px)));
+      },
+      onPanResponderRelease: () => play(Math.round(live.current.start)),
+    }),
+  ).current;
+
+  return (
+    <View style={{ flex: 1, paddingHorizontal: 24, alignItems: "center" }}>
+      {track.cover ? (
+        <Image source={{ uri: track.cover }} style={{ width: 150, height: 150, borderRadius: 14, marginTop: 20 }} />
+      ) : null}
+      <Text numberOfLines={1} style={{ color: "#fff", fontSize: 17, fontWeight: "800", marginTop: 16, writingDirection: "auto" }}>
+        {track.title}
+      </Text>
+      <Text numberOfLines={1} style={{ color: "rgba(255,255,255,.65)", fontSize: 13, marginTop: 2, writingDirection: "auto" }}>
+        {track.artist}
+      </Text>
+
+      <Pressable
+        accessibilityLabel={clip.playing ? "إيقاف" : "استمع"}
+        onPress={() => (clip.playing ? void stopClip() : play(Math.round(start)))}
+        style={{ marginTop: 20, width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.14)" }}
+      >
+        {!url && !problem ? <ActivityIndicator color="#fff" /> : clip.playing ? <PauseIcon size={20} color="#fff" /> : <PlayIcon size={20} color="#fff" />}
+      </Pressable>
+
+      {/* الشريط: الزمنُ من اليسار إلى اليمين أيّاً كان اتّجاهُ الكتابة. */}
+      <View {...pan.panHandlers} style={{ width, height: 64, marginTop: 28, direction: "ltr" }}>
+        <View style={{ position: "absolute", left: 0, right: 0, top: 8, bottom: 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          {bars.map((h, i) => {
+            const t = (i / bars.length) * PREVIEW_SECONDS;
+            const inside = t >= start && t < start + NOTE_SECONDS;
+            return <View key={i} style={{ width: 3, height: 44 * h, borderRadius: 2, backgroundColor: inside ? "#fff" : "rgba(255,255,255,.28)" }} />;
+          })}
+        </View>
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: start * px,
+            width: NOTE_SECONDS * px,
+            borderRadius: 12,
+            borderWidth: 3,
+            borderColor: "#F6B93B",
+          }}
+        />
+      </View>
+      <Text style={{ color: "rgba(255,255,255,.7)", fontSize: 12, marginTop: 10 }}>
+        {clock(start)} — {clock(start + NOTE_SECONDS)} · اسحب النافذة لتختار عشرين ثانية
+      </Text>
+      {problem ? <Text style={{ color: "#FF7A5A", fontSize: 13, marginTop: 12 }}>{problem}</Text> : null}
+
+      <View style={{ flex: 1 }} />
+      <View style={{ flexDirection: "row", gap: 10, alignSelf: "stretch", paddingBottom: 34 }}>
+        <Pressable
+          onPress={onOther}
+          style={{ flex: 1, height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.14)" }}
+        >
+          <Text style={{ color: "#fff", fontSize: 13.5, fontWeight: "700" }}>أغنية أخرى</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => {
+            void stopClip();
+            onDone(Math.round(start));
+          }}
+          disabled={!url}
+          style={{ flex: 1.3, height: 48, borderRadius: 12, flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center", backgroundColor: "#F6B93B", opacity: url ? 1 : 0.45 }}
+        >
+          <CheckIcon size={16} color="#0E1A24" />
+          <Text style={{ color: "#0E1A24", fontSize: 14, fontWeight: "800" }}>تمّ</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
