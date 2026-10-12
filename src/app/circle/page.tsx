@@ -14,7 +14,8 @@ import {
   startConversation,
 } from "@/app/actions";
 import { SwipeRow } from "@/components/swipe-row";
-import { StoryStrip } from "@/components/stories";
+import { CircleStrip } from "@/components/circle-strip";
+import { listNotes } from "@/lib/notes";
 import { Avatar, Empty, NameTag } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import { CheckIcon, CloseIcon, MessageIcon } from "@/components/icons";
@@ -37,7 +38,7 @@ export default async function CirclePage({
   const { t, g } = await searchParams;
   const tab = TABS.some((item) => item.key === t) ? t! : "friends";
 
-  const [ids, requests, groups, rings] = await Promise.all([
+  const [ids, requests, groups, rings, notes] = await Promise.all([
     circleIds(user.id),
     prisma.friendship.findMany({
       where: { addresseeId: user.id, status: "PENDING" },
@@ -64,6 +65,7 @@ export default async function CirclePage({
       select: { id: true, name: true, members: { select: { userId: true } } },
     }),
     storyRings(user.id),
+    listNotes(user.id),
   ]);
 
   const members = await prisma.user.findMany({
@@ -110,9 +112,11 @@ export default async function CirclePage({
 
       {/* شريط القصص: قصتك أولاً ثم من عندهم جديد. */}
       <div className="shrink-0" style={{ borderBottom: "1px solid var(--color-line)" }}>
-        <StoryStrip
+        <CircleStrip
           rings={rings}
+          notes={notes}
           me={{ id: user.id, name: user.name, avatarMediaId: user.avatarMediaId }}
+          groups={groups.map((group) => ({ id: group.id, name: group.name }))}
         />
       </div>
 

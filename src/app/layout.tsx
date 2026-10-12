@@ -85,7 +85,7 @@ export default async function RootLayout({
           // ألوانُ الثيم على الأعمدة الثلاثة لا على الوسط وحده.
           <div className="desk" style={palette ? themeVars(palette) : undefined}>
             <aside className="desk-side desk-side-start" aria-label="الأصدقاء">
-              <FriendsPanel userId={user.id} />
+              <FriendsPanel user={user} />
             </aside>
             {shell}
             <aside className="desk-side desk-side-end" aria-label="أنا والإشعارات">

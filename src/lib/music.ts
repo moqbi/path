@@ -1,0 +1,82 @@
+import "server-only";
+
+/**
+ * الأغاني من دِيزر — نسخةُ `apps/api/src/services/music.ts` (القاعدة ٢٦٩):
+ * من خادمنا لا من المتصفّح، فلا تخرج طلباتُ الناس إلى طرفٍ ثالث. والمعاينةُ
+ * ثلاثون ثانية برابطٍ موقَّعٍ يقصر عمرُه، فلا يُحفظ: يُطلب طازجاً عند الاستماع.
+ */
+
+const API = "https://api.deezer.com";
+const TOP = process.env.DEEZER_TOP_PLAYLIST || "11163315344";
+
+export const PREVIEW_SECONDS = 30;
+export const NOTE_SECONDS = 20;
+
+export type Track = { id: string; title: string; artist: string; cover: string | null; duration: number };
+
+type Raw = {
+  id: number;
+  title?: string;
+  title_short?: string;
+  duration?: number;
+  readable?: boolean;
+  preview?: string;
+  artist?: { name?: string };
+  album?: { cover_medium?: string; cover_small?: string };
+};
+
+const UNAVAILABLE = "الأغاني غير متاحة الآن — حاول بعد قليل";
+
+function shape(row: Raw): Track | null {
+  if (!row.preview || row.readable === false) return null;
+  return {
+    id: String(row.id),
+    title: row.title_short || row.title || "",
+    artist: row.artist?.name ?? "",
+    cover: row.album?.cover_medium ?? row.album?.cover_small ?? null,
+    duration: row.duration ?? 0,
+  };
+}
+
+async function get<T>(path: string): Promise<T> {
+  const res = await fetch(`${API}${path}`, { signal: AbortSignal.timeout(8000), cache: "no-store" });
+  if (!res.ok) throw new Error(UNAVAILABLE);
+  const body = (await res.json()) as T & { error?: unknown };
+  if (body && typeof body === "object" && "error" in body && body.error) throw new Error(UNAVAILABLE);
+  return body;
+}
+
+let top: { at: number; tracks: Track[] } | null = null;
+export async function topTracks(): Promise<Track[]> {
+  if (top && Date.now() - top.at < 3_600_000) return top.tracks;
+  const body = await get<{ data?: Raw[] }>(`/playlist/${TOP}/tracks?limit=50`);
+  const tracks = (body.data ?? []).map(shape).filter((row): row is Track => row !== null);
+  top = { at: Date.now(), tracks };
+  return tracks;
+}
+
+export async function searchTracks(query: string): Promise<Track[]> {
+  const q = query.trim().slice(0, 80);
+  if (!q) return topTracks();
+  const body = await get<{ data?: Raw[] }>(`/search?q=${encodeURIComponent(q)}&limit=30`);
+  return (body.data ?? []).map(shape).filter((row): row is Track => row !== null);
+}
+
+/** الأغنيةُ بمعرّفها — اسمُها وفنّانها من دِيزر لا ممّا يرسله المتصفّح. */
+export async function trackById(id: string): Promise<Track & { preview: string }> {
+  if (!/^\d{1,15}$/.test(id)) throw new Error("الأغنية غير موجودة");
+  const row = await get<Raw>(`/track/${id}`);
+  const track = shape(row);
+  if (!track || !row.preview) throw new Error("الأغنية غير متاحة");
+  return { ...track, preview: row.preview };
+}
+
+const fresh = new Map<string, { at: number; url: string }>();
+export async function previewUrl(id: string): Promise<string> {
+  const hit = fresh.get(id);
+  if (hit && Date.now() - hit.at < 600_000) return hit.url;
+  const { preview } = await trackById(id);
+  fresh.set(id, { at: Date.now(), url: preview });
+  if (fresh.size > 2000) fresh.delete(fresh.keys().next().value as string);
+  return preview;
+}
