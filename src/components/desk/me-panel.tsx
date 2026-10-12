@@ -102,6 +102,16 @@ export async function MePanel({ user }: { user: SessionUser }) {
           </Link>
         ))}
       </nav>
+
+      {/* صفحاتُ الموقع خارج `/app` — `<a>` لا `Link` (القاعدة ١٢٢). */}
+      <footer className="mt-4 px-2 text-center text-[11px] leading-6 text-faint">
+        <a href="/privacy" className="hover:text-ink-2">الخصوصية</a>
+        {" · "}
+        <a href="/terms" className="hover:text-ink-2">الشروط</a>
+        {" · "}
+        <a href="/contact" className="hover:text-ink-2">تواصل معنا</a>
+        <span className="block">آثار مومنتس · ATHAR Moments</span>
+      </footer>
     </div>
   );
 

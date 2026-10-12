@@ -33,6 +33,17 @@ import { announceAvatar } from "@/lib/avatar-moment";
 import { cloudReady, probeBucket } from "@/lib/storage";
 import { isSupportedMusicUrl, resolveTrack } from "@/lib/music-link";
 import { guard } from "@/lib/moderation";
+import {
+  NOTE_FACES,
+  noteAudio,
+  noteViewers,
+  postNote as createNote,
+  reactNote as setNoteReaction,
+  removeMyNote,
+  seeNote as markNoteSeen,
+  type NoteFace,
+} from "@/lib/notes";
+import { previewUrl, searchTracks, type Track } from "@/lib/music";
 import { SUSPEND_HOURS } from "@/lib/suspend";
 import { dismiss as dismissToday, shareMemory } from "@/lib/memories";
 import { shareRecap } from "@/lib/recap";
@@ -715,6 +726,106 @@ export async function deleteStory(storyId: string): Promise<void> {
   // وملفُّها وصوتُها معها (القاعدة ١٠٤): حذفُ الصفّ وحده يُبقي بكسلاتها في السحابة.
   await dropMedia([story.mediaId, ...(story.audioMediaId ? [story.audioMediaId] : [])]);
   revalidatePath("/circle");
+}
+
+/* ── النوت (القاعدة ٢٦٩) — الإجراءُ يردّ نصَّ الخطأ ولا يرميه (القاعدة ٩٠). ── */
+
+const noteError = (error: unknown) => (error instanceof Error ? error.message : "تعذّر الآن");
+
+export async function postNote(input: {
+  text?: string;
+  trackId?: string | null;
+  trackStart?: number;
+  groupId?: string | null;
+}): Promise<{ ok?: true; error?: string }> {
+  const user = await requireUser();
+  try {
+    await createNote(user.id, {
+      text: typeof input.text === "string" ? input.text : "",
+      trackId: typeof input.trackId === "string" ? input.trackId : null,
+      trackStart: Number(input.trackStart) || 0,
+      groupId: typeof input.groupId === "string" ? input.groupId : null,
+    });
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch (error) {
+    return { error: noteError(error) };
+  }
+}
+
+export async function deleteNote(): Promise<void> {
+  const user = await requireUser();
+  await removeMyNote(user.id);
+  revalidatePath("/", "layout");
+}
+
+export async function seeNote(noteId: string, listened = false): Promise<void> {
+  const user = await requireUser();
+  await markNoteSeen(user.id, String(noteId), Boolean(listened)).catch(() => {});
+}
+
+export async function playNote(noteId: string): Promise<{ url?: string; start?: number; seconds?: number; error?: string }> {
+  const user = await requireUser();
+  // المعاينةُ تُسأل من دِيزر — حدٌّ لكل حساب كي لا يصير البابُ وسيطاً مفتوحاً.
+  if (!hit(`note-audio:${user.id}`, 60, 60_000)) return { error: TOO_MANY };
+  try {
+    return await noteAudio(user.id, String(noteId));
+  } catch (error) {
+    return { error: noteError(error) };
+  }
+}
+
+export async function reactNote(noteId: string, kind: string | null): Promise<{ error?: string }> {
+  const user = await requireUser();
+  const face = kind && (NOTE_FACES as readonly string[]).includes(kind) ? (kind as NoteFace) : null;
+  try {
+    await setNoteReaction(user.id, String(noteId), face);
+    return {};
+  } catch (error) {
+    return { error: noteError(error) };
+  }
+}
+
+export async function myNoteViewers(noteId: string) {
+  const user = await requireUser();
+  try {
+    const rows = await noteViewers(user.id, String(noteId));
+    return {
+      rows: rows.map((row) => ({
+        id: row.user.id,
+        name: row.user.name,
+        avatarMediaId: row.user.avatarMediaId,
+        frame: row.user.frame,
+        charm: row.user.charm,
+        reaction: row.reaction,
+        listened: Boolean(row.listenedAt),
+        seenAt: row.seenAt.toISOString(),
+      })),
+    };
+  } catch (error) {
+    return { error: noteError(error), rows: [] };
+  }
+}
+
+export async function findSongs(query: string): Promise<{ tracks: Track[]; error?: string }> {
+  const user = await requireUser();
+  if (!hit(`music:${user.id}`, 30, 60_000)) return { tracks: [], error: TOO_MANY };
+  try {
+    return { tracks: await searchTracks(String(query ?? "")) };
+  } catch (error) {
+    return { tracks: [], error: noteError(error) };
+  }
+}
+
+/** معاينةُ أغنيةٍ قبل اختيارها في المحرّر — رابطٌ طازج لا يُحفظ. */
+export async function songPreview(trackId: string): Promise<{ url?: string; error?: string }> {
+  const user = await requireUser();
+  if (!hit(`note-audio:${user.id}`, 60, 60_000)) return { error: TOO_MANY };
+  try {
+    return { url: await previewUrl(String(trackId)) };
+  } catch (error) {
+    return { error: noteError(error) };
+  }
 }
 
 export async function setCoverPosition(y: number): Promise<void> {

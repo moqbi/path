@@ -398,15 +398,23 @@ h3 {
     overflow: hidden;
   }
 
+  /*
+   * والوسطُ بطاقةٌ كالعمودين (القاعدة ٢٧٣): بهامشهما العلويّ والسفليّ وزواياهما،
+   * فتُقرأ الشاشةُ ثلاثَ لوحاتٍ على أرضٍ واحدة لا لوحتين تطفوان بجانب جدار.
+   */
   .desk > .shell {
     max-width: none;
     width: 100%;
-    margin: 0;
+    height: calc(100dvh - 40px);
+    margin: 20px 0;
+    border-radius: 22px;
+    overflow: hidden;
     box-shadow: 0 0 0 1px var(--color-line), 0 24px 70px rgba(14, 26, 36, 0.12);
   }
 
   .desk .shell-fixed {
     max-width: 640px;
+    bottom: 20px;
   }
 
   .desk .desk-only {
@@ -443,15 +451,17 @@ h3 {
   border: 1px solid var(--color-line);
   border-radius: 22px;
   background: var(--color-card);
+  box-shadow: 0 1px 2px rgba(14, 26, 36, 0.04), 0 14px 40px rgba(14, 26, 36, 0.07);
   overflow: hidden;
 }
 
 .desk-panel-head {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   padding: 18px 16px 12px;
+  border-bottom: 1px solid var(--color-line);
 }
 
 .desk-panel-body {
@@ -546,6 +556,201 @@ h3 {
 
 .desk-link:hover {
   background: var(--color-paper);
+}
+
+/*
+ * شريطُ الدائرة: القصصُ والنوت (القاعدة ٢٧٣). الفقاعةُ فوق الصورة في مكانٍ
+ * محجوزٍ لها (`circle-bubble-slot`) فلا يُقصّ أعلاها، وذيلُها ينزل إلى الصورة.
+ */
+.circle-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 12px 12px;
+}
+.circle-strip-item {
+  display: flex;
+  width: 74px;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: center;
+}
+.circle-bubble-slot {
+  display: flex;
+  height: 50px;
+  width: 100%;
+  align-items: flex-end;
+  justify-content: center;
+  margin-bottom: -7px;
+  position: relative;
+  z-index: 1;
+}
+.circle-strip-name {
+  margin-top: 5px;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  font-size: 11px;
+  color: var(--color-ink-2);
+}
+.circle-plus,
+.circle-lock {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  height: 20px;
+  width: 20px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 2px solid var(--color-card);
+  background: var(--color-clay);
+  color: var(--color-on-brand);
+}
+
+.note-bubble {
+  display: inline-flex;
+  max-width: 88px;
+  flex-direction: column;
+  align-items: center;
+}
+.note-bubble-body {
+  display: flex;
+  min-width: 46px;
+  max-width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 5px 9px;
+  border: 1px solid var(--color-line);
+  border-radius: 13px;
+  background: var(--color-card);
+  box-shadow: 0 2px 8px rgba(14, 26, 36, 0.1);
+  color: var(--color-ink);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+}
+.note-bubble-tail {
+  margin-top: 2px;
+  height: 7px;
+  width: 7px;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background: var(--color-card);
+}
+.note-bubble-large {
+  max-width: 260px;
+  margin-bottom: 4px;
+}
+.note-bubble-large .note-bubble-body {
+  min-width: 120px;
+  padding: 10px 16px;
+  border-radius: 18px;
+  font-size: 13px;
+  border-color: transparent;
+}
+.note-bubble-large .note-bubble-tail {
+  height: 10px;
+  width: 10px;
+  border-color: transparent;
+}
+.note-bubble-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 14.5px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+/* أدواتُ النافذة الزجاجيّة: زجاجٌ داكنٌ بنصٍّ أبيض (القاعدة ٢٤٧). */
+.glass-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 10px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  text-align: center;
+}
+.glass-choice:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+.glass-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.glass-btn {
+  display: flex;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.glass-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+.glass-field {
+  padding: 0 14px;
+  height: 46px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+.glass-field:focus-within {
+  border-color: rgba(246, 185, 59, 0.7);
+}
+
+/* أقسامُ عمود الأصدقاء: عنوانٌ صغير بعدده ثمّ الصفوف. */
+.desk-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--color-faint);
+}
+.desk-section::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: var(--color-line);
+}
+.desk-meter {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-chip);
+}
+.desk-meter > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-clay);
+}
+.desk-row .desk-icon-btn {
+  opacity: 0.55;
+}
+.desk-row:hover .desk-icon-btn,
+.desk-row .desk-icon-btn:focus-visible {
+  opacity: 1;
 }
 
 /* أعمدةُ ملصق الموسيقى في القصّة (القاعدة ٢٣٨): تتراقص ما دام الصوتُ يُسمع. */

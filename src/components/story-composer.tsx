@@ -5,6 +5,7 @@ import { postStory } from "@/app/actions";
 import { shrink, type Picked } from "@/components/image-picker";
 import { CloseIcon, PlusIcon } from "@/components/icons";
 import { ar } from "@/lib/format";
+import { Portal } from "@/components/sheet";
 
 /** أقصى مدّة للفيديو، وأقصى حجمٍ يُقبل — نفس ما يفحصه الخادم. */
 const MAX_SECONDS = 20;
@@ -109,7 +110,12 @@ function readVideo(file: File): Promise<{ seconds: number; width: number; height
  * الاختيار ثم المعاينة ثم النشر — لا رفعٌ فوريٌّ بمجرّد اختيار الملف:
  * ما يُنشر بلا مراجعة يُحذف بعدها.
  */
-export function StoryComposer() {
+export function StoryComposer({
+  trigger,
+}: {
+  /** زرٌّ آخر يفتح الاختيار — كقائمة «قصة أو نوت» في شريط الدائرة. */
+  trigger?: (open: () => void) => React.ReactNode;
+} = {}) {
   const input = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [filter, setFilter] = useState("");
@@ -187,25 +193,30 @@ export function StoryComposer() {
         }}
       />
 
+      {trigger ? (
+        trigger(() => input.current?.click())
+      ) : (
       <button
-        type="button"
-        aria-label="قصة جديدة"
-        onClick={() => input.current?.click()}
-        className="flex h-[62px] w-[62px] items-center justify-center rounded-full"
-      >
-        <span
-          className="flex h-full w-full items-center justify-center rounded-full"
-          style={{
-            border: "1.5px dashed var(--color-line)",
-            background: "var(--color-card)",
-            color: "var(--color-clay-ink)",
-          }}
+          type="button"
+          aria-label="قصة جديدة"
+          onClick={() => input.current?.click()}
+          className="flex h-[62px] w-[62px] items-center justify-center rounded-full"
         >
-          <PlusIcon size={22} />
-        </span>
-      </button>
+          <span
+            className="flex h-full w-full items-center justify-center rounded-full"
+            style={{
+              border: "1.5px dashed var(--color-line)",
+              background: "var(--color-card)",
+              color: "var(--color-clay-ink)",
+            }}
+          >
+            <PlusIcon size={22} />
+          </span>
+        </button>
+      )}
 
       {draft ? (
+        <Portal>
         <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "#0b1219" }}>
           <div className="flex items-center justify-between px-4 pt-4">
             <button
@@ -295,6 +306,7 @@ export function StoryComposer() {
             </button>
           </div>
         </div>
+        </Portal>
       ) : null}
 
       {error && !draft ? (
