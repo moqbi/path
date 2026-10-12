@@ -66,7 +66,7 @@ export async function promo(userId: string) {
   const item = await prisma.storeItem.findFirst({
     where: { hidden: false, promoAt: { gt: after } },
     orderBy: { promoAt: "desc" },
-    select: { ...ITEM, promoText: true },
+    select: { ...ITEM, promoText: true, promoMediaId: true },
   });
   return item;
 }

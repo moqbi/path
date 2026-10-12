@@ -3,11 +3,11 @@ import {
   addItemPlan,
   createCollection,
   deleteCollection,
+  updateCollection,
   dropItemPlan,
-  setItemCollection,
 } from "@/app/actions";
 import { ar, coinText } from "@/lib/format";
-import { SaveForm } from "./saver";
+import { Saver } from "./saver";
 
 const INPUT =
   "block w-full rounded-xl border border-line bg-card px-3 text-[13px] text-ink outline-none";
@@ -23,46 +23,6 @@ export function daysLabel(days: number): string {
   if (days === 90) return "٣ أشهر";
   if (days === 365) return "سنة";
   return days <= 10 ? `${ar(days)} أيام` : `${ar(days)} يوماً`;
-}
-
-/** مجموعةُ الصنف داخل نوعه — قائمةٌ بمجموعات نوعه وحده. */
-export async function ItemCollection({
-  itemId,
-  kind,
-  collectionId,
-}: {
-  itemId: string;
-  kind: string;
-  collectionId: string | null;
-}) {
-  const normalized = kind === "BACKGROUND" ? "THEME" : kind;
-  if (!KIND_NAME[normalized]) return null;
-  const collections = await prisma.storeCollection.findMany({
-    // مجموعاتُ نوعه، والمختلطةُ معها (القاعدة ١٩٧).
-    where: { OR: [{ kind: normalized as "CHARM" | "FRAME" | "THEME" }, { kind: null }] },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-    select: { id: true, name: true, kind: true },
-  });
-
-  return (
-    <SaveForm action={setItemCollection.bind(null, itemId)} className="mt-3 flex items-end gap-2">
-      <label className="grow text-[11.5px] text-muted">
-        المجموعة
-        <select name="collectionId" defaultValue={collectionId ?? ""} className={`${INPUT} mt-1`} style={{ height: 40 }}>
-          <option value="">بلا مجموعة ({KIND_NAME[normalized]} الأخرى)</option>
-          {collections.map((one) => (
-            <option key={one.id} value={one.id}>
-              {one.name}
-              {one.kind ? "" : " (مختلطة)"}
-            </option>
-          ))}
-        </select>
-      </label>
-      <button type="submit" className="rounded-xl border border-line px-3 text-[12px] font-semibold text-ink-2" style={{ height: 40 }}>
-        احفظ
-      </button>
-    </SaveForm>
-  );
 }
 
 /** مُدَدُ الصنف وأسعارُها — وبلا مُددٍ يُشترى مرّةً ويبقى بسعره. */
@@ -147,18 +107,46 @@ export async function CollectionsView() {
       </form>
       <ul className="flex flex-col gap-2">
         {collections.map((one) => (
-          <li key={one.id} className="flex items-center justify-between rounded-2xl border border-line bg-card px-4 py-3">
-            <div>
-              <p className="text-[13.5px] font-semibold">{one.name}</p>
-              <p className="text-[11.5px] text-muted">
-                {one.kind ? (KIND_NAME[one.kind] ?? one.kind) : "مختلطة"} · {ar(one._count.items)} أصناف · ترتيب {ar(one.sortOrder)}
-              </p>
-            </div>
-            <form action={deleteCollection.bind(null, one.id)}>
-              <button type="submit" className="text-[12px] font-semibold" style={{ color: "var(--color-live)" }}>
-                احذف
-              </button>
-            </form>
+          <li key={one.id}>
+            {/* المجموعةُ تُعدَّل في مكانها — اسمُها ونوعُها وترتيبُها (بقرار المالك). */}
+            <details className="rounded-2xl border border-line bg-card">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="truncate text-[13.5px] font-semibold">{one.name}</p>
+                  <p className="text-[11.5px] text-muted">
+                    {one.kind ? (KIND_NAME[one.kind] ?? one.kind) : "مختلطة"} · {ar(one._count.items)} أصناف · ترتيب {ar(one.sortOrder)}
+                  </p>
+                </div>
+                <span className="shrink-0 text-[12px] font-semibold text-clay-ink">تعديل</span>
+              </summary>
+              <Saver action={updateCollection.bind(null, one.id)} className="flex flex-wrap items-end gap-2 border-t border-line p-3">
+                <label className="grow text-[11.5px] text-muted">
+                  الاسم
+                  <input name="name" required maxLength={40} defaultValue={one.name} className={`${INPUT} mt-1`} style={{ height: 42 }} />
+                </label>
+                <label className="text-[11.5px] text-muted">
+                  النوع
+                  <select name="kind" defaultValue={one.kind ?? "MIXED"} className={`${INPUT} mt-1`} style={{ height: 42 }}>
+                    <option value="MIXED">مختلطة</option>
+                    <option value="CHARM">تشارمز</option>
+                    <option value="FRAME">إطارات</option>
+                    <option value="THEME">ثيمات</option>
+                  </select>
+                </label>
+                <label className="w-20 text-[11.5px] text-muted">
+                  الترتيب
+                  <input name="sortOrder" type="number" defaultValue={one.sortOrder} className={`${INPUT} mt-1`} style={{ height: 42 }} />
+                </label>
+                <button type="submit" className="rounded-xl px-4 text-[12.5px] font-bold" style={{ height: 42, background: "var(--color-clay)", color: "var(--color-on-brand)" }}>
+                  احفظ
+                </button>
+              </Saver>
+              <form action={deleteCollection.bind(null, one.id)} className="px-3 pb-3">
+                <button type="submit" className="text-[12px] font-semibold" style={{ color: "var(--color-live)" }}>
+                  احذف المجموعة — أصنافُها تبقى وتعود إلى «الأخرى»
+                </button>
+              </form>
+            </details>
           </li>
         ))}
         {collections.length === 0 ? <li className="px-1 text-[12px] text-muted">لا مجموعات بعد.</li> : null}
