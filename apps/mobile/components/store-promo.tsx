@@ -11,7 +11,7 @@ import { coinText } from "../lib/format";
 import type { StoreItem } from "../lib/queries";
 import { colors } from "../theme/tokens";
 
-type Promo = StoreItem & { promoText: string | null };
+type Promo = StoreItem & { promoText: string | null; promoMediaId?: string | null };
 
 /**
  * بطاقةُ إعلان الصنف عند فتح التطبيق (القاعدة ٢٦٧) — **بقرار المالك**.
@@ -71,8 +71,11 @@ export function StorePromo() {
     >
       <Pressable accessibilityLabel="إغلاق" onPress={done} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
       <View style={{ width: "100%", maxWidth: 340, borderRadius: 24, backgroundColor: colors.card, overflow: "hidden" }}>
-        <View style={{ height: 220, alignItems: "center", justifyContent: "center", backgroundColor: colors.paper, padding: 20 }}>
-          {item.mediaId ? (
+        {/* صورةُ الإعلان أوّلاً بملء مكانها (القاعدة ٢٧٢)، وإلّا صورةُ الصنف. */}
+        <View style={{ height: item.promoMediaId ? 260 : 220, alignItems: "center", justifyContent: "center", backgroundColor: colors.paper, padding: item.promoMediaId ? 0 : 20 }}>
+          {item.promoMediaId ? (
+            <MediaImage mediaId={item.promoMediaId} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+          ) : item.mediaId ? (
             <MediaImage
               mediaId={item.mediaId}
               style={{ width: "100%", height: "100%" }}

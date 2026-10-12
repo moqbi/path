@@ -41,9 +41,9 @@ import { PlusGrant } from "./plus";
 import { CoinsGrant } from "./coins";
 import { SITE_TEXT, siteText, siteImage, type SiteKey } from "@/lib/site";
 import { ItemImage } from "./item-image";
-import { ItemCover } from "./item-cover";
+import { ItemCover, ItemPromo } from "./item-cover";
 import { BundleItems } from "./bundle";
-import { CollectionsView, ItemCollection, ItemPlans } from "./store-extras";
+import { CollectionsView, ItemPlans } from "./store-extras";
 import { InvitesView } from "./invites";
 import { coinText, ar, relative, riyals } from "@/lib/format";
 import { groundInkOf, parsePalette } from "@/lib/theme";
@@ -90,6 +90,20 @@ const KIND_LABEL: Record<string, string> = {
   BACKGROUND: "خلفية",
   BUNDLE: "حزمة",
 };
+
+/**
+ * الأصنافُ بأنواعها لا بتصنيفاتها — **بقرار المالك**: كانت التشارمز والإطاراتُ
+ * والثيماتُ متداخلةً تحت التصنيفات. فلكلّ نوعٍ قائمة، وفيها مجموعاتُه أقساماً
+ * ثمّ «… الأخرى» — كما تُرى في المتجر. والخلفيةُ نوعُ الثيم القديم.
+ */
+const STORE_KINDS = [
+  { key: "CHARM", label: "التشارمز", other: "التشارمز الأخرى", kinds: ["CHARM"] },
+  { key: "FRAME", label: "الإطارات", other: "الإطارات الأخرى", kinds: ["FRAME"] },
+  { key: "THEME", label: "الثيمات", other: "الثيمات الأخرى", kinds: ["THEME", "BACKGROUND"] },
+  { key: "BUNDLE", label: "الحزم", other: "الحزم", kinds: ["BUNDLE"] },
+] as const;
+
+const COLLECTION_KIND_LABEL: Record<string, string> = { CHARM: "تشارمز", FRAME: "إطارات", THEME: "ثيمات" };
 
 const STORE_VIEWS = [
   { key: "items", label: "الأصناف" },
@@ -441,9 +455,9 @@ const SECTIONS = [
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ s?: string; v?: string; q?: string }>;
+  searchParams: Promise<{ s?: string; v?: string; q?: string; k?: string }>;
 }) {
-  const { s: raw, v, q } = await searchParams;
+  const { s: raw, v, q, k } = await searchParams;
   const view = v === "cats" || v === "packs" || v === "collections" || v === "invites" ? v : "items";
   const user = await currentUser();
   if (!user) redirect("/login");
@@ -651,15 +665,38 @@ export default async function AdminPage({
       ? await linkedMany(people.map((person) => person.id))
       : new Map<string, LinkedResult>();
 
-  // الأصناف مرصوفة تحت تصنيفاتها كما تُرى في المتجر، وما بلا تصنيف في آخرها.
-  const groups = [
-    ...categories.map((category) => ({
-      id: category.id,
-      name: category.name,
-      items: items.filter((item) => item.categoryId === category.id),
-    })),
-    { id: "none", name: "بلا تصنيف", items: items.filter((item) => !item.categoryId) },
-  ].filter((group) => group.id !== "none" || group.items.length > 0);
+  const collections =
+    section === "store"
+      ? await prisma.storeCollection.findMany({
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+          select: { id: true, name: true, kind: true },
+        })
+      : [];
+  const kindTab = STORE_KINDS.find((one) => one.key === k) ?? STORE_KINDS[0];
+  const kindItems = items.filter((item) => (kindTab.kinds as readonly string[]).includes(item.kind));
+  const kindCount = (tab: (typeof STORE_KINDS)[number]) =>
+    items.filter((item) => (tab.kinds as readonly string[]).includes(item.kind)).length;
+  // مجموعاتُ النوع وحده تُعرض ولو فارغة، والمختلطةُ حين يكون فيها من أصنافه.
+  const ownCollections = collections.filter((one) => one.kind === kindTab.key || one.kind === null);
+  const collectionIds = new Set(ownCollections.map((one) => one.id));
+  const groups =
+    kindTab.key === "BUNDLE"
+      ? [{ id: "bundles", name: "الحزم", items: kindItems }]
+      : [
+          ...ownCollections
+            .map((one) => ({
+              id: one.id,
+              name: one.kind ? one.name : `${one.name} (مختلطة)`,
+              items: kindItems.filter((item) => item.collectionId === one.id),
+            }))
+            .filter((group, index) => group.items.length > 0 || ownCollections[index]!.kind !== null),
+          {
+            id: "none",
+            name: kindTab.other,
+            items: kindItems.filter((item) => !item.collectionId || !collectionIds.has(item.collectionId)),
+          },
+        ]
+
 
   return (
     <div className="screen">
@@ -1028,14 +1065,15 @@ export default async function AdminPage({
         {section === "store" ? (
         <>
         {/* المتجر بابان: الأصناف والتصنيفات — لا جدارٌ واحد يُمرَّر طويلاً. */}
-        <div className="mb-4 flex gap-2">
+        {/* أبوابُ المتجر شريطٌ يُمرَّر على الجوّال — كانت تلتفّ سطرين في زرٍّ ضيّق. */}
+        <div className="no-bar -mx-1 mb-4 flex gap-2 overflow-x-auto px-1">
           {STORE_VIEWS.map((tab) => {
             const on = view === tab.key;
             return (
               <Link
                 key={tab.key}
                 href={tab.key === "items" ? "/admin?s=store" : `/admin?s=store&v=${tab.key}`}
-                className="grow rounded-xl py-2.5 text-center text-[12.5px] font-semibold"
+                className="shrink-0 grow whitespace-nowrap rounded-xl px-4 py-2.5 text-center text-[12.5px] font-semibold"
                 style={{
                   background: on ? "var(--color-night)" : "var(--color-card)",
                   color: on ? "#f7f5ef" : "var(--color-ink-2)",
@@ -1249,15 +1287,44 @@ export default async function AdminPage({
           </>
         ) : view === "items" ? (
           <>
-            <details className="mb-4 rounded-2xl border border-line bg-card">
-              <summary className="flex cursor-pointer list-none items-center justify-between p-3.5">
-                <span className="text-[13.5px] font-bold">أضف صنفاً</span>
-                <span className="text-[12px] font-semibold text-clay-ink">افتح</span>
+            {/* قائمةٌ لكلّ نوع، وفيها مجموعاتُه أقساماً — كما تُرى في المتجر. */}
+            <div className="mb-4 flex gap-1.5 rounded-2xl border border-line bg-card p-1.5">
+              {STORE_KINDS.map((tab) => {
+                const on = kindTab.key === tab.key;
+                return (
+                  <Link
+                    key={tab.key}
+                    href={`/admin?s=store&k=${tab.key}`}
+                    aria-current={on ? "page" : undefined}
+                    className="grow whitespace-nowrap rounded-xl py-2 text-center text-[12.5px] font-semibold"
+                    style={{
+                      background: on ? "var(--color-clay)" : "transparent",
+                      color: on ? "var(--color-on-brand)" : "var(--color-ink-2)",
+                    }}
+                  >
+                    {tab.label}
+                    <span className="mr-1 text-[11px] opacity-70">{ar(kindCount(tab))}</span>
+                  </Link>
+                );
+              })}
+            </div>
+            <details className="mb-5 rounded-2xl border border-line bg-card">
+              <summary className="flex cursor-pointer list-none items-center gap-3 p-3">
+                <span
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[20px] font-bold leading-none"
+                  style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+                >
+                  +
+                </span>
+                <span className="grow">
+                  <span className="block text-[13.5px] font-bold">أضف صنفاً</span>
+                  <span className="block text-[11px] text-muted">يظهر أوّلاً في المتجر — الأحدثُ قبل غيره</span>
+                </span>
               </summary>
 
               <Saver action={createStoreItem} className="flex flex-col gap-3 border-t border-line p-3.5">
                 <Field label="النوع">
-                  <select name="kind" className={SELECT} style={{ height: 46 }}>
+                  <select name="kind" defaultValue={kindTab.key} className={SELECT} style={{ height: 46 }}>
                     {KINDS.map((kind) => (
                       <option key={kind.value} value={kind.value}>
                         {kind.label}
@@ -1312,6 +1379,17 @@ export default async function AdminPage({
                   </select>
                 </Field>
 
+                <Field label="المجموعة" hint="مجموعةٌ من نوع الصنف أو مختلطة — وإلّا رُدّت">
+                  <select name="collectionId" defaultValue="" className={SELECT} style={{ height: 46 }}>
+                    <option value="">بلا مجموعة</option>
+                    {collections.map((one) => (
+                      <option key={one.id} value={one.id}>
+                        {one.name} — {one.kind ? COLLECTION_KIND_LABEL[one.kind] : "مختلطة"}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
                 <Field label="تدرّج CSS" hint="يُرسم إن لم تُرفع صورة — والثيمُ بألوانٍ يُرسم من ألوانه وحدها">
                   <input
                     name="spec"
@@ -1345,17 +1423,21 @@ export default async function AdminPage({
               </Saver>
             </details>
 
-            {/* الأصناف مرصوفة تحت تصنيفاتها كما تُرى في المتجر. */}
             {groups.map((group) => (
-              <section key={group.id} className="mb-5">
-                <div className="mb-2 flex items-baseline justify-between px-1">
-                  <h2 className="text-[13.5px] font-bold">{group.name}</h2>
-                  <span className="text-[11px] text-muted">{ar(group.items.length)} صنف</span>
+              <section key={group.id} className="mb-6">
+                <div className="mb-2 flex items-center justify-between gap-3 border-b border-line px-1 pb-2">
+                  <h2 className="flex items-center gap-2 text-[14px] font-bold">
+                    <span className="h-4 w-1 rounded-full" style={{ background: "var(--color-clay)" }} />
+                    {group.name}
+                  </h2>
+                  <span className="rounded-full bg-paper px-2.5 py-0.5 text-[11px] font-semibold text-muted">
+                    {ar(group.items.length)} صنف
+                  </span>
                 </div>
 
                 {group.items.length === 0 ? (
-                  <p className="rounded-2xl border border-line bg-card px-4 py-5 text-center text-[12px] text-muted">
-                    لا أصناف في هذا التصنيف.
+                  <p className="rounded-2xl border border-dashed border-line px-4 py-5 text-center text-[12px] text-muted">
+                    لا أصناف في هذه المجموعة بعد — تُضمّ من صفحة الصنف.
                   </p>
                 ) : (
                   <div className="flex flex-col gap-2">
@@ -1366,10 +1448,11 @@ export default async function AdminPage({
                           <div className="min-w-0 grow">
                             <p className="flex items-center gap-1.5 truncate text-[13.5px] font-semibold">
                               {item.name}
-                              <Chip>{KIND_LABEL[item.kind]}</Chip>
+                              {item.kind === "BACKGROUND" ? <Chip>{KIND_LABEL[item.kind]}</Chip> : null}
                               {item.plusOnly ? <Chip gold>آثار+</Chip> : null}
                               {item.limited ? <Chip live>محدودة</Chip> : null}
                               {item.hidden ? <Chip>مخفيّ</Chip> : null}
+                              {item.promoAt ? <Chip live>إعلان</Chip> : null}
                             </p>
                             <p className="truncate text-[11.5px] text-muted">
                               {item.earnedAfterDays
@@ -1378,6 +1461,9 @@ export default async function AdminPage({
                               {item.mediaId ? " · بصورة" : ""}
                               {item._count.purchases > 0
                                 ? ` · ${ar(item._count.purchases)} شراء`
+                                : ""}
+                              {item.categoryId
+                                ? ` · ${categories.find((row) => row.id === item.categoryId)?.name ?? ""}`
                                 : ""}
                             </p>
                           </div>
@@ -1393,13 +1479,8 @@ export default async function AdminPage({
                             mime={item.media?.mime ?? null}
                             hole={item.frameHole}
                           />
-                          {/* المجموعةُ داخل النوع، ومُدَدُ الشراء — للإطار والتشارم والثيم. */}
-                          {item.kind !== "BUNDLE" ? (
-                            <>
-                              <ItemCollection itemId={item.id} kind={item.kind} collectionId={item.collectionId} />
-                              <ItemPlans itemId={item.id} />
-                            </>
-                          ) : null}
+                          {/* مُدَدُ الشراء — للإطار والتشارم والثيم. والمجموعةُ في النموذج تحت. */}
+                          {item.kind !== "BUNDLE" ? <ItemPlans itemId={item.id} /> : null}
                           <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
                             الثيم يُلبَس خلفيةً للتطبيق، والتشارم شعاراً تحت صورة العرض،
                             والإطار حلقةً حولها. التشارم والإطار يُحفظان PNG بشفافيتهما.
@@ -1412,7 +1493,10 @@ export default async function AdminPage({
                             والإطار والتشارم لا خلفية لهما تُلبَس.
                           */}
                           {item.kind === "THEME" || item.kind === "BACKGROUND" ? (
-                            <ItemCover itemId={item.id} mediaId={item.coverMediaId} />
+                            <>
+                              <ItemCover itemId={item.id} mediaId={item.coverMediaId} />
+                              <ItemPromo itemId={item.id} mediaId={item.promoMediaId} />
+                            </>
                           ) : null}
 
                           {/* والحزمة تُملأ من هنا: ما فيها يُرى قبل أن يُشترى. */}
@@ -1518,6 +1602,27 @@ export default async function AdminPage({
                               />
                             </Field>
                           </div>
+
+                          {item.kind !== "BUNDLE" ? (
+                            <Field label="المجموعة" hint="تُعرض أصنافُ المجموعة معاً في المتجر">
+                              <select
+                                name="collectionId"
+                                defaultValue={item.collectionId ?? ""}
+                                className={SELECT}
+                                style={{ height: 46 }}
+                              >
+                                <option value="">بلا مجموعة</option>
+                                {collections
+                                  .filter((one) => !one.kind || one.kind === (item.kind === "BACKGROUND" ? "THEME" : item.kind))
+                                  .map((one) => (
+                                    <option key={one.id} value={one.id}>
+                                      {one.name}
+                                      {one.kind ? "" : " (مختلطة)"}
+                                    </option>
+                                  ))}
+                              </select>
+                            </Field>
+                          ) : null}
 
                           <Field label="تدرّج CSS" hint={item.kind === "THEME" ? "الثيمُ بألوانٍ يُرسم من ألوانه وحدها" : undefined}>
                             <input

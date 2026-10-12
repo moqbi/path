@@ -191,6 +191,23 @@ function readPromo(formData: FormData, was: Date | null) {
   return { promoAt: on ? (was ?? new Date()) : null, promoText: text || null };
 }
 
+/**
+ * مجموعةُ الصنف من نموذجه نفسه — كانت نموذجاً ثانياً بزرٍّ صغير تحت الصورة، فمن
+ * اختارها وضغط «احفظ» الكبير لم يحفظ شيئاً ورجع الصنفُ «بلا مجموعة». و`undefined`
+ * حين لا حقلَ في النموذج فلا تُمسّ، و`null` لـ«بلا مجموعة». والمجموعةُ من نوعه أو
+ * مختلطة (القاعدة ١٩٧) — وإلّا رُدّ.
+ */
+async function readCollection(formData: FormData, kind: string): Promise<{ id: string | null | undefined; error?: string }> {
+  if (!formData.has("collectionId")) return { id: undefined };
+  const raw = String(formData.get("collectionId") ?? "").trim();
+  if (!raw) return { id: null };
+  const row = await prisma.storeCollection.findUnique({ where: { id: raw }, select: { kind: true } });
+  if (!row) return { id: undefined, error: "المجموعة غير موجودة" };
+  const own = kind === "BACKGROUND" ? "THEME" : kind;
+  if (row.kind && row.kind !== own) return { id: undefined, error: "هذه المجموعة لنوعٍ آخر" };
+  return { id: raw };
+}
+
 export async function createStoreItem(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
   await requireAdmin("store");
 
@@ -211,12 +228,16 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
   const { kind, name, priceCoins, spec, plusOnly, earnedAfterDays, categoryId, limited, hidden } =
     parsed.data;
   const palette = readPalette(formData);
-  const last = await prisma.storeItem.findFirst({
-    orderBy: { sortOrder: "desc" },
-    select: { sortOrder: true },
-  });
+  const collection = await readCollection(formData, kind);
+  if (collection.error) return { error: collection.error };
 
-  await prisma.storeItem.create({
+  /*
+    الأحدثُ أوّلاً — بقرار المالك: كان يأخذ آخرَ ترتيب فيظهر في آخر المتجر.
+    يأخذ الصفرَ ويُزاح ما سواه درجةً، في معاملةٍ فلا يتصادم مضافان معاً.
+  */
+  await prisma.$transaction([
+    prisma.storeItem.updateMany({ data: { sortOrder: { increment: 1 } } }),
+    prisma.storeItem.create({
     data: {
       kind,
       name,
@@ -230,9 +251,11 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
       hidden,
       palette,
       ...readPromo(formData, null),
-      sortOrder: (last?.sortOrder ?? 0) + 1,
+      collectionId: collection.id ?? null,
+      sortOrder: 0,
     },
-  });
+    }),
+  ]);
 
   revalidatePath("/admin");
   revalidatePath("/store");
@@ -273,6 +296,8 @@ export async function updateStoreItem(
     sortOrder,
   } = parsed.data;
   const palette = readPalette(formData);
+  const collection = await readCollection(formData, kind);
+  if (collection.error) return { error: collection.error };
   const was = await prisma.storeItem.findUnique({ where: { id: itemId }, select: { promoAt: true } });
   await prisma.storeItem.update({
     where: { id: itemId },
@@ -288,6 +313,7 @@ export async function updateStoreItem(
       limited,
       hidden,
       palette,
+      collectionId: collection.id,
       sortOrder: sortOrder ?? undefined,
     },
   });
@@ -405,11 +431,24 @@ export async function deleteCollection(collectionId: string): Promise<void> {
   revalidatePath("/admin");
 }
 
-export async function setItemCollection(itemId: string, formData: FormData): Promise<void> {
+/** تعديلُ المجموعة: اسمُها ونوعُها وترتيبُها. وتغييرُ النوع لا يُخرج أصنافَها — تبقى فيها. */
+export async function updateCollection(collectionId: string, _prev: AdminResult, formData: FormData): Promise<AdminResult> {
   await requireAdmin("store");
-  const raw = String(formData.get("collectionId") ?? "");
-  await prisma.storeItem.update({ where: { id: itemId }, data: { collectionId: raw || null } });
+  const name = String(formData.get("name") ?? "").trim().slice(0, 40);
+  const kind = String(formData.get("kind") ?? "");
+  const mixed = kind === "MIXED";
+  if (!name) return { error: "اكتب اسم المجموعة" };
+  if (!mixed && !(COLLECTION_KINDS as readonly string[]).includes(kind)) return { error: "اختر النوع" };
+  await prisma.storeCollection.update({
+    where: { id: collectionId },
+    data: {
+      name,
+      kind: mixed ? null : (kind as (typeof COLLECTION_KINDS)[number]),
+      sortOrder: digits(formData.get("sortOrder")) || 0,
+    },
+  });
   revalidatePath("/admin");
+  return { ok: "حُفظ" };
 }
 
 /**
@@ -915,6 +954,28 @@ export async function clearItemCover(itemId: string): Promise<void> {
   if (before?.coverMediaId) await dropMedia([before.coverMediaId]);
   revalidatePath("/admin");
   revalidatePath("/store");
+}
+
+/**
+ * صورةُ بطاقة الإعلان (القاعدة ٢٧٢): تظهر في البطاقة عند فتح التطبيق بدل صورة
+ * الصنف. والسابقةُ تذهب ببكسلاتها (القاعدة ١٠٤).
+ */
+export async function setItemPromo(itemId: string, formData: FormData): Promise<void> {
+  const admin = await requireAdmin("store");
+  const { file, width, height } = picture(formData);
+  const media = await storeUpload(admin.id, file, width, height);
+  const before = await prisma.storeItem.findUnique({ where: { id: itemId }, select: { promoMediaId: true } });
+  await prisma.storeItem.update({ where: { id: itemId }, data: { promoMediaId: media.id } });
+  if (before?.promoMediaId) await dropMedia([before.promoMediaId]);
+  revalidatePath("/admin");
+}
+
+export async function clearItemPromo(itemId: string): Promise<void> {
+  await requireAdmin("store");
+  const before = await prisma.storeItem.findUnique({ where: { id: itemId }, select: { promoMediaId: true } });
+  await prisma.storeItem.update({ where: { id: itemId }, data: { promoMediaId: null } });
+  if (before?.promoMediaId) await dropMedia([before.promoMediaId]);
+  revalidatePath("/admin");
 }
 
 export async function clearItemImage(itemId: string): Promise<void> {

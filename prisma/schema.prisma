@@ -732,6 +732,10 @@ model StoreItem {
   /// فُعِّلت، وفارغٌ = لا بطاقة. وسطرٌ يكتبه المشرف عن الصنف تحت اسمه.
   promoAt     DateTime?
   promoText   String?
+  /// صورةٌ إعلانيّة لبطاقة الإعلان (القاعدة ٢٧٢) — غيرُ صورة الصنف: الثيمُ صورتُه
+  /// خلفيةٌ بطول الشاشة لا تُقرأ في بطاقة. وبلاها تُرسم صورةُ الصنف كما كانت.
+  promoMediaId String?      @unique
+  promoMedia   Media?       @relation("StoreItemPromo", fields: [promoMediaId], references: [id], onDelete: SetNull)
 
   categoryId   String?
   category     StoreCategory?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
@@ -985,6 +989,7 @@ model Media {
   moment         Moment?       @relation("MomentMedia")
   storeItem      StoreItem?    @relation("StoreItemMedia")
   storeCover     StoreItem?    @relation("StoreItemCover")
+  storePromo     StoreItem?    @relation("StoreItemPromo")
 
   /// صورةُ موقعٍ عامّة إن كانت — الرأس مثلاً.
   siteImage SiteImage? @relation("SiteImage")
