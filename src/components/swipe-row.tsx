@@ -17,6 +17,7 @@ export function SwipeRow({
   confirmLabel = "حذف",
   onSecond,
   secondLabel,
+  secondIcon,
   icons = false,
   surface = "var(--color-ground)",
   children,
@@ -26,6 +27,8 @@ export function SwipeRow({
   /** فعلٌ ثانٍ يظهر بجانب الأول — الحظر مثلاً بجانب الإزالة. */
   onSecond?: () => void | Promise<void>;
   secondLabel?: string;
+  /** رسمُ الفعل الثاني بدل الحظر — نجمةُ المفضّلة في المحادثات. */
+  secondIcon?: React.ReactNode;
   /**
    * أيقوناتٌ بدل الكلمات في صفّ الصديق — **بقرار المالك**، كالجوّال:
    * «إزالة» شخصٌ بعلامة طرح، و«حظر» دائرةٌ يقطعها خطّ. و`"trash"` سلّةٌ
@@ -64,7 +67,7 @@ export function SwipeRow({
             className="flex grow items-center justify-center px-2 text-[13px] font-bold disabled:opacity-60"
             style={{ background: "var(--color-night)", color: "#f7f5ef" }}
           >
-            {icons ? <BlockIcon size={22} /> : second.label}
+            {secondIcon ?? (icons ? <BlockIcon size={22} /> : second.label)}
           </button>
         ) : null}
         <button

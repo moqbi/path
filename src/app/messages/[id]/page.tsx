@@ -5,6 +5,7 @@ import { markConversationRead } from "@/app/actions";
 import { Avatar, ScreenHeader } from "@/components/ui";
 import { Thread } from "./thread";
 import { Composer } from "./composer";
+import { ChatScroll } from "@/components/chat-scroll";
 
 export default async function ThreadPage({
   params,
@@ -33,13 +34,18 @@ export default async function ThreadPage({
             size={34}
             frame={conversation.other.frame}
             charm={conversation.other.charm}
+            mediaId={conversation.other.avatarMediaId}
           />
         }
       />
 
-      <main className="scroll-area flex flex-col justify-end gap-2 px-5 py-4">
-        <Thread lines={conversation.messages} meId={user.id} />
-      </main>
+      <ChatScroll last={conversation.messages.at(-1)?.id ?? null}>
+        <Thread
+          lines={conversation.messages}
+          meId={user.id}
+          people={{ [conversation.me.id]: conversation.me, [conversation.other.id]: conversation.other }}
+        />
+      </ChatScroll>
 
       <Composer
         conversationId={id}

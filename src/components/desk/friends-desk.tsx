@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, us
 import { deskChat, deskThread } from "@/app/actions";
 import { Thread, type Line } from "@/app/messages/[id]/thread";
 import { Composer } from "@/app/messages/[id]/composer";
+import type { ChatPerson } from "@/components/chat-line";
 import { BackIcon, MessageIcon } from "@/components/icons";
 
 const VOICE = { free: 20, plus: 120 };
@@ -16,6 +17,7 @@ type Chat = {
   meId: string;
   isPlus: boolean;
   other: { id: string; name: string };
+  people: Record<string, ChatPerson>;
   lines: Line[];
 };
 
@@ -87,7 +89,7 @@ export function FriendsDesk({ children }: { children: React.ReactNode }) {
           </Link>
         </header>
         <div className="desk-panel-body flex flex-col gap-2 px-3 py-3">
-          <Thread lines={chat.lines} meId={chat.meId} />
+          <Thread lines={chat.lines} meId={chat.meId} people={chat.people} />
           <div ref={end} />
         </div>
         <Composer

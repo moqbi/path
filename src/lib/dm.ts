@@ -5,6 +5,7 @@ import { circleIds } from "@/lib/circle";
 import { sweepStories } from "@/lib/stories";
 import { sweepPendingSignups } from "@/lib/signup";
 import { migrateToCloud } from "@/lib/media";
+import { groupUnread } from "@/lib/groups";
 
 /** الطرفان مرتّبان دائماً، فيكون للزوج صفٌّ واحد مهما بدأ المحادثة. */
 export function pairKey(x: string, y: string): { aId: string; bId: string } {
@@ -64,6 +65,8 @@ export async function conversationsFor(userId: string) {
         orderBy: { createdAt: "desc" },
         take: 1,
       },
+      // المفضّلةُ لصاحبها وحده (القاعدة ٢٢٠) — نسخةُ الخادم.
+      pins: { where: { userId }, select: { createdAt: true } },
       _count: {
         select: { messages: { where: { senderId: { not: userId }, readAt: null } } },
       },
@@ -81,9 +84,13 @@ export async function conversationsFor(userId: string) {
       unread: row._count.messages > 0,
       // الشارة تقول كم رسالة تنتظر، لا «فيه جديد» وحدها.
       unseen: row._count.messages,
+      pinnedAt: row.pins[0]?.createdAt ?? null,
     };
   });
 }
+
+/** حدُّ المفضّلة — كالخادم (القاعدة ٢٢٠). */
+export const PIN_MAX = 3;
 
 /** يتحقق أن المستخدم طرف في المحادثة قبل أي قراءة أو كتابة. */
 export async function conversationFor(userId: string, conversationId: string) {
@@ -106,7 +113,8 @@ export async function conversationFor(userId: string, conversationId: string) {
           readAt: true,
           editedAt: true,
         },
-        orderBy: { createdAt: "asc" },
+        // أحدثُ مئتين لا أقدمُها: `asc` مع `take` كان يقصّ آخرَ المحادثة فتُقرأ ناقصة.
+        orderBy: { createdAt: "desc" },
         take: 200,
       },
     },
@@ -116,7 +124,9 @@ export async function conversationFor(userId: string, conversationId: string) {
 
   return {
     ...conversation,
+    messages: [...conversation.messages].reverse(),
     other: maskPresence(conversation.a.id === userId ? conversation.b : conversation.a),
+    me: conversation.a.id === userId ? conversation.a : conversation.b,
   };
 }
 
@@ -176,11 +186,16 @@ export async function deliverTo(userId: string): Promise<void> {
 }
 
 export async function unreadCount(userId: string): Promise<number> {
-  return prisma.message.count({
-    where: {
-      readAt: null,
-      senderId: { not: userId },
-      conversation: { OR: [{ aId: userId }, { bId: userId }] },
-    },
-  });
+  const [direct, groups] = await Promise.all([
+    prisma.message.count({
+      where: {
+        readAt: null,
+        senderId: { not: userId },
+        conversation: { OR: [{ aId: userId }, { bId: userId }] },
+      },
+    }),
+    // ما لم يُقرأ في المجموعات يُجمع إلى الشارة نفسها، كالجوّال (القاعدة ٢١٥).
+    groupUnread(userId),
+  ]);
+  return direct + groups;
 }

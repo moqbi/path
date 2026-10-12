@@ -5,11 +5,13 @@ import { conversationsFor, KEEP_DAYS } from "@/lib/dm";
 import { Avatar, Empty, NameTag } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import { AthrHeaderMark } from "@/components/brand";
-import { ClockIcon, SearchIcon } from "@/components/icons";
+import { ClockIcon, SearchIcon, StarIcon } from "@/components/icons";
 import { ar, timeOfDay } from "@/lib/format";
-import { SwipeRow } from "@/components/swipe-row";
 import { deleteConversation, markDelivered } from "@/app/actions";
 import { Ticks, receiptOf } from "@/components/receipt";
+import { groupsFor } from "@/lib/groups";
+import { GroupFace } from "@/components/group-face";
+import { PinRow } from "./pin-row";
 
 /** سطر المعاينة: الصوت والصورة لا نصّ لهما، فيُقال ما هما. */
 function preview(last: { kind: string; body: string; seconds: number | null }): string {
@@ -44,7 +46,7 @@ export default async function MessagesPage({
   // فتحُ الشاشة يعني أنّ ما وصلني قد وصل فعلاً: نكتب التسليم قبل القراءة.
   await markDelivered();
 
-  const conversations = await conversationsFor(user.id);
+  const [conversations, groups] = await Promise.all([conversationsFor(user.id), groupsFor(user.id)]);
 
   const online = (at: Date | null | undefined) =>
     Boolean(at && Date.now() - at.getTime() < 3 * 60_000);
@@ -55,7 +57,17 @@ export default async function MessagesPage({
     .filter((row) =>
       filter === "unread" ? row.unseen > 0 : filter === "online" ? online(row.other.lastSeenAt) : true,
     );
-  const unreadTotal = conversations.reduce((sum, row) => sum + row.unseen, 0);
+  const unreadTotal =
+    conversations.reduce((sum, row) => sum + row.unseen, 0) + groups.reduce((sum, row) => sum + row.unseen, 0);
+
+  // ثلاثةُ أقسامٍ كالجوّال (القاعدتان ٢٢٠ و٢٦٤): المفضّلةُ بترتيب تثبيتها، فالمجموعات، فالبقيّة.
+  const pinned = threads
+    .filter((row) => row.pinnedAt)
+    .sort((a, b) => a.pinnedAt!.getTime() - b.pinnedAt!.getTime());
+  const rest = threads.filter((row) => !row.pinnedAt);
+  const groupRows = groups
+    .filter((row) => match(row.name))
+    .filter((row) => (filter === "unread" ? row.unseen > 0 : filter === "online" ? false : true));
 
   return (
     <div className="screen">
@@ -123,7 +135,7 @@ export default async function MessagesPage({
       </div>
 
       <main className="scroll-area px-4 pt-2">
-        {threads.length === 0 ? (
+        {threads.length === 0 && groupRows.length === 0 ? (
           <Empty
             title={term || filter ? "ما فيه شيء هنا" : "ما عندك محادثات"}
             hint={term || filter ? undefined : "افتح أصدقائك واضغط أيقونة الرسالة بجانب صاحبك."}
@@ -131,85 +143,71 @@ export default async function MessagesPage({
           />
         ) : null}
 
-        {threads.length > 0 ? (
-          <div className="mb-4 overflow-hidden rounded-2xl border border-line bg-card">
-            {threads.map((conversation, index) => (
-              <SwipeRow
-                key={conversation.id}
-                onDelete={deleteConversation.bind(null, conversation.id)}
-                confirmLabel="حذف المحادثة"
-                icons="trash"
-              >
-                <Link
-                  href={`/messages/${conversation.id}`}
-                  className="flex items-center gap-3 p-3"
-                  style={{
-                    background: "var(--color-card)",
-                    borderTop: index === 0 ? "none" : "1px solid var(--color-line)",
-                  }}
-                >
-                  <span className="relative shrink-0">
-                    <Avatar
-                      name={conversation.other.name}
-                      size={48}
-                      frame={conversation.other.frame}
-                      charm={conversation.other.charm}
-                      mediaId={conversation.other.avatarMediaId}
-                    />
-                    {online(conversation.other.lastSeenAt) ? (
-                      <span
-                        className="absolute bottom-0 left-0 block h-3 w-3 rounded-full"
-                        style={{ background: "#3fbf6a", border: "2px solid var(--color-card)" }}
-                      />
-                    ) : null}
-                  </span>
-
-                  <span className="min-w-0 grow">
-                    <span className="flex items-baseline gap-1.5">
-                      <span className="truncate text-[14.5px] font-bold">
-                        {conversation.other.name}
-                      </span>
-                      <NameTag isPlus={conversation.other.isPlus} tag={conversation.other.tag} size={10} />
-                      <span className="grow" />
-                      {conversation.last ? (
-                        <span className="flex shrink-0 items-center gap-1 text-[10.5px] text-faint">
-                          {conversation.last.senderId === user.id ? (
-                            <Ticks state={receiptOf(conversation.last)} size={14} />
-                          ) : null}
-                          {timeOfDay(conversation.last.createdAt)}
-                        </span>
-                      ) : null}
-                    </span>
-
-                    <span className="mt-0.5 flex items-center gap-2">
-                      <span
-                        className="min-w-0 grow truncate text-[12.5px]"
-                        style={{
-                          color: conversation.unseen > 0 ? "var(--color-ink)" : "var(--color-muted)",
-                          fontWeight: conversation.unseen > 0 ? 600 : 400,
-                        }}
-                      >
-                        {conversation.last
-                          ? `${conversation.last.senderId === user.id ? "أنت: " : ""}${preview(conversation.last)}`
-                          : "ابدأ الحديث"}
-                      </span>
-                      {conversation.unseen > 0 ? (
-                        <span
-                          className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1 text-[10.5px] font-bold"
-                          style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
-                        >
-                          {ar(conversation.unseen)}
-                        </span>
-                      ) : null}
-                    </span>
-                  </span>
-                </Link>
-              </SwipeRow>
+        {pinned.length > 0 ? (
+          <Section title="المفضّلة" count={pinned.length}>
+            {pinned.map((conversation, index) => (
+              <ConversationRow key={conversation.id} conversation={conversation} index={index} meId={user.id} />
             ))}
-          </div>
+          </Section>
         ) : null}
 
-        {threads.length > 0 ? (
+        {groupRows.length > 0 ? (
+          <Section title="المجموعات" count={groupRows.length}>
+            {groupRows.map((group, index) => (
+              <Link
+                key={group.id}
+                href={`/group/${group.id}`}
+                className="flex items-center gap-3 p-3"
+                style={{ background: "var(--color-card)", borderTop: index === 0 ? "none" : "1px solid var(--color-line)" }}
+              >
+                <GroupFace photoMediaId={group.photoMediaId} size={48} />
+                <span className="min-w-0 grow">
+                  <span className="flex items-baseline gap-1.5">
+                    <span dir="auto" className="truncate text-[14.5px] font-bold">{group.name}</span>
+                    <span className="shrink-0 text-[11px] text-faint">{ar(group.members)} عضو</span>
+                    <span className="grow" />
+                    {group.last ? (
+                      <span className="shrink-0 text-[10.5px] text-faint">{timeOfDay(group.last.createdAt)}</span>
+                    ) : null}
+                  </span>
+                  <span className="mt-0.5 flex items-center gap-2">
+                    <span
+                      className="min-w-0 grow truncate text-[12.5px]"
+                      style={{
+                        color: group.unseen > 0 ? "var(--color-ink)" : "var(--color-muted)",
+                        fontWeight: group.unseen > 0 ? 600 : 400,
+                      }}
+                    >
+                      {group.last
+                        ? group.last.system
+                          ? group.last.body
+                          : `${group.last.senderId === user.id ? "أنت" : group.last.sender.name}: ${preview(group.last)}`
+                        : "ابدأ الحديث"}
+                    </span>
+                    {group.unseen > 0 ? (
+                      <span
+                        className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1 text-[10.5px] font-bold"
+                        style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+                      >
+                        {ar(group.unseen)}
+                      </span>
+                    ) : null}
+                  </span>
+                </span>
+              </Link>
+            ))}
+          </Section>
+        ) : null}
+
+        {rest.length > 0 ? (
+          <Section title="المحادثات" count={rest.length} header={pinned.length > 0 || groupRows.length > 0}>
+            {rest.map((conversation, index) => (
+              <ConversationRow key={conversation.id} conversation={conversation} index={index} meId={user.id} />
+            ))}
+          </Section>
+        ) : null}
+
+        {threads.length + groupRows.length > 0 ? (
           <p className="flex items-center justify-center gap-2 pb-6 pt-2 text-center text-[11px] text-faint">
             <ClockIcon size={13} />
             المحادثات تُحذف بعد {ar(KEEP_DAYS)} يوماً — لا نحتفظ بها
@@ -219,5 +217,108 @@ export default async function MessagesPage({
 
       <TabBar active="/messages" />
     </div>
+  );
+}
+
+/** قسمٌ يُطوى ويُفتح — كقسمَي الأصدقاء (القاعدة ١٦١)، و`details` يحفظ حالته بلا جافاسكربت. */
+function Section({
+  title,
+  count,
+  header = true,
+  children,
+}: {
+  title: string;
+  count: number;
+  header?: boolean;
+  children: React.ReactNode;
+}) {
+  if (!header) return <div className="mb-4 overflow-hidden rounded-2xl border border-line bg-card">{children}</div>;
+  return (
+    <details open className="group mb-4">
+      <summary className="mb-2 flex cursor-pointer list-none items-center gap-2 text-[11.5px] font-semibold tracking-wide text-ground-faint [&::-webkit-details-marker]:hidden">
+        <span className="grow">
+          {title} ({ar(count)})
+        </span>
+        <span className="text-[12px] text-ground-muted group-open:hidden">إظهار</span>
+        <span className="hidden text-[12px] text-ground-muted group-open:inline">إخفاء</span>
+      </summary>
+      <div className="overflow-hidden rounded-2xl border border-line bg-card">{children}</div>
+    </details>
+  );
+}
+
+type Row = Awaited<ReturnType<typeof conversationsFor>>[number];
+
+function ConversationRow({ conversation, index, meId }: { conversation: Row; index: number; meId: string }) {
+  const online = Boolean(conversation.other.lastSeenAt && Date.now() - conversation.other.lastSeenAt.getTime() < 3 * 60_000);
+  return (
+    <PinRow
+      conversationId={conversation.id}
+      pinned={Boolean(conversation.pinnedAt)}
+      onDelete={deleteConversation.bind(null, conversation.id)}
+    >
+      <Link
+        href={`/messages/${conversation.id}`}
+        className="flex items-center gap-3 p-3"
+        style={{ background: "var(--color-card)", borderTop: index === 0 ? "none" : "1px solid var(--color-line)" }}
+      >
+        <span className="relative shrink-0">
+          <Avatar
+            name={conversation.other.name}
+            size={48}
+            frame={conversation.other.frame}
+            charm={conversation.other.charm}
+            mediaId={conversation.other.avatarMediaId}
+          />
+          {online ? (
+            <span
+              className="absolute bottom-0 left-0 block h-3 w-3 rounded-full"
+              style={{ background: "#3fbf6a", border: "2px solid var(--color-card)" }}
+            />
+          ) : null}
+        </span>
+
+        <span className="min-w-0 grow">
+          <span className="flex items-baseline gap-1.5">
+            <span dir="auto" className="truncate text-[14.5px] font-bold">{conversation.other.name}</span>
+            <NameTag isPlus={conversation.other.isPlus} tag={conversation.other.tag} size={10} />
+            {conversation.pinnedAt ? (
+              <span className="shrink-0 text-clay-ink" aria-label="مفضّلة">
+                <StarIcon size={12} />
+              </span>
+            ) : null}
+            <span className="grow" />
+            {conversation.last ? (
+              <span className="flex shrink-0 items-center gap-1 text-[10.5px] text-faint">
+                {conversation.last.senderId === meId ? <Ticks state={receiptOf(conversation.last)} size={14} /> : null}
+                {timeOfDay(conversation.last.createdAt)}
+              </span>
+            ) : null}
+          </span>
+
+          <span className="mt-0.5 flex items-center gap-2">
+            <span
+              className="min-w-0 grow truncate text-[12.5px]"
+              style={{
+                color: conversation.unseen > 0 ? "var(--color-ink)" : "var(--color-muted)",
+                fontWeight: conversation.unseen > 0 ? 600 : 400,
+              }}
+            >
+              {conversation.last
+                ? `${conversation.last.senderId === meId ? "أنت: " : ""}${preview(conversation.last)}`
+                : "ابدأ الحديث"}
+            </span>
+            {conversation.unseen > 0 ? (
+              <span
+                className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1 text-[10.5px] font-bold"
+                style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+              >
+                {ar(conversation.unseen)}
+              </span>
+            ) : null}
+          </span>
+        </span>
+      </Link>
+    </PinRow>
   );
 }

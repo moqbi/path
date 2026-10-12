@@ -27,12 +27,14 @@ import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
 import { consume, sendReset, sendVerify } from "@/lib/email-tokens";
 import { readIdentity, upsertIdentity } from "@/lib/oauth";
 import { mailReply, tellSupport } from "@/lib/support-mail";
-import { conversationFor, deliverTo, openConversation, VOICE_SECONDS } from "@/lib/dm";
+import { conversationFor, deliverTo, openConversation, PIN_MAX, VOICE_SECONDS } from "@/lib/dm";
+import { seat as groupSeat, sendToGroup } from "@/lib/groups";
 import { copyMedia, dropMedia, migrateToCloud, storeClip, storeUpload } from "@/lib/media";
 import { announceAvatar } from "@/lib/avatar-moment";
 import { cloudReady, probeBucket } from "@/lib/storage";
 import { isSupportedMusicUrl, resolveTrack } from "@/lib/music-link";
 import { guard } from "@/lib/moderation";
+import { ar } from "@/lib/format";
 import {
   NOTE_FACES,
   noteAudio,
@@ -1733,6 +1735,7 @@ export async function deskThread(conversationId: string) {
     meId: user.id,
     isPlus: Boolean(me?.isPlus),
     other: { id: conversation.other.id, name: conversation.other.name },
+    people: { [conversation.me.id]: conversation.me, [conversation.other.id]: conversation.other },
     lines: conversation.messages,
   } as const;
 }
@@ -1858,6 +1861,58 @@ export async function sendMessage(conversationId: string, formData: FormData): P
 
   revalidatePath(`/messages/${conversationId}`);
   revalidatePath("/messages");
+}
+
+/**
+ * المفضّلة (القاعدة ٢٢٠): تثبيتُ محادثةٍ أو فكُّه، والحدُّ ثلاثٌ يُفحص هنا.
+ * يردّ نصَّ الخطأ ولا يرميه (القاعدة ٩٠).
+ */
+export async function pinConversation(conversationId: string, on: boolean): Promise<{ error?: string }> {
+  const user = await requireUser();
+  await myConversation(conversationId, user.id);
+  if (!on) {
+    await prisma.conversationPin.deleteMany({ where: { userId: user.id, conversationId } });
+  } else {
+    const already = await prisma.conversationPin.findUnique({
+      where: { userId_conversationId: { userId: user.id, conversationId } },
+      select: { userId: true },
+    });
+    if (!already) {
+      const count = await prisma.conversationPin.count({ where: { userId: user.id } });
+      if (count >= PIN_MAX) return { error: `المفضّلة فلّت! — تقدر تثبّت ${ar(PIN_MAX)} محادثات بس` };
+      await prisma.conversationPin.create({ data: { userId: user.id, conversationId } });
+    }
+  }
+  revalidatePath("/messages");
+  return {};
+}
+
+/** رسالةٌ نصّيّة في مجموعة — العضويّةُ تُفحص في `sendToGroup` (القاعدة ٢١٥). */
+export async function sendGroupMessage(groupId: string, formData: FormData): Promise<{ error?: string }> {
+  const user = await requireUser();
+  try {
+    await sendToGroup(user.id, String(groupId), { kind: "TEXT", body: String(formData.get("body") ?? "") });
+  } catch (problem) {
+    return { error: problem instanceof Error ? problem.message : "تعذّر الإرسال" };
+  }
+  revalidatePath(`/group/${groupId}`);
+  revalidatePath("/messages");
+  return {};
+}
+
+export async function sendGroupPhoto(groupId: string, formData: FormData): Promise<{ ok?: string; error?: string }> {
+  const user = await requireUser();
+  try {
+    // العضويّةُ قبل الرفع: ملفٌّ يُرفع لمجموعةٍ ليس فيها ملفٌّ يتيم.
+    await groupSeat(user.id, String(groupId));
+    const { file, width, height } = picture(formData);
+    const media = await storeUpload(user.id, file, width, height);
+    await sendToGroup(user.id, String(groupId), { kind: "PHOTO", mediaId: media.id });
+  } catch (problem) {
+    return { error: problem instanceof Error ? problem.message : "تعذّر الإرسال" };
+  }
+  revalidatePath(`/group/${groupId}`);
+  return { ok: "أُرسلت" };
 }
 
 /** حذف محادثة: يحذفها للطرفين — لا نصف حذف يبقي نسخة عند الآخر بلا علمه. */
