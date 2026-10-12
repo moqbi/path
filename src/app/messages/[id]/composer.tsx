@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { sendMessage, sendPhoto, sendVoice } from "@/app/actions";
+import { sendGroupMessage, sendGroupPhoto, sendMessage, sendPhoto, sendVoice } from "@/app/actions";
 import { ImagePicker } from "@/components/image-picker";
 import { CameraIcon, CloseIcon, MicIcon } from "@/components/icons";
 import { ar } from "@/lib/format";
@@ -25,13 +25,16 @@ const clock = (seconds: number) =>
  * فلا يكتشف صاحبه بعد دقيقتين أنّ ما سجّله لن يُقبل.
  */
 export function Composer({
-  conversationId,
+  conversationId = "",
+  groupId,
   isPlus,
   maxSeconds,
   onSent,
   compact = false,
 }: {
-  conversationId: string;
+  conversationId?: string;
+  /** المجموعةُ نصٌّ وصورة كخادمها (القاعدة ٢١٥) — بلا صوت. */
+  groupId?: string;
   isPlus: boolean;
   maxSeconds: number;
   /** بعد كل إرسال — عمودُ الأصدقاء على سطح المكتب يُعيد جلب المحادثة به. */
@@ -157,7 +160,13 @@ export function Composer({
       ) : (
         <form
           action={async (data) => {
-            await sendMessage(conversationId, data);
+            if (groupId) {
+              const said = await sendGroupMessage(groupId, data);
+              if (said.error) return setError(said.error);
+            } else {
+              await sendMessage(conversationId, data);
+            }
+            setError(null);
             onSent?.();
           }}
           className={`flex items-center ${compact ? "gap-1.5" : "gap-2"}`}
@@ -183,7 +192,7 @@ export function Composer({
               data.set("image", file);
               data.set("width", String(width));
               data.set("height", String(height));
-              return sendPhoto(conversationId, data).then((said) => {
+              return (groupId ? sendGroupPhoto(groupId, data) : sendPhoto(conversationId, data)).then((said) => {
                 if (!said.error) onSent?.();
                 return said.error ?? undefined;
               });
@@ -195,7 +204,7 @@ export function Composer({
             <CameraIcon size={19} />
           </ImagePicker>
 
-          <button
+          {groupId ? null : <button
             type="button"
             aria-label="رسالة صوتية"
             disabled={pending}
@@ -205,7 +214,7 @@ export function Composer({
             }`}
           >
             <MicIcon size={19} />
-          </button>
+          </button>}
 
           <button
             type="submit"
@@ -217,7 +226,7 @@ export function Composer({
         </form>
       )}
 
-      {!isPlus ? (
+      {!isPlus && !groupId ? (
         <p className="mt-2 text-center text-[10.5px] text-faint">
           الصوت حتى {ar(maxSeconds)} ثانية · ومع آثار+ ١٢٠
         </p>

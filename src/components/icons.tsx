@@ -361,3 +361,20 @@ export const PauseIcon = ({ size = 20, className }: IconProps) => (
     <rect x="13.6" y="5" width="3.4" height="14" rx="1.2" />
   </svg>
 );
+
+/** نجمةُ المفضّلة — كنجمة الجوّال (`StarIcon`)، مملوءةً ومفرّغة. */
+export const StarIcon = ({ size = 20, className, filled = true }: IconProps & { filled?: boolean }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill={filled ? "currentColor" : "none"}
+    stroke={filled ? "none" : "currentColor"}
+    strokeWidth={1.7}
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+  >
+    <path d="M12 3.6l2.5 5.3 5.6.8-4.1 4 1 5.7-5-2.7-5 2.7 1-5.7-4.1-4 5.6-.8L12 3.6Z" />
+  </svg>
+);

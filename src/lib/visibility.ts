@@ -113,6 +113,8 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
         },
       },
       messageOf: { select: { conversation: { select: { aId: true, bId: true } } } },
+      groupMessageOf: { select: { groupId: true, createdAt: true } },
+      groupPhotoOf: { select: { id: true } },
     },
   });
   if (!media) return false;
@@ -122,6 +124,18 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
   if (media.messageOf) {
     const { aId, bId } = media.messageOf.conversation;
     return aId === userId || bId === userId;
+  }
+
+  // صورةُ المجموعة ورسائلُها لأعضائها وحدهم (القاعدة ٢١٥) — نسخةُ الخادم حرفاً بحرف.
+  const groupId = media.groupMessageOf?.groupId ?? media.groupPhotoOf?.id;
+  if (groupId) {
+    const seat = await prisma.chatGroupMember.findUnique({
+      where: { groupId_userId: { groupId, userId } },
+      select: { joinedAt: true },
+    });
+    if (!seat) return false;
+    // صورةُ رسالةٍ قبل انضمامه ليست له كالرسالة نفسها (القاعدة ٢٤٢).
+    return !media.groupMessageOf || media.groupMessageOf.createdAt >= seat.joinedAt;
   }
 
   if (media.moment) return canSeeMoment(userId, media.moment.id);
