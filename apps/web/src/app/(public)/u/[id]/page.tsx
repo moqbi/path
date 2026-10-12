@@ -103,8 +103,8 @@ export default async function SharedProfile({ params }: Props) {
   const cover = person.coverMediaId ? `/api/public/cover/${person.memberNo}` : null;
   const avatar = person.avatarMediaId ? `/api/public/avatar/${person.memberNo}` : null;
   /*
-    الإطارُ والتميمة كما تُرسم في التطبيق: الإطارُ فوق الوجه بمقلوب فراغه
-    (القاعدة ٨٠ب)، والتميمةُ يسارَ الصورة وأغلبُها خارجها وفوق الإطار
+    الإطارُ والتشارم كما تُرسم في التطبيق: الإطارُ فوق الوجه بمقلوب فراغه
+    (القاعدة ٨٠ب)، والتشارم يسارَ الصورة وأغلبُها خارجها وفوق الإطار
     (القاعدة ٥٩). وكانت الصفحة ترسم الوجه وحده، فيبدو الملفُّ عارياً لمن
     فتحه في المتصفّح.
   */

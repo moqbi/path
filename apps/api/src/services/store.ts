@@ -112,7 +112,7 @@ export async function storefront(userId: string) {
   const limited = items.filter((item) => item.limited);
   // والحزم صفٌّ بنفسها: ما جُمع في باقةٍ واحدة لا يُقرأ بين الأصناف المفردة.
   const bundles = items.filter((item) => item.kind === "BUNDLE" && !item.limited);
-  // والتمائمُ والإطاراتُ صفّان في «المميز» — **بقرار المالك**.
+  // والتشارمز والإطاراتُ صفّان في «المميز» — **بقرار المالك**.
   const charms = items.filter((item) => item.kind === "CHARM" && !item.limited);
   const frames = items.filter((item) => item.kind === "FRAME" && !item.limited);
 

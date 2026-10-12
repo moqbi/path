@@ -12,7 +12,7 @@ import { SaveForm } from "./saver";
 const INPUT =
   "block w-full rounded-xl border border-line bg-card px-3 text-[13px] text-ink outline-none";
 
-const KIND_NAME: Record<string, string> = { CHARM: "التمائم", FRAME: "الإطارات", THEME: "الثيمات" };
+const KIND_NAME: Record<string, string> = { CHARM: "التشارمز", FRAME: "الإطارات", THEME: "الثيمات" };
 
 /** «يوم»، «يومان»، «٥ أيام»، «شهر» — كما يقرؤها المشتري. */
 export function daysLabel(days: number): string {
@@ -119,8 +119,8 @@ export async function CollectionsView() {
   return (
     <>
       <p className="mb-3 px-1 text-[11.5px] leading-relaxed text-muted">
-        المجموعة تجمع أصنافاً تحت اسم — «مجموعة الورود» في التمائم. في المتجر تُعرض كلُّ مجموعةٍ قسماً،
-        وما بلا مجموعةٍ تحت «التمائم الأخرى». و**المختلطة** تجمع تميمةً وإطاراً وثيماً معاً: تظهر قسماً في
+        المجموعة تجمع أصنافاً تحت اسم — «مجموعة الورود» في التشارمز. في المتجر تُعرض كلُّ مجموعةٍ قسماً،
+        وما بلا مجموعةٍ تحت «التشارمز الأخرى». و**المختلطة** تجمع تشارم وإطاراً وثيماً معاً: تظهر قسماً في
         شريحة كلّ نوعٍ فيها بأصنافه. والصنفُ يُضمّ إليها من صفحة تعديله.
       </p>
       <form action={createCollection} className="mb-4 flex flex-wrap items-end gap-2 rounded-2xl border border-line bg-card p-3">
@@ -131,8 +131,8 @@ export async function CollectionsView() {
         <label className="text-[11.5px] text-muted">
           النوع
           <select name="kind" className={`${INPUT} mt-1`} style={{ height: 42 }}>
-            <option value="MIXED">مختلطة (تمائم وإطارات وثيمات)</option>
-            <option value="CHARM">تمائم</option>
+            <option value="MIXED">مختلطة (تشارمز وإطارات وثيمات)</option>
+            <option value="CHARM">تشارمز</option>
             <option value="FRAME">إطارات</option>
             <option value="THEME">ثيمات</option>
           </select>

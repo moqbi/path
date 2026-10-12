@@ -12,13 +12,13 @@ import { BASE } from "@/lib/base";
  * شبكة أصناف المتجر.
  *
  * المعاينة تتبع نوع الصنف: الإطار حلقةٌ حول وجه، والثيم مساحةُ لون،
- * والتميمة قطعةٌ صغيرة. وما تملكه يُلبَس من هنا كما يُلبَس من ملفك.
+ * والتشارم قطعةٌ صغيرة. وما تملكه يُلبَس من هنا كما يُلبَس من ملفك.
  */
 /** اسمُ النوع كما يُقرأ في بطاقته. */
 const KIND_LABEL: Record<string, string> = {
   FRAME: "إطار",
   THEME: "ثيم",
-  CHARM: "تميمة",
+  CHARM: "تشارم",
   BACKGROUND: "ثيم",
   BUNDLE: "باقة",
 };
@@ -32,7 +32,7 @@ export type Item = {
   plusOnly: boolean;
   earnedAfterDays: number | null;
   limited: boolean;
-  /** صورة الصنف — الثيم والتميمة صورتان، والإطار تدرّج. */
+  /** صورة الصنف — الثيم والتشارم صورتان، والإطار تدرّج. */
   mediaId: string | null;
   /** اتّساعُ فراغ الإطار الأوسط: الوجه يجلس فيه، لا في مربّع الرسم. */
   frameHole?: number | null;
@@ -152,7 +152,7 @@ export function StoreGrid({
   isPlus: boolean;
   credit: number;
   daysHere: number;
-  /** ما هو ملبوس الآن: إطارٌ وثيمٌ وتميمة. */
+  /** ما هو ملبوس الآن: إطارٌ وثيمٌ وتشارم. */
   equipped: { frame: string | null; theme: string | null; charm: string | null };
 }) {
   const [error, setError] = useState<string | null>(null);

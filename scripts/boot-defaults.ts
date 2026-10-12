@@ -78,7 +78,7 @@ async function tags() {
 const CATEGORIES = [
   { name: "الإطارات", slug: "frames", sortOrder: 1 },
   { name: "الثيمات", slug: "themes", sortOrder: 2 },
-  { name: "التمائم", slug: "charms", sortOrder: 3 },
+  { name: "التشارمز", slug: "charms", sortOrder: 3 },
 ] as const;
 
 /**
@@ -199,10 +199,10 @@ async function palettes() {
 
 
 /**
- * تميمتان للتجربة: نجمة وهلال.
+ * تشارمان للتجربة: نجمة وهلال.
  *
- * تُنشآن إن لم توجد تميمةٌ واحدة — مستقلّتين عن حارس التصنيفات، فقاعدةٌ
- * أُنشئت قبل التمائم تنالهما عند أول إقلاع بعد التحديث. ورسمهما SVG داخل
+ * تُنشآن إن لم توجد تشارم واحدة — مستقلّتين عن حارس التصنيفات، فقاعدةٌ
+ * أُنشئت قبل التشارمز تنالهما عند أول إقلاع بعد التحديث. ورسمهما SVG داخل
  * `spec`، والمشرف يرفع صورةً حقيقية فوقهما من اللوحة متى شاء.
  */
 const CHARMS = [
@@ -221,7 +221,7 @@ const CHARMS = [
 async function charms() {
   const existing = await prisma.storeItem.count({ where: { kind: "CHARM" } });
   if (existing > 0) {
-    console.log(`التمائم الحالية: ${existing}`);
+    console.log(`التشارمز الحالية: ${existing}`);
     return;
   }
 
@@ -242,7 +242,7 @@ async function charms() {
       },
     });
   }
-  console.log("أُنشئت تميمتا التجربة: نجمة وهلال");
+  console.log("أُنشئت تشارما التجربة: نجمة وهلال");
 }
 
 async function main() {

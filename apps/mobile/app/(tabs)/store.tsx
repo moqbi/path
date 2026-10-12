@@ -114,12 +114,12 @@ export default function Store() {
   const category = data?.categories.find((row) => row.slug === slug) ?? null;
 
   /*
-    شرائحُ الأنواع بعد «المميز» — التمائم والإطارات والثيمات — وفي كلٍّ
+    شرائحُ الأنواع بعد «المميز» — التشارمز والإطارات والثيمات — وفي كلٍّ
     منها أقسامٌ بمجموعاته ثمّ «… الأخرى» لما بلا مجموعة (**بقرار المالك**).
     وتصنيفاتُ المشرف بعدها كما كانت.
   */
   const KINDS = [
-    { slug: "kind:CHARM", name: "التمائم", kinds: ["CHARM"], other: "التمائم الأخرى" },
+    { slug: "kind:CHARM", name: "التشارمز", kinds: ["CHARM"], other: "التشارمز الأخرى" },
     { slug: "kind:FRAME", name: "الإطارات", kinds: ["FRAME"], other: "الإطارات الأخرى" },
     { slug: "kind:THEME", name: "الثيمات", kinds: ["THEME", "BACKGROUND"], other: "الثيمات الأخرى" },
   ] as const;
@@ -180,14 +180,15 @@ export default function Store() {
       <View style={{ paddingTop: 12, paddingBottom: 4 }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: "row", paddingHorizontal: 20, gap: 8 }}>
           {/*
-            تصنيفُ المشرف الذي يحمل اسمَ نوعٍ («التمائم») لا يُعرض ثانيةً بجانب
+            تصنيفُ المشرف الذي يحمل اسمَ نوعٍ («التشارمز») لا يُعرض ثانيةً بجانب
             شريحة النوع نفسها: شريحتان باسمٍ واحد تُقرآن خطأً.
           */}
           {[
             { slug: "", name: "المميز" },
             ...KINDS,
             ...(data?.categories ?? []).filter(
-              (row) => !KINDS.some((kind) => kind.name === row.name.trim()),
+              // «التمائم» اسمُها القديم: خادمٌ لم تمرّ عليه هجرةُ الاسم بعدُ (القاعدة ٢٧١).
+              (row) => !KINDS.some((kind) => kind.name === row.name.trim()) && row.name.trim() !== "التمائم",
             ),
           ].map((chip) => {
             const on = slug === chip.slug;
@@ -253,9 +254,9 @@ export default function Store() {
             grid((data?.items ?? []).filter((item) => item.categoryId === category.id))
           ) : (
             <>
-              {/* ترتيبُ «المميز» — **بقرار المالك**: الجديد، فالتمائم، فالإطارات، فالثيمات، فالمحدود. */}
+              {/* ترتيبُ «المميز» — **بقرار المالك**: الجديد، فالتشارمز، فالإطارات، فالثيمات، فالمحدود. */}
               {shelf("وصل حديثاً", data?.rows.fresh ?? [], true)}
-              {(data?.rows.charms?.length ?? 0) > 0 ? shelf("التمائم", data?.rows.charms ?? []) : null}
+              {(data?.rows.charms?.length ?? 0) > 0 ? shelf("التشارمز", data?.rows.charms ?? []) : null}
               {(data?.rows.frames?.length ?? 0) > 0 ? shelf("الإطارات", data?.rows.frames ?? []) : null}
               {shelf("ثيمات آثار", data?.rows.themes ?? [])}
               {(data?.rows.bundles?.length ?? 0) > 0 ? (

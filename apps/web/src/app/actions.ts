@@ -377,15 +377,15 @@ const digits = (raw: FormDataEntryValue | null) =>
 const COLLECTION_KINDS = ["CHARM", "FRAME", "THEME"] as const;
 
 /**
- * مجموعةٌ داخل نوعٍ واحد — **بقرار المالك**: «مجموعة الورود» تمائم تُعرض
- * معاً في المتجر، وما بلا مجموعةٍ يقع في «التمائم الأخرى». غيرُ التصنيف:
+ * مجموعةٌ داخل نوعٍ واحد — **بقرار المالك**: «مجموعة الورود» تشارمز تُعرض
+ * معاً في المتجر، وما بلا مجموعةٍ يقع في «التشارمز الأخرى». غيرُ التصنيف:
  * التصنيفُ شريحةٌ في أعلى المتجر.
  */
 export async function createCollection(formData: FormData): Promise<void> {
   await requireAdmin("store");
   const name = String(formData.get("name") ?? "").trim().slice(0, 40);
   const kind = String(formData.get("kind") ?? "");
-  // و«مختلطة» نوعٌ فارغ: تميمةٌ وإطارٌ وثيمٌ في مجموعةٍ واحدة (القاعدة ١٩٧).
+  // و«مختلطة» نوعٌ فارغ: تشارم وإطارٌ وثيمٌ في مجموعةٍ واحدة (القاعدة ١٩٧).
   const mixed = kind === "MIXED";
   if (!name || (!mixed && !(COLLECTION_KINDS as readonly string[]).includes(kind))) return;
   await prisma.storeCollection.create({

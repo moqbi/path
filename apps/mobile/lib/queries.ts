@@ -203,7 +203,7 @@ export type StoreItem = {
   earnedAfterDays: number | null;
   limited: boolean;
   categoryId: string | null;
-  /** المجموعةُ داخل نوعه — «مجموعة الورود» في التمائم. */
+  /** المجموعةُ داخل نوعه — «مجموعة الورود» في التشارمز. */
   collectionId?: string | null;
   /** مُدَدُ الشراء وأسعارُها — فارغةٌ لصنفٍ يُشترى مرّةً ويبقى. */
   plans?: { id: string; days: number; priceCoins: number }[];

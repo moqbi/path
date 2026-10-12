@@ -38,7 +38,7 @@ export function ProfileImages({
     <div className="relative shrink-0">
       <Avatar name={name} size={size} frame={frame} mediaId={avatarMediaId} charm={charm} />
 
-      {/* زرّ الصورة على اليمين: اليسار مقعد التميمة في كل مكان. */}
+      {/* زرّ الصورة على اليمين: اليسار مقعد التشارم في كل مكان. */}
       <div className="absolute -bottom-1 -right-1">
         <ImagePicker
           label="غيّر صورتك"

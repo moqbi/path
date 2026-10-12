@@ -388,7 +388,7 @@ export async function addComment(userId: string, momentId: string, body: string)
           isPlus: true,
           avatarMediaId: true,
           tag: { select: { name: true, bg: true, fg: true } },
-          // الإطارُ والتميمة مع صورة المعلّق كما في كلّ مكانٍ تظهر فيه صورته.
+          // الإطارُ والتشارم مع صورة المعلّق كما في كلّ مكانٍ تظهر فيه صورته.
           frame: { select: { spec: true, mediaId: true, frameHole: true } },
           charm: { select: { spec: true, mediaId: true } },
         },
@@ -460,7 +460,7 @@ export async function audience(userId: string, momentId: string) {
     id: true,
     name: true,
     avatarMediaId: true,
-    // بلا تميمة: ركنُ الوجه هنا لشارة التفاعل (القاعدة ٤٧).
+    // بلا تشارم: ركنُ الوجه هنا لشارة التفاعل (القاعدة ٤٧).
     frame: { select: { spec: true, mediaId: true, frameHole: true } },
   } as const;
 
