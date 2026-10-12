@@ -28,7 +28,8 @@ import { CreateSheet, NoteSheet } from "../components/note-sheet";
 import { Tour } from "../components/tour";
 import { applyTheme, colors, themeStore, veil } from "../theme/tokens";
 import { dismissOpen } from "../lib/swipe-open";
-import { Launch, useLaunch } from "../components/launch";
+import { Launch, UpdateWait, useLaunch } from "../components/launch";
+import { useFreshUpdate } from "../lib/fresh-update";
 import { StorePromo } from "../components/store-promo";
 
 /*
@@ -330,7 +331,15 @@ export default function RootLayout() {
     يومض بين شاشة النظام وبينها ورقٌ فارغ. والتطبيقُ يُحمَّل تحتها.
   */
   const [launching, endLaunch] = useLaunch();
-  const intro = launching ? <Launch onDone={endLaunch} /> : null;
+  // ومعها سؤالُ التحديث: ما دام جارياً تبقى الشاشةُ الداكنة فوق التطبيق (القاعدة ٢٧٥).
+  const updating = useFreshUpdate();
+  // تحت الحركة لا بعدها: حين تذوب الحركةُ تنكشف الأرضُ الداكنة لا التطبيقُ لحظةً ثمّ يُقطع.
+  const intro = (
+    <>
+      {updating ? <UpdateWait /> : null}
+      {launching ? <Launch onDone={endLaunch} /> : null}
+    </>
+  );
 
   // وفي موضعٍ ثابتٍ من الشجرة: لو تبدّل أبوه حين تجهز الخطوط لبدأت الحركةُ من أوّلها.
   return (

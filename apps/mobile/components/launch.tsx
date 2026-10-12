@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, Animated, Easing, Image, StyleSheet, View, useWindowDimensions } from "react-native";
+import { AccessibilityInfo, ActivityIndicator, Animated, Easing, Image, StyleSheet, View, useWindowDimensions } from "react-native";
+import { justReloaded } from "../lib/fresh-update";
 import Svg, { Circle, Defs, Path, RadialGradient, Rect, Stop } from "react-native-svg";
 
 /**
@@ -16,7 +17,8 @@ import Svg, { Circle, Defs, Path, RadialGradient, Rect, Stop } from "react-nativ
 let played = false;
 
 export function useLaunch() {
-  const [on, setOn] = useState(!played);
+  // وبعد إعادة تشغيلٍ لتحديثٍ للتوّ لا تُعاد الحركةُ — رآها قبل ثوانٍ (القاعدة ٢٧٥).
+  const [on, setOn] = useState(() => !played && !justReloaded());
   played = true;
   return [on, () => setOn(false)] as const;
 }
@@ -243,5 +245,18 @@ function Spark() {
     <Svg width={18} height={18} viewBox="0 0 24 24">
       <Path d="M12 0C12.9 7.2 16.8 11.1 24 12C16.8 12.9 12.9 16.8 12 24C11.1 16.8 7.2 12.9 0 12C7.2 11.1 11.1 7.2 12 0Z" fill="#ffd166" />
     </Svg>
+  );
+}
+
+/**
+ * ما بعد الحركة والتحديثُ ما زال ينزل: الأرضُ الداكنة بالعلامة ودوّارةٌ صغيرة،
+ * كشاشة إعادة التشغيل التي تليها — فلا يُرى التطبيقُ لحظةً ثمّ يُقطع.
+ */
+export function UpdateWait() {
+  return (
+    <View style={[StyleSheet.absoluteFill, { backgroundColor: "#0d1c25", alignItems: "center", justifyContent: "center" }]}>
+      <Image source={require("../assets/athr-mark.png")} style={{ width: 96, height: 96 }} resizeMode="contain" />
+      <ActivityIndicator color="#F6B93B" style={{ marginTop: 28 }} />
+    </View>
   );
 }
