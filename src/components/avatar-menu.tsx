@@ -8,7 +8,7 @@ import { Portal, Sheet } from "@/components/sheet";
 import { coinText } from "@/lib/format";
 import { BASE } from "@/lib/base";
 
-/** صنفٌ يلبسه صاحب الملف — إطارٌ أو تميمة — كما يُعرض في المتجر. */
+/** صنفٌ يلبسه صاحب الملف — إطارٌ أو تشارم — كما يُعرض في المتجر. */
 export type WornItem = {
   id: string;
   name: string;
@@ -21,7 +21,7 @@ export type WornItem = {
 
 const KIND_LABEL: Record<string, string> = {
   FRAME: "إطار",
-  CHARM: "تميمة",
+  CHARM: "تشارم",
   THEME: "ثيم",
   BACKGROUND: "خلفية",
 };
@@ -29,7 +29,7 @@ const KIND_LABEL: Record<string, string> = {
 /**
  * صورة العرض تُضغط فتُسأل: أيّها تريد؟
  *
- * الصورة نفسها، أو الصنف الذي يلبسه صاحبها — فالإطار والتميمة يُريان على
+ * الصورة نفسها، أو الصنف الذي يلبسه صاحبها — فالإطار والتشارم يُريان على
  * الناس قبل أن يُريا في المتجر، ومن أعجبه ما رأى يعرف اسمه وسعره من
  * مكانه. وما لا يلبسه لا يُعرض سطراً فارغاً.
  */
@@ -72,7 +72,7 @@ export function AvatarMenu({
           <Row label="عرض صورة الملف الشخصي" onClick={() => setView("photo")} />
           {charmItem ? (
             <Row
-              label="عرض معلومات التميمة"
+              label="عرض معلومات التشارم"
               hint={charmItem.name}
               art={charmItem}
               onClick={() => setView("charm")}

@@ -78,7 +78,7 @@ const SELECT =
 const KINDS = [
   { value: "FRAME", label: "إطار" },
   { value: "THEME", label: "ثيم" },
-  { value: "CHARM", label: "تميمة" },
+  { value: "CHARM", label: "تشارم" },
   { value: "BACKGROUND", label: "خلفية" },
   { value: "BUNDLE", label: "حزمة" },
 ] as const;
@@ -86,7 +86,7 @@ const KINDS = [
 const KIND_LABEL: Record<string, string> = {
   FRAME: "إطار",
   THEME: "ثيم",
-  CHARM: "تميمة",
+  CHARM: "تشارم",
   BACKGROUND: "خلفية",
   BUNDLE: "حزمة",
 };
@@ -1393,7 +1393,7 @@ export default async function AdminPage({
                             mime={item.media?.mime ?? null}
                             hole={item.frameHole}
                           />
-                          {/* المجموعةُ داخل النوع، ومُدَدُ الشراء — للإطار والتميمة والثيم. */}
+                          {/* المجموعةُ داخل النوع، ومُدَدُ الشراء — للإطار والتشارم والثيم. */}
                           {item.kind !== "BUNDLE" ? (
                             <>
                               <ItemCollection itemId={item.id} kind={item.kind} collectionId={item.collectionId} />
@@ -1401,15 +1401,15 @@ export default async function AdminPage({
                             </>
                           ) : null}
                           <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
-                            الثيم يُلبَس خلفيةً للتطبيق، والتميمة شعاراً تحت صورة العرض،
-                            والإطار حلقةً حولها. التميمة والإطار يُحفظان PNG بشفافيتهما.
+                            الثيم يُلبَس خلفيةً للتطبيق، والتشارم شعاراً تحت صورة العرض،
+                            والإطار حلقةً حولها. التشارم والإطار يُحفظان PNG بشفافيتهما.
                             بلا صورة يُرسم التدرّج.
                           </p>
 
                           {/*
                             وللثيم غلافٌ ثانٍ — و«الخلفية» نوعُه القديم في
                             القاعدة، فالصنفان واحدٌ في المتجر.
-                            والإطار والتميمة لا خلفية لهما تُلبَس.
+                            والإطار والتشارم لا خلفية لهما تُلبَس.
                           */}
                           {item.kind === "THEME" || item.kind === "BACKGROUND" ? (
                             <ItemCover itemId={item.id} mediaId={item.coverMediaId} />

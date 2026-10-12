@@ -41,7 +41,7 @@ type Row = {
  * الإكسسوارات: ما تملكه يُلبَس من ملفك، لا من المتجر.
  *
  * المتجر يبيع، والملف يُلبِس — هكذا يعرف صاحبه أين يجد ما اشتراه أو ما
- * أُهدي إليه. والأقسام أقسام المتجر نفسها: إطارات، وثيمات، وتمائم.
+ * أُهدي إليه. والأقسام أقسام المتجر نفسها: إطارات، وثيمات، وتشارمز.
  */
 export default function Accessories() {
   const me = useSession((state) => state.me);
@@ -108,8 +108,8 @@ export default function Accessories() {
           onPress={act}
         />
         <Group
-          title="التمائم"
-          empty="ما عندك تمائم بعد."
+          title="التشارمز"
+          empty="ما عندك تشارمز بعد."
           items={owned.filter((item) => item.kind === "CHARM")}
           worn={me?.charm?.id ?? null}
           onPress={act}
@@ -199,7 +199,7 @@ function Group({
   );
 }
 
-/** معاينة الصنف تتبع نوعه: الإطار حلقة، والتميمة قطعةٌ حرّة، والثيم مساحة. */
+/** معاينة الصنف تتبع نوعه: الإطار حلقة، والتشارم قطعةٌ حرّة، والثيم مساحة. */
 function Art({ item }: { item: Owned }) {
   const paint = firstColor(item.spec, colors.chip);
 

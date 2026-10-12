@@ -110,7 +110,7 @@ export default function NewNote() {
         </Pressable>
 
         <View style={{ marginTop: 6 }}>
-          <Avatar name={me?.name ?? ""} size={104} mediaId={me?.avatarMediaId ?? null} frame={me?.frame ?? null} charm={me?.charm ?? null} />
+          <Avatar name={me?.name ?? ""} size={104} mediaId={me?.avatarMediaId ?? null} frame={me?.frame ?? null} charm={picking ? null : (me?.charm ?? null)} />
         </View>
 
         <Text style={{ color: "rgba(255,255,255,.5)", fontSize: 11, marginTop: 10 }}>

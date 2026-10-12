@@ -29,7 +29,7 @@ export async function shrink(
   context.drawImage(bitmap, 0, 0, width, height);
   bitmap.close();
 
-  // JPEG يمحو الشفافية بخلفيةٍ سوداء — والتميمة شعارٌ شفّاف، فتبقى PNG.
+  // JPEG يمحو الشفافية بخلفيةٍ سوداء — والتشارم شعارٌ شفّاف، فتبقى PNG.
   const type = keepAlpha ? "image/png" : "image/jpeg";
   const blob = await new Promise<Blob | null>((resolve) =>
     canvas.toBlob(resolve, type, 0.82),

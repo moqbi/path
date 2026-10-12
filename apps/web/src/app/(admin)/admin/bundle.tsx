@@ -10,7 +10,7 @@ type Slim = { id: string; name: string; kind: string; spec: string; mediaId: str
 const KIND_LABEL: Record<string, string> = {
   FRAME: "إطار",
   THEME: "ثيم",
-  CHARM: "تميمة",
+  CHARM: "تشارم",
   BACKGROUND: "خلفية",
 };
 

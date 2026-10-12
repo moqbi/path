@@ -94,7 +94,7 @@ export function ProfileHead({
             </Pressable>
           ) : null}
         </View>
-        {/* التميمةُ تتدلّى من ركن الصورة نحو الاسم (القاعدة ٥٩): مسافةٌ تتّسع لها. */}
+        {/* التشارم تتدلّى من ركن الصورة نحو الاسم (القاعدة ٥٩): مسافةٌ تتّسع لها. */}
         <View style={{ flex: 1, minWidth: 0, alignItems: "flex-start", paddingRight: 34, marginTop: size / 2 + 10 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, maxWidth: "100%" }}>
             <Text

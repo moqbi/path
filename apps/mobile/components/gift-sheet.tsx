@@ -190,12 +190,12 @@ function Sheet({
   const isPlus = store.data?.isPlus ?? false;
   const coins = store.data?.coins ?? 0;
   /*
-    المتجرُ كلُّه لا الإطارات وحدها — **بقرار المالك**: الإطاراتُ والتمائمُ
+    المتجرُ كلُّه لا الإطارات وحدها — **بقرار المالك**: الإطاراتُ والتشارمز
     والثيمات، كلٌّ في شريحته، وداخلها أقسامٌ بمجموعاتها كالمتجر.
   */
   const KINDS = [
     { key: "FRAME", label: "الإطارات", kinds: ["FRAME"] },
-    { key: "CHARM", label: "التمائم", kinds: ["CHARM"] },
+    { key: "CHARM", label: "التشارمز", kinds: ["CHARM"] },
     { key: "THEME", label: "الثيمات", kinds: ["THEME", "BACKGROUND"] },
   ] as const;
   const tab = KINDS.find((row) => row.key === kind)!;
@@ -314,7 +314,7 @@ function Sheet({
 
         {/* ما تحت هذا السطر بالنقاط، وآثار+ فوقه بمالٍ من المتجر (القاعدة ٢٣٤). */}
         <Text style={{ color: colors.ink2, fontSize: 12.5, fontWeight: "600", marginBottom: 8 }}>
-          إهداء التمائم والإطارات والثيمات يُخصم من رصيد نقاطك
+          إهداء التشارمز والإطارات والثيمات يُخصم من رصيد نقاطك
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: colors.goldLine, backgroundColor: colors.goldSoft, marginBottom: 12 }}>
           <SparkIcon size={14} color={colors.goldInk} />

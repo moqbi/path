@@ -149,7 +149,7 @@ export default function Timeline() {
   const [pulling, setPulling] = useState(false);
 
   const refreshMe = useSession((s) => s.refresh);
-  // والتحديث يسأل عن صاحب الشاشة أيضاً: غلافُه وإطارُه وتميمتُه منه.
+  // والتحديث يسأل عن صاحب الشاشة أيضاً: غلافُه وإطارُه وتشارمه منه.
   const reload = () =>
     Promise.all([
       view === "together" ? together.refetch() : feed.refetch(),
@@ -455,7 +455,7 @@ export default function Timeline() {
             </View>
 
             {/*
-              الاسم أبعدُ عن الصورة (`marginRight`): التميمةُ تجلس يسارها
+              الاسم أبعدُ عن الصورة (`marginRight`): التشارم تجلس يسارها
               وأغلبُها خارجها (القاعدة ٥٩)، فكانت تلامس الاسم.
             */}
             <View style={{ flex: 1, paddingBottom: 6, marginRight: 10 }}>

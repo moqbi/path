@@ -10,7 +10,7 @@ const ITEMS: { name: string; label: string; hint: string }[] = [
   { name: "notifyOnTag", label: "إشارات «مع فلان»", hint: "حين يذكرك أحدٌ في لحظته" },
   { name: "notifyReaction", label: "تفاعلات على اللحظات", hint: "وجهٌ أو إيموجي على ما نشرت" },
   { name: "notifyComment", label: "تعليق على لحظة", hint: "كلامٌ يُكتب تحت لحظتك" },
-  { name: "notifyStoreNew", label: "من آثار: محتوى جديد في المتجر", hint: "إطارٌ أو ثيمٌ أو تميمة" },
+  { name: "notifyStoreNew", label: "من آثار: محتوى جديد في المتجر", hint: "إطارٌ أو ثيمٌ أو تشارم" },
   { name: "notifyStoreDeals", label: "من آثار: عروض وخصومات", hint: "ما يُخفَّض سعره أو يُعرض لمدّة" },
   { name: "notifyMemories", label: "ذكريات ومناسبات", hint: "في مثل هذا اليوم، ومناسبات الصداقة، وآثرك السنوي — صباحاً" },
 ];

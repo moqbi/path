@@ -134,7 +134,7 @@ export default async function FriendProfilePage({
     }),
     circleIds(id),
     // أصناف المتجر كلها تُقرأ هنا لتُعرض في نافذة الإهداء بلا مغادرة الملف:
-    // الإطار والثيم والتميمة كلّها تُهدى.
+    // الإطار والثيم والتشارم كلّها تُهدى.
     prisma.storeItem.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.purchase.findMany({ where: { userId: id, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, select: { itemId: true } }),
     prisma.purchase.findMany({ where: { userId: viewer.id, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, select: { itemId: true } }),

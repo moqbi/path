@@ -12,7 +12,7 @@ import { itemPaint } from "@/components/ui";
  * صورةٌ واحدة لا تصلح للاثنين. ومن اشترى الثيم لبس غلافه معه، وله أن
  * يغيّره بعدها.
  *
- * وللثيم وحده: الإطار والتميمة لا خلفية لهما تُلبَس.
+ * وللثيم وحده: الإطار والتشارم لا خلفية لهما تُلبَس.
  */
 export function ItemCover({ itemId, mediaId }: { itemId: string; mediaId: string | null }) {
   return (

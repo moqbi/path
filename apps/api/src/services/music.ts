@@ -7,12 +7,13 @@ import { badRequest, notFound } from "../lib/errors";
  * طرفٍ ثالث من أجهزتهم (كالأماكن — القاعدة ١٢٨). ومعاينةُ كلّ أغنيةٍ ثلاثون
  * ثانية برابطٍ موقَّعٍ لساعات، فلا يُحفظ الرابط: يُطلب طازجاً عند الاستماع.
  *
- * والقائمةُ الأولى «Top Saudi Arabia» من «Deezer Charts» — الجمهورُ في المملكة،
- * والقائمةُ العالميّة غربيّةٌ كلُّها. ويُبدَّل بـ`DEEZER_TOP_PLAYLIST`.
+ * والقائمةُ الأولى «Top Arabic Trending» من Digster Arabia — عربيّةٌ كلُّها (بقرار
+ * المالك): «Top Saudi Arabia» من Deezer Charts كان نصفُها أجنبياً. ويُبدَّل
+ * بـ`DEEZER_TOP_PLAYLIST`.
  */
 
 const API = "https://api.deezer.com";
-const TOP = process.env.DEEZER_TOP_PLAYLIST || "1362521285";
+const TOP = process.env.DEEZER_TOP_PLAYLIST || "11163315344";
 
 /** طولُ المعاينة، وطولُ ما يُسمع منها في النوت. */
 export const PREVIEW_SECONDS = 30;

@@ -13,7 +13,7 @@ import { Sheet } from "./sheet";
 import { viewPhoto } from "./photo-viewer";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-/** صنفٌ يلبسه صاحب الملف — إطارٌ أو تميمة — كما يُعرض في المتجر. */
+/** صنفٌ يلبسه صاحب الملف — إطارٌ أو تشارم — كما يُعرض في المتجر. */
 export type WornItem = {
   id: string;
   name: string;
@@ -26,7 +26,7 @@ export type WornItem = {
 
 const KIND_LABEL: Record<string, string> = {
   FRAME: "إطار",
-  CHARM: "تميمة",
+  CHARM: "تشارم",
   THEME: "ثيم",
   BACKGROUND: "خلفية",
 };
@@ -34,7 +34,7 @@ const KIND_LABEL: Record<string, string> = {
 /**
  * صورة العرض تُضغط فتُسأل: أيّها تريد؟
  *
- * الصورة نفسها، أو الصنف الذي يلبسه صاحبها — فالإطار والتميمة يُريان على
+ * الصورة نفسها، أو الصنف الذي يلبسه صاحبها — فالإطار والتشارم يُريان على
  * الناس قبل أن يُريا في المتجر، ومن أعجبه ما رأى يعرف اسمه وسعره من
  * مكانه. وما لا يلبسه لا يُعرض سطراً فارغاً.
  */
@@ -91,7 +91,7 @@ export function AvatarMenu({
           />
           {charmItem ? (
             <Row
-              label="عرض معلومات التميمة"
+              label="عرض معلومات التشارم"
               hint={charmItem.name}
               art={charmItem}
               onPress={() => setView("charm")}
@@ -256,7 +256,7 @@ function ItemSheet({ item, onClose }: { item: NonNullable<WornItem>; onClose: ()
 /**
  * شكل الصنف: صورته إن رُفعت، وإلا لونه.
  *
- * التميمة تُحتوى ولا تُقصّ — رسمٌ شفّافٌ حرّ، وقصُّه في قرصٍ يأكل طرفه.
+ * التشارم تُحتوى ولا تُقصّ — رسمٌ شفّافٌ حرّ، وقصُّه في قرصٍ يأكل طرفه.
  */
 function ItemArt({
   item,

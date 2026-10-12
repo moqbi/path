@@ -826,7 +826,7 @@ const NOTIFY_ITEMS = [
   { key: "notifyOnTag", label: "إشارات «مع فلان»", note: "حين يذكرك أحدٌ في لحظته" },
   { key: "notifyReaction", label: "تفاعلات على اللحظات", note: "وجهٌ أو إيموجي على ما نشرت" },
   { key: "notifyComment", label: "تعليق على لحظة", note: "كلامٌ يُكتب تحت لحظتك" },
-  { key: "notifyStoreNew", label: "من آثار: محتوى جديد في المتجر", note: "إطارٌ أو ثيمٌ أو تميمة" },
+  { key: "notifyStoreNew", label: "من آثار: محتوى جديد في المتجر", note: "إطارٌ أو ثيمٌ أو تشارم" },
   { key: "notifyStoreDeals", label: "من آثار: عروض وخصومات", note: "ما يُخفَّض سعره أو يُعرض لمدّة" },
   { key: "notifyMemories", label: "ذكريات ومناسبات", note: "في مثل هذا اليوم، ومناسبات الصداقة، وآثرك السنوي — صباحاً" },
 ] as const;

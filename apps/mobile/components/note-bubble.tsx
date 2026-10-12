@@ -69,7 +69,7 @@ export function NoteBubble({
             ) : null}
             {text ? (
               <Text
-                numberOfLines={large ? 3 : 2}
+                numberOfLines={large ? 3 : trackTitle ? 1 : 2}
                 style={{ color: colors.ink, fontSize: large ? 14 : 9.5, lineHeight: large ? 21 : 13, textAlign: "center", writingDirection: "auto" }}
               >
                 {text}

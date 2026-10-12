@@ -42,7 +42,8 @@ export function SongPicker({
   useEffect(() => () => void stopClip(), []);
 
   return (
-    <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(10,16,22,.97)", paddingTop: insets.top + 8 }}>
+    // فوق كلّ ما في الشاشة: التشارم مرسومةٌ بـ`zIndex` فوق الإطار، فكانت تطفو فوق القائمة.
+    <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, elevation: 100, backgroundColor: "rgba(10,16,22,.97)", paddingTop: insets.top + 8 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 16, marginBottom: 12 }}>
         <Pressable
           accessibilityLabel={chosen ? "رجوع للقائمة" : "إغلاق"}
