@@ -400,14 +400,11 @@ export default function NewStory() {
 
       {tray ? (
         <StickerTray
-          video={Boolean(draft?.video)}
-          hasMusic={hasMusic}
           onClose={() => setTray(false)}
           onPick={(kind) => {
             setTray(false);
             if (kind === "time") addSticker({ kind: "time", x: 0.5, y: 0.22, scale: 1, style: "digital" });
-            else if (kind === "place") setPlacing(true);
-            else openMusic();
+            else setPlacing(true);
           }}
         />
       ) : null}
@@ -520,31 +517,19 @@ function LocalFiltered({
 }
 
 /**
- * دُرجُ الملصقات: الموقعُ والوقتُ والموسيقى — والموسيقى على الصورة والمقطع سواء
- * (القاعدة ٢٧٧) ومرّةً واحدة (صوتٌ واحد للقصّة).
+ * دُرجُ الملصقات: الموقعُ والوقت. والموسيقى أداةٌ في العمود وحدها — **بقرار المالك**:
+ * كانت في الدرج أيضاً فيُقرأ البابُ مرّتين (القاعدة ٢٧٩).
  */
 function StickerTray({
-  video,
-  hasMusic,
   onPick,
   onClose,
 }: {
-  video: boolean;
-  hasMusic: boolean;
-  onPick: (kind: "place" | "time" | "music") => void;
+  onPick: (kind: "place" | "time") => void;
   onClose: () => void;
 }) {
   const options = [
     { kind: "place" as const, label: "الموقع", hint: "وين أنت الحين", icon: <PinIcon size={22} color="#fff" />, tint: "#FF7A5A", off: false },
     { kind: "time" as const, label: "الوقت", hint: "بأشكال تختارها", icon: <ClockIcon size={22} color="#fff" />, tint: "#0984E3", off: false },
-    {
-      kind: "music" as const,
-      label: "موسيقى",
-      hint: hasMusic ? "أضفتها — اضغط الملصق لتعديله" : video ? "أغنية أو صوت خاص — وتكتم صوت المقطع" : "أغنية من القائمة أو صوت خاص",
-      icon: <MusicIcon size={22} color="#fff" />,
-      tint: "#6C5CE7",
-      off: hasMusic,
-    },
   ];
   return (
     <Pressable onPress={onClose} style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, backgroundColor: "rgba(8,13,18,.55)", justifyContent: "flex-end" }}>

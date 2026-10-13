@@ -32,18 +32,10 @@ export async function circleIds(userId: string): Promise<string[]> {
   return rows.map((row) => (row.requesterId === userId ? row.addresseeId : row.requesterId));
 }
 
-/** من تراه لحظاتُهم: دائرتك ناقص المحظورين، ومعك أنت. */
-export async function visibleAuthors(userId: string): Promise<string[]> {
-  const [ids, blocked] = await Promise.all([circleIds(userId), blockedWith(userId)]);
-  const hidden = new Set(blocked);
-  return [...ids.filter((id) => !hidden.has(id)), userId];
-}
-
 /**
- * من يتابع الحسابَ المفتوح تُقرأ لحظاتُه عنده (القاعدة ٢٧٨) — بقرار المالك:
+ * من يتابع الحسابَ المفتوح يُقرأ عنده (القاعدتان ٢٧٨ و٢٧٩) — بقرار المالك:
  * المتابعةُ لا تأخذ خانةً ولا تجعله صديقاً (القاعدة ٢٦٣)، لكنّ ما يكتبه
- * المتابِعُ لدائرته كلّها يصل إلى الإدارة التي أضافها. اللحظاتُ وحدها: لا
- * قصصَ ولا نوت، ولذلك لا تُضاف إلى `visibleAuthors`.
+ * المتابِعُ لدائرته — لحظاتٍ وقصصاً ونوت — يصل إلى الإدارة التي أضافها.
  */
 async function followerIds(userId: string): Promise<string[]> {
   const rows = await prisma.friendship.findMany({
@@ -53,6 +45,17 @@ async function followerIds(userId: string): Promise<string[]> {
   return rows.map((row) => row.requesterId);
 }
 
+/** من تراه لحظاتُهم وقصصُهم ونوتُهم: دائرتك ومتابِعوك ناقص المحظورين، ومعك أنت. */
+export async function visibleAuthors(userId: string): Promise<string[]> {
+  const [ids, followers, blocked] = await Promise.all([
+    circleIds(userId),
+    followerIds(userId),
+    blockedWith(userId),
+  ]);
+  const hidden = new Set(blocked);
+  return [...new Set([...ids, ...followers])].filter((id) => !hidden.has(id)).concat(userId);
+}
+
 /**
  * شرط رؤية اللحظة: كاتبها ممّن ترى، وجمهورها يشملك.
  *
@@ -60,13 +63,7 @@ async function followerIds(userId: string): Promise<string[]> {
  * الشرط يسرّب لحظةً خاصة بلا رسالة خطأ تُنبّه.
  */
 export async function visibleWhere(userId: string) {
-  const [visible, followers, blocked] = await Promise.all([
-    visibleAuthors(userId),
-    followerIds(userId),
-    blockedWith(userId),
-  ]);
-  const hidden = new Set(blocked);
-  const authors = [...visible, ...followers.filter((id) => !hidden.has(id))];
+  const authors = await visibleAuthors(userId);
 
   return {
     authorId: { in: authors },
@@ -180,7 +177,8 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
     if (story.expiresAt <= new Date()) return false;
     // الخاصّةُ لمن خُصّت بهم وحدهم (القاعدة ٢١٩) — والصاحبُ رُدّ بالمالك فوق.
     if (story.private && story.audience.length === 0) return false;
-    const circle = await circleIds(userId);
+    // ومتابِعُ الحساب المفتوح كصديقه هنا (القاعدة ٢٧٩).
+    const circle = await visibleAuthors(userId);
     return circle.includes(story.authorId);
   }
 
