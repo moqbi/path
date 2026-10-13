@@ -1,5 +1,6 @@
 import { BlockIcon, CheckIcon, MessageIcon, TagIcon, UserMinusIcon, UserPlusIcon } from "../../components/icons";
 import { Sheet } from "../../components/sheet";
+import { openAddSheet } from "../../components/add-sheet";
 import { useTabTop } from "../../lib/tab-top";
 import { TabBackdrop } from "../../components/tab-backdrop";
 import { useBarSpace } from "../../components/glass-bar";
@@ -170,7 +171,7 @@ export default function Circle() {
             {/* أبوابُ الإضافة: البحثُ ومن حولك والرابط (القاعدة ٢٨٠). */}
             <Pressable
               accessibilityLabel="إضافة صديق"
-              onPress={() => router.push("/add" as never)}
+              onPress={() => openAddSheet()}
               hitSlop={6}
               style={{
                 width: 40,

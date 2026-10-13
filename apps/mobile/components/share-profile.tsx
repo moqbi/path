@@ -14,7 +14,7 @@ import { ar } from "../lib/format";
  * رمزُ QR مرسومٌ بمسارٍ واحد: مربّعٌ لكلّ وحدةٍ داكنة. وفي وسطه العلامة —
  * تصحيحُ الخطأ «H» يحتمل ضياعَ ثلاثين في المئة، والعلامةُ أقلُّ من عُشره.
  */
-function Qr({ value, size }: { value: string; size: number }) {
+export function Qr({ value, size }: { value: string; size: number }) {
   const { d, count } = useMemo(() => {
     const { modules } = create(value, { errorCorrectionLevel: "H" });
     const n = modules.size;

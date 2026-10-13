@@ -24,6 +24,7 @@ import { Suspended } from "../components/suspended";
 import { PhotoViewer } from "../components/photo-viewer";
 import { PlaceVisitors } from "../components/place-visitors";
 import { ReactSheet } from "../components/react-sheet";
+import { AddSheet } from "../components/add-sheet";
 import { CreateSheet, NoteSheet } from "../components/note-sheet";
 import { Tour } from "../components/tour";
 import { applyTheme, colors, themeStore, veil } from "../theme/tokens";
@@ -292,6 +293,7 @@ function Gate() {
     <PlaceVisitors />
     {/* ولوحةُ التفاعل نافذةٌ زجاجيّة كذلك (القاعدة ٢٤٧). */}
     <ReactSheet />
+    <AddSheet />
     {/* النوت ونافذةُ «قصة أو نوت» — في الجذر للسبب نفسه (القاعدة ٢٦٩). */}
     <NoteSheet />
     <CreateSheet />
