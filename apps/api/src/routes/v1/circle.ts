@@ -33,14 +33,14 @@ export const circleRoutes = new Hono()
     async (c) => c.json({ people: await discover.findPeople(me(c), c.req.valid("json").q) }),
   )
 
-  /** وجهاً لوجه: منارةٌ تعيش دقيقةً ومن حولك على ١٥٠ متراً (القاعدة ٢٨٠). */
+  /** وجهاً لوجه: منارةٌ تعيش دقيقةً ومن حولك على ١٥٠ متراً، وتنبيهُ من فعّله (القاعدتان ٢٨٠ و٢٨٢). */
   .post(
     "/nearby",
     // نبضةٌ كل أربع ثوانٍ = ٧٥ في خمس دقائق؛ والحدُّ فوقها بهامش، وإلّا رُدّ من
     // أبقى الشاشةَ مفتوحةً أربع دقائق بـ٤٢٩.
     rateLimitUser(150, 300),
     zValidator("json", z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) })),
-    async (c) => c.json({ people: await discover.nearby(me(c), c.req.valid("json")) }),
+    async (c) => c.json(await discover.nearby(me(c), c.req.valid("json"))),
   )
   .delete("/nearby", (c) => {
     discover.leaveNearby(me(c));

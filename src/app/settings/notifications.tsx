@@ -13,6 +13,7 @@ const ITEMS: { name: string; label: string; hint: string }[] = [
   { name: "notifyStoreNew", label: "من آثار: محتوى جديد في المتجر", hint: "إطارٌ أو ثيمٌ أو تشارم" },
   { name: "notifyStoreDeals", label: "من آثار: عروض وخصومات", hint: "ما يُخفَّض سعره أو يُعرض لمدّة" },
   { name: "notifyMemories", label: "ذكريات ومناسبات", hint: "في مثل هذا اليوم، ومناسبات الصداقة، وآثرك السنوي — صباحاً" },
+  { name: "notifyNearby", label: "من حولك", hint: "إذا فتحها أحدٌ قريبٌ منك يوصل جوّالك تنبيه — صديقاً أو غيره" },
 ];
 
 /** دقائقُ منتصف الليل ← «٢٢:٣٠» لحقل الوقت. */

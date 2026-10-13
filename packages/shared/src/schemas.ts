@@ -193,6 +193,8 @@ export const notifyInput = z.object({
   notifyStoreDeals: z.boolean(),
   /** اختياريّ: نسخةٌ قديمة لا ترسله فلا يُطفأ بحفظها (كـ`notifyOnTag` في ٨٨ج). */
   notifyMemories: z.boolean().optional(),
+  /** «من حولك»: مطفأٌ افتراضاً، واختياريٌّ لنسخةٍ قديمة لا تعرفه (القاعدة ٢٨٢). */
+  notifyNearby: z.boolean().optional(),
   quietFrom: z.number().int().min(0).max(1439).nullish(),
   quietTo: z.number().int().min(0).max(1439).nullish(),
 });

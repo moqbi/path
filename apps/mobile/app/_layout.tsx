@@ -24,7 +24,7 @@ import { Suspended } from "../components/suspended";
 import { PhotoViewer } from "../components/photo-viewer";
 import { PlaceVisitors } from "../components/place-visitors";
 import { ReactSheet } from "../components/react-sheet";
-import { AddSheet } from "../components/add-sheet";
+import { AddSheet, openAddSheet } from "../components/add-sheet";
 import { CreateSheet, NoteSheet } from "../components/note-sheet";
 import { Tour } from "../components/tour";
 import { applyTheme, colors, themeStore, veil } from "../theme/tokens";
@@ -178,10 +178,24 @@ function Gate() {
     تنبيهاً ووجد نفسه في الخط الزمنيّ يسأل «أين ما نبّهني؟».
   */
   useEffect(() => {
-    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+    const open = (response: Notifications.NotificationResponse) => {
       const path = response.notification.request.content.data?.path;
-      if (typeof path === "string" && path.startsWith("/")) router.push(path as never);
-    });
+      // «من حولك» نافذةٌ في الجذر لا شاشة (القاعدة ٢٨٢): تُفتح على الرادار مباشرةً.
+      if (path === "/nearby") openAddSheet("near");
+      else if (typeof path === "string" && path.startsWith("/")) router.push(path as never);
+    };
+    const sub = Notifications.addNotificationResponseReceivedListener(open);
+    /*
+      وتطبيقٌ مغلقٌ يُفتح بالضغطة نفسها: المستمعُ يُركَّب بعدها فلا يسمعها، فتُقرأ
+      آخرُ ضغطةٍ ثمّ تُمسح — وإلّا أعادت فتحَ موضعها مع كلّ إقلاع.
+    */
+    void Notifications.getLastNotificationResponseAsync()
+      .then((last) => {
+        if (!last) return;
+        open(last);
+        return Notifications.clearLastNotificationResponseAsync();
+      })
+      .catch(() => {});
     return () => sub.remove();
   }, [router]);
 

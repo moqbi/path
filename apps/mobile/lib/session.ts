@@ -69,6 +69,7 @@ export type Me = {
   notifyStoreNew?: boolean;
   notifyStoreDeals?: boolean;
   notifyMemories?: boolean;
+  notifyNearby?: boolean;
   quietFrom?: number | null;
   quietTo?: number | null;
   viewGroupId: string | null;

@@ -49,9 +49,10 @@ function Body({ mode, close }: { mode: Mode; close: () => void }) {
   const go = (next: Mode) => useAddSheet.setState({ mode: next });
   const { add, done, error } = useAddFriend();
 
-  const row = (person: FoundPerson) => (
+  const row = (person: FoundPerson, alias = false) => (
     <PersonRow
       key={person.id}
+      alias={alias}
       person={person}
       relation={done[person.id] ?? person.relation}
       pending={add.isPending && add.variables === person.id}
@@ -94,12 +95,15 @@ function PersonRow({
   pending,
   onAdd,
   onOpen,
+  alias = false,
 }: {
   person: FoundPerson;
   relation: FoundPerson["relation"];
   pending: boolean;
   onAdd: () => void;
   onOpen: () => void;
+  /** «من حولك» تُري المعرّفَ لا الاسم (القاعدة ٢٨٢) — والاسمُ في ملفّه. */
+  alias?: boolean;
 }) {
   const router = useRouter();
   const live = relation === "none" || relation === "incoming";
@@ -115,13 +119,13 @@ function PersonRow({
       <View style={{ flex: 1, minWidth: 0 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Text numberOfLines={1} style={{ color: "#fff", fontSize: 14.5, fontWeight: "700", writingDirection: "auto", flexShrink: 1 }}>
-            {person.name}
+            {alias ? aliasOf(person) : person.name}
           </Text>
           <NameTag isPlus={person.isPlus} tag={person.tag} />
         </View>
         <Text style={{ color: "rgba(255,255,255,.55)", fontSize: 11.5 }}>
           عضوية رقم {ar(person.memberNo)}
-          {person.handle ? ` │ ⁨@${person.handle}⁩` : ""}
+          {person.handle && !alias ? ` │ ⁨@${person.handle}⁩` : ""}
         </Text>
       </View>
       <Pressable
@@ -200,7 +204,7 @@ function Home({ go, row }: { go: (mode: Mode) => void; row: (p: FoundPerson) => 
         <Text style={{ color: "#FF9C84", fontSize: 12.5 }}>{(find.error as Error).message}</Text>
       ) : find.data ? (
         find.data.people.length ? (
-          <View>{find.data.people.map(row)}</View>
+          <View>{find.data.people.map((person) => row(person))}</View>
         ) : (
           <Text style={{ color: "rgba(255,255,255,.6)", fontSize: 12.5 }}>
             ما لقينا أحداً — اكتب المعرّف أو الاسم كاملاً كما هو.
@@ -246,10 +250,16 @@ function Pulse({ delay, size }: { delay: number; size: number }) {
   );
 }
 
-function Near({ row }: { row: (p: FoundPerson) => React.ReactNode }) {
+/** المعرّفُ إن وُجد، وإلّا الاسمُ الأوّل وحده. */
+function aliasOf(person: FoundPerson): string {
+  return person.handle ? `\u2068@${person.handle}\u2069` : person.name.trim().split(/\s+/)[0] ?? person.name;
+}
+
+function Near({ row }: { row: (p: FoundPerson, alias?: boolean) => React.ReactNode }) {
   const me = useSession((s) => s.me);
   const [state, setState] = useState<"asking" | "on" | "denied">("asking");
   const [people, setPeople] = useState<FoundPerson[]>([]);
+  const [rang, setRang] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stop = useCallback(() => {
@@ -272,11 +282,13 @@ function Near({ row }: { row: (p: FoundPerson) => React.ReactNode }) {
       const beat = async () => {
         try {
           const here = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-          const res = await api<{ people: FoundPerson[] }>("/v1/circle/nearby", {
+          const res = await api<{ people: FoundPerson[]; rang?: number }>("/v1/circle/nearby", {
             method: "POST",
             body: JSON.stringify({ lat: here.coords.latitude, lng: here.coords.longitude }),
           });
-          if (alive) setPeople(res.people);
+          if (!alive) return;
+          setPeople(res.people);
+          if (res.rang) setRang(true);
         } catch {
           // نبضةٌ فاتت لا توقف البحث: التالية بعد ثوانٍ.
         }
@@ -338,7 +350,7 @@ function Near({ row }: { row: (p: FoundPerson) => React.ReactNode }) {
           <Text style={{ color: "rgba(255,255,255,.6)", fontSize: 12, marginBottom: 2 }}>
             حولك الحين ({ar(people.length)})
           </Text>
-          {people.map(row)}
+          {people.map((person) => row(person, true))}
         </View>
       ) : (
         <Text style={{ color: "rgba(255,255,255,.7)", fontSize: 13, textAlign: "center" }}>
@@ -346,7 +358,9 @@ function Near({ row }: { row: (p: FoundPerson) => React.ReactNode }) {
         </Text>
       )}
       <Text style={{ color: "rgba(255,255,255,.4)", fontSize: 11, textAlign: "center", marginTop: 14 }}>
-        موقعك لا يُحفظ ولا يُرسل لأحد — يظهر اسمك وصورتك لمن فتحها جنبك وبس، وتختفي إذا طلعت.
+        {rang
+          ? "نبّهنا من فعّل «من حولك» قريباً منك — وتبقى ظاهراً لهم عشر دقائق."
+          : "موقعك لا يُرسل لأحد — يظهر معرّفك وصورتك لمن فتحها جنبك، ومن فعّل تنبيهها يوصله خبر بلا اسم."}
       </Text>
     </SheetScrollView>
   );
