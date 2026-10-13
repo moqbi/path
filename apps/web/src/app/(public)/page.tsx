@@ -188,14 +188,7 @@ function FeatureIcon({ children }: { children: React.ReactNode }) {
   `public/composer`) كما في التطبيق — استبدالُ الملفّ يغيّرها هنا أيضاً.
 */
 const REACTIONS = ["smile", "love", "laugh", "gasp", "sad", "camera", "chat", "pin"] as const;
-const POSTS = [
-  { key: "write", tile: "#ece4f5" },
-  { key: "photo", tile: "var(--color-gold-soft)" },
-  { key: "music", tile: "#dfe6ec" },
-  { key: "place", tile: "#fae2da" },
-  { key: "sleep", tile: "#e3e0ef" },
-  { key: "wake", tile: "#fbeccb" },
-] as const;
+const POSTS = ["write", "photo", "music", "place", "sleep", "wake"] as const;
 
 /** خاتمٌ يدور: نصٌّ على دائرة، وفي وسطه العلامة. */
 function Stamp({ text, href }: { text: string; href?: string }) {
@@ -335,18 +328,19 @@ export default async function LandingPage() {
         </div>
 
         <div className="l-posts mt-8">
-          {POSTS.map((post) => (
-            <article key={post.key} className="l-post">
-              <div className="l-post-tile" style={{ background: post.tile }} aria-hidden>
+          {POSTS.map((key, index) => (
+            <article key={key} className="l-post">
+              {/* الرسمُ عائمٌ بلا قرصٍ ولا أرضية — بقرار المالك — يطفو بظلّه وحده. */}
+              <div className="l-post-tile" aria-hidden>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`/composer/${post.key}.png`} alt="" width={88} height={88} />
+                <img src={`/composer/${key}.png`} alt="" width={88} height={88} style={{ animationDelay: `${index * 0.4}s` }} />
               </div>
               <div className="l-post-text">
                 <h3 className="text-[17px] font-extrabold" style={{ fontFamily: "var(--font-display)" }}>
-                  {text[`post.${post.key}.title` as const]}
+                  {text[`post.${key}.title` as const]}
                 </h3>
                 <ul className="mt-3 flex flex-wrap gap-1.5">
-                  {lines(text[`post.${post.key}.tags` as const]).map((tag) => (
+                  {lines(text[`post.${key}.tags` as const]).map((tag) => (
                     <li key={tag} className="l-chip">
                       {tag}
                     </li>
