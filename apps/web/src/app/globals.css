@@ -612,16 +612,21 @@ h3 {
  * ورقعةُ «ماذا تنشر»، وشريطُ اللقطات، و«ليش آثار»، والخصوصية، والتفاعلات.
  * الرسومُ من ملفّات المالك (`/reactions` و`/composer`) كما في التطبيق.
  */
+/* بعرض الشاشة كلّها — بقرار المالك: صفحةٌ في عمودٍ أوسطَ على شاشةٍ عريضة تُقرأ صغيرة. */
 .l-wide {
   width: 100%;
-  max-width: 1180px;
-  margin-inline: auto;
   padding-inline: 16px;
 }
 
 @media (min-width: 640px) {
   .l-wide {
-    padding-inline: 24px;
+    padding-inline: 32px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .l-wide {
+    padding-inline: 64px;
   }
 }
 
@@ -641,12 +646,12 @@ h3 {
 }
 
 /* ── الرأس ── */
+/* الرأسُ من حافّة الشاشة إلى حافّتها، ملتصقٌ بالشريط فوقه بلا فراغ. */
 .l-hero {
   position: relative;
   overflow: hidden;
-  border-radius: 32px;
   background: #d9cfbc;
-  padding: 26px 20px 0;
+  padding-top: 18px;
 }
 
 .l-hero-photo {
@@ -654,19 +659,34 @@ h3 {
   inset: 0;
   background-size: cover;
   background-position: center;
-  opacity: 0.32;
+}
+
+/* حجابٌ في جهة النصّ وحدها: الصورةُ واضحةٌ في جهة الهاتف، والكلامُ يُقرأ في جهته. */
+.l-hero-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to left, rgba(217, 207, 188, 0.82) 0%, rgba(217, 207, 188, 0.45) 45%, rgba(217, 207, 188, 0.08) 100%);
+}
+
+@media (max-width: 899px) {
+  .l-hero-photo::after {
+    background: linear-gradient(to bottom, rgba(217, 207, 188, 0.55) 0%, rgba(217, 207, 188, 0.82) 45%, rgba(217, 207, 188, 0.3) 100%);
+  }
 }
 
 /* الكلمةُ العملاقة: علامةٌ لا عنوان، فيعلوها الهاتف ويقطعها كما في المرجع. */
 .l-giant {
   position: absolute;
   inset-inline: 0;
-  top: -0.08em;
+  /* سطرٌ أطول من الحرف: المدّةُ فوق الألف وذيلُ الراء داخل البطاقة لا خارجها. */
+  top: 0;
+  padding-top: 0.12em;
   text-align: center;
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: clamp(150px, 27vw, 330px);
-  line-height: 1;
+  font-size: clamp(96px, 17vw, 250px);
+  line-height: 1.1;
   color: #fdfcf8;
   letter-spacing: -0.01em;
   pointer-events: none;
@@ -677,14 +697,10 @@ h3 {
   position: relative;
   display: grid;
   gap: 28px;
-  padding-top: clamp(120px, 21vw, 240px);
+  padding-top: clamp(140px, 21vw, 300px);
 }
 
 @media (min-width: 900px) {
-  .l-hero {
-    padding: 34px 44px 0;
-  }
-
   .l-hero-grid {
     grid-template-columns: 1fr 1fr;
     align-items: end;
@@ -794,6 +810,11 @@ h3 {
   inset-inline-start: 0;
 }
 
+.l-float-music {
+  top: 112px;
+  inset-inline-start: 0;
+}
+
 .l-float-circle {
   bottom: 40px;
   inset-inline-end: 0;
@@ -817,6 +838,10 @@ h3 {
 @media (max-width: 520px) {
   .l-float-moment {
     top: 6px;
+  }
+
+  .l-float-music {
+    top: 80px;
   }
 
   .l-float-circle {
@@ -871,45 +896,52 @@ h3 {
   }
 }
 
-/* ── ماذا تنشر: رقعةُ شطرنج من نصٍّ ورسم ── */
+/* ── ماذا تنشر: بطاقةٌ لكل نوع، رسمُه فوق ومعلوماتُه تحته ── */
 .l-posts {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  overflow: hidden;
-  border-radius: 28px;
-  border: 1px solid var(--color-line);
-  background: var(--color-line);
-  gap: 1px;
+  gap: 12px;
 }
 
-@media (min-width: 900px) {
+@media (min-width: 720px) {
   .l-posts {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
   }
 }
 
-.l-post-text {
-  position: relative;
-  min-height: 200px;
+@media (min-width: 1180px) {
+  .l-posts {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+.l-post {
+  overflow: hidden;
+  border-radius: 24px;
+  border: 1px solid var(--color-line);
   background: var(--color-card);
-  padding: 20px 20px 64px;
 }
 
 .l-post-tile {
   display: flex;
-  min-height: 200px;
+  height: 150px;
   align-items: center;
   justify-content: center;
 }
 
 .l-post-tile img {
-  width: 96px;
-  height: 96px;
+  width: 88px;
+  height: 88px;
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.l-post-tile:hover img {
+.l-post:hover .l-post-tile img {
   transform: scale(1.08) rotate(-4deg);
+}
+
+.l-post-text {
+  padding: 16px 16px 20px;
 }
 
 .l-chip {
@@ -918,20 +950,6 @@ h3 {
   padding: 3px 11px;
   font-size: 12px;
   color: var(--color-ink-2);
-}
-
-.l-arrow {
-  position: absolute;
-  bottom: 18px;
-  inset-inline-end: 18px;
-  display: flex;
-  height: 38px;
-  width: 38px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--color-chrome);
-  color: var(--color-chrome-ink);
 }
 
 /* ── شريطُ اللقطات في بطاقةٍ داكنة، وتحته شريطٌ زجاجيّ ── */
@@ -978,7 +996,7 @@ h3 {
 
 @media (min-width: 900px) {
   .l-why {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1.7fr 1fr;
     gap: 56px;
   }
 
@@ -1003,6 +1021,17 @@ h3 {
   position: absolute;
   top: 18%;
   inset-inline-start: 8%;
+}
+
+.l-why-list {
+  display: grid;
+  gap: 10px;
+}
+
+@media (min-width: 720px) {
+  .l-why-list {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .l-why-item {

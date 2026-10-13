@@ -49,6 +49,40 @@ const FEATURES = [
       </>
     ),
   },
+  {
+    key: "notes",
+    icon: (
+      <>
+        <path d="M5 5.5A2.5 2.5 0 0 1 7.5 3h9A2.5 2.5 0 0 1 19 5.5v6a2.5 2.5 0 0 1-2.5 2.5H11l-3.5 3v-3a2.5 2.5 0 0 1-2.5-2.5Z" />
+        <path d="M13 6.5v4.2a1.4 1.4 0 1 1-1-1.3V6.5l3-.8" />
+        <circle cx="12" cy="20.5" r="0.8" />
+      </>
+    ),
+  },
+  {
+    key: "store",
+    icon: (
+      <>
+        <path d="M5 8h14l-1.2 11.2a1 1 0 0 1-1 .8H7.2a1 1 0 0 1-1-.8Z" />
+        <path d="M9 10V7a3 3 0 0 1 6 0v3" />
+      </>
+    ),
+  },
+  {
+    key: "book",
+    icon: (
+      <>
+        <path d="M12 6.5C10 5 7 4.5 4 5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5V5c-3-.5-6 0-8 1.5Z" />
+        <path d="M12 6.5v13" />
+      </>
+    ),
+  },
+  {
+    key: "plus",
+    icon: (
+      <path d="M12 3.5l2.4 5.2 5.6.6-4.2 3.8 1.2 5.6L12 15.9l-5 2.8 1.2-5.6L4 9.3l5.6-.6Z" />
+    ),
+  },
 ] as const;
 
 /**
@@ -155,10 +189,12 @@ function FeatureIcon({ children }: { children: React.ReactNode }) {
 */
 const REACTIONS = ["smile", "love", "laugh", "gasp", "sad", "camera", "chat", "pin"] as const;
 const POSTS = [
+  { key: "write", tile: "#ece4f5" },
   { key: "photo", tile: "var(--color-gold-soft)" },
-  { key: "place", tile: "#fae2da" },
   { key: "music", tile: "#dfe6ec" },
-  { key: "write", tile: "var(--color-chip)" },
+  { key: "place", tile: "#fae2da" },
+  { key: "sleep", tile: "#e3e0ef" },
+  { key: "wake", tile: "#fbeccb" },
 ] as const;
 
 /** خاتمٌ يدور: نصٌّ على دائرة، وفي وسطه العلامة. */
@@ -189,16 +225,6 @@ function Stamp({ text, href }: { text: string; href?: string }) {
   );
 }
 
-function Arrow() {
-  return (
-    <span className="l-arrow" aria-hidden>
-      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M17 17 7 7M7 15V7h8" />
-      </svg>
-    </span>
-  );
-}
-
 export default async function LandingPage() {
   const text = await siteText();
   const hero = await siteImage("hero");
@@ -210,7 +236,7 @@ export default async function LandingPage() {
   return (
     <div className="landing">
       {/* ───────────── الرأس: بطاقةٌ وكلمةٌ عملاقة خلف الهاتف ───────────── */}
-      <section className="l-wide pt-4 sm:pt-6">
+      <section>
         <div className="l-hero">
           {/*
             صورةُ الرأس من اللوحة تملأ البطاقة إن رُفعت، وبلاها أرضيةُ
@@ -223,7 +249,7 @@ export default async function LandingPage() {
             آثار
           </div>
 
-          <div className="l-hero-grid">
+          <div className="l-hero-grid l-wide">
             <div className="l-hero-copy">
               <span className="l-eyebrow rise rise-2">
                 <AthrWordmark size={13} color="var(--color-ink)" />
@@ -273,6 +299,15 @@ export default async function LandingPage() {
                 </span>
               </div>
 
+              <div className="l-float l-float-music rise rise-5" aria-hidden>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/composer/music.png" alt="" width={40} height={40} />
+                <span className="flex flex-col leading-tight">
+                  <span className="text-[13px] font-bold">يسمع الآن</span>
+                  <span className="text-[11.5px] text-muted">من سبوتيفاي · مع دائرته</span>
+                </span>
+              </div>
+
               <div className="l-float l-float-circle rise rise-5" aria-hidden>
                 <span className="l-num">١٥٠</span>
                 <span className="text-[11.5px] leading-snug text-ink-2">
@@ -300,9 +335,13 @@ export default async function LandingPage() {
         </div>
 
         <div className="l-posts mt-8">
-          {POSTS.map((post, index) => {
-            const card = (
-              <article key={`${post.key}-text`} className="l-post-text">
+          {POSTS.map((post) => (
+            <article key={post.key} className="l-post">
+              <div className="l-post-tile" style={{ background: post.tile }} aria-hidden>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`/composer/${post.key}.png`} alt="" width={88} height={88} />
+              </div>
+              <div className="l-post-text">
                 <h3 className="text-[17px] font-extrabold" style={{ fontFamily: "var(--font-display)" }}>
                   {text[`post.${post.key}.title` as const]}
                 </h3>
@@ -313,18 +352,9 @@ export default async function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <Arrow />
-              </article>
-            );
-            const tile = (
-              <div key={`${post.key}-tile`} className="l-post-tile" style={{ background: post.tile }} aria-hidden>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`/composer/${post.key}.png`} alt="" width={96} height={96} />
               </div>
-            );
-            // رقعةُ شطرنج: نصٌّ ثمّ رسمٌ في الصفّ الأوّل، ورسمٌ ثمّ نصٌّ في الثاني.
-            return index < 2 ? [card, tile] : [tile, card];
-          })}
+            </article>
+          ))}
         </div>
       </section>
 
@@ -364,7 +394,7 @@ export default async function LandingPage() {
             </div>
           </div>
 
-          <ul className="flex flex-col gap-3">
+          <ul className="l-why-list">
             {FEATURES.map((feature, index) => (
               <li key={feature.key} className={index === 1 ? "l-why-item l-why-item-on" : "l-why-item"}>
                 <FeatureIcon>{feature.icon}</FeatureIcon>
