@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { circleIds, mutualCount } from "@/lib/circle";
-import { blockedWith } from "@/lib/visibility";
+import { blockedWith, visibleWhere } from "@/lib/visibility";
 import { momentShape } from "@/lib/feed";
 import {
   acceptFriend,
@@ -57,6 +57,13 @@ export default async function FriendProfilePage({
 
   const [ids, blocked] = await Promise.all([circleIds(viewer.id), blockedWith(viewer.id)]);
   const friend = ids.includes(id);
+  // من يتابعني وأنا حسابٌ مفتوح تُقرأ لحظاتُه عندي (القاعدة ٢٧٨) — بشرط الرؤية نفسه.
+  const followsMe = !friend && Boolean(
+    await prisma.friendship.findFirst({
+      where: { status: "ACCEPTED", follow: true, requesterId: id, addresseeId: viewer.id },
+      select: { id: true },
+    }),
+  );
   // والحظر في الاتجاهين فوق كل شيء — حتى فوق انفتاح الحساب.
   if (blocked.includes(id)) notFound();
 
@@ -94,7 +101,7 @@ export default async function FriendProfilePage({
     حذف صديقاً لا يجمعه به أحد وجد «غير موجود» مكان من كان صديقَه
     أمسِ، ولا بابَ إلى إعادته.
   */
-  if (!friend && !person.isOpen) {
+  if (!friend && !followsMe && !person.isOpen) {
     const [mutual, pending] = await Promise.all([
       mutualCount(viewer.id, id),
       prisma.friendship.findFirst({
@@ -127,7 +134,11 @@ export default async function FriendProfilePage({
       أشخاصاً بأعيانهم.
     */
     prisma.moment.findMany({
-      where: friend ? { authorId: id } : { authorId: id, audience: "CIRCLE" },
+      where: friend
+        ? { authorId: id }
+        : followsMe
+          ? { AND: [await visibleWhere(viewer.id), { authorId: id }] }
+          : { authorId: id, audience: "CIRCLE" },
       select: momentShape,
       orderBy: { createdAt: "desc" },
       take: 40,

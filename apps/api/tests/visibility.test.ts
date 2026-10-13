@@ -8,18 +8,24 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
  * Postgres، فيعمل في أيّ مكانٍ بلا خادم.
  */
 const rows = {
-  friendship: [] as { requesterId: string; addresseeId: string; status: string }[],
+  friendship: [] as { requesterId: string; addresseeId: string; status: string; follow?: boolean }[],
   block: [] as { blockerId: string; blockedId: string }[],
 };
 
 vi.mock("@athar/db", () => ({
   prisma: {
     friendship: {
-      findMany: async ({ where }: { where: { OR: { requesterId?: string; addresseeId?: string }[] } }) => {
-        const me = where.OR[0].requesterId!;
-        return rows.friendship.filter(
-          (f) => f.status === "ACCEPTED" && (f.requesterId === me || f.addresseeId === me),
-        );
+      findMany: async ({ where }: {
+        where: { OR?: { requesterId?: string; addresseeId?: string; follow?: boolean }[]; follow?: boolean; addresseeId?: string };
+      }) => {
+        const accepted = rows.friendship.filter((f) => f.status === "ACCEPTED");
+        // متابِعو الحساب المفتوح (القاعدة ٢٧٨).
+        if (where.follow === true) {
+          return accepted.filter((f) => f.follow && f.addresseeId === where.addresseeId);
+        }
+        // الدائرة: صفوفي حين أطلب، وما أُضيف إليّ صداقةً لا متابعة (القاعدة ٢٦٣).
+        const me = where.OR![0].requesterId!;
+        return accepted.filter((f) => f.requesterId === me || (f.addresseeId === me && !f.follow));
       },
     },
     block: {
@@ -55,6 +61,19 @@ describe("شرط الرؤية", () => {
     rows.block = [{ blockerId: "friend", blockedId: "me" }];
     const where = await visibleWhere("me");
     expect(where.authorId.in).toEqual(["me"]);
+  });
+
+  it("ومتابِعُ الحساب المفتوح تُقرأ لحظاتُه عنده، ولا يُقرأ الحسابُ عند غير متابِعه (القاعدة ٢٧٨)", async () => {
+    rows.friendship.push({ requesterId: "fan", addresseeId: "me", status: "ACCEPTED", follow: true });
+    expect((await visibleWhere("me")).authorId.in.sort()).toEqual(["fan", "friend", "me"]);
+    // والمتابِعُ يرى الحسابَ كما كان، من صفّه هو.
+    expect((await visibleWhere("fan")).authorId.in.sort()).toEqual(["fan", "me"]);
+  });
+
+  it("والمتابِعُ المحظورُ لا يُقرأ", async () => {
+    rows.friendship.push({ requesterId: "fan", addresseeId: "me", status: "ACCEPTED", follow: true });
+    rows.block = [{ blockerId: "fan", blockedId: "me" }];
+    expect((await visibleWhere("me")).authorId.in.sort()).toEqual(["friend", "me"]);
   });
 
   it("والجمهورُ خمسةُ أبواب لا بابٌ واحد", async () => {
