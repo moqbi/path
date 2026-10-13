@@ -239,7 +239,7 @@ export default async function LandingPage() {
             <div aria-hidden className="l-hero-photo" style={{ backgroundImage: `url(/api/site-media/${hero})` }} />
           ) : null}
           <div aria-hidden className="l-giant rise rise-1">
-            آثار
+            {text["hero.word"]}
           </div>
 
           <div className="l-hero-grid l-wide">
@@ -251,7 +251,7 @@ export default async function LandingPage() {
               </span>
               <h1 className="l-hero-line rise rise-2">{text["hero.line"]}</h1>
               {text["hero.latin"] ? (
-                <p dir="ltr" className="latin rise rise-3 mt-2 text-[13px] text-muted">
+                <p dir="ltr" className="latin rise rise-3 mt-2 text-right text-[13px] text-muted">
                   {text["hero.latin"]}
                 </p>
               ) : null}

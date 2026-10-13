@@ -842,18 +842,51 @@ h3 {
   inset-inline-end: 6%;
 }
 
-@media (max-width: 520px) {
+/*
+ * على الجوّال: الهاتفُ أصغرُ وفي طرف القراءة الآخر، والبطاقاتُ في طرفها تعبر حافّته
+ * وحدها — كانت في وسطه فتغطّي شاشتَه كلَّها وتُقرأ تشوّهاً.
+ */
+@media (max-width: 640px) {
+  .l-hero-art {
+    justify-content: flex-end;
+    min-height: 380px;
+  }
+
+  .l-phone-hero {
+    width: min(232px, 60vw);
+    margin-bottom: -120px;
+  }
+
+  .l-float {
+    gap: 8px;
+    border-radius: 16px;
+    padding: 9px 11px;
+    max-width: 190px;
+  }
+
+  .l-float img {
+    width: 30px;
+    height: 30px;
+  }
+
   .l-float-moment {
-    top: 6px;
+    top: 22px;
   }
 
   .l-float-music {
-    top: 80px;
+    top: 88px;
   }
 
   .l-float-circle {
-    bottom: 24px;
+    top: 154px;
+    bottom: auto;
+    inset-inline-start: 0;
+    inset-inline-end: auto;
     max-width: 170px;
+  }
+
+  .l-num {
+    font-size: 24px;
   }
 
   .l-float-stamp {

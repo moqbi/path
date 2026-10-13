@@ -70,6 +70,14 @@ export async function ItemPlans({ itemId }: { itemId: string }) {
 }
 
 /** بابُ «المجموعات» في لوحة المتجر: تُضاف وتُحذف، وتُعرض بعدد أصنافها. */
+/** أقسامُ المجموعات بترتيب المتجر — والمختلطةُ آخرُها (`kind` فارغ). */
+const SECTIONS = [
+  { key: "CHARM", label: "مجموعات التشارمز" },
+  { key: "FRAME", label: "مجموعات الإطارات" },
+  { key: "THEME", label: "مجموعات الثيمات" },
+  { key: "MIXED", label: "المجموعات المختلطة" },
+] as const;
+
 export async function CollectionsView() {
   const collections = await prisma.storeCollection.findMany({
     orderBy: [{ kind: "asc" }, { sortOrder: "asc" }, { createdAt: "asc" }],
@@ -80,7 +88,7 @@ export async function CollectionsView() {
     <>
       <p className="mb-3 px-1 text-[11.5px] leading-relaxed text-muted">
         المجموعة تجمع أصنافاً تحت اسم — «مجموعة الورود» في التشارمز. في المتجر تُعرض كلُّ مجموعةٍ قسماً،
-        وما بلا مجموعةٍ تحت «التشارمز الأخرى». و**المختلطة** تجمع تشارم وإطاراً وثيماً معاً: تظهر قسماً في
+        وما بلا مجموعةٍ تحت «التشارمز الأخرى». و«المختلطة» تجمع تشارم وإطاراً وثيماً معاً: تظهر قسماً في
         شريحة كلّ نوعٍ فيها بأصنافه. والصنفُ يُضمّ إليها من صفحة تعديله.
       </p>
       <form action={createCollection} className="mb-4 flex flex-wrap items-end gap-2 rounded-2xl border border-line bg-card p-3">
@@ -105,52 +113,68 @@ export async function CollectionsView() {
           أضف مجموعة
         </button>
       </form>
-      <ul className="flex flex-col gap-2">
-        {collections.map((one) => (
-          <li key={one.id}>
-            {/* المجموعةُ تُعدَّل في مكانها — اسمُها ونوعُها وترتيبُها (بقرار المالك). */}
-            <details className="rounded-2xl border border-line bg-card">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
-                <div className="min-w-0">
-                  <p className="truncate text-[13.5px] font-semibold">{one.name}</p>
-                  <p className="text-[11.5px] text-muted">
-                    {one.kind ? (KIND_NAME[one.kind] ?? one.kind) : "مختلطة"} · {ar(one._count.items)} أصناف · ترتيب {ar(one.sortOrder)}
-                  </p>
-                </div>
-                <span className="shrink-0 text-[12px] font-semibold text-clay-ink">تعديل</span>
-              </summary>
-              <Saver action={updateCollection.bind(null, one.id)} className="flex flex-wrap items-end gap-2 border-t border-line p-3">
-                <label className="grow text-[11.5px] text-muted">
-                  الاسم
-                  <input name="name" required maxLength={40} defaultValue={one.name} className={`${INPUT} mt-1`} style={{ height: 42 }} />
-                </label>
-                <label className="text-[11.5px] text-muted">
-                  النوع
-                  <select name="kind" defaultValue={one.kind ?? "MIXED"} className={`${INPUT} mt-1`} style={{ height: 42 }}>
-                    <option value="MIXED">مختلطة</option>
-                    <option value="CHARM">تشارمز</option>
-                    <option value="FRAME">إطارات</option>
-                    <option value="THEME">ثيمات</option>
-                  </select>
-                </label>
-                <label className="w-20 text-[11.5px] text-muted">
-                  الترتيب
-                  <input name="sortOrder" type="number" defaultValue={one.sortOrder} className={`${INPUT} mt-1`} style={{ height: 42 }} />
-                </label>
-                <button type="submit" className="rounded-xl px-4 text-[12.5px] font-bold" style={{ height: 42, background: "var(--color-clay)", color: "var(--color-on-brand)" }}>
-                  احفظ
-                </button>
-              </Saver>
-              <form action={deleteCollection.bind(null, one.id)} className="px-3 pb-3">
-                <button type="submit" className="text-[12px] font-semibold" style={{ color: "var(--color-live)" }}>
-                  احذف المجموعة — أصنافُها تبقى وتعود إلى «الأخرى»
-                </button>
-              </form>
-            </details>
-          </li>
-        ))}
-        {collections.length === 0 ? <li className="px-1 text-[12px] text-muted">لا مجموعات بعد.</li> : null}
-      </ul>
+      {/*
+        كلُّ نوعٍ قسمٌ وحده — **بقرار المالك**: مجموعاتُ التشارمز، ثمّ الإطارات، ثمّ
+        الثيمات، ثمّ المختلطة. كانت قائمةً واحدة تتداخل فيها الأنواع فلا يُعرف أين ينتهي نوع.
+      */}
+      {collections.length === 0 ? <p className="px-1 text-[12px] text-muted">لا مجموعات بعد.</p> : null}
+      {SECTIONS.map((section) => {
+        const rows = collections.filter((one) => (one.kind ?? "MIXED") === section.key);
+        if (rows.length === 0) return null;
+        return (
+          <section key={section.key} className="mb-5">
+            <h3 className="mb-2 flex items-baseline gap-2 px-1 text-[13.5px] font-extrabold">
+              {section.label}
+              <span className="text-[11.5px] font-semibold text-muted">{ar(rows.length)}</span>
+            </h3>
+            <ul className="flex flex-col gap-2">
+              {rows.map((one) => (
+                <li key={one.id}>
+                  {/* المجموعةُ تُعدَّل في مكانها — اسمُها ونوعُها وترتيبُها (بقرار المالك). */}
+                  <details className="rounded-2xl border border-line bg-card">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-[13.5px] font-semibold">{one.name}</p>
+                        <p className="text-[11.5px] text-muted">
+                          {one.kind ? (KIND_NAME[one.kind] ?? one.kind) : "مختلطة"} · {ar(one._count.items)} أصناف · ترتيب {ar(one.sortOrder)}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-[12px] font-semibold text-clay-ink">تعديل</span>
+                    </summary>
+                    <Saver action={updateCollection.bind(null, one.id)} className="flex flex-wrap items-end gap-2 border-t border-line p-3">
+                      <label className="grow text-[11.5px] text-muted">
+                        الاسم
+                        <input name="name" required maxLength={40} defaultValue={one.name} className={`${INPUT} mt-1`} style={{ height: 42 }} />
+                      </label>
+                      <label className="text-[11.5px] text-muted">
+                        النوع
+                        <select name="kind" defaultValue={one.kind ?? "MIXED"} className={`${INPUT} mt-1`} style={{ height: 42 }}>
+                          <option value="MIXED">مختلطة</option>
+                          <option value="CHARM">تشارمز</option>
+                          <option value="FRAME">إطارات</option>
+                          <option value="THEME">ثيمات</option>
+                        </select>
+                      </label>
+                      <label className="w-20 text-[11.5px] text-muted">
+                        الترتيب
+                        <input name="sortOrder" type="number" defaultValue={one.sortOrder} className={`${INPUT} mt-1`} style={{ height: 42 }} />
+                      </label>
+                      <button type="submit" className="rounded-xl px-4 text-[12.5px] font-bold" style={{ height: 42, background: "var(--color-clay)", color: "var(--color-on-brand)" }}>
+                        احفظ
+                      </button>
+                    </Saver>
+                    <form action={deleteCollection.bind(null, one.id)} className="px-3 pb-3">
+                      <button type="submit" className="text-[12px] font-semibold" style={{ color: "var(--color-live)" }}>
+                        احذف المجموعة — أصنافُها تبقى وتعود إلى «الأخرى»
+                      </button>
+                    </form>
+                  </details>
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })}
     </>
   );
 }
