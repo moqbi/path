@@ -925,7 +925,7 @@ h3 {
 
 .l-post-tile {
   display: flex;
-  height: 150px;
+  height: 140px;
   align-items: center;
   justify-content: center;
 }
@@ -933,10 +933,12 @@ h3 {
 .l-post-tile img {
   width: 88px;
   height: 88px;
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  filter: drop-shadow(0 12px 14px rgba(14, 26, 36, 0.18));
+  animation: l-bob 3.4s ease-in-out infinite;
 }
 
 .l-post:hover .l-post-tile img {
+  animation: none;
   transform: scale(1.08) rotate(-4deg);
 }
 
@@ -1152,7 +1154,8 @@ h3 {
 
 @media (prefers-reduced-motion: reduce) {
   .l-stamp-ring,
-  .l-react-face {
+  .l-react-face,
+  .l-post-tile img {
     animation: none;
   }
 }
