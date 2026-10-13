@@ -7,6 +7,8 @@ import { zValidator } from "../../lib/validate";
 import { requireAuth, me } from "../../middleware/auth";
 import * as circle from "../../services/circle";
 import * as feed from "../../services/feed";
+import * as discover from "../../services/discover";
+import { rateLimitUser } from "../../middleware/rate-limit";
 
 const byId = z.object({ id: cuid });
 
@@ -22,6 +24,26 @@ export const circleRoutes = new Hono()
   .get("/", async (c) => c.json(maskPresence(await circle.circle(me(c)))))
   .get("/suggestions", async (c) => c.json(maskPresence({ people: await circle.suggestions(me(c)) })))
   .get("/blocked", async (c) => c.json(maskPresence({ people: await circle.blockedList(me(c)) })))
+
+  /** البحثُ بالمعرّف أو الاسم الكامل — مطابقةٌ تامّة وحدها (القاعدة ٢٨٠). */
+  .post(
+    "/find",
+    rateLimitUser(30, 600),
+    zValidator("json", z.object({ q: z.string().max(60) })),
+    async (c) => c.json({ people: await discover.findPeople(me(c), c.req.valid("json").q) }),
+  )
+
+  /** وجهاً لوجه: منارةٌ تعيش دقيقةً ومن حولك على ١٥٠ متراً (القاعدة ٢٨٠). */
+  .post(
+    "/nearby",
+    rateLimitUser(60, 300),
+    zValidator("json", z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) })),
+    async (c) => c.json({ people: await discover.nearby(me(c), c.req.valid("json")) }),
+  )
+  .delete("/nearby", (c) => {
+    discover.leaveNearby(me(c));
+    return c.json({ ok: true });
+  })
 
   /** التصنيفات: يملكها صاحبها ولا يراها من صُنّف فيها. */
   .post("/groups", zValidator("json", groupInput), async (c) =>

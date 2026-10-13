@@ -11,7 +11,8 @@ import * as Picker from "expo-image-picker";
 import { GroupFace } from "../../components/group-face";
 import { uploadFile } from "../../lib/upload";
 import { api } from "../../lib/api";
-import { keys } from "../../lib/queries";
+import { keys, useCircle } from "../../lib/queries";
+import { useAddFriend } from "../../lib/add-friend";
 import { useSession } from "../../lib/session";
 import { ar } from "../../lib/format";
 import type { GroupPerson, GroupThread } from "../../lib/groups";
@@ -20,9 +21,9 @@ import { colors } from "../../theme/tokens";
 const NAME_MAX = 60;
 
 /** صفُّ شخصٍ: صورةٌ واسمٌ ورقمُ عضويّة، وفعلٌ في طرفه. */
-function PersonRow({ person, action }: { person: GroupPerson; action?: React.ReactNode }) {
+function PersonRow({ person, action, onOpen }: { person: GroupPerson; action?: React.ReactNode; onOpen?: () => void }) {
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 11, paddingVertical: 9 }}>
+    <Pressable disabled={!onOpen} onPress={onOpen} style={{ flexDirection: "row", alignItems: "center", gap: 11, paddingVertical: 9 }}>
       <Avatar name={person.name} size={38} mediaId={person.avatarMediaId} frame={person.frame} charm={person.charm} />
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text numberOfLines={1} style={{ color: colors.ink, fontSize: 14, fontWeight: "600", writingDirection: "auto" }}>
@@ -31,7 +32,7 @@ function PersonRow({ person, action }: { person: GroupPerson; action?: React.Rea
         <Text style={{ color: colors.faint, fontSize: 11 }}>#{ar(person.memberNo)}</Text>
       </View>
       {action}
-    </View>
+    </Pressable>
   );
 }
 
@@ -78,6 +79,10 @@ export default function ManageGroup() {
     queryFn: () => api<GroupThread>(`/v1/groups/${id}?limit=1`),
     enabled: editing,
   });
+
+  const circle = useCircle();
+  const friendIds = new Set((circle.data?.members ?? []).map((m) => m.id));
+  const { add: befriend, done, error: addError } = useAddFriend();
 
   const canManage = editing ? Boolean(group.data?.canManage) : Boolean(me?.canGroups);
 
@@ -308,8 +313,32 @@ export default function ManageGroup() {
               <PersonRow
                 key={person.id}
                 person={person}
+                onOpen={person.id !== me?.id ? () => router.push(`/u/${person.id}` as never) : undefined}
                 action={
-                  canManage && person.id !== me?.id ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    {/* أعضاءُ المجموعة يُضيف بعضُهم بعضاً (القاعدة ٢٨٠) — طلبٌ يُقبل أو يُترك. */}
+                    {person.id !== me?.id && !friendIds.has(person.id) ? (
+                      <Pressable
+                        disabled={Boolean(done[person.id]) || (befriend.isPending && befriend.variables === person.id)}
+                        onPress={() => befriend.mutate(person.id)}
+                        hitSlop={6}
+                        style={{
+                          height: 32,
+                          paddingHorizontal: 12,
+                          borderRadius: 16,
+                          alignItems: "center",
+                          justifyContent: "center",
+                          backgroundColor: done[person.id] ? colors.paper : colors.claySoft,
+                          borderWidth: 1,
+                          borderColor: done[person.id] ? colors.line : colors.clay,
+                        }}
+                      >
+                        <Text style={{ color: done[person.id] ? colors.muted : colors.clayInk, fontSize: 12, fontWeight: "700" }}>
+                          {done[person.id] === "friend" ? "صديقك" : done[person.id] ? "أُرسل" : "أضف"}
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                  {canManage && person.id !== me?.id ? (
                     <Round
                       label={`أخرج ${person.name}`}
                       tone="remove"
@@ -320,10 +349,12 @@ export default function ManageGroup() {
                         ])
                       }
                     />
-                  ) : null
+                  ) : null}
+                  </View>
                 }
               />
             ))}
+            {addError ? <Text style={{ color: colors.live, fontSize: 12, marginTop: 4 }}>{addError}</Text> : null}
           </View>
         ) : null}
 

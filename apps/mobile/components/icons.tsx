@@ -279,6 +279,15 @@ export const UserMinusIcon = ({ size = 20, color = "currentColor" }: Props) => (
   </Svg>
 );
 
+/** إضافةُ صديق: شخصٌ بعلامة جمع — أختُ «إزالة» (القاعدة ٢٨٠). */
+export const UserPlusIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M10 4a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z" />
+    <Path d="M3.5 19.5c.6-3.3 3.2-5.5 6.5-5.5s5.9 2.2 6.5 5.5" />
+    <Path d="M18.5 6v5M16 8.5h5" />
+  </Svg>
+);
+
 /** حذفُ محادثة: سلّةٌ بغطاءٍ وخطّين — كأيقونات صفّ الصديق (القاعدة ٢٠٣). */
 export const TrashIcon = ({ size = 20, color = "currentColor" }: Props) => (
   <Svg {...stroke(size, color)}>
