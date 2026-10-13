@@ -1377,6 +1377,7 @@ export async function saveNotifications(formData: FormData): Promise<void> {
       notifyStoreNew: on("notifyStoreNew"),
       notifyStoreDeals: on("notifyStoreDeals"),
       notifyMemories: on("notifyMemories"),
+      notifyNearby: on("notifyNearby"),
       // الطرفان معاً أو لا وضعَ هادئ.
       quietFrom: from !== null && to !== null ? from : null,
       quietTo: from !== null && to !== null ? to : null,

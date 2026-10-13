@@ -24,7 +24,9 @@ export type PushKind =
   /** منحٌ من الإدارة — يخصّ صاحبه وحده، فلا مفتاحَ يُطفئه (القاعدة ١٩٨). */
   | "GRANT"
   /** الذكرياتُ ومناسباتُ الصداقة وآثرك السنويّ (القاعدة ٢٣٥). */
-  | "MEMORY";
+  | "MEMORY"
+  /** أحدٌ قريبٌ فتح «من حولك» (القاعدة ٢٨٢) — مطفأٌ حتى يفعّله صاحبُه. */
+  | "NEARBY";
 
 /**
  * صوتُ كلّ نوعٍ وقناتُه على أندرويد (القاعدة ٢٥٣): عامٌّ لما يفعله الأصدقاء،
@@ -45,6 +47,7 @@ const SOUND_OF: Record<PushKind, keyof typeof SOUNDS> = {
   STORE: "athar",
   GRANT: "athar",
   MEMORY: "athar",
+  NEARBY: "general",
 };
 
 /** أيُّ حقلٍ في `User` يحرس هذا النوع. */
@@ -57,6 +60,7 @@ const GATE: Record<PushKind, string | null> = {
   STORE: "notifyStoreNew",
   GRANT: null,
   MEMORY: "notifyMemories",
+  NEARBY: "notifyNearby",
 };
 
 /**
@@ -119,6 +123,7 @@ export async function push(message: PushMessage): Promise<void> {
         notifyStoreNew: true,
         notifyStoreDeals: true,
         notifyMemories: true,
+        notifyNearby: true,
         quietFrom: true,
         quietTo: true,
         devices: { select: { token: true } },

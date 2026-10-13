@@ -829,7 +829,11 @@ const NOTIFY_ITEMS = [
   { key: "notifyStoreNew", label: "من آثار: محتوى جديد في المتجر", note: "إطارٌ أو ثيمٌ أو تشارم" },
   { key: "notifyStoreDeals", label: "من آثار: عروض وخصومات", note: "ما يُخفَّض سعره أو يُعرض لمدّة" },
   { key: "notifyMemories", label: "ذكريات ومناسبات", note: "في مثل هذا اليوم، ومناسبات الصداقة، وآثرك السنوي — صباحاً" },
+  { key: "notifyNearby", label: "من حولك", note: "إذا فتحها أحدٌ قريبٌ منك يوصلك تنبيه — صديقاً أو غيره، ومعه إذن الموقع" },
 ] as const;
+
+/** ما يبدأ مطفأً حتى يفعّله صاحبُه — وما عداه مفتوحٌ ما لم يُطفأ. */
+const OFF_BY_DEFAULT = new Set<string>(["notifyNearby"]);
 
 /** دقائقُ منتصف الليل ← «١٠:٣٠ م» كما تُقرأ. */
 function clockText(minutes: number): string {
@@ -852,10 +856,10 @@ function NotifyPrefs() {
 
   const [on, setOn] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(
-      NOTIFY_ITEMS.map((item) => [
-        item.key,
-        (me as Record<string, unknown> | null)?.[item.key] !== false,
-      ]),
+      NOTIFY_ITEMS.map((item) => {
+        const value = (me as Record<string, unknown> | null)?.[item.key];
+        return [item.key, OFF_BY_DEFAULT.has(item.key) ? value === true : value !== false];
+      }),
     ),
   );
   const [from, setFrom] = useState<number | null>(me?.quietFrom ?? null);
@@ -891,7 +895,7 @@ function NotifyPrefs() {
             <Toggle
               title={item.label}
               note={item.note}
-              value={on[item.key] !== false}
+              value={on[item.key] === true}
               onChange={(next) => setOn((was) => ({ ...was, [item.key]: next }))}
             />
           </View>

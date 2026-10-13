@@ -48,6 +48,7 @@ export default async function SettingsPage() {
         notifyStoreNew: true,
         notifyStoreDeals: true,
         notifyMemories: true,
+        notifyNearby: true,
         quietFrom: true,
         quietTo: true,
       },
@@ -102,6 +103,8 @@ export default async function SettingsPage() {
                 notifyStoreNew: settings?.notifyStoreNew !== false,
                 notifyStoreDeals: settings?.notifyStoreDeals !== false,
                 notifyMemories: settings?.notifyMemories !== false,
+                // مطفأٌ حتى يُفعَّل (القاعدة ٢٨٢).
+                notifyNearby: settings?.notifyNearby === true,
               },
               quietFrom: settings?.quietFrom ?? null,
               quietTo: settings?.quietTo ?? null,

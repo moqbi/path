@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireActive, requireAuth, me } from "../../middleware/auth";
 import { nearbyPlaces, searchPlaces } from "../../lib/places";
 import { checkInCity } from "../../services/moments";
+import { rememberSpot } from "../../services/discover";
 import { rateLimit } from "../../middleware/rate-limit";
 
 /**
@@ -51,6 +52,8 @@ export const placeRoutes = new Hono()
     const parsed = query.safeParse(body);
     if (!parsed.success) return c.json({ city: null, wrote: false });
 
+    // ومعه آخرُ موضعٍ لمن فعّل تنبيهَ «من حولك» (القاعدة ٢٨٢) — ساعةً في الذاكرة.
+    void rememberSpot(me(c), parsed.data);
     const result = await checkInCity(me(c), parsed.data.lat, parsed.data.lng);
     return c.json(result);
   });
