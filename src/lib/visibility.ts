@@ -23,11 +23,31 @@ export async function visibleAuthors(userId: string): Promise<string[]> {
 }
 
 /**
+ * من يتابع الحسابَ المفتوح تُقرأ لحظاتُه عنده (القاعدة ٢٧٨) — بقرار المالك:
+ * المتابعةُ لا تأخذ خانةً ولا تجعله صديقاً (القاعدة ٢٦٣)، لكنّ ما يكتبه
+ * المتابِعُ لدائرته كلّها يصل إلى الإدارة التي أضافها. اللحظاتُ وحدها: لا
+ * قصصَ ولا نوت، ولذلك لا تُضاف إلى `visibleAuthors`.
+ */
+async function followerIds(userId: string): Promise<string[]> {
+  const rows = await prisma.friendship.findMany({
+    where: { status: "ACCEPTED", follow: true, addresseeId: userId },
+    select: { requesterId: true },
+  });
+  return rows.map((row) => row.requesterId);
+}
+
+/**
  * شرط رؤية اللحظة: كاتبها في دائرتك، وجمهورها يشملك.
  * لحظاتك أنت تُرى كلها مهما كان جمهورها — أنت من اختاره.
  */
 export async function visibleWhere(userId: string) {
-  const authors = await visibleAuthors(userId);
+  const [visible, followers, blocked] = await Promise.all([
+    visibleAuthors(userId),
+    followerIds(userId),
+    blockedWith(userId),
+  ]);
+  const hidden = new Set(blocked);
+  const authors = [...visible, ...followers.filter((id) => !hidden.has(id))];
 
   return {
     authorId: { in: authors },

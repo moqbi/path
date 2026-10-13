@@ -205,7 +205,14 @@ export async function userProfile(viewerId: string, id: string) {
     وكان الشرط `mutual === 0` يُخفيها، فمن حذف صديقاً لا يجمعه به أحد
     وجد صفحةَ «غير موجود» مكان من كان صديقَه أمسِ، ولا بابَ إلى إعادته.
   */
-  return { person, friend: false as const, mutual, pending, owned: [] as string[] };
+  // من يتابعني وأنا حسابٌ مفتوح تُقرأ لحظاتُه عندي (القاعدة ٢٧٨)، فلا يُرسم ملفُّه مقفولاً.
+  const follower = Boolean(
+    await prisma.friendship.findFirst({
+      where: { status: "ACCEPTED", follow: true, requesterId: id, addresseeId: viewerId },
+      select: { id: true },
+    }),
+  );
+  return { person, friend: false as const, follower, mutual, pending, owned: [] as string[] };
 }
 
 /**

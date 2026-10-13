@@ -112,7 +112,7 @@ function Profile() {
 
   const person = useQuery({
     queryKey: keys.user(id),
-    queryFn: () => api<{ person: Person; friend: boolean; owned: string[] }>(`/v1/users/${id}`),
+    queryFn: () => api<{ person: Person; friend: boolean; follower?: boolean; owned: string[] }>(`/v1/users/${id}`),
   });
 
   /** إضافةُ حسابٍ مفتوح: طلبُ الإضافة نفسه. */
@@ -348,7 +348,7 @@ function Profile() {
             </>
           }
           ListEmptyComponent={
-            moments.isLoading ? null : person.data?.friend === false && !moderating ? (
+            moments.isLoading ? null : person.data?.friend === false && !person.data?.follower && !moderating ? (
               /* مكانُ اللحظات يقول لماذا لا تُرى — لا سطرٌ يُقرأ «ما نشر شي». */
               <View
                 style={{
