@@ -62,7 +62,7 @@ export default async function PublicLayout({ children }: { children: React.React
   return (
     <div className="site">
       <header className="site-head">
-        <div className="wrap flex items-center justify-between gap-3 py-3">
+        <div className="l-wide flex items-center justify-between gap-3 py-3">
           {/*
             الاسم كاملاً حيث يتّسع، ومختصراً حيث لا يتّسع.
 
@@ -120,7 +120,7 @@ export default async function PublicLayout({ children }: { children: React.React
       <main className="grow">{children}</main>
 
       <footer className="site-foot">
-        <div className="wrap py-12">
+        <div className="l-wide py-12">
           <div className="flex flex-wrap justify-between gap-10">
             <div className="flex items-start gap-3">
               <AthrMark size={40} />

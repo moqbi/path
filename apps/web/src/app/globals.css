@@ -539,45 +539,6 @@ h3 {
 }
 
 /*
- * الرأس لوحةٌ لا صورةَ خلفية: الرسم SVG تحته مباشرةً (`.hero > svg`)،
- * والنصّ فوقه بطبقةٍ واحدة. وأدنى ارتفاعٍ بالـ`svh` لا `vh` حتى لا
- * يقصّه شريط المتصفّح على الجوّال.
- */
-.hero {
-  position: relative;
-  overflow: hidden;
-  min-height: 86svh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  background: var(--color-night);
-}
-
-/*
- * صورة الرأس حين تُرفع من اللوحة، وفوقها درعٌ يُبقي النصّ مقروءاً.
- *
- * الدرع لازمٌ لا زينة: صورةُ غروبٍ حقيقية فيها فاتحٌ وداكن، ونصٌّ أبيض
- * فوق سماءٍ برتقالية لا يُقرأ. والتدرّج من الأسفل والأعلى معاً — الذيل
- * يلتقي القسم الذي تحته، والرأس يحمل شريط التنقّل.
- */
-.hero-photo {
-  position: absolute;
-  inset: 0;
-  background-position: center;
-  background-size: cover;
-  background-repeat: no-repeat;
-}
-
-.hero-veil {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(to bottom, rgba(14, 26, 36, 0.72) 0%, rgba(14, 26, 36, 0.3) 34%,
-      rgba(14, 26, 36, 0.52) 68%, var(--color-night) 100%);
-}
-
-/*
  * دخولُ العلامة: تظهر وترتفع قليلاً، ثم يتبعها النصّ بتأخّرٍ متدرّج.
  *
  * و`backwards` لازمة: بدونها يومض العنصر بكامل وضوحه قبل أن يبدأ
@@ -613,43 +574,6 @@ h3 {
   }
 }
 
-.hero-inner {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: 880px;
-  margin-inline: auto;
-  /* حشوةٌ سفلية تكفي ليعلو الزرّان حافّة الجبل ولا يجلسا على الجالسين. */
-  padding: 76px 20px 172px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.section-title {
-  font-family: var(--font-display);
-  font-size: 26px;
-  font-weight: 700;
-}
-
-.section-sub {
-  margin-top: 6px;
-  font-size: 13.5px;
-  color: var(--color-muted);
-}
-
-.feature-card {
-  border: 1px solid var(--color-line);
-  background: var(--color-card);
-  border-radius: 18px;
-  padding: 22px;
-}
-
-/* شريطٌ داكن يقطع الورق: ما فيه يُقرأ وحده لا مع ما حوله. */
-.band {
-  background: var(--color-chrome);
-}
-
 /*
  * إطار الهاتف: نسبة ٩:١٩٫٥ كالجهاز، وحدٌّ داكنٌ سميك يفصل الشاشة عمّا
  * تحتها. والمحتوى داخله مرسومٌ بعناصر الصفحة نفسها لا صورةً مرفوعة.
@@ -681,4 +605,525 @@ h3 {
   height: 100%;
   border-radius: 20px;
   overflow: hidden;
+}
+
+/*
+ * صفحة الهبوط: بطاقاتٌ مستديرة على الورق — رأسٌ بكلمةٍ عملاقة خلف الهاتف،
+ * ورقعةُ «ماذا تنشر»، وشريطُ اللقطات، و«ليش آثار»، والخصوصية، والتفاعلات.
+ * الرسومُ من ملفّات المالك (`/reactions` و`/composer`) كما في التطبيق.
+ */
+.l-wide {
+  width: 100%;
+  max-width: 1180px;
+  margin-inline: auto;
+  padding-inline: 16px;
+}
+
+@media (min-width: 640px) {
+  .l-wide {
+    padding-inline: 24px;
+  }
+}
+
+.l-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(26px, 3.4vw, 38px);
+  line-height: 1.25;
+}
+
+.l-sub {
+  margin-top: 8px;
+  max-width: 520px;
+  font-size: 14px;
+  line-height: 1.9;
+  color: var(--color-muted);
+}
+
+/* ── الرأس ── */
+.l-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 32px;
+  background: #d9cfbc;
+  padding: 26px 20px 0;
+}
+
+.l-hero-photo {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.32;
+}
+
+/* الكلمةُ العملاقة: علامةٌ لا عنوان، فيعلوها الهاتف ويقطعها كما في المرجع. */
+.l-giant {
+  position: absolute;
+  inset-inline: 0;
+  top: -0.08em;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(150px, 27vw, 330px);
+  line-height: 1;
+  color: #fdfcf8;
+  letter-spacing: -0.01em;
+  pointer-events: none;
+  user-select: none;
+}
+
+.l-hero-grid {
+  position: relative;
+  display: grid;
+  gap: 28px;
+  padding-top: clamp(120px, 21vw, 240px);
+}
+
+@media (min-width: 900px) {
+  .l-hero {
+    padding: 34px 44px 0;
+  }
+
+  .l-hero-grid {
+    grid-template-columns: 1fr 1fr;
+    align-items: end;
+    gap: 40px;
+  }
+}
+
+.l-hero-copy {
+  padding-bottom: 8px;
+}
+
+@media (min-width: 900px) {
+  .l-hero-copy {
+    padding-bottom: 44px;
+  }
+}
+
+.l-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  background: rgba(253, 252, 248, 0.75);
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.l-hero-line {
+  margin-top: 16px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(30px, 4.2vw, 46px);
+  line-height: 1.25;
+  color: var(--color-ink);
+}
+
+.l-react-pill {
+  margin-top: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 20px;
+  background: var(--color-card);
+  padding: 12px 16px;
+  box-shadow: 0 10px 30px rgba(14, 26, 36, 0.08);
+}
+
+.l-faces {
+  display: flex;
+}
+
+.l-faces img {
+  width: 34px;
+  height: 34px;
+  margin-inline-start: -9px;
+}
+
+.l-faces img:first-child {
+  margin-inline-start: 0;
+}
+
+.l-hero-art {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  min-height: 420px;
+}
+
+.l-phone {
+  margin: 0;
+  overflow: hidden;
+  background: #0e1a24;
+  padding: 7px;
+  border-radius: 34px;
+  box-shadow: 0 30px 60px rgba(14, 26, 36, 0.28);
+}
+
+.l-phone img {
+  display: block;
+  width: 100%;
+  border-radius: 28px;
+}
+
+/* الهاتفُ يجلس على حافّة البطاقة السفلى: يُقصّ أسفلُه كالجالسة في المرجع. */
+.l-phone-hero {
+  width: min(300px, 74vw);
+  margin-bottom: -150px;
+  transform: rotate(-4deg);
+  align-self: flex-end;
+}
+
+.l-float {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 20px;
+  background: var(--color-card);
+  padding: 12px 14px;
+  box-shadow: 0 16px 40px rgba(14, 26, 36, 0.16);
+}
+
+.l-float-moment {
+  top: 34px;
+  inset-inline-start: 0;
+}
+
+.l-float-circle {
+  bottom: 40px;
+  inset-inline-end: 0;
+  max-width: 200px;
+}
+
+.l-num {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 30px;
+  line-height: 1;
+  color: var(--color-clay-ink);
+}
+
+.l-float-stamp {
+  position: absolute;
+  top: -10px;
+  inset-inline-end: 6%;
+}
+
+@media (max-width: 520px) {
+  .l-float-moment {
+    top: 6px;
+  }
+
+  .l-float-circle {
+    bottom: 24px;
+    max-width: 170px;
+  }
+
+  .l-float-stamp {
+    display: none;
+  }
+}
+
+/* خاتمٌ يدور: نصٌّ على دائرة والعلامةُ في وسطه. */
+.l-stamp {
+  position: relative;
+  display: block;
+  width: 116px;
+  height: 116px;
+  border-radius: 50%;
+  background: var(--color-card);
+  box-shadow: 0 12px 30px rgba(14, 26, 36, 0.14);
+}
+
+.l-stamp-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  animation: l-spin 18s linear infinite;
+}
+
+.l-stamp-ring text {
+  font-family: var(--font-body);
+  font-size: 10.5px;
+  font-weight: 600;
+  fill: var(--color-ink-2);
+}
+
+.l-stamp-core {
+  position: absolute;
+  inset: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--color-paper);
+}
+
+@keyframes l-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── ماذا تنشر: رقعةُ شطرنج من نصٍّ ورسم ── */
+.l-posts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  overflow: hidden;
+  border-radius: 28px;
+  border: 1px solid var(--color-line);
+  background: var(--color-line);
+  gap: 1px;
+}
+
+@media (min-width: 900px) {
+  .l-posts {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.l-post-text {
+  position: relative;
+  min-height: 200px;
+  background: var(--color-card);
+  padding: 20px 20px 64px;
+}
+
+.l-post-tile {
+  display: flex;
+  min-height: 200px;
+  align-items: center;
+  justify-content: center;
+}
+
+.l-post-tile img {
+  width: 96px;
+  height: 96px;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.l-post-tile:hover img {
+  transform: scale(1.08) rotate(-4deg);
+}
+
+.l-chip {
+  border-radius: 999px;
+  border: 1px solid var(--color-line);
+  padding: 3px 11px;
+  font-size: 12px;
+  color: var(--color-ink-2);
+}
+
+.l-arrow {
+  position: absolute;
+  bottom: 18px;
+  inset-inline-end: 18px;
+  display: flex;
+  height: 38px;
+  width: 38px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--color-chrome);
+  color: var(--color-chrome-ink);
+}
+
+/* ── شريطُ اللقطات في بطاقةٍ داكنة، وتحته شريطٌ زجاجيّ ── */
+.l-banner {
+  position: relative;
+  overflow: hidden;
+  border-radius: 32px;
+  background:
+    radial-gradient(60% 80% at 80% 0%, rgba(246, 185, 59, 0.16), transparent 70%),
+    var(--color-chrome);
+  padding: 30px 16px 0;
+}
+
+.l-banner-cap {
+  margin: 26px -16px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(14px);
+  padding: 22px 24px 26px;
+}
+
+@media (min-width: 640px) {
+  .l-banner-cap {
+    padding: 26px 36px 30px;
+  }
+}
+
+.l-pill {
+  display: inline-block;
+  border-radius: 999px;
+  background: var(--color-card);
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+/* ── ليش آثار ── */
+.l-why {
+  display: grid;
+  gap: 36px;
+  align-items: center;
+}
+
+@media (min-width: 900px) {
+  .l-why {
+    grid-template-columns: 1fr 1fr;
+    gap: 56px;
+  }
+
+  /* الهاتفُ في الطرف الآخر من القراءة: النصُّ أوّلاً من اليمين. */
+  .l-why-art {
+    order: 2;
+  }
+}
+
+.l-why-art {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.l-phone-why {
+  width: min(280px, 72vw);
+  transform: rotate(3deg);
+}
+
+.l-why-stamp {
+  position: absolute;
+  top: 18%;
+  inset-inline-start: 8%;
+}
+
+.l-why-item {
+  display: flex;
+  gap: 14px;
+  border-radius: 22px;
+  padding: 18px 18px;
+}
+
+.l-why-item-on {
+  background: #d9cfbc;
+}
+
+.l-why-icon {
+  display: flex;
+  height: 46px;
+  width: 46px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--color-card);
+  color: var(--color-clay-ink);
+  box-shadow: 0 6px 16px rgba(14, 26, 36, 0.08);
+}
+
+/* ── الخصوصية ── */
+.l-privacy {
+  display: grid;
+  gap: 30px;
+  border-radius: 32px;
+  background: var(--color-chrome);
+  padding: 34px 24px;
+}
+
+@media (min-width: 900px) {
+  .l-privacy {
+    grid-template-columns: 1fr 1.2fr;
+    align-items: center;
+    padding: 48px 52px;
+  }
+}
+
+/* ── التفاعلات والتحميل ── */
+.l-react {
+  display: grid;
+  gap: 40px;
+  align-items: center;
+}
+
+@media (min-width: 900px) {
+  .l-react {
+    grid-template-columns: 1fr 1fr;
+    gap: 64px;
+  }
+}
+
+.l-react-grid-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.l-react-badge {
+  margin-bottom: -14px;
+  z-index: 1;
+  border-radius: 999px;
+  background: var(--color-chrome);
+  color: var(--color-gold-bright);
+  padding: 7px 16px;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.l-react-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  border-radius: 28px;
+  background: #d9cfbc;
+  padding: 34px 26px 26px;
+}
+
+.l-react-face {
+  display: flex;
+  height: clamp(60px, 15vw, 88px);
+  width: clamp(60px, 15vw, 88px);
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--color-card);
+  box-shadow: 0 8px 20px rgba(14, 26, 36, 0.08);
+  animation: l-bob 3.2s ease-in-out infinite;
+}
+
+.l-react-face img {
+  width: 76%;
+  height: 76%;
+}
+
+@keyframes l-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.l-cta {
+  display: inline-flex;
+  height: 50px;
+  align-items: center;
+  border-radius: 16px;
+  padding-inline: 22px;
+  font-size: 13.5px;
+  font-weight: 700;
+  background: var(--color-chrome);
+  color: var(--color-chrome-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .l-stamp-ring,
+  .l-react-face {
+    animation: none;
+  }
 }
