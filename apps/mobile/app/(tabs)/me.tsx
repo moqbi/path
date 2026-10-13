@@ -8,8 +8,6 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { ProfileHead } from "../../components/profile-head";
-import { ShareProfileSheet } from "../../components/share-profile";
-import { InviteProgress } from "../../components/invite-progress";
 import { Spot } from "../../components/spot";
 import { COVER_HEIGHT, CoverLayer, StretchCover, useStretch } from "../../components/cover";
 import { useTabTop } from "../../lib/tab-top";
@@ -17,7 +15,7 @@ import { playRefresh } from "../../lib/sound";
 import { MomentCard, SPINE_W } from "../../components/moment-card";
 import { AthrMark } from "../../components/brand";
 import {
-  BookIcon, ExitIcon, GearIcon, GiftIcon, ShareIcon, SparkIcon, StarIcon, WithIcon,
+  BookIcon, ExitIcon, GearIcon, GiftIcon, SparkIcon, StarIcon, WithIcon,
 } from "../../components/icons";
 import { api } from "../../lib/api";
 import { keys, type Moment } from "../../lib/queries";
@@ -128,7 +126,6 @@ export default function Me() {
   const { y: scrollY, onScroll } = useStretch();
   const list = useRef<SectionList<Moment>>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [sharing, setSharing] = useState(false);
   const refreshMe = useSession((state) => state.refresh);
   const reload = () => {
     playRefresh();
@@ -175,21 +172,6 @@ export default function Me() {
           </Text>
         </View>
 
-        <Pressable
-          accessibilityLabel="مشاركة الملف"
-          // رابطٌ أو رمز QR برقم العضوية (القاعدة ٨٧) — في نافذةٍ واحدة.
-          onPress={() => setSharing(true)}
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: 19,
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "rgba(255,255,255,.12)",
-          }}
-        >
-          <ShareIcon size={17} color={colors.chromeInk} />
-        </Pressable>
       </View>
 
       <Animated.SectionList
@@ -310,14 +292,6 @@ export default function Me() {
         }
       />
 
-      {sharing ? (
-        <ShareProfileSheet
-          name={me.name}
-          memberNo={me.memberNo}
-          onClose={() => setSharing(false)}
-          footer={<InviteProgress />}
-        />
-      ) : null}
     </SafeAreaView>
   );
 }
