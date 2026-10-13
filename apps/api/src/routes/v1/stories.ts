@@ -24,6 +24,11 @@ export const storyRoutes = new Hono()
     c.json({ stories: await stories.storiesOf(me(c), c.req.valid("param").id) }),
   )
 
+  /** أغنيةُ القصّة: رابطُ المعاينة طازجاً (القاعدة ٢٧٧). وسقفٌ لكل حساب كالنوت. */
+  .get("/:id/track", rateLimitUser(120, 3600), zValidator("param", byId), async (c) =>
+    c.json(await stories.track(me(c), c.req.valid("param").id)),
+  )
+
   /** من شاهد قصّتي — لصاحبها وحده. */
   .get("/:id/viewers", zValidator("param", byId), async (c) =>
     c.json({ viewers: await stories.viewers(me(c), c.req.valid("param").id) }),

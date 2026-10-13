@@ -38,6 +38,9 @@ export default async function StoriesPage({ params }: { params: Promise<{ id: st
         stickers: Array.isArray(story.stickers) ? (story.stickers as StorySticker[]) : null,
         audioMediaId: story.audioMediaId,
         audioSeconds: story.audioSeconds,
+        trackId: story.trackId,
+        trackSeconds: story.trackSeconds,
+        videoMuted: story.videoMuted,
         myReaction: story.myReaction,
       }))}
     />

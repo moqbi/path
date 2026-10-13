@@ -78,14 +78,16 @@ export async function listNotes(userId: string): Promise<NoteView[]> {
 
 export async function postNote(
   userId: string,
-  input: { text?: string; trackId?: string | null; trackStart?: number; groupId?: string | null },
+  input: { text?: string; trackId?: string | null; trackStart?: number; trackFull?: boolean; groupId?: string | null },
 ) {
   const text = (input.text ?? "").trim().replace(/\s+/g, " ").slice(0, NOTE_TEXT_MAX);
   if (!text && !input.trackId) throw new Error("اكتب شيئاً أو اختر أغنية");
   if (text) await guard(text);
 
   const track = input.trackId ? await trackById(input.trackId) : null;
-  const start = Math.max(0, Math.min(PREVIEW_SECONDS - NOTE_SECONDS, Math.round(input.trackStart ?? 0)));
+  // كاملةً (ثلاثون من أوّلها) أو مقصوصةً (عشرون من حيث اختار) — الخيارُ لصاحبها.
+  const full = Boolean(input.trackFull);
+  const start = full ? 0 : Math.max(0, Math.min(PREVIEW_SECONDS - NOTE_SECONDS, Math.round(input.trackStart ?? 0)));
 
   let groupId: string | null = null;
   if (input.groupId) {
@@ -108,6 +110,7 @@ export async function postNote(
         trackArtist: track?.artist ?? null,
         trackCover: track?.cover ?? null,
         trackStart: track ? start : 0,
+        trackSeconds: full ? PREVIEW_SECONDS : NOTE_SECONDS,
         groupId,
         expiresAt: new Date(Date.now() + NOTE_HOURS * 3_600_000),
       },
@@ -123,7 +126,7 @@ export async function removeMyNote(userId: string) {
 async function visible(userId: string, noteId: string) {
   const note = await prisma.statusNote.findFirst({
     where: { id: noteId, expiresAt: { gt: new Date() }, ...noteVisibleTo(userId) },
-    select: { id: true, authorId: true, trackId: true, trackStart: true },
+    select: { id: true, authorId: true, trackId: true, trackStart: true, trackSeconds: true },
   });
   if (!note) throw new Error("النوت غير موجودة");
   if (note.authorId !== userId && !(await visibleAuthors(userId)).includes(note.authorId)) {
@@ -145,7 +148,7 @@ export async function seeNote(userId: string, noteId: string, listened: boolean)
 export async function noteAudio(userId: string, noteId: string) {
   const note = await visible(userId, noteId);
   if (!note.trackId) throw new Error("لا أغنية في هذه النوت");
-  return { url: await previewUrl(note.trackId), start: note.trackStart, seconds: NOTE_SECONDS };
+  return { url: await previewUrl(note.trackId), start: note.trackStart, seconds: note.trackSeconds };
 }
 
 export async function reactNote(userId: string, noteId: string, kind: NoteFace | null) {

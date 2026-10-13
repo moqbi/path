@@ -118,6 +118,12 @@ export const storyInput = z.object({
     .object({ mediaId: cuid, start: z.number().min(0).max(SOUND_SOURCE.seconds), end: z.number().min(0).max(SOUND_SOURCE.seconds) })
     .refine((a) => a.end - a.start >= 1 && a.end - a.start <= STORY_SECONDS + 0.5, "طول المقطع غير مقبول")
     .optional(),
+  /** أو أغنيةٌ من دِيزر (القاعدة ٢٧٧): كاملةً بثلاثينها، أو عشرون من حيث اختار. */
+  track: z
+    .object({ id: z.string().regex(/^\d{1,15}$/), start: z.number().int().min(0).max(30).optional(), full: z.boolean().optional() })
+    .optional(),
+  /** صوتُ المقطع مكتوم — للفيديو وحده. */
+  muted: z.boolean().optional(),
 });
 
 /** تفاعلُ مشاهد القصة: أحدُ الوجوه الخمسة، أو `null` يرفعه. */

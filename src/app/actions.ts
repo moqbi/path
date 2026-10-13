@@ -698,6 +698,28 @@ export async function seeStory(storyId: string): Promise<void> {
  * تفاعلُ مشاهد القصّة بأحد الوجوه الخمسة (القاعدة ٢٣٨) — كبابِ الخادم: لمن يرى
  * القصّة ولا لصاحبها، و`null` يرفعه. والتفاعلُ مشاهدةٌ فيُكتب في صفّ الإيصال.
  */
+/**
+ * رابطُ أغنية القصّة طازجاً وبدايتُها (القاعدة ٢٧٧) — لمن يرى القصّة وحده، كباب الخادم.
+ * والمعاينةُ تُسأل من دِيزر، فحدٌّ لكل حساب كي لا يصير البابُ وسيطاً مفتوحاً.
+ */
+export async function storyTrack(storyId: string): Promise<{ url?: string; start?: number; error?: string }> {
+  const user = await requireUser();
+  if (!hit(`story-track:${user.id}`, 60, 60_000)) return { error: TOO_MANY };
+  const story = await prisma.story.findFirst({
+    where: { id: String(storyId), expiresAt: { gt: new Date() }, ...storyVisibleTo(user.id) },
+    select: { authorId: true, trackId: true, trackStart: true },
+  });
+  if (!story?.trackId) return { error: "القصة غير موجودة" };
+  if (story.authorId !== user.id && !(await visibleAuthors(user.id)).includes(story.authorId)) {
+    return { error: "القصة غير موجودة" };
+  }
+  try {
+    return { url: await previewUrl(story.trackId), start: story.trackStart };
+  } catch {
+    return { error: "تعذّر الآن" };
+  }
+}
+
 export async function reactStory(storyId: string, kind: string | null): Promise<void> {
   const user = await requireUser();
   const FACES = ["SMILE", "LAUGH", "GASP", "SAD", "LOVE"] as const;
@@ -738,6 +760,7 @@ export async function postNote(input: {
   text?: string;
   trackId?: string | null;
   trackStart?: number;
+  trackFull?: boolean;
   groupId?: string | null;
 }): Promise<{ ok?: true; error?: string }> {
   const user = await requireUser();
@@ -746,6 +769,7 @@ export async function postNote(input: {
       text: typeof input.text === "string" ? input.text : "",
       trackId: typeof input.trackId === "string" ? input.trackId : null,
       trackStart: Number(input.trackStart) || 0,
+      trackFull: input.trackFull === true,
       groupId: typeof input.groupId === "string" ? input.groupId : null,
     });
     revalidatePath("/", "layout");

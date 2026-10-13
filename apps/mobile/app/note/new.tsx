@@ -32,7 +32,7 @@ export default function NewNote() {
 
   const input = useRef<RNTextInput>(null);
   const [text, setText] = useState("");
-  const [track, setTrack] = useState<{ track: Track; start: number } | null>(null);
+  const [track, setTrack] = useState<{ track: Track; start: number; full: boolean } | null>(null);
   const [picking, setPicking] = useState(false);
   const [groupId, setGroupId] = useState<string | null>(null);
   const [choosing, setChoosing] = useState(false);
@@ -45,6 +45,7 @@ export default function NewNote() {
           text: text.trim() || undefined,
           trackId: track?.track.id,
           trackStart: track?.start,
+          trackFull: track?.full,
           groupId,
         }),
       }),
@@ -192,8 +193,8 @@ export default function NewNote() {
       {picking ? (
         <SongPicker
           onClose={() => setPicking(false)}
-          onPick={(picked, start) => {
-            setTrack({ track: picked, start });
+          onPick={(picked, start, full) => {
+            setTrack({ track: picked, start, full });
             setPicking(false);
           }}
         />
