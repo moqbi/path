@@ -13,9 +13,19 @@
 ## الإقلاع
 
 ```bash
-pnpm --filter @athar/mobile exec eas init   # يربط المشروع بحساب Expo
 pnpm --filter @athar/mobile exec expo start
 ```
+
+## البناء والنشر
+
+بناءُ نسخةٍ للمتجر ورفعُها إلى آبل، وتحديثاتُ OTA بلا بناء، في
+[`OPS.md`](../../OPS.md) ← القسم ٨. ومختصرُها:
+
+- `npx expo-doctor` قبل كلّ بناء — حزمُ Expo تتبع إصدار SDK (القاعدة ١٢٤).
+- وحدةٌ أصليّة جديدة ترفع `version` في `app.json`، فالتحديثاتُ تصل إلى
+  البناءات بالإصدار نفسه وحده (القاعدة ٢٣٩).
+- التحديثُ من GitHub ← Actions ← **OTA update**، ويُطبَّق من أوّل فتح
+  (القاعدة ٢٧٥).
 
 الحزمة: `app.athar.mobile` — نفس ما في Firebase، فملف
 `google-services.json` يعمل بلا تغيير.

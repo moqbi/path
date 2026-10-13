@@ -9,19 +9,24 @@
 
 ---
 
-## ١. ما يجري اليوم وما يتغيّر
+## ١. الحال اليوم (أكتوبر ٢٠٢٦)
 
-| الطبقة | اليوم | بعد النقل |
-|---|---|---|
-| الويب والخادم | Render (خطّة `free`، فرانكفورت) | Hetzner VPS |
-| القاعدة | Render Postgres 16 `athar-db`، خطّة `free` | Postgres 16 على الخادم نفسه |
-| الملفّات | Cloudflare R2 `athar-media` (WEUR) | كما هي |
-| الشهادة | Render | Caddy يجدّدها بنفسه |
-| النطاق | `*.onrender.com` | `atharmts.com` |
+الكلُّ على خادمٍ واحد عند **Vultr** (المستخدم
+`athar`، والمستودع في `/home/athar/app`). والنطاق `atharmts.com` خلف
+Cloudflare.
 
-> **عاجل**: قاعدة Render الحاليّة خطّتها `free` و**تنتهي في ٨ أكتوبر
-> ٢٠٢٦**، والمجّانيّة تُحذف عند انتهائها لا تُجمّد. فالنقل — أو ترقية
-> الخطّة — قرارُ هذا الأسبوع لا قرارُ ما بعد الإطلاق.
+| الطبقة | أين |
+|---|---|
+| الموقع العامّ (`athar-site`، ٣٠٠١) | الجذر: الهبوط، والقانونيّ، و`/u/*`، واللوحة `/admin` |
+| تطبيق الويب (`athar-web`، ٣٠٠٠) | تحت `/app` |
+| الواجهة البرمجيّة (`athar-api`، ٤٠٠٠) | `/v1/*` — يكلّمها الجوّال |
+| القاعدة | Postgres 16 على الخادم نفسه، خلف PgBouncer |
+| الملفّات | Cloudflare R2 `athar-media` (WEUR) |
+| الشهادة | Caddy يجدّدها بنفسه |
+| الجوّال | آبل: منشورٌ في المتجر، الإصدار **٠٫١٫٢** (`ascAppId` `6814671198`) |
+
+والمهامُّ المتكرّرة كلُّها — النشر، وبناءُ الجوّال ورفعُه، وتحديثاتُ OTA،
+وتبديلُ المفاتيح — في **القسم ٨** آخرَ الملفّ.
 
 ---
 
@@ -258,8 +263,11 @@ atharmts.com, www.atharmts.com {
 ```bash
 sudo -u athar -i
 git clone https://github.com/moqbi/path.git /home/athar/app
-cd /home/athar/app && npm ci && npx prisma generate && npm run build
+cd /home/athar/app && scripts/ops/deploy.sh
 ```
+
+(`deploy.sh` يجمع التنصيب بـpnpm والهجرات وبناءَ المشروعين وإعادةَ التشغيل —
+القسم ٨.)
 
 `/etc/systemd/system/athar-web.service`:
 
@@ -463,3 +471,95 @@ eas credentials -p android  # FCM V1 service account key ← Upload
 الاستعلامات، وعلى توقّف أيّ من الخدمات الأربع. و`log_min_duration_statement
 = 500` في Postgres يكتب لك الاستعلامات البطيئة وحدها — منها يُعرف أين
 ينقص فهرس، وهو أرخص من ترقية الخادم.
+
+---
+
+## ٨. التشغيل اليوميّ — أوامرُ جاهزة
+
+كلُّ أمرٍ هنا يُلصق **بالروت** إلا ما قيل غيرُه. وحسابُ `athar` بلا كلمة
+مرور، فـ`sudo` منه يسأل عن كلمةٍ لا وجود لها: ادخل الروت (`su -` أو SSH
+باسم root) ثمّ الصق.
+
+### ٨٫١ نشرُ الويب والخادم بعد كلّ دمجٍ في `main`
+
+```bash
+sudo -iu athar bash -lc "cd ~/app && git pull origin main && scripts/ops/deploy.sh"
+```
+
+ينصّب الاعتماديات بـpnpm، ويطبّق الهجرات **قبل** التشغيل، ويبني التطبيق ثمّ
+الموقع، ويعيد تشغيل الخدمات الثلاث، ثمّ يفحصها. والنجاحُ في آخره:
+`active` ثلاثاً و`200` ثلاثاً. وما لم يتغيّر في المتصفّح بعده يُحدَّث بـ
+Ctrl+Shift+R — Cloudflare والمتصفّح يحتفظان بالقديم.
+
+> **`EACCES: permission denied` في الاعتماديات** = ملفّاتٌ يملكها الروت داخل
+> المستودع (يتركها بناءُ EAS أو `npx` بالروت هناك). الحلّ ثمّ إعادةُ النشر:
+>
+> ```bash
+> chown -R athar:athar /home/athar/app
+> ```
+
+### ٨٫٢ تبديلُ مفتاحٍ في `.env` (مثالُه معرّفُ سناب)
+
+الأمرُ يسأل عن القيمة بنفسه فلا تُنسخ أمثلةٌ إلى الملفّ:
+
+```bash
+read -rp "SNAP Client ID: " ID && sed -i "s|^SNAP_CLIENT_ID=.*|SNAP_CLIENT_ID=\"$ID\"|" /home/athar/app/.env && grep '^SNAP_CLIENT_ID=' /home/athar/app/.env && systemctl restart athar-api athar-web athar-site && echo "تم"
+```
+
+والنمطُ نفسه لأيّ مفتاح: غيّر الاسمَ في الموضعين. ومتغيّرٌ يُقرأ وقت التشغيل
+(`process.env` في الخادم) يكفيه إعادةُ التشغيل، و`NEXT_PUBLIC_*` يُدمج وقت البناء
+فيحتاج `deploy.sh`. **وسناب اليوم بمعرّف الإنتاج** بعد اعتمادها (القاعدة ١٧٢):
+فارغُه يُخفي الزرّ، وخطؤه يُظهره ويُفشل الدخول.
+
+### ٨٫٣ بناءُ الجوّال ورفعُه إلى آبل
+
+**قبل كلّ بناء**: `npx expo-doctor` (القاعدة ١٢٤)، ووحدةٌ أصليّة جديدة ترفع
+`version` في `apps/mobile/app.json` (القاعدة ٢٣٩) — وإلّا وصلها تحديثٌ لا تحمله.
+
+**يُبنى من نسخةٍ للروت لا من `/home/athar/app`**: الروت يترك ملفّاتٍ يملكها في
+المستودع فيسقط `deploy.sh` بعده (٨٫١). نسخةٌ منفصلة مرّةً واحدة:
+
+```bash
+git config --global --add safe.directory '*'
+git clone https://github.com/moqbi/path.git /root/athar-build   # مرّةً واحدة
+cd /root/athar-build && git pull origin main && pnpm install --frozen-lockfile
+cd apps/mobile && npx expo-doctor
+```
+
+**الطريقُ الأوّل — EAS يبني ويرفع**:
+
+```bash
+eas build --platform ios --profile production --auto-submit
+```
+
+وحين يسأل «Do you want to log in to your Apple account?» أجب **n**: الشهاداتُ
+محفوظةٌ عند EAS ولا تحتاج دخولاً (ورسالةُ التحقّق الثنائيّ من آبل تفشل هنا).
+ورقمُ البناء يزيد وحده (`autoIncrement` و`appVersionSource: remote`).
+
+**الطريقُ الثاني — حين يعلق الرفعُ عند EAS**: البناءُ بلا `--auto-submit`، ثمّ
+الرفعُ من الخادم مباشرةً بمفتاح App Store Connect المحفوظ عليه:
+
+```bash
+# بـathar (المفتاحُ في /home/athar/keys/AuthKey.p8، صلاحيّتُه 600)
+cd ~/app
+curl -L -o athar-<رقم البناء>.ipa "<رابط ملفّ IPA من صفحة البناء في EAS>"
+node scripts/ops/upload-ipa.mjs ./athar-<رقم البناء>.ipa 6814671198 <الإصدار> <رقم البناء>
+```
+
+السكربتُ يسأل عن **Key ID** و**Issuer ID** (من App Store Connect ← Users and
+Access ← Integrations ← App Store Connect API)، ويوقّع بالمفتاح محلّياً ولا يرسله.
+و`AuthKey_SIWA.p8` في المجلّد نفسه **مفتاحُ الدخول بآبل لا مفتاحُ الرفع** — لا
+يتبادلان (القسم ٤ب).
+
+### ٨٫٤ تحديثٌ بلا بناء (OTA)
+
+ما يمسّ جافاسكربت وحدها يصل بتحديثٍ لا بنسخةٍ جديدة، ويُطبَّق من أوّل فتح
+(القاعدة ٢٧٥). يُنشر من GitHub ← Actions ← **OTA update** ← Run workflow ←
+القناة `production` (بقرار المالك وحده) أو `development`. ويصل إلى البناءات
+**بالإصدار نفسه** فقط: تحديثُ ٠٫١٫٢ لا يصل إلى ٠٫١٫١.
+
+### ٨٫٥ صورُ المتجر
+
+لقطاتُ App Store بالمقاسات السبعة (6.9 و6.7 و6.5 بمقاسيه و6.3 و6.1 و5.5)
+تُصنع من لقطاتِ جهازٍ حقيقيّ بقالبٍ واحد: عنوانٌ بـTajawal فوق هاتفٍ في الوسط
+على أرضية الشريط الداكنة. وPNG بلا شفافية — آبل تردّ ما فيه قناةُ ألفا.
