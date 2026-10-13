@@ -1,4 +1,4 @@
-import { BlockIcon, CheckIcon, MessageIcon, TagIcon, UserMinusIcon } from "../../components/icons";
+import { BlockIcon, CheckIcon, MessageIcon, TagIcon, UserMinusIcon, UserPlusIcon } from "../../components/icons";
 import { Sheet } from "../../components/sheet";
 import { useTabTop } from "../../lib/tab-top";
 import { TabBackdrop } from "../../components/tab-backdrop";
@@ -161,11 +161,29 @@ export default function Circle() {
       <ScreenHeader
         title="الأصدقاء"
         right={
-          data ? (
-            <Text style={{ color: colors.chromeMuted, fontSize: 11.5 }}>
-              بقي {ar(data.left)}
-            </Text>
-          ) : null
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            {data ? (
+              <Text style={{ color: colors.chromeMuted, fontSize: 11.5 }}>
+                بقي {ar(data.left)}
+              </Text>
+            ) : null}
+            {/* أبوابُ الإضافة: البحثُ ومن حولك والرابط (القاعدة ٢٨٠). */}
+            <Pressable
+              accessibilityLabel="إضافة صديق"
+              onPress={() => router.push("/add" as never)}
+              hitSlop={6}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "rgba(255,255,255,0.08)",
+              }}
+            >
+              <UserPlusIcon size={20} color={colors.chromeInk} />
+            </Pressable>
+          </View>
         }
       />
 
