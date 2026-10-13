@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { deleteStory, reactStory, seeStory } from "@/app/actions";
+import { deleteStory, reactStory, seeStory, storyTrack } from "@/app/actions";
 import { Avatar } from "@/components/ui";
 import { CloseIcon, EyeIcon, ScreenshotIcon } from "@/components/icons";
 import { filterCss, vignetteCss } from "@/components/story-composer";
@@ -30,6 +30,10 @@ type Story = {
   stickers: StorySticker[] | null;
   audioMediaId: string | null;
   audioSeconds: number | null;
+  /** أغنيةٌ من دِيزر بدل الصوت المرفوع، وصوتُ المقطع مكتوم (القاعدة ٢٧٧). */
+  trackId: string | null;
+  trackSeconds: number | null;
+  videoMuted: boolean;
   myReaction: string | null;
 };
 
@@ -70,11 +74,34 @@ export function StoryViewer({
       ? story.seconds * 1000
       : !story?.video && story?.audioMediaId && story.audioSeconds
         ? story.audioSeconds * 1000
-        : SLIDE_MS;
+        : !story?.video && story?.trackId && story.trackSeconds
+          ? story.trackSeconds * 1000
+          : SLIDE_MS;
 
   // صوتُ القصّة: يقف بوقوفها، ويُكتم بضغط ملصقه — والكتمُ يبقى على ما بعدها.
   const audio = useRef<HTMLAudioElement | null>(null);
   const [muted, setMuted] = useState(false);
+  /*
+    الصوتُ مقطعٌ مرفوع أو أغنيةٌ من دِيزر (القاعدة ٢٧٧)، على الصورة والمقطع سواء.
+    والأغنيةُ رابطُها يُطلب طازجاً ويبدأ من حيث اختار صاحبُها.
+  */
+  const [song, setSong] = useState<{ id: string; url: string; start: number } | null>(null);
+  const songOf = story && !story.audioMediaId && story.trackId ? story.id : null;
+  useEffect(() => {
+    if (!songOf) return;
+    let alive = true;
+    void storyTrack(songOf).then((said) => {
+      if (alive && said.url) setSong({ id: songOf, url: said.url, start: said.start ?? 0 });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [songOf]);
+  const audioSrc = story?.audioMediaId
+    ? `${BASE}/api/media/${story.audioMediaId}`
+    : song && song.id === story?.id
+      ? song.url
+      : null;
   useEffect(() => {
     const el = audio.current;
     if (!el) return;
@@ -142,7 +169,7 @@ export function StoryViewer({
             src={`${BASE}/api/media/${story.mediaId}`}
             autoPlay
             playsInline
-            muted={false}
+            muted={story.videoMuted}
             className="absolute inset-0 h-full w-full"
             style={{ objectFit: "contain", filter: filterCss(story.filter) }}
           />
@@ -160,8 +187,18 @@ export function StoryViewer({
           <span className="pointer-events-none absolute inset-0" style={{ background: vignetteCss(story.filter)! }} />
         ) : null}
 
-        {story.audioMediaId && !story.video ? (
-          <audio key={story.id} ref={audio} src={`${BASE}/api/media/${story.audioMediaId}`} autoPlay loop muted={muted} />
+        {audioSrc ? (
+          <audio
+            key={story.id}
+            ref={audio}
+            src={audioSrc}
+            autoPlay
+            loop={Boolean(story.audioMediaId)}
+            muted={muted}
+            onLoadedMetadata={(event) => {
+              if (!story.audioMediaId && song) event.currentTarget.currentTime = song.start;
+            }}
+          />
         ) : null}
 
         <StoryTexts texts={story.texts} />

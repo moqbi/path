@@ -43,6 +43,7 @@ const NOTE = {
   trackArtist: true,
   trackCover: true,
   trackStart: true,
+  trackSeconds: true,
   groupId: true,
   createdAt: true,
   expiresAt: true,
@@ -67,13 +68,13 @@ export async function list(userId: string) {
     groupName: row.authorId === userId ? (group?.name ?? null) : null,
     seen: row.authorId === userId || views.length > 0,
     myReaction: views[0]?.reaction ?? null,
-    seconds: row.trackId ? NOTE_SECONDS : null,
+    seconds: row.trackId ? row.trackSeconds : null,
   }));
 }
 
 export async function post(
   userId: string,
-  input: { text?: string; trackId?: string; trackStart?: number; groupId?: string | null },
+  input: { text?: string; trackId?: string; trackStart?: number; trackFull?: boolean; groupId?: string | null },
 ) {
   const text = (input.text ?? "").trim().replace(/\s+/g, " ").slice(0, NOTE_TEXT_MAX);
   if (!text && !input.trackId) throw badRequest("اكتب شيئاً أو اختر أغنية");
@@ -81,7 +82,9 @@ export async function post(
 
   // الأغنيةُ تُقرأ من دِيزر بمعرّفها: اسمٌ وفنّانٌ يرسلهما الجهاز يُكتب فيهما أيُّ شيء.
   const track = input.trackId ? await trackById(input.trackId) : null;
-  const start = Math.max(0, Math.min(PREVIEW_SECONDS - NOTE_SECONDS, Math.round(input.trackStart ?? 0)));
+  // كاملةً (ثلاثون من أوّلها) أو مقصوصةً (عشرون من حيث اختار) — الخيارُ لصاحبها.
+  const full = Boolean(input.trackFull);
+  const start = full ? 0 : Math.max(0, Math.min(PREVIEW_SECONDS - NOTE_SECONDS, Math.round(input.trackStart ?? 0)));
 
   let groupId: string | null = null;
   if (input.groupId) {
@@ -105,6 +108,7 @@ export async function post(
         trackArtist: track?.artist ?? null,
         trackCover: track?.cover ?? null,
         trackStart: track ? start : 0,
+        trackSeconds: full ? PREVIEW_SECONDS : NOTE_SECONDS,
         groupId,
         expiresAt: new Date(Date.now() + NOTE_HOURS * 3_600_000),
       },
@@ -123,7 +127,7 @@ export async function removeMine(userId: string) {
 async function visible(userId: string, noteId: string) {
   const note = await prisma.statusNote.findFirst({
     where: { id: noteId, expiresAt: { gt: new Date() }, ...noteVisibleTo(userId) },
-    select: { id: true, authorId: true, trackId: true, trackStart: true },
+    select: { id: true, authorId: true, trackId: true, trackStart: true, trackSeconds: true },
   });
   if (!note) throw notFound("النوت غير موجودة");
   if (note.authorId !== userId && !(await visibleAuthors(userId)).includes(note.authorId)) {
@@ -148,7 +152,7 @@ export async function see(userId: string, noteId: string, listened: boolean) {
 export async function audio(userId: string, noteId: string) {
   const note = await visible(userId, noteId);
   if (!note.trackId) throw notFound("لا أغنية في هذه النوت");
-  return { url: await previewUrl(note.trackId), start: note.trackStart, seconds: NOTE_SECONDS };
+  return { url: await previewUrl(note.trackId), start: note.trackStart, seconds: note.trackSeconds };
 }
 
 /**

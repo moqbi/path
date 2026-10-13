@@ -533,6 +533,8 @@ function NoteComposer({ groups, onClose }: { groups: Group[]; onClose: () => voi
   const [tracks, setTracks] = useState<Track[] | null>(null);
   const [track, setTrack] = useState<Track | null>(null);
   const [startAt, setStartAt] = useState(0);
+  // كاملةً افتراضاً، والقصُّ اختيارُ صاحبها (القاعدة ٢٧٧).
+  const [full, setFull] = useState(true);
   const [groupId, setGroupId] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -554,14 +556,15 @@ function NoteComposer({ groups, onClose }: { groups: Group[]; onClose: () => voi
     if (!track) return;
     const said = await songPreview(track.id);
     if (!said.url) return setError(said.error ?? "تعذّر التشغيل");
-    clip.play(said.url, at);
+    if (full) clip.play(said.url, 0, PREVIEW_SECONDS);
+    else clip.play(said.url, at);
   }
 
   function publish() {
     setError(null);
     start(async () => {
       clip.stop();
-      const said = await postNote({ text, trackId: track?.id ?? null, trackStart: startAt, groupId });
+      const said = await postNote({ text, trackId: track?.id ?? null, trackStart: full ? 0 : startAt, trackFull: full, groupId });
       if (said.error) setError(said.error);
       else onClose();
     });
@@ -619,6 +622,26 @@ function NoteComposer({ groups, onClose }: { groups: Group[]; onClose: () => voi
         ) : null}
 
         {track ? (
+          <div className="flex gap-1 rounded-xl p-[3px]" style={{ background: "rgba(255,255,255,.1)" }}>
+            {([true, false] as const).map((value) => (
+              <button
+                key={String(value)}
+                type="button"
+                aria-pressed={full === value}
+                onClick={() => {
+                  clip.stop();
+                  setFull(value);
+                }}
+                className="h-8 grow rounded-[9px] text-[12.5px] font-extrabold"
+                style={full === value ? { background: "#F6B93B", color: "#14212b" } : undefined}
+              >
+                {value ? `كاملة · ${ar(PREVIEW_SECONDS)} ث` : `قصّ مقطع · ${ar(NOTE_SECONDS)} ث`}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {track && full ? null : track ? (
           <label className="block">
             <span className="mb-1.5 flex justify-between text-[11.5px] opacity-70">
               <span>المقطع: من الثانية {ar(startAt)} إلى {ar(startAt + NOTE_SECONDS)}</span>

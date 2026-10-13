@@ -332,6 +332,16 @@ model Story {
   audioMediaId String?  @unique
   /// مدّةُ المقطع بالثواني — منها مدّةُ شريحة الصورة.
   audioSeconds Int?
+  /// أو أغنيةٌ من دِيزر بدل صوتٍ مرفوع (القاعدة ٢٧٧): معرّفُها وما يُرسم في ملصقها،
+  /// ومن أين يبدأ وكم يُسمع — والرابطُ لا يُحفظ، يُطلب طازجاً كالنوت.
+  trackId      String?
+  trackTitle   String?
+  trackArtist  String?
+  trackCover   String?
+  trackStart   Int      @default(0)
+  trackSeconds Int?
+  /// صوتُ المقطع مكتوم: صاحبُه اختار موسيقى بدله (القاعدة ٢٧٧).
+  videoMuted   Boolean  @default(false)
   createdAt    DateTime @default(now())
   expiresAt    DateTime
 
@@ -386,8 +396,10 @@ model StatusNote {
   trackTitle  String?
   trackArtist String?
   trackCover  String?
-  /// بدايةُ الثواني العشرين داخل معاينة الثلاثين.
+  /// بدايةُ المقطع داخل معاينة الثلاثين.
   trackStart  Int      @default(0)
+  /// طولُه: عشرون مقصوصة، أو ثلاثون حين تُنشر الأغنيةُ كما هي (القاعدة ٢٧٧).
+  trackSeconds Int     @default(20)
   /// تصنيفٌ يُقصر عليه — وفارغٌ: الدائرة كلّها.
   groupId     String?
   createdAt   DateTime @default(now())

@@ -44,6 +44,10 @@ type Story = {
   stickers?: StorySticker[] | null;
   audioMediaId?: string | null;
   audioSeconds?: number | null;
+  /** أغنيةٌ من دِيزر بدل الصوت المرفوع، وصوتُ المقطع مكتوم (القاعدة ٢٧٧) — اختياريّةٌ لخادمٍ أقدم. */
+  trackId?: string | null;
+  trackSeconds?: number | null;
+  videoMuted?: boolean;
   myReaction?: Face | null;
   reactions?: number;
 };
@@ -122,7 +126,9 @@ export default function StoryViewer() {
       ? story.seconds * 1000
       : !video && story?.audioMediaId && story.audioSeconds
         ? story.audioSeconds * 1000
-        : SLIDE_MS;
+        : !video && story?.trackId && story.trackSeconds
+          ? story.trackSeconds * 1000
+          : SLIDE_MS;
 
   const viewers = useQuery({
     queryKey: ["story-viewers", story?.id],
@@ -137,19 +143,30 @@ export default function StoryViewer() {
   const [muted, setMuted] = useState(false);
   const [audible, setAudible] = useState(false);
   const voice = useRef<Audio.Sound | null>(null);
-  const audioId = !video ? story?.audioMediaId ?? null : null;
+  /*
+    الصوتُ مقطعٌ مرفوع أو أغنيةٌ من دِيزر (القاعدة ٢٧٧)، على الصورة والمقطع سواء.
+    والأغنيةُ رابطُها يُطلب طازجاً ويبدأ من حيث اختار صاحبُها (`base`).
+  */
+  const audioId = story?.audioMediaId ?? null;
+  const songOf = !audioId && story?.trackId ? story.id : null;
+  const base = useRef(0);
   useEffect(() => {
     setAudible(false);
-    setWaiting(Boolean(audioId));
-    if (!audioId) return;
+    setWaiting(Boolean(audioId || songOf));
+    base.current = 0;
+    if (!audioId && !songOf) return;
     let alive = true;
     // صوتٌ لا يصل في أربع ثوانٍ لا يحبس القصّة: تمضي صامتةً خيرٌ من أن تقف.
     const giveUp = setTimeout(() => alive && setWaiting(false), 4000);
     void Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-    Audio.Sound.createAsync(
-      { uri: `${baseUrl}/v1/media/${audioId}`, headers: { authorization: `Bearer ${currentAccess()}` } },
-      { shouldPlay: false, isLooping: true },
-    )
+    const source = audioId
+      ? Promise.resolve({ uri: `${baseUrl}/v1/media/${audioId}`, headers: { authorization: `Bearer ${currentAccess()}` } as Record<string, string> })
+      : api<{ url: string; start: number }>(`/v1/stories/${songOf}/track`).then((said) => {
+          base.current = said.start * 1000;
+          return { uri: said.url, headers: {} as Record<string, string> };
+        });
+    source
+      .then((src) => Audio.Sound.createAsync(src, { shouldPlay: false, isLooping: Boolean(audioId) }))
       .then(({ sound }) => {
         if (!alive) {
           void sound.unloadAsync();
@@ -158,7 +175,7 @@ export default function StoryViewer() {
         voice.current = sound;
         // يبدأ من حيث وصل العدّ: التحميلُ قد يتأخّر عن الصورة لحظة.
         void sound
-          .setPositionAsync(elapsed.current)
+          .setPositionAsync(base.current + elapsed.current)
           .then(() => {
             if (!alive) return;
             setAudible(true);
@@ -175,7 +192,7 @@ export default function StoryViewer() {
       setAudible(false);
       void sound?.unloadAsync().catch(() => {});
     };
-  }, [audioId]);
+  }, [audioId, songOf]);
   /*
     كلُّ نداءٍ على الصوت يُبلع فشلُه: الشريحةُ قد تتبدّل والصوتُ يُفكّ في اللحظة
     نفسها، و«لم يُحمَّل» من صوتٍ ذاهبٍ ليس خطأً يُرى.
@@ -365,7 +382,7 @@ export default function StoryViewer() {
     elapsed.current = 0;
     setProgress(0);
     setRound((n) => n + 1);
-    void voice.current?.setPositionAsync(0).catch(() => {});
+    void voice.current?.setPositionAsync(base.current).catch(() => {});
   }
 
   /*
@@ -397,6 +414,7 @@ export default function StoryViewer() {
           width={screen.width}
           height={screen.height}
           paused={paused}
+          muted={Boolean(story.videoMuted)}
           key={`${story.id}-${round}`}
         />
       ) : (

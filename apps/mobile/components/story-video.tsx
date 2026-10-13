@@ -27,6 +27,7 @@ export function StoryVideo({
   height,
   paused = false,
   loop = false,
+  muted = false,
 }: {
   /** معرّف الملف على الخادم، أو عنوانه على الجهاز حين `local`. */
   source: string;
@@ -35,6 +36,8 @@ export function StoryVideo({
   height: number;
   paused?: boolean;
   loop?: boolean;
+  /** صوتُ المقطع مكتوم — صاحبُ القصّة اختار موسيقى بدله (القاعدة ٢٧٧). */
+  muted?: boolean;
 }) {
   const player = useRef<Video | null>(null);
   const [token, setToken] = useState(currentAccess);
@@ -66,6 +69,7 @@ export function StoryVideo({
         style={{ width, height }}
         resizeMode={ResizeMode.CONTAIN}
         isLooping={loop}
+        isMuted={muted}
         shouldPlay={playing}
         onError={() => setFailed(true)}
         onPlaybackStatusUpdate={(status) => {

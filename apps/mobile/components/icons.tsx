@@ -78,6 +78,14 @@ export const PauseIcon = ({ size = 20, color = "currentColor" }: Props) => (
   </Svg>
 );
 
+/** صوتُ المقطع: سمّاعةٌ بموجتين، وتُشطب حين يُكتم (القاعدة ٢٧٧). */
+export const SpeakerIcon = ({ size = 20, color = "currentColor", off = false }: Props & { off?: boolean }) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" />
+    {off ? <Path d="M16 9.5l5 5M21 9.5l-5 5" /> : <Path d="M15.5 9a4.5 4.5 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11" />}
+  </Svg>
+);
+
 export const ShieldIcon = ({ size = 20, color = "currentColor" }: Props) => (
   <Svg {...stroke(size, color)}>
     <Path d="M12 3l7.5 3v5.5c0 4.4-3 8.2-7.5 9.5-4.5-1.3-7.5-5.1-7.5-9.5V6L12 3Z" />

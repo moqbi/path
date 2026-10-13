@@ -16,10 +16,12 @@ import { STORY_SECONDS, STORY_VIDEO_SOURCE, STORY_STICKERS, STORY_TEXTS, STORY_T
 import { EditableStickers, StickerFace, TIME_STYLE_NAMES } from "../../components/story-stickers";
 import { StoryPlaceSheet } from "../../components/story-place-sheet";
 import { StorySound, type SoundChoice } from "../../components/story-sound";
+import { SongPicker } from "../../components/song-picker";
+import type { Track } from "../../lib/status-notes";
 import { EditableTexts, TextEditor, freshText } from "../../components/story-texts";
 import { StoryCamera, GlassPill, SendMark, disc } from "../../components/story-camera";
 import { colors } from "../../theme/tokens";
-import { ClockIcon, CloseIcon, LockIcon, MusicIcon, PinIcon, StickerIcon, TrashIcon } from "../../components/icons";
+import { ClockIcon, CloseIcon, LockIcon, MusicIcon, PinIcon, SpeakerIcon, StickerIcon, TrashIcon } from "../../components/icons";
 import { PeopleSheet, type Friend } from "../../components/people-sheet";
 import { useCircle } from "../../lib/queries";
 
@@ -75,15 +77,40 @@ export default function NewStory() {
   const [placing, setPlacing] = useState(false);
   const [sounding, setSounding] = useState(false);
   const [sound, setSound] = useState<SoundChoice | null>(null);
+  /*
+    أو أغنيةٌ من القائمة نفسها التي في النوت (القاعدة ٢٧٧) — **بقرار المالك**: الموسيقى
+    بابان، صوتٌ خاصّ من فيديو في الاستديو أو أغنيةٌ من دِيزر، وصاحبُها يختار.
+  */
+  const [song, setSong] = useState<{ track: Track; start: number; full: boolean } | null>(null);
+  const [songPicking, setSongPicking] = useState(false);
+  const [musicMenu, setMusicMenu] = useState(false);
+  /** صوتُ المقطع نفسه: يُكتم بزرّ، ومع الموسيقى يُكتم افتراضاً ويُعاد بالزرّ نفسه. */
+  const [muteVideo, setMuteVideo] = useState(false);
+  /** بابُ الموسيقى: ما اختير يُفتح لتعديله، ولا شيءَ بعدُ يسأل من أين. */
+  function openMusic() {
+    // الصوتُ الخاصّ يُفتح على شريطه (وفيه حذفُه)، والأغنيةُ والفراغُ على البابين.
+    if (sound) setSounding(true);
+    else setMusicMenu(true);
+  }
+  /** ملصقُ الموسيقى يحمل اسمَ ما يُسمع. */
+  function musicSticker(label: string | undefined) {
+    setStickers((all) => {
+      if (all.some((item) => item.kind === "music")) {
+        return all.map((item) => (item.kind === "music" ? { ...item, label } : item));
+      }
+      return all.length >= STORY_STICKERS ? all : [...all, { kind: "music", x: 0.5, y: 0.86, scale: 1, label }];
+    });
+  }
   const [stickerAt, setStickerAt] = useState<number | null>(null);
 
   const screen = Dimensions.get("window");
 
-  /** المقطعُ له صوتُه: صوتُ القصّة وملصقُه للصور وحدها. */
+  /**
+   * المقطعُ: الفلاترُ للصور وحدها (القاعدة ١٣١). والموسيقى تبقى — **بقرار المالك**
+   * (القاعدة ٢٧٧) تُضاف إلى الفيديو كالصورة، ومعها زرُّ كتم صوته.
+   */
   function dropSound() {
     setFilter("");
-    setSound(null);
-    setStickers((all) => all.filter((item) => item.kind !== "music"));
   }
 
   const hasMusic = stickers.some((item) => item.kind === "music");
@@ -160,7 +187,9 @@ export default function NewStory() {
           texts: texts.length ? texts : undefined,
           audience: only ? picked : undefined,
           stickers: stickers.length ? stickers : undefined,
-          audio: sound && !draft.video ? { mediaId: sound.mediaId, start: sound.start, end: sound.end } : undefined,
+          audio: sound ? { mediaId: sound.mediaId, start: sound.start, end: sound.end } : undefined,
+          track: song && !sound ? { id: song.track.id, start: song.start, full: song.full } : undefined,
+          muted: draft.video && muteVideo ? true : undefined,
         }),
       });
       await client.invalidateQueries({ queryKey: ["stories"] });
@@ -202,6 +231,8 @@ export default function NewStory() {
     setTexts([]);
     setStickers([]);
     setSound(null);
+    setSong(null);
+    setMuteVideo(false);
     setPanel(null);
     setError(null);
   }
@@ -215,7 +246,7 @@ export default function NewStory() {
         long ? (
           <VideoWindowPreview uri={draft.uri} start={draft.start} width={screen.width} height={screen.height} />
         ) : (
-          <StoryVideo source={draft.uri} local width={screen.width} height={screen.height} loop />
+          <StoryVideo source={draft.uri} local width={screen.width} height={screen.height} loop muted={muteVideo} />
         )
       ) : !filter ? (
         <Image source={{ uri: draft.uri }} style={{ width: screen.width, height: screen.height }} resizeMode="contain" />
@@ -237,7 +268,7 @@ export default function NewStory() {
         height={screen.height}
         onChange={(index, next) => setStickers((all) => all.map((item, i) => (i === index ? next : item)))}
         onEdit={(index) => {
-          if (stickers[index]?.kind === "music") setSounding(true);
+          if (stickers[index]?.kind === "music") openMusic();
           else setStickerAt(index);
         }}
         onActive={setDragging}
@@ -263,9 +294,12 @@ export default function NewStory() {
               <FilterMark />
             </Tool>
           ) : null}
-          {!draft.video ? (
-            <Tool label="موسيقى" disabled={!hasMusic && full} on={hasMusic} onPress={() => setSounding(true)}>
-              <MusicIcon size={20} color="#fff" />
+          <Tool label="موسيقى" disabled={!hasMusic && full} on={hasMusic} onPress={openMusic}>
+            <MusicIcon size={20} color="#fff" />
+          </Tool>
+          {draft.video ? (
+            <Tool label={muteVideo ? "صوت المقطع مكتوم" : "كتم صوت المقطع"} on={muteVideo} onPress={() => setMuteVideo((on) => !on)}>
+              <SpeakerIcon size={20} color="#fff" off={muteVideo} />
             </Tool>
           ) : null}
         </View>
@@ -373,7 +407,7 @@ export default function NewStory() {
             setTray(false);
             if (kind === "time") addSticker({ kind: "time", x: 0.5, y: 0.22, scale: 1, style: "digital" });
             else if (kind === "place") setPlacing(true);
-            else setSounding(true);
+            else openMusic();
           }}
         />
       ) : null}
@@ -403,14 +437,48 @@ export default function NewStory() {
           }
           onDone={(choice) => {
             setSound(choice);
+            setSong(null);
             setSounding(false);
-            setStickers((all) => {
-              const label = choice.label || undefined;
-              if (all.some((item) => item.kind === "music")) {
-                return all.map((item) => (item.kind === "music" ? { ...item, label } : item));
-              }
-              return all.length >= STORY_STICKERS ? all : [...all, { kind: "music", x: 0.5, y: 0.86, scale: 1, label }];
-            });
+            // موسيقى على مقطع: صوتُه يُكتم افتراضاً، والزرُّ يُعيده.
+            if (draft?.video) setMuteVideo(true);
+            musicSticker(choice.label || undefined);
+          }}
+        />
+      ) : null}
+
+      {musicMenu ? (
+        <MusicMenu
+          hasSong={Boolean(song)}
+          onSong={() => {
+            setMusicMenu(false);
+            setSongPicking(true);
+          }}
+          onVideo={() => {
+            setMusicMenu(false);
+            setSounding(true);
+          }}
+          onRemove={
+            song
+              ? () => {
+                  setSong(null);
+                  setStickers((all) => all.filter((item) => item.kind !== "music"));
+                  setMusicMenu(false);
+                }
+              : undefined
+          }
+          onClose={() => setMusicMenu(false)}
+        />
+      ) : null}
+
+      {songPicking ? (
+        <SongPicker
+          onClose={() => setSongPicking(false)}
+          onPick={(track, start, full) => {
+            setSong({ track, start, full });
+            setSound(null);
+            setSongPicking(false);
+            if (draft?.video) setMuteVideo(true);
+            musicSticker(`${track.title} · ${track.artist}`.slice(0, 40));
           }}
         />
       ) : null}
@@ -452,8 +520,8 @@ function LocalFiltered({
 }
 
 /**
- * دُرجُ الملصقات: الموقعُ والوقتُ والموسيقى — والموسيقى للصور وحدها (المقطعُ له
- * صوتُه) ومرّةً واحدة (صوتٌ واحد للقصّة).
+ * دُرجُ الملصقات: الموقعُ والوقتُ والموسيقى — والموسيقى على الصورة والمقطع سواء
+ * (القاعدة ٢٧٧) ومرّةً واحدة (صوتٌ واحد للقصّة).
  */
 function StickerTray({
   video,
@@ -472,10 +540,10 @@ function StickerTray({
     {
       kind: "music" as const,
       label: "موسيقى",
-      hint: video ? "للصور فقط — المقطع له صوته" : hasMusic ? "أضفتها — اضغط الملصق لتعديله" : "صوت من مقطع في الاستديو",
+      hint: hasMusic ? "أضفتها — اضغط الملصق لتعديله" : video ? "أغنية أو صوت خاص — وتكتم صوت المقطع" : "أغنية من القائمة أو صوت خاص",
       icon: <MusicIcon size={22} color="#fff" />,
       tint: "#6C5CE7",
-      off: video || hasMusic,
+      off: hasMusic,
     },
   ];
   return (
@@ -603,5 +671,53 @@ function FilterMark() {
       <Circle cx={15} cy={9.5} r={5.2} stroke="#fff" strokeWidth={1.7} />
       <Circle cx={12} cy={14.6} r={5.2} stroke="#fff" strokeWidth={1.7} />
     </Svg>
+  );
+}
+
+/**
+ * من أين الموسيقى (القاعدة ٢٧٧): أغنيةٌ من القائمة، أو صوتٌ خاصّ من فيديو في
+ * الاستديو. طبقةٌ لا `Modal` (القاعدة ١٢٦)، والضغطُ خارجها يُغلقها.
+ */
+function MusicMenu({
+  hasSong,
+  onSong,
+  onVideo,
+  onRemove,
+  onClose,
+}: {
+  hasSong: boolean;
+  onSong: () => void;
+  onVideo: () => void;
+  onRemove?: () => void;
+  onClose: () => void;
+}) {
+  const insets = useSafeAreaInsets();
+  const row = { flexDirection: "row" as const, alignItems: "center" as const, gap: 12, height: 56, paddingHorizontal: 16, borderRadius: 16, backgroundColor: "rgba(255,255,255,.1)" };
+  return (
+    <Pressable onPress={onClose} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 90, elevation: 90, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,.45)" }}>
+      <Pressable onPress={() => {}} style={{ margin: 12, marginBottom: insets.bottom + 12, padding: 14, gap: 10, borderRadius: 24, backgroundColor: "rgba(16,24,32,.97)" }}>
+        <Text style={{ color: "#fff", fontSize: 16, fontWeight: "800", marginBottom: 2 }}>موسيقى القصة</Text>
+        <Pressable onPress={onSong} style={row}>
+          <MusicIcon size={20} color="#F6B93B" />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}>{hasSong ? "غيّر الأغنية" : "أغنية من القائمة"}</Text>
+            <Text style={{ color: "rgba(255,255,255,.6)", fontSize: 11.5 }}>الأكثر استماعاً وبحث — كاملة أو مقطع</Text>
+          </View>
+        </Pressable>
+        <Pressable onPress={onVideo} style={row}>
+          <StickerIcon size={20} color="#fff" />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}>صوت خاص من فيديو</Text>
+            <Text style={{ color: "rgba(255,255,255,.6)", fontSize: 11.5 }}>من الاستديو، وتقصّ منه ما تبي</Text>
+          </View>
+        </Pressable>
+        {onRemove ? (
+          <Pressable onPress={onRemove} style={{ ...row, backgroundColor: "transparent", justifyContent: "center" }}>
+            <TrashIcon size={18} color="#FF7A5A" />
+            <Text style={{ color: "#FF7A5A", fontSize: 14, fontWeight: "700" }}>احذف الموسيقى</Text>
+          </Pressable>
+        ) : null}
+      </Pressable>
+    </Pressable>
   );
 }

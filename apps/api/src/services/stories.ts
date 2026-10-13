@@ -4,6 +4,7 @@ import { getObject, putObject } from "@athar/storage";
 import { guard } from "../lib/moderation";
 import { badRequest, notFound } from "../lib/errors";
 import { NoFfmpeg, trimAudio } from "../lib/process";
+import { NOTE_SECONDS, PREVIEW_SECONDS, previewUrl, trackById } from "./music";
 import { circleIds, visibleAuthors } from "./visibility";
 import { dropMedia } from "./media";
 import { push } from "./push";
@@ -105,6 +106,12 @@ export async function storiesOf(viewerId: string, authorId: string) {
       stickers: true,
       audioMediaId: true,
       audioSeconds: true,
+      trackId: true,
+      trackTitle: true,
+      trackArtist: true,
+      trackCover: true,
+      trackSeconds: true,
+      videoMuted: true,
       createdAt: true,
       media: { select: { mime: true } },
       author: { select: { id: true, name: true, avatarMediaId: true } },
@@ -185,6 +192,8 @@ export async function post(
     audience?: string[];
     stickers?: StorySticker[];
     audio?: { mediaId: string; start: number; end: number };
+    track?: { id: string; start?: number; full?: boolean };
+    muted?: boolean;
   },
 ) {
   /*
@@ -223,11 +232,23 @@ export async function post(
   }
   if (video && (seconds ?? 0) > STORY_SECONDS) throw badRequest(`الحدّ ${STORY_SECONDS} ثانية`);
 
-  // ملصقُ الموسيقى ينطق بصوتٍ موجود، فبلا صوتٍ لا يُكتب. والصوتُ على الصورة وحدها.
-  if (video && input.audio) throw badRequest("الصوت للقصص المصوّرة — المقطع له صوته");
+  // ملصقُ الموسيقى ينطق بصوتٍ موجود — مقطعٌ مرفوع أو أغنية — فبلا صوتٍ لا يُكتب.
+  /*
+    والموسيقى على المقطع كالصورة — **بقرار المالك** (القاعدة ٢٧٧)، ومعها صوتُه
+    يُكتم أو يبقى بقرار صاحبه. كانت للصور وحدها و«المقطع له صوته».
+  */
+  if (input.audio && input.track) throw badRequest("اختر صوتاً واحداً: مقطعاً أو أغنية");
   const audio = input.audio ? await cutSound(userId, input.audio) : null;
+  /*
+    الأغنيةُ تُقرأ من دِيزر بمعرّفها (القاعدة ٢٧٧) — اسمٌ وفنّانٌ يرسلهما الجهاز يُكتب
+    فيهما أيُّ شيء — كاملةً بثلاثينها أو عشرين من حيث اختار، كالنوت.
+  */
+  const track = input.track ? await trackById(input.track.id) : null;
+  const full = Boolean(input.track?.full);
+  const trackSeconds = track ? (full ? PREVIEW_SECONDS : NOTE_SECONDS) : null;
+  const trackStart = track && !full ? Math.max(0, Math.min(PREVIEW_SECONDS - NOTE_SECONDS, Math.round(input.track?.start ?? 0))) : 0;
   const stickers = (input.stickers ?? [])
-    .filter((item) => item.kind !== "music" || audio)
+    .filter((item) => item.kind !== "music" || audio || track)
     .map((item) => (item.kind === "place" && !locate ? { ...item, lat: undefined, lng: undefined } : item));
   for (const item of stickers) {
     if (item.kind === "place") await guard(item.name);
@@ -244,6 +265,13 @@ export async function post(
       stickers: stickers.length ? stickers : undefined,
       audioMediaId: audio?.id,
       audioSeconds: audio?.seconds,
+      trackId: track?.id ?? null,
+      trackTitle: track?.title ?? null,
+      trackArtist: track?.artist ?? null,
+      trackCover: track?.cover ?? null,
+      trackStart,
+      trackSeconds,
+      videoMuted: video && Boolean(input.muted),
       private: audience.length > 0,
       audience: audience.length ? { create: audience.map((id) => ({ userId: id })) } : undefined,
       expiresAt: new Date(Date.now() + STORY_HOURS * 60 * 60 * 1000),
@@ -357,6 +385,22 @@ export async function screenshot(userId: string, storyId: string) {
     path: `/stories/${story.authorId}`,
   });
   return { ok: true };
+}
+
+/**
+ * رابطُ أغنية القصّة طازجاً، وبدايتُها وطولُها (القاعدة ٢٧٧) — لمن يرى القصّة
+ * وحده، وإلّا «غير موجودة» (القاعدة ٢٣ب). ومعاينةُ دِيزر موقَّعةٌ يقصر عمرُها فلا تُحفظ.
+ */
+export async function track(userId: string, storyId: string) {
+  const story = await prisma.story.findFirst({
+    where: { id: storyId, expiresAt: { gt: new Date() }, ...storyVisibleTo(userId) },
+    select: { authorId: true, trackId: true, trackStart: true, trackSeconds: true },
+  });
+  if (!story?.trackId) throw notFound("القصة غير موجودة");
+  if (story.authorId !== userId && !(await visibleAuthors(userId)).includes(story.authorId)) {
+    throw notFound("القصة غير موجودة");
+  }
+  return { url: await previewUrl(story.trackId), start: story.trackStart, seconds: story.trackSeconds ?? NOTE_SECONDS };
 }
 
 /** إيصال مشاهدة — منه تُطفأ حلقتها. */
