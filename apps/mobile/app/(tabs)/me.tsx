@@ -255,6 +255,7 @@ export default function Me() {
                 لحظاتي <Text style={{ color: colors.groundMuted, fontSize: 12, fontWeight: "400" }}>{ar(s?.moments ?? 0)}</Text>
               </Text>
               {/* «أرشيفي» و«سنتك في كتاب» (القاعدة ٢٤٤): بابُهما عند لحظاتك لا بعد آخرها. */}
+              <Spot id="me.archive">
               <Pressable
                 onPress={() => router.push("/me/archive" as never)}
                 hitSlop={8}
@@ -263,6 +264,7 @@ export default function Me() {
                 <BookIcon size={14} color={colors.clayInk} />
                 <Text style={{ color: colors.clayInk, fontSize: 12.5, fontWeight: "700" }}>أرشيفي وكتاب سنتي</Text>
               </Pressable>
+              </Spot>
             </View>
           </>
         }

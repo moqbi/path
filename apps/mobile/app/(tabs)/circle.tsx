@@ -1,6 +1,7 @@
 import { BlockIcon, CheckIcon, MessageIcon, TagIcon, UserMinusIcon, UserPlusIcon } from "../../components/icons";
 import { Sheet } from "../../components/sheet";
 import { openAddSheet } from "../../components/add-sheet";
+import { Spot } from "../../components/spot";
 import { useTabTop } from "../../lib/tab-top";
 import { TabBackdrop } from "../../components/tab-backdrop";
 import { useBarSpace } from "../../components/glass-bar";
@@ -169,6 +170,7 @@ export default function Circle() {
               </Text>
             ) : null}
             {/* أبوابُ الإضافة: البحثُ ومن حولك والرابط (القاعدة ٢٨٠). */}
+            <Spot id="circle.add">
             <Pressable
               accessibilityLabel="إضافة صديق"
               onPress={() => openAddSheet()}
@@ -184,6 +186,7 @@ export default function Circle() {
             >
               <UserPlusIcon size={20} color={colors.chromeInk} />
             </Pressable>
+            </Spot>
           </View>
         }
       />
