@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { AthrMark, AthrWordmark } from "@/components/brand";
-import { HeroArt } from "./hero-art";
 import { lines, siteImage, siteShots, siteText, storeUrl } from "@/lib/site";
 import { ShotsCarousel } from "./shots-carousel";
 
@@ -89,7 +88,7 @@ function StoreButtons({
   const dark = tone === "dark";
 
   return (
-    <div className="flex flex-wrap justify-center gap-3">
+    <div className="flex flex-wrap gap-3">
       {stores.map((store) => {
         const look = {
           border: `1px solid ${dark ? "#223140" : "var(--color-line)"}`,
@@ -132,10 +131,7 @@ function StoreButtons({
 
 function FeatureIcon({ children }: { children: React.ReactNode }) {
   return (
-    <span
-      className="flex h-11 w-11 items-center justify-center rounded-2xl"
-      style={{ background: "var(--color-gold-soft)", color: "var(--color-clay-ink)" }}
-    >
+    <span className="l-why-icon">
       <svg
         viewBox="0 0 24 24"
         width="21"
@@ -153,6 +149,56 @@ function FeatureIcon({ children }: { children: React.ReactNode }) {
   );
 }
 
+/*
+  رسومُ التفاعلات وقوسِ النشر من ملفّات المالك (`public/reactions` و
+  `public/composer`) كما في التطبيق — استبدالُ الملفّ يغيّرها هنا أيضاً.
+*/
+const REACTIONS = ["smile", "love", "laugh", "gasp", "sad", "camera", "chat", "pin"] as const;
+const POSTS = [
+  { key: "photo", tile: "var(--color-gold-soft)" },
+  { key: "place", tile: "#fae2da" },
+  { key: "music", tile: "#dfe6ec" },
+  { key: "write", tile: "var(--color-chip)" },
+] as const;
+
+/** خاتمٌ يدور: نصٌّ على دائرة، وفي وسطه العلامة. */
+function Stamp({ text, href }: { text: string; href?: string }) {
+  const inner = (
+    <>
+      <svg viewBox="0 0 120 120" className="l-stamp-ring" aria-hidden>
+        <defs>
+          <path id="stamp-path" d="M60,60 m-44,0 a44,44 0 1,1 88,0 a44,44 0 1,1 -88,0" />
+        </defs>
+        <text>
+          <textPath href="#stamp-path">{text.repeat(2)}</textPath>
+        </text>
+      </svg>
+      <span className="l-stamp-core">
+        <AthrMark size={30} />
+      </span>
+    </>
+  );
+  return href ? (
+    <a href={href} className="l-stamp" aria-label="حمّل التطبيق">
+      {inner}
+    </a>
+  ) : (
+    <span className="l-stamp" aria-hidden>
+      {inner}
+    </span>
+  );
+}
+
+function Arrow() {
+  return (
+    <span className="l-arrow" aria-hidden>
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 17 7 7M7 15V7h8" />
+      </svg>
+    </span>
+  );
+}
+
 export default async function LandingPage() {
   const text = await siteText();
   const hero = await siteImage("hero");
@@ -162,119 +208,200 @@ export default async function LandingPage() {
   const android = storeUrl(text["store.android"]);
 
   return (
-    <>
-      {/* ───────────── الرأس ───────────── */}
-      <section className="hero">
-        {/*
-          صورةُ الرأس من اللوحة، وتحتها اللوحةُ المرسومة حين لا صورة:
-          موقعٌ بلا رأسٍ أسوأ من رأسٍ مرسوم، ونشرٌ على قاعدةٍ جديدة يجب
-          أن يعرض صفحةً كاملة بلا أن يرفع أحدٌ شيئاً أوّلاً.
-        */}
-        {hero ? (
-          <>
-            <div
-              aria-hidden
-              className="hero-photo"
-              style={{ backgroundImage: `url(/api/site-media/${hero})` }}
-            />
-            <div aria-hidden className="hero-veil" />
-          </>
-        ) : (
-          <HeroArt />
-        )}
-
-        <div className="hero-inner">
+    <div className="landing">
+      {/* ───────────── الرأس: بطاقةٌ وكلمةٌ عملاقة خلف الهاتف ───────────── */}
+      <section className="l-wide pt-4 sm:pt-6">
+        <div className="l-hero">
           {/*
-            الدخول: الشعار أوّلاً، ثم الاسم، ثم العبارة، ثم المتن،
-            ثم الزرّان — بتأخّرٍ متدرّج يجعلها تتتابع لا تظهر دفعةً
-            واحدة، كقوس النشر في التطبيق.
+            صورةُ الرأس من اللوحة تملأ البطاقة إن رُفعت، وبلاها أرضيةُ
+            البطاقة وحدها — والكلمةُ العملاقة فوقهما في الحالين.
           */}
-          <div className="rise rise-1">
-            <AthrMark size={96} />
-          </div>
-
-          <div className="rise rise-2 mt-5 flex flex-col items-center gap-1">
-            <span className="sm:hidden">
-              <AthrWordmark size={28} color="var(--color-chrome-ink)" />
-            </span>
-            <span className="hidden sm:block">
-              <AthrWordmark size={40} color="var(--color-chrome-ink)" />
-            </span>
-            <span
-              className="text-[14px] font-medium sm:text-[15px]"
-              style={{ color: "var(--color-chrome-ink)", letterSpacing: "0.22em" }}
-            >
-              آثار مومنتس
-            </span>
-          </div>
-
-          <h1
-            className="rise rise-3 mt-8 text-[34px] leading-[1.3] sm:text-[52px] sm:leading-[1.25]"
-            style={{ fontFamily: "var(--font-display)", fontWeight: 800, color: "var(--color-chrome-ink)" }}
-          >
-            {text["hero.line"]}
-          </h1>
-          {text["hero.latin"] ? (
-            <p dir="ltr" className="latin rise rise-3 mt-3 text-[13px]" style={{ color: "#c2b6a6" }}>
-              {text["hero.latin"]}
-            </p>
+          {hero ? (
+            <div aria-hidden className="l-hero-photo" style={{ backgroundImage: `url(/api/site-media/${hero})` }} />
           ) : null}
+          <div aria-hidden className="l-giant rise rise-1">
+            آثار
+          </div>
 
-          <p
-            className="rise rise-4 mt-6 max-w-xl text-[15.5px] leading-[1.95]"
-            style={{ color: "#dfe5ea" }}
-          >
-            {text["hero.body"]}
-          </p>
+          <div className="l-hero-grid">
+            <div className="l-hero-copy">
+              <span className="l-eyebrow rise rise-2">
+                <AthrWordmark size={13} color="var(--color-ink)" />
+                <span className="opacity-60">·</span>
+                آثار مومنتس
+              </span>
+              <h1 className="l-hero-line rise rise-2">{text["hero.line"]}</h1>
+              {text["hero.latin"] ? (
+                <p dir="ltr" className="latin rise rise-3 mt-2 text-[13px] text-muted">
+                  {text["hero.latin"]}
+                </p>
+              ) : null}
+              <p className="rise rise-3 mt-5 max-w-md text-[15px] leading-[1.95] text-ink-2">{text["hero.body"]}</p>
 
-          <div className="rise rise-5 mt-8">
-            <StoreButtons tone="dark" ios={ios} android={android} />
+              <div className="rise rise-4 mt-7 flex justify-start">
+                <StoreButtons ios={ios} android={android} />
+              </div>
+
+              <div className="l-react-pill rise rise-5">
+                <span className="l-faces">
+                  {REACTIONS.slice(0, 5).map((r) => (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img key={r} src={`/reactions/${r}.png`} alt="" width={34} height={34} />
+                  ))}
+                </span>
+                <span className="flex flex-col leading-tight">
+                  <span className="text-[13px] font-bold">{text["react.badge"]}</span>
+                  <span className="text-[11.5px] text-muted">التفاعلات الأساسية لكل لحظة</span>
+                </span>
+              </div>
+            </div>
+
+            <div className="l-hero-art">
+              <div className="rise rise-3 flex items-end">
+                <figure className="l-phone l-phone-hero">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/shots/hero.webp" alt="الخط الزمني في آثار مومنتس" />
+                </figure>
+              </div>
+
+              <div className="l-float l-float-moment rise rise-4" aria-hidden>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/composer/place.png" alt="" width={40} height={40} />
+                <span className="flex flex-col leading-tight">
+                  <span className="text-[13px] font-bold">في مقهى الحيّ</span>
+                  <span className="text-[11.5px] text-muted">مع نورة وخالد · الآن</span>
+                </span>
+              </div>
+
+              <div className="l-float l-float-circle rise rise-5" aria-hidden>
+                <span className="l-num">١٥٠</span>
+                <span className="text-[11.5px] leading-snug text-ink-2">
+                  صديقاً سقفُ دائرتك
+                  <br />
+                  ولا يُباع بأيّ مبلغ
+                </span>
+              </div>
+
+              <div className="l-float-stamp rise rise-4">
+                <Stamp text="حمّل التطبيق · لحظاتك مع ناسك · " href="#download" />
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ───────────── المزايا ───────────── */}
-      <section className="wrap py-16">
-        <h2 className="section-title">{text["features.title"]}</h2>
-        <p className="section-sub">{text["features.sub"]}</p>
+      {/* ───────────── ماذا تنشر ───────────── */}
+      <section className="l-wide pt-20">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 className="l-title">{text["post.title"]}</h2>
+            <p className="l-sub">{text["post.sub"]}</p>
+          </div>
+        </div>
 
-        <div className="mt-8 grid gap-3.5 sm:grid-cols-2">
-          {FEATURES.map((feature) => (
-            <article key={feature.key} className="feature-card">
-              <FeatureIcon>{feature.icon}</FeatureIcon>
-              <h3 className="mt-4 text-[16px] font-bold">
-                {text[`feature.${feature.key}.title` as const]}
-              </h3>
-              <p className="mt-1.5 text-[13.5px] leading-[1.95] text-ink-2">
-                {text[`feature.${feature.key}.body` as const]}
-              </p>
-            </article>
-          ))}
+        <div className="l-posts mt-8">
+          {POSTS.map((post, index) => {
+            const card = (
+              <article key={`${post.key}-text`} className="l-post-text">
+                <h3 className="text-[17px] font-extrabold" style={{ fontFamily: "var(--font-display)" }}>
+                  {text[`post.${post.key}.title` as const]}
+                </h3>
+                <ul className="mt-3 flex flex-wrap gap-1.5">
+                  {lines(text[`post.${post.key}.tags` as const]).map((tag) => (
+                    <li key={tag} className="l-chip">
+                      {tag}
+                    </li>
+                  ))}
+                </ul>
+                <Arrow />
+              </article>
+            );
+            const tile = (
+              <div key={`${post.key}-tile`} className="l-post-tile" style={{ background: post.tile }} aria-hidden>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`/composer/${post.key}.png`} alt="" width={96} height={96} />
+              </div>
+            );
+            // رقعةُ شطرنج: نصٌّ ثمّ رسمٌ في الصفّ الأوّل، ورسمٌ ثمّ نصٌّ في الثاني.
+            return index < 2 ? [card, tile] : [tile, card];
+          })}
         </div>
       </section>
 
       {/* ───────────── من داخل التطبيق ───────────── */}
-      <section className="wrap pb-16">
-        <h2 className="section-title">{text["shots.title"]}</h2>
-        <p className="section-sub">{text["shots.sub"]}</p>
+      <section className="l-wide pt-20">
+        <div className="l-banner">
+          <ShotsCarousel shots={shots} />
+          <div className="l-banner-cap">
+            <span className="l-pill">من داخل التطبيق</span>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 sm:items-end">
+              <h2 className="l-title" style={{ color: "var(--color-chrome-ink)" }}>
+                {text["shots.title"]}
+              </h2>
+              <p className="text-[13.5px] leading-[1.9]" style={{ color: "#c9d2d9" }}>
+                {text["shots.sub"]}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
 
-        <ShotsCarousel shots={shots} />
+      {/* ───────────── ليش آثار ───────────── */}
+      <section className="l-wide pt-20">
+        <div className="text-center">
+          <h2 className="l-title">{text["why.title"]}</h2>
+          <p className="l-sub mx-auto">{text["why.sub"]}</p>
+        </div>
+
+        <div className="l-why mt-10">
+          <div className="l-why-art">
+            <figure className="l-phone l-phone-why">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/shots/notes.webp" alt="الأصدقاء والنوت في آثار مومنتس" />
+            </figure>
+            <div className="l-why-stamp">
+              <Stamp text={text["why.stamp"]} />
+            </div>
+          </div>
+
+          <ul className="flex flex-col gap-3">
+            {FEATURES.map((feature, index) => (
+              <li key={feature.key} className={index === 1 ? "l-why-item l-why-item-on" : "l-why-item"}>
+                <FeatureIcon>{feature.icon}</FeatureIcon>
+                <span>
+                  <h3 className="text-[15px] font-extrabold" style={{ fontFamily: "var(--font-display)" }}>
+                    {text[`feature.${feature.key}.title` as const]}
+                  </h3>
+                  <p className="mt-1 text-[13.5px] leading-[1.9] text-ink-2">
+                    {text[`feature.${feature.key}.body` as const]}
+                  </p>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </section>
 
       {/* ───────────── الخصوصية ───────────── */}
-      <section className="band">
-        <div className="wrap py-16">
-          <h2
-            className="text-[30px] font-bold"
-            style={{ fontFamily: "var(--font-display)", color: "var(--color-chrome-ink)" }}
-          >
-            {text["privacy.title"]}
-          </h2>
-          <p className="mt-2 max-w-xl text-[14px] leading-[1.95]" style={{ color: "var(--color-chrome-muted)" }}>
-            {text["privacy.body"]}
-          </p>
+      <section className="l-wide pt-20">
+        <div className="l-privacy">
+          <div>
+            <h2 className="l-title" style={{ color: "var(--color-chrome-ink)" }}>
+              {text["privacy.title"]}
+            </h2>
+            <p className="mt-3 max-w-md text-[14px] leading-[1.95]" style={{ color: "#c9d2d9" }}>
+              {text["privacy.body"]}
+            </p>
+            <p className="mt-6 text-[12.5px]" style={{ color: "var(--color-chrome-muted)" }}>
+              التفاصيل كاملةً في{" "}
+              <Link href="/privacy" className="font-semibold" style={{ color: "var(--color-gold-bright)" }}>
+                سياسة الخصوصية
+              </Link>
+              .
+            </p>
+          </div>
 
-          <div className="mt-8 grid gap-8 sm:grid-cols-2">
+          <div className="grid gap-6 sm:grid-cols-2">
             <ul className="flex flex-col gap-3">
               {lines(text["privacy.no"]).map((line) => (
                 <li key={line} className="flex items-center gap-3 text-[14.5px]" style={{ color: "#e4e9ed" }}>
@@ -286,7 +413,6 @@ export default async function LandingPage() {
                 </li>
               ))}
             </ul>
-
             <ul className="flex flex-col gap-3">
               {lines(text["privacy.yes"]).map((line) => (
                 <li key={line} className="flex items-center gap-3 text-[14.5px]" style={{ color: "#e4e9ed" }}>
@@ -299,38 +425,41 @@ export default async function LandingPage() {
               ))}
             </ul>
           </div>
-
-          <p className="mt-9 text-[12.5px]" style={{ color: "var(--color-chrome-muted)" }}>
-            التفاصيل كاملةً في{" "}
-            <Link href="/privacy" className="font-semibold" style={{ color: "var(--color-gold-bright)" }}>
-              سياسة الخصوصية
-            </Link>
-            .
-          </p>
         </div>
       </section>
 
-      {/* ───────────── التحميل ───────────── */}
-      <section id="download" className="wrap py-16 text-center">
-        <h2 className="text-[28px] font-bold" style={{ fontFamily: "var(--font-display)" }}>
-          {text["download.title"]}
-        </h2>
-        <p className="mx-auto mt-2 max-w-md text-[14px] leading-[1.95] text-muted">
-          {text["download.body"]}
-        </p>
+      {/* ───────────── التفاعلات والتحميل ───────────── */}
+      <section id="download" className="l-wide pb-20 pt-20">
+        <div className="l-react">
+          <div className="l-react-grid-wrap">
+            <span className="l-react-badge">{text["react.badge"]}</span>
+            <div className="l-react-grid">
+              {REACTIONS.map((r, i) => (
+                <span key={r} className="l-react-face" style={{ animationDelay: `${i * 0.35}s` }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`/reactions/${r}.png`} alt="" width={64} height={64} />
+                </span>
+              ))}
+            </div>
+          </div>
 
-        <div className="mt-7">
-          <StoreButtons ios={ios} android={android} />
+          <div>
+            <h2 className="l-title">{text["react.title"]}</h2>
+            <p className="mt-3 max-w-md text-[14px] leading-[1.95] text-ink-2">{text["react.body"]}</p>
+
+            <h3 className="mt-9 text-[20px] font-extrabold" style={{ fontFamily: "var(--font-display)" }}>
+              {text["download.title"]}
+            </h3>
+            <p className="mt-1.5 max-w-md text-[13.5px] leading-[1.9] text-muted">{text["download.body"]}</p>
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <StoreButtons ios={ios} android={android} />
+              <Link href="/contact" className="l-cta">
+                {text["download.cta"]}
+              </Link>
+            </div>
+          </div>
         </div>
-
-        <Link
-          href="/contact"
-          className="mt-5 inline-flex h-11 items-center rounded-xl px-5 text-[13px] font-bold"
-          style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
-        >
-          {text["download.cta"]}
-        </Link>
       </section>
-    </>
+    </div>
   );
 }
