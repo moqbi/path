@@ -764,11 +764,18 @@ h3 {
   margin-inline-start: 0;
 }
 
+/*
+ * ما يطفو حول الهاتف يُقاس من صندوقٍ بعرضه تقريباً لا من نصف الشاشة: الرأسُ بعرض
+ * الشاشة كلّها، وبطاقةٌ عند حافّة العمود كانت تبتعد عن الهاتف كلّما اتّسعت الشاشة.
+ */
 .l-hero-art {
   position: relative;
   display: flex;
   justify-content: center;
   min-height: 420px;
+  width: 100%;
+  max-width: 540px;
+  margin-inline: auto;
 }
 
 .l-phone {
