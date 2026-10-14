@@ -29,6 +29,8 @@ export function StorePromo() {
   const touring = useTourOn();
   const router = useRouter();
   const [item, setItem] = useState<Promo | null>(null);
+  // نسبةُ صورة الإعلان (عرض ÷ ارتفاع) كما وصلت: البطاقةُ تأخذ شكلَها فلا فراغ فوقها ولا تحتها.
+  const [ratio, setRatio] = useState<number | null>(null);
 
   useEffect(() => {
     if (!me) return;
@@ -72,9 +74,18 @@ export function StorePromo() {
       <Pressable accessibilityLabel="إغلاق" onPress={done} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
       <View style={{ width: "100%", maxWidth: 340, borderRadius: 24, backgroundColor: colors.card, overflow: "hidden" }}>
         {/* صورةُ الإعلان أوّلاً بملء مكانها (القاعدة ٢٧٢)، وإلّا صورةُ الصنف. */}
-        <View style={{ height: item.promoMediaId ? 260 : 220, alignItems: "center", justifyContent: "center", backgroundColor: colors.paper, padding: item.promoMediaId ? 0 : 20 }}>
+        <View style={{ ...(item.promoMediaId ? { aspectRatio: shape(ratio) } : { height: 220 }), alignItems: "center", justifyContent: "center", backgroundColor: colors.paper, padding: item.promoMediaId ? 0 : 20 }}>
           {item.promoMediaId ? (
-            <MediaImage mediaId={item.promoMediaId} style={{ width: "100%", height: "100%" }} resizeMode="contain" />
+            <>
+              {/* ما زاد عن حدَّي النسبة تملؤه نسخةٌ مغبّشة لا شريطٌ فارغ (القاعدة ٢٨٥). */}
+              <MediaImage mediaId={item.promoMediaId} blurRadius={18} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
+              <MediaImage
+                mediaId={item.promoMediaId}
+                style={{ width: "100%", height: "100%" }}
+                resizeMode="contain"
+                onSize={(width, height) => setRatio(width / height)}
+              />
+            </>
           ) : item.mediaId ? (
             <MediaImage
               mediaId={item.mediaId}
@@ -110,4 +121,10 @@ export function StorePromo() {
       </View>
     </View>
   );
+}
+
+/** نسبةُ صندوق الإعلان: نسبةُ الصورة نفسها، بين طوليّةٍ لا تتجاوز الشاشة وعرضيّةٍ لا تصير شريطاً. */
+function shape(ratio: number | null) {
+  if (!ratio) return 340 / 260;
+  return Math.min(2, Math.max(0.7, ratio));
 }

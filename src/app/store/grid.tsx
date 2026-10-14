@@ -47,6 +47,24 @@ export type Item = {
   promoMediaId?: string | null;
 };
 
+/**
+ * الصورةُ كاملةً وحولها نسخةٌ مغبّشةٌ منها تملأ الفراغ (القاعدة ٢٨٥) — كالجوّال:
+ * `cover` يقصّ أطرافها و`contain` وحده يترك شريطين فارغين.
+ */
+function Filled({ mediaId }: { mediaId: string }) {
+  const url = `url(${BASE}/api/media/${mediaId})`;
+  return (
+    <span className="relative block h-[62px] w-full overflow-hidden rounded-xl">
+      <span
+        aria-hidden
+        className="absolute inset-0 scale-125 bg-cover bg-center blur-md"
+        style={{ backgroundImage: url }}
+      />
+      <span className="absolute inset-0 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: url }} />
+    </span>
+  );
+}
+
 function Preview({ item }: { item: Item }) {
   /*
     الحزمة تُعرض بما فيها: ثلاثةُ رسومٍ متداخلة وعددُ ما بقي — فما يُشترى
@@ -54,10 +72,7 @@ function Preview({ item }: { item: Item }) {
   */
   if (item.kind === "BUNDLE" && item.promoMediaId) {
     return (
-      <span
-        className="block h-[62px] w-full rounded-xl bg-contain bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${BASE}/api/media/${item.promoMediaId})` }}
-      />
+      <Filled mediaId={item.promoMediaId} />
     );
   }
   if (item.kind === "BUNDLE") {
@@ -145,6 +160,8 @@ function Preview({ item }: { item: Item }) {
   }
 
   // والثيمُ بصورة إعلانه إن رُفعت، ثمّ صورتُه، ثمّ لونُه — كالجوّال.
+  const picture = item.promoMediaId ?? item.mediaId;
+  if (picture) return <Filled mediaId={picture} />;
   return (
     <span
       className="w-full rounded-xl"
