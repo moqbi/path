@@ -44,15 +44,18 @@ export async function processImage(input: Uint8Array, mime: string): Promise<Pro
   const big = Math.max(meta.width, meta.height) > MAX_SIDE;
   const pipeline = big ? image.resize({ width: MAX_SIDE, height: MAX_SIDE, fit: "inside" }) : image;
 
-  // PNG يبقى PNG (الشفافية)، وما عداه يُكتب WebP: أصغر بنفس الوضوح.
-  const out =
-    mime === "image/png"
-      ? await pipeline.png({ compressionLevel: 9 }).toBuffer({ resolveWithObject: true })
-      : await pipeline.webp({ quality: 82 }).toBuffer({ resolveWithObject: true });
+  /*
+    كلُّ صورةٍ ثابتة تُكتب WebP — **بقرار المالك**، والـPNG معها: كان يبقى PNG لشفافيّته
+    فيُحفظ بلا ضغطٍ يُذكر (رسمُ تشارمٍ بميغاين). وWebP يحمل الشفافيّة كاملةً
+    (`alphaQuality` عالية فلا تتشرّس الحوافّ) بنحو عُشر الحجم.
+  */
+  const out = await pipeline
+    .webp(mime === "image/png" ? { quality: 86, alphaQuality: 95 } : { quality: 82 })
+    .toBuffer({ resolveWithObject: true });
 
   return {
     bytes: new Uint8Array(out.data),
-    mime: mime === "image/png" ? "image/png" : "image/webp",
+    mime: "image/webp",
     width: out.info.width,
     height: out.info.height,
   };

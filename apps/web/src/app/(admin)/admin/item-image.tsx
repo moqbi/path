@@ -38,7 +38,8 @@ export function ItemImage({
   // ما يُرسم فوق شيءٍ آخر يحتاج شفافيته: التشارم على الصورة، والإطار حولها.
   const alpha = charm || frame;
   const label = charm ? "التشارم" : frame ? "الإطار" : "الثيم";
-  const flattened = alpha && Boolean(mediaId) && mime !== "image/png";
+  // WebP يحمل الشفافيّة كـPNG — والرفعُ يكتبه WebP الآن (القاعدة ٢٨٥)، فلا يُعدّ مسطّحاً.
+  const flattened = alpha && Boolean(mediaId) && mime !== "image/png" && mime !== "image/webp";
 
   return (
     <>
@@ -48,7 +49,7 @@ export function ItemImage({
         className="mb-2 rounded-xl px-3 py-2 text-[11.5px] leading-relaxed"
         style={{ background: "var(--color-clay-soft)", color: "var(--color-clay)" }}
       >
-        {`صورة ${label} محفوظة بلا شفافية (خلفيةٌ مصمتة خلف الرسم) — أعِد رفعها الآن فتُحفظ PNG كما رُسمت.`}
+        {`صورة ${label} محفوظة بلا شفافية (خلفيةٌ مصمتة خلف الرسم) — أعِد رفعها الآن فتُحفظ بشفافيّتها كما رُسمت.`}
       </p>
     ) : null}
 

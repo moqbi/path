@@ -74,7 +74,7 @@ export function StorePromo() {
         {/* صورةُ الإعلان أوّلاً بملء مكانها (القاعدة ٢٧٢)، وإلّا صورةُ الصنف. */}
         <View style={{ height: item.promoMediaId ? 260 : 220, alignItems: "center", justifyContent: "center", backgroundColor: colors.paper, padding: item.promoMediaId ? 0 : 20 }}>
           {item.promoMediaId ? (
-            <MediaImage mediaId={item.promoMediaId} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+            <MediaImage mediaId={item.promoMediaId} style={{ width: "100%", height: "100%" }} resizeMode="contain" />
           ) : item.mediaId ? (
             <MediaImage
               mediaId={item.mediaId}

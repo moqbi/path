@@ -29,11 +29,16 @@ export async function shrink(
   context.drawImage(bitmap, 0, 0, width, height);
   bitmap.close();
 
-  // JPEG يمحو الشفافية بخلفيةٍ سوداء — والتشارم شعارٌ شفّاف، فتبقى PNG.
-  const type = keepAlpha ? "image/png" : "image/jpeg";
-  const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob(resolve, type, 0.82),
-  );
+  /*
+    JPEG يمحو الشفافية بخلفيةٍ سوداء، فالشفّافُ (التشارم والإطار) يُكتب WebP — يحمل
+    الشفافيّة بنحو عُشر حجم PNG — **بقرار المالك**: رسمٌ بميغاين كان يُحفظ كما هو.
+    ومتصفّحٌ لا يكتب WebP يردّ PNG بصمت، فيُفحص النوعُ الخارج ويُقبل.
+  */
+  const encode = (type: string, quality: number) =>
+    new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality));
+  const blob = keepAlpha
+    ? (await encode("image/webp", 0.9)) ?? (await encode("image/png", 1))
+    : await encode("image/jpeg", 0.82);
   if (!blob) throw new Error("تعذّر تجهيز الصورة");
 
   return { file: blob, width, height };
