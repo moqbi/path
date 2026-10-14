@@ -39,8 +39,7 @@ export function Preview({ item }: { item: StoreItem }) {
     return (
       // عرضٌ صريح: البطاقةُ تتوسّط ما فيها (`alignItems: center`)، فصندوقٌ بلا عرضٍ ينكمش إلى صفر وتختفي الصورة.
       <View style={{ width: "100%", height: 62, borderRadius: 12, overflow: "hidden", backgroundColor: colors.chip }}>
-        {/* كاملةً في صندوقها (`contain`) — **بقرار المالك**: القصُّ كان يُخفي أطرافَ الإعلان. */}
-        <MediaImage mediaId={item.promoMediaId} resizeMode="contain" style={{ width: "100%", height: 62 }} />
+        <FilledImage mediaId={item.promoMediaId} />
       </View>
     );
   }
@@ -162,8 +161,20 @@ export function Preview({ item }: { item: StoreItem }) {
   const picture = item.promoMediaId ?? item.mediaId;
   return (
     <View style={{ width: "100%", height: 62, borderRadius: 12, backgroundColor: paint, overflow: "hidden" }}>
-      {/* وكاملةً في صندوقها على لون الثيم لا مقصوصةً. */}
-      {picture ? <MediaImage mediaId={picture} resizeMode="contain" style={{ width: "100%", height: 62 }} /> : null}
+      {picture ? <FilledImage mediaId={picture} /> : null}
+    </View>
+  );
+}
+
+/**
+ * الصورةُ كاملةً في صندوقها وحولها نسخةٌ مغبّشةٌ منها تملأ الفراغ (القاعدة ٢٨٥):
+ * `cover` وحده يقصّ أطرافها، و`contain` وحده يترك شريطين فارغين على جانبيها.
+ */
+export function FilledImage({ mediaId, height = 62 }: { mediaId: string; height?: number | `${number}%` }) {
+  return (
+    <View style={{ width: "100%", height }}>
+      <MediaImage mediaId={mediaId} blurRadius={18} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.85 }} />
+      <MediaImage mediaId={mediaId} resizeMode="contain" style={{ width: "100%", height: "100%" }} />
     </View>
   );
 }

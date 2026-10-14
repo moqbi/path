@@ -28,6 +28,7 @@ export function MediaImage({
   resizeMode = "cover",
   position,
   onSize,
+  blurRadius,
 }: {
   mediaId: string | null | undefined;
   style?: StyleProp<ImageStyle>;
@@ -36,6 +37,8 @@ export function MediaImage({
   position?: { x: number; y: number };
   /** أبعاد الملف كما وصلت — يحتاجها من يحسب موضع الغلاف بنفسه. */
   onSize?: (width: number, height: number) => void;
+  /** تغبيشٌ — لنسخةٍ تملأ ما حول الصورة الكاملة (`FilledImage`). */
+  blurRadius?: number;
 }) {
   const [token, setToken] = useState(currentAccess);
   const [tries, setTries] = useState(0);
@@ -71,6 +74,7 @@ export function MediaImage({
       contentFit={resizeMode}
       contentPosition={position ? { left: `${position.x}%`, top: `${position.y}%` } : "center"}
       transition={120}
+      blurRadius={blurRadius}
       onLoad={(event) => {
         const size = event.source;
         if (size?.width && size.height) onSize?.(size.width, size.height);
