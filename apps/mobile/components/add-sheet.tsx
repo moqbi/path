@@ -316,19 +316,26 @@ function Near({ row }: { row: (p: FoundPerson, alias?: boolean) => React.ReactNo
     if (!beacon) return;
     const native = beacon;
     let alive = true;
+    // المسحُ يبدأ قبل الرمز — فيُطلب إذنُ البلوتوث مع فتح الشاشة ولو تعثّر الخادم —
+    // والبثُّ ينتظر رمزَه. وما لم يصل يُعاد بعد ربع دقيقة لا بعد خمس دقائق.
+    native.start(BEACON_SERVICE, "");
+    setBleOn(native.authorization() !== "denied");
+    let renew: ReturnType<typeof setTimeout> | null = null;
     const fresh = async () => {
+      let ok = false;
       try {
         const { token } = await api<{ token: string }>("/v1/circle/nearby/token", { method: "POST" });
         if (alive) native.start(BEACON_SERVICE, token);
+        ok = true;
       } catch {
-        // رمزٌ لم يصل: يُعاد مع الدورة التالية.
+        // رمزٌ لم يصل: يُعاد بعد قليل.
       }
+      if (alive) renew = setTimeout(() => void fresh(), ok ? 5 * 60_000 : 15_000);
     };
-    void fresh().then(() => alive && setBleOn(native.authorization() !== "denied"));
-    const renew = setInterval(() => void fresh(), 5 * 60_000);
+    void fresh();
     const poll = setInterval(() => {
       const seen = native.seen();
-      if (native.authorization() === "denied") setBleOn(false);
+      setBleOn(native.authorization() !== "denied");
       if (!seen.length) {
         setBle([]);
         return;
@@ -342,7 +349,7 @@ function Near({ row }: { row: (p: FoundPerson, alias?: boolean) => React.ReactNo
     }, 4000);
     return () => {
       alive = false;
-      clearInterval(renew);
+      if (renew) clearTimeout(renew);
       clearInterval(poll);
       native.stop();
     };
