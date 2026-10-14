@@ -37,8 +37,9 @@ export function Preview({ item }: { item: StoreItem }) {
   */
   if (item.kind === "BUNDLE" && item.promoMediaId) {
     return (
-      <View style={{ height: 62, borderRadius: 12, overflow: "hidden", backgroundColor: colors.chip }}>
-        <MediaImage mediaId={item.promoMediaId} resizeMode="cover" style={{ width: "100%", height: "100%" }} />
+      // عرضٌ صريح: البطاقةُ تتوسّط ما فيها (`alignItems: center`)، فصندوقٌ بلا عرضٍ ينكمش إلى صفر وتختفي الصورة.
+      <View style={{ width: "100%", height: 62, borderRadius: 12, overflow: "hidden", backgroundColor: colors.chip }}>
+        <MediaImage mediaId={item.promoMediaId} resizeMode="cover" style={{ width: "100%", height: 62 }} />
       </View>
     );
   }
