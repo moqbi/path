@@ -144,8 +144,12 @@ function Preview({ item }: { item: Item }) {
     );
   }
 
+  // والثيمُ بصورة إعلانه إن رُفعت، ثمّ صورتُه، ثمّ لونُه — كالجوّال.
   return (
-    <span className="w-full rounded-xl" style={{ height: 62, ...itemPaint(item) }} />
+    <span
+      className="w-full rounded-xl"
+      style={{ height: 62, ...itemPaint({ ...item, mediaId: item.promoMediaId ?? item.mediaId }) }}
+    />
   );
 }
 

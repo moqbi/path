@@ -153,9 +153,14 @@ export function Preview({ item }: { item: StoreItem }) {
     );
   }
 
+  /*
+    والثيمُ بصورة إعلانه إن رُفعت — **بقرار المالك**: ثيمٌ بلا صورة خلفيّة كان يُرى
+    مساحةَ لونٍ لا تقول شيئاً. ثمّ صورتُه، ثمّ لونُه.
+  */
+  const picture = item.promoMediaId ?? item.mediaId;
   return (
     <View style={{ width: "100%", height: 62, borderRadius: 12, backgroundColor: paint, overflow: "hidden" }}>
-      {item.mediaId ? <MediaImage mediaId={item.mediaId} style={{ width: "100%", height: 62 }} /> : null}
+      {picture ? <MediaImage mediaId={picture} resizeMode="cover" style={{ width: "100%", height: 62 }} /> : null}
     </View>
   );
 }
