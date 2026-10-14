@@ -35,6 +35,13 @@ export function Preview({ item }: { item: StoreItem }) {
     الحزمة تُعرض بما فيها: رسومٌ متداخلة وعددُ ما بقي — فما يُشترى يُرى
     قبل شرائه (القاعدة ٦ تمنع الصناديق العشوائية).
   */
+  if (item.kind === "BUNDLE" && item.promoMediaId) {
+    return (
+      <View style={{ height: 62, borderRadius: 12, overflow: "hidden", backgroundColor: colors.chip }}>
+        <MediaImage mediaId={item.promoMediaId} resizeMode="cover" style={{ width: "100%", height: "100%" }} />
+      </View>
+    );
+  }
   if (item.kind === "BUNDLE") {
     const inside = (item.holds ?? []).map((row) => row.item);
     const shown = inside.slice(0, 3);

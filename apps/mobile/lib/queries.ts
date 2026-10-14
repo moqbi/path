@@ -210,6 +210,8 @@ export type StoreItem = {
   palette: string | null;
   /** ما تحمله الحزمة — فارغٌ لما ليس حزمة. */
   holds?: { item: { id: string; name: string; kind: string; spec: string; mediaId: string | null } }[];
+  /** صورةُ إعلان الحزمة: بطاقتُها في المتجر تعرضها بدل رسوم ما فيها. */
+  promoMediaId?: string | null;
 };
 
 export const useStore = () =>

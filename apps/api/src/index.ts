@@ -27,7 +27,7 @@ import { sweepModerationLog } from "./services/reports";
 import { pushCoinGrants } from "./services/coin-grants";
 import { announceInvites, rewardInvites } from "./services/invites";
 import { announceStore } from "./services/store-news";
-import { expireRentals } from "./services/store";
+import { expireListings, expireRentals } from "./services/store";
 import { sweepAccess } from "./services/access";
 import { storyRoutes } from "./routes/v1/stories";
 import { siteRoutes } from "./routes/v1/site";
@@ -126,6 +126,8 @@ setInterval(
     void expirePlus().catch((error) => console.error("✗ انتهاء آثار+", error));
     // وما اشتُري بمدّةٍ وانتهت يُنزع ممّن يلبسه.
     void expireRentals().catch((error) => console.error("✗ انتهاء المدد", error));
+    // وما انتهت مدّةُ عرضه في المتجر يُخفى (`hideAt`).
+    void expireListings().catch((error) => console.error("✗ مدّة العرض", error));
     // وجديدُ المتجر: ما رُفع من اللوحة يُقرع به جرسٌ مرّةً واحدة.
     void announceStore().catch((error) => console.error("✗ إعلان المتجر", error));
     // وسجلُّ الدخول الأقدم من تسعين يوماً يُكنس (القاعدة ١٩٤).

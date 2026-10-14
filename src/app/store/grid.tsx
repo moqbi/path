@@ -43,6 +43,8 @@ export type Item = {
    * صندوقٌ عشوائيّ بلا عشوائية، والقاعدة ٦ تمنع الصناديق.
    */
   holds?: { id: string; name: string; spec: string; mediaId: string | null; kind: string }[];
+  /** صورةُ إعلان الحزمة: تُعرض في بطاقتها بدل رسوم ما فيها. */
+  promoMediaId?: string | null;
 };
 
 function Preview({ item }: { item: Item }) {
@@ -50,6 +52,14 @@ function Preview({ item }: { item: Item }) {
     الحزمة تُعرض بما فيها: ثلاثةُ رسومٍ متداخلة وعددُ ما بقي — فما يُشترى
     يُرى قبل شرائه.
   */
+  if (item.kind === "BUNDLE" && item.promoMediaId) {
+    return (
+      <span
+        className="block h-[62px] w-full rounded-xl bg-cover bg-center"
+        style={{ backgroundImage: `url(${BASE}/api/media/${item.promoMediaId})` }}
+      />
+    );
+  }
   if (item.kind === "BUNDLE") {
     const inside = item.holds ?? [];
     const shown = inside.slice(0, 3);

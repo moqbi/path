@@ -27,6 +27,8 @@ const ITEM = {
   categoryId: true,
   collectionId: true,
   palette: true,
+  /** صورةُ الإعلان: بطاقةُ الحزمة في المتجر تعرضها بدل رسوم ما فيها، وبطاقةُ الإعلان كذلك. */
+  promoMediaId: true,
   createdAt: true,
   // مُدَدُ الشراء — بلا مُددٍ يُشترى مرّةً ويبقى.
   plans: { select: { id: true, days: true, priceCoins: true }, orderBy: { days: "asc" } },
@@ -66,7 +68,7 @@ export async function promo(userId: string) {
   const item = await prisma.storeItem.findFirst({
     where: { hidden: false, promoAt: { gt: after } },
     orderBy: { promoAt: "desc" },
-    select: { ...ITEM, promoText: true, promoMediaId: true },
+    select: { ...ITEM, promoText: true },
   });
   return item;
 }
@@ -78,7 +80,7 @@ export async function promoSeen(userId: string) {
 }
 
 export async function storefront(userId: string) {
-  const [categories, collections, items, purchases, user] = await Promise.all([
+  const [categories, collections, every, purchases, user, bundled] = await Promise.all([
     prisma.storeCategory.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),
     prisma.storeCollection.findMany({
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
@@ -98,7 +100,16 @@ export async function storefront(userId: string) {
         charmId: true,
       },
     }),
+    prisma.bundleItem.findMany({ select: { itemId: true }, distinct: ["itemId"] }),
   ]);
+
+  /*
+    ما في حزمةٍ يُباع فيها وحدها — **بقرار المالك**: كان يظهر داخلها وفي «… الأخرى»
+    معاً. والحزمةُ المخفيّة تُبقي ما فيها خارج المتجر أيضاً: من أراد بيعه مفرداً
+    أخرجه منها في اللوحة.
+  */
+  const inBundle = new Set(bundled.map((row) => row.itemId));
+  const items = every.filter((item) => !inBundle.has(item.id));
 
   const owned = purchases.map((row) => row.itemId);
   // متى ينتهي ما اشتُري بمدّة — لبطاقته: «ينتهي بعد ٣ أيام» و«مدّد».
@@ -472,6 +483,20 @@ export async function coinPacks() {
  * يُقرأ ما انتهى في آخر أسبوع وحده: ما قبله نُزع في كنسٍ سابق، ولا
  * يُعاد المرور على صفوفٍ لا تنتهي.
  */
+/**
+ * مدّةُ العرض (`hideAt`): ما حلّ موعدُه يُكتب مخفيّاً ويُمسح موعدُه — مع كنس الخمس
+ * دقائق. فيُرى «مخفي» في اللوحة كما لو أخفاه المشرفُ بيده، ورفعُه بعدها لا يُعيد
+ * إخفاءه. وما اشتُري منه يبقى لأصحابه (القاعدة ٤٤).
+ */
+export async function expireListings(): Promise<number> {
+  const { count } = await prisma.storeItem.updateMany({
+    where: { hideAt: { lte: new Date() } },
+    data: { hidden: true, hideAt: null },
+  });
+  if (count > 0) console.log(`↓ أُخفي ${count} صنفاً انتهت مدّةُ عرضه`);
+  return count;
+}
+
 export async function expireRentals(): Promise<number> {
   const now = new Date();
   const rows = await prisma.purchase.findMany({

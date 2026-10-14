@@ -1,0 +1,1 @@
+ALTER TABLE "StoreItem" ADD COLUMN "hideAt" TIMESTAMP(3);
