@@ -258,12 +258,15 @@ export default function Store() {
               {shelf("وصل حديثاً", data?.rows.fresh ?? [], true)}
               {(data?.rows.charms?.length ?? 0) > 0 ? shelf("التشارمز", data?.rows.charms ?? []) : null}
               {(data?.rows.frames?.length ?? 0) > 0 ? shelf("الإطارات", data?.rows.frames ?? []) : null}
-              {shelf("ثيمات آثار", data?.rows.themes ?? [])}
+              {(data?.rows.themes?.length ?? 0) > 0 ? shelf("ثيمات آثار", data?.rows.themes ?? []) : null}
               {(data?.rows.bundles?.length ?? 0) > 0 ? (
-                <Row title="باقات">{grid(data?.rows.bundles ?? [])}</Row>
+                <Row title="الحزم">{grid(data?.rows.bundles ?? [])}</Row>
               ) : null}
 
-              <Row title="حزم محدودة">{grid(data?.rows.limited ?? [])}</Row>
+              {/* صفٌّ فارغٌ لا يُرسم — **بقرار المالك** (القاعدة ٢٨٤). */}
+              {(data?.rows.limited?.length ?? 0) > 0 ? (
+                <Row title="حزم محدودة">{grid(data?.rows.limited ?? [])}</Row>
+              ) : null}
             </>
           )}
 

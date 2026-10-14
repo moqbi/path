@@ -87,9 +87,11 @@ export default async function StorePage({
   const themes = all.filter(
     (item) => (item.kind === "THEME" || item.kind === "BACKGROUND") && !item.limited,
   );
-  const limited = all.filter((item) => item.limited);
+  // والحزمةُ بمدّة عرضٍ محدودةٌ بطبعها (القاعدة ٢٨٤).
+  const timed = (item: (typeof all)[number]) => item.kind === "BUNDLE" && item.hideAt !== null;
+  const limited = all.filter((item) => item.limited || timed(item));
   // والحزم صفٌّ بنفسها: ما جُمع في باقةٍ واحدة لا يُقرأ بين الأصناف المفردة.
-  const bundles = all.filter((item) => item.kind === "BUNDLE" && !item.limited);
+  const bundles = all.filter((item) => item.kind === "BUNDLE" && !item.limited && !timed(item));
 
   return (
     <div className="screen">
@@ -145,11 +147,11 @@ export default async function StorePage({
               {grid(fresh)}
             </Row>
 
-            <Row title="ثيمات آثار">{grid(themes)}</Row>
+            {themes.length > 0 ? <Row title="ثيمات آثار">{grid(themes)}</Row> : null}
 
-            {bundles.length > 0 ? <Row title="باقات">{grid(bundles)}</Row> : null}
+            {bundles.length > 0 ? <Row title="الحزم">{grid(bundles)}</Row> : null}
 
-            <Row title="حزم محدودة">{grid(limited)}</Row>
+            {limited.length > 0 ? <Row title="حزم محدودة">{grid(limited)}</Row> : null}
           </>
         )}
 

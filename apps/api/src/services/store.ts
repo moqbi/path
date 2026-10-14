@@ -29,6 +29,8 @@ const ITEM = {
   palette: true,
   /** صورةُ الإعلان: بطاقةُ الحزمة في المتجر تعرضها بدل رسوم ما فيها، وبطاقةُ الإعلان كذلك. */
   promoMediaId: true,
+  /** موعدُ إخفائه: الحزمةُ بمدّة عرضٍ تُعدّ محدودة (القاعدة ٢٨٤). */
+  hideAt: true,
   createdAt: true,
   // مُدَدُ الشراء — بلا مُددٍ يُشترى مرّةً ويبقى.
   plans: { select: { id: true, days: true, priceCoins: true }, orderBy: { days: "asc" } },
@@ -120,9 +122,11 @@ export async function storefront(userId: string) {
   const themes = items.filter(
     (item) => (item.kind === "THEME" || item.kind === "BACKGROUND") && !item.limited,
   );
-  const limited = items.filter((item) => item.limited);
+  // والحزمةُ بمدّة عرضٍ محدودةٌ بطبعها — **بقرار المالك**: لا تحتاج علامة «محدودة».
+  const timed = (item: (typeof items)[number]) => item.kind === "BUNDLE" && item.hideAt !== null;
+  const limited = items.filter((item) => item.limited || timed(item));
   // والحزم صفٌّ بنفسها: ما جُمع في باقةٍ واحدة لا يُقرأ بين الأصناف المفردة.
-  const bundles = items.filter((item) => item.kind === "BUNDLE" && !item.limited);
+  const bundles = items.filter((item) => item.kind === "BUNDLE" && !item.limited && !timed(item));
   // والتشارمز والإطاراتُ صفّان في «المميز» — **بقرار المالك**.
   const charms = items.filter((item) => item.kind === "CHARM" && !item.limited);
   const frames = items.filter((item) => item.kind === "FRAME" && !item.limited);
