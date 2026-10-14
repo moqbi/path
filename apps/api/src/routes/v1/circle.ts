@@ -42,6 +42,21 @@ export const circleRoutes = new Hono()
     zValidator("json", z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) })),
     async (c) => c.json(await discover.nearby(me(c), c.req.valid("json"))),
   )
+  /** بالبلوتوث (القاعدة ٢٨٢): رمزٌ يُبثّ بدل المعرّف، وما التُقط يُحلّ إلى بطاقات. */
+  .post("/nearby/token", rateLimitUser(40, 600), (c) => c.json(discover.beaconToken(me(c))))
+  .post(
+    "/nearby/seen",
+    rateLimitUser(150, 300),
+    zValidator(
+      "json",
+      z.object({
+        seen: z
+          .array(z.object({ token: z.string().regex(/^[A-Za-z0-9]{8}$/), rssi: z.number().int().min(-127).max(20) }))
+          .max(50),
+      }),
+    ),
+    async (c) => c.json({ people: await discover.beaconSeen(me(c), c.req.valid("json").seen) }),
+  )
   .delete("/nearby", (c) => {
     discover.leaveNearby(me(c));
     return c.json({ ok: true });

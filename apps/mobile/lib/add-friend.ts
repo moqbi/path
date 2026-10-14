@@ -9,6 +9,8 @@ export type FoundPerson = Person & {
   handle: string | null;
   isOpen: boolean;
   relation: "friend" | "sent" | "incoming" | "none";
+  /** من التقطه البلوتوث: درجةُ قربه من قوّة الإشارة (القاعدة ٢٨٢). */
+  near?: "very" | "near" | "far";
 };
 
 /**

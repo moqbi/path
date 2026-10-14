@@ -15,6 +15,7 @@ import { BackIcon, PinIcon, SearchIcon, ShareIcon, UserPlusIcon } from "./icons"
 import { api } from "../lib/api";
 import { ar } from "../lib/format";
 import { useSession } from "../lib/session";
+import { BEACON_SERVICE, beacon } from "../lib/nearby-beacon";
 import { useAddFriend, type FoundPerson } from "../lib/add-friend";
 import { colors } from "../theme/tokens";
 
@@ -31,6 +32,9 @@ const LABEL: Record<FoundPerson["relation"], string> = {
   sent: "أُرسل",
   friend: "صديقك",
 };
+
+/** قوّةُ الإشارة بثلاث درجاتٍ تُقرأ لا بالأمتار (القاعدة ٢٨٢). */
+const NEAR = { very: "قريب جداً", near: "قريب", far: "أبعد" } as const;
 
 const glassRow = { backgroundColor: "rgba(255,255,255,.08)", borderRadius: 16 } as const;
 
@@ -126,6 +130,7 @@ function PersonRow({
         <Text style={{ color: "rgba(255,255,255,.55)", fontSize: 11.5 }}>
           عضوية رقم {ar(person.memberNo)}
           {person.handle && !alias ? ` │ ⁨@${person.handle}⁩` : ""}
+          {person.near ? ` │ ${NEAR[person.near]}` : ""}
         </Text>
       </View>
       <Pressable
@@ -258,7 +263,9 @@ function aliasOf(person: FoundPerson): string {
 function Near({ row }: { row: (p: FoundPerson, alias?: boolean) => React.ReactNode }) {
   const me = useSession((s) => s.me);
   const [state, setState] = useState<"asking" | "on" | "denied">("asking");
-  const [people, setPeople] = useState<FoundPerson[]>([]);
+  const [geo, setGeo] = useState<FoundPerson[]>([]);
+  const [ble, setBle] = useState<FoundPerson[]>([]);
+  const [bleOn, setBleOn] = useState(false);
   const [rang, setRang] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -287,7 +294,7 @@ function Near({ row }: { row: (p: FoundPerson, alias?: boolean) => React.ReactNo
             body: JSON.stringify({ lat: here.coords.latitude, lng: here.coords.longitude }),
           });
           if (!alive) return;
-          setPeople(res.people);
+          setGeo(res.people);
           if (res.rang) setRang(true);
         } catch {
           // نبضةٌ فاتت لا توقف البحث: التالية بعد ثوانٍ.
@@ -302,6 +309,49 @@ function Near({ row }: { row: (p: FoundPerson, alias?: boolean) => React.ReactNo
     };
   }, [stop]);
 
+  // البلوتوث بجانب الموقع لا بعده (القاعدة ٢٨٢): رمزٌ من الخادم يُبثّ ويتبدّل كلّ
+  // خمس دقائق، وما يُلتقط يُحلّ على الخادم كلّ أربع ثوانٍ. ورفضُ إذن الموقع لا
+  // يوقفه، ورفضُ إذنه لا يوقف الموقع. وبناءٌ بلا الوحدة يمضي على الموقع وحده.
+  useEffect(() => {
+    if (!beacon) return;
+    const native = beacon;
+    let alive = true;
+    const fresh = async () => {
+      try {
+        const { token } = await api<{ token: string }>("/v1/circle/nearby/token", { method: "POST" });
+        if (alive) native.start(BEACON_SERVICE, token);
+      } catch {
+        // رمزٌ لم يصل: يُعاد مع الدورة التالية.
+      }
+    };
+    void fresh().then(() => alive && setBleOn(native.authorization() !== "denied"));
+    const renew = setInterval(() => void fresh(), 5 * 60_000);
+    const poll = setInterval(() => {
+      const seen = native.seen();
+      if (native.authorization() === "denied") setBleOn(false);
+      if (!seen.length) {
+        setBle([]);
+        return;
+      }
+      void api<{ people: FoundPerson[] }>("/v1/circle/nearby/seen", {
+        method: "POST",
+        body: JSON.stringify({ seen }),
+      })
+        .then((res) => alive && setBle(res.people))
+        .catch(() => {});
+    }, 4000);
+    return () => {
+      alive = false;
+      clearInterval(renew);
+      clearInterval(poll);
+      native.stop();
+    };
+  }, []);
+
+  // البلوتوث أوّلاً — أدقّ في المقاهي — ثمّ من وجده الموقعُ وحده.
+  const people = [...ble, ...geo.filter((p) => !ble.some((b) => b.id === p.id))];
+  const active = state === "on" || bleOn;
+
   const R = 220;
   // من وُجد يجلس حول الصورة على دائرة — ثمانيةٌ على الأكثر، والبقيّةُ في القائمة.
   const ring = people.slice(0, 8);
@@ -309,7 +359,7 @@ function Near({ row }: { row: (p: FoundPerson, alias?: boolean) => React.ReactNo
   return (
     <SheetScrollView name="add-near" contentContainerStyle={{ padding: 16, paddingTop: 8 }}>
       <View style={{ height: R + 20, alignItems: "center", justifyContent: "center" }}>
-        {state === "on" ? (
+        {active ? (
           <>
             <Pulse delay={0} size={R * 0.5} />
             <Pulse delay={800} size={R * 0.5} />
@@ -341,7 +391,7 @@ function Near({ row }: { row: (p: FoundPerson, alias?: boolean) => React.ReactNo
         })}
       </View>
 
-      {state === "denied" ? (
+      {state === "denied" && !bleOn ? (
         <Text style={{ color: "#FF9C84", fontSize: 12.5, textAlign: "center" }}>
           نحتاج إذن الموقع لنعرف من حولك — يُفعَّل من إعدادات الجهاز.
         </Text>

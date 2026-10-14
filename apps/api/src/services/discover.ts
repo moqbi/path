@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { prisma } from "@athar/db";
 import { badRequest } from "../lib/errors";
 import { blockedWith, circleIds } from "./visibility";
@@ -244,4 +245,53 @@ export function leaveNearby(userId: string) {
   const beacon = beacons.get(userId);
   if (beacon && beacon.until > Date.now()) return;
   beacons.delete(userId);
+}
+
+// ───────────────────────────── بالبلوتوث ─────────────────────────────
+
+/**
+ * «من حولك» بالبلوتوث (القاعدة ٢٨٢): الجهازُ لا يبثّ معرّفَ صاحبه بل **رمزاً
+ * عشوائياً قصيرَ العمر** يصدره الخادم ويعرف صاحبَه — فلا يتتبّع غريبٌ جهازاً
+ * بثابتٍ يلتقطه من الهواء. والجهازُ الآخر يرسل ما التقطه بقوّة إشارته، فيردّ
+ * الخادمُ البطاقاتِ بشروطها (الحظرُ ونفسُك خارجها) والأقوى إشارةً أوّلاً.
+ * وكلُّه في الذاكرة كالمنارة: رمزٌ يعيش عشر دقائق لا يستحقّ صفّاً.
+ */
+const TOKEN_MS = 10 * 60_000;
+const tokens = new Map<string, { userId: string; until: number }>();
+const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+export function beaconToken(userId: string): { token: string; ttl: number } {
+  const now = Date.now();
+  for (const [t, v] of tokens) if (v.until < now) tokens.delete(t);
+  let token = "";
+  do {
+    token = [...randomBytes(8)].map((b) => ALPHABET[b % ALPHABET.length]).join("");
+  } while (tokens.has(token));
+  tokens.set(token, { userId, until: now + TOKEN_MS });
+  return { token, ttl: TOKEN_MS };
+}
+
+/** قوّةُ الإشارة درجاتٌ تُقرأ لا أمتار — الإشارةُ ترجف ولا تُعطي مسافةً تُكتب رقماً. */
+function nearness(rssi: number): "very" | "near" | "far" {
+  if (rssi >= -60) return "very";
+  if (rssi >= -75) return "near";
+  return "far";
+}
+
+export async function beaconSeen(userId: string, seen: { token: string; rssi: number }[]) {
+  const now = Date.now();
+  const best = new Map<string, number>();
+  for (const { token, rssi } of seen) {
+    const owner = tokens.get(token.toUpperCase());
+    if (!owner || owner.until < now || owner.userId === userId) continue;
+    best.set(owner.userId, Math.max(best.get(owner.userId) ?? -999, rssi));
+  }
+  if (best.size === 0) return [];
+  const blocked = new Set(await blockedWith(userId));
+  const ids = [...best.keys()].filter((id) => !blocked.has(id));
+  if (ids.length === 0) return [];
+  const people = await prisma.user.findMany({ where: { id: { in: ids } }, select: CARD });
+  people.sort((a, b) => (best.get(b.id) ?? -999) - (best.get(a.id) ?? -999));
+  const rows = await withRelation(userId, people);
+  return rows.map((row) => ({ ...row, near: nearness(best.get(row.id) ?? -999) }));
 }
