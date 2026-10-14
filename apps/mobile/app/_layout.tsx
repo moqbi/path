@@ -30,7 +30,7 @@ import { Tour } from "../components/tour";
 import { applyTheme, colors, themeStore, veil } from "../theme/tokens";
 import { dismissOpen } from "../lib/swipe-open";
 import { Launch, UpdateWait, useLaunch } from "../components/launch";
-import { useFreshUpdate } from "../lib/fresh-update";
+import { useFreshUpdate, useResumeUpdate } from "../lib/fresh-update";
 import { StorePromo } from "../components/store-promo";
 
 /*
@@ -349,6 +349,7 @@ export default function RootLayout() {
   const [launching, endLaunch] = useLaunch();
   // ومعها سؤالُ التحديث: ما دام جارياً تبقى الشاشةُ الداكنة فوق التطبيق (القاعدة ٢٧٥).
   const updating = useFreshUpdate();
+  useResumeUpdate();
   // تحت الحركة لا بعدها: حين تذوب الحركةُ تنكشف الأرضُ الداكنة لا التطبيقُ لحظةً ثمّ يُقطع.
   const intro = (
     <>
