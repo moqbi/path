@@ -338,6 +338,47 @@ export function StoreGrid({
             </View>
           </View>
 
+          {/*
+            ما في الحزمة كاملاً — **بقرار المالك**: البطاقةُ ترسم ثلاثةً وتعدّ الباقي، فيُقرأ
+            هنا كلُّه برسمه واسمه ونوعه قبل الشراء (القاعدة ٦).
+          */}
+          {chosen.kind === "BUNDLE" && (chosen.holds?.length ?? 0) > 0 ? (
+            <View style={{ marginTop: 6 }}>
+              <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>
+                ما في الحزمة ({ar(chosen.holds!.length)})
+              </Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+                {chosen.holds!.map(({ item: one }) => (
+                  <View key={one.id} style={{ width: 72, alignItems: "center" }}>
+                    <View
+                      style={{
+                        width: 60,
+                        height: 60,
+                        borderRadius: 14,
+                        overflow: "hidden",
+                        backgroundColor: firstColor(one.spec, colors.chip),
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {one.mediaId ? (
+                        <MediaImage
+                          mediaId={one.mediaId}
+                          resizeMode={one.kind === "CHARM" || one.kind === "FRAME" ? "contain" : "cover"}
+                          style={{ width: one.kind === "CHARM" ? 48 : 60, height: one.kind === "CHARM" ? 48 : 60 }}
+                        />
+                      ) : null}
+                    </View>
+                    <Text numberOfLines={1} style={{ color: colors.ink, fontSize: 11.5, marginTop: 4, writingDirection: "auto" }}>
+                      {one.name}
+                    </Text>
+                    <Text style={{ color: colors.muted, fontSize: 10.5 }}>{KIND_LABEL[one.kind] ?? "صنف"}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
           {/* القائمةُ المنسدلة للمُدد: المختارةُ ظاهرة، والضغطُ يفتح البقيّة. */}
           {plans.length > 0 && chosen.earnedAfterDays === null ? (
             <View style={{ marginTop: 8 }}>
@@ -479,9 +520,9 @@ export function StoreGrid({
                 onPress={() => setShowing(false)}
                 style={{ flex: 1, backgroundColor: "rgba(14,26,36,.88)", alignItems: "center", justifyContent: "center", padding: 32 }}
               >
-                {chosen.mediaId ? (
+                {chosen.mediaId || chosen.promoMediaId ? (
                   <MediaImage
-                    mediaId={chosen.mediaId}
+                    mediaId={(chosen.mediaId ?? chosen.promoMediaId)!}
                     resizeMode="contain"
                     style={{ width: 280, height: 280 }}
                   />
