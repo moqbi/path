@@ -39,7 +39,8 @@ export function Preview({ item }: { item: StoreItem }) {
     return (
       // عرضٌ صريح: البطاقةُ تتوسّط ما فيها (`alignItems: center`)، فصندوقٌ بلا عرضٍ ينكمش إلى صفر وتختفي الصورة.
       <View style={{ width: "100%", height: 62, borderRadius: 12, overflow: "hidden", backgroundColor: colors.chip }}>
-        <MediaImage mediaId={item.promoMediaId} resizeMode="cover" style={{ width: "100%", height: 62 }} />
+        {/* كاملةً في صندوقها (`contain`) — **بقرار المالك**: القصُّ كان يُخفي أطرافَ الإعلان. */}
+        <MediaImage mediaId={item.promoMediaId} resizeMode="contain" style={{ width: "100%", height: 62 }} />
       </View>
     );
   }
@@ -161,7 +162,8 @@ export function Preview({ item }: { item: StoreItem }) {
   const picture = item.promoMediaId ?? item.mediaId;
   return (
     <View style={{ width: "100%", height: 62, borderRadius: 12, backgroundColor: paint, overflow: "hidden" }}>
-      {picture ? <MediaImage mediaId={picture} resizeMode="cover" style={{ width: "100%", height: 62 }} /> : null}
+      {/* وكاملةً في صندوقها على لون الثيم لا مقصوصةً. */}
+      {picture ? <MediaImage mediaId={picture} resizeMode="contain" style={{ width: "100%", height: 62 }} /> : null}
     </View>
   );
 }

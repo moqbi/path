@@ -55,7 +55,7 @@ function Preview({ item }: { item: Item }) {
   if (item.kind === "BUNDLE" && item.promoMediaId) {
     return (
       <span
-        className="block h-[62px] w-full rounded-xl bg-cover bg-center"
+        className="block h-[62px] w-full rounded-xl bg-contain bg-center bg-no-repeat"
         style={{ backgroundImage: `url(${BASE}/api/media/${item.promoMediaId})` }}
       />
     );
@@ -148,7 +148,7 @@ function Preview({ item }: { item: Item }) {
   return (
     <span
       className="w-full rounded-xl"
-      style={{ height: 62, ...itemPaint({ ...item, mediaId: item.promoMediaId ?? item.mediaId }) }}
+      style={{ height: 62, ...itemPaint({ ...item, mediaId: item.promoMediaId ?? item.mediaId }, "contain") }}
     />
   );
 }
