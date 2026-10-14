@@ -469,6 +469,22 @@ export async function addItemPlan(itemId: string, formData: FormData): Promise<v
   revalidatePath("/admin");
 }
 
+/**
+ * مدّةُ عرض الصنف — **بقرار المالك**: «خمسة أيام» تعني أنّه يُخفى من المتجر بعدها
+ * ويُرى «مخفي» هنا، والكنسُ في الخادم يكتبه (`expireListings`). وصفرٌ يلغي الموعد.
+ * والمدّةُ تُحسب من ساعة الحفظ، وحفظٌ ثانٍ يبدأها من جديد.
+ */
+export async function setItemHideAt(itemId: string, formData: FormData): Promise<void> {
+  await requireAdmin("store");
+  const days = Math.round(digits(formData.get("days")));
+  if (!(days >= 0 && days <= 365)) return;
+  await prisma.storeItem.update({
+    where: { id: itemId },
+    data: { hideAt: days === 0 ? null : new Date(Date.now() + days * 86_400_000) },
+  });
+  revalidatePath("/admin");
+}
+
 export async function dropItemPlan(planId: string): Promise<void> {
   await requireAdmin("store");
   await prisma.storeItemPlan.delete({ where: { id: planId } });

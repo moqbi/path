@@ -43,7 +43,7 @@ import { SITE_TEXT, siteText, siteImage, type SiteKey } from "@/lib/site";
 import { ItemImage } from "./item-image";
 import { ItemCover, ItemPromo } from "./item-cover";
 import { BundleItems } from "./bundle";
-import { CollectionsView, ItemPlans } from "./store-extras";
+import { CollectionsView, ItemHideAt, ItemPlans } from "./store-extras";
 import { InvitesView } from "./invites";
 import { coinText, ar, relative, riyals } from "@/lib/format";
 import { groundInkOf, parsePalette } from "@/lib/theme";
@@ -1481,6 +1481,7 @@ export default async function AdminPage({
                           />
                           {/* مُدَدُ الشراء — للإطار والتشارم والثيم. والمجموعةُ في النموذج تحت. */}
                           {item.kind !== "BUNDLE" ? <ItemPlans itemId={item.id} /> : null}
+                          <ItemHideAt itemId={item.id} />
                           <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
                             الثيم يُلبَس خلفيةً للتطبيق، والتشارم شعاراً تحت صورة العرض،
                             والإطار حلقةً حولها. التشارم والإطار يُحفظان PNG بشفافيتهما.
@@ -1497,6 +1498,10 @@ export default async function AdminPage({
                               <ItemCover itemId={item.id} mediaId={item.coverMediaId} />
                               <ItemPromo itemId={item.id} mediaId={item.promoMediaId} />
                             </>
+                          ) : null}
+                          {/* وللحزمة صورةُ إعلان: بطاقتُها في المتجر وبطاقةُ الإعلان عند الفتح. */}
+                          {item.kind === "BUNDLE" ? (
+                            <ItemPromo itemId={item.id} mediaId={item.promoMediaId} bundle />
                           ) : null}
 
                           {/* والحزمة تُملأ من هنا: ما فيها يُرى قبل أن يُشترى. */}

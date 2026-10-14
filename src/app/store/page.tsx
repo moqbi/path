@@ -28,7 +28,7 @@ export default async function StorePage({
 
   const { c } = await searchParams;
 
-  const [categories, all, purchases] = await Promise.all([
+  const [categories, every, purchases, bundled] = await Promise.all([
     prisma.storeCategory.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),
     // والمخفيّ لا يُعرض: بابُ الموسميّ — يُرفع ويُنزل بلا حذفٍ يُضيع
     // ما اشتراه أحد (`hidden`).
@@ -44,7 +44,12 @@ export default async function StorePage({
       },
     }),
     prisma.purchase.findMany({ where: { userId: user.id, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, select: { itemId: true } }),
+    prisma.bundleItem.findMany({ select: { itemId: true }, distinct: ["itemId"] }),
   ]);
+
+  // ما في حزمةٍ يُباع فيها وحدها — **بقرار المالك**، كالخادم (`storefront`).
+  const inBundle = new Set(bundled.map((row) => row.itemId));
+  const all = every.filter((item) => !inBundle.has(item.id));
 
   const category = categories.find((row) => row.slug === c) ?? null;
   const owned = purchases.map((row) => row.itemId);
@@ -60,10 +65,11 @@ export default async function StorePage({
     earnedAfterDays: item.earnedAfterDays,
     limited: item.limited,
     mediaId: item.mediaId,
+    promoMediaId: item.promoMediaId,
     holds: item.holds.map((row) => row.item),
   });
 
-  const grid = (items: typeof all) => (
+  const grid = (items: typeof every) => (
     <StoreGrid
       items={items.map(shape)}
       owned={owned}

@@ -5,8 +5,9 @@ import {
   deleteCollection,
   updateCollection,
   dropItemPlan,
+  setItemHideAt,
 } from "@/app/actions";
-import { ar, coinText } from "@/lib/format";
+import { ar, coinText, untilDay } from "@/lib/format";
 import { Saver } from "./saver";
 
 const INPUT =
@@ -176,5 +177,48 @@ export async function CollectionsView() {
         );
       })}
     </>
+  );
+}
+
+/** مدّاتُ العرض المعروضة — قائمةٌ مغلقة لا حقلُ أيام (كالقاعدة ١١٦). */
+const SHOW_DAYS = [1, 2, 3, 5, 7, 10, 14, 30];
+
+/**
+ * مدّةُ عرض الصنف في المتجر — **بقرار المالك**، للحزمة الموسميّة وغيرها: بعدها
+ * يُخفى ويُرى «مخفي» هنا، وما اشتُري منه يبقى لأصحابه.
+ */
+export async function ItemHideAt({ itemId }: { itemId: string }) {
+  const item = await prisma.storeItem.findUnique({ where: { id: itemId }, select: { hideAt: true, hidden: true } });
+  if (!item) return null;
+  return (
+    <div className="mt-3 rounded-xl border border-line p-3">
+      <p className="text-[12px] font-semibold text-ink-2">مدّة العرض في المتجر</p>
+      <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
+        {item.hideAt
+          ? `يُخفى من المتجر ${untilDay(item.hideAt)}، ثمّ يظهر هنا «مخفي». ومن اشتراه يبقى له.`
+          : item.hidden
+            ? "مخفيٌّ الآن. ارفعه أوّلاً ثمّ اضبط مدّته."
+            : "بلا مدّة: يبقى في المتجر حتى تخفيه بيدك."}
+      </p>
+      <form action={setItemHideAt.bind(null, itemId)} className="mt-2 flex items-end gap-2">
+        <label className="grow text-[11px] text-muted">
+          يُخفى بعد
+          <select name="days" defaultValue="" required className={`${INPUT} mt-1`} style={{ height: 40 }}>
+            <option value="" disabled>
+              اختر المدّة
+            </option>
+            {SHOW_DAYS.map((days) => (
+              <option key={days} value={days}>
+                {daysLabel(days)}
+              </option>
+            ))}
+            {item.hideAt ? <option value="0">بلا مدّة — ألغِ الموعد</option> : null}
+          </select>
+        </label>
+        <button type="submit" className="rounded-xl px-3 text-[12px] font-bold" style={{ height: 40, background: "var(--color-clay)", color: "var(--color-on-brand)" }}>
+          احفظ
+        </button>
+      </form>
+    </div>
   );
 }

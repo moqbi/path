@@ -43,6 +43,8 @@ export type Item = {
    * صندوقٌ عشوائيّ بلا عشوائية، والقاعدة ٦ تمنع الصناديق.
    */
   holds?: { id: string; name: string; spec: string; mediaId: string | null; kind: string }[];
+  /** صورةُ إعلان الحزمة: تُعرض في بطاقتها بدل رسوم ما فيها. */
+  promoMediaId?: string | null;
 };
 
 function Preview({ item }: { item: Item }) {
@@ -50,6 +52,14 @@ function Preview({ item }: { item: Item }) {
     الحزمة تُعرض بما فيها: ثلاثةُ رسومٍ متداخلة وعددُ ما بقي — فما يُشترى
     يُرى قبل شرائه.
   */
+  if (item.kind === "BUNDLE" && item.promoMediaId) {
+    return (
+      <span
+        className="block h-[62px] w-full rounded-xl bg-cover bg-center"
+        style={{ backgroundImage: `url(${BASE}/api/media/${item.promoMediaId})` }}
+      />
+    );
+  }
   if (item.kind === "BUNDLE") {
     const inside = item.holds ?? [];
     const shown = inside.slice(0, 3);
@@ -354,6 +364,27 @@ function ItemCard({
           </div>
         </div>
 
+        {/* ما في الحزمة كاملاً — البطاقةُ ترسم ثلاثةً وتعدّ الباقي (القاعدة ٦). */}
+        {bundle && (item.holds?.length ?? 0) > 0 ? (
+          <div className="mt-2 px-1">
+            <p className="mb-2 text-[12px] font-semibold text-muted">ما في الحزمة ({ar(item.holds!.length)})</p>
+            <div className="flex flex-wrap gap-2.5">
+              {item.holds!.map((one) => (
+                <div key={one.id} className="flex w-[72px] flex-col items-center">
+                  <span
+                    className="block h-[60px] w-[60px] rounded-[14px]"
+                    style={itemPaint(one, one.kind === "CHARM" || one.kind === "FRAME" ? "contain" : "cover")}
+                  />
+                  <span dir="auto" className="mt-1 w-full truncate text-center text-[11.5px]">
+                    {one.name}
+                  </span>
+                  <span className="text-[10.5px] text-muted">{KIND_LABEL[one.kind] ?? "صنف"}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         {/* خياران: عرضٌ يكبّر الرسم، وشراءٌ يفعل. */}
         <div className="mt-3 flex gap-2">
           <button
@@ -442,10 +473,10 @@ function ItemCard({
             className="fixed inset-0 z-[60] flex items-center justify-center p-8"
             style={{ background: "rgba(14,26,36,.88)" }}
           >
-            {item.mediaId ? (
+            {item.mediaId || item.promoMediaId ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={`${BASE}/api/media/${item.mediaId}`}
+                src={`${BASE}/api/media/${item.mediaId ?? item.promoMediaId}`}
                 alt={item.name}
                 className="max-h-full max-w-full object-contain"
               />

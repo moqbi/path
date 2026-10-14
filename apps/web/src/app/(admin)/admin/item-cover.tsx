@@ -73,7 +73,16 @@ export function ItemCover({ itemId, mediaId }: { itemId: string; mediaId: string
  * صورةُ بطاقة الإعلان (القاعدة ٢٧٢) — **بقرار المالك**: صورةُ الثيم خلفيةٌ بطول الشاشة
  * لا تُقرأ في بطاقةٍ صغيرة، فللإعلان صورتُه. وبلاها تُرسم صورةُ الصنف كما كانت.
  */
-export function ItemPromo({ itemId, mediaId }: { itemId: string; mediaId: string | null }) {
+export function ItemPromo({
+  itemId,
+  mediaId,
+  bundle = false,
+}: {
+  itemId: string;
+  mediaId: string | null;
+  /** للحزمة: الصورةُ في بطاقتها بالمتجر أيضاً، لا في بطاقة الإعلان وحدها. */
+  bundle?: boolean;
+}) {
   return (
     <div className="mt-3 border-t border-line pt-3">
       <p className="mb-2 text-[12px] font-semibold text-muted">صورة بطاقة الإعلان</p>
@@ -114,8 +123,9 @@ export function ItemPromo({ itemId, mediaId }: { itemId: string; mediaId: string
         ) : null}
       </div>
       <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
-        تظهر في بطاقة الإعلان عند فتح التطبيق بدل صورة الثيم — مربّعة أو قريبةٌ منها أوضح. وتفعيلُ
-        البطاقة من «بطاقة إعلان» تحت.
+        {bundle
+          ? "تظهر في بطاقة الحزمة بالمتجر بدل رسوم ما فيها، وفي بطاقة الإعلان عند فتح التطبيق — عريضةٌ أوضح في المتجر. وتفعيلُ البطاقة من «بطاقة إعلان» تحت."
+          : "تظهر في بطاقة الإعلان عند فتح التطبيق بدل صورة الثيم — مربّعة أو قريبةٌ منها أوضح. وتفعيلُ البطاقة من «بطاقة إعلان» تحت."}
       </p>
     </div>
   );
