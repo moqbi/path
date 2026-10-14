@@ -20,7 +20,7 @@ const KIND_LABEL: Record<string, string> = {
   THEME: "ثيم",
   CHARM: "تشارم",
   BACKGROUND: "ثيم",
-  BUNDLE: "باقة",
+  BUNDLE: "حزمة",
 };
 
 export type Item = {
