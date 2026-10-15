@@ -49,11 +49,16 @@ export const placeRoutes = new Hono()
   */
   .post("/check-in", requireActive, async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as unknown;
-    const parsed = query.extend({ airport: z.string().trim().min(1).max(120).optional() }).safeParse(body);
+    const parsed = query.extend({
+      airport: z.string().trim().min(1).max(120).optional(),
+      city: z.string().trim().min(1).max(80).optional(),
+      country: z.string().trim().min(1).max(80).optional(),
+      countryCode: z.string().trim().length(2).optional(),
+    }).safeParse(body);
     if (!parsed.success) return c.json({ city: null, wrote: false });
 
     // ومعه آخرُ موضعٍ لمن فعّل تنبيهَ «من حولك» (القاعدة ٢٨٢) — ساعةً في الذاكرة.
     void rememberSpot(me(c), parsed.data);
-    const result = await checkInCity(me(c), parsed.data.lat, parsed.data.lng, parsed.data.airport);
+    const result = await checkInCity(me(c), parsed.data.lat, parsed.data.lng, parsed.data);
     return c.json(result);
   });

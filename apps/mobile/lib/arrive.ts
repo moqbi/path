@@ -39,9 +39,23 @@ export async function checkCity(): Promise<void> {
     const { latitude: lat, longitude: lng } = here.coords;
     // المطارُ من خرائط آبل على الجهاز (القاعدة ٢٨٦)، وفشلُها لا يمنع الوصول.
     const airport = await appleAirport(lat, lng).catch(() => null);
+    /*
+      والمدينةُ والدولة من خرائط آبل أيضاً (`CLGeocoder` تحت `reverseGeocodeAsync`):
+      OpenStreetMap على الخادم كان يردّ اسمَ حيٍّ مكان المدينة — «وصل إلى المطار».
+      والخادمُ يأخذها إن كانت عربيّة، وإلّا يقرأ ما عنده.
+    */
+    const [spot] = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng }).catch(() => []);
+    const city = spot?.city ?? null;
     await api("/v1/places/check-in", {
       method: "POST",
-      body: JSON.stringify({ lat, lng, ...(airport ? { airport } : {}) }),
+      body: JSON.stringify({
+        lat,
+        lng,
+        ...(airport ? { airport } : {}),
+        ...(city ? { city } : {}),
+        ...(spot?.country ? { country: spot.country } : {}),
+        ...(spot?.isoCountryCode ? { countryCode: spot.isoCountryCode } : {}),
+      }),
     });
   } catch {
     last = 0;

@@ -242,22 +242,35 @@ async function markCity(userId: string, city: string | null) {
  * و«إظهار موقعي» لا يمنعها: المدينةُ تبقى في كل حال (القاعدة ٦٨)،
  * وهي وحدها ما يُحفظ هنا — لا نقطةَ ولا اسمَ مكان.
  */
-export async function checkInCity(userId: string, lat: number, lng: number, airport?: string) {
-  const exists = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
-  if (!exists) throw notFound("لا حساب");
+/** ما يقرؤه الجوّالُ من خرائط آبل ويرسله مع الإحداثيات (القاعدة ٢٨٦). */
+type FromDevice = { airport?: string; city?: string; country?: string; countryCode?: string };
 
+/** عربيٌّ؟ اسمٌ لاتينيّ من جهازٍ بلغةٍ أخرى يُقرأ مدينةً ثانية بجانب الاسم العربيّ المحفوظ. */
+const arabic = (text?: string | null) => (text && /[\u0600-\u06FF]/.test(text) ? text : null);
+
+export async function checkInCity(userId: string, lat: number, lng: number, device: FromDevice = {}) {
   const place = await reverseGeocode(lat, lng);
   /*
-    المطارُ من خرائط آبل على الجهاز (القاعدة ٢٨٦) — بلا مفتاحٍ ولا حصّة —
-    ونوميناتيم إن قالها بنفسه. ولا يُكتب إلا حين تتبدّل الدولة (`recordCity`).
+    المدينةُ والدولةُ والمطارُ من خرائط آبل على الجهاز (القاعدة ٢٨٦) — بلا مفتاحٍ
+    ولا حصّة — ونوميناتيم احتياطٌ لما لم يرسله الجهاز. والمطارُ لا يُكتب إلا حين
+    تتبدّل الدولة (`recordCity`)؛ وتبدّلُ المدينة يُكتب «وصل إلى جدة» كما كان.
   */
+  /*
+    آبل ونوميناتيم قد يكتبان المدينةَ نفسها بحرفين («جدة» و«جده»): إن قال
+    نوميناتيم إنّها مدينةُ آخر قراءة بقيت كما حُفظت — وإلّا كُتب وصولٌ كاذب
+    لكلّ أحدٍ ساعةَ يصله التحديث.
+  */
+  const before = await prisma.user.findUnique({ where: { id: userId }, select: { lastCity: true } });
+  if (!before) throw notFound("لا حساب");
+  const stored = before.lastCity?.split("، ")[0] ?? null;
+  const city = stored && place.city === stored ? stored : (arabic(device.city) ?? place.city);
   const wrote = await recordCity(userId, {
-    city: place.city,
-    country: place.country ?? null,
-    countryCode: place.countryCode ?? null,
-    airport: place.airport ?? airport ?? null,
+    city,
+    country: arabic(device.country) ?? place.country ?? null,
+    countryCode: device.countryCode?.toLowerCase() ?? place.countryCode ?? null,
+    airport: place.airport ?? device.airport ?? null,
   });
-  return { city: place.city, wrote };
+  return { city, wrote };
 }
 
 /**
