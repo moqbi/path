@@ -8,7 +8,15 @@
  * نسخةٌ من `src/lib/places.ts` بلا `server-only`: تلك موسومةٌ لـNext،
  * وهذه تعمل تحت node وحده. تُدمجان حين يُسحب الويب القديم.
  */
-export type ResolvedPlace = { name: string | null; city: string | null };
+export type ResolvedPlace = {
+  name: string | null;
+  city: string | null;
+  /** الدولةُ بالعربية ورمزُها: «وصل إلى دبي، الإمارات» خارج المملكة (القاعدة ٢٨٦). */
+  country?: string | null;
+  countryCode?: string | null;
+  /** اسمُ المطار حين يقع الموضعُ فيه. */
+  airport?: string | null;
+};
 
 export async function reverseGeocode(lat: number, lng: number): Promise<ResolvedPlace> {
   const url = new URL("https://nominatim.openstreetmap.org/reverse");
@@ -25,7 +33,12 @@ export async function reverseGeocode(lat: number, lng: number): Promise<Resolved
     });
     if (!response.ok) return { name: null, city: null };
 
-    const data = (await response.json()) as { name?: string; address?: Record<string, string> };
+    const data = (await response.json()) as {
+      name?: string;
+      category?: string;
+      type?: string;
+      address?: Record<string, string>;
+    };
     const address = data.address ?? {};
     const city = address.city ?? address.town ?? address.village ?? address.state ?? null;
     const name =
@@ -38,7 +51,15 @@ export async function reverseGeocode(lat: number, lng: number): Promise<Resolved
       city ||
       null;
 
-    return { name: name ?? null, city };
+    const airport =
+      (data.category === "aeroway" && data.type === "aerodrome" ? data.name?.trim() : null) || address.aeroway || null;
+    return {
+      name: name ?? null,
+      city,
+      country: address.country ?? null,
+      countryCode: address.country_code?.toLowerCase() ?? null,
+      airport,
+    };
   } catch {
     return { name: null, city: null };
   }
@@ -322,6 +343,30 @@ async function google(lat: number, lng: number, key: string): Promise<NearbyPlac
     ...(near.status === "fulfilled" ? near.value : []),
     ...(known.status === "fulfilled" ? known.value : []),
   ]);
+}
+
+/**
+ * المطارُ الذي يقف فيه صاحبُ الجهاز، إن كان في مطار (القاعدة ٢٨٦).
+ *
+ * يُسأل حين تتبدّل الدولةُ وحدها لا مع كلّ فتح: نداءٌ لقوقل ثمنُه يُدفع
+ * مرّةً لكلّ سفر. وبلا مفتاحٍ أو بفشله لا مطار — فيُكتب اسمُ المدينة.
+ * والدائرةُ ثلاثةُ كيلومترات: الصالةُ قد تبعد عن نقطة المطار في الخريطة.
+ */
+export async function airportAt(lat: number, lng: number): Promise<string | null> {
+  const key = process.env.GOOGLE_PLACES_KEY;
+  if (!key) return null;
+  try {
+    const list = await askGoogle(GOOGLE_NEARBY, key, {
+      maxResultCount: 1,
+      includedTypes: ["airport"],
+      rankPreference: "DISTANCE",
+      languageCode: "ar",
+      locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius: 3000 } },
+    });
+    return list[0]?.displayName?.text?.trim() || null;
+  } catch {
+    return null;
+  }
 }
 
 /**

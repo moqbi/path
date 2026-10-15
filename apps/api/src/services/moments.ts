@@ -2,7 +2,7 @@ import { prisma } from "@athar/db";
 import { recordCity } from "./city";
 import type { MomentInput } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
-import { reverseGeocode } from "../lib/places";
+import { airportAt, reverseGeocode } from "../lib/places";
 import { isSupportedMusicUrl, resolveTrack } from "../lib/music-link";
 import { guard } from "../lib/moderation";
 import { canInteract, canSeeMoment, circleIds } from "./visibility";
@@ -243,11 +243,23 @@ async function markCity(userId: string, city: string | null) {
  * وهي وحدها ما يُحفظ هنا — لا نقطةَ ولا اسمَ مكان.
  */
 export async function checkInCity(userId: string, lat: number, lng: number) {
-  const me = await prisma.user.findUnique({ where: { id: userId }, select: { city: true } });
-  if (!me) throw notFound("لا حساب");
-
   const place = await reverseGeocode(lat, lng);
-  const wrote = await markCity(userId, place.city);
+  /*
+    المطارُ يُسأل عنه حين تتبدّل الدولةُ وحدها (القاعدة ٢٨٦): نداءٌ لقوقل مع كلّ
+    فتحٍ ثمنٌ بلا مقابل. ونوميناتيم يقول أحياناً «في مطار» بنفسه.
+  */
+  const before = await prisma.user.findUnique({ where: { id: userId }, select: { lastCity: true } });
+  if (!before) throw notFound("لا حساب");
+  const abroad = (place.countryCode ?? "sa") !== "sa" ? place.country : null;
+  const tail = before.lastCity?.includes("، ") ? before.lastCity.slice(before.lastCity.lastIndexOf("، ") + 2) : null;
+  const crossing = Boolean(place.countryCode && before.lastCity && (abroad ?? null) !== tail);
+  const airport = place.airport ?? (crossing ? await airportAt(lat, lng) : null);
+  const wrote = await recordCity(userId, {
+    city: place.city,
+    country: place.country ?? null,
+    countryCode: place.countryCode ?? null,
+    airport,
+  });
   return { city: place.city, wrote };
 }
 
