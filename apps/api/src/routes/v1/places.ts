@@ -49,11 +49,11 @@ export const placeRoutes = new Hono()
   */
   .post("/check-in", requireActive, async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as unknown;
-    const parsed = query.safeParse(body);
+    const parsed = query.extend({ airport: z.string().trim().min(1).max(120).optional() }).safeParse(body);
     if (!parsed.success) return c.json({ city: null, wrote: false });
 
     // ومعه آخرُ موضعٍ لمن فعّل تنبيهَ «من حولك» (القاعدة ٢٨٢) — ساعةً في الذاكرة.
     void rememberSpot(me(c), parsed.data);
-    const result = await checkInCity(me(c), parsed.data.lat, parsed.data.lng);
+    const result = await checkInCity(me(c), parsed.data.lat, parsed.data.lng, parsed.data.airport);
     return c.json(result);
   });
