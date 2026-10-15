@@ -116,3 +116,17 @@ export async function appleSearch(query: string, lat: number, lng: number): Prom
   if (!native) return null;
   return shape(await native.search(query, lat, lng));
 }
+
+/**
+ * المطارُ الذي يقف فيه صاحبُ الجهاز، من خرائط آبل (القاعدة ٢٨٦) — أو `null`.
+ * يُرسل مع «وصل إلى…» فيُكتب «وصل إلى مطار دبي الدولي، …» حين تتبدّل الدولة.
+ * والدائرةُ ثلاثةُ كيلومترات: الصالةُ قد تبعد عن نقطة المطار في الخريطة.
+ */
+export async function appleAirport(lat: number, lng: number): Promise<string | null> {
+  if (!native) return null;
+  const rows = await native.nearby(lat, lng, 3000);
+  const airport = rows
+    .filter((row) => row.category?.replace(/^MKPOICategory/, "") === "Airport")
+    .sort((a, b) => a.meters - b.meters)[0];
+  return airport?.name?.trim() || null;
+}

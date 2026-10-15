@@ -1,6 +1,7 @@
 import * as Location from "expo-location";
 import { AppState } from "react-native";
 import { api } from "./api";
+import { appleAirport } from "./apple-places";
 
 /**
  * «وصل إلى الرياض» عند فتح التطبيق.
@@ -35,9 +36,12 @@ export async function checkCity(): Promise<void> {
       ?? (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low }));
     if (!here) return;
 
+    const { latitude: lat, longitude: lng } = here.coords;
+    // المطارُ من خرائط آبل على الجهاز (القاعدة ٢٨٦)، وفشلُها لا يمنع الوصول.
+    const airport = await appleAirport(lat, lng).catch(() => null);
     await api("/v1/places/check-in", {
       method: "POST",
-      body: JSON.stringify({ lat: here.coords.latitude, lng: here.coords.longitude }),
+      body: JSON.stringify({ lat, lng, ...(airport ? { airport } : {}) }),
     });
   } catch {
     last = 0;

@@ -346,30 +346,6 @@ async function google(lat: number, lng: number, key: string): Promise<NearbyPlac
 }
 
 /**
- * المطارُ الذي يقف فيه صاحبُ الجهاز، إن كان في مطار (القاعدة ٢٨٦).
- *
- * يُسأل حين تتبدّل الدولةُ وحدها لا مع كلّ فتح: نداءٌ لقوقل ثمنُه يُدفع
- * مرّةً لكلّ سفر. وبلا مفتاحٍ أو بفشله لا مطار — فيُكتب اسمُ المدينة.
- * والدائرةُ ثلاثةُ كيلومترات: الصالةُ قد تبعد عن نقطة المطار في الخريطة.
- */
-export async function airportAt(lat: number, lng: number): Promise<string | null> {
-  const key = process.env.GOOGLE_PLACES_KEY;
-  if (!key) return null;
-  try {
-    const list = await askGoogle(GOOGLE_NEARBY, key, {
-      maxResultCount: 1,
-      includedTypes: ["airport"],
-      rankPreference: "DISTANCE",
-      languageCode: "ar",
-      locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius: 3000 } },
-    });
-    return list[0]?.displayName?.text?.trim() || null;
-  } catch {
-    return null;
-  }
-}
-
-/**
  * بحثٌ بالاسم حول المستخدم — لما لم يظهر في القائمة: المكانُ الذي أنت
  * فيه قد يكون أبعدَ من العشرين الأقرب، أو اسمُه بلغةٍ أخرى.
  * منحازٌ إلى موقعه (`locationBias`) لا محصورٌ فيه، فالاسمُ يجد صاحبه
