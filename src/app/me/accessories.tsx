@@ -5,6 +5,7 @@ import Link from "next/link";
 import { equip, unequip } from "@/app/actions";
 import { CheckIcon, CloseIcon } from "@/components/icons";
 import { frameInset, itemPaint } from "@/components/ui";
+import { BASE } from "@/lib/base";
 
 /**
  * الإكسسوارات: ما تملكه يُلبَس من ملفك، لا من المتجر.
@@ -19,6 +20,8 @@ export type Owned = {
   spec: string;
   kind: "FRAME" | "BACKGROUND" | "THEME" | "CHARM";
   mediaId: string | null;
+  /** صورةُ الإعلان: الثيمُ يُرى بها كما في المتجر. */
+  promoMediaId?: string | null;
   /** اتّساعُ فراغ الإطار الأوسط: الوجه يجلس فيه، لا في مربّع الرسم. */
   frameHole?: number | null;
   giftedBy: string | null;
@@ -198,7 +201,7 @@ function Group({
                     style={{ width: 50, height: 50, ...itemPaint(item, "contain"), marginBlock: 4 }}
                   />
                 ) : (
-                  <span className="w-full rounded-xl" style={{ height: 58, ...itemPaint(item) }} />
+                  <ThemeArt item={item} />
                 )}
 
                 <span className="text-[11.5px] font-medium">{item.name}</span>
@@ -223,5 +226,21 @@ function Group({
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * الثيمُ كبطاقته في المتجر: صورةُ إعلانه ثمّ صورتُه كاملةً وحولها نسخةٌ مغبّشة
+ * (القاعدة ٢٨٥)، وبلا صورةٍ لونُه.
+ */
+function ThemeArt({ item }: { item: Owned }) {
+  const picture = item.promoMediaId ?? item.mediaId;
+  if (!picture) return <span className="w-full rounded-xl" style={{ height: 58, ...itemPaint(item) }} />;
+  const url = `url(${BASE}/api/media/${picture})`;
+  return (
+    <span className="relative block w-full overflow-hidden rounded-xl" style={{ height: 58 }}>
+      <span aria-hidden className="absolute inset-0 scale-125 bg-cover bg-center blur-md" style={{ backgroundImage: url }} />
+      <span className="absolute inset-0 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: url }} />
+    </span>
   );
 }

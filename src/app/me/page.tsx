@@ -53,6 +53,7 @@ export default async function ProfilePage({
             spec: true,
             kind: true,
             mediaId: true,
+            promoMediaId: true,
             frameHole: true,
             priceCoins: true,
             plusOnly: true,
@@ -204,6 +205,7 @@ export default async function ProfilePage({
                   spec: row.item.spec,
                   kind: row.item.kind,
                   mediaId: row.item.mediaId,
+                  promoMediaId: row.item.promoMediaId,
                   frameHole: row.item.frameHole,
                   giftedBy: row.giftedBy?.name ?? null,
                 }))}

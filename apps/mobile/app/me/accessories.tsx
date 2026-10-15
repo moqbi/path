@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ScreenHeader } from "../../components/screen-header";
 import { MediaImage } from "../../components/media-image";
+import { FilledImage } from "../../components/store-grid";
 import { firstColor, frameInset } from "../../components/avatar";
 import { CheckIcon } from "../../components/icons";
 import { api } from "../../lib/api";
@@ -20,6 +21,8 @@ type Owned = {
   spec: string;
   kind: Kind;
   mediaId: string | null;
+  /** صورةُ الإعلان: الثيمُ يُرى بها كما في المتجر (القاعدة ٢٨٤). */
+  promoMediaId?: string | null;
   /** اتّساعُ فراغ الإطار الأوسط: الوجه يجلس فيه لا في مربّع الرسم. */
   frameHole?: number | null;
   giftedBy: string | null;
@@ -32,6 +35,7 @@ type Row = {
     spec: string;
     kind: Kind;
     mediaId: string | null;
+    promoMediaId?: string | null;
     frameHole?: number | null;
   };
   giftedBy: { id: string; name: string } | null;
@@ -249,9 +253,11 @@ function Art({ item }: { item: Owned }) {
     );
   }
 
+  // والثيمُ كبطاقته في المتجر: صورةُ إعلانه، ثمّ صورتُه، ثمّ لونُه.
+  const picture = item.promoMediaId ?? item.mediaId;
   return (
     <View style={{ width: "100%", height: 58, borderRadius: 12, overflow: "hidden", backgroundColor: paint }}>
-      {item.mediaId ? <MediaImage mediaId={item.mediaId} style={{ width: "100%", height: 58 }} /> : null}
+      {picture ? <FilledImage mediaId={picture} height={58} /> : null}
     </View>
   );
 }
