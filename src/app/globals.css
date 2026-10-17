@@ -815,3 +815,14 @@ h3 {
     animation-duration: 0.01s;
   }
 }
+
+/*
+ * شاشةُ الدخول على سطح المكتب الشاشةُ كلُّها (`login/form.tsx` ← `.login-page`):
+ * هيكلُ الهاتف بعرض ٤٣٠ في وسط شاشةٍ عريضة كان يُقرأ ويبَ جوّال.
+ */
+@media (min-width: 1024px) {
+  .shell:has(.login-page) {
+    max-width: none;
+    box-shadow: none;
+  }
+}
