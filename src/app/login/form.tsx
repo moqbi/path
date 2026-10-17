@@ -110,7 +110,7 @@ export function LoginForm({
 
   return (
     <div
-      className="screen relative"
+      className="screen login-page relative"
       style={{
         backgroundImage: photo
           ? `linear-gradient(180deg,rgba(14,26,36,.35),rgba(14,26,36,.88)), url(${asset("/login-bg.jpg")})`
@@ -147,10 +147,16 @@ export function LoginForm({
         </>
       )}
 
-      <div className="relative flex flex-1 flex-col justify-between px-6 pb-10 pt-16">
+      {/*
+        على سطح المكتب (من ١٠٢٤) الشاشةُ كلُّها لا هيكلُ هاتف: العلامةُ في طرف
+        البداية بحجمٍ يملأ مكانها، والخياراتُ بطاقةٌ زجاجيّة في الطرف الآخر —
+        عمودٌ بعرض ٤٣٠ في وسط شاشةٍ عريضة كان يُقرأ ويبَ جوّالٍ مُكبَّراً.
+        والجوّالُ كما هو.
+      */}
+      <div className="relative flex flex-1 flex-col justify-between px-6 pb-10 pt-16 lg:mx-auto lg:w-full lg:max-w-[1120px] lg:flex-row lg:items-center lg:justify-between lg:gap-20 lg:px-16 lg:py-0">
         {/* المقدّمة: تدخل من الأعلى ثم تغادر إلى الأعلى. */}
         <div
-          className="flex flex-col items-center pt-6"
+          className="flex flex-col items-center pt-6 lg:inset-y-0 lg:justify-center lg:pt-0"
           style={{
             opacity: introVisible ? 1 : 0,
             transform: introVisible
@@ -194,7 +200,7 @@ export function LoginForm({
           أسفلها حيث يصل الإبهام. وهي تظهر مع الخيارات بالحركة نفسها.
         */}
         <div
-          className="flex flex-col items-center pt-2"
+          className="flex flex-col items-center pt-2 lg:max-w-[520px] lg:flex-1 lg:items-start lg:pt-0"
           style={{
             opacity: formVisible ? 1 : 0,
             transition: "opacity 700ms ease 120ms",
@@ -202,17 +208,34 @@ export function LoginForm({
           }}
         >
           <AthrMark size={96} />
-          <span className="latin mt-3 text-[26px] font-bold" style={{ color: "#f7f5ef" }}>
-            ATHAR
+          <span
+            className="latin mt-3 text-[26px] font-bold lg:mt-6 lg:whitespace-nowrap lg:text-[46px] lg:leading-none lg:tracking-[0.04em]"
+            style={{ color: "#f7f5ef" }}
+          >
+            ATHAR Moments
           </span>
-          <span className="mt-2 text-[13px]" style={{ color: "#cbc5bb" }}>
+          <span className="mt-2 text-[13px] lg:mt-5 lg:text-[24px] lg:font-bold" style={{ color: "#cbc5bb" }}>
             {TAGLINE_AR}
           </span>
+          <span
+            dir="ltr"
+            className="latin mt-2 hidden text-[12px] lg:block"
+            style={{ color: "#b9b2a8", letterSpacing: "0.1em" }}
+          >
+            {TAGLINE_EN}
+          </span>
+          <p
+            className="mt-8 hidden max-w-[440px] text-[15px] leading-[1.9] lg:block"
+            style={{ color: "rgba(247,245,239,.78)" }}
+          >
+            دائرةٌ لا تتجاوز ١٥٠ شخصاً تعرفهم فعلاً: لحظاتُك وقصصُك ونوتُك
+            ومحادثاتُك معهم وحدهم — بلا استكشاف عامّ ولا غرباء.
+          </p>
         </div>
 
         {/* خيارات الدخول: تدخل من الأسفل بعد مغادرة المقدّمة. */}
         <div
-          className="mt-auto"
+          className="mt-auto lg:mt-0 lg:w-[420px] lg:shrink-0 lg:rounded-[28px] lg:border lg:border-white/10 lg:bg-[rgba(14,26,36,.55)] lg:p-9 lg:shadow-[0_30px_80px_rgba(0,0,0,.35)] lg:backdrop-blur-xl"
           style={{
             opacity: formVisible ? 1 : 0,
             transform: formVisible ? "translateY(0)" : "translateY(26px)",
@@ -220,6 +243,15 @@ export function LoginForm({
             pointerEvents: formVisible ? "auto" : "none",
           }}
         >
+          <div className="mb-6 hidden lg:block">
+            <h1 className="text-[24px] font-bold" style={{ color: "#f7f5ef", fontFamily: "Tajawal, sans-serif" }}>
+              {showEmail && newcomer ? "أنشئ حسابك" : "أهلاً بك"}
+            </h1>
+            <p className="mt-1 text-[13px]" style={{ color: "rgba(247,245,239,.62)" }}>
+              {showEmail && newcomer ? "دقيقة واحدة وتكون معنا." : "سجّل دخولك لتكمل مع ناسك."}
+            </p>
+          </div>
+
           {verify ? (
             <p
               role="alert"
@@ -333,7 +365,7 @@ export function LoginForm({
               */}
               {newcomer ? null : (
                 <a
-                  href="/forgot"
+                  href={`${BASE}/forgot`}
                   className="mt-1 text-center text-[12.5px] font-medium"
                   style={{ color: "rgba(247,245,239,.72)" }}
                 >
@@ -378,7 +410,7 @@ export function LoginForm({
                         "الدخول بحساب آبل يعمل داخل التطبيق. استخدم البريد هنا.",
                       );
                     }}
-                    className="flex flex-1 items-center justify-center rounded-xl"
+                    className="flex flex-1 items-center justify-center rounded-xl transition hover:brightness-90"
                     style={{
                       height: 54,
                       background: "rgba(247,245,239,.94)",
