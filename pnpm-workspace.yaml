@@ -18,3 +18,12 @@ onlyBuiltDependencies:
   - unrs-resolver
 patchedDependencies:
   expo-router: patches/expo-router.patch
+
+# ترقياتٌ أمنيّة لحزمٍ غير مباشرة داخل إصدارها الرئيسيّ نفسه (تدقيق أكتوبر).
+# ما يحتاج إصداراً رئيسيّاً آخر لا يُفرض هنا: يُكسر أباه.
+overrides:
+  mysql2: ^3.23.1
+  fast-uri: ^3.1.8
+  source-map-js: ^1.2.2
+  shell-quote: ^1.11.0
+  postcss@8: ^8.5.23

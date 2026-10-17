@@ -47,7 +47,8 @@ export default async function TikTokCallback({
         */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `setTimeout(function(){location.href=${JSON.stringify(deep)}},400)`,
+            // `<` يُهرَّب: نصٌّ داخل `<script>` لا يُغلقه `</script>` جاء في عنوان.
+            __html: `setTimeout(function(){location.href=${JSON.stringify(deep).replace(/</g, "\\u003c")}},400)`,
           }}
         />
         {SITE_URL ? null : null}

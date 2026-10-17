@@ -403,6 +403,8 @@ async function readPlace(
   const place = await reverseGeocode(lat, lng);
   const city = place.city ?? user.city;
   const picked = String(formData.get("place") ?? "").trim().slice(0, 80);
+  // اسمُ المكان نصٌّ يرسله المتصفّح وإن اختير من قائمة، فيُفحص كالمتن.
+  await guard(`${picked}\n${String(formData.get("text") ?? "")}`);
 
   const settings = await prisma.user.findUnique({
     where: { id: user.id },
@@ -522,6 +524,8 @@ export async function postPlace(formData: FormData): Promise<void> {
   const city = place.city ?? user.city;
   // ما اختاره صاحبها من الأماكن حوله أصدق من أقرب عنوان: هو يعرف أين هو.
   const picked = String(formData.get("place") ?? "").trim().slice(0, 80);
+  // اسمُ المكان نصٌّ يرسله المتصفّح وإن اختير من قائمة، فيُفحص كالمتن.
+  await guard(`${picked}\n${String(formData.get("text") ?? "")}`);
 
   const settings = await prisma.user.findUnique({
     where: { id: user.id },
@@ -1479,6 +1483,12 @@ export async function saveProfile(
 
   const name = String(formData.get("name") ?? "").trim().slice(0, 40);
   if (!name) return { error: "الاسم مطلوب" };
+  // الاسمُ والنبذة يُقرآن في الدائرة وفي صفحة المشاركة العامّة: يُفحصان كاللحظة.
+  const blocked = await guard(`${name}\n${String(formData.get("bio") ?? "")}`).then(
+    () => null,
+    (problem: Error) => problem.message,
+  );
+  if (blocked) return { error: blocked };
 
   const rawHandle = String(formData.get("handle") ?? "").trim().replace(/^@/, "").toLowerCase();
   // المعرّف حروف لاتينية وأرقام وشرطة سفلية: يُكتب في الروابط ويُنطق.
@@ -1959,7 +1969,13 @@ export async function markConversationRead(conversationId: string): Promise<void
   const user = await requireUser();
   const now = new Date();
   await prisma.message.updateMany({
-    where: { conversationId, senderId: { not: user.id }, readAt: null },
+    // طرفا المحادثة وحدهما: كان أيُّ حسابٍ يعرف معرّفها يكتب «قُرئت» على رسائلها.
+    where: {
+      conversationId,
+      senderId: { not: user.id },
+      readAt: null,
+      conversation: { OR: [{ aId: user.id }, { bId: user.id }] },
+    },
     // القراءة تستلزم التسليم، فنكتبهما معاً ولا نترك رسالةً «مقروءة غير واصلة».
     data: { readAt: now, deliveredAt: now },
   });
@@ -1984,14 +2000,18 @@ export async function editMessage(
 
   const message = await prisma.message.findUnique({
     where: { id: messageId },
-    select: { senderId: true, conversationId: true, body: true },
+    select: { senderId: true, conversationId: true, body: true, kind: true },
   });
   if (!message) throw new Error("الرسالة غير موجودة");
   if (message.senderId !== user.id) throw new Error("لا تُعدَّل رسالة غيرك");
+  if (message.kind !== "TEXT") throw new Error("النصّ وحده يُعدَّل");
+  await myConversation(message.conversationId, user.id);
 
   const body = String(formData.get("body") ?? "").trim();
   if (!body) return;
   if (body === message.body) return;
+  // التعديلُ كتابةٌ كالإرسال: بلا فحصٍ كان بابَ الكلمات الممنوعة (كالخادم).
+  await guard(body);
 
   await prisma.message.update({
     where: { id: messageId },
@@ -2269,6 +2289,9 @@ export async function equip(itemId: string): Promise<void> {
     include: { item: { select: { kind: true, coverMediaId: true } } },
   });
   if (!purchase) throw new Error("لا تملك هذا الصنف");
+  // ما انتهت مدّتُه لا يُعدّ مملوكاً (القاعدة ٤٤ج)، والحزمةُ لا تُلبَس (٤٤ب).
+  if (purchase.expiresAt && purchase.expiresAt <= new Date()) throw new Error("انتهت مدّة هذا الصنف");
+  if (purchase.item.kind === "BUNDLE") throw new Error("الحزمة لا تُلبَس — البس ما فيها");
 
   const field =
     purchase.item.kind === "FRAME"

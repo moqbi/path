@@ -121,6 +121,8 @@ RENDER_DATABASE_URL="postgresql://…render.com/…?sslmode=require" DIRECT_URL=
 # وهذه بـroot: ما يُكتب في /etc ليس لحساب التطبيق
 cp /home/athar/app/scripts/ops/athar-*.service /home/athar/app/scripts/ops/athar-*.timer /etc/systemd/system/
 cp /home/athar/app/scripts/ops/Caddyfile /etc/caddy/Caddyfile
+# وكلّما تغيّر `scripts/ops/Caddyfile` (آخرُه تدقيقُ أكتوبر: الثقةُ بعنوان الزائر
+# من Cloudflare وحدها) يُنسخ ثانيةً ثمّ: caddy validate --config /etc/caddy/Caddyfile && systemctl reload caddy
 systemctl daemon-reload && systemctl enable athar-web athar-site athar-api
 systemctl enable --now athar-backup.timer
 

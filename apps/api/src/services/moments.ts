@@ -154,7 +154,8 @@ export async function createMoment(userId: string, input: MomentInput) {
   const text = input.text?.trim() || null;
   if (!text && input.kind === "THOUGHT") throw badRequest("اكتب شيئاً");
   // الفلترة قبل الكتابة: ما يُمنع يقف عند صاحبه لا بعد أن يراه الناس.
-  await guard(text);
+  // واسمُ المكان نصٌّ يرسله الجهاز وإن اختير من قائمة، فيُفحص معه.
+  await guard([text, input.place].filter(Boolean).join("\n"));
   if (input.kind === "PLACE" && (input.lat === undefined || input.lng === undefined)) {
     throw badRequest("تعذّر تحديد موقعك");
   }
