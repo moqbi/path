@@ -103,8 +103,6 @@ const STORE_KINDS = [
   { key: "BUNDLE", label: "الحزم", other: "الحزم", kinds: ["BUNDLE"] },
 ] as const;
 
-const COLLECTION_KIND_LABEL: Record<string, string> = { CHARM: "تشارمز", FRAME: "إطارات", THEME: "ثيمات" };
-
 const STORE_VIEWS = [
   { key: "items", label: "الأصناف" },
   { key: "cats", label: "التصنيفات" },
@@ -194,6 +192,52 @@ const PALETTE_FIELDS = [
  * الثيم ليس خلفيةً تتبدّل: من يشتريه يلبس التطبيقُ ألوانَه كلها. وسبعةُ
  * ألوانٍ تكفي — البقية تُشتقّ منها فلا يُسأل المشرف عن درجاتِ لونٍ واحد.
  */
+/**
+ * النوعُ في نموذج الصنف: من أنواع التبويب وحدها — الثيمُ والخلفيّةُ (نوعُه القديم)
+ * بابٌ واحد، وغيرُهما نوعٌ واحدٌ يُكتب ولا يُختار. فلا يصير التشارمُ إطاراً بزلّة
+ * قائمةٍ وحقولُ نوعه الأوّل معه.
+ */
+function KindField({ kinds, value }: { kinds: readonly string[]; value: string }) {
+  const options = KINDS.filter((kind) => kinds.includes(kind.value));
+  if (options.length < 2) {
+    return (
+      <Field label="النوع">
+        <input type="hidden" name="kind" value={value} />
+        <span className="flex items-center text-[13.5px] font-semibold" style={{ height: 46 }}>
+          {KIND_LABEL[value] ?? value}
+        </span>
+      </Field>
+    );
+  }
+  return (
+    <Field label="النوع">
+      <select name="kind" defaultValue={value} className={SELECT} style={{ height: 46 }}>
+        {options.map((kind) => (
+          <option key={kind.value} value={kind.value}>
+            {kind.label}
+          </option>
+        ))}
+      </select>
+    </Field>
+  );
+}
+
+/**
+ * التدرّجُ رسمُ ما لا صورةَ له. والحزمةُ تُرسم ممّا فيها وصورةُ إعلانها، والثيمُ
+ * بألوانٍ من ألوانه — فيبقى الحقلُ مخفيّاً لهما بقيمته: الإجراءُ يشترطه.
+ */
+function SpecField({ kind, value }: { kind: string; value: string }) {
+  if (kind === "BUNDLE") return <input type="hidden" name="spec" value={value} />;
+  return (
+    <Field
+      label="تدرّج CSS"
+      hint={kind === "THEME" ? "يُرسم إن لم تُرفع صورة — والثيمُ بألوانٍ يُرسم من ألوانه وحدها" : "يُرسم إن لم تُرفع صورة"}
+    >
+      <input name="spec" required dir="ltr" defaultValue={value} className={FIELD} style={{ height: 46 }} />
+    </Field>
+  );
+}
+
 function PaletteFields({ palette }: { palette: Record<string, string> | null }) {
   return (
     <details className="rounded-xl border border-line" open={!!palette}>
@@ -1322,16 +1366,12 @@ export default async function AdminPage({
                 </span>
               </summary>
 
+              {/*
+                النوعُ نوعُ التبويب، وكلُّ حقلٍ لنوعه وحده — **بقرار المالك**: كان النموذجُ
+                واحداً للأنواع كلّها، فيرى من يضيف تشارماً ألوانَ الثيم ومجموعاتِ الإطارات.
+              */}
               <Saver action={createStoreItem} className="flex flex-col gap-3 border-t border-line p-3.5">
-                <Field label="النوع">
-                  <select name="kind" defaultValue={kindTab.key} className={SELECT} style={{ height: 46 }}>
-                    {KINDS.map((kind) => (
-                      <option key={kind.value} value={kind.value}>
-                        {kind.label}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
+                <KindField kinds={kindTab.kinds} value={kindTab.key} />
 
                 <Field label="الاسم">
                   <input
@@ -1356,16 +1396,18 @@ export default async function AdminPage({
                       style={{ height: 46 }}
                     />
                   </Field>
-                  <Field label="يُكتسب بعد (يوم)" hint="اتركه فارغاً إن كان يُشترى">
-                    <input
-                      name="earnedAfterDays"
-                      type="number"
-                      min={0}
-                      max={3650}
-                      className={FIELD}
-                      style={{ height: 46 }}
-                    />
-                  </Field>
+                  {kindTab.key !== "BUNDLE" ? (
+                    <Field label="يُكتسب بعد (يوم)" hint="اتركه فارغاً إن كان يُشترى">
+                      <input
+                        name="earnedAfterDays"
+                        type="number"
+                        min={0}
+                        max={3650}
+                        className={FIELD}
+                        style={{ height: 46 }}
+                      />
+                    </Field>
+                  ) : null}
                 </div>
 
                 <Field label="التصنيف">
@@ -1379,31 +1421,27 @@ export default async function AdminPage({
                   </select>
                 </Field>
 
-                <Field label="المجموعة" hint="مجموعةٌ من نوع الصنف أو مختلطة — وإلّا رُدّت">
-                  <select name="collectionId" defaultValue="" className={SELECT} style={{ height: 46 }}>
-                    <option value="">بلا مجموعة</option>
-                    {collections.map((one) => (
-                      <option key={one.id} value={one.id}>
-                        {one.name} — {one.kind ? COLLECTION_KIND_LABEL[one.kind] : "مختلطة"}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
+                {kindTab.key !== "BUNDLE" ? (
+                  <Field label="المجموعة" hint={`مجموعات ${kindTab.label} والمختلطة وحدها`}>
+                    <select name="collectionId" defaultValue="" className={SELECT} style={{ height: 46 }}>
+                      <option value="">بلا مجموعة</option>
+                      {ownCollections.map((one) => (
+                        <option key={one.id} value={one.id}>
+                          {one.name}
+                          {one.kind ? "" : " (مختلطة)"}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                ) : null}
 
-                <Field label="تدرّج CSS" hint="يُرسم إن لم تُرفع صورة — والثيمُ بألوانٍ يُرسم من ألوانه وحدها">
-                  <input
-                    name="spec"
-                    required
-                    dir="ltr"
-                    defaultValue="linear-gradient(135deg,#f6b93b,#ff7a5a)"
-                    className={FIELD}
-                    style={{ height: 46 }}
-                  />
-                </Field>
+                <SpecField kind={kindTab.key} value="linear-gradient(135deg,#f6b93b,#ff7a5a)" />
 
                 <div className="flex flex-col gap-2">
                   <Check name="plusOnly" label="حصري لمشتركي آثار+" />
-                  <Check name="limited" label="حزمة محدودة — تظهر في صفّ «حزم محدودة»" />
+                  {kindTab.key === "BUNDLE" ? (
+                    <Check name="limited" label="حزمة محدودة — تظهر في صفّ «حزم محدودة»" />
+                  ) : null}
                   <Check name="hidden" label="مخفيّ عن المتجر — ومن اشتراه يبقى له" />
                   <Check name="promo" label="بطاقة إعلان — تظهر لكل مستخدم مرّةً عند فتح التطبيق" />
                 </div>
@@ -1411,7 +1449,7 @@ export default async function AdminPage({
                   <input name="promoText" maxLength={140} placeholder="مثال: إطار رمضان وصل — لفترة محدودة" className={FIELD} style={{ height: 46 }} />
                 </Field>
 
-                <PaletteFields palette={null} />
+                {kindTab.key === "THEME" ? <PaletteFields palette={null} /> : null}
 
                 <button
                   type="submit"
@@ -1528,20 +1566,7 @@ export default async function AdminPage({
                           className="flex flex-col gap-3 border-t border-line p-3.5"
                         >
                           <div className="flex gap-2.5">
-                            <Field label="النوع">
-                              <select
-                                name="kind"
-                                defaultValue={item.kind}
-                                className={SELECT}
-                                style={{ height: 46 }}
-                              >
-                                {KINDS.map((kind) => (
-                                  <option key={kind.value} value={kind.value}>
-                                    {kind.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </Field>
+                            <KindField kinds={kindTab.kinds} value={item.kind} />
                             <Field label="الاسم">
                               <input
                                 name="name"
@@ -1566,17 +1591,19 @@ export default async function AdminPage({
                                 style={{ height: 46 }}
                               />
                             </Field>
-                            <Field label="يُكتسب بعد (يوم)">
-                              <input
-                                name="earnedAfterDays"
-                                type="number"
-                                min={0}
-                                max={3650}
-                                defaultValue={item.earnedAfterDays ?? undefined}
-                                className={FIELD}
-                                style={{ height: 46 }}
-                              />
-                            </Field>
+                            {item.kind !== "BUNDLE" ? (
+                              <Field label="يُكتسب بعد (يوم)">
+                                <input
+                                  name="earnedAfterDays"
+                                  type="number"
+                                  min={0}
+                                  max={3650}
+                                  defaultValue={item.earnedAfterDays ?? undefined}
+                                  className={FIELD}
+                                  style={{ height: 46 }}
+                                />
+                              </Field>
+                            ) : null}
                           </div>
 
                           <div className="flex gap-2.5">
@@ -1629,20 +1656,16 @@ export default async function AdminPage({
                             </Field>
                           ) : null}
 
-                          <Field label="تدرّج CSS" hint={item.kind === "THEME" ? "الثيمُ بألوانٍ يُرسم من ألوانه وحدها" : undefined}>
-                            <input
-                              name="spec"
-                              required
-                              dir="ltr"
-                              defaultValue={item.spec}
-                              className={FIELD}
-                              style={{ height: 46 }}
-                            />
-                          </Field>
+                          <SpecField kind={item.kind} value={item.spec} />
 
                           <div className="flex flex-col gap-2">
                             <Check name="plusOnly" label="حصري لمشتركي آثار+" on={item.plusOnly} />
-                            <Check name="limited" label="حزمة محدودة" on={item.limited} />
+                            {item.kind === "BUNDLE" ? (
+                              <Check name="limited" label="حزمة محدودة" on={item.limited} />
+                            ) : item.limited ? (
+                              // علامةٌ قديمةٌ على غير حزمة تبقى كما هي: الحقلُ الغائب كان سيمسحها.
+                              <input type="hidden" name="limited" value="on" />
+                            ) : null}
                             <Check name="hidden" label="مخفيّ عن المتجر" on={item.hidden} />
                             <Check name="promo" label="بطاقة إعلان عند فتح التطبيق" on={item.promoAt !== null} />
                           </div>
@@ -1650,7 +1673,9 @@ export default async function AdminPage({
                             <input name="promoText" maxLength={140} defaultValue={item.promoText ?? ""} className={FIELD} style={{ height: 46 }} />
                           </Field>
 
-                          <PaletteFields palette={parsePalette(item.palette)} />
+                          {item.kind === "THEME" || item.kind === "BACKGROUND" ? (
+                            <PaletteFields palette={parsePalette(item.palette)} />
+                          ) : null}
 
                           <button
                             type="submit"
