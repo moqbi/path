@@ -64,9 +64,20 @@ const PROMO_DAYS = 14;
  * آخر بطاقةٍ رآها صاحبُ الحساب — مرّةً لكلّ إعلان، لا مع كلّ فتح.
  */
 export async function promo(userId: string) {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { promoSeenAt: true } });
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { promoSeenAt: true, createdAt: true },
+  });
+  /*
+    والإعلانُ لا يسبق الحساب — **بقرار المالك**، كجديد المتجر (القاعدة ١٩١): من سجّل
+    اليوم لا يُستقبل بإعلانٍ فُعّل قبل وجوده. فالحدُّ أبعدُ الثلاثة: عمرُ البطاقة،
+    وآخرُ ما رآه، ويومُ انضمامه.
+  */
   const floor = new Date(Date.now() - PROMO_DAYS * 86_400_000);
-  const after = user?.promoSeenAt && user.promoSeenAt > floor ? user.promoSeenAt : floor;
+  const after = [user?.promoSeenAt, user?.createdAt].reduce<Date>(
+    (latest, at) => (at && at > latest ? at : latest),
+    floor,
+  );
   const item = await prisma.storeItem.findFirst({
     where: { hidden: false, promoAt: { gt: after } },
     orderBy: { promoAt: "desc" },
