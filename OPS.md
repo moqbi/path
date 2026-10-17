@@ -485,12 +485,15 @@ eas credentials -p android  # FCM V1 service account key ← Upload
 ### ٨٫١ نشرُ الويب والخادم بعد كلّ دمجٍ في `main`
 
 ```bash
-sudo -iu athar bash -lc "cd ~/app && git pull origin main && scripts/ops/deploy.sh"
+sudo -iu athar git -C app pull origin main && bash /home/athar/app/scripts/ops/release.sh
 ```
 
-ينصّب الاعتماديات بـpnpm، ويطبّق الهجرات **قبل** التشغيل، ويبني التطبيق ثمّ
-الموقع، ويعيد تشغيل الخدمات الثلاث، ثمّ يفحصها. والنجاحُ في آخره:
-`active` ثلاثاً و`200` ثلاثاً. وما لم يتغيّر في المتصفّح بعده يُحدَّث بـ
+سطرٌ واحدٌ قصير يُكتب في كونسول Vultr من الجوّال كما يُلصق في SSH.
+`release.sh` يبني بـathar (`deploy.sh` بـ`SKIP_RESTART=1`): ينصّب الاعتماديات
+بـpnpm، ويطبّق الهجرات **قبل** التشغيل، ويبني التطبيق ثمّ الموقع — ثمّ كروت:
+يعيد تشغيل الخدمات الثلاث، ويفحص `Caddyfile` ثمّ ينسخه ويعيد تحميل Caddy،
+ويسأل الثلاث حتى نصف دقيقة. والنجاحُ في آخره «✔ تمّ النشر». و`deploy.sh` وحده
+كان ينتهي بـ`sudo systemctl` وathar بلا sudo، فيُبنى كلُّ شيء ولا يُعاد تشغيل شيء. وما لم يتغيّر في المتصفّح بعده يُحدَّث بـ
 Ctrl+Shift+R — Cloudflare والمتصفّح يحتفظان بالقديم.
 
 > **`EACCES: permission denied` في الاعتماديات** = ملفّاتٌ يملكها الروت داخل

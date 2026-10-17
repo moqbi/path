@@ -31,6 +31,12 @@ npx next build
 pnpm --filter @athar/web build
 echo "   (لا خطوةَ بناءٍ للواجهة البرمجية — تعمل بـtsx)"
 
+# `release.sh` يبني بـathar هنا ثمّ يعيد التشغيل بنفسه كـroot: athar بلا sudo.
+if [ "${SKIP_RESTART:-}" = 1 ]; then
+  say "البناء تمّ — إعادةُ التشغيل على release.sh"
+  exit 0
+fi
+
 say "إعادةُ التشغيل"
 sudo systemctl restart athar-web athar-site athar-api
 sleep 4
