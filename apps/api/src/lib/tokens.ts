@@ -46,6 +46,7 @@ export async function readAccess(token: string): Promise<Claims> {
   const { payload } = await jwtVerify(token, accessKey, {
     issuer: "athr",
     audience: "athr-app",
+    algorithms: ["HS256"],
   });
   return {
     sub: String(payload.sub),
@@ -58,6 +59,7 @@ export async function readRefresh(token: string): Promise<{ sub: string; family:
   const { payload } = await jwtVerify(token, refreshKey, {
     issuer: "athr",
     audience: "athr-refresh",
+    algorithms: ["HS256"],
   });
   return { sub: String(payload.sub), family: String(payload.family ?? "") };
 }

@@ -2,6 +2,7 @@ import { prisma } from "@athar/db";
 import { badRequest, notFound } from "../lib/errors";
 import { forgetWords } from "../lib/moderation";
 import { dropMedia } from "./media";
+import { canSeeMoment } from "./visibility";
 
 /**
  * البلاغات: بابٌ للمستخدم، وبابٌ للمشرف.
@@ -25,7 +26,11 @@ async function subject(target: Target, targetId: string) {
       select: { authorId: true, text: true, placeName: true, musicTitle: true },
     });
     if (!row) return null;
-    return { ownerId: row.authorId, snippet: row.text ?? row.placeName ?? row.musicTitle ?? null };
+    return {
+      ownerId: row.authorId,
+      snippet: row.text ?? row.placeName ?? row.musicTitle ?? null,
+      momentId: targetId,
+    };
   }
 
   if (target === "STORY") {
@@ -39,9 +44,9 @@ async function subject(target: Target, targetId: string) {
   if (target === "COMMENT") {
     const row = await prisma.comment.findUnique({
       where: { id: targetId },
-      select: { userId: true, body: true },
+      select: { userId: true, body: true, momentId: true },
     });
-    return row ? { ownerId: row.userId, snippet: row.body } : null;
+    return row ? { ownerId: row.userId, snippet: row.body, momentId: row.momentId } : null;
   }
 
   if (target === "MESSAGE") {
@@ -124,6 +129,11 @@ export async function open(
   const found = await subject(input.target, input.targetId);
   if (!found) throw notFound("ما عاد موجوداً");
   if (found.ownerId === reporterId) throw badRequest("هذا منك أنت");
+
+  // اللحظةُ والتعليقُ يُبلغ عنهما من يراهما وحده — كالويب (القاعدة ٢١٠): معرّفٌ
+  // مُخمَّن لا يؤكّد أنّ لحظةً خاصّةً موجودة، ولا ينسخ متنها إلى اللوحة.
+  const momentId = "momentId" in found ? found.momentId : undefined;
+  if (momentId && !(await canSeeMoment(reporterId, momentId))) throw notFound("ما عاد موجوداً");
 
   // الرسالة يُبلغ عنها طرفُ محادثتها وحده: غيرُه لا يقرؤها أصلاً، ومعرّفٌ
   // مُخمَّن لا يصير باباً يُنسخ به كلامُ اثنين إلى اللوحة.

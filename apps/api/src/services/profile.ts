@@ -6,6 +6,7 @@ import { announceAvatar } from "./avatar-moment";
 import { endPlus, lapsedNow } from "./plus";
 import { cityInput } from "./city-input";
 import { tellSupport } from "./support-mail";
+import { guard } from "../lib/moderation";
 import { readTicketFiles, saveTicketFiles } from "./ticket-files";
 
 /** الحساب كما يقرؤه صاحبه: كل ما تعرضه شاشة «الملف الشخصي» وتحريرها. */
@@ -121,6 +122,8 @@ export async function saveProfile(
 ) {
   const name = input.name.trim().slice(0, 40);
   if (!name) throw badRequest("الاسم مطلوب");
+  // الاسمُ والنبذة يُقرآن في الدائرة وفي صفحة المشاركة العامّة: يُفحصان كاللحظة.
+  await guard(`${name}\n${input.bio ?? ""}`);
 
   const handle = (input.handle ?? "").trim().replace(/^@/, "").toLowerCase();
   if (handle && !/^[a-z0-9_]{3,20}$/.test(handle)) {

@@ -398,6 +398,8 @@ export async function equip(userId: string, itemId: string) {
   ]);
   if (!purchase) throw forbidden("لا تملك هذا الصنف");
   if (purchase.expiresAt && purchase.expiresAt <= new Date()) throw forbidden("انتهت مدّة هذا الصنف");
+  // الحزمةُ لا تُلبَس (القاعدة ٤٤ب): كانت تُكتب في `backgroundId` فيُلبَس ثيمٌ لا وجود له.
+  if (purchase.item.kind === "BUNDLE") throw forbidden("الحزمة لا تُلبَس — البس ما فيها");
 
   const field =
     purchase.item.kind === "FRAME"
