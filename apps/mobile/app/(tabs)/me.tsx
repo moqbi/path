@@ -192,7 +192,7 @@ export default function Me() {
         ListHeaderComponent={
           <>
             <StretchCover y={scrollY} height={COVER}>
-              <CoverLayer mediaId={me.coverMediaId} spec={me.background?.spec} height={COVER} x={me.coverX} y={me.coverY} zoom={me.coverZoom} />
+              <CoverLayer mediaId={me.coverMediaId} themeMediaId={me.background?.coverMediaId} spec={me.background?.spec} height={COVER} x={me.coverX} y={me.coverY} zoom={me.coverZoom} />
             </StretchCover>
 
             {/* الصورةُ في طرف البداية، والاسمُ بجانبها (القاعدة ٢٣٣). */}

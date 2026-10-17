@@ -81,34 +81,3 @@ export async function copyMedia(
   });
 }
 
-/**
- * غلافُ الثيم يُلبَس عند شرائه.
- *
- * الثيم مزاجٌ كامل — ألوانُه وصورتُه — وغلافٌ لا يشبهه يكسره. فمن
- * اشتراه وجد غلافه معه، وله أن يغيّره بعدها: نسخةٌ يملكها لا قفلٌ عليه.
- *
- * والفشل يُبتلع: شراءٌ يُلغى لأنّ صورةً لم تُنسخ خسارةٌ لا مقابل لها.
- */
-export async function wearItemCover(
-  coverMediaId: string | null,
-  userId: string,
-  itemId: string | null = null,
-): Promise<void> {
-  if (!coverMediaId) return;
-  try {
-    const copy = await copyMedia(coverMediaId, userId);
-    if (!copy) return;
-    const old = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { coverMediaId: true },
-    });
-    await prisma.user.update({
-      where: { id: userId },
-      // ومعه مصدرُه: انتهاءُ مدّة الثيم يأخذ غلافَه (القاعدة ١٩٣).
-      data: { coverMediaId: copy.id, coverItemId: itemId, coverY: 50, coverX: 50, coverZoom: 100 },
-    });
-    if (old?.coverMediaId) await dropMedia([old.coverMediaId]);
-  } catch {
-    // غلافٌ لم يُلبَس لا يُبطل شراءً تمّ.
-  }
-}

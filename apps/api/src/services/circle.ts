@@ -147,7 +147,7 @@ export async function userProfile(viewerId: string, id: string) {
       coverY: true,
       coverX: true,
       coverZoom: true,
-      background: { select: { spec: true, mediaId: true, palette: true } },
+      background: { select: { spec: true, mediaId: true, palette: true, coverMediaId: true } },
     },
   });
   if (!person) throw notFound("لا يوجد هذا الحساب");

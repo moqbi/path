@@ -115,6 +115,9 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
     select: {
       ownerId: true,
       storeItem: { select: { id: true } },
+      // صورةُ الإعلان وغلافُ الثيم للجميع كصورة الصنف (القاعدتان ٢٧٢ و٢٨٨).
+      storePromo: { select: { id: true } },
+      storeCover: { select: { id: true } },
       avatarOf: { select: { id: true } },
       coverOf: { select: { id: true } },
       moment: { select: { id: true } },
@@ -124,7 +127,7 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
   });
   if (!media) return false;
   if (media.ownerId === userId) return true;
-  if (media.storeItem) return true;
+  if (media.storeItem || media.storePromo || media.storeCover) return true;
 
   if (media.messageOf) {
     const { aId, bId } = media.messageOf.conversation;

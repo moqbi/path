@@ -64,7 +64,7 @@ export async function me(userId: string) {
       interactGroupId: true,
       frame: { select: { id: true, name: true, kind: true, spec: true, mediaId: true, frameHole: true, priceCoins: true, plusOnly: true } },
       charm: { select: { id: true, name: true, kind: true, spec: true, mediaId: true, priceCoins: true, plusOnly: true } },
-      background: { select: { id: true, spec: true, mediaId: true, palette: true } },
+      background: { select: { id: true, spec: true, mediaId: true, palette: true, coverMediaId: true } },
       tag: { select: { name: true, bg: true, fg: true } },
     },
   });

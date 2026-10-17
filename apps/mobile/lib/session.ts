@@ -76,7 +76,7 @@ export type Me = {
   interactGroupId: string | null;
   frame: Worn;
   charm: Worn;
-  background: { id: string; spec: string; mediaId: string | null; palette: string | null } | null;
+  background: { id: string; spec: string; mediaId: string | null; palette: string | null; coverMediaId?: string | null } | null;
   tag: { name: string; bg: string; fg: string } | null;
 };
 

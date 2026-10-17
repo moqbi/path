@@ -124,6 +124,8 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
       storeItem: { select: { id: true } },
       // صورةُ بطاقة الإعلان للجميع كصورة الصنف (القاعدة ٢٧٢).
       storePromo: { select: { id: true } },
+      // وغلافُ الثيم كذلك: يُرسم خلف غلاف لابسه لكلّ من يرى ملفّه (القاعدة ٢٨٨).
+      storeCover: { select: { id: true } },
       avatarOf: { select: { id: true } },
       coverOf: { select: { id: true } },
       moment: { select: { id: true } },
@@ -151,7 +153,7 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
   });
   if (!media) return false;
   if (media.ownerId === userId) return true;
-  if (media.storeItem || media.storePromo) return true;
+  if (media.storeItem || media.storePromo || media.storeCover) return true;
 
   if (media.messageOf) {
     const { aId, bId } = media.messageOf.conversation;

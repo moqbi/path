@@ -270,6 +270,14 @@ function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }
   );
 }
 
+/** غلافُ صاحبه فوق غلاف الثيم: نسبُ الجوّال نفسها (`COVER_BLEND` في `components/cover.tsx`). */
+const BLEND: React.CSSProperties = {
+  opacity: 0.4,
+  mixBlendMode: "luminosity",
+  maskImage: "linear-gradient(to bottom, #000 35%, transparent 100%)",
+  WebkitMaskImage: "linear-gradient(to bottom, #000 35%, transparent 100%)",
+};
+
 /** التدرّج الافتراضي للغلاف حين لا صورة ولا خلفية مشتراة. */
 export const DEFAULT_COVER = "linear-gradient(140deg,#f2e6d5,#e8cdb4 45%,#c9a68f)";
 
@@ -288,12 +296,15 @@ export const DEFAULT_COVER = "linear-gradient(140deg,#f2e6d5,#e8cdb4 45%,#c9a68f
  */
 export function CoverLayer({
   mediaId,
+  themeMediaId,
   spec,
   y = 50,
   x = 50,
   zoom = 100,
 }: {
   mediaId: string | null | undefined;
+  /** غلافُ الثيم الملبوس — يُرسم خلف غلاف صاحبه (القاعدة ٢٨٨). */
+  themeMediaId?: string | null;
   spec: string | null | undefined;
   y?: number;
   x?: number;
@@ -306,16 +317,30 @@ export function CoverLayer({
     النقطة نفسها (`transform-origin`). والغلافُ الخارجيّ يقصّ ما خرج.
   */
   const scale = mediaId ? Math.min(300, Math.max(100, zoom)) / 100 : 1;
+  /*
+    وفوق غلاف الثيم — **بقرار المالك** (القاعدة ٢٨٨): غلافُ صاحبه بشفافية ٤٠٪
+    ومزجِ «الإضاءة» فتأخذ صورتُه ألوانَ الثيم، ويذوب أسفلُها فيه حيث الصورةُ
+    والاسم. و`isolation` تحصر المزجَ في الغلاف فلا يمسّ ما خلفه في الصفحة.
+  */
+  const blended = Boolean(themeMediaId);
   return (
-    <span aria-hidden="true" className="pointer-events-none absolute inset-0 block overflow-hidden">
-      <span
-        className="absolute inset-0 block"
-        style={{
-          ...coverStyle(mediaId, spec, y, x),
-          transform: scale === 1 ? undefined : `scale(${scale})`,
-          transformOrigin: `${x}% ${y}%`,
-        }}
-      />
+    <span
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 block overflow-hidden"
+      style={blended ? { isolation: "isolate" } : undefined}
+    >
+      {blended ? <span className="absolute inset-0 block" style={coverStyle(themeMediaId, null)} /> : null}
+      {blended && !mediaId ? null : (
+        <span
+          className="absolute inset-0 block"
+          style={{
+            ...coverStyle(mediaId, spec, y, x),
+            transform: scale === 1 ? undefined : `scale(${scale})`,
+            transformOrigin: `${x}% ${y}%`,
+            ...(blended ? BLEND : null),
+          }}
+        />
+      )}
     </span>
   );
 }

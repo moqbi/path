@@ -29,7 +29,7 @@ import { readIdentity, upsertIdentity } from "@/lib/oauth";
 import { mailReply, tellSupport } from "@/lib/support-mail";
 import { conversationFor, deliverTo, openConversation, PIN_MAX, VOICE_SECONDS } from "@/lib/dm";
 import { seat as groupSeat, sendToGroup } from "@/lib/groups";
-import { copyMedia, dropMedia, migrateToCloud, storeClip, storeUpload } from "@/lib/media";
+import { dropMedia, migrateToCloud, storeClip, storeUpload } from "@/lib/media";
 import { announceAvatar } from "@/lib/avatar-moment";
 import { cloudReady, probeBucket } from "@/lib/storage";
 import { isSupportedMusicUrl, resolveTrack } from "@/lib/music-link";
@@ -2035,48 +2035,9 @@ const PLUS_DISCOUNT = 0.2;
 async function bundleContents(bundleId: string) {
   const rows = await prisma.bundleItem.findMany({
     where: { bundleId, item: { hidden: false } },
-    select: { item: { select: { id: true, coverMediaId: true } } },
+    select: { item: { select: { id: true } } },
   });
   return rows.map((row) => row.item);
-}
-
-/**
- * غلافُ الثيم يُلبَس عند شرائه.
- *
- * الثيم مزاجٌ كامل — ألوانُه وصورتُه — وغلافٌ لا يشبهه يكسره. فمن
- * اشتراه وجد غلافه معه، **وله أن يغيّره بعدها**: نسخةٌ يملكها، لا
- * قفلٌ عليه.
- *
- * والنسخة لأنّ `User.coverMediaId` فريد: إشارةٌ إلى ملفّ الصنف نفسه
- * تصطدم عند ثاني مشترٍ وتنتزعه من المتجر (`copyMedia`).
- *
- * وخارج المعاملة عمداً: نسخُ البايتات قد يمرّ بالسحابة، وشراءٌ يُلغى
- * لأنّ صورةً لم تُنسخ خسارةٌ لا مقابل لها — فالفشل يُبتلع ويبقى
- * الصنف مملوكاً.
- */
-async function wearItemCover(
-  coverMediaId: string | null,
-  userId: string,
-  itemId: string | null = null,
-): Promise<void> {
-  if (!coverMediaId) return;
-  try {
-    const copy = await copyMedia(coverMediaId, userId);
-    if (!copy) return;
-    const old = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { coverMediaId: true },
-    });
-    await prisma.user.update({
-      where: { id: userId },
-      // ومعه مصدرُه: انتهاءُ مدّة الثيم يأخذ غلافَه (القاعدة ١٩٣).
-      data: { coverMediaId: copy.id, coverItemId: itemId, coverY: 50, coverX: 50, coverZoom: 100 },
-    });
-    // غلافُه السابق يذهب هو وبكسلاته: صفٌّ لا يشير إليه شيء (القاعدة ١٠٤).
-    if (old?.coverMediaId) await dropMedia([old.coverMediaId]);
-  } catch {
-    // غلافٌ لم يُلبَس لا يُبطل شراءً تمّ.
-  }
 }
 
 /**
@@ -2256,12 +2217,6 @@ async function buyItem(itemId: string): Promise<void> {
       ),
   ]);
 
-  await wearItemCover(item.coverMediaId, user.id, item.id);
-  // وغلافُ ثيمٍ داخل الحزمة يُلبَس كما لو اشتُري وحده.
-  for (const one of inside) {
-    if (!already.has(one.id)) await wearItemCover(one.coverMediaId, user.id, one.id);
-  }
-
   revalidatePath("/store");
   revalidatePath("/me");
   revalidatePath("/");
@@ -2286,7 +2241,7 @@ export async function equip(itemId: string): Promise<void> {
 
   const purchase = await prisma.purchase.findUnique({
     where: { userId_itemId: { userId: user.id, itemId } },
-    include: { item: { select: { kind: true, coverMediaId: true } } },
+    include: { item: { select: { kind: true } } },
   });
   if (!purchase) throw new Error("لا تملك هذا الصنف");
   // ما انتهت مدّتُه لا يُعدّ مملوكاً (القاعدة ٤٤ج)، والحزمةُ لا تُلبَس (٤٤ب).
@@ -2302,15 +2257,7 @@ export async function equip(itemId: string): Promise<void> {
 
   await prisma.user.update({ where: { id: user.id }, data: field });
 
-  /*
-    لبسُ الثيم يلبس غلافه — **بقرار المالك**: كان الغلافُ يُنسخ عند الشراء
-    وحده، فمن اشترى الثيمَ قبل أن يُرفع غلافُه لم يتغيّر غلافُه أبداً.
-    وحين يتبدّل الثيمُ فقط: إعادةُ لبس الثيم نفسه لا تمحو غلافاً اختاره
-    صاحبُه بعده من «تعديل الملف».
-  */
-  if (purchase.item.kind !== "FRAME" && purchase.item.kind !== "CHARM" && user.backgroundId !== itemId) {
-    await wearItemCover(purchase.item.coverMediaId, user.id, itemId);
-  }
+  // وغلافُ الثيم يُرسم خلف غلافه من الثيم نفسه، لا يُنسخ فوقه (القاعدة ٢٨٨).
 
   revalidatePath("/me");
   revalidatePath("/store");
