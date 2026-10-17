@@ -129,6 +129,7 @@ export default async function TimelinePage({
 
       <TimelineHead
         coverMediaId={user.coverMediaId}
+        themeCoverMediaId={user.background?.coverMediaId}
         coverSpec={user.background?.spec ?? null}
         coverY={user.coverY}
         coverX={user.coverX}

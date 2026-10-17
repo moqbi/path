@@ -84,7 +84,7 @@ export default async function FriendProfilePage({
       coverZoom: true,
       frame: { select: WORN },
       charm: { select: WORN },
-      background: { select: { spec: true } },
+      background: { select: { spec: true, coverMediaId: true } },
       tag: { select: { name: true, bg: true, fg: true } },
     },
   });
@@ -169,6 +169,7 @@ export default async function FriendProfilePage({
         <div className="relative shrink-0 overflow-hidden" style={{ height: 140 }}>
           <CoverLayer
             mediaId={person.coverMediaId}
+            themeMediaId={person.background?.coverMediaId}
             spec={person.background?.spec}
             x={person.coverX}
             y={person.coverY}
@@ -319,7 +320,7 @@ type Person = {
   coverZoom: number;
   frame: { spec: string; mediaId: string | null; frameHole: number | null } | null;
   charm: { spec: string; mediaId: string | null } | null;
-  background: { spec: string } | null;
+  background: { spec: string; coverMediaId: string | null } | null;
   tag: { name: string; bg: string; fg: string } | null;
 };
 
@@ -358,6 +359,7 @@ function LockedProfile({
         <div className="relative shrink-0 overflow-hidden" style={{ height: 140 }}>
           <CoverLayer
             mediaId={person.coverMediaId}
+            themeMediaId={person.background?.coverMediaId}
             spec={person.background?.spec}
             x={person.coverX}
             y={person.coverY}

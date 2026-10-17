@@ -25,6 +25,7 @@ const SPINE = 48;
  */
 export function TimelineHead({
   coverMediaId,
+  themeCoverMediaId,
   coverSpec,
   coverY = 50,
   coverX = 50,
@@ -36,6 +37,8 @@ export function TimelineHead({
   children,
 }: {
   coverMediaId: string | null;
+  /** غلافُ الثيم الملبوس (القاعدة ٢٨٨). */
+  themeCoverMediaId?: string | null;
   coverSpec: string | null;
   coverY?: number;
   coverX?: number;
@@ -153,7 +156,7 @@ export function TimelineHead({
           }}
         >
           {/* الغلاف ودرعه يذوبان معاً في أرضية الصفحة — طبقةٌ واحدة لكل الشاشات. */}
-          <CoverLayer mediaId={coverMediaId} spec={coverSpec} y={coverY} x={coverX} zoom={coverZoom} />
+          <CoverLayer mediaId={coverMediaId} themeMediaId={themeCoverMediaId} spec={coverSpec} y={coverY} x={coverX} zoom={coverZoom} />
 
           <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 px-5 pb-4">
             <div className="flex w-14 shrink-0 justify-center">{avatar}</div>

@@ -4,7 +4,7 @@ import { endPlus } from "./plus";
 import { PLUS_COINS } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { circleIds } from "./visibility";
-import { dropMedia, wearItemCover } from "./media";
+import { dropMedia } from "./media";
 
 /**
  * المتجر كما يُعرض: تصنيفاتٌ ثم صفوف.
@@ -214,7 +214,7 @@ const priceFor = (item: { priceCoins: number }, isPlus: boolean) =>
 async function bundleContents(bundleId: string) {
   const rows = await prisma.bundleItem.findMany({
     where: { bundleId, item: { hidden: false } },
-    select: { item: { select: { id: true, coverMediaId: true } } },
+    select: { item: { select: { id: true } } },
   });
   return rows.map((row) => row.item);
 }
@@ -306,12 +306,6 @@ export async function buy(userId: string, itemId: string, planId?: string) {
       .map((one) => prisma.purchase.create({ data: { userId, itemId: one.id, paidCoins: 0 } })),
   ]);
 
-  // وغلافُ الثيم يُلبَس معه — خارج المعاملة: النسخ قد يمرّ بالسحابة.
-  await wearItemCover(item.coverMediaId, userId, item.id);
-  for (const one of inside) {
-    if (!already.has(one.id)) await wearItemCover(one.coverMediaId, userId, one.id);
-  }
-
   return { ok: `اشتريت ${item.name}`, expiresAt };
 }
 
@@ -400,13 +394,10 @@ export async function gift(userId: string, itemId: string, toUserId: string, pla
 
 /** اللبس: ما لا تملكه لا تلبسه. */
 export async function equip(userId: string, itemId: string) {
-  const [purchase, me] = await Promise.all([
-    prisma.purchase.findUnique({
-      where: { userId_itemId: { userId, itemId } },
-      select: { expiresAt: true, item: { select: { kind: true, coverMediaId: true } } },
-    }),
-    prisma.user.findUnique({ where: { id: userId }, select: { backgroundId: true } }),
-  ]);
+  const purchase = await prisma.purchase.findUnique({
+    where: { userId_itemId: { userId, itemId } },
+    select: { expiresAt: true, item: { select: { kind: true } } },
+  });
   if (!purchase) throw forbidden("لا تملك هذا الصنف");
   if (purchase.expiresAt && purchase.expiresAt <= new Date()) throw forbidden("انتهت مدّة هذا الصنف");
   // الحزمةُ لا تُلبَس (القاعدة ٤٤ب): كانت تُكتب في `backgroundId` فيُلبَس ثيمٌ لا وجود له.
@@ -419,16 +410,12 @@ export async function equip(userId: string, itemId: string) {
         ? { charmId: itemId }
         : { backgroundId: itemId };
 
+  /*
+    وغلافُ الثيم لا يُنسخ فوق غلاف لابسه — **بقرار المالك** (القاعدة ٢٨٨): يُرسم
+    خلفه من الثيم نفسه، فلا يضيع غلافٌ اختاره صاحبُه ويذهب بانتهاء الثيم وحده.
+  */
   await prisma.user.update({ where: { id: userId }, data: field });
 
-  /*
-    لبسُ الثيم يلبس غلافه — **بقرار المالك**: كان الغلافُ يُنسخ عند الشراء
-    وحده، فمن اشترى الثيمَ قبل أن يُرفع غلافُه لم يتغيّر غلافُه أبداً.
-    وحين يتبدّل الثيمُ فقط: إعادةُ لبسه لا تمحو غلافاً اختاره صاحبُه بعده.
-  */
-  if (purchase.item.kind !== "FRAME" && purchase.item.kind !== "CHARM" && me?.backgroundId !== itemId) {
-    await wearItemCover(purchase.item.coverMediaId, userId, itemId);
-  }
   return { ok: true };
 }
 

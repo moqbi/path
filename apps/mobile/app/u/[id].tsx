@@ -38,6 +38,8 @@ type Person = {
   coverX?: number;
   coverY?: number;
   coverZoom?: number;
+  /** الثيمُ الملبوس — غلافُه يُرسم خلف غلافه (القاعدة ٢٨٨). */
+  background?: { coverMediaId?: string | null } | null;
   /* الصنف الملبوس كاملاً: نافذةُ الصورة تعرض اسمه وسعره وتبيعه. */
   frame: {
     id: string;
@@ -227,7 +229,7 @@ function Profile() {
               {/* بمقاس غلاف اللحظات و«أنا» (`COVER_HEIGHT`): كان ١٢٠ فيُقرأ ملفاً أصغر. */}
               <View style={{ marginHorizontal: -20 }}>
                 <StretchCover y={scrollY} height={COVER_HEIGHT}>
-                  <CoverLayer mediaId={who.coverMediaId} spec={null} height={COVER_HEIGHT} x={who.coverX} y={who.coverY} zoom={who.coverZoom} />
+                  <CoverLayer mediaId={who.coverMediaId} themeMediaId={who.background?.coverMediaId} spec={null} height={COVER_HEIGHT} x={who.coverX} y={who.coverY} zoom={who.coverZoom} />
                 </StretchCover>
               </View>
 

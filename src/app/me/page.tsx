@@ -112,6 +112,7 @@ export default async function ProfilePage({
         cover={
           <ProfileCover
             mediaId={user.coverMediaId}
+            themeMediaId={user.background?.coverMediaId}
             spec={user.background?.spec ?? null}
             initialY={user.coverY}
             x={user.coverX}

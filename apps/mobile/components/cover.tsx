@@ -25,6 +25,7 @@ export const COVER_HEIGHT = 176;
 
 export function CoverLayer({
   mediaId,
+  themeMediaId,
   spec,
   height,
   y = 50,
@@ -33,6 +34,8 @@ export function CoverLayer({
   onNatural,
 }: {
   mediaId: string | null | undefined;
+  /** غلافُ الثيم الملبوس — يُرسم خلف غلاف صاحبه (القاعدة ٢٨٨). */
+  themeMediaId?: string | null;
   spec: string | null | undefined;
   height: number;
   /** أيّ جزءٍ من الصورة يُرى — نسبٌ كما تُحفظ في `User.coverX/Y`. */
@@ -43,6 +46,16 @@ export function CoverLayer({
   /** مقاسُ الصورة الأصليّ — يحتاجه المحرّر ليتبع السحبُ الإصبعَ بالبكسل. */
   onNatural?: (width: number, height: number) => void;
 }) {
+  if (themeMediaId) {
+    return (
+      <View style={{ position: "absolute", inset: 0, isolation: "isolate" }}>
+        <CoverImage mediaId={themeMediaId} height={height} x={50} y={50} zoom={100} />
+        {mediaId ? (
+          <BlendedCover mediaId={mediaId} height={height} x={x} y={y} zoom={zoom} onNatural={onNatural} />
+        ) : null}
+      </View>
+    );
+  }
   return (
     <View style={{ position: "absolute", inset: 0 }}>
       {mediaId ? (
@@ -126,6 +139,64 @@ function CoverImage({
         />
       </View>
     </View>
+  );
+}
+
+/**
+ * غلافُ صاحبه فوق غلاف الثيم — **بقرار المالك** (القاعدة ٢٨٨): بشفافية ٤٠٪
+ * ومزجِ «الإضاءة» (`luminosity`) فتأخذ صورتُه ألوانَ الثيم وتبقى تفاصيلُها،
+ * ويذوب أسفلُها في الثيم حيث تجلس الصورةُ والاسم.
+ *
+ * ولا قناعَ في React Native بلا وحدةٍ أصليّة، فالذوبانُ شرائحُ أفقيّة تقلّ
+ * شفافيّتُها درجةً درجة — نسخُ الصورة من خبيئة `expo-image` نفسها لا تُجلب ثانيةً.
+ */
+export const COVER_BLEND = 0.4;
+const SOLID = 0.35;
+const BANDS = 10;
+
+function BlendedCover({
+  mediaId,
+  height,
+  x,
+  y,
+  zoom,
+  onNatural,
+}: {
+  mediaId: string;
+  height: number;
+  x: number;
+  y: number;
+  zoom: number;
+  onNatural?: (width: number, height: number) => void;
+}) {
+  const solid = Math.round(height * SOLID);
+  const band = (height - solid) / BANDS;
+  const strips = [{ top: 0, size: solid, opacity: COVER_BLEND }];
+  for (let i = 0; i < BANDS; i++) {
+    strips.push({ top: solid + i * band, size: band + 0.5, opacity: COVER_BLEND * (1 - (i + 0.5) / BANDS) });
+  }
+  return (
+    <>
+      {strips.map((strip, i) => (
+        <View
+          key={i}
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: strip.top,
+            height: strip.size,
+            overflow: "hidden",
+            opacity: strip.opacity,
+            mixBlendMode: "luminosity",
+          }}
+        >
+          <View style={{ position: "absolute", left: 0, right: 0, top: -strip.top, height }}>
+            <CoverImage mediaId={mediaId} height={height} x={x} y={y} zoom={zoom} onNatural={i === 0 ? onNatural : undefined} />
+          </View>
+        </View>
+      ))}
+    </>
   );
 }
 

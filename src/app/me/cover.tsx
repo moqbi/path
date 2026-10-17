@@ -19,6 +19,7 @@ import { CameraIcon, CheckIcon, CloseIcon } from "@/components/icons";
  */
 export function ProfileCover({
   mediaId,
+  themeMediaId,
   spec,
   initialY,
   x = 50,
@@ -27,6 +28,8 @@ export function ProfileCover({
   manage = false,
 }: {
   mediaId: string | null;
+  /** غلافُ الثيم الملبوس (القاعدة ٢٨٨). */
+  themeMediaId?: string | null;
   spec: string | null;
   initialY: number;
   /** ما ضبطه الجوّال أفقياً وقُرباً — يُرسم هنا ولا يُضبط (الويب يضبط الرأسيّ). */
@@ -75,7 +78,7 @@ export function ProfileCover({
       onPointerCancel={up}
     >
       {/* أسفل الغلاف يذوب في أرضية الصفحة — لا حدَّ حادّاً بين صورتين. */}
-      <CoverLayer mediaId={mediaId} spec={spec} y={y} x={x} zoom={zoom} />
+      <CoverLayer mediaId={mediaId} themeMediaId={themeMediaId} spec={spec} y={y} x={x} zoom={zoom} />
 
       {adjusting ? (
         <>
