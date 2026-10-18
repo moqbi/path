@@ -22,6 +22,8 @@ type Page = {
   lock: Lock;
   index: number;
   count: number;
+  /** ترتيبُ المجموعة بين المجموعات — لنقاطها في أسفل اللوحة. */
+  packIndex: number;
   stickers: StickerPack["stickers"];
 };
 
@@ -112,7 +114,7 @@ export function StickerPanel({
 
   const pages = useMemo<Page[]>(() => {
     const out: Page[] = [];
-    for (const pack of packs ?? []) {
+    for (const [packIndex, pack] of (packs ?? []).entries()) {
       const count = Math.ceil(pack.stickers.length / PER_PAGE);
       const price = pack.priceCoins;
       const lock: Lock = pack.owned ? null : price > 0 ? "buy" : isPlus ? null : "plus";
@@ -126,6 +128,7 @@ export function StickerPanel({
           lock,
           index,
           count,
+          packIndex,
           stickers: pack.stickers.slice(index * PER_PAGE, (index + 1) * PER_PAGE),
         });
       }
@@ -139,9 +142,20 @@ export function StickerPanel({
   const soft = dark ? "rgba(255,255,255,.55)" : "var(--color-ground-muted)";
   const cell = dark ? "rgba(255,255,255,.06)" : "var(--color-paper)";
   const page = pages[current] ?? pages[0];
+  // أوّلُ صفحةٍ لكلّ مجموعة: نقطتُها تقفز إليها.
+  const firsts = pages.flatMap((one, at) => (one.index === 0 ? [at] : []));
+  const dots = firsts.length > 1;
+
+  const jump = (at: number) => {
+    const box = strip.current;
+    if (!box) return;
+    // في RTL تمضي الإزاحةُ سالبةً.
+    const sign = getComputedStyle(box).direction === "rtl" ? -1 : 1;
+    box.scrollTo({ left: sign * at * box.clientWidth, behavior: "smooth" });
+  };
 
   return (
-    <div className="relative overflow-hidden rounded-[18px]" style={{ height: 196 }}>
+    <div className="relative overflow-hidden rounded-[18px]" style={{ height: dots ? 206 : 188 }}>
       {packs === null ? (
         <p className="pt-16 text-center text-[12.5px]" style={{ color: soft }}>
           …
@@ -152,31 +166,6 @@ export function StickerPanel({
         </p>
       ) : (
         <>
-          {/* اسمُ المجموعة في الوسط، والسعرُ أو «مملوكة» في طرفٍ والنقاطُ في الآخر. */}
-          <div className="flex h-7 items-center gap-2 px-1">
-            <span className="flex flex-1 basis-0">
-              {page && (page.price > 0 || page.owned) ? (
-                <span className="text-[11px] font-bold" style={{ color: page.owned ? soft : "var(--color-clay-ink)" }}>
-                  {page.owned ? "مملوكة" : `${ar(page.price)} نقطة`}
-                </span>
-              ) : null}
-            </span>
-            <span className="min-w-0 truncate text-center text-[13px] font-bold" style={{ color: ink }}>
-              {page?.pack}
-            </span>
-            <span className="flex flex-1 basis-0 justify-end gap-1">
-              {page && page.count > 1
-                ? Array.from({ length: page.count }, (_, i) => (
-                    <span
-                      key={i}
-                      className="block h-[5px] rounded-full"
-                      style={{ width: i === page.index ? 14 : 5, background: i === page.index ? "var(--color-clay)" : soft }}
-                    />
-                  ))
-                : null}
-            </span>
-          </div>
-
           {/* الصفحةُ الظاهرة من الإزاحة مطلقةً: في RTL تمضي سالبةً. */}
           <div
             ref={strip}
@@ -187,7 +176,8 @@ export function StickerPanel({
             className="no-bar flex snap-x snap-mandatory overflow-x-auto"
           >
             {pages.map((item) => (
-              <div key={item.key} className="relative w-full shrink-0 snap-start" style={{ height: 158 }}>
+              <div key={item.key} className="relative w-full shrink-0 snap-start" style={{ height: 186 }}>
+              <PageHead page={item} ink={ink} soft={soft} />
               <div className="grid grid-cols-4 gap-y-2.5">
                 {item.stickers.map((sticker) => (
                   <button
@@ -217,9 +207,57 @@ export function StickerPanel({
               </div>
             ))}
           </div>
+
+          {/* نقطةٌ لكلّ مجموعة: تقول إنّ بعد هذه مجموعاتٍ أخرى، وتقفز إليها. */}
+          {dots ? (
+            <div className="flex h-[18px] items-center justify-center gap-1.5">
+              {firsts.map((at, packIndex) => {
+                const on = page?.packIndex === packIndex;
+                return (
+                  <button
+                    key={at}
+                    type="button"
+                    aria-label={`مجموعة ${pages[at]?.pack ?? ""}`}
+                    onClick={() => jump(at)}
+                    className="block h-1.5 rounded-full transition-all"
+                    style={{ width: on ? 16 : 6, background: on ? ink : soft, opacity: on ? 1 : 0.6 }}
+                  />
+                );
+              })}
+            </div>
+          ) : null}
         </>
       )}
 
+    </div>
+  );
+}
+
+/** رأسُ الصفحة: اسمُ المجموعة في الوسط، والسعرُ أو «مملوكة» في طرفٍ ونقاطُ صفحاتها في الآخر. */
+function PageHead({ page, ink, soft }: { page: Page; ink: string; soft: string }) {
+  return (
+    <div className="flex h-7 items-center gap-2 px-1">
+      <span className="flex flex-1 basis-0">
+        {page.price > 0 || page.owned ? (
+          <span className="text-[11px] font-bold" style={{ color: page.owned ? soft : "var(--color-clay-ink)" }}>
+            {page.owned ? "مملوكة" : `${ar(page.price)} نقطة`}
+          </span>
+        ) : null}
+      </span>
+      <span className="min-w-0 truncate text-center text-[13px] font-bold" style={{ color: ink }}>
+        {page.pack}
+      </span>
+      <span className="flex flex-1 basis-0 justify-end gap-1">
+        {page.count > 1
+          ? Array.from({ length: page.count }, (_, i) => (
+              <span
+                key={i}
+                className="block h-1 rounded-full"
+                style={{ width: i === page.index ? 12 : 4, background: i === page.index ? "var(--color-clay)" : soft }}
+              />
+            ))
+          : null}
+      </span>
     </div>
   );
 }
@@ -243,7 +281,7 @@ function PackLock({
   const pill = "flex h-[38px] items-center gap-1.5 rounded-full px-[18px] text-[13px] font-extrabold";
   return (
     <div
-      className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-[14px] px-4 text-center"
+      className="absolute inset-x-0 bottom-0 top-7 flex flex-col items-center justify-center gap-2 rounded-[14px] px-4 text-center"
       style={{ background: "rgba(10,18,26,.82)", color: "#fff" }}
     >
       <LockIcon size={24} />
