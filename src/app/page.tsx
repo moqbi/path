@@ -16,7 +16,7 @@ import { today as memoriesToday } from "@/lib/memories";
 import { WelcomeCard } from "@/components/welcome-card";
 import { WeeklyCard } from "@/components/weekly-card";
 import { welcome } from "@/lib/welcome";
-import { weeklyFor, weeklyOpen } from "@/lib/weekly";
+import { weeklyFor, weeklyShown } from "@/lib/weekly";
 import { AthrHeaderMark } from "@/components/brand";
 import { SparkIcon } from "@/components/icons";
 import { ar, dayLabel, membership } from "@/lib/format";
@@ -52,7 +52,7 @@ export default async function TimelinePage({
     view === "" ? memoriesToday(user.id) : Promise.resolve(null),
     // والترحيبُ (القاعدة ٢٤٦) وملخّصُ الجمعة (القاعدة ٢٤٥) كالجوّال — ولا يُسقط فشلُهما الخطّ.
     view === "" ? welcome(user.id).catch(() => null) : Promise.resolve(null),
-    view === "" && weeklyOpen() ? weeklyFor(user.id).catch(() => null) : Promise.resolve(null),
+    view === "" ? weeklyShown(user.id).then((shown) => (shown ? weeklyFor(user.id) : null)).catch(() => null) : Promise.resolve(null),
   ]);
 
   const moments =

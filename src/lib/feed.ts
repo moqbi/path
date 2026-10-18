@@ -25,6 +25,7 @@ export const momentShape = {
   recapYear: true,
   // خياراتُ استطلاع المشرف — والأعدادُ من `pollState` (القاعدة ٢٨٩).
   pollOptions: true,
+  pollEndsAt: true,
   // «خاصة»: من يرى اللحظة يُقال له إنّها لم تُوجَّه إلى الدائرة كلّها.
   audience: true,
   media: { select: { width: true, height: true } },

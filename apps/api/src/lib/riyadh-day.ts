@@ -19,6 +19,10 @@ export function dayKey(day: Day): string {
   return `${day.y}-${String(day.m).padStart(2, "0")}-${String(day.d).padStart(2, "0")}`;
 }
 
+/** نافذةُ جرس الصباح بتوقيت الرياض: من التاسعة إلى الواحدة ظهراً (القاعدة ٢٣٥). */
+export const BELL_FROM = 9;
+export const BELL_UNTIL = 13;
+
 /** الساعةُ الآن في الرياض (٠–٢٣). */
 export function riyadhHour(at = new Date()): number {
   return new Date(at.getTime() + OFFSET_MS).getUTCHours();

@@ -6,7 +6,7 @@ import { requireActive, requireAuth, me } from "../../middleware/auth";
 import { rateLimitUser } from "../../middleware/rate-limit";
 import * as memories from "../../services/memories";
 import * as recap from "../../services/recap";
-import { weeklyFor, weeklyOpen } from "../../services/weekly";
+import { weeklyFor, weeklyShown } from "../../services/weekly";
 import { welcome } from "../../services/welcome";
 
 const byId = z.object({ id: cuid });
@@ -29,7 +29,9 @@ export const memoryRoutes = new Hono()
   .get("/today", async (c) => c.json(await memories.today(me(c))))
 
   /** «أسبوعك في دائرتك» — الجمعةَ والسبتَ وحدهما (القاعدة ٢٤٥). */
-  .get("/weekly", async (c) => c.json({ week: weeklyOpen() ? await weeklyFor(me(c)) : null }))
+  .get("/weekly", async (c) =>
+    c.json({ week: (await weeklyShown(me(c))) ? await weeklyFor(me(c)) : null }),
+  )
 
   /** بطاقةُ الترحيب للحساب الجديد (القاعدة ٢٤٦). */
   .get("/welcome", async (c) => c.json(await welcome(me(c))))

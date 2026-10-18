@@ -65,6 +65,7 @@ export type Moment = {
   recapYear?: number | null;
   /** خياراتُ استطلاع المشرف (القاعدة ٢٨٩) — اختياريٌّ لخادمٍ أقدم. */
   pollOptions?: string[];
+  pollEndsAt?: string | null;
   createdAt: string;
   author: Person;
   tags: { id: string; name: string }[];

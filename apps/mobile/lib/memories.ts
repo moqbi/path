@@ -22,13 +22,13 @@ export type Today = {
   moments: Moment[];
 };
 
-/** بطاقةُ اليوم — تُسأل مرّةً لكلّ ساعة: ما فيها لا يتغيّر في اليوم إلا بطيّها. */
+/** بطاقةُ اليوم — تُسأل كلَّ ربع ساعة: تظهر بعد جرس الصباح (القاعدة ٢٩٠)، فلا تبقى ساعةً فارغةً بعده. */
 export const useToday = (enabled: boolean) =>
   useQuery({
     queryKey: ["memories", "today"],
     queryFn: () => api<Today>("/v1/memories/today"),
     enabled,
-    staleTime: 60 * 60_000,
+    staleTime: 15 * 60_000,
   });
 
 export type Person = { id: string; name: string; avatarMediaId: string | null; count: number };

@@ -554,7 +554,7 @@ export function MomentCard({
           <p dir="auto" className="mb-2 text-[13.5px] leading-relaxed text-ink">{moment.text}</p>
         ) : null}
         {moment.pollOptions.length ? (
-          <Poll momentId={moment.id} options={moment.pollOptions} author={moment.author.id === viewerId} />
+          <Poll momentId={moment.id} options={moment.pollOptions} endsAt={moment.pollEndsAt} author={moment.author.id === viewerId} />
         ) : null}
 
         {/* الموقع على لحظةٍ أو صورة: سطرٌ صغير، لا حدثُ مكانٍ مستقل. */}
