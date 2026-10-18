@@ -563,72 +563,60 @@ export default function Conversation() {
             </View>
           ) : DEV_FEATURES ? (
             /*
-              سطرٌ بثلاثة أبواب لا ستّة (القاعدة ٢٩٥): الزائدُ يفتح الكاميرا والاستوديو،
-              والملصقاتُ داخل الحقل في طرفه، والمايكُ والإرسالُ في مكانٍ واحد يتبادلان —
+              شريطٌ واحد لا أزرارٌ متفرّقة (القاعدة ٢٩٥): الزائدُ والحقلُ والملصقاتُ والمايكُ
+              أو الإرسال داخل قرصٍ واحد، والأيقوناتُ بلا أقراصٍ إلا الأخير — الفعلُ الأساسيّ.
               المايكُ ما دام الحقلُ فارغاً، والإرسالُ حين يُكتب شيء.
             */
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "flex-end",
+                minHeight: 42,
+                borderRadius: 21,
+                borderWidth: 1,
+                borderColor: stickers ? colors.clay : colors.line,
+                backgroundColor: colors.card,
+                paddingHorizontal: 4,
+                paddingVertical: 3,
+              }}
+            >
               <Pressable
                 accessibilityLabel="أرسل صورة"
                 onPress={() => setAttach(true)}
-                style={{ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
+                hitSlop={4}
+                style={{ width: 34, height: 34, alignItems: "center", justifyContent: "center" }}
               >
                 <PlusIcon size={20} color={colors.ink2} />
               </Pressable>
 
-              <View
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  minHeight: 46,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  borderRadius: 23,
-                  borderWidth: 1,
-                  borderColor: stickers ? colors.clay : colors.line,
-                  backgroundColor: colors.card,
-                  paddingRight: 18,
-                  paddingLeft: 4,
-                }}
-              >
-                <TextInput
-                  value={body}
-                  onChangeText={setBody}
-                  onFocus={() => setStickers(false)}
-                  placeholder="اكتب رسالة…"
-                  placeholderTextColor={colors.faint}
-                  maxLength={2000}
-                  multiline
-                  style={{ flex: 1, minWidth: 0, maxHeight: 110, paddingVertical: 11, fontSize: 13.5, textAlign: "right", color: colors.ink }}
-                />
-                <Pressable
-                  accessibilityLabel="الملصقات"
-                  accessibilityState={{ expanded: stickers }}
-                  onPress={() => setStickers((v) => !v)}
-                  hitSlop={6}
-                  style={{ width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" }}
-                >
-                  <StickerIcon size={21} color={stickers ? colors.clay : colors.muted} />
-                </Pressable>
-              </View>
+              <TextInput
+                value={body}
+                onChangeText={setBody}
+                onFocus={() => setStickers(false)}
+                placeholder="اكتب رسالة…"
+                placeholderTextColor={colors.faint}
+                maxLength={2000}
+                multiline
+                style={{ flex: 1, minWidth: 0, maxHeight: 110, paddingVertical: 8, paddingHorizontal: 4, fontSize: 13.5, textAlign: "right", color: colors.ink }}
+              />
 
-              {body.trim() ? (
-                <Pressable
-                  accessibilityLabel="إرسال"
-                  onPress={sendText}
-                  style={{ width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
-                >
-                  <SendIcon size={20} color={colors.onBrand} />
-                </Pressable>
-              ) : (
-                <Pressable
-                  accessibilityLabel="رسالة صوتية"
-                  onPress={() => void beginTape()}
-                  style={{ width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
-                >
-                  <MicIcon size={20} color={colors.onBrand} />
-                </Pressable>
-              )}
+              <Pressable
+                accessibilityLabel="الملصقات"
+                accessibilityState={{ expanded: stickers }}
+                onPress={() => setStickers((v) => !v)}
+                hitSlop={4}
+                style={{ width: 34, height: 34, alignItems: "center", justifyContent: "center" }}
+              >
+                <StickerIcon size={19} color={stickers ? colors.clay : colors.muted} />
+              </Pressable>
+
+              <Pressable
+                accessibilityLabel={body.trim() ? "إرسال" : "رسالة صوتية"}
+                onPress={body.trim() ? sendText : () => void beginTape()}
+                style={{ width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
+              >
+                {body.trim() ? <SendIcon size={16} color={colors.onBrand} /> : <MicIcon size={17} color={colors.onBrand} />}
+              </Pressable>
             </View>
           ) : (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
