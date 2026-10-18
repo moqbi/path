@@ -282,8 +282,8 @@ function PackLock({
     <View
       style={{
         position: "absolute",
-        // تحت رأس الصفحة: اسمُ المجموعة وسعرُها يُقرآن فوق الحجاب.
-        top: 28,
+        // على الصفحة كلّها برأسها — **بقرار المالك** — واسمُ المجموعة يُكتب فيه.
+        top: 0,
         bottom: 0,
         left: 0,
         right: 0,
@@ -296,6 +296,9 @@ function PackLock({
       }}
     >
       <LockIcon size={24} color="#fff" />
+      <Text numberOfLines={1} style={{ color: "rgba(255,255,255,.7)", fontSize: 12, fontWeight: "700" }}>
+        {page.pack}
+      </Text>
       {page.lock === "plus" ? (
         <>
           <Text style={{ color: "#fff", fontSize: 13.5, fontWeight: "700" }}>مع اشتراك آثار+</Text>

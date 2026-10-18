@@ -59,9 +59,11 @@ export async function StickersSection() {
 
       <div className="mb-7 flex flex-col gap-4">
         {packs.map((pack) => (
-          <section key={pack.id} className="rounded-2xl border border-line bg-card p-4">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h3 className="text-[14px] font-bold">
+          // المجموعةُ مطويّةٌ برأسها، و«إظهار» يفتحها بملصقاتها و«إخفاء» يطويها — عشرُ مجموعاتٍ
+          // مفتوحةٌ بملصقاتها صفحةٌ لا يُصل إلى آخرها.
+          <details key={pack.id} className="group rounded-2xl border border-line bg-card p-4">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
+              <h3 className="min-w-0 text-[14px] font-bold">
                 {pack.name}{" "}
                 <span className="text-[11.5px] font-normal text-muted">
                   {ar(pack.stickers.length)} ملصق ·{" "}
@@ -69,6 +71,13 @@ export async function StickersSection() {
                   {pack.hidden ? " · مخفية" : ""}
                 </span>
               </h3>
+              <span className="shrink-0 rounded-full border border-line px-3 py-1 text-[12px] font-semibold text-ink-2">
+                <span className="group-open:hidden">إظهار</span>
+                <span className="hidden group-open:inline">إخفاء</span>
+              </span>
+            </summary>
+
+            <div className="mb-3 mt-3 flex justify-end">
               {pack._count.purchases > 0 ? (
                 <span className="text-[11.5px] text-muted">مُشتراة — تُخفى ولا تُحذف</span>
               ) : (
@@ -136,7 +145,7 @@ export async function StickersSection() {
             </div>
 
             <StickerUpload packId={pack.id} />
-          </section>
+          </details>
         ))}
       </div>
     </>
