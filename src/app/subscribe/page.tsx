@@ -1,10 +1,18 @@
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { cancelPlus, subscribe } from "@/app/actions";
-import { BookIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, PrivateIcon, StoreIcon, VerifiedIcon, WithIcon } from "@/components/icons";
+import { BookIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, PrivateIcon, StickerIcon, StoreIcon, VerifiedIcon, WithIcon } from "@/components/icons";
+import { canTryStickers } from "@/lib/stickers";
 import { TagPill } from "@/components/ui";
 import { SUPPORTER_TAG } from "@/lib/supporter";
 import { ScreenHeader } from "@/components/ui";
+
+/** الملصقاتُ بعد الإيموجي — لمن تُفتح له واجهتُها وحده (القاعدة ٢٩١): لا يُوعَد بما لا يُرى. */
+const STICKERS = {
+  title: "الملصقات",
+  body: "في التعليقات والمحادثات · مجموعاتٌ تتجدّد من آثار",
+  icon: <StickerIcon size={18} />,
+};
 
 const PERKS = [
   // كما في الجوّال: الشارةُ والوسمُ أوّلاً، مرسومَين كما يظهران بجانب الاسم.
@@ -65,6 +73,7 @@ export default async function SubscribePage() {
   const user = await currentUser();
   if (!user) redirect("/login");
 
+  const perks = canTryStickers(user) ? [...PERKS.slice(0, 3), STICKERS, ...PERKS.slice(3)] : PERKS;
   const monthly = subscribe.bind(null, "MONTHLY");
   const yearly = subscribe.bind(null, "YEARLY");
 
@@ -96,7 +105,7 @@ export default async function SubscribePage() {
       </div>
 
       <main className="scroll-area px-6">
-        {PERKS.map((perk) => (
+        {perks.map((perk) => (
           <div key={perk.title} className="mb-[18px] flex gap-3.5">
             <span
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"

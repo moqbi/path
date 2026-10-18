@@ -378,3 +378,11 @@ export const StarIcon = ({ size = 20, className, filled = true }: IconProps & { 
     <path d="M12 3.6l2.5 5.3 5.6.8-4.1 4 1 5.7-5-2.7-5 2.7 1-5.7-4.1-4 5.6-.8L12 3.6Z" />
   </svg>
 );
+
+/** ملصقٌ بزاويةٍ مطويّة — بابُ لوحة الملصقات (القاعدة ٢٩١). */
+export const StickerIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M20 13V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7l7-7Z" />
+    <path d="M13 20v-5a2 2 0 0 1 2-2h5" />
+  </svg>
+);

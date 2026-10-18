@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { sendGroupMessage, sendGroupPhoto, sendMessage, sendPhoto, sendVoice } from "@/app/actions";
 import { ImagePicker } from "@/components/image-picker";
-import { CameraIcon, CloseIcon, MicIcon } from "@/components/icons";
+import { CameraIcon, CloseIcon, MicIcon, StickerIcon } from "@/components/icons";
+import { StickerPanel, useStickersAllowed } from "@/components/sticker-panel";
 import { ar } from "@/lib/format";
 
 /** الصيغ التي يخرج بها التسجيل، بترتيب ما تدعمه المتصفحات. */
@@ -45,6 +46,9 @@ export function Composer({
   const [error, setError] = useState<string | null>(null);
   const [seconds, setSeconds] = useState(0);
   const [taping, setTaping] = useState(false);
+  const [stickers, setStickers] = useState(false);
+  // الملصقاتُ في المحادثة الثنائيّة كخادمها (القاعدة ٢٩١) — المجموعةُ بلا ملصق.
+  const stickersAllowed = useStickersAllowed() && !groupId;
   const [pending, start] = useTransition();
 
   const recorder = useRef<MediaRecorder | null>(null);
@@ -204,6 +208,21 @@ export function Composer({
             <CameraIcon size={19} />
           </ImagePicker>
 
+          {stickersAllowed ? (
+            <button
+              type="button"
+              aria-label="الملصقات"
+              aria-expanded={stickers}
+              onClick={() => setStickers((v) => !v)}
+              className={`flex shrink-0 items-center justify-center rounded-full border border-line bg-card ${
+                compact ? "h-10 w-10" : "h-11 w-11"
+              }`}
+              style={{ color: stickers ? "var(--color-clay-ink)" : "var(--color-ink-2)" }}
+            >
+              <StickerIcon size={19} />
+            </button>
+          ) : null}
+
           {groupId ? null : <button
             type="button"
             aria-label="رسالة صوتية"
@@ -225,6 +244,29 @@ export function Composer({
           </button>
         </form>
       )}
+
+      {stickers && stickersAllowed && !taping ? (
+        <div className="mt-2">
+          <StickerPanel
+            tone="light"
+            isPlus={isPlus}
+            onPick={(stickerId) => {
+              const data = new FormData();
+              data.set("stickerId", stickerId);
+              setStickers(false);
+              start(async () => {
+                try {
+                  await sendMessage(conversationId, data);
+                  setError(null);
+                  onSent?.();
+                } catch (problem) {
+                  setError(problem instanceof Error ? problem.message : "تعذّر الإرسال");
+                }
+              });
+            }}
+          />
+        </div>
+      ) : null}
 
       {!isPlus && !groupId ? (
         <p className="mt-2 text-center text-[10.5px] text-faint">
