@@ -12,7 +12,9 @@ import { ScreenHeader } from "../../components/screen-header";
 import { useComment, useMoment } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { colors } from "../../theme/tokens";
-import { LockIcon } from "../../components/icons";
+import { LockIcon, StickerIcon } from "../../components/icons";
+import { StickerPanel } from "../../components/sticker-panel";
+import { DEV_FEATURES } from "../../lib/dev-features";
 
 /**
  * صفحة اللحظة: بطاقةٌ واحدة ثمّ حقلُ التعليق.
@@ -29,6 +31,7 @@ export default function MomentPage() {
   const moment = useMoment(id);
   const comment = useComment(id);
   const [body, setBody] = useState("");
+  const [stickers, setStickers] = useState(false);
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboardInset();
 
@@ -108,8 +111,7 @@ export default function MomentPage() {
         ) : (
         <View
           style={{
-            flexDirection: "row",
-            gap: 8,
+            gap: 10,
             paddingHorizontal: 14,
             paddingTop: 10,
             // والكيبورد مفتوحٌ لا حاجة لهامش الشريط السفليّ: الكيبورد يغطّيه.
@@ -119,6 +121,7 @@ export default function MomentPage() {
             backgroundColor: colors.paper,
           }}
         >
+          <View style={{ flexDirection: "row", gap: 8 }}>
           <TextInput
             value={body}
             onChangeText={setBody}
@@ -138,6 +141,25 @@ export default function MomentPage() {
               borderColor: colors.line,
             }}
           />
+          {DEV_FEATURES ? (
+            <Pressable
+              accessibilityLabel="الملصقات"
+              accessibilityState={{ expanded: stickers }}
+              onPress={() => setStickers((v) => !v)}
+              style={{
+                width: 46,
+                height: 46,
+                borderRadius: 12,
+                alignItems: "center",
+                justifyContent: "center",
+                borderWidth: 1,
+                borderColor: stickers ? colors.clay : colors.line,
+                backgroundColor: colors.card,
+              }}
+            >
+              <StickerIcon size={21} color={colors.ink2} />
+            </Pressable>
+          ) : null}
           <Pressable
             disabled={!body.trim() || comment.isPending}
             onPress={() => {
@@ -156,6 +178,17 @@ export default function MomentPage() {
           >
             <Text style={{ color: colors.onBrand, fontSize: 13, fontWeight: "700" }}>أرسل</Text>
           </Pressable>
+          </View>
+          {DEV_FEATURES && stickers ? (
+            <StickerPanel
+              tone="light"
+              isPlus={me?.isPlus ?? false}
+              onPick={(stickerId) => {
+                setStickers(false);
+                comment.mutate({ stickerId });
+              }}
+            />
+          ) : null}
         </View>
         )}
       </View>

@@ -30,6 +30,8 @@ export type Line = {
   editedAt?: Date | null;
   /** سطرُ حدثٍ في المجموعة (القاعدة ٢٦٤) — في الوسط لا فقاعة. */
   system?: boolean;
+  /** ملصقٌ بدل النصّ (القاعدة ٢٩١): رسمُه وحده بلا فقاعة. */
+  sticker?: { mediaId: string } | null;
 };
 
 /**
@@ -92,7 +94,7 @@ export function Thread({
                   <>
                     {mine ? <Ticks state={receiptOf({ deliveredAt: line.deliveredAt ?? null, readAt: line.readAt ?? null })} /> : null}
                     {line.editedAt ? <span>معدّلة</span> : null}
-                    {mine && line.kind === "TEXT" && shown === line.id && !open ? (
+                    {mine && line.kind === "TEXT" && !line.sticker && shown === line.id && !open ? (
                       <button type="button" onClick={() => setEditing(line.id)} className="font-bold text-clay-ink">
                         تعديل
                       </button>
@@ -132,6 +134,9 @@ export function Thread({
                     إلغاء
                   </button>
                 </form>
+              ) : line.sticker ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={`${BASE}/api/media/${line.sticker.mediaId}`} alt="ملصق" width={112} height={112} className="object-contain" />
               ) : line.kind === "PHOTO" && line.mediaId ? (
                 <Shot mediaId={line.mediaId} />
               ) : line.kind === "VOICE" && line.mediaId ? (

@@ -49,6 +49,8 @@ import { coinText, ar, relative, riyals } from "@/lib/format";
 import { groundInkOf, parsePalette } from "@/lib/theme";
 import { ReportContext } from "./report-context";
 import { linkedMany, type LinkedResult } from "@/lib/linked";
+import { StickersSection } from "./stickers";
+import { OccasionsSection } from "./occasions";
 
 const FIELD =
   "rounded-xl border border-line bg-card px-4 text-[13.5px] text-ink outline-none focus:border-clay";
@@ -487,6 +489,8 @@ const SECTIONS = [
   { key: "tags", label: "الوسوم", store: false },
   { key: "users", label: "الحسابات", store: false },
   { key: "store", label: "المتجر", store: true },
+  { key: "stickers", label: "الملصقات", store: true },
+  { key: "occasions", label: "المناسبات", store: false },
   { key: "site", label: "الموقع", store: false },
   { key: "team", label: "الصلاحيات", store: false, owner: true },
   { key: "files", label: "الملفات", store: false, owner: true },
@@ -2193,6 +2197,9 @@ export default async function AdminPage({
             )}
           </>
         ) : null}
+
+        {section === "stickers" ? <StickersSection /> : null}
+        {section === "occasions" ? <OccasionsSection /> : null}
 
         {section === "words" ? (
           <>

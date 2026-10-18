@@ -9,13 +9,14 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { createSession, destroySession, hashPassword, requireUser, verifyPassword } from "@/lib/auth";
 import { HEX_COLOR, PALETTE_KEYS, paletteSpec, parsePalette } from "@/lib/theme";
-import { dropMedia, migrateToCloud, storeSiteShot, storeUpload } from "@/lib/media";
+import { dropMedia, migrateToCloud, storeSiteShot, storeSticker, storeUpload } from "@/lib/media";
 import { cloudReady, probeBucket } from "@/lib/storage";
 import { forgetWords } from "@/lib/moderation";
 import { clear, clientIp, hit, TOO_MANY } from "@/lib/rate-limit";
 import { SUSPEND_HOURS } from "@/lib/suspend";
 import { isPlusDays, PLUS_COINS, PLUS_LABEL } from "@/lib/plus";
 import { SITE_TEXT, type SiteKey } from "@/lib/site";
+import { ALL_COUNTRIES, COUNTRIES } from "@athar/shared";
 
 /*
   إجراءات اللوحة، منقولةٌ كما هي من `src/app/actions.ts` في الويب الحالي:
@@ -2008,4 +2009,136 @@ export async function restoreMember(memberNo: number, _prev: AdminResult, formDa
   }
   revalidatePath("/admin");
   return { ok: `أُنشئت العضوية ${memberNo}` };
+}
+
+// ───────────────────────────── الملصقات ─────────────────────────────
+
+/**
+ * مجموعاتُ الملصقات (القاعدة ٢٩١): تُضاف وتُسمّى وتُرتَّب وتُخفى، ويُرفع داخلها
+ * ملصقاتُها. بدرجة المتجر — بضاعةُ آثار+ كالإطارات.
+ */
+export async function createStickerPack(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  await requireAdmin("store");
+  const name = String(formData.get("name") ?? "").trim().slice(0, 40);
+  if (!name) return { error: "اكتب اسم المجموعة" };
+  const last = await prisma.stickerPack.aggregate({ _max: { sortOrder: true } });
+  await prisma.stickerPack.create({ data: { name, sortOrder: (last._max.sortOrder ?? 0) + 1 } });
+  revalidatePath("/admin");
+  return { ok: "أُضيفت المجموعة" };
+}
+
+export async function updateStickerPack(packId: string, _prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  await requireAdmin("store");
+  const name = String(formData.get("name") ?? "").trim().slice(0, 40);
+  if (!name) return { error: "اكتب اسم المجموعة" };
+  const order = Number(String(formData.get("sortOrder") ?? "0").replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))));
+  await prisma.stickerPack.update({
+    where: { id: packId },
+    data: { name, sortOrder: Number.isFinite(order) ? Math.round(order) : 0, hidden: formData.get("hidden") === "on" },
+  });
+  revalidatePath("/admin");
+  return { ok: "تمّ الحفظ" };
+}
+
+/** حذفُ المجموعة يذهب بملصقاتها وبكسلاتها (القاعدة ١٠٤)، وما أُرسل منها يبقى «ملصق» نصّاً. */
+export async function deleteStickerPack(packId: string): Promise<void> {
+  await requireAdmin("store");
+  const stickers = await prisma.sticker.findMany({ where: { packId }, select: { mediaId: true } });
+  await prisma.stickerPack.delete({ where: { id: packId } });
+  if (stickers.length) await dropMedia(stickers.map((sticker) => sticker.mediaId));
+  revalidatePath("/admin");
+}
+
+/** ملصقٌ واحد في المجموعة — يردّ نصَّ الخطأ لا يرميه (القاعدة ٩٠): الرفعُ دفعةُ ملفّات. */
+export async function addSticker(packId: string, formData: FormData): Promise<AdminResult> {
+  const admin = await requireAdmin("store");
+  try {
+    const { file, width, height } = picture(formData);
+    const pack = await prisma.stickerPack.findUnique({ where: { id: packId }, select: { id: true } });
+    if (!pack) return { error: "المجموعة غير موجودة" };
+    const media = await storeSticker(admin.id, file, width, height);
+    const last = await prisma.sticker.aggregate({ where: { packId }, _max: { sortOrder: true } });
+    await prisma.sticker.create({ data: { packId, mediaId: media.id, sortOrder: (last._max.sortOrder ?? 0) + 1 } });
+  } catch (error) {
+    return { error: (error as Error).message };
+  }
+  revalidatePath("/admin");
+  return { ok: "أُضيف" };
+}
+
+export async function deleteSticker(stickerId: string): Promise<void> {
+  await requireAdmin("store");
+  const sticker = await prisma.sticker.findUnique({ where: { id: stickerId }, select: { mediaId: true } });
+  if (!sticker) return;
+  // الصفُّ يذهب مع ملفّه (`Cascade` من جهة الملف)، والبكسلاتُ معه.
+  await dropMedia([sticker.mediaId]);
+  revalidatePath("/admin");
+}
+
+/** تقديمُ ملصقٍ درجةً أو تأخيرُه داخل مجموعته. */
+export async function moveSticker(stickerId: string, step: number): Promise<void> {
+  await requireAdmin("store");
+  const sticker = await prisma.sticker.findUnique({ where: { id: stickerId }, select: { packId: true } });
+  if (!sticker) return;
+  const all = await prisma.sticker.findMany({
+    where: { packId: sticker.packId },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    select: { id: true },
+  });
+  const from = all.findIndex((row) => row.id === stickerId);
+  const to = Math.max(0, Math.min(all.length - 1, from + Math.sign(step)));
+  if (from === to) return;
+  const [moved] = all.splice(from, 1);
+  all.splice(to, 0, moved);
+  await prisma.$transaction(all.map((row, index) => prisma.sticker.update({ where: { id: row.id }, data: { sortOrder: index } })));
+  revalidatePath("/admin");
+}
+
+// ───────────────────────────── المناسبات الوطنيّة ─────────────────────────────
+
+const HIJRI_MONTHS_COUNT = 12;
+
+/** يومُ المناسبة وشهرُها بتقويمها — الهجريُّ ٣٠ يوماً أقصى، والميلاديُّ بأيّام شهره. */
+function readOccasion(formData: FormData): { error: string } | {
+  name: string; greeting: string | null; country: string; calendar: "GREGORIAN" | "HIJRI"; month: number; day: number;
+} {
+  const digits = (value: FormDataEntryValue | null) =>
+    Number(String(value ?? "").replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))));
+  const name = String(formData.get("name") ?? "").trim().slice(0, 60);
+  const greeting = String(formData.get("greeting") ?? "").trim().slice(0, 120) || null;
+  const country = String(formData.get("country") ?? "SA");
+  const calendar = formData.get("calendar") === "HIJRI" ? "HIJRI" : "GREGORIAN";
+  const month = digits(formData.get("month"));
+  const day = digits(formData.get("day"));
+  if (!name) return { error: "اكتب اسم المناسبة" };
+  if (country !== ALL_COUNTRIES && !COUNTRIES.some((row) => row.code === country)) return { error: "الدولة غير معروفة" };
+  if (!Number.isInteger(month) || month < 1 || month > HIJRI_MONTHS_COUNT) return { error: "الشهر من ١ إلى ١٢" };
+  const most = calendar === "HIJRI" ? 30 : new Date(Date.UTC(2024, month, 0)).getUTCDate();
+  if (!Number.isInteger(day) || day < 1 || day > most) return { error: `اليوم من ١ إلى ${most}` };
+  return { name, greeting, country, calendar, month, day };
+}
+
+/** المناسباتُ الوطنيّة (القاعدة ٢٩٢) — بدرجة اللوحة كاملةً. */
+export async function createNationalDay(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  await requireAdmin();
+  const input = readOccasion(formData);
+  if ("error" in input) return input;
+  await prisma.nationalDay.create({ data: input });
+  revalidatePath("/admin");
+  return { ok: "أُضيفت المناسبة" };
+}
+
+export async function updateNationalDay(id: string, _prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  await requireAdmin();
+  const input = readOccasion(formData);
+  if ("error" in input) return input;
+  await prisma.nationalDay.update({ where: { id }, data: { ...input, hidden: formData.get("hidden") === "on" } });
+  revalidatePath("/admin");
+  return { ok: "تمّ الحفظ" };
+}
+
+export async function deleteNationalDay(id: string): Promise<void> {
+  await requireAdmin();
+  await prisma.nationalDay.deleteMany({ where: { id } });
+  revalidatePath("/admin");
 }

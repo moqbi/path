@@ -14,8 +14,9 @@ import { useTabTop } from "../../lib/tab-top";
 import { playRefresh } from "../../lib/sound";
 import { MomentCard, SPINE_W } from "../../components/moment-card";
 import { AthrMark } from "../../components/brand";
+import { DEV_FEATURES } from "../../lib/dev-features";
 import {
-  BookIcon, ExitIcon, GearIcon, GiftIcon, SparkIcon, StarIcon, WithIcon,
+  BookIcon, CalendarIcon, ExitIcon, GearIcon, GiftIcon, SparkIcon, StarIcon, WithIcon,
 } from "../../components/icons";
 import { api } from "../../lib/api";
 import { keys, type Moment } from "../../lib/queries";
@@ -55,6 +56,16 @@ function Stat({ icon, value, label, first }: { icon: React.ReactNode; value: str
     </View>
   );
 }
+
+/** قرصُ أيقونةٍ في الرأس الداكن — ٤٠ كبقية الرؤوس (القاعدة ٥٢). */
+const HEAD_DISC = {
+  width: 40,
+  height: 40,
+  borderRadius: 20,
+  alignItems: "center",
+  justifyContent: "center",
+  backgroundColor: "rgba(255,255,255,.08)",
+} as const;
 
 function Action({
   label,
@@ -172,6 +183,29 @@ export default function Me() {
           </Text>
         </View>
 
+        {/* الإعداداتُ والتقويم في الرأس (القاعدة ٢٩٢) — في نسخة التطوير حتى البناء القادم. */}
+        {DEV_FEATURES ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Pressable
+              onPress={() => router.push("/calendar" as never)}
+              hitSlop={6}
+              accessibilityLabel="التقويم"
+              style={HEAD_DISC}
+            >
+              <CalendarIcon size={20} color={colors.chromeInk} />
+            </Pressable>
+            <Spot id="me.settings">
+              <Pressable
+                onPress={() => router.push("/settings" as never)}
+                hitSlop={6}
+                accessibilityLabel="الإعدادات"
+                style={HEAD_DISC}
+              >
+                <GearIcon size={20} color={colors.chromeInk} />
+              </Pressable>
+            </Spot>
+          </View>
+        ) : null}
       </View>
 
       <Animated.SectionList
@@ -231,9 +265,11 @@ export default function Me() {
               <Spot id="me.accessories" grow>
                 <Action grow label="إكسسواراتي" onPress={() => router.push("/me/accessories" as never)} />
               </Spot>
-              <Spot id="me.settings">
-                <Action label="الإعدادات" icon={<GearIcon size={18} color={colors.ink2} />} onPress={() => router.push("/settings" as never)} />
-              </Spot>
+              {DEV_FEATURES ? null : (
+                <Spot id="me.settings">
+                  <Action label="الإعدادات" icon={<GearIcon size={18} color={colors.ink2} />} onPress={() => router.push("/settings" as never)} />
+                </Spot>
+              )}
               <Action
                 label="خروج"
                 icon={<ExitIcon size={18} color={colors.ink2} />}

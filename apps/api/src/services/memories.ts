@@ -32,7 +32,7 @@ export function memoryPeriods(): number[] {
  * ولا تغييرُ الصورة والمنحُ والهدايا (أخبارٌ لا لحظات)، ولا «أصبح صديق فلان»:
  * مناسبةُ الصداقة تقولها بأحسن منها.
  */
-const MEMORABLE: MomentKind[] = ["PHOTO", "PLACE", "THOUGHT", "MUSIC", "CITY", "JOINED"];
+export const MEMORABLE: MomentKind[] = ["PHOTO", "PLACE", "THOUGHT", "MUSIC", "CITY", "JOINED"];
 /** ما يُشارك: ما له متن. «انضم» لا يُعاد نشرُه. */
 const SHAREABLE: MomentKind[] = ["PHOTO", "PLACE", "THOUGHT", "MUSIC", "CITY"];
 
@@ -134,7 +134,7 @@ export type Occasion = {
 };
 
 /** الأصدقاء الذين يُحتفل بهم: الدائرةُ بلا محجوبٍ ولا حسابٍ مفتوح (حسابُ الدعم ليس صداقة). */
-async function celebrated(userId: string) {
+export async function celebrated(userId: string) {
   const [ids, blocked] = await Promise.all([circleIds(userId), blockedWith(userId)]);
   const hidden = new Set(blocked);
   const people = await prisma.user.findMany({

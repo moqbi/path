@@ -81,6 +81,8 @@ export type Moment = {
     id: string;
     body: string;
     createdAt: string;
+    /** ملصقٌ بدل النصّ (القاعدة ٢٩١) — والنصُّ «ملصق» لنسخةٍ لا تعرفه. */
+    sticker?: { mediaId: string } | null;
     /*
       الخادم يرسل الاشتراك والوسم مع كل تعليق منذ بُني، والجوّال كان
       يُسقطهما من النوع فلا يُرسمان — والويب يرسمهما (القاعدة ٥٨).
@@ -309,8 +311,12 @@ export function useReact(momentId: string) {
 export function useComment(momentId: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (body: string) =>
-      api(`/v1/moments/${momentId}/comments`, { method: "POST", body: JSON.stringify({ body }) }),
+    // نصٌّ أو ملصق (القاعدة ٢٩١): الملصقُ يُرسَل بمعرّفه والخادمُ يكتب نصَّه.
+    mutationFn: (input: string | { stickerId: string }) =>
+      api(`/v1/moments/${momentId}/comments`, {
+        method: "POST",
+        body: JSON.stringify(typeof input === "string" ? { body: input } : input),
+      }),
     // كالتفاعل: تعليقٌ رُدّ (قفلٌ، أو كلمةٌ ممنوعة) يُقال ولا يختفي بصمت.
     onError: (error) => Alert.alert("ما أُرسل التعليق", error instanceof Error ? error.message : undefined),
     onSettled: () => {

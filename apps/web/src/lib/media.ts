@@ -94,6 +94,22 @@ export async function storeSiteShot(ownerId: string, file: File | Blob, width: n
   return write(ownerId, mime, bytes, Math.max(1, Math.round(width)), Math.max(1, Math.round(height)));
 }
 
+/** الملصق (القاعدة ٢٩١): رسمٌ صغير بشفافيّته، متحرّكٌ أو ساكن. */
+const MAX_STICKER_BYTES = 2_000_000;
+
+/**
+ * ملصقٌ من لوحة الملصقات — يُحفظ بملفه كما رُفع: الشفافيّةُ والحركةُ هما الملصق،
+ * وإعادةُ ترميزه تُسطّحه أو توقفه. والصيغةُ من البايتات لا من `type`.
+ */
+export async function storeSticker(ownerId: string, file: File | Blob, width: number, height: number) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (bytes.length === 0) throw new Error("الملف فارغ");
+  if (bytes.length > MAX_STICKER_BYTES) throw new Error("الملصق أكبر من ٢ ميغا");
+  const mime = sniffImage(bytes);
+  if (!mime || mime === "image/jpeg") throw new Error("الملصق PNG أو WebP أو GIF بشفافيّته");
+  return write(ownerId, mime, bytes, Math.max(1, Math.round(width)), Math.max(1, Math.round(height)));
+}
+
 /** صيغةُ الصورة من توقيعها — أو `null` إن لم تكن صورةً نعرفها. */
 export function sniffImage(bytes: Uint8Array): string | null {
   if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";

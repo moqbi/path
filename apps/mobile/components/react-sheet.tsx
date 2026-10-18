@@ -6,7 +6,9 @@ import { create } from "zustand";
 import { Text, TextInput } from "./type";
 import { GlassSheet, SheetScrollView } from "./glass-sheet";
 import { ReactionGlyph, facesFor, CUSTOM, EMOJI_GROUPS } from "./reactions";
-import { EyeIcon, LockIcon, TrashIcon, UnlockIcon } from "./icons";
+import { EyeIcon, LockIcon, StickerIcon, TrashIcon, UnlockIcon } from "./icons";
+import { StickerPanel } from "./sticker-panel";
+import { DEV_FEATURES } from "../lib/dev-features";
 import { ReportButton } from "./report-sheet";
 import { api } from "../lib/api";
 import { ar } from "../lib/format";
@@ -54,6 +56,7 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
   const [board, setBoard] = useState(false);
   const [asking, setAsking] = useState(false);
   const [body, setBody] = useState("");
+  const [stickers, setStickers] = useState(false);
 
   const react = useReact(momentId);
   const comment = useComment(momentId);
@@ -83,6 +86,11 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
     setBody("");
     close();
     comment.mutate(text);
+  }
+
+  function sendSticker(stickerId: string) {
+    close();
+    comment.mutate({ stickerId });
   }
 
   const faces = facesFor(momentKind);
@@ -258,6 +266,23 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
                 color: "#fff",
               }}
             />
+            {DEV_FEATURES ? (
+              <Pressable
+                accessibilityLabel="الملصقات"
+                accessibilityState={{ expanded: stickers }}
+                onPress={() => setStickers((v) => !v)}
+                style={{
+                  width: 46,
+                  height: 46,
+                  borderRadius: 23,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: stickers ? "rgba(255,255,255,.22)" : "rgba(255,255,255,.1)",
+                }}
+              >
+                <StickerIcon size={21} color="#fff" />
+              </Pressable>
+            ) : null}
             <Pressable
               disabled={!body.trim() || pending}
               onPress={send}
@@ -278,6 +303,11 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
             </Pressable>
           </View>
         )}
+
+        {/* الملصقات تحت الحقل (القاعدة ٢٩١). */}
+        {DEV_FEATURES && stickers && !(locked && !author) ? (
+          <StickerPanel tone="dark" isPlus={isPlus} onPick={sendSticker} onLeave={close} />
+        ) : null}
 
         {/* البلاغُ لغير صاحبها، والمشرفُ لا يُبلغ بل يحكم (القاعدة ١٣٦). */}
         {author || moderate ? (

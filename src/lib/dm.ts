@@ -112,6 +112,7 @@ export async function conversationFor(userId: string, conversationId: string) {
           deliveredAt: true,
           readAt: true,
           editedAt: true,
+          sticker: { select: { mediaId: true } },
         },
         // أحدثُ مئتين لا أقدمُها: `asc` مع `take` كان يقصّ آخرَ المحادثة فتُقرأ ناقصة.
         orderBy: { createdAt: "desc" },
