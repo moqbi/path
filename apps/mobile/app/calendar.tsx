@@ -33,8 +33,11 @@ const MONTHS = ["يناير", "فبراير", "مارس", "أبريل", "ماي�
 /** الأسبوعُ يبدأ بالأحد — وفي الصفّ من اليمين يكون الأحدُ أوّلَه. */
 const WEEK = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
 
-/** ألوانُ النقاط: الوطنيّة، والصداقة، والذكرى — تُقرأ ساعةَ الرسم فتتبع الثيم. */
-const dots = () => ({ national: colors.clay, friend: colors.gold, memory: colors.ink2 });
+/**
+ * ألوانُ النقاط ثابتةٌ لا تتبع الثيم: اللمسةُ والكهرمانيّ لونٌ واحد في الثيم الأصليّ،
+ * فكانت نقطتا الوطنيّة والصداقة لا تُفرَّقان. أخضرُ للوطنيّة، ووردٌ للصداقة، وأزرقُ للذكرى.
+ */
+const dots = () => ({ national: "#1F8A55", friend: "#E0568A", memory: "#3D7BD9" });
 
 const keyOf = (y: number, m: number) => `${y}-${String(m).padStart(2, "0")}`;
 const shift = (y: number, m: number, by: number) => {
@@ -86,8 +89,17 @@ export default function CalendarScreen() {
   const selected = picked && picked.startsWith(keyOf(view.y, view.m)) ? picked : today.startsWith(keyOf(view.y, view.m)) ? today : null;
   const day = selected ? byDate.get(selected) : undefined;
 
-  const upcoming = thisMonth.data?.upcoming ?? [];
-  const countryName = thisMonth.data?.countryName ?? null;
+  // القادمُ من اليوم المختار: ضغطُ يومٍ يُري ما بعده لا ما بعد اليوم وحده.
+  const from = selected && selected !== today ? selected : null;
+  const fromDay = useQuery({
+    queryKey: ["calendar", "upcoming", from],
+    queryFn: () => api<Pick<CalendarMonth, "countryName" | "upcoming">>(`/v1/calendar/upcoming?from=${from}`),
+    enabled: Boolean(from),
+    staleTime: 10 * 60_000,
+  });
+  const upcomingSource = from ? fromDay : thisMonth;
+  const upcoming = upcomingSource.data?.upcoming ?? [];
+  const countryName = thisMonth.data?.countryName ?? fromDay.data?.countryName ?? null;
 
   const DOT = dots();
   const go = (by: number) => {
@@ -192,12 +204,14 @@ export default function CalendarScreen() {
 
         {/* المناسباتُ الوطنيّة القادمة. */}
         <View style={{ gap: 8 }}>
-          <Text style={{ color: colors.groundInk, fontSize: 14, fontWeight: "800" }}>المناسبات القادمة</Text>
+          <Text style={{ color: colors.groundInk, fontSize: 14, fontWeight: "800" }}>
+            {from ? `المناسبات من ${ar(Number(from.slice(8)))} ${MONTHS[Number(from.slice(5, 7)) - 1]}` : "المناسبات القادمة"}
+          </Text>
           {/* الدولةُ من موقعه الحاليّ: من سافر يرى مناسبات البلد الذي هو فيه. */}
           <Text style={{ color: colors.groundMuted, fontSize: 11.5, marginTop: -4 }}>
             {countryName ? `مناسبات ${countryName} الوطنية والأعياد — حسب موقعك` : "الأعياد والمناسبات العامة — حسب موقعك"}
           </Text>
-          {thisMonth.isLoading ? (
+          {upcomingSource.isLoading ? (
             <ActivityIndicator color={colors.clay} />
           ) : upcoming.length === 0 ? (
             <Text style={{ color: colors.groundMuted, fontSize: 12.5 }}>لا مناسبات في السنة القادمة.</Text>
