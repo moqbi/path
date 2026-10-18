@@ -83,23 +83,22 @@ function CountUp({ to }: { to: number }) {
 }
 
 /** الإحصاءاتُ سطرٌ يُقرأ جملةً لا أربعةُ أعمدة: الرقمُ ثقيلٌ والكلمةُ بعده باهتة،
- *  والهديتان رقمٌ واحد وتفصيلُه بين قوسين (القاعدة ٢٩٣). */
+ *  والهديتان رقمان: ما أهديتَه وما أُهدي لك (القاعدة ٢٩٣). */
 function StatLine({ s }: { s?: { moments: number; friends: number; sent: number; got: number } }) {
-  const gifts = (s?.sent ?? 0) + (s?.got ?? 0);
-  const item = (to: number, label: string, tail?: string) => (
+  const item = (to: number, label: string) => (
     <Text style={{ color: colors.groundMuted, fontSize: 13 }}>
       <Text style={{ color: colors.groundInk, fontSize: 15, fontWeight: "800" }}>
         <CountUp to={to} />
       </Text>{" "}
       {label}
-      {tail ? <Text style={{ fontSize: 11 }}>{` (${tail})`}</Text> : null}
     </Text>
   );
   return (
     <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 14, rowGap: 2, paddingHorizontal: 20, marginTop: 10 }}>
       {item(s?.moments ?? 0, "لحظة")}
       {item(s?.friends ?? 0, "صديق")}
-      {gifts > 0 ? item(gifts, "هدية", `${ar(s?.sent ?? 0)} منك · ${ar(s?.got ?? 0)} لك`) : null}
+      {item(s?.sent ?? 0, "أهديت")}
+      {item(s?.got ?? 0, "أُهدي لك")}
     </View>
   );
 }
