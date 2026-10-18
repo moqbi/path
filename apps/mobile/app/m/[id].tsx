@@ -12,7 +12,7 @@ import { ScreenHeader } from "../../components/screen-header";
 import { useComment, useMoment } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { colors } from "../../theme/tokens";
-import { LockIcon, StickerIcon } from "../../components/icons";
+import { LockIcon, SendIcon, StickerIcon } from "../../components/icons";
 import { StickerPanel } from "../../components/sticker-panel";
 import { DEV_FEATURES } from "../../lib/dev-features";
 
@@ -123,6 +123,69 @@ export default function MomentPage() {
             backgroundColor: colors.groundSolid,
           }}
         >
+          {DEV_FEATURES ? (
+            /*
+              شريطٌ واحد كسطر المحادثة (القاعدة ٢٩٥): الحقلُ والملصقاتُ في طرفه والإرسالُ قرصٌ
+              صغير داخله — لا ثلاثُ قطعٍ متجاورة.
+            */
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "flex-end",
+                minHeight: 44,
+                borderRadius: 22,
+                borderWidth: 1,
+                borderColor: stickers ? colors.clay : colors.line,
+                backgroundColor: colors.card,
+                paddingRight: 14,
+                paddingLeft: 4,
+                paddingVertical: 4,
+              }}
+            >
+              <TextInput
+                value={body}
+                onChangeText={setBody}
+                onFocus={() => setStickers(false)}
+                placeholder="اكتب تعليقاً"
+                placeholderTextColor={colors.faint}
+                maxLength={500}
+                multiline
+                style={{ flex: 1, minWidth: 0, maxHeight: 110, paddingVertical: 8, fontSize: 13.5, textAlign: "right", color: colors.ink }}
+              />
+              <Pressable
+                accessibilityLabel="الملصقات"
+                accessibilityState={{ expanded: stickers }}
+                onPress={() => setStickers((v) => !v)}
+                hitSlop={4}
+                style={{ width: 34, height: 34, alignItems: "center", justifyContent: "center" }}
+              >
+                <StickerIcon size={19} color={stickers ? colors.clay : colors.muted} />
+              </Pressable>
+              <Pressable
+                accessibilityLabel="أرسل"
+                disabled={!body.trim() || comment.isPending}
+                onPress={() => {
+                  comment.mutate(body.trim());
+                  setBody("");
+                }}
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 17,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: colors.clay,
+                  opacity: body.trim() ? 1 : 0.45,
+                }}
+              >
+                {comment.isPending ? (
+                  <ActivityIndicator size="small" color={colors.onBrand} />
+                ) : (
+                  <SendIcon size={16} color={colors.onBrand} />
+                )}
+              </Pressable>
+            </View>
+          ) : (
           <View style={{ flexDirection: "row", gap: 8 }}>
           <TextInput
             value={body}
@@ -181,6 +244,7 @@ export default function MomentPage() {
             <Text style={{ color: colors.onBrand, fontSize: 13, fontWeight: "700" }}>أرسل</Text>
           </Pressable>
           </View>
+          )}
           {DEV_FEATURES && stickers ? (
             <StickerPanel
               tone="light"
