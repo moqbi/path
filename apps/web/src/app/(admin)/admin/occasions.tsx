@@ -17,7 +17,7 @@ const countryName = (code: string) =>
 function Fields({
   value,
 }: {
-  value?: { name: string; greeting: string | null; country: string; calendar: string; month: number; day: number };
+  value?: { name: string; greeting: string | null; country: string; calendar: string; religious: boolean; month: number; day: number };
 }) {
   return (
     <>
@@ -30,6 +30,13 @@ function Fields({
         <input name="greeting" maxLength={120} defaultValue={value?.greeting ?? ""} className={`mt-1 block w-full ${FIELD}`} style={{ height: 42 }} />
       </label>
       <div className="grid grid-cols-2 gap-2">
+        <label className="col-span-2 text-[11.5px] text-muted">
+          النوع
+          <select name="religious" defaultValue={value?.religious ? "1" : "0"} className={`mt-1 block w-full ${FIELD}`} style={{ height: 42 }}>
+            <option value="0">وطنية</option>
+            <option value="1">إسلامية</option>
+          </select>
+        </label>
         <label className="text-[11.5px] text-muted">
           الدولة
           <select name="country" defaultValue={value?.country ?? "SA"} className={`mt-1 block w-full ${FIELD}`} style={{ height: 42 }}>
@@ -70,7 +77,7 @@ export async function OccasionsSection() {
 
   return (
     <>
-      <h2 className="mb-1 text-[15px] font-bold">المناسبات الوطنية</h2>
+      <h2 className="mb-1 text-[15px] font-bold">المناسبات الوطنية والإسلامية</h2>
       <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
         تظهر في التقويم داخل «أنا» لمن موقعُه الحاليّ في دولتها، و«الجميع» تظهر لكلّ أحد. والهجريُّ
         بتقويم أم القرى، فيُحسب يومُه الميلاديّ كلّ سنة وحده. وتنبيهُ يومها يُرسل الساعة التاسعة صباحاً
@@ -100,7 +107,7 @@ export async function OccasionsSection() {
                 {row.hidden ? <span className="text-[11.5px] font-normal text-muted"> · مخفية</span> : null}
               </span>
               <span className="text-[11.5px] text-muted">
-                {ar(row.day)} {(row.calendar === "HIJRI" ? HIJRI : GREGORIAN)[row.month - 1]} · {countryName(row.country)}
+                {row.religious ? "إسلامية · " : ""}{ar(row.day)} {(row.calendar === "HIJRI" ? HIJRI : GREGORIAN)[row.month - 1]} · {countryName(row.country)}
               </span>
             </summary>
             <Saver action={updateNationalDay.bind(null, row.id)} className="mt-3 flex flex-col gap-2">

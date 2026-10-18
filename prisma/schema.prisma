@@ -1015,6 +1015,8 @@ model NationalDay {
   greeting  String?
   country   String       @default("SA")
   calendar  CalendarKind @default(GREGORIAN)
+  /// إسلاميّةٌ (الأعياد ورمضان) لا وطنيّة — نقطةٌ ولونٌ مستقلّان في التقويم.
+  religious Boolean      @default(false)
   month     Int
   day       Int
   hidden    Boolean      @default(false)

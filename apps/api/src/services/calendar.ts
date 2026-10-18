@@ -80,7 +80,8 @@ export async function nationalToday(userId: string, today = riyadhDay()) {
 type Person = { id: string; name: string; avatarMediaId: string | null };
 type Entry = {
   date: string;
-  national: { name: string; greeting: string | null }[];
+  /** `religious`: إسلاميّةٌ لا وطنيّة — نسخةٌ قديمة لا تقرؤه فترسمهما معاً كما كانت. */
+  national: { name: string; greeting: string | null; religious: boolean }[];
   friends: { friend: Person; months: number }[];
   /** عددُ الذكريات في اليوم وأقدمُ فترةٍ فيها. */
   memories: { count: number; months: number } | null;
@@ -103,7 +104,7 @@ export async function month(userId: string, year: number, monthNo: number) {
   const { country, rows } = await nationalDaysFor(userId);
   for (const row of rows) {
     for (const day of datesOf(row, year)) {
-      if (day.m === monthNo) entries.get(dayKey(day))?.national.push({ name: row.name, greeting: row.greeting });
+      if (day.m === monthNo) entries.get(dayKey(day))?.national.push({ name: row.name, greeting: row.greeting, religious: row.religious });
     }
   }
 

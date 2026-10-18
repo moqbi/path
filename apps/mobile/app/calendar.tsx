@@ -14,7 +14,8 @@ import { colors } from "../theme/tokens";
 type Person = { id: string; name: string; avatarMediaId: string | null };
 type CalendarDay = {
   date: string;
-  national: { name: string; greeting: string | null }[];
+  /** `religious` غائبٌ في خادمٍ قديم فتُقرأ وطنيّة. */
+  national: { name: string; greeting: string | null; religious?: boolean }[];
   friends: { friend: Person; months: number }[];
   memories: { count: number; months: number } | null;
 };
@@ -33,7 +34,7 @@ const WEEK = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس"
  * ألوانُ النقاط ثابتةٌ لا تتبع الثيم: اللمسةُ والكهرمانيّ لونٌ واحد في الثيم الأصليّ،
  * فكانت نقطتا الوطنيّة والصداقة لا تُفرَّقان. أخضرُ للوطنيّة، ووردٌ للصداقة، وأزرقُ للذكرى.
  */
-const dots = () => ({ national: "#1F8A55", friend: "#E0568A", memory: "#3D7BD9" });
+const dots = () => ({ national: "#1F8A55", religious: "#C28A1A", friend: "#E0568A", memory: "#3D7BD9" });
 
 const keyOf = (y: number, m: number) => `${y}-${String(m).padStart(2, "0")}`;
 const shift = (y: number, m: number, by: number) => {
@@ -151,7 +152,8 @@ export default function CalendarScreen() {
                     </Text>
                   </View>
                   <View style={{ flexDirection: "row", gap: 3, height: 5, marginTop: 2 }}>
-                    {entry?.national.length ? <Dot color={DOT.national} /> : null}
+                    {entry?.national.some((item) => !item.religious) ? <Dot color={DOT.national} /> : null}
+                    {entry?.national.some((item) => item.religious) ? <Dot color={DOT.religious} /> : null}
                     {entry?.friends.length ? <Dot color={DOT.friend} /> : null}
                     {entry?.memories ? <Dot color={DOT.memory} /> : null}
                   </View>
@@ -162,8 +164,9 @@ export default function CalendarScreen() {
 
           {current.isLoading ? <ActivityIndicator style={{ marginTop: 8 }} color={colors.clay} /> : null}
 
-          <View style={{ flexDirection: "row", justifyContent: "center", gap: 14, marginTop: 10 }}>
-            <Legend color={DOT.national} label="مناسبة وطنية" />
+          <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", columnGap: 14, rowGap: 4, marginTop: 10 }}>
+            <Legend color={DOT.national} label="وطنية" />
+            <Legend color={DOT.religious} label="إسلامية" />
             <Legend color={DOT.friend} label="صداقة" />
             <Legend color={DOT.memory} label="ذكرى" />
           </View>
@@ -217,7 +220,7 @@ function DayCard({
   return (
     <View style={{ borderRadius: 16, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line, overflow: "hidden" }}>
       {day.national.map((item) => (
-        <Row key={item.name} color={DOT.national}>
+        <Row key={item.name} color={item.religious ? DOT.religious : DOT.national}>
           <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "700" }}>{item.name}</Text>
           {item.greeting ? <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 20 }}>{item.greeting}</Text> : null}
         </Row>
