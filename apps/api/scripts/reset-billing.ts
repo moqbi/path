@@ -63,9 +63,10 @@ async function main() {
     where: { ...others, coverItemId: { not: null } },
     select: { id: true, coverMediaId: true },
   });
-  const [withCoins, purchases, topUps, grants, wearing] = await Promise.all([
+  const [withCoins, purchases, stickerPacks, topUps, grants, wearing] = await Promise.all([
     prisma.user.count({ where: { ...others, coins: { not: 0 } } }),
     prisma.purchase.count({ where: ownedByOthers }),
+    prisma.stickerPurchase.count({ where: ownedByOthers }),
     prisma.coinTopUp.count({ where: ownedByOthers }),
     prisma.coinGrant.count({ where: ownedByOthers }),
     prisma.user.count({
@@ -78,6 +79,7 @@ async function main() {
   console.log(`  اشتراكات آثار+ تنتهي:      ${plusUsers.length}`);
   console.log(`  أرصدة نقاط تُصفَّر:         ${withCoins}`);
   console.log(`  أصناف مملوكة تُسحب:        ${purchases}`);
+  console.log(`  مجموعات ملصقات تُسحب:      ${stickerPacks}`);
   console.log(`  حسابات يُنزع ما تلبسه:      ${wearing}`);
   console.log(`  أغلفة ثيمات تُزال:          ${themedCovers.length}`);
   console.log(`  سجلّ شحن نقاط يُمحى:        ${topUps}`);
@@ -104,6 +106,7 @@ async function main() {
 
   await prisma.$transaction([
     prisma.purchase.deleteMany({ where: ownedByOthers }),
+    prisma.stickerPurchase.deleteMany({ where: ownedByOthers }),
     prisma.coinTopUp.deleteMany({ where: ownedByOthers }),
     prisma.coinGrant.deleteMany({ where: ownedByOthers }),
     prisma.user.updateMany({

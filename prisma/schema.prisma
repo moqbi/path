@@ -123,7 +123,7 @@ model User {
   /// وصولٍ مع كل دخولٍ وتمحو ما كتبه.
   lastCity     String?
   /// رمزُ دولة آخر موضعٍ قرأه الجهاز (ISO بحرفين كبيرين) — مناسباتُ التقويم الوطنيّة منه (القاعدة ٢٩٢).
-  lastCountry String?
+  lastCountry  String?
   /// كتب صاحبُ الحساب مدينته بيده — فلا يكتب فوقها التحديدُ التلقائيّ.
   cityLocked   Boolean @default(false)
   bio          String?
@@ -292,18 +292,19 @@ model User {
   friendshipsSent     Friendship[] @relation("Requester")
   friendshipsReceived Friendship[] @relation("Addressee")
 
-  stories         Story[]        @relation("StoryAuthor")
-  storyViews      StoryView[]
-  notes           StatusNote[]
-  noteViews       NoteView[]
-  groups          FriendGroup[]  @relation("GroupOwner")
-  groupsIn        GroupMember[]
-  momentsSeenBy   MomentViewer[]
-  blocksMade      Block[]        @relation("Blocker")
-  blocksGot       Block[]        @relation("Blocked")
-  accessEvents    AccessEvent[]
-  coinGrants      CoinGrant[]    @relation("CoinGrantTo")
-  coinGrantsGiven CoinGrant[]    @relation("CoinGrantBy")
+  stories          Story[]           @relation("StoryAuthor")
+  storyViews       StoryView[]
+  notes            StatusNote[]
+  noteViews        NoteView[]
+  groups           FriendGroup[]     @relation("GroupOwner")
+  groupsIn         GroupMember[]
+  momentsSeenBy    MomentViewer[]
+  blocksMade       Block[]           @relation("Blocker")
+  blocksGot        Block[]           @relation("Blocked")
+  accessEvents     AccessEvent[]
+  coinGrants       CoinGrant[]       @relation("CoinGrantTo")
+  stickerPurchases StickerPurchase[]
+  coinGrantsGiven  CoinGrant[]       @relation("CoinGrantBy")
 
   /// من دعاه (القاعدة ٢٤٣): رقمُ عضويّةٍ يكتبه عند التسجيل أو في أيّامه
   /// الأولى — مرّةً واحدة لا تتغيّر بعدها.
@@ -394,21 +395,21 @@ model StoryView {
 /// واحدةٌ لكل حساب: الجديدةُ تحلّ محلّ القديمة. والأغنيةُ من دِيزر بمعرّفها —
 /// رابطُ المعاينة يُوقَّع لساعات، فيُطلب طازجاً عند كل استماع.
 model StatusNote {
-  id          String   @id @default(cuid())
-  authorId    String
-  text        String?
-  trackId     String?
-  trackTitle  String?
-  trackArtist String?
-  trackCover  String?
+  id           String   @id @default(cuid())
+  authorId     String
+  text         String?
+  trackId      String?
+  trackTitle   String?
+  trackArtist  String?
+  trackCover   String?
   /// بدايةُ المقطع داخل معاينة الثلاثين.
-  trackStart  Int      @default(0)
+  trackStart   Int      @default(0)
   /// طولُه: عشرون مقصوصة، أو ثلاثون حين تُنشر الأغنيةُ كما هي (القاعدة ٢٧٧).
-  trackSeconds Int     @default(20)
+  trackSeconds Int      @default(20)
   /// تصنيفٌ يُقصر عليه — وفارغٌ: الدائرة كلّها.
-  groupId     String?
-  createdAt   DateTime @default(now())
-  expiresAt   DateTime
+  groupId      String?
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
 
   author User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
   group  FriendGroup? @relation(fields: [groupId], references: [id], onDelete: Cascade)
@@ -566,7 +567,7 @@ model Moment {
 
   /// استطلاعُ المشرف على خاطرته: السؤالُ في `text` والخياراتُ هنا (٢–٤).
   /// فارغٌ = لا استطلاع. وجوّالٌ قديم يقرأ السؤالَ خاطرةً.
-  pollOptions String[] @default([])
+  pollOptions String[]  @default([])
   /// نهايةُ الاستطلاع: بعدها لا تصويتَ ولا تبديل، والنتيجةُ للجميع (القاعدة ٢٩٠).
   pollEndsAt  DateTime?
 
@@ -757,29 +758,29 @@ model StoreItem {
   /// أصناف تُكتسب بالبقاء لا بالدفع (مثل إطار «سنة كاملة»).
   earnedAfterDays Int?
 
-  sortOrder   Int       @default(0)
+  sortOrder    Int       @default(0)
   /// متى أُضيف — منه يُبنى صفّ «وصل حديثاً» بلا علمٍ يُرفع يدوياً.
-  createdAt   DateTime  @default(now())
+  createdAt    DateTime  @default(now())
   /// حزمة موسمية: تُعرض في «حزم محدودة» ما دامت مرفوعة.
-  limited     Boolean   @default(false)
+  limited      Boolean   @default(false)
   /// مخفيٌّ عن المتجر بيد المشرف — ولا يُنزع ممّن اشتراه: ما دُفع ثمنه
   /// يبقى في إكسسواراته ويُلبَس. بابُ الموسميّ: يُرفع ويُنزل بلا حذف.
-  hidden      Boolean   @default(false)
+  hidden       Boolean   @default(false)
   /// موعدُ إخفائه من المتجر: مدّةُ عرضٍ يضبطها المشرف (الحزمة الموسميّة خمسة أيام)،
   /// فإذا حلّ كتبه الكنسُ مخفيّاً ومسحه — فيُرى «مخفي» في اللوحة ويُرفع بيدٍ إن شاء.
-  hideAt      DateTime?
+  hideAt       DateTime?
   /// متى نُبِّه الناسُ به — مرّةً لكل صنف حين يصير ظاهراً. فارغٌ = لم يُعلَن
   /// بعد: الكنسُ يلتقطه ويختمه (`announceStore`). والصنفُ المخفيّ لا يُعلَن
   /// حتى يُرفع، فالموسميُّ يُعلَن يوم يُعرض لا يوم أُعدّ.
-  announcedAt DateTime?
+  announcedAt  DateTime?
   /// بطاقةُ إعلانٍ تظهر في وسط الشاشة عند فتح التطبيق (القاعدة ٢٦٧): متى
   /// فُعِّلت، وفارغٌ = لا بطاقة. وسطرٌ يكتبه المشرف عن الصنف تحت اسمه.
-  promoAt     DateTime?
-  promoText   String?
+  promoAt      DateTime?
+  promoText    String?
   /// صورةٌ إعلانيّة لبطاقة الإعلان (القاعدة ٢٧٢) — غيرُ صورة الصنف: الثيمُ صورتُه
   /// خلفيةٌ بطول الشاشة لا تُقرأ في بطاقة. وبلاها تُرسم صورةُ الصنف كما كانت.
-  promoMediaId String?      @unique
-  promoMedia   Media?       @relation("StoreItemPromo", fields: [promoMediaId], references: [id], onDelete: SetNull)
+  promoMediaId String?   @unique
+  promoMedia   Media?    @relation("StoreItemPromo", fields: [promoMediaId], references: [id], onDelete: SetNull)
 
   categoryId   String?
   category     StoreCategory?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
@@ -1029,12 +1030,28 @@ model NationalDay {
 
 /// مجموعةُ ملصقاتٍ تُدار من اللوحة (القاعدة ٢٩١).
 model StickerPack {
-  id        String    @id @default(cuid())
-  name      String
-  sortOrder Int       @default(0)
-  hidden    Boolean   @default(false)
-  createdAt DateTime  @default(now())
-  stickers  Sticker[]
+  id         String            @id @default(cuid())
+  name       String
+  sortOrder  Int               @default(0)
+  hidden     Boolean           @default(false)
+  /// صفرٌ = مع اشتراك آثار+، وما فوقه = تُشترى بالنقاط وتُملَك ولو انتهى الاشتراك (القاعدة ٢٩٤).
+  priceCoins Int               @default(0)
+  createdAt  DateTime          @default(now())
+  stickers   Sticker[]
+  purchases  StickerPurchase[]
+}
+
+/// ملكيّةُ مجموعةٍ مدفوعة: صفٌّ لا يُمحى بانتهاء آثار+ (القاعدة ٢٩٤).
+model StickerPurchase {
+  id        String      @id @default(cuid())
+  userId    String
+  packId    String
+  paidCoins Int
+  createdAt DateTime    @default(now())
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pack      StickerPack @relation(fields: [packId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, packId])
 }
 
 /// ملصقٌ واحد: صورةٌ للجميع كصورة الصنف، ولا يُرسله إلا مشتركُ آثار+.

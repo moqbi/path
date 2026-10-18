@@ -16,7 +16,10 @@ const FIELD =
 export async function StickersSection() {
   const packs = await prisma.stickerPack.findMany({
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-    include: { stickers: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], select: { id: true, mediaId: true } } },
+    include: {
+      stickers: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], select: { id: true, mediaId: true } },
+      _count: { select: { purchases: true } },
+    },
   });
 
   return (
@@ -24,14 +27,22 @@ export async function StickersSection() {
       <h2 className="mb-1 text-[15px] font-bold">الملصقات</h2>
       <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
         مجموعاتٌ تظهر في لوحة الملصقات بجانب زرّ الإرسال في التعليقات والمحادثات، ثمانيةٌ
-        في الصفحة واسمُ المجموعة فوقها. يرسلها مشتركو آثار+ وحدهم ويراها الجميع. والمجموعةُ
-        المخفيّة أو الفارغة لا تظهر.
+        في الصفحة واسمُ المجموعة فوقها، ويراها الجميع. بلا سعرٍ هي مع اشتراك آثار+، وبسعرٍ
+        تُشترى بالنقاط ويملكها مشتريها ولو انتهى اشتراكُه أو أُخفيت أو تغيّر سعرُها. والمجموعةُ
+        المخفيّة أو الفارغة لا تظهر لمن لا يملكها.
       </p>
 
       <details className="mb-5 rounded-2xl border border-line bg-card p-4">
         <summary className="cursor-pointer text-[13.5px] font-bold">مجموعة جديدة</summary>
         <Saver action={createStickerPack} className="mt-3 flex gap-2.5">
-          <input name="name" required maxLength={40} placeholder="اسم المجموعة" className={`grow ${FIELD}`} style={{ height: 46 }} />
+          <input name="name" required maxLength={40} placeholder="اسم المجموعة" className={`min-w-0 grow ${FIELD}`} style={{ height: 46 }} />
+          <input
+            name="priceCoins"
+            inputMode="numeric"
+            placeholder="السعر بالنقاط (فارغ = مع آثار+)"
+            className={`w-[46%] min-w-0 ${FIELD}`}
+            style={{ height: 46 }}
+          />
           <button
             type="submit"
             className="h-[46px] rounded-xl px-4 text-[13px] font-bold"
@@ -53,14 +64,20 @@ export async function StickersSection() {
               <h3 className="text-[14px] font-bold">
                 {pack.name}{" "}
                 <span className="text-[11.5px] font-normal text-muted">
-                  {ar(pack.stickers.length)} ملصق{pack.hidden ? " · مخفية" : ""}
+                  {ar(pack.stickers.length)} ملصق ·{" "}
+                  {pack.priceCoins > 0 ? `${ar(pack.priceCoins)} نقطة · اشتراها ${ar(pack._count.purchases)}` : "مع آثار+"}
+                  {pack.hidden ? " · مخفية" : ""}
                 </span>
               </h3>
-              <form action={deleteStickerPack.bind(null, pack.id)}>
-                <button type="submit" className="text-[12px] font-semibold" style={{ color: "var(--color-live)" }}>
-                  احذف المجموعة
-                </button>
-              </form>
+              {pack._count.purchases > 0 ? (
+                <span className="text-[11.5px] text-muted">مُشتراة — تُخفى ولا تُحذف</span>
+              ) : (
+                <form action={deleteStickerPack.bind(null, pack.id)}>
+                  <button type="submit" className="text-[12px] font-semibold" style={{ color: "var(--color-live)" }}>
+                    احذف المجموعة
+                  </button>
+                </form>
+              )}
             </div>
 
             <details className="mb-3">
@@ -69,6 +86,10 @@ export async function StickersSection() {
                 <label className="text-[11.5px] text-muted">
                   الاسم
                   <input name="name" defaultValue={pack.name} maxLength={40} className={`mt-1 block w-full ${FIELD}`} style={{ height: 42 }} />
+                </label>
+                <label className="text-[11.5px] text-muted">
+                  السعر بالنقاط (صفر = مع آثار+)
+                  <input name="priceCoins" inputMode="numeric" defaultValue={pack.priceCoins} className={`mt-1 block w-full ${FIELD}`} style={{ height: 42 }} />
                 </label>
                 <label className="text-[11.5px] text-muted">
                   الترتيب (الأصغر أوّلاً)
