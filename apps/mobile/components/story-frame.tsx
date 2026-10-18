@@ -13,7 +13,11 @@ export const FRAME_ZOOM = { min: 0.5, max: 4 } as const;
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-/** اللوحةُ بمقاس الشاشة، والصورةُ داخلها بتقريبها وإزاحتها، وما خرج يُقصّ. */
+/**
+ * اللوحةُ بمقاس الشاشة، والصورةُ داخلها بتقريبها وإزاحتها، وما خرج يُقصّ.
+ * **مطلقةُ الموضع** في أعلى أبيها: طبقةٌ تحت الرأس والنصوص لا تأخذ مكاناً في التدفّق —
+ * على الجهاز كان رأسُ القصّة يُرسم تحتها فينزل الاسمُ والشريطُ إلى أسفل الشاشة.
+ */
 export function FramedMedia({
   frame,
   width,
@@ -27,7 +31,7 @@ export function FramedMedia({
 }) {
   const f = frame ?? NO_FRAME;
   return (
-    <View pointerEvents="none" style={{ width, height, overflow: "hidden" }}>
+    <View pointerEvents="none" style={{ position: "absolute", left: 0, top: 0, width, height, overflow: "hidden" }}>
       <View style={{ width, height, transform: [{ translateX: f.x * width }, { translateY: f.y * height }, { scale: f.z }] }}>
         {children}
       </View>
