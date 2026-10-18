@@ -29,10 +29,13 @@ export async function stickerPacks(): Promise<StickerPack[]> {
  */
 export async function assertSticker(userId: string, stickerId: string): Promise<string> {
   const [me, sticker] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { isPlus: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { isPlus: true, plusUntil: true } }),
     prisma.sticker.findFirst({ where: { id: stickerId, pack: { hidden: false } }, select: { id: true } }),
   ]);
-  if (!me?.isPlus) throw new Error("الملصقات لمشتركي آثار+");
+  // الاشتراكُ كما يقرؤه `currentUser()`: ما مضى `plusUntil` منتهٍ ولو بقي `isPlus` حتى الكنس
+  // (القاعدة ١٤٩) — فتُقفل الملصقاتُ مع الإيموجي الحرّ وبقيّة المزايا في اللحظة نفسها.
+  const active = me?.isPlus && (!me.plusUntil || me.plusUntil > new Date());
+  if (!active) throw new Error("الملصقات لمشتركي آثار+");
   if (!sticker) throw new Error("الملصق غير موجود");
   return sticker.id;
 }
