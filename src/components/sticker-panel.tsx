@@ -134,8 +134,9 @@ export function StickerPanel({
   }, [packs, isPlus]);
 
   const dark = tone === "dark";
-  const ink = dark ? "#fff" : "var(--color-ink)";
-  const soft = dark ? "rgba(255,255,255,.55)" : "var(--color-muted)";
+  // على الورق اللوحةُ على الأرضية لا في بطاقة، فحبرُها حبرُ الأرضية (القاعدة ٢٦٢).
+  const ink = dark ? "#fff" : "var(--color-ground-ink)";
+  const soft = dark ? "rgba(255,255,255,.55)" : "var(--color-ground-muted)";
   const cell = dark ? "rgba(255,255,255,.06)" : "var(--color-paper)";
   const page = pages[current] ?? pages[0];
 
@@ -151,26 +152,29 @@ export function StickerPanel({
         </p>
       ) : (
         <>
+          {/* اسمُ المجموعة في الوسط، والسعرُ أو «مملوكة» في طرفٍ والنقاطُ في الآخر. */}
           <div className="flex h-7 items-center gap-2 px-1">
-            <span className="min-w-0 grow truncate text-[13px] font-bold" style={{ color: ink }}>
+            <span className="flex flex-1 basis-0">
+              {page && (page.price > 0 || page.owned) ? (
+                <span className="text-[11px] font-bold" style={{ color: page.owned ? soft : "var(--color-clay-ink)" }}>
+                  {page.owned ? "مملوكة" : `${ar(page.price)} نقطة`}
+                </span>
+              ) : null}
+            </span>
+            <span className="min-w-0 truncate text-center text-[13px] font-bold" style={{ color: ink }}>
               {page?.pack}
             </span>
-            {page && (page.price > 0 || page.owned) ? (
-              <span className="text-[11px] font-bold" style={{ color: page.owned ? soft : "var(--color-clay-ink)" }}>
-                {page.owned ? "مملوكة" : `${ar(page.price)} نقطة`}
-              </span>
-            ) : null}
-            {page && page.count > 1 ? (
-              <span className="flex gap-1">
-                {Array.from({ length: page.count }, (_, i) => (
-                  <span
-                    key={i}
-                    className="block h-[5px] rounded-full"
-                    style={{ width: i === page.index ? 14 : 5, background: i === page.index ? "var(--color-clay)" : soft }}
-                  />
-                ))}
-              </span>
-            ) : null}
+            <span className="flex flex-1 basis-0 justify-end gap-1">
+              {page && page.count > 1
+                ? Array.from({ length: page.count }, (_, i) => (
+                    <span
+                      key={i}
+                      className="block h-[5px] rounded-full"
+                      style={{ width: i === page.index ? 14 : 5, background: i === page.index ? "var(--color-clay)" : soft }}
+                    />
+                  ))
+                : null}
+            </span>
           </div>
 
           {/* الصفحةُ الظاهرة من الإزاحة مطلقةً: في RTL تمضي سالبةً. */}
