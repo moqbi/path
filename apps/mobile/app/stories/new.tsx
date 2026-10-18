@@ -23,6 +23,8 @@ import { StoryCamera, GlassPill, SendMark, disc } from "../../components/story-c
 import { colors } from "../../theme/tokens";
 import { ClockIcon, CloseIcon, LockIcon, MusicIcon, PinIcon, SpeakerIcon, StickerIcon, TrashIcon } from "../../components/icons";
 import { PeopleSheet, type Friend } from "../../components/people-sheet";
+import { FramedMedia, NO_FRAME, useFrameGesture, type StoryFrame } from "../../components/story-frame";
+import { DEV_FEATURES } from "../../lib/dev-features";
 import { useCircle } from "../../lib/queries";
 
 /** أقصى مدّة لفيديو القصة — نفس حدّ الخادم. */
@@ -104,6 +106,12 @@ export default function NewStory() {
   const [stickerAt, setStickerAt] = useState<number | null>(null);
 
   const screen = Dimensions.get("window");
+  /*
+    القصّةُ بملء الشاشة، وصاحبُها يقرّب صورتها ويبعدها ويسحبها (القاعدة ٢٩٦) — في نسخة
+    التطوير وحدها حتى تُجرَّب.
+  */
+  const [frame, setFrame] = useState<StoryFrame>(NO_FRAME);
+  const frameGesture = useFrameGesture(frame, setFrame, screen.width, screen.height);
 
   /**
    * المقطعُ: الفلاترُ للصور وحدها (القاعدة ١٣١). والموسيقى تبقى — **بقرار المالك**
@@ -190,6 +198,7 @@ export default function NewStory() {
           audio: sound ? { mediaId: sound.mediaId, start: sound.start, end: sound.end } : undefined,
           track: song && !sound ? { id: song.track.id, start: song.start, full: song.full } : undefined,
           muted: draft.video && muteVideo ? true : undefined,
+          frame: DEV_FEATURES && (frame.z !== 1 || frame.x || frame.y) ? frame : undefined,
         }),
       });
       await client.invalidateQueries({ queryKey: ["stories"] });
@@ -235,6 +244,7 @@ export default function NewStory() {
     setMuteVideo(false);
     setPanel(null);
     setError(null);
+    setFrame(NO_FRAME);
   }
 
   const long = draft.video && draft.seconds > STORY_SECONDS;
@@ -242,12 +252,23 @@ export default function NewStory() {
   return (
     <View style={{ flex: 1, backgroundColor: "#0b1219" }}>
       {/* اللوحةُ بملء الشاشة كما يراها المشاهد — فالنصُّ والملصقُ يقعان حيث وُضعا. */}
-      {draft.video ? (
-        long ? (
-          <VideoWindowPreview uri={draft.uri} start={draft.start} width={screen.width} height={screen.height} />
-        ) : (
-          <StoryVideo source={draft.uri} local width={screen.width} height={screen.height} loop muted={muteVideo} />
-        )
+      {draft.video && long ? (
+        <VideoWindowPreview uri={draft.uri} start={draft.start} width={screen.width} height={screen.height} />
+      ) : DEV_FEATURES ? (
+        /* طبقةُ الصورة تأخذ ما لم يأخذه نصٌّ ولا ملصقٌ فوقها: سحبٌ وتقريبٌ ونقرتان تُعيدانها. */
+        <View {...frameGesture.panHandlers} style={{ position: "absolute", left: 0, top: 0, width: screen.width, height: screen.height }}>
+          <FramedMedia frame={frame} width={screen.width} height={screen.height}>
+            {draft.video ? (
+              <StoryVideo source={draft.uri} local width={screen.width} height={screen.height} loop muted={muteVideo} cover />
+            ) : !filter ? (
+              <Image source={{ uri: draft.uri }} style={{ width: screen.width, height: screen.height }} resizeMode="cover" />
+            ) : (
+              <LocalFiltered uri={draft.uri} filter={filter} width={screen.width} height={screen.height} cover />
+            )}
+          </FramedMedia>
+        </View>
+      ) : draft.video ? (
+        <StoryVideo source={draft.uri} local width={screen.width} height={screen.height} loop muted={muteVideo} />
       ) : !filter ? (
         <Image source={{ uri: draft.uri }} style={{ width: screen.width, height: screen.height }} resizeMode="contain" />
       ) : (
@@ -507,13 +528,15 @@ function LocalFiltered({
   filter,
   width,
   height,
+  cover = false,
 }: {
   uri: string;
   filter: string;
   width: number;
   height: number;
+  cover?: boolean;
 }) {
-  return <Filtered mediaId={uri} filter={filter} width={width} height={height} local />;
+  return <Filtered mediaId={uri} filter={filter} width={width} height={height} local cover={cover} />;
 }
 
 /**

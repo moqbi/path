@@ -93,6 +93,7 @@ export function Filtered({
   width,
   height,
   local = false,
+  cover = false,
 }: {
   mediaId: string;
   filter: string | null | undefined;
@@ -100,11 +101,13 @@ export function Filtered({
   height: number;
   /** معاينةُ ملفٍّ على الجهاز قبل رفعه — لا معرّف له بعد. */
   local?: boolean;
+  /** يملأ اللوحة ويقصّ ما زاد — القصّةُ بملء الشاشة (القاعدة ٢٩٦). */
+  cover?: boolean;
 }) {
   const image = useAuthedImage(filter ? mediaId : null, local);
 
   if (!filter) {
-    return <MediaImage mediaId={mediaId} resizeMode="contain" style={{ width, height }} />;
+    return <MediaImage mediaId={mediaId} resizeMode={cover ? "cover" : "contain"} style={{ width, height }} />;
   }
 
   return (
@@ -116,7 +119,7 @@ export function Filtered({
           مفلترةً وغيرَ مفلترة فوقها — فلا يُرى أثرُ الفلتر أصلاً.
         */}
         {image ? (
-          <SkiaImage image={image} x={0} y={0} width={width} height={height} fit="contain">
+          <SkiaImage image={image} x={0} y={0} width={width} height={height} fit={cover ? "cover" : "contain"}>
             <ColorMatrix matrix={filterOf(filter).matrix} />
           </SkiaImage>
         ) : null}

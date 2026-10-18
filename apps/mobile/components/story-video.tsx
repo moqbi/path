@@ -28,6 +28,7 @@ export function StoryVideo({
   paused = false,
   loop = false,
   muted = false,
+  cover = false,
 }: {
   /** معرّف الملف على الخادم، أو عنوانه على الجهاز حين `local`. */
   source: string;
@@ -38,6 +39,8 @@ export function StoryVideo({
   loop?: boolean;
   /** صوتُ المقطع مكتوم — صاحبُ القصّة اختار موسيقى بدله (القاعدة ٢٧٧). */
   muted?: boolean;
+  /** يملأ اللوحة ويقصّ ما زاد — القصّةُ بملء الشاشة (القاعدة ٢٩٦). */
+  cover?: boolean;
 }) {
   const player = useRef<Video | null>(null);
   const [token, setToken] = useState(currentAccess);
@@ -67,7 +70,7 @@ export function StoryVideo({
             : { uri: `${baseUrl}/v1/media/${source}`, headers: { authorization: `Bearer ${token}` } }
         }
         style={{ width, height }}
-        resizeMode={ResizeMode.CONTAIN}
+        resizeMode={cover ? ResizeMode.COVER : ResizeMode.CONTAIN}
         isLooping={loop}
         isMuted={muted}
         shouldPlay={playing}

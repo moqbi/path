@@ -41,8 +41,17 @@ export default async function StoriesPage({ params }: { params: Promise<{ id: st
         trackId: story.trackId,
         trackSeconds: story.trackSeconds,
         videoMuted: story.videoMuted,
+        frame: frameOf(story.frame),
         myReaction: story.myReaction,
       }))}
     />
   );
+}
+
+/** تقريبُ صورة القصّة وإزاحتُها (القاعدة ٢٩٦) — ما لا يُقرأ منها يُترك. */
+function frameOf(value: unknown): { z: number; x: number; y: number } | null {
+  if (!value || typeof value !== "object") return null;
+  const { z, x, y } = value as Record<string, unknown>;
+  if (typeof z !== "number" || typeof x !== "number" || typeof y !== "number") return null;
+  return { z, x, y };
 }

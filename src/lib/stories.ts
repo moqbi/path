@@ -128,6 +128,7 @@ export async function storiesOf(viewerId: string, authorId: string) {
       trackId: true,
       trackSeconds: true,
       videoMuted: true,
+      frame: true,
       createdAt: true,
       media: { select: { mime: true } },
       author: { select: { id: true, name: true, avatarMediaId: true } },
