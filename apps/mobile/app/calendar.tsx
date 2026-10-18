@@ -22,10 +22,6 @@ type CalendarMonth = {
   month: string;
   today: string;
   country: string | null;
-  /** اسمُ الدولة التي تُعرض مناسباتُها — من موقعه الحاليّ (القاعدة ٢٩٢). */
-  countryName?: string | null;
-  /** المناسباتُ الوطنيّة في السنة القادمة من اليوم. */
-  upcoming?: { date: string; name: string; greeting: string | null }[];
   days: CalendarDay[];
 };
 
@@ -65,7 +61,7 @@ const useMonth = (key: string) =>
 /**
  * التقويم (القاعدة ٢٩٢) — **بقرار المالك**: شهرٌ ميلاديّ بنقاطٍ على أيّامه —
  * المناسباتُ الوطنيّة لبلده، ومناسباتُ الصداقة، والذكريات — وتحته ما في اليوم
- * المختار، ثمّ ما يأتي من المناسبات الوطنيّة. كلُّه يُشتقّ على الخادم (القاعدة
+ * المختار حين يُختار. كلُّه يُشتقّ على الخادم (القاعدة
  * ٢٣٥) ولصاحبه وحده.
  */
 export default function CalendarScreen() {
@@ -75,10 +71,7 @@ export default function CalendarScreen() {
   const [picked, setPicked] = useState<string | null>(null);
 
   const current = useMonth(keyOf(view.y, view.m));
-  // القادمُ من اليوم لا من الشهر المعروض: الخادمُ يحسب سنةً كاملة من شهر اليوم.
-  const thisMonth = useMonth(keyOf(now.getFullYear(), now.getMonth() + 1));
-
-  const today = current.data?.today ?? thisMonth.data?.today ?? "";
+  const today = current.data?.today ?? "";
   const byDate = useMemo(() => new Map((current.data?.days ?? []).map((day) => [day.date, day])), [current.data]);
 
   const first = new Date(Date.UTC(view.y, view.m - 1, 1)).getUTCDay();
@@ -86,20 +79,9 @@ export default function CalendarScreen() {
   const cells: (number | null)[] = [...Array(first).fill(null), ...Array.from({ length }, (_, i) => i + 1)];
   while (cells.length % 7) cells.push(null);
 
-  const selected = picked && picked.startsWith(keyOf(view.y, view.m)) ? picked : today.startsWith(keyOf(view.y, view.m)) ? today : null;
+  // ما في اليوم يظهر حين يُختار وحده — **بقرار المالك**: لا قائمةَ «قادمة» تحت الشهر.
+  const selected = picked && picked.startsWith(keyOf(view.y, view.m)) ? picked : null;
   const day = selected ? byDate.get(selected) : undefined;
-
-  // القادمُ من اليوم المختار: ضغطُ يومٍ يُري ما بعده لا ما بعد اليوم وحده.
-  const from = selected && selected !== today ? selected : null;
-  const fromDay = useQuery({
-    queryKey: ["calendar", "upcoming", from],
-    queryFn: () => api<Pick<CalendarMonth, "countryName" | "upcoming">>(`/v1/calendar/upcoming?from=${from}`),
-    enabled: Boolean(from),
-    staleTime: 10 * 60_000,
-  });
-  const upcomingSource = from ? fromDay : thisMonth;
-  const upcoming = upcomingSource.data?.upcoming ?? [];
-  const countryName = thisMonth.data?.countryName ?? fromDay.data?.countryName ?? null;
 
   const DOT = dots();
   const go = (by: number) => {
@@ -202,34 +184,6 @@ export default function CalendarScreen() {
           </View>
         ) : null}
 
-        {/* المناسباتُ الوطنيّة القادمة. */}
-        <View style={{ gap: 8 }}>
-          <Text style={{ color: colors.groundInk, fontSize: 14, fontWeight: "800" }}>
-            {from ? `المناسبات من ${ar(Number(from.slice(8)))} ${MONTHS[Number(from.slice(5, 7)) - 1]}` : "المناسبات القادمة"}
-          </Text>
-          {/* الدولةُ من موقعه الحاليّ: من سافر يرى مناسبات البلد الذي هو فيه. */}
-          <Text style={{ color: colors.groundMuted, fontSize: 11.5, marginTop: -4 }}>
-            {countryName ? `مناسبات ${countryName} الوطنية والأعياد — حسب موقعك` : "الأعياد والمناسبات العامة — حسب موقعك"}
-          </Text>
-          {upcomingSource.isLoading ? (
-            <ActivityIndicator color={colors.clay} />
-          ) : upcoming.length === 0 ? (
-            <Text style={{ color: colors.groundMuted, fontSize: 12.5 }}>لا مناسبات في السنة القادمة.</Text>
-          ) : (
-            upcoming.map((item) => (
-              <View
-                key={`${item.date}:${item.name}`}
-                style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 16, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line }}
-              >
-                <DateChip date={item.date} />
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "700" }}>{item.name}</Text>
-                  <Text style={{ color: colors.muted, fontSize: 11.5 }}>{until(item.date, today)}</Text>
-                </View>
-              </View>
-            ))
-          )}
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -244,25 +198,6 @@ function Legend({ color, label }: { color: string; label: string }) {
     <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
       <Dot color={color} />
       <Text style={{ color: colors.muted, fontSize: 11 }}>{label}</Text>
-    </View>
-  );
-}
-
-/** «اليوم»، «بكرة»، «بعد ٥ أيام». */
-function until(date: string, today: string): string {
-  const days = Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
-  if (days <= 0) return "اليوم";
-  if (days === 1) return "بكرة";
-  if (days === 2) return "بعد يومين";
-  return `بعد ${ar(days)} ${days <= 10 ? "أيام" : "يوماً"}`;
-}
-
-function DateChip({ date }: { date: string }) {
-  const m = Number(date.slice(5, 7));
-  return (
-    <View style={{ width: 48, alignItems: "center", paddingVertical: 6, borderRadius: 12, backgroundColor: colors.clay }}>
-      <Text style={{ color: colors.onBrand, fontSize: 17, fontWeight: "800", lineHeight: 22 }}>{ar(Number(date.slice(8)))}</Text>
-      <Text style={{ color: colors.onBrand, fontSize: 10, fontWeight: "600" }}>{MONTHS[m - 1]}</Text>
     </View>
   );
 }
