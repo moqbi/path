@@ -34,6 +34,7 @@ import { announceAvatar } from "@/lib/avatar-moment";
 import { cloudReady, probeBucket } from "@/lib/storage";
 import { isSupportedMusicUrl, resolveTrack } from "@/lib/music-link";
 import { guard } from "@/lib/moderation";
+import { assertSticker, canTryStickers, STICKER_TEXT, stickerPacks as readStickerPacks, type StickerPack } from "@/lib/stickers";
 import { ar } from "@/lib/format";
 import {
   NOTE_FACES,
@@ -1704,11 +1705,14 @@ export async function addComment(momentId: string, formData: FormData): Promise<
   const moment = await assertCanInteract(user.id, momentId);
   if (moment.commentsLocked && moment.authorId !== user.id) throw new Error("أقفل صاحبُ اللحظة التعليقات");
 
-  const body = String(formData.get("body") ?? "").trim();
+  // الملصقُ يحلّ محلّ النصّ، و«ملصق» نصُّه لما لا يرسمه (القاعدة ٢٩١).
+  const wanted = String(formData.get("stickerId") ?? "");
+  const stickerId = wanted ? await assertSticker(user.id, wanted) : null;
+  const body = stickerId ? STICKER_TEXT : String(formData.get("body") ?? "").trim();
   if (!body) return;
   await guard(body);
 
-  await prisma.comment.create({ data: { momentId, userId: user.id, body: body.slice(0, 500) } });
+  await prisma.comment.create({ data: { momentId, userId: user.id, body: body.slice(0, 500), stickerId } });
   revalidatePath("/");
   revalidatePath(`/m/${momentId}`);
 }
@@ -1948,13 +1952,15 @@ export async function sendMessage(conversationId: string, formData: FormData): P
 
   await myConversation(conversationId, user.id);
 
-  const body = String(formData.get("body") ?? "").trim();
+  const wanted = String(formData.get("stickerId") ?? "");
+  const stickerId = wanted ? await assertSticker(user.id, wanted) : null;
+  const body = stickerId ? STICKER_TEXT : String(formData.get("body") ?? "").trim();
   if (!body) return;
   await guard(body);
 
   await prisma.$transaction([
     prisma.message.create({
-      data: { conversationId, senderId: user.id, body: body.slice(0, 2000) },
+      data: { conversationId, senderId: user.id, body: body.slice(0, 2000), stickerId },
     }),
     touchConversation(conversationId),
   ]);
@@ -2669,4 +2675,14 @@ export async function shareRecapAction(year: number): Promise<{ ok: boolean; err
   } catch (problem) {
     return { ok: false, error: problem instanceof Error ? problem.message : "تعذّرت المشاركة" };
   }
+}
+
+/**
+ * مجموعاتُ الملصقات للوحة (القاعدة ٢٩١) — والإرسالُ وحده يُفحص. و`allowed` يقول هل
+ * يُرسم زرُّها: الواجهةُ في الويب للمالك وممنوحي اللوحة كلّها حتى تُرفع عن الجوّال.
+ */
+export async function stickerPacks(): Promise<{ allowed: boolean; packs: StickerPack[] }> {
+  const user = await requireUser();
+  if (!canTryStickers(user)) return { allowed: false, packs: [] };
+  return { allowed: true, packs: await readStickerPacks() };
 }

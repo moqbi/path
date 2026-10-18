@@ -3,7 +3,7 @@ import { WithNames } from "@/components/with-names";
 import { currentUser } from "@/lib/auth";
 import { circleIds } from "@/lib/circle";
 import { momentById } from "@/lib/feed";
-import { addComment } from "@/app/actions";
+import { CommentBar } from "./comment-bar";
 import { Avatar, NameTag, ScreenHeader } from "@/components/ui";
 import { SeenTracker } from "@/components/interactive";
 import { Reactions, Reactors } from "@/components/reactions";
@@ -36,7 +36,6 @@ export default async function MomentPage({
 
   const mine = moment.reactions.find((r) => r.userId === user.id) ?? null;
   const withNames = moment.tags.map((t) => t.user.name);
-  const commentOn = addComment.bind(null, moment.id);
 
   return (
     <div className="screen">
@@ -176,23 +175,7 @@ export default async function MomentPage({
           أقفل صاحبُ اللحظة التعليقات
         </p>
       ) : (
-      <form action={commentOn} className="flex items-center gap-2 px-5 pb-8 pt-3">
-        <input
-          name="body"
-          required
-          maxLength={500}
-          placeholder="اكتب تعليق…"
-          className="grow rounded-full border border-line bg-card px-5 text-[13.5px] outline-none focus:border-clay"
-          style={{ height: 48 }}
-        />
-        <button
-          type="submit"
-          className="brand-gradient shrink-0 rounded-full px-5 text-[13.5px] font-bold"
-          style={{ height: 48, color: "var(--color-on-brand)" }}
-        >
-          إرسال
-        </button>
-      </form>
+      <CommentBar momentId={moment.id} isPlus={user.isPlus} />
       )}
     </div>
   );

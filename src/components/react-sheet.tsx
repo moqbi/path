@@ -11,7 +11,8 @@ import {
 } from "@/app/actions";
 import { GlassSheet } from "@/components/glass-sheet";
 import { ReportSheet } from "@/components/comment-swipe";
-import { EyeIcon, FlagIcon, LockIcon, TrashIcon, UnlockIcon } from "@/components/icons";
+import { EyeIcon, FlagIcon, LockIcon, StickerIcon, TrashIcon, UnlockIcon } from "@/components/icons";
+import { StickerPanel, useStickersAllowed } from "@/components/sticker-panel";
 import { CUSTOM, EMOJI_GROUPS, facesFor, ReactionGlyph } from "@/components/reactions";
 import { ar } from "@/lib/format";
 
@@ -52,6 +53,8 @@ export function ReactSheet({
 }) {
   const [body, setBody] = useState("");
   const [board, setBoard] = useState(false);
+  const [stickers, setStickers] = useState(false);
+  const stickersAllowed = useStickersAllowed();
   const [asking, setAsking] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [views, setViews] = useState<number | null>(null);
@@ -78,6 +81,13 @@ export function ReactSheet({
     const data = new FormData();
     data.set("body", text);
     setBody("");
+    onClose();
+    start(() => void addComment(momentId, data));
+  }
+
+  function sendSticker(stickerId: string) {
+    const data = new FormData();
+    data.set("stickerId", stickerId);
     onClose();
     start(() => void addComment(momentId, data));
   }
@@ -242,6 +252,18 @@ export function ReactSheet({
               className="min-w-0 grow resize-none rounded-[23px] px-4 py-3 text-[14px] text-white outline-none placeholder:text-white/45"
               style={{ minHeight: 46, maxHeight: 120, background: SOFT }}
             />
+            {stickersAllowed ? (
+              <button
+                type="button"
+                aria-label="الملصقات"
+                aria-expanded={stickers}
+                onClick={() => setStickers((v) => !v)}
+                className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full"
+                style={{ background: stickers ? "rgba(246,185,59,.3)" : SOFT, color: stickers ? GOLD : "#fff" }}
+              >
+                <StickerIcon size={20} />
+              </button>
+            ) : null}
             <button
               type="submit"
               disabled={!body.trim() || pending}
@@ -255,6 +277,10 @@ export function ReactSheet({
             </button>
           </form>
         )}
+
+        {stickers && stickersAllowed && !(locked && !author) ? (
+          <StickerPanel tone="dark" isPlus={isPlus} onPick={sendSticker} />
+        ) : null}
 
         {author || moderate ? (
           asking ? (
