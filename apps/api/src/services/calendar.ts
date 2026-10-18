@@ -92,6 +92,32 @@ const daysIn = (year: number, month: number) => new Date(Date.UTC(year, month, 0
  * شهرٌ كامل: يومٌ يُذكر لما فيه، وما لا شيء فيه لا يُرسل. والفتراتُ فتراتُ
  * الذكريات نفسها: شهرٌ وستّةٌ ثمّ كلُّ سنة، وما لا مثيل له يسقط.
  */
+/**
+ * المناسباتُ الوطنيّة في سنةٍ من يومٍ بعينه — اليومُ أو ما اختاره صاحبُ التقويم:
+ * أقربُ مناسبةٍ قد تبعد أشهراً، فالشهرُ المعروضُ لا يكفي.
+ */
+function upcomingOf(rows: NationalDay[], from: Day) {
+  const fromKey = dayKey(from);
+  const horizon = dayKey(monthsBefore(from, -12) ?? { y: from.y + 1, m: from.m, d: 1 });
+  return rows
+    .flatMap((row) =>
+      [from.y, from.y + 1].flatMap((y) => datesOf(row, y)).map((day) => ({ date: dayKey(day), name: row.name, greeting: row.greeting })),
+    )
+    .filter((entry) => entry.date >= fromKey && entry.date < horizon)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 8);
+}
+
+/** «المناسبات القادمة» من يومٍ يختاره صاحبُ التقويم (القاعدة ٢٩٢). */
+export async function upcoming(userId: string, from: Day) {
+  const { country, rows } = await nationalDaysFor(userId);
+  return {
+    country,
+    countryName: country ? (COUNTRIES.find((row) => row.code === country)?.name ?? null) : null,
+    upcoming: upcomingOf(rows, from),
+  };
+}
+
 export async function month(userId: string, year: number, monthNo: number) {
   const days: Day[] = Array.from({ length: daysIn(year, monthNo) }, (_, index) => ({ y: year, m: monthNo, d: index + 1 }));
   const entries = new Map<string, Entry>(
@@ -172,17 +198,9 @@ export async function month(userId: string, year: number, monthNo: number) {
     }
   }
 
-  // القادمُ من اليوم لا من الشهر المعروض: سنةٌ كاملة — أقربُ مناسبةٍ وطنيّة قد تبعد أشهراً.
   const today = riyadhDay();
   const todayKey = dayKey(today);
-  const horizon = dayKey(monthsBefore(today, -12) ?? { y: today.y + 1, m: today.m, d: 1 });
-  const upcoming = rows
-    .flatMap((row) =>
-      [today.y, today.y + 1].flatMap((y) => datesOf(row, y)).map((day) => ({ date: dayKey(day), name: row.name, greeting: row.greeting })),
-    )
-    .filter((entry) => entry.date >= todayKey && entry.date < horizon)
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 8);
+  const upcoming = upcomingOf(rows, today);
 
   return {
     month: `${year}-${String(monthNo).padStart(2, "0")}`,
