@@ -34,7 +34,7 @@ import { announceAvatar } from "@/lib/avatar-moment";
 import { cloudReady, probeBucket } from "@/lib/storage";
 import { isSupportedMusicUrl, resolveTrack } from "@/lib/music-link";
 import { guard } from "@/lib/moderation";
-import { assertSticker, canTryStickers, STICKER_TEXT, stickerPacks as readStickerPacks, type StickerPack } from "@/lib/stickers";
+import { assertSticker, buyStickerPack as buyPack, canTryStickers, STICKER_TEXT, stickerPacks as readStickerPacks, type StickerPack } from "@/lib/stickers";
 import { ar } from "@/lib/format";
 import {
   NOTE_FACES,
@@ -2681,8 +2681,15 @@ export async function shareRecapAction(year: number): Promise<{ ok: boolean; err
  * مجموعاتُ الملصقات للوحة (القاعدة ٢٩١) — والإرسالُ وحده يُفحص. و`allowed` يقول هل
  * يُرسم زرُّها: الواجهةُ في الويب للمالك وممنوحي اللوحة كلّها حتى تُرفع عن الجوّال.
  */
-export async function stickerPacks(): Promise<{ allowed: boolean; packs: StickerPack[] }> {
+export async function stickerPacks(): Promise<{ allowed: boolean; packs: StickerPack[]; coins: number }> {
   const user = await requireUser();
-  if (!canTryStickers(user)) return { allowed: false, packs: [] };
-  return { allowed: true, packs: await readStickerPacks() };
+  if (!canTryStickers(user)) return { allowed: false, packs: [], coins: 0 };
+  return { allowed: true, packs: await readStickerPacks(user.id), coins: user.coins };
+}
+
+/** شراءُ مجموعة ملصقاتٍ مدفوعة بالنقاط (القاعدة ٢٩٤) — يردّ نصّ الخطأ ولا يرميه (القاعدة ٩٠). */
+export async function buyStickerPack(packId: string): Promise<{ ok?: string; error?: string }> {
+  const user = await requireUser();
+  if (!canTryStickers(user)) return { error: "غير متاح" };
+  return buyPack(user.id, String(packId));
 }

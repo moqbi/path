@@ -2017,12 +2017,22 @@ export async function restoreMember(memberNo: number, _prev: AdminResult, formDa
  * مجموعاتُ الملصقات (القاعدة ٢٩١): تُضاف وتُسمّى وتُرتَّب وتُخفى، ويُرفع داخلها
  * ملصقاتُها. بدرجة المتجر — بضاعةُ آثار+ كالإطارات.
  */
+/**
+ * سعرُ المجموعة بالنقاط (القاعدة ٢٩٤): فارغٌ أو صفرٌ = مع آثار+. والأرقامُ العربيّة-الهنديّة
+ * تُحوَّل كبقيّة اللوحة، وأقصاه ١٠٠٬٠٠٠.
+ */
+function readPackPrice(formData: FormData): number {
+  const raw = String(formData.get("priceCoins") ?? "").replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
+  const n = Math.round(Number(raw || "0"));
+  return Number.isFinite(n) ? Math.max(0, Math.min(100_000, n)) : 0;
+}
+
 export async function createStickerPack(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
   await requireAdmin("store");
   const name = String(formData.get("name") ?? "").trim().slice(0, 40);
   if (!name) return { error: "اكتب اسم المجموعة" };
   const last = await prisma.stickerPack.aggregate({ _max: { sortOrder: true } });
-  await prisma.stickerPack.create({ data: { name, sortOrder: (last._max.sortOrder ?? 0) + 1 } });
+  await prisma.stickerPack.create({ data: { name, priceCoins: readPackPrice(formData), sortOrder: (last._max.sortOrder ?? 0) + 1 } });
   revalidatePath("/admin");
   return { ok: "أُضيفت المجموعة" };
 }
@@ -2036,7 +2046,7 @@ export async function updateStickerPack(packId: string, _prev: AdminResult, form
   const sortOrder = Number.isFinite(order) ? Math.max(-9999, Math.min(9999, Math.round(order))) : 0;
   const saved = await prisma.stickerPack.updateMany({
     where: { id: packId },
-    data: { name, sortOrder, hidden: formData.get("hidden") === "on" },
+    data: { name, sortOrder, priceCoins: readPackPrice(formData), hidden: formData.get("hidden") === "on" },
   });
   if (saved.count === 0) return { error: "المجموعة غير موجودة" };
   revalidatePath("/admin");
@@ -2046,6 +2056,8 @@ export async function updateStickerPack(packId: string, _prev: AdminResult, form
 /** حذفُ المجموعة يذهب بملصقاتها وبكسلاتها (القاعدة ١٠٤)، وما أُرسل منها يبقى «ملصق» نصّاً. */
 export async function deleteStickerPack(packId: string): Promise<void> {
   await requireAdmin("store");
+  // مجموعةٌ اشتراها أحدٌ تُخفى ولا تُحذف (القاعدة ٢٩٤): الحذفُ يأخذ ما دُفع ثمنه معه.
+  if (await prisma.stickerPurchase.count({ where: { packId } })) return;
   const stickers = await prisma.sticker.findMany({ where: { packId }, select: { mediaId: true } });
   await prisma.stickerPack.delete({ where: { id: packId } });
   if (stickers.length) await dropMedia(stickers.map((sticker) => sticker.mediaId));
