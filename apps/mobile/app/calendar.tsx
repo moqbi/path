@@ -86,7 +86,10 @@ export default function CalendarScreen() {
 
   const DOT = dots();
   const go = (by: number) => {
-    setView((v) => shift(v.y, v.m, by));
+    // مدى الخادم (`CALENDAR_YEARS`): ما خارجه يُردّ، فلا يُتنقَّل إليه.
+    const to = shift(view.y, view.m, by);
+    if (to.y < 2020 || to.y > 2100) return;
+    setView(to);
     setPicked(null);
   };
 

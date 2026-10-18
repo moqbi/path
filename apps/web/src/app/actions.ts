@@ -2032,10 +2032,13 @@ export async function updateStickerPack(packId: string, _prev: AdminResult, form
   const name = String(formData.get("name") ?? "").trim().slice(0, 40);
   if (!name) return { error: "اكتب اسم المجموعة" };
   const order = Number(String(formData.get("sortOrder") ?? "0").replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))));
-  await prisma.stickerPack.update({
+  // الترتيبُ عددٌ صحيح في مدى العمود، والمجموعةُ المحذوفةُ رسالةٌ لا استثناء (القاعدة ٣١).
+  const sortOrder = Number.isFinite(order) ? Math.max(-9999, Math.min(9999, Math.round(order))) : 0;
+  const saved = await prisma.stickerPack.updateMany({
     where: { id: packId },
-    data: { name, sortOrder: Number.isFinite(order) ? Math.round(order) : 0, hidden: formData.get("hidden") === "on" },
+    data: { name, sortOrder, hidden: formData.get("hidden") === "on" },
   });
+  if (saved.count === 0) return { error: "المجموعة غير موجودة" };
   revalidatePath("/admin");
   return { ok: "تمّ الحفظ" };
 }
@@ -2078,6 +2081,7 @@ export async function deleteSticker(stickerId: string): Promise<void> {
 /** تقديمُ ملصقٍ درجةً أو تأخيرُه داخل مجموعته. */
 export async function moveSticker(stickerId: string, step: number): Promise<void> {
   await requireAdmin("store");
+  if (!Number.isFinite(step) || step === 0) return;
   const sticker = await prisma.sticker.findUnique({ where: { id: stickerId }, select: { packId: true } });
   if (!sticker) return;
   const all = await prisma.sticker.findMany({
@@ -2132,7 +2136,8 @@ export async function updateNationalDay(id: string, _prev: AdminResult, formData
   await requireAdmin();
   const input = readOccasion(formData);
   if ("error" in input) return input;
-  await prisma.nationalDay.update({ where: { id }, data: { ...input, hidden: formData.get("hidden") === "on" } });
+  const saved = await prisma.nationalDay.updateMany({ where: { id }, data: { ...input, hidden: formData.get("hidden") === "on" } });
+  if (saved.count === 0) return { error: "المناسبة غير موجودة" };
   revalidatePath("/admin");
   return { ok: "تمّ الحفظ" };
 }

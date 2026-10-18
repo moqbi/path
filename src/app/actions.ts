@@ -2065,11 +2065,12 @@ export async function editMessage(
 
   const message = await prisma.message.findUnique({
     where: { id: messageId },
-    select: { senderId: true, conversationId: true, body: true, kind: true },
+    select: { senderId: true, conversationId: true, body: true, kind: true, stickerId: true },
   });
   if (!message) throw new Error("الرسالة غير موجودة");
   if (message.senderId !== user.id) throw new Error("لا تُعدَّل رسالة غيرك");
-  if (message.kind !== "TEXT") throw new Error("النصّ وحده يُعدَّل");
+  // الملصقُ لا يُعدَّل كباب الخادم (القاعدة ٢٩١).
+  if (message.kind !== "TEXT" || message.stickerId) throw new Error("النصّ وحده يُعدَّل");
   await myConversation(message.conversationId, user.id);
 
   const body = String(formData.get("body") ?? "").trim();
