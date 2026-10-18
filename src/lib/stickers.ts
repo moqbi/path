@@ -74,7 +74,8 @@ export async function assertSticker(userId: string, stickerId: string): Promise<
  */
 export async function buyStickerPack(userId: string, packId: string): Promise<{ ok?: string; error?: string }> {
   const pack = await prisma.stickerPack.findFirst({
-    where: { id: packId, hidden: false, priceCoins: { gt: 0 } },
+    // ومجموعةٌ بلا ملصقٍ لا تُشترى: لا تُعرض، فمن يشتريها يدفع بطلبٍ يكتبه بيده لا شيء.
+    where: { id: packId, hidden: false, priceCoins: { gt: 0 }, stickers: { some: {} } },
     select: { id: true, name: true, priceCoins: true },
   });
   if (!pack) return { error: "المجموعة غير موجودة" };
