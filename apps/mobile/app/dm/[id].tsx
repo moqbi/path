@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ReportButton } from "../../components/report-sheet";
 import { View, FlatList, Pressable, ActivityIndicator } from "react-native";
 import { Text, TextInput } from "../../components/type";
@@ -359,10 +359,15 @@ export default function Conversation() {
     العودة من الكاميرا المدمجة (القاعدة ٥ب): اللقطةُ تنتظر في `lib/capture` وتُقرأ مرّةً.
     و`useFocusEffect` لأنّ المحادثة قائمةٌ تحت الكاميرا بحالتها لم تُبنَ من جديد.
   */
-  useFocusEffect(() => {
-    const shot = takeShot();
-    if (shot && !shot.video) void sendAsset({ uri: shot.uri, mimeType: shot.mime, width: shot.width, height: shot.height });
-  });
+  // والنداءُ ثابتٌ (`useCallback`): بلاه يُعاد مع كلّ رسمةٍ والمحادثةُ ظاهرة.
+  const sendRef = useRef(sendAsset);
+  sendRef.current = sendAsset;
+  useFocusEffect(
+    useCallback(() => {
+      const shot = takeShot();
+      if (shot && !shot.video) void sendRef.current({ uri: shot.uri, mimeType: shot.mime, width: shot.width, height: shot.height });
+    }, []),
+  );
 
   async function sendPhoto() {
     const granted = await Picker.requestMediaLibraryPermissionsAsync();
