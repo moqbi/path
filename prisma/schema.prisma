@@ -348,6 +348,8 @@ model Story {
   trackSeconds Int?
   /// صوتُ المقطع مكتوم: صاحبُه اختار موسيقى بدله (القاعدة ٢٧٧).
   videoMuted   Boolean  @default(false)
+  /// تقريبُ الصورة وإزاحتُها (`{ z, x, y }`) — القصّةُ بملء الشاشة (القاعدة ٢٩٦)، لا تُحرق في الملف.
+  frame        Json?
   createdAt    DateTime @default(now())
   expiresAt    DateTime
 

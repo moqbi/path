@@ -112,6 +112,7 @@ export async function storiesOf(viewerId: string, authorId: string) {
       trackCover: true,
       trackSeconds: true,
       videoMuted: true,
+      frame: true,
       createdAt: true,
       media: { select: { mime: true } },
       author: { select: { id: true, name: true, avatarMediaId: true } },
@@ -194,6 +195,7 @@ export async function post(
     audio?: { mediaId: string; start: number; end: number };
     track?: { id: string; start?: number; full?: boolean };
     muted?: boolean;
+    frame?: { z: number; x: number; y: number };
   },
 ) {
   /*
@@ -272,6 +274,7 @@ export async function post(
       trackStart,
       trackSeconds,
       videoMuted: video && Boolean(input.muted),
+      frame: input.frame ?? undefined,
       private: audience.length > 0,
       audience: audience.length ? { create: audience.map((id) => ({ userId: id })) } : undefined,
       expiresAt: new Date(Date.now() + STORY_HOURS * 60 * 60 * 1000),

@@ -34,6 +34,8 @@ type Story = {
   trackId: string | null;
   trackSeconds: number | null;
   videoMuted: boolean;
+  /** تقريبُ الصورة وإزاحتُها كما وضعها صاحبُها في التطبيق (القاعدة ٢٩٦). */
+  frame: { z: number; x: number; y: number } | null;
   myReaction: string | null;
 };
 
@@ -163,6 +165,11 @@ export function StoryViewer({
   return (
     <div className="screen" style={{ background: "#0b1219" }}>
       <div className="relative grow overflow-hidden">
+        {/* قصّةٌ وضع صاحبُها صورتَها بتقريبٍ وإزاحة تملأ الشاشةَ بهما كما رآها، وغيرُها كما كانت. */}
+        <div
+          className="absolute inset-0"
+          style={story.frame ? { transform: `translate(${story.frame.x * 100}%, ${story.frame.y * 100}%) scale(${story.frame.z})` } : undefined}
+        >
         {story.video ? (
           <video
             key={story.id}
@@ -171,7 +178,7 @@ export function StoryViewer({
             playsInline
             muted={story.videoMuted}
             className="absolute inset-0 h-full w-full"
-            style={{ objectFit: "contain", filter: filterCss(story.filter) }}
+            style={{ objectFit: story.frame ? "cover" : "contain", filter: filterCss(story.filter) }}
           />
         ) : (
           /* eslint-disable-next-line @next/next/no-img-element */
@@ -179,9 +186,10 @@ export function StoryViewer({
             src={`${BASE}/api/media/${story.mediaId}`}
             alt=""
             className="absolute inset-0 h-full w-full"
-            style={{ objectFit: "contain", filter: filterCss(story.filter) }}
+            style={{ objectFit: story.frame ? "cover" : "contain", filter: filterCss(story.filter) }}
           />
         )}
+        </div>
 
         {vignetteCss(story.filter) && !story.video ? (
           <span className="pointer-events-none absolute inset-0" style={{ background: vignetteCss(story.filter)! }} />

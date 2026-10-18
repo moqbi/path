@@ -14,6 +14,8 @@ import { Avatar } from "../../components/avatar";
 import { ReportButton } from "../../components/report-sheet";
 import { Sheet } from "../../components/sheet";
 import { Filtered } from "../../components/filtered";
+import { FramedMedia, type StoryFrame } from "../../components/story-frame";
+import { DEV_FEATURES } from "../../lib/dev-features";
 import { StoryVideo } from "../../components/story-video";
 import { CloseIcon, EyeIcon, LockIcon, ScreenshotIcon } from "../../components/icons";
 import { useScreenshot } from "../../lib/screenshot";
@@ -48,6 +50,8 @@ type Story = {
   trackId?: string | null;
   trackSeconds?: number | null;
   videoMuted?: boolean;
+  /** تقريبُ الصورة وإزاحتُها كما وضعها صاحبُها (القاعدة ٢٩٦). */
+  frame?: StoryFrame | null;
   myReaction?: Face | null;
   reactions?: number;
 };
@@ -408,6 +412,8 @@ export default function StoryViewer() {
     <Animated.View style={[{ width: screen.width, backgroundColor: "#0b1219", overflow: "hidden" }, sink]}>
     <Animated.View style={{ position: "absolute", left: 0, width: screen.width, height: screen.height, top: lift }}>
       {/* المقطع يُشغَّل، والصورة تُرسم بفلترها. و`<Image>` لا يفكّ MP4. */}
+      {/* بملء الشاشة وبتقريب صاحبها وإزاحته (القاعدة ٢٩٦) — في نسخة التطوير وحدها حتى تُجرَّب. */}
+      <FramedMedia frame={DEV_FEATURES ? story.frame : null} width={screen.width} height={screen.height}>
       {video ? (
         <StoryVideo
           source={story.mediaId}
@@ -415,6 +421,7 @@ export default function StoryViewer() {
           height={screen.height}
           paused={paused}
           muted={Boolean(story.videoMuted)}
+          cover={DEV_FEATURES}
           key={`${story.id}-${round}`}
         />
       ) : (
@@ -423,8 +430,10 @@ export default function StoryViewer() {
           filter={story.filter}
           width={screen.width}
           height={screen.height}
+          cover={DEV_FEATURES}
         />
       )}
+      </FramedMedia>
 
       {/* نصوصُها فوقها بموضعها ومقاسها — لا محروقةً في الصورة. */}
       <StoryTexts texts={story.texts} width={screen.width} height={screen.height} />
