@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   MOMENT_TEXT_MAX,
+  POLL_OPTION_MAX,
   SOUND_SOURCE,
   STORY_SECONDS,
   STORY_STICKERS,
@@ -52,7 +53,11 @@ export const momentInput = z.object({
   place: z.string().trim().max(80).optional(),
   /* لحظة الأغنية: رابطٌ يُلصق من يوتيوب أو ساوندكلاود أو سبوتيفاي. */
   musicUrl: z.string().trim().url().max(500).optional(),
+  /* استطلاعٌ على خاطرة — للمشرف وحده (القاعدة ٢٨٩): السؤالُ في `text`. */
+  poll: z.array(z.string().trim().min(1).max(POLL_OPTION_MAX)).min(2).max(4).optional(),
 });
+
+export const pollVoteInput = z.object({ choice: z.number().int().min(0).max(3) });
 
 export const commentInput = z.object({ body: z.string().trim().min(1).max(500) });
 

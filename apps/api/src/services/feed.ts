@@ -30,6 +30,8 @@ const shape = {
   // ذكرى شاركها صاحبُها، وملخّصُ سنة (القاعدة ٢٣٥).
   memoryOf: true,
   recapYear: true,
+  // خياراتُ استطلاع المشرف — والأعدادُ من `/poll` (القاعدة ٢٨٩).
+  pollOptions: true,
   // «خاصة»: من يرى اللحظة يُقال له إنّها لم تُوجَّه إلى الدائرة كلّها.
   audience: true,
   createdAt: true,

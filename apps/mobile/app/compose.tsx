@@ -9,11 +9,13 @@ import * as Location from "expo-location";
 import { useQueryClient } from "@tanstack/react-query";
 import { ScreenHeader } from "../components/screen-header";
 import { PeopleSheet, PickerButton, type Friend } from "../components/people-sheet";
-import { CloseIcon, LockIcon, PinIcon, WithIcon } from "../components/icons";
+import { CloseIcon, LockIcon, PinIcon, PlusIcon, WithIcon } from "../components/icons";
 import { api } from "../lib/api";
 import { uploadFile } from "../lib/upload";
 import { maybeAskToRate } from "../lib/rate";
 import { useCircle } from "../lib/queries";
+import { useSession } from "../lib/session";
+import { POLL_OPTION_MAX } from "@athar/shared";
 import { ar } from "../lib/format";
 import { appleNearby, appleSearch } from "../lib/apple-places";
 import { SourceSheet } from "../components/source-sheet";
@@ -56,6 +58,13 @@ export default function Compose() {
   const groups = circle.data?.groups ?? [];
 
   const [text, setText] = useState("");
+  /*
+    استطلاعُ المشرف على خاطرته (القاعدة ٢٨٩): السؤالُ نصُّها، وخياران إلى أربعة.
+    `null` = بلا استطلاع.
+  */
+  const canPoll = useSession((state) => Boolean(state.me?.canGroups)) && kind === "THOUGHT";
+  const [poll, setPoll] = useState<string[] | null>(null);
+  const pollReady = !poll || poll.filter((option) => option.trim()).length >= 2;
   const [musicUrl, setMusicUrl] = useState("");
   const [picture, setPicture] = useState<{ uri: string; width: number; height: number; mime: string } | null>(null);
   // موضعُ الصورة في إطار البطاقة — يبدأ من الوسط مع كل صورةٍ جديدة.
@@ -265,7 +274,7 @@ export default function Compose() {
     (kind === "MUSIC"
       ? musicUrl.trim().length > 6
       : kind === "THOUGHT"
-        ? text.trim().length > 0
+        ? text.trim().length > 0 && pollReady
         : kind === "PLACE"
           ? !!fix
           : !!picture || text.trim().length > 0) &&
@@ -291,6 +300,7 @@ export default function Compose() {
           photoX: mediaId ? photoPos.x : undefined,
           photoY: mediaId ? photoPos.y : undefined,
           musicUrl: kind === "MUSIC" ? musicUrl.trim() : undefined,
+          poll: poll ? poll.map((option) => option.trim()).filter(Boolean) : undefined,
           with: withIds.length ? withIds : undefined,
           audience: audience === "CIRCLE" || audience === "PICKED" || audience === "EXCEPT" ? audience : "GROUP",
           audienceGroupId:
@@ -458,6 +468,10 @@ export default function Compose() {
               </Text>
             </>
           )}
+
+          {canPoll ? (
+            <PollEditor poll={poll} onChange={setPoll} />
+          ) : null}
 
           {/* الموقع: إجباريٌّ في لحظة المكان، اختياريٌّ في اللحظة والصورة. */}
           {kind === "MUSIC" ? null : !wantPlace ? (
@@ -756,6 +770,71 @@ function PlaceRows({
           </Pressable>
         );
       })}
+    </View>
+  );
+}
+
+/**
+ * خياراتُ الاستطلاع تحت السؤال: زرٌّ يفتحه، وحقلٌ لكلّ خيار، و«خيار» يضيف
+ * حتى أربعة، و«×» يُزيل ما فوق اثنين. والخادمُ يفحص الدورَ والعددَ ثانيةً.
+ */
+function PollEditor({ poll, onChange }: { poll: string[] | null; onChange: (poll: string[] | null) => void }) {
+  if (!poll) {
+    return (
+      <Pressable
+        onPress={() => onChange(["", ""])}
+        style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start", minHeight: 44, paddingHorizontal: 16, marginTop: 10, borderRadius: 999, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
+      >
+        <PlusIcon size={15} color={colors.ink2} />
+        <Text style={{ color: colors.ink2, fontSize: 13, fontWeight: "600" }}>أضف استطلاعاً</Text>
+      </Pressable>
+    );
+  }
+
+  const set = (index: number, value: string) =>
+    onChange(poll.map((option, at) => (at === index ? value.slice(0, POLL_OPTION_MAX) : option)));
+
+  return (
+    <View style={{ marginTop: 10, borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, padding: 14, gap: 8 }}>
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <Text style={{ flex: 1, color: colors.ink, fontSize: 13.5, fontWeight: "700" }}>استطلاع</Text>
+        <Pressable accessibilityLabel="احذف الاستطلاع" hitSlop={8} onPress={() => onChange(null)}>
+          <CloseIcon size={16} color={colors.muted} />
+        </Pressable>
+      </View>
+      <Text style={{ color: colors.muted, fontSize: 11.5, lineHeight: 19 }}>
+        السؤالُ هو ما كتبته فوق — ومن يصوّت يرى النتيجة.
+      </Text>
+      {poll.map((option, index) => (
+        <View key={index} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <TextInput
+            value={option}
+            onChangeText={(value) => set(index, value)}
+            placeholder={`الخيار ${ar(index + 1)}`}
+            placeholderTextColor={colors.faint}
+            style={{ flex: 1, minWidth: 0, height: 44, borderRadius: 12, paddingHorizontal: 14, backgroundColor: colors.paper, color: colors.ink, fontSize: 13.5, textAlign: "right" }}
+          />
+          {poll.length > 2 ? (
+            <Pressable
+              accessibilityLabel={`احذف الخيار ${index + 1}`}
+              hitSlop={6}
+              onPress={() => onChange(poll.filter((_, at) => at !== index))}
+              style={{ width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" }}
+            >
+              <CloseIcon size={14} color={colors.muted} />
+            </Pressable>
+          ) : null}
+        </View>
+      ))}
+      {poll.length < 4 ? (
+        <Pressable
+          onPress={() => onChange([...poll, ""])}
+          style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", minHeight: 36 }}
+        >
+          <PlusIcon size={14} color={colors.clayInk} />
+          <Text style={{ color: colors.clayInk, fontSize: 12.5, fontWeight: "700" }}>خيار</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
