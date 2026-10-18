@@ -2104,7 +2104,7 @@ const HIJRI_MONTHS_COUNT = 12;
 
 /** يومُ المناسبة وشهرُها بتقويمها — الهجريُّ ٣٠ يوماً أقصى، والميلاديُّ بأيّام شهره. */
 function readOccasion(formData: FormData): { error: string } | {
-  name: string; greeting: string | null; country: string; calendar: "GREGORIAN" | "HIJRI"; month: number; day: number;
+  name: string; greeting: string | null; country: string; calendar: "GREGORIAN" | "HIJRI"; religious: boolean; month: number; day: number;
 } {
   const digits = (value: FormDataEntryValue | null) =>
     Number(String(value ?? "").replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))));
@@ -2119,7 +2119,8 @@ function readOccasion(formData: FormData): { error: string } | {
   if (!Number.isInteger(month) || month < 1 || month > HIJRI_MONTHS_COUNT) return { error: "الشهر من ١ إلى ١٢" };
   const most = calendar === "HIJRI" ? 30 : new Date(Date.UTC(2024, month, 0)).getUTCDate();
   if (!Number.isInteger(day) || day < 1 || day > most) return { error: `اليوم من ١ إلى ${most}` };
-  return { name, greeting, country, calendar, month, day };
+  const religious = formData.get("religious") === "1";
+  return { name, greeting, country, calendar, religious, month, day };
 }
 
 /** المناسباتُ الوطنيّة (القاعدة ٢٩٢) — بدرجة اللوحة كاملةً. */
