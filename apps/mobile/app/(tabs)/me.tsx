@@ -83,7 +83,7 @@ function CountUp({ to }: { to: number }) {
 }
 
 /** الإحصاءاتُ سطرٌ يُقرأ جملةً لا أربعةُ أعمدة: الرقمُ ثقيلٌ والكلمةُ بعده باهتة،
- *  والهديتان رقمان: ما أهديتَه وما أُهدي لك (القاعدة ٢٩٣). */
+ *  والهديتان رقمان: ما أهديتَه وما أُهدي لك، والصفرُ منهما لا يُكتب (القاعدة ٢٩٣). */
 function StatLine({ s }: { s?: { moments: number; friends: number; sent: number; got: number } }) {
   const item = (to: number, label: string) => (
     <Text style={{ color: colors.groundMuted, fontSize: 13 }}>
@@ -97,8 +97,8 @@ function StatLine({ s }: { s?: { moments: number; friends: number; sent: number;
     <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 14, rowGap: 2, paddingHorizontal: 20, marginTop: 10 }}>
       {item(s?.moments ?? 0, "لحظة")}
       {item(s?.friends ?? 0, "صديق")}
-      {item(s?.sent ?? 0, "أهديت")}
-      {item(s?.got ?? 0, "أُهدي لك")}
+      {s?.sent ? item(s.sent, "أهديت") : null}
+      {s?.got ? item(s.got, "أُهدي لك") : null}
     </View>
   );
 }
