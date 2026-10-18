@@ -102,11 +102,12 @@ export default function MomentPage() {
               paddingBottom: Math.max(insets.bottom, 12),
               borderTopWidth: 1,
               borderTopColor: colors.line,
-              backgroundColor: colors.paper,
+              // على الأرضية لا على ورق الحقول: في ثيمٍ داكن الأرضية كان شريطاً فاتحاً يذوب فيه حبرُها (القاعدة ٢٦٢).
+              backgroundColor: colors.groundSolid,
             }}
           >
-            <LockIcon size={14} color={colors.muted} />
-            <Text style={{ color: colors.muted, fontSize: 12.5, fontWeight: "600" }}>أقفل صاحبُ اللحظة التعليقات</Text>
+            <LockIcon size={14} color={colors.groundMuted} />
+            <Text style={{ color: colors.groundMuted, fontSize: 12.5, fontWeight: "600" }}>أقفل صاحبُ اللحظة التعليقات</Text>
           </View>
         ) : (
         <View
@@ -118,7 +119,8 @@ export default function MomentPage() {
             paddingBottom: keyboard ? 10 : Math.max(insets.bottom, 12),
             borderTopWidth: 1,
             borderTopColor: colors.line,
-            backgroundColor: colors.paper,
+            // شريطُ التعليق ولوحةُ ملصقاته على الأرضية، فيُقرأ اسمُ المجموعة بحبرها (القاعدة ٢٦٢).
+            backgroundColor: colors.groundSolid,
           }}
         >
           <View style={{ flexDirection: "row", gap: 8 }}>
