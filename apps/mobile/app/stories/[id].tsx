@@ -470,7 +470,7 @@ export default function StoryViewer() {
         onMusic={() => setMuted((value) => !value)}
       />
 
-      <View pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, top: 0, paddingTop: insets.top }}>
+      <View pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, top: 0, zIndex: 2, paddingTop: insets.top }}>
         <View pointerEvents="box-none" style={{ padding: 12 }}>
           <View style={{ flexDirection: "row", gap: 4, marginBottom: 12 }}>
             {stories.map((item, position) => (
