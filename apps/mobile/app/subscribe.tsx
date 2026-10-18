@@ -6,7 +6,7 @@ import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ScreenHeader } from "../components/screen-header";
 import { Sheet } from "../components/sheet";
-import { BookIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, PrivateIcon, StoreIcon, VerifiedIcon, WithIcon } from "../components/icons";
+import { BookIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, PrivateIcon, StickerIcon, StoreIcon, VerifiedIcon, WithIcon } from "../components/icons";
 import { TagPill } from "../components/name-tag";
 import { SITE_URL, SUPPORTER_TAG, hasSite } from "@athar/shared";
 import { api } from "../lib/api";
@@ -14,6 +14,7 @@ import { openIn } from "../lib/browse";
 import { billingReady, buy, openManage, plans, restore, testStore, type Plan } from "../lib/billing";
 import { useSession } from "../lib/session";
 import { colors } from "../theme/tokens";
+import { DEV_FEATURES } from "../lib/dev-features";
 
 const PERKS = [
   /*
@@ -35,6 +36,16 @@ const PERKS = [
     body: "الخمسة الأساسية تبقى للجميع · لك كل كيبوردك",
     icon: <Text style={{ fontSize: 17 }}>😊</Text>,
   },
+  // الملصقاتُ في نسخة التطوير وحدها حتى تُبنى (القاعدة ٢٩١): لا تُوعَد بما لا يُرى.
+  ...(DEV_FEATURES
+    ? [
+        {
+          title: "الملصقات",
+          body: "في التعليقات والمحادثات · مجموعاتٌ تتجدّد من آثار",
+          icon: <StickerIcon size={18} color={colors.gold} />,
+        },
+      ]
+    : []),
   {
     title: "أرشيف بلا نهاية",
     body: "المجاني يحفظ ٦ أشهر · أنت تحفظ كل شي وتصدّره",
