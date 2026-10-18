@@ -6,7 +6,7 @@ import { create } from "zustand";
 import { Text, TextInput } from "./type";
 import { GlassSheet, SheetScrollView } from "./glass-sheet";
 import { ReactionGlyph, facesFor, CUSTOM, EMOJI_GROUPS } from "./reactions";
-import { EyeIcon, LockIcon, StickerIcon, TrashIcon, UnlockIcon } from "./icons";
+import { EyeIcon, LockIcon, SendIcon, StickerIcon, TrashIcon, UnlockIcon } from "./icons";
 import { StickerPanel } from "./sticker-panel";
 import { DEV_FEATURES } from "../lib/dev-features";
 import { ReportButton } from "./report-sheet";
@@ -241,6 +241,60 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, height: 44, paddingHorizontal: 14, borderRadius: 22, backgroundColor: "rgba(255,255,255,.07)" }}>
             <LockIcon size={14} color="rgba(255,255,255,.6)" />
             <Text style={{ color: "rgba(255,255,255,.7)", fontSize: 12.5, fontWeight: "600" }}>أقفل صاحبُ اللحظة التعليقات</Text>
+          </View>
+        ) : DEV_FEATURES ? (
+          /* شريطٌ واحد كسطر المحادثة (القاعدة ٢٩٥): الحقلُ والملصقاتُ والإرسالُ داخله. */
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "flex-end",
+              minHeight: 46,
+              borderRadius: 23,
+              backgroundColor: stickers ? "rgba(255,255,255,.16)" : "rgba(255,255,255,.1)",
+              paddingRight: 16,
+              paddingLeft: 5,
+              paddingVertical: 5,
+            }}
+          >
+            <TextInput
+              value={body}
+              onChangeText={setBody}
+              onFocus={() => setStickers(false)}
+              placeholder={author ? "علّق على لحظتك…" : "اكتب تعليقك…"}
+              placeholderTextColor="rgba(255,255,255,.45)"
+              maxLength={500}
+              multiline
+              accessibilityLabel="تعليق"
+              style={{ flex: 1, minWidth: 0, maxHeight: 110, paddingVertical: 8, fontSize: 14, color: "#fff" }}
+            />
+            <Pressable
+              accessibilityLabel="الملصقات"
+              accessibilityState={{ expanded: stickers }}
+              onPress={() => setStickers((v) => !v)}
+              hitSlop={4}
+              style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}
+            >
+              <StickerIcon size={20} color={stickers ? "#fff" : "rgba(255,255,255,.65)"} />
+            </Pressable>
+            <Pressable
+              accessibilityLabel="إرسال"
+              disabled={!body.trim() || pending}
+              onPress={send}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: body.trim() ? colors.clay : "rgba(255,255,255,.12)",
+              }}
+            >
+              {comment.isPending ? (
+                <ActivityIndicator size="small" color={colors.onBrand} />
+              ) : (
+                <SendIcon size={16} color={body.trim() ? colors.onBrand : "rgba(255,255,255,.45)"} />
+              )}
+            </Pressable>
           </View>
         ) : (
           <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
