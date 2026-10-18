@@ -206,6 +206,13 @@ export const CameraIcon = ({ size = 20, color = "currentColor" }: Props) => (
   </Svg>
 );
 
+/** إرسالُ الرسالة: طائرةٌ ورقيّة تتّجه إلى اليسار — جهةُ ما يمضي في RTL. */
+export const SendIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+    <Path d="M21.99 21 1 12l20.99-9L22 10 7 12l15 2z" />
+  </Svg>
+);
+
 /** لقطةُ شاشة (القاعدة ٢٤٠): أركانُ القصّ الأربعة حول نقطة. */
 export const ScreenshotIcon = ({ size = 20, color = "currentColor" }: Props) => (
   <Svg {...stroke(size, color)}>

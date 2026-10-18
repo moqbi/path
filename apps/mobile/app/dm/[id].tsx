@@ -3,7 +3,7 @@ import { ReportButton } from "../../components/report-sheet";
 import { View, FlatList, Pressable, ActivityIndicator } from "react-native";
 import { Text, TextInput } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Picker from "expo-image-picker";
 import { Audio } from "expo-av";
@@ -12,7 +12,9 @@ import { viewPhoto } from "../../components/photo-viewer";
 import { MediaImage } from "../../components/media-image";
 import { ScreenHeader } from "../../components/screen-header";
 import { Ticks, receiptOf } from "../../components/receipt";
-import { CameraIcon, CloseIcon, MicIcon, PauseIcon, PlayIcon, StickerIcon } from "../../components/icons";
+import { CameraIcon, CloseIcon, MicIcon, PauseIcon, PlayIcon, PlusIcon, SendIcon, StickerIcon } from "../../components/icons";
+import { SourceSheet } from "../../components/source-sheet";
+import { takeShot } from "../../lib/capture";
 import { StickerImage, StickerPanel } from "../../components/sticker-panel";
 import { DEV_FEATURES } from "../../lib/dev-features";
 import { api, baseUrl, currentAccess } from "../../lib/api";
@@ -189,6 +191,8 @@ export default function Conversation() {
 
   const [body, setBody] = useState("");
   const [stickers, setStickers] = useState(false);
+  // نافذةُ الزائد: الكاميرا والاستوديو (القاعدة ٢٩٥).
+  const [attach, setAttach] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [shown, setShown] = useState<string | null>(null);
@@ -340,16 +344,8 @@ export default function Conversation() {
     }
   }
 
-  async function sendPhoto() {
-    const granted = await Picker.requestMediaLibraryPermissionsAsync();
-    if (!granted.granted) {
-      setError("لازم تسمح بالوصول لألبومك.");
-      return;
-    }
-    const result = await Picker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.8 });
-    if (result.canceled || !result.assets[0]) return;
-    const asset = result.assets[0];
-
+  /** صورةٌ من الكاميرا أو الألبوم تُرفع ثمّ تُرسل. */
+  async function sendAsset(asset: { uri: string; mimeType?: string | null; width: number; height: number }) {
     try {
       const mediaId = await uploadFile(asset.uri, asset.mimeType ?? "image/jpeg", "MESSAGE", asset);
       pinned.current = true;
@@ -358,6 +354,35 @@ export default function Conversation() {
       setError(problem instanceof Error ? problem.message : "تعذّر الإرسال");
     }
   }
+
+  /*
+    العودة من الكاميرا المدمجة (القاعدة ٥ب): اللقطةُ تنتظر في `lib/capture` وتُقرأ مرّةً.
+    و`useFocusEffect` لأنّ المحادثة قائمةٌ تحت الكاميرا بحالتها لم تُبنَ من جديد.
+  */
+  useFocusEffect(() => {
+    const shot = takeShot();
+    if (shot && !shot.video) void sendAsset({ uri: shot.uri, mimeType: shot.mime, width: shot.width, height: shot.height });
+  });
+
+  async function sendPhoto() {
+    const granted = await Picker.requestMediaLibraryPermissionsAsync();
+    if (!granted.granted) {
+      setError("لازم تسمح بالوصول لألبومك.");
+      return;
+    }
+    const result = await Picker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.8 });
+    if (result.canceled || !result.assets[0]) return;
+    await sendAsset(result.assets[0]);
+  }
+
+  const sendText = () => {
+    const text = body.trim();
+    if (!text) return;
+    setBody("");
+    // من أرسل يريد أن يرى ما أرسل.
+    pinned.current = true;
+    send.mutate({ kind: "TEXT", body: text });
+  };
 
   const other = thread.data?.other;
   const lines = thread.data?.messages ?? [];
@@ -536,6 +561,75 @@ export default function Conversation() {
                 <Text style={{ color: colors.onBrand, fontSize: 13, fontWeight: "700" }}>أرسل</Text>
               </Pressable>
             </View>
+          ) : DEV_FEATURES ? (
+            /*
+              سطرٌ بثلاثة أبواب لا ستّة (القاعدة ٢٩٥): الزائدُ يفتح الكاميرا والاستوديو،
+              والملصقاتُ داخل الحقل في طرفه، والمايكُ والإرسالُ في مكانٍ واحد يتبادلان —
+              المايكُ ما دام الحقلُ فارغاً، والإرسالُ حين يُكتب شيء.
+            */
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Pressable
+                accessibilityLabel="أرسل صورة"
+                onPress={() => setAttach(true)}
+                style={{ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
+              >
+                <PlusIcon size={20} color={colors.ink2} />
+              </Pressable>
+
+              <View
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  minHeight: 46,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  borderRadius: 23,
+                  borderWidth: 1,
+                  borderColor: stickers ? colors.clay : colors.line,
+                  backgroundColor: colors.card,
+                  paddingRight: 18,
+                  paddingLeft: 4,
+                }}
+              >
+                <TextInput
+                  value={body}
+                  onChangeText={setBody}
+                  onFocus={() => setStickers(false)}
+                  placeholder="اكتب رسالة…"
+                  placeholderTextColor={colors.faint}
+                  maxLength={2000}
+                  multiline
+                  style={{ flex: 1, minWidth: 0, maxHeight: 110, paddingVertical: 11, fontSize: 13.5, textAlign: "right", color: colors.ink }}
+                />
+                <Pressable
+                  accessibilityLabel="الملصقات"
+                  accessibilityState={{ expanded: stickers }}
+                  onPress={() => setStickers((v) => !v)}
+                  hitSlop={6}
+                  style={{ width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" }}
+                >
+                  <StickerIcon size={21} color={stickers ? colors.clay : colors.muted} />
+                </Pressable>
+              </View>
+
+              {body.trim() ? (
+                <Pressable
+                  accessibilityLabel="إرسال"
+                  onPress={sendText}
+                  style={{ width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
+                >
+                  <SendIcon size={20} color={colors.onBrand} />
+                </Pressable>
+              ) : (
+                <Pressable
+                  accessibilityLabel="رسالة صوتية"
+                  onPress={() => void beginTape()}
+                  style={{ width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
+                >
+                  <MicIcon size={20} color={colors.onBrand} />
+                </Pressable>
+              )}
+            </View>
           ) : (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <TextInput
@@ -575,14 +669,7 @@ export default function Conversation() {
               ) : null}
 
               <Pressable
-                onPress={() => {
-                  const text = body.trim();
-                  if (!text) return;
-                  setBody("");
-                  // من أرسل يريد أن يرى ما أرسل.
-                  pinned.current = true;
-                  send.mutate({ kind: "TEXT", body: text });
-                }}
+                onPress={sendText}
                 style={{ height: 48, paddingHorizontal: 20, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
               >
                 <Text style={{ color: colors.onBrand, fontSize: 13.5, fontWeight: "700" }}>إرسال</Text>
@@ -603,6 +690,20 @@ export default function Conversation() {
               />
             </View>
           ) : null}
+
+          <SourceSheet
+            open={attach}
+            title="أرسل صورة"
+            onCamera={() => {
+              setAttach(false);
+              router.push("/camera?mode=picture" as never);
+            }}
+            onLibrary={() => {
+              setAttach(false);
+              void sendPhoto();
+            }}
+            onClose={() => setAttach(false)}
+          />
 
           {!me?.isPlus ? (
             <Text style={{ color: colors.faint, fontSize: 10.5, textAlign: "center", marginTop: 8 }}>
