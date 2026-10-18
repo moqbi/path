@@ -66,6 +66,8 @@ const shape = {
     select: {
       id: true,
       body: true,
+      // ملصقُ التعليق (القاعدة ٢٩١).
+      sticker: { select: { mediaId: true } },
       createdAt: true,
       user: {
         select: {

@@ -4,6 +4,7 @@ import { memoriesFor, memorySentence, occasionsFor } from "./memories";
 import { openYear, recapStatus } from "./recap";
 import { inQuietHours, push } from "./push";
 import { riyadhWeekday, weeklyFor, weeklySentence } from "./weekly";
+import { nationalToday } from "./calendar";
 
 /**
  * جرسُ الصباح (القاعدة ٢٣٥): الساعة التاسعة بتوقيت الرياض — **بقرار المالك**.
@@ -46,7 +47,7 @@ export async function morningBell(now = new Date()): Promise<number> {
         devices: { some: {} },
         OR: [{ memoriesPushedOn: null }, { memoriesPushedOn: { not: key } }],
       },
-      select: { id: true, quietFrom: true, quietTo: true, recapPushedYear: true },
+      select: { id: true, quietFrom: true, quietTo: true, recapPushedYear: true, role: true, adminScope: true },
       orderBy: { id: "asc" },
       take: 500,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -77,6 +78,13 @@ export async function morningBell(now = new Date()): Promise<number> {
         if (occasion) {
           await push({ userId: user.id, kind: "MEMORY", title: occasion.title, body: occasion.body, path: "/" });
           sent += 1;
+        }
+        // والمناسبةُ الوطنيّة جرسٌ وحدها باسمها (القاعدة ٢٩٢) — خلف مفتاح البيئة.
+        if (nationalBellFor(user)) {
+          for (const day of await nationalToday(user.id, today)) {
+            await push({ userId: user.id, kind: "MEMORY", title: day.name, body: day.greeting ?? `اليوم ${day.name}`, path: "/" });
+            sent += 1;
+          }
         }
       } catch (problem) {
         console.error("✗ جرس الصباح", user.id, problem);
@@ -143,4 +151,16 @@ async function occasionBell(userId: string, today: ReturnType<typeof riyadhDay>)
     title: occasion.kind === "STREAK" ? "سلسلة تفاعل" : "مناسبة صداقة",
     body: more > 0 ? `${occasion.title}، و${ar(more)} ${more === 1 ? "مناسبة أخرى" : "مناسبات أخرى"}` : occasion.title,
   };
+}
+
+/**
+ * جرسُ المناسبات الوطنيّة خلف `NATIONAL_BELL` (القاعدة ٢٩٢): الخادمُ واحدٌ لنسخة المتجر
+ * ونسخة التطوير، والتقويمُ في الثانية وحدها حتى يُبنى الإصدارُ الجديد. `off` (الافتراض)
+ * لا أحد، و`staff` المالكُ وممنوحو اللوحة ليجرّبوه، و`all` الجميع.
+ */
+function nationalBellFor(user: { role: string; adminScope: string }) {
+  const mode = process.env.NATIONAL_BELL ?? "off";
+  if (mode === "all") return true;
+  if (mode === "staff") return user.role === "ADMIN" || user.adminScope === "ALL";
+  return false;
 }

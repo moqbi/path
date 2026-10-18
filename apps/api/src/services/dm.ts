@@ -4,6 +4,7 @@ import { guard } from "../lib/moderation";
 import { MESSAGE_KEEP_DAYS, VOICE_SECONDS } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { blockedWith, circleIds } from "./visibility";
+import { assertSticker, STICKER_TEXT } from "./stickers";
 
 /**
  * المحادثات الخاصة.
@@ -37,6 +38,8 @@ const MESSAGE = {
   kind: true,
   mediaId: true,
   seconds: true,
+  // ملصقُ الرسالة (القاعدة ٢٩١).
+  sticker: { select: { mediaId: true } },
   senderId: true,
   createdAt: true,
   deliveredAt: true,
@@ -208,7 +211,7 @@ type Sent = Awaited<ReturnType<typeof send>>;
 export async function send(
   userId: string,
   conversationId: string,
-  input: { kind: "TEXT" | "VOICE" | "PHOTO"; body?: string; mediaId?: string; seconds?: number },
+  input: { kind: "TEXT" | "VOICE" | "PHOTO"; body?: string; mediaId?: string; seconds?: number; stickerId?: string },
 ) {
   const conversation = await mine(userId, conversationId);
 
@@ -222,7 +225,13 @@ export async function send(
   let mediaId: string | null = null;
   let seconds: number | null = null;
 
-  if (input.kind === "TEXT") {
+  let stickerId: string | null = null;
+
+  // الملصقُ رسالةٌ نصّيّة نصُّها «ملصق» — تقرؤها النسخُ القديمة كلمةً (القاعدة ٢٩١).
+  if (input.kind === "TEXT" && input.stickerId) {
+    stickerId = await assertSticker(userId, input.stickerId);
+    body = STICKER_TEXT;
+  } else if (input.kind === "TEXT") {
     body = (input.body ?? "").trim().slice(0, 2000);
     if (!body) throw badRequest("اكتب شيئاً");
     await guard(body);
@@ -251,7 +260,7 @@ export async function send(
 
   const [message] = await prisma.$transaction([
     prisma.message.create({
-      data: { conversationId, senderId: userId, body, kind: input.kind, mediaId, seconds },
+      data: { conversationId, senderId: userId, body, kind: input.kind, mediaId, seconds, stickerId },
       select: MESSAGE,
     }),
     prisma.conversation.update({
@@ -286,11 +295,11 @@ export async function edit(userId: string, messageId: string, body: string) {
   await guard(body);
   const message = await prisma.message.findUnique({
     where: { id: messageId },
-    select: { senderId: true, conversationId: true, body: true, kind: true },
+    select: { senderId: true, conversationId: true, body: true, kind: true, stickerId: true },
   });
   if (!message) throw notFound("الرسالة غير موجودة");
   if (message.senderId !== userId) throw forbidden("لا تُعدَّل رسالة غيرك");
-  if (message.kind !== "TEXT") throw badRequest("النصّ وحده يُعدَّل");
+  if (message.kind !== "TEXT" || message.stickerId) throw badRequest("النصّ وحده يُعدَّل");
 
   const clean = body.trim().slice(0, 2000);
   if (!clean) throw badRequest("اكتب شيئاً");

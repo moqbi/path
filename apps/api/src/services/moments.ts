@@ -9,6 +9,7 @@ import { canInteract, canSeeMoment, circleIds } from "./visibility";
 import { dropMedia } from "./media";
 import { push } from "./push";
 import { canRunGroups } from "./groups";
+import { assertSticker, STICKER_TEXT } from "./stickers";
 
 /** تدرّجات تقوم مقام الصورة حين تُنشر لحظة صورة بلا ملف. */
 
@@ -468,7 +469,10 @@ export async function votePoll(userId: string, momentId: string, choice: number)
 }
 
 /** تعليق. */
-export async function addComment(userId: string, momentId: string, body: string) {
+export async function addComment(userId: string, momentId: string, body: string, stickerId?: string) {
+  // الملصقُ يحلّ محلّ النصّ، و«ملصق» نصُّه لما لا يرسمه (القاعدة ٢٩١).
+  const sticker = stickerId ? await assertSticker(userId, stickerId) : null;
+  if (sticker) body = STICKER_TEXT;
   await guard(body);
   const moment = await assertCanInteract(userId, momentId);
   // القفلُ بيد صاحبها، ولا يُقفل عليه هو: يردّ على ما سبق القفل.
@@ -477,10 +481,11 @@ export async function addComment(userId: string, momentId: string, body: string)
   }
 
   const comment = await prisma.comment.create({
-    data: { momentId, userId, body: body.trim().slice(0, 500) },
+    data: { momentId, userId, body: body.trim().slice(0, 500), stickerId: sticker },
     select: {
       id: true,
       body: true,
+      sticker: { select: { mediaId: true } },
       createdAt: true,
       user: {
         select: {

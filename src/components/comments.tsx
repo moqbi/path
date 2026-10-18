@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Avatar, NameTag } from "@/components/ui";
 import { relative } from "@/lib/format";
+import { BASE } from "@/lib/base";
 import { CommentSwipe } from "@/components/comment-swipe";
 
 /**
@@ -14,6 +15,8 @@ export type CommentShape = {
   id: string;
   body: string;
   createdAt: Date;
+  /** ملصقٌ بدل النصّ (القاعدة ٢٩١). */
+  sticker?: { mediaId: string } | null;
   user: {
     id: string;
     name: string;
@@ -77,9 +80,14 @@ export function CommentList({
                   {relative(comment.createdAt)}
                 </span>
               </div>
-              <p className="break-words text-[12.5px] leading-relaxed text-ink-2">
-                {comment.body}
-              </p>
+              {comment.sticker ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={`${BASE}/api/media/${comment.sticker.mediaId}`} alt="ملصق" width={88} height={88} className="mt-0.5 object-contain" />
+              ) : (
+                <p className="break-words text-[12.5px] leading-relaxed text-ink-2">
+                  {comment.body}
+                </p>
+              )}
             </div>
            </div>
            </CommentSwipe>

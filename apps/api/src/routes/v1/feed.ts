@@ -128,7 +128,14 @@ export const momentRoutes = new Hono()
     zValidator("json", commentInput),
     async (c) =>
       c.json(
-        { comment: await moments.addComment(me(c), c.req.valid("param").id, c.req.valid("json").body) },
+        {
+          comment: await moments.addComment(
+            me(c),
+            c.req.valid("param").id,
+            c.req.valid("json").body,
+            c.req.valid("json").stickerId,
+          ),
+        },
         201,
       ),
   );

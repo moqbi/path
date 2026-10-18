@@ -38,6 +38,8 @@ import { memoryRoutes, recapRoutes } from "./routes/v1/memories";
 import { inviteRoutes } from "./routes/v1/invites";
 import { archiveRoutes } from "./routes/v1/archive";
 import { musicRoutes, noteRoutes } from "./routes/v1/notes";
+import { stickerRoutes } from "./routes/v1/stickers";
+import { calendarRoutes } from "./routes/v1/calendar";
 import { sweep as sweepNotes } from "./services/notes";
 import { sweepPendingSignups } from "./services/auth";
 import { UNVERIFIED_MINUTES } from "@athar/shared";
@@ -184,6 +186,8 @@ app.route("/v1/invites", inviteRoutes);
 app.route("/v1/archive", archiveRoutes);
 app.route("/v1/notes", noteRoutes);
 app.route("/v1/music", musicRoutes);
+app.route("/v1/stickers", stickerRoutes);
+app.route("/v1/calendar", calendarRoutes);
 app.route("/v1/recap", recapRoutes);
 app.route("/v1/webhooks", webhookRoutes);
 /** بابُ اللوحة — الدور يُفحص فيه لا في العرض. */

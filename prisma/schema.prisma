@@ -656,6 +656,9 @@ model Comment {
   momentId  String
   userId    String
   body      String
+  /// ملصقٌ بدل النصّ (القاعدة ٢٩١) — و`body` «ملصق» تقرؤه النسخُ القديمة.
+  stickerId String?
+  sticker   Sticker? @relation(fields: [stickerId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
 
   moment Moment @relation(fields: [momentId], references: [id], onDelete: Cascade)
@@ -926,6 +929,9 @@ model Message {
   media          Media?      @relation("MessageMedia", fields: [mediaId], references: [id], onDelete: SetNull)
   /// مدّة المقطع الصوتي بالثواني.
   seconds        Int?
+  /// ملصقٌ بدل النصّ (القاعدة ٢٩١).
+  stickerId      String?
+  sticker        Sticker?    @relation(fields: [stickerId], references: [id], onDelete: SetNull)
   createdAt      DateTime    @default(now())
   deliveredAt    DateTime?
   readAt         DateTime?
@@ -991,6 +997,57 @@ model GroupMessage {
   @@index([groupId, createdAt])
 }
 
+// ───────────────────────────── المناسبات الوطنيّة ─────────────────────────────
+
+enum CalendarKind {
+  GREGORIAN
+  HIJRI
+}
+
+/// مناسبةٌ وطنيّة أو دينيّة تُضاف من اللوحة (القاعدة ٢٩٢): يومُها وشهرُها بتقويمها،
+/// ودولتُها رمزٌ (`SA`، `AE` …) أو `ALL` — وتُعرض لمن موقعُه فيها.
+model NationalDay {
+  id        String       @id @default(cuid())
+  name      String
+  /// سطرُ التهنئة في التنبيه — وبلاه «اليوم <الاسم>».
+  greeting  String?
+  country   String       @default("SA")
+  calendar  CalendarKind @default(GREGORIAN)
+  month     Int
+  day       Int
+  hidden    Boolean      @default(false)
+  createdAt DateTime     @default(now())
+
+  @@index([country])
+}
+
+// ───────────────────────────── الملصقات ─────────────────────────────
+
+/// مجموعةُ ملصقاتٍ تُدار من اللوحة (القاعدة ٢٩١).
+model StickerPack {
+  id        String    @id @default(cuid())
+  name      String
+  sortOrder Int       @default(0)
+  hidden    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  stickers  Sticker[]
+}
+
+/// ملصقٌ واحد: صورةٌ للجميع كصورة الصنف، ولا يُرسله إلا مشتركُ آثار+.
+model Sticker {
+  id        String      @id @default(cuid())
+  packId    String
+  mediaId   String      @unique
+  sortOrder Int         @default(0)
+  createdAt DateTime    @default(now())
+  pack      StickerPack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  media     Media       @relation("StickerMedia", fields: [mediaId], references: [id], onDelete: Cascade)
+  comments  Comment[]
+  messages  Message[]
+
+  @@index([packId, sortOrder])
+}
+
 // ───────────────────────────── الملفات المرفوعة ─────────────────────────────
 
 /**
@@ -1029,6 +1086,7 @@ model Media {
   storeItem      StoreItem?    @relation("StoreItemMedia")
   storeCover     StoreItem?    @relation("StoreItemCover")
   storePromo     StoreItem?    @relation("StoreItemPromo")
+  sticker        Sticker?      @relation("StickerMedia")
 
   /// صورةُ موقعٍ عامّة إن كانت — الرأس مثلاً.
   siteImage SiteImage? @relation("SiteImage")

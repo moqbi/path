@@ -378,3 +378,12 @@ export const MuteIcon = ({ size = 20, color = "currentColor" }: Props) => (
     <Path d="m16 9.5 5 5M21 9.5l-5 5" />
   </Svg>
 );
+
+/** تقويمٌ ميلاديّ — بابُ المناسبات والذكريات في رأس «أنا» (القاعدة ٢٩٢). */
+export const CalendarIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M6.5 5.5h11A1.5 1.5 0 0 1 19 7v11.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 18.5V7a1.5 1.5 0 0 1 1.5-1.5Z" />
+    <Path d="M5 10h14M9 3.5v3.5M15 3.5v3.5" />
+    <Path d="M9 14h.01M12 14h.01M15 14h.01M9 17h.01M12 17h.01" />
+  </Svg>
+);

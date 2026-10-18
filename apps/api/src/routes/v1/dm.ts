@@ -15,6 +15,7 @@ const sendInput = z.object({
   body: z.string().trim().max(2000).optional(),
   mediaId: cuid.optional(),
   seconds: z.coerce.number().int().min(1).max(600).optional(),
+  stickerId: cuid.optional(),
 });
 
 /**

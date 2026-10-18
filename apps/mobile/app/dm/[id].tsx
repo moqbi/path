@@ -12,7 +12,9 @@ import { viewPhoto } from "../../components/photo-viewer";
 import { MediaImage } from "../../components/media-image";
 import { ScreenHeader } from "../../components/screen-header";
 import { Ticks, receiptOf } from "../../components/receipt";
-import { CameraIcon, CloseIcon, MicIcon, PauseIcon, PlayIcon } from "../../components/icons";
+import { CameraIcon, CloseIcon, MicIcon, PauseIcon, PlayIcon, StickerIcon } from "../../components/icons";
+import { StickerImage, StickerPanel } from "../../components/sticker-panel";
+import { DEV_FEATURES } from "../../lib/dev-features";
 import { api, baseUrl, currentAccess } from "../../lib/api";
 import { uploadFile } from "../../lib/upload";
 import { useKeyboardInset } from "../../lib/keyboard";
@@ -33,6 +35,8 @@ type Line = {
   deliveredAt: string | null;
   readAt: string | null;
   editedAt: string | null;
+  /** ملصقٌ بدل النصّ (القاعدة ٢٩١). */
+  sticker?: { mediaId: string } | null;
 };
 
 const clock = (seconds: number) =>
@@ -184,6 +188,7 @@ export default function Conversation() {
   }, [keyboard]);
 
   const [body, setBody] = useState("");
+  const [stickers, setStickers] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [shown, setShown] = useState<string | null>(null);
@@ -408,7 +413,7 @@ export default function Conversation() {
                     {mine ? <Ticks state={receiptOf(item)} size={14} /> : null}
                     {shown === item.id ? (
                       mine ? (
-                        item.kind === "TEXT" ? (
+                        item.kind === "TEXT" && !item.sticker ? (
                           <Pressable
                             onPress={() => {
                               setDraft(item.body);
@@ -450,6 +455,11 @@ export default function Conversation() {
                     onLongPress={() => setShown((v) => (v === item.id ? null : item.id))}
                   >
                     <MediaImage mediaId={item.mediaId} style={{ width: 220, height: 220, borderRadius: 16 }} />
+                  </Pressable>
+                ) : item.sticker ? (
+                  // الملصقُ رسمُه وحده بلا فقاعة، والضغطةُ تكشف البلاغ كالنصّ.
+                  <Pressable onPress={() => setShown((v) => (v === item.id ? null : item.id))}>
+                    <StickerImage mediaId={item.sticker.mediaId} />
                   </Pressable>
                 ) : item.kind === "VOICE" && item.mediaId ? (
                   <Voice mediaId={item.mediaId} seconds={item.seconds ?? 0} mine={mine} />
@@ -553,6 +563,17 @@ export default function Conversation() {
                 <MicIcon size={19} color={colors.ink2} />
               </Pressable>
 
+              {DEV_FEATURES ? (
+                <Pressable
+                  accessibilityLabel="الملصقات"
+                  accessibilityState={{ expanded: stickers }}
+                  onPress={() => setStickers((v) => !v)}
+                  style={{ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: stickers ? colors.clay : colors.line, backgroundColor: colors.card }}
+                >
+                  <StickerIcon size={19} color={colors.ink2} />
+                </Pressable>
+              ) : null}
+
               <Pressable
                 onPress={() => {
                   const text = body.trim();
@@ -568,6 +589,20 @@ export default function Conversation() {
               </Pressable>
             </View>
           )}
+
+          {DEV_FEATURES && stickers && !taping && !tape ? (
+            <View style={{ marginTop: 10 }}>
+              <StickerPanel
+                tone="light"
+                isPlus={me?.isPlus ?? false}
+                onPick={(stickerId) => {
+                  setStickers(false);
+                  pinned.current = true;
+                  send.mutate({ kind: "TEXT", stickerId });
+                }}
+              />
+            </View>
+          ) : null}
 
           {!me?.isPlus ? (
             <Text style={{ color: colors.faint, fontSize: 10.5, textAlign: "center", marginTop: 8 }}>

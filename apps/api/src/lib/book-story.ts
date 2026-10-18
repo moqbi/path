@@ -212,7 +212,8 @@ export function echoOf(
     top,
     reactors,
     comments: said.length,
-    quote: pickQuote(said.filter((comment) => circle.has(comment.userId))),
+    // الملصقُ لا يُقتبس: نصُّه «ملصق» لا كلامٌ قيل (القاعدة ٢٩١).
+    quote: pickQuote(said.filter((comment) => circle.has(comment.userId) && comment.body !== "ملصق")),
   };
 }
 
