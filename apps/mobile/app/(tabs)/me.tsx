@@ -1,8 +1,8 @@
 import { useBarSpace } from "../../components/glass-bar";
 import { TabBackdrop } from "../../components/tab-backdrop";
 import { scrolled } from "../../lib/scrolled";
-import { useMemo, useRef, useState } from "react";
-import { View, SectionList, Pressable, ActivityIndicator, Alert, Animated, RefreshControl } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { View, SectionList, Pressable, ActivityIndicator, Alert, Animated, RefreshControl, AccessibilityInfo } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -53,6 +53,53 @@ function Stat({ icon, value, label, first }: { icon: React.ReactNode; value: str
       </View>
       <Text style={{ color: colors.groundInk, fontSize: 15, fontWeight: "700" }}>{value}</Text>
       <Text style={{ color: colors.groundMuted, fontSize: 10, marginTop: 2 }}>{label}</Text>
+    </View>
+  );
+}
+
+/** رقمٌ يعدّ من الصفر إلى قيمته — ومن طلب «قلّل الحركة» يراه في الحال (القاعدة ٣٦). */
+function CountUp({ to }: { to: number }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    let raf = 0;
+    let dead = false;
+    AccessibilityInfo.isReduceMotionEnabled().then((still) => {
+      if (dead) return;
+      if (still || to === 0) return setN(to);
+      const t0 = Date.now();
+      const step = () => {
+        const p = Math.min(1, (Date.now() - t0) / 900);
+        setN(Math.round(to * (1 - Math.pow(1 - p, 3))));
+        if (p < 1) raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
+    });
+    return () => {
+      dead = true;
+      cancelAnimationFrame(raf);
+    };
+  }, [to]);
+  return <>{ar(n)}</>;
+}
+
+/** الإحصاءاتُ سطرٌ يُقرأ جملةً لا أربعةُ أعمدة: الرقمُ ثقيلٌ والكلمةُ بعده باهتة،
+ *  والهديتان رقمٌ واحد وتفصيلُه بين قوسين (القاعدة ٢٩٣). */
+function StatLine({ s }: { s?: { moments: number; friends: number; sent: number; got: number } }) {
+  const gifts = (s?.sent ?? 0) + (s?.got ?? 0);
+  const item = (to: number, label: string, tail?: string) => (
+    <Text style={{ color: colors.groundMuted, fontSize: 13 }}>
+      <Text style={{ color: colors.groundInk, fontSize: 15, fontWeight: "800" }}>
+        <CountUp to={to} />
+      </Text>{" "}
+      {label}
+      {tail ? <Text style={{ fontSize: 11 }}>{` (${tail})`}</Text> : null}
+    </Text>
+  );
+  return (
+    <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 14, rowGap: 2, paddingHorizontal: 20, marginTop: 10 }}>
+      {item(s?.moments ?? 0, "لحظة")}
+      {item(s?.friends ?? 0, "صديق")}
+      {gifts > 0 ? item(gifts, "هدية", `${ar(s?.sent ?? 0)} منك · ${ar(s?.got ?? 0)} لك`) : null}
     </View>
   );
 }
@@ -247,6 +294,9 @@ export default function Me() {
               charmItem={me.charm}
             />
 
+            {DEV_FEATURES ? (
+              <StatLine s={s} />
+            ) : (
             <View style={{ alignItems: "center", paddingHorizontal: 20 }}>
               {/* أربعة أرقام بأيقوناتها. */}
               <View style={{ flexDirection: "row", alignItems: "stretch", maxWidth: 330, width: "100%", marginTop: 14, marginBottom: 6 }}>
@@ -256,6 +306,7 @@ export default function Me() {
                 <Stat first={false} icon={<GiftIcon size={14} color={colors.ink2} />} value={ar(s?.got ?? 0)} label="أُهدي لك" />
               </View>
             </View>
+            )}
 
             <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: 20, marginTop: 10, marginBottom: 18 }}>
               {/* أهدافُ الجولة: كلُّ زرٍّ يُضاء في دوره. */}
