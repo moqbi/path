@@ -281,10 +281,13 @@ function PackLock({
   const pill = "flex h-[38px] items-center gap-1.5 rounded-full px-[18px] text-[13px] font-extrabold";
   return (
     <div
-      className="absolute inset-x-0 bottom-0 top-7 flex flex-col items-center justify-center gap-2 rounded-[14px] px-4 text-center"
+      className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-[14px] px-4 text-center"
       style={{ background: "rgba(10,18,26,.82)", color: "#fff" }}
     >
       <LockIcon size={24} />
+      <p className="max-w-full truncate text-[12px] font-bold" style={{ color: "rgba(255,255,255,.7)" }}>
+        {page.pack}
+      </p>
       {page.lock === "plus" ? (
         <>
           <p className="text-[13.5px] font-bold">مع اشتراك آثار+</p>
