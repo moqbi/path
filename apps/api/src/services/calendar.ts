@@ -1,5 +1,5 @@
 import { prisma, type NationalDay } from "@athar/db";
-import { ALL_COUNTRIES, countryOf } from "@athar/shared";
+import { ALL_COUNTRIES, COUNTRIES, countryOf } from "@athar/shared";
 import { dayKey, monthsBefore, riyadhDay, type Day } from "../lib/riyadh-day";
 import { celebrated, MEMORABLE, memoryPeriods } from "./memories";
 
@@ -60,8 +60,8 @@ export function datesOf(occasion: Pick<NationalDay, "calendar" | "month" | "day"
 
 /** مناسباتُ دولة صاحب الحساب والعامّة — من آخر مدينةٍ قرأها جهازُه. */
 export async function nationalDaysFor(userId: string) {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { lastCity: true } });
-  const country = countryOf(user?.lastCity);
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { lastCity: true, lastCountry: true } });
+  const country = countryOf(user?.lastCity, user?.lastCountry);
   const rows = await prisma.nationalDay.findMany({
     where: { hidden: false, country: { in: country ? [country, ALL_COUNTRIES] : [ALL_COUNTRIES] } },
   });
@@ -172,10 +172,24 @@ export async function month(userId: string, year: number, monthNo: number) {
     }
   }
 
+  // القادمُ من اليوم لا من الشهر المعروض: سنةٌ كاملة — أقربُ مناسبةٍ وطنيّة قد تبعد أشهراً.
+  const today = riyadhDay();
+  const todayKey = dayKey(today);
+  const horizon = dayKey(monthsBefore(today, -12) ?? { y: today.y + 1, m: today.m, d: 1 });
+  const upcoming = rows
+    .flatMap((row) =>
+      [today.y, today.y + 1].flatMap((y) => datesOf(row, y)).map((day) => ({ date: dayKey(day), name: row.name, greeting: row.greeting })),
+    )
+    .filter((entry) => entry.date >= todayKey && entry.date < horizon)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 8);
+
   return {
     month: `${year}-${String(monthNo).padStart(2, "0")}`,
-    today: dayKey(riyadhDay()),
+    today: todayKey,
     country,
+    countryName: country ? (COUNTRIES.find((row) => row.code === country)?.name ?? null) : null,
+    upcoming,
     days: [...entries.values()].filter((entry) => entry.national.length || entry.friends.length || entry.memories),
   };
 }

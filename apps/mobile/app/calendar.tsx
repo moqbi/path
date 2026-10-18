@@ -18,7 +18,16 @@ type CalendarDay = {
   friends: { friend: Person; months: number }[];
   memories: { count: number; months: number } | null;
 };
-type CalendarMonth = { month: string; today: string; country: string | null; days: CalendarDay[] };
+type CalendarMonth = {
+  month: string;
+  today: string;
+  country: string | null;
+  /** اسمُ الدولة التي تُعرض مناسباتُها — من موقعه الحاليّ (القاعدة ٢٩٢). */
+  countryName?: string | null;
+  /** المناسباتُ الوطنيّة في السنة القادمة من اليوم. */
+  upcoming?: { date: string; name: string; greeting: string | null }[];
+  days: CalendarDay[];
+};
 
 const MONTHS = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
 /** الأسبوعُ يبدأ بالأحد — وفي الصفّ من اليمين يكون الأحدُ أوّلَه. */
@@ -63,11 +72,8 @@ export default function CalendarScreen() {
   const [picked, setPicked] = useState<string | null>(null);
 
   const current = useMonth(keyOf(view.y, view.m));
-  // القادمُ من اليوم لا من الشهر المعروض: هذا الشهرُ والذي بعده.
-  const home = { y: now.getFullYear(), m: now.getMonth() + 1 };
-  const next = shift(home.y, home.m, 1);
-  const thisMonth = useMonth(keyOf(home.y, home.m));
-  const nextMonth = useMonth(keyOf(next.y, next.m));
+  // القادمُ من اليوم لا من الشهر المعروض: الخادمُ يحسب سنةً كاملة من شهر اليوم.
+  const thisMonth = useMonth(keyOf(now.getFullYear(), now.getMonth() + 1));
 
   const today = current.data?.today ?? thisMonth.data?.today ?? "";
   const byDate = useMemo(() => new Map((current.data?.days ?? []).map((day) => [day.date, day])), [current.data]);
@@ -80,9 +86,8 @@ export default function CalendarScreen() {
   const selected = picked && picked.startsWith(keyOf(view.y, view.m)) ? picked : today.startsWith(keyOf(view.y, view.m)) ? today : null;
   const day = selected ? byDate.get(selected) : undefined;
 
-  const upcoming = [...(thisMonth.data?.days ?? []), ...(nextMonth.data?.days ?? [])]
-    .filter((entry) => entry.date >= today && entry.national.length)
-    .slice(0, 6);
+  const upcoming = thisMonth.data?.upcoming ?? [];
+  const countryName = thisMonth.data?.countryName ?? null;
 
   const DOT = dots();
   const go = (by: number) => {
@@ -188,25 +193,27 @@ export default function CalendarScreen() {
         {/* المناسباتُ الوطنيّة القادمة. */}
         <View style={{ gap: 8 }}>
           <Text style={{ color: colors.groundInk, fontSize: 14, fontWeight: "800" }}>المناسبات القادمة</Text>
-          {thisMonth.isLoading || nextMonth.isLoading ? (
+          {/* الدولةُ من موقعه الحاليّ: من سافر يرى مناسبات البلد الذي هو فيه. */}
+          <Text style={{ color: colors.groundMuted, fontSize: 11.5, marginTop: -4 }}>
+            {countryName ? `مناسبات ${countryName} الوطنية والأعياد — حسب موقعك` : "الأعياد والمناسبات العامة — حسب موقعك"}
+          </Text>
+          {thisMonth.isLoading ? (
             <ActivityIndicator color={colors.clay} />
           ) : upcoming.length === 0 ? (
-            <Text style={{ color: colors.groundMuted, fontSize: 12.5 }}>لا مناسبات وطنية في الشهرين القادمين.</Text>
+            <Text style={{ color: colors.groundMuted, fontSize: 12.5 }}>لا مناسبات في السنة القادمة.</Text>
           ) : (
-            upcoming.map((entry) =>
-              entry.national.map((item) => (
-                <View
-                  key={`${entry.date}:${item.name}`}
-                  style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 16, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line }}
-                >
-                  <DateChip date={entry.date} />
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "700" }}>{item.name}</Text>
-                    <Text style={{ color: colors.muted, fontSize: 11.5 }}>{until(entry.date, today)}</Text>
-                  </View>
+            upcoming.map((item) => (
+              <View
+                key={`${item.date}:${item.name}`}
+                style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 16, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line }}
+              >
+                <DateChip date={item.date} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "700" }}>{item.name}</Text>
+                  <Text style={{ color: colors.muted, fontSize: 11.5 }}>{until(item.date, today)}</Text>
                 </View>
-              )),
-            )
+              </View>
+            ))
           )}
         </View>
       </ScrollView>

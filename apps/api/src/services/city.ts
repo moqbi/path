@@ -25,8 +25,14 @@ export async function recordCity(userId: string, where: string | Arrival | null)
   const arrival: Arrival = typeof where === "string" || where === null ? { city: where } : where;
 
   return prisma.$transaction(async (tx) => {
-    const before = await tx.user.findUnique({ where: { id: userId }, select: { lastCity: true } });
+    const before = await tx.user.findUnique({ where: { id: userId }, select: { lastCity: true, lastCountry: true } });
     if (!before) return false;
+
+    // دولةُ الموضع برمزها لا باسمها — التقويمُ يقرؤها (القاعدة ٢٩٢)، والاسمُ يُكتب بأكثر من صيغة.
+    const code = /^[a-z]{2}$/i.test(arrival.countryCode ?? "") ? arrival.countryCode!.toUpperCase() : null;
+    if (code && code !== before.lastCountry) {
+      await tx.user.update({ where: { id: userId }, data: { lastCountry: code } });
+    }
 
     const label = cityLabel(arrival, before.lastCity);
     if (!label) return false;
