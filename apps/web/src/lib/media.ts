@@ -91,7 +91,9 @@ export async function storeSiteShot(ownerId: string, file: File | Blob, width: n
   if (bytes.length > MAX_SHOT_BYTES) throw new Error("اللقطة أكبر من ٨ ميغا");
   const mime = sniffImage(bytes);
   if (!mime) throw new Error("يُقبل JPEG أو PNG أو WebP أو GIF");
-  return write(ownerId, mime, bytes, Math.max(1, Math.round(width)), Math.max(1, Math.round(height)));
+  // الأبعادُ يقيسها المتصفّح ويرسلها: تُحصر في مدىً معقول فلا يُكتب رقمٌ مزوّر.
+  const side = (value: number) => (Number.isFinite(value) ? Math.max(1, Math.min(4096, Math.round(value))) : 1);
+  return write(ownerId, mime, bytes, side(width), side(height));
 }
 
 /** الملصق (القاعدة ٢٩١): رسمٌ صغير بشفافيّته، متحرّكٌ أو ساكن. */
@@ -102,6 +104,8 @@ const MAX_STICKER_BYTES = 2_000_000;
  * وإعادةُ ترميزه تُسطّحه أو توقفه. والصيغةُ من البايتات لا من `type`.
  */
 export async function storeSticker(ownerId: string, file: File | Blob, width: number, height: number) {
+  // الحجمُ قبل القراءة: لا يُحمَّل في الذاكرة ما سيُردّ.
+  if (file.size > MAX_STICKER_BYTES) throw new Error("الملصق أكبر من ٢ ميغا");
   const bytes = new Uint8Array(await file.arrayBuffer());
   if (bytes.length === 0) throw new Error("الملف فارغ");
   if (bytes.length > MAX_STICKER_BYTES) throw new Error("الملصق أكبر من ٢ ميغا");

@@ -471,14 +471,15 @@ export async function votePoll(userId: string, momentId: string, choice: number)
 /** تعليق. */
 export async function addComment(userId: string, momentId: string, body: string, stickerId?: string) {
   // الملصقُ يحلّ محلّ النصّ، و«ملصق» نصُّه لما لا يرسمه (القاعدة ٢٩١).
-  const sticker = stickerId ? await assertSticker(userId, stickerId) : null;
-  if (sticker) body = STICKER_TEXT;
-  await guard(body);
+  // اللحظةُ أوّلاً: من لا يراها يُقال له «غير موجودة» قبل أيّ سؤالٍ عن الملصق.
   const moment = await assertCanInteract(userId, momentId);
   // القفلُ بيد صاحبها، ولا يُقفل عليه هو: يردّ على ما سبق القفل.
   if (moment.commentsLocked && moment.authorId !== userId) {
     throw forbidden("أقفل صاحبُ اللحظة التعليقات");
   }
+  const sticker = stickerId ? await assertSticker(userId, stickerId) : null;
+  if (sticker) body = STICKER_TEXT;
+  await guard(body);
 
   const comment = await prisma.comment.create({
     data: { momentId, userId, body: body.trim().slice(0, 500), stickerId: sticker },

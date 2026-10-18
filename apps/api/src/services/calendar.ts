@@ -26,9 +26,16 @@ export function hijriOf(day: Day): { month: number; day: number } {
   return { month: pick("month"), day: pick("day") };
 }
 
+/**
+ * مدى التقويم: السنةُ تأتي من الطلب، وكلُّ سنةٍ تُبنى لها خريطةٌ تبقى في الذاكرة —
+ * فبلا حدٍّ يملأ الذاكرةَ من يطلب السنوات واحدةً واحدة.
+ */
+export const CALENDAR_YEARS = { from: 2020, to: 2100 } as const;
+
 /** خريطةُ سنةٍ ميلاديّة: «شهر-يوم» هجريّ ← أيّامُه الميلاديّة فيها (قد يقع مرّتين). */
 const yearMaps = new Map<number, Map<string, Day[]>>();
 function hijriYear(year: number) {
+  if (year < CALENDAR_YEARS.from || year > CALENDAR_YEARS.to) return new Map<string, Day[]>();
   const cached = yearMaps.get(year);
   if (cached) return cached;
   const map = new Map<string, Day[]>();
