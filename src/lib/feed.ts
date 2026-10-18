@@ -23,6 +23,8 @@ export const momentShape = {
   // ذكرى شاركها صاحبُها، وملخّصُ سنة (القاعدة ٢٣٥).
   memoryOf: true,
   recapYear: true,
+  // خياراتُ استطلاع المشرف — والأعدادُ من `pollState` (القاعدة ٢٨٩).
+  pollOptions: true,
   // «خاصة»: من يرى اللحظة يُقال له إنّها لم تُوجَّه إلى الدائرة كلّها.
   audience: true,
   media: { select: { width: true, height: true } },

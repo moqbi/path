@@ -63,6 +63,8 @@ export type Moment = {
   memoryOf?: string | null;
   /** «آثري في ٢٠٢٦» — ملخّصُ سنةٍ شاركه، والأرقامُ في `text`. */
   recapYear?: number | null;
+  /** خياراتُ استطلاع المشرف (القاعدة ٢٨٩) — اختياريٌّ لخادمٍ أقدم. */
+  pollOptions?: string[];
   createdAt: string;
   author: Person;
   tags: { id: string; name: string }[];

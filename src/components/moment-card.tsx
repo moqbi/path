@@ -17,6 +17,7 @@ import {
   SparkIcon,
 } from "@/components/icons";
 import { MomentBar } from "@/components/moment-bar";
+import { Poll } from "@/components/poll";
 import { AthrMark } from "@/components/brand";
 import { Photo } from "@/components/photo";
 import { PHOTO_RATIO } from "@/lib/photo";
@@ -551,6 +552,9 @@ export function MomentCard({
           <RecapBlock text={moment.text} />
         ) : moment.text ? (
           <p dir="auto" className="mb-2 text-[13.5px] leading-relaxed text-ink">{moment.text}</p>
+        ) : null}
+        {moment.pollOptions.length ? (
+          <Poll momentId={moment.id} options={moment.pollOptions} author={moment.author.id === viewerId} />
         ) : null}
 
         {/* الموقع على لحظةٍ أو صورة: سطرٌ صغير، لا حدثُ مكانٍ مستقل. */}

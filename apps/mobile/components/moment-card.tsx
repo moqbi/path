@@ -7,6 +7,7 @@ import { viewPhoto } from "./photo-viewer";
 import { AthrMark } from "./brand";
 import { CameraIcon, TagIcon, PinIcon, PlayIcon, WithIcon, SunIcon, MoonIcon, PlaneIcon, GiftIcon, SparkIcon, PrivateIcon, ClockIcon } from "./icons";
 import { MomentBar } from "./moment-bar";
+import { Poll } from "./poll";
 import { PHOTO_RATIO } from "./photo-frame";
 import { AuthorFaces, Bubble, CommentList, Reactors } from "./reactors";
 import { colors } from "../theme/tokens";
@@ -476,6 +477,9 @@ export function MomentCard({
           <Text style={{ color: colors.ink, fontSize: 13.5, lineHeight: 23, marginBottom: 8 }}>
             {moment.text}
           </Text>
+        ) : null}
+        {moment.pollOptions?.length ? (
+          <Poll momentId={moment.id} options={moment.pollOptions} author={moment.author.id === viewerId} />
         ) : null}
 
         {/* الموقع على لحظةٍ أو صورة: سطرٌ صغير، لا حدثُ مكانٍ مستقل. */}

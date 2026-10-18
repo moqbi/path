@@ -5,6 +5,7 @@ import {
   markInput,
   momentInput,
   pageQuery,
+  pollVoteInput,
   reactionInput,
 } from "@athar/shared";
 import { z } from "zod";
@@ -100,6 +101,18 @@ export const momentRoutes = new Hono()
 
   .post("/:id/seen", zValidator("param", byId), async (c) =>
     c.json(await moments.markSeen(me(c), c.req.valid("param").id)),
+  )
+
+  /* الاستطلاع (القاعدة ٢٨٩): النتيجةُ، والتصويتُ بخيارٍ واحد يُبدَّل. */
+  .get("/:id/poll", zValidator("param", byId), async (c) =>
+    c.json(await moments.pollState(me(c), c.req.valid("param").id)),
+  )
+
+  .post(
+    "/:id/poll",
+    zValidator("param", byId),
+    zValidator("json", pollVoteInput),
+    async (c) => c.json(await moments.votePoll(me(c), c.req.valid("param").id, c.req.valid("json").choice)),
   )
 
   .post(

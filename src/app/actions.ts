@@ -1713,6 +1713,60 @@ export async function addComment(momentId: string, formData: FormData): Promise<
   revalidatePath(`/m/${momentId}`);
 }
 
+/** نتيجةُ الاستطلاع كما يراها القارئ — الأعدادُ بعد التصويت أو لصاحبه (القاعدة ٢٨٩). */
+export type PollState = { options: string[]; mine: number | null; counts: number[] | null; total: number | null };
+
+async function readPoll(userId: string, momentId: string): Promise<PollState | null> {
+  if (!(await canSee(userId, momentId))) return null;
+  const moment = await prisma.moment.findUnique({
+    where: { id: momentId },
+    select: { authorId: true, pollOptions: true },
+  });
+  if (!moment || moment.pollOptions.length === 0) return null;
+
+  const [mine, groups] = await Promise.all([
+    prisma.pollVote.findUnique({ where: { momentId_userId: { momentId, userId } }, select: { choice: true } }),
+    prisma.pollVote.groupBy({ by: ["choice"], where: { momentId }, _count: { _all: true } }),
+  ]);
+  const counts = moment.pollOptions.map(
+    (_, index) => groups.find((row) => row.choice === index)?._count._all ?? 0,
+  );
+  const reveal = mine !== null || moment.authorId === userId;
+  return {
+    options: moment.pollOptions,
+    mine: mine?.choice ?? null,
+    counts: reveal ? counts : null,
+    total: reveal ? counts.reduce((sum, n) => sum + n, 0) : null,
+  };
+}
+
+export async function pollState(momentId: string): Promise<{ poll: PollState } | { error: string }> {
+  const user = await requireUser();
+  const poll = await readPoll(user.id, momentId);
+  return poll ? { poll } : { error: "لا استطلاع هنا" };
+}
+
+/** صوتٌ واحد لكلّ شخص يُبدَّل، ولا يصوّت صاحبُه — نسخةُ `votePoll` في الخادم. */
+export async function votePoll(momentId: string, choice: number): Promise<{ poll: PollState } | { error: string }> {
+  const user = await requireUser();
+  const poll = await readPoll(user.id, momentId);
+  if (!poll) return { error: "اللحظة غير موجودة" };
+  if (!Number.isInteger(choice) || choice < 0 || choice >= poll.options.length) return { error: "الخيار غير موجود" };
+  try {
+    const moment = await assertCanInteract(user.id, momentId);
+    if (moment.authorId === user.id) return { error: "لا تصوّت على استطلاعك" };
+  } catch (error) {
+    return { error: (error as Error).message };
+  }
+  await prisma.pollVote.upsert({
+    where: { momentId_userId: { momentId, userId: user.id } },
+    create: { momentId, userId: user.id, choice },
+    update: { choice },
+  });
+  const next = await readPoll(user.id, momentId);
+  return next ? { poll: next } : { error: "اللحظة غير موجودة" };
+}
+
 /** اللحظة مرئية لصاحبها ولمن شمله جمهورها من دائرته — `lib/visibility`. */
 async function canSee(userId: string, momentId: string): Promise<boolean> {
   return canSeeMoment(userId, momentId);

@@ -267,6 +267,7 @@ model User {
   sessions       RefreshToken[]
   moments        Moment[]
   reactions      Reaction[]
+  pollVotes      PollVote[]
   views          View[]
   comments       Comment[]
   tags           MomentTag[]
@@ -561,12 +562,17 @@ model Moment {
   /// «آثري في ٢٠٢٦» — ملخّصُ سنةٍ شاركه صاحبُه، والأرقامُ في `text`.
   recapYear Int?
 
+  /// استطلاعُ المشرف على خاطرته: السؤالُ في `text` والخياراتُ هنا (٢–٤).
+  /// فارغٌ = لا استطلاع. وجوّالٌ قديم يقرأ السؤالَ خاطرةً.
+  pollOptions String[] @default([])
+
   createdAt DateTime @default(now())
 
   author    User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
   tags      MomentTag[]
   viewers   MomentViewer[]
   reactions Reaction[]
+  pollVotes PollVote[]
   views     View[]
   comments  Comment[]
 
@@ -609,6 +615,20 @@ model Reaction {
   /// يُملأ فقط حين kind = CUSTOM.
   emoji     String?
   createdAt DateTime     @default(now())
+
+  moment Moment @relation(fields: [momentId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([momentId, userId])
+}
+
+/// صوتٌ واحدٌ لكلّ شخصٍ في استطلاع، يُبدَّل ولا يتكرّر. `choice` رقمُ الخيار في `pollOptions`.
+model PollVote {
+  id        String   @id @default(cuid())
+  momentId  String
+  userId    String
+  choice    Int
+  createdAt DateTime @default(now())
 
   moment Moment @relation(fields: [momentId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)

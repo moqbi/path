@@ -8,6 +8,7 @@ import { guard } from "../lib/moderation";
 import { canInteract, canSeeMoment, circleIds } from "./visibility";
 import { dropMedia } from "./media";
 import { push } from "./push";
+import { canRunGroups } from "./groups";
 
 /** تدرّجات تقوم مقام الصورة حين تُنشر لحظة صورة بلا ملف. */
 
@@ -155,7 +156,18 @@ export async function createMoment(userId: string, input: MomentInput) {
   if (!text && input.kind === "THOUGHT") throw badRequest("اكتب شيئاً");
   // الفلترة قبل الكتابة: ما يُمنع يقف عند صاحبه لا بعد أن يراه الناس.
   // واسمُ المكان نصٌّ يرسله الجهاز وإن اختير من قائمة، فيُفحص معه.
-  await guard([text, input.place].filter(Boolean).join("\n"));
+  /*
+    الاستطلاعُ للمشرف وحده وعلى الخاطرة وحدها (القاعدة ٢٨٩): السؤالُ نصُّها،
+    والخياراتُ تمرّ بقائمة الكلمات معه.
+  */
+  const poll = input.poll?.map((option) => option.trim()).filter(Boolean) ?? [];
+  if (poll.length) {
+    if (input.kind !== "THOUGHT") throw badRequest("الاستطلاع على اللحظة النصية");
+    if (!(await canRunGroups(userId))) throw forbidden("الاستطلاع للمشرف");
+    if (poll.length < 2) throw badRequest("اكتب خيارين على الأقل");
+    if (new Set(poll).size !== poll.length) throw badRequest("الخيارات مكرّرة");
+  }
+  await guard([text, input.place, ...poll].filter(Boolean).join("\n"));
   if (input.kind === "PLACE" && (input.lat === undefined || input.lng === undefined)) {
     throw badRequest("تعذّر تحديد موقعك");
   }
@@ -208,6 +220,7 @@ export async function createMoment(userId: string, input: MomentInput) {
       musicTitle: track?.title ?? null,
       musicArtist: track?.artist ?? null,
       musicThumb: track?.thumb ?? null,
+      pollOptions: poll,
     },
     select: { id: true },
   });
@@ -387,6 +400,55 @@ export async function react(
   }
 
   return { reacted: true };
+}
+
+/**
+ * نتيجةُ الاستطلاع كما يراها القارئ (القاعدة ٢٨٩).
+ *
+ * الأعدادُ بعد التصويت أو لصاحبه وحده: من يرى النسبَ قبل أن يختار يتبع
+ * الأغلبيّة. والرؤيةُ شرطُها شرطُ اللحظة — «غير موجودة» لمن لا يراها.
+ */
+export async function pollState(userId: string, momentId: string) {
+  if (!(await canSeeMoment(userId, momentId))) throw notFound("اللحظة غير موجودة");
+  const moment = await prisma.moment.findUnique({
+    where: { id: momentId },
+    select: { authorId: true, pollOptions: true },
+  });
+  if (!moment || moment.pollOptions.length === 0) throw notFound("لا استطلاع هنا");
+
+  const [mine, groups] = await Promise.all([
+    prisma.pollVote.findUnique({
+      where: { momentId_userId: { momentId, userId } },
+      select: { choice: true },
+    }),
+    prisma.pollVote.groupBy({ by: ["choice"], where: { momentId }, _count: { _all: true } }),
+  ]);
+
+  const counts = moment.pollOptions.map(
+    (_, index) => groups.find((row) => row.choice === index)?._count._all ?? 0,
+  );
+  const reveal = mine !== null || moment.authorId === userId;
+  return {
+    options: moment.pollOptions,
+    mine: mine?.choice ?? null,
+    counts: reveal ? counts : null,
+    total: reveal ? counts.reduce((sum, n) => sum + n, 0) : null,
+  };
+}
+
+/** صوتٌ واحد لكلّ شخص، والضغطُ على خيارٍ آخر يبدّله. ولا يصوّت صاحبُه. */
+export async function votePoll(userId: string, momentId: string, choice: number) {
+  const moment = await assertCanInteract(userId, momentId);
+  if (moment.authorId === userId) throw badRequest("لا تصوّت على استطلاعك");
+  const row = await prisma.moment.findUnique({ where: { id: momentId }, select: { pollOptions: true } });
+  if (!row || choice >= row.pollOptions.length) throw badRequest("الخيار غير موجود");
+
+  await prisma.pollVote.upsert({
+    where: { momentId_userId: { momentId, userId } },
+    create: { momentId, userId, choice },
+    update: { choice },
+  });
+  return pollState(userId, momentId);
 }
 
 /** تعليق. */
