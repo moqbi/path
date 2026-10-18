@@ -415,7 +415,7 @@ export default function Conversation() {
             thread.isLoading ? (
               <ActivityIndicator style={{ marginTop: 40 }} color={colors.clay} />
             ) : (
-              <Text style={{ color: colors.muted, fontSize: 13, textAlign: "center", paddingVertical: 24 }}>
+              <Text style={{ color: colors.groundMuted, fontSize: 13, textAlign: "center", paddingVertical: 24 }}>
                 لا رسائل بعد. اكتب أول سطر.
               </Text>
             )
@@ -434,7 +434,7 @@ export default function Conversation() {
                 head={needsHead(item, lines[index - 1])}
                 meta={
                   <>
-                    {item.editedAt ? <Text style={{ color: colors.faint, fontSize: 10 }}>عُدّلت</Text> : null}
+                    {item.editedAt ? <Text style={{ color: colors.groundFaint, fontSize: 10 }}>عُدّلت</Text> : null}
                     {mine ? <Ticks state={receiptOf(item)} size={14} /> : null}
                     {shown === item.id ? (
                       mine ? (
@@ -706,7 +706,7 @@ export default function Conversation() {
           />
 
           {!me?.isPlus ? (
-            <Text style={{ color: colors.faint, fontSize: 10.5, textAlign: "center", marginTop: 8 }}>
+            <Text style={{ color: colors.groundFaint, fontSize: 10.5, textAlign: "center", marginTop: 8 }}>
               الصوت حتى {ar(maxSeconds)} ثانية · ومع آثار+ ١٢٠
             </Text>
           ) : null}

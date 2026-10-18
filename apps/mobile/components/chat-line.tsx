@@ -93,14 +93,14 @@ export function ChatLine({
             <View style={{ flexDirection: direction, alignItems: "center", gap: 6, flexShrink: 1, minWidth: 0 }}>
               <Text
                 numberOfLines={1}
-                style={{ color: colors.ink, fontSize: 14, fontWeight: "700", flexShrink: 1, writingDirection: "auto" }}
+                style={{ color: colors.groundInk, fontSize: 14, fontWeight: "700", flexShrink: 1, writingDirection: "auto" }}
               >
                 {person.name}
               </Text>
               <NameTag isPlus={person.isPlus} tag={person.tag ?? null} size={10} />
             </View>
             <View style={{ flex: 1 }} />
-            <Text style={{ color: colors.faint, fontSize: 11 }}>{stamp(at)}</Text>
+            <Text style={{ color: colors.groundFaint, fontSize: 11 }}>{stamp(at)}</Text>
           </View>
         ) : null}
 

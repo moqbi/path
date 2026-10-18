@@ -146,11 +146,11 @@ export default function Group() {
             thread.isLoading ? (
               <ActivityIndicator style={{ marginTop: 40 }} color={colors.clay} />
             ) : thread.isError ? (
-              <Text style={{ color: colors.muted, fontSize: 13, textAlign: "center", paddingVertical: 24 }}>
+              <Text style={{ color: colors.groundMuted, fontSize: 13, textAlign: "center", paddingVertical: 24 }}>
                 المجموعة غير موجودة.
               </Text>
             ) : (
-              <Text style={{ color: colors.muted, fontSize: 13, textAlign: "center", paddingVertical: 24 }}>
+              <Text style={{ color: colors.groundMuted, fontSize: 13, textAlign: "center", paddingVertical: 24 }}>
                 لا رسائل بعد. اكتب أول سطر.
               </Text>
             )
