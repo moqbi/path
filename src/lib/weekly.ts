@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { ar, counted } from "@/lib/riyadh-day";
 import { blockedWith, visibleWhere } from "@/lib/visibility";
 import { circleIds } from "@/lib/circle";
+import { bellRang } from "@/lib/memories";
 
 /**
  * «أسبوعك في دائرتك» يوم الجمعة (القاعدة ٢٤٥) — نسخةُ `apps/api/src/services/weekly.ts`.
@@ -26,6 +27,12 @@ export function riyadhWeekday(now = new Date()): number {
 export function weeklyOpen(now = new Date()): boolean {
   const day = riyadhWeekday(now);
   return day === 5 || day === 6;
+}
+
+/** الجمعةُ بعد جرسها لا قبله (القاعدة ٢٩٠)، والسبتُ كلُّه — جرسُ الأسبوع الجمعةَ وحدها. */
+export async function weeklyShown(userId: string, now = new Date()): Promise<boolean> {
+  if (!weeklyOpen(now)) return false;
+  return riyadhWeekday(now) !== 5 || bellRang(userId, now);
 }
 
 type Person = { id: string; name: string; avatarMediaId: string | null };

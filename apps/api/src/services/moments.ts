@@ -1,6 +1,6 @@
 import { prisma } from "@athar/db";
 import { recordCity } from "./city";
-import type { MomentInput } from "@athar/shared";
+import { POLL_DAYS_DEFAULT, type MomentInput } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { reverseGeocode } from "../lib/places";
 import { isSupportedMusicUrl, resolveTrack } from "../lib/music-link";
@@ -221,6 +221,10 @@ export async function createMoment(userId: string, input: MomentInput) {
       musicArtist: track?.artist ?? null,
       musicThumb: track?.thumb ?? null,
       pollOptions: poll,
+      // نسخةٌ قبل المدّة لا ترسلها، فتأخذ الافتراضيّ (القاعدة ٢٩٠).
+      pollEndsAt: poll.length
+        ? new Date(Date.now() + (input.pollDays ?? POLL_DAYS_DEFAULT) * 86_400_000)
+        : null,
     },
     select: { id: true },
   });
@@ -412,9 +416,10 @@ export async function pollState(userId: string, momentId: string) {
   if (!(await canSeeMoment(userId, momentId))) throw notFound("اللحظة غير موجودة");
   const moment = await prisma.moment.findUnique({
     where: { id: momentId },
-    select: { authorId: true, pollOptions: true },
+    select: { authorId: true, pollOptions: true, pollEndsAt: true },
   });
   if (!moment || moment.pollOptions.length === 0) throw notFound("لا استطلاع هنا");
+  const closed = pollClosed(moment.pollEndsAt);
 
   const [mine, groups] = await Promise.all([
     prisma.pollVote.findUnique({
@@ -427,21 +432,32 @@ export async function pollState(userId: string, momentId: string) {
   const counts = moment.pollOptions.map(
     (_, index) => groups.find((row) => row.choice === index)?._count._all ?? 0,
   );
-  const reveal = mine !== null || moment.authorId === userId;
+  // وبعد انتهائه النتيجةُ للجميع (القاعدة ٢٩٠).
+  const reveal = closed || mine !== null || moment.authorId === userId;
   return {
     options: moment.pollOptions,
+    endsAt: moment.pollEndsAt,
+    closed,
     mine: mine?.choice ?? null,
     counts: reveal ? counts : null,
     total: reveal ? counts.reduce((sum, n) => sum + n, 0) : null,
   };
 }
 
+/** انتهى؟ — `null` استطلاعٌ قبل المدّة لم تُصلحه الهجرة، فيبقى مفتوحاً. */
+const pollClosed = (endsAt: Date | null) => endsAt !== null && endsAt.getTime() <= Date.now();
+
 /** صوتٌ واحد لكلّ شخص، والضغطُ على خيارٍ آخر يبدّله. ولا يصوّت صاحبُه. */
 export async function votePoll(userId: string, momentId: string, choice: number) {
   const moment = await assertCanInteract(userId, momentId);
   if (moment.authorId === userId) throw badRequest("لا تصوّت على استطلاعك");
-  const row = await prisma.moment.findUnique({ where: { id: momentId }, select: { pollOptions: true } });
+  const row = await prisma.moment.findUnique({
+    where: { id: momentId },
+    select: { pollOptions: true, pollEndsAt: true },
+  });
   if (!row || choice >= row.pollOptions.length) throw badRequest("الخيار غير موجود");
+  // المنتهي لا يُصوَّت فيه ولا يُبدَّل صوتُه (القاعدة ٢٩٠).
+  if (pollClosed(row.pollEndsAt)) throw badRequest("انتهى الاستطلاع");
 
   await prisma.pollVote.upsert({
     where: { momentId_userId: { momentId, userId } },

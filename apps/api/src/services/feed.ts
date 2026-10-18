@@ -32,6 +32,7 @@ const shape = {
   recapYear: true,
   // خياراتُ استطلاع المشرف — والأعدادُ من `/poll` (القاعدة ٢٨٩).
   pollOptions: true,
+  pollEndsAt: true,
   // «خاصة»: من يرى اللحظة يُقال له إنّها لم تُوجَّه إلى الدائرة كلّها.
   audience: true,
   createdAt: true,

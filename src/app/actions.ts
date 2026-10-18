@@ -1714,15 +1714,23 @@ export async function addComment(momentId: string, formData: FormData): Promise<
 }
 
 /** نتيجةُ الاستطلاع كما يراها القارئ — الأعدادُ بعد التصويت أو لصاحبه (القاعدة ٢٨٩). */
-export type PollState = { options: string[]; mine: number | null; counts: number[] | null; total: number | null };
+export type PollState = {
+  options: string[];
+  endsAt: Date | null;
+  closed: boolean;
+  mine: number | null;
+  counts: number[] | null;
+  total: number | null;
+};
 
 async function readPoll(userId: string, momentId: string): Promise<PollState | null> {
   if (!(await canSee(userId, momentId))) return null;
   const moment = await prisma.moment.findUnique({
     where: { id: momentId },
-    select: { authorId: true, pollOptions: true },
+    select: { authorId: true, pollOptions: true, pollEndsAt: true },
   });
   if (!moment || moment.pollOptions.length === 0) return null;
+  const closed = moment.pollEndsAt !== null && moment.pollEndsAt.getTime() <= Date.now();
 
   const [mine, groups] = await Promise.all([
     prisma.pollVote.findUnique({ where: { momentId_userId: { momentId, userId } }, select: { choice: true } }),
@@ -1731,9 +1739,11 @@ async function readPoll(userId: string, momentId: string): Promise<PollState | n
   const counts = moment.pollOptions.map(
     (_, index) => groups.find((row) => row.choice === index)?._count._all ?? 0,
   );
-  const reveal = mine !== null || moment.authorId === userId;
+  const reveal = closed || mine !== null || moment.authorId === userId;
   return {
     options: moment.pollOptions,
+    endsAt: moment.pollEndsAt,
+    closed,
     mine: mine?.choice ?? null,
     counts: reveal ? counts : null,
     total: reveal ? counts.reduce((sum, n) => sum + n, 0) : null,
@@ -1752,6 +1762,7 @@ export async function votePoll(momentId: string, choice: number): Promise<{ poll
   const poll = await readPoll(user.id, momentId);
   if (!poll) return { error: "اللحظة غير موجودة" };
   if (!Number.isInteger(choice) || choice < 0 || choice >= poll.options.length) return { error: "الخيار غير موجود" };
+  if (poll.closed) return { error: "انتهى الاستطلاع" };
   try {
     const moment = await assertCanInteract(user.id, momentId);
     if (moment.authorId === user.id) return { error: "لا تصوّت على استطلاعك" };

@@ -182,6 +182,12 @@ function Gate() {
       const path = response.notification.request.content.data?.path;
       // «من حولك» نافذةٌ في الجذر لا شاشة (القاعدة ٢٨٢): تُفتح على الرادار مباشرةً.
       if (path === "/nearby") openAddSheet("near");
+      // جرسُ الصباح (القاعدة ٢٩٠): البطاقةُ قبله فارغةٌ ومخبّأة، فتُسأل من جديد.
+      else if (path === "/") {
+        void client.invalidateQueries({ queryKey: ["memories"] });
+        void client.invalidateQueries({ queryKey: ["weekly"] });
+        router.push(path as never);
+      }
       else if (typeof path === "string" && path.startsWith("/")) router.push(path as never);
     };
     const sub = Notifications.addNotificationResponseReceivedListener(open);
@@ -214,6 +220,10 @@ function Gate() {
         void client.invalidateQueries({ queryKey: ["moment", path.slice(3)] });
         void client.invalidateQueries({ queryKey: ["feed"] });
         void client.invalidateQueries({ queryKey: ["me", "moments"] });
+      }
+      else if (path === "/") {
+        void client.invalidateQueries({ queryKey: ["memories"] });
+        void client.invalidateQueries({ queryKey: ["weekly"] });
       }
       void client.invalidateQueries({ queryKey: ["notes"] });
     });

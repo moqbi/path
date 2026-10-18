@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   MOMENT_TEXT_MAX,
+  POLL_DAYS,
   POLL_OPTION_MAX,
   SOUND_SOURCE,
   STORY_SECONDS,
@@ -55,6 +56,11 @@ export const momentInput = z.object({
   musicUrl: z.string().trim().url().max(500).optional(),
   /* استطلاعٌ على خاطرة — للمشرف وحده (القاعدة ٢٨٩): السؤالُ في `text`. */
   poll: z.array(z.string().trim().min(1).max(POLL_OPTION_MAX)).min(2).max(4).optional(),
+  pollDays: z
+    .number()
+    .int()
+    .refine((days) => (POLL_DAYS as readonly number[]).includes(days))
+    .optional(),
 });
 
 export const pollVoteInput = z.object({ choice: z.number().int().min(0).max(3) });

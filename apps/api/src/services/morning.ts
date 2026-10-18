@@ -1,5 +1,5 @@
 import { prisma } from "@athar/db";
-import { ar, dayKey, riyadhDay, riyadhHour } from "../lib/riyadh-day";
+import { ar, BELL_FROM, BELL_UNTIL, dayKey, riyadhDay, riyadhHour } from "../lib/riyadh-day";
 import { memoriesFor, memorySentence, occasionsFor } from "./memories";
 import { openYear, recapStatus } from "./recap";
 import { inQuietHours, push } from "./push";
@@ -18,8 +18,8 @@ import { riyadhWeekday, weeklyFor, weeklySentence } from "./weekly";
  * تداخل كنسان (كجديد المتجر، القاعدة ١٧٧). ومن في وضعه الهادئ لا يُختم:
  * يُعاد إليه في الكنس التالي حتى ينتهي هدوؤه أو تنقضي النافذة.
  */
-const FROM_HOUR = 9;
-const UNTIL_HOUR = 13;
+const FROM_HOUR = BELL_FROM;
+const UNTIL_HOUR = BELL_UNTIL;
 /** حساباتٌ في كلّ كنس — الكنسُ كلَّ خمس دقائق، فأربعُ ساعاتٍ تتّسع لآلاف. */
 const BATCH = 150;
 

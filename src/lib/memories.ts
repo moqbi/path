@@ -6,7 +6,7 @@ import "server-only";
 */
 import { prisma } from "@/lib/db";
 import { Prisma, type MomentKind } from "@/generated/prisma/client";
-import { daysText, dayKey, dayRange, monthsBefore, riyadhDay, spanText, type Day } from "@/lib/riyadh-day";
+import { BELL_FROM, BELL_UNTIL, daysText, dayKey, dayRange, monthsBefore, riyadhDay, riyadhHour, spanText, type Day } from "@/lib/riyadh-day";
 import { blockedWith } from "@/lib/visibility";
 import { circleIds } from "@/lib/circle";
 import { momentsByIds } from "@/lib/feed";
@@ -342,6 +342,26 @@ export const occasionSentence = (occasion: Occasion) => occasion.title;
 // ───────────────────────────── البطاقة ─────────────────────────────
 
 /**
+ * هل قُرع جرسُ الصباح لصاحب الحساب اليوم؟ — **بقرار المالك**: الذكرياتُ والمناسباتُ
+ * وملخّصُ الجمعة تظهر بعد التنبيه لا قبله، فلا يرى صاحبُها البطاقةَ فجراً ثمّ يصله
+ * عنها جرسٌ في التاسعة (القاعدة ٢٩٠). قبل التاسعة بتوقيت الرياض لا؛ وبعد نافذة الجرس
+ * (الواحدة ظهراً) نعم؛ وبينهما حين خُتم يومُه (`memoriesPushedOn`) أو كان لا يُقرع له
+ * أصلاً — أطفأ «ذكريات ومناسبات» أو بلا جهاز.
+ */
+export async function bellRang(userId: string, now = new Date()): Promise<boolean> {
+  const hour = riyadhHour(now);
+  if (hour < BELL_FROM) return false;
+  if (hour >= BELL_UNTIL) return true;
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { memoriesPushedOn: true, notifyMemories: true, _count: { select: { devices: true } } },
+  });
+  if (!user) return false;
+  if (user.memoriesPushedOn === dayKey(riyadhDay(now))) return true;
+  return !user.notifyMemories || user._count.devices === 0;
+}
+
+/**
  * ما تعرضه البطاقةُ أعلى اللحظات اليوم: الذكرياتُ والمناسباتُ ولحظاتُها.
  * وتُطوى لليوم كلّه بـ`dismiss`، وتعود غداً بما يقع فيه.
  */
@@ -350,7 +370,7 @@ export async function today(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { memoriesDismissedOn: true } });
   // «آثرك جاهز» في نافذته (٢٥ ديسمبر – آخر يناير) — بابُه في البطاقة نفسها.
   const { year: recapYear } = await recapStatus(userId);
-  if (user?.memoriesDismissedOn === dayKey(day)) {
+  if (user?.memoriesDismissedOn === dayKey(day) || !(await bellRang(userId))) {
     return { day: dayKey(day), recapYear, memories: [], occasions: [], moments: [] };
   }
 

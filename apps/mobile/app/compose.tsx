@@ -15,7 +15,7 @@ import { uploadFile } from "../lib/upload";
 import { maybeAskToRate } from "../lib/rate";
 import { useCircle } from "../lib/queries";
 import { useSession } from "../lib/session";
-import { POLL_OPTION_MAX } from "@athar/shared";
+import { POLL_DAYS, POLL_DAYS_DEFAULT, POLL_OPTION_MAX } from "@athar/shared";
 import { ar } from "../lib/format";
 import { appleNearby, appleSearch } from "../lib/apple-places";
 import { SourceSheet } from "../components/source-sheet";
@@ -64,6 +64,7 @@ export default function Compose() {
   */
   const canPoll = useSession((state) => Boolean(state.me?.canGroups)) && kind === "THOUGHT";
   const [poll, setPoll] = useState<string[] | null>(null);
+  const [pollDays, setPollDays] = useState<number>(POLL_DAYS_DEFAULT);
   const pollReady = !poll || poll.filter((option) => option.trim()).length >= 2;
   const [musicUrl, setMusicUrl] = useState("");
   const [picture, setPicture] = useState<{ uri: string; width: number; height: number; mime: string } | null>(null);
@@ -301,6 +302,7 @@ export default function Compose() {
           photoY: mediaId ? photoPos.y : undefined,
           musicUrl: kind === "MUSIC" ? musicUrl.trim() : undefined,
           poll: poll ? poll.map((option) => option.trim()).filter(Boolean) : undefined,
+          pollDays: poll ? pollDays : undefined,
           with: withIds.length ? withIds : undefined,
           audience: audience === "CIRCLE" || audience === "PICKED" || audience === "EXCEPT" ? audience : "GROUP",
           audienceGroupId:
@@ -470,7 +472,7 @@ export default function Compose() {
           )}
 
           {canPoll ? (
-            <PollEditor poll={poll} onChange={setPoll} />
+            <PollEditor poll={poll} onChange={setPoll} days={pollDays} onDays={setPollDays} />
           ) : null}
 
           {/* الموقع: إجباريٌّ في لحظة المكان، اختياريٌّ في اللحظة والصورة. */}
@@ -778,7 +780,17 @@ function PlaceRows({
  * خياراتُ الاستطلاع تحت السؤال: زرٌّ يفتحه، وحقلٌ لكلّ خيار، و«خيار» يضيف
  * حتى أربعة، و«×» يُزيل ما فوق اثنين. والخادمُ يفحص الدورَ والعددَ ثانيةً.
  */
-function PollEditor({ poll, onChange }: { poll: string[] | null; onChange: (poll: string[] | null) => void }) {
+function PollEditor({
+  poll,
+  onChange,
+  days,
+  onDays,
+}: {
+  poll: string[] | null;
+  onChange: (poll: string[] | null) => void;
+  days: number;
+  onDays: (days: number) => void;
+}) {
   if (!poll) {
     return (
       <Pressable
@@ -803,7 +815,7 @@ function PollEditor({ poll, onChange }: { poll: string[] | null; onChange: (poll
         </Pressable>
       </View>
       <Text style={{ color: colors.muted, fontSize: 11.5, lineHeight: 19 }}>
-        السؤالُ هو ما كتبته فوق — ومن يصوّت يرى النتيجة.
+        السؤالُ هو ما كتبته فوق. التصويتُ سرّي، ومن يصوّت يرى النتيجة، وبانتهاء المدّة تُعرض للجميع.
       </Text>
       {poll.map((option, index) => (
         <View key={index} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -826,6 +838,25 @@ function PollEditor({ poll, onChange }: { poll: string[] | null; onChange: (poll
           ) : null}
         </View>
       ))}
+      {/* المدّة قائمةٌ مغلقة (القاعدة ٢٩٠): بعدها يُقفل والنتيجةُ للجميع. */}
+      <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 4 }}>مدّة الاستطلاع</Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+        {POLL_DAYS.map((value) => {
+          const on = value === days;
+          return (
+            <Pressable
+              key={value}
+              onPress={() => onDays(value)}
+              accessibilityState={{ selected: on }}
+              style={{ minHeight: 34, paddingHorizontal: 12, borderRadius: 999, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: on ? colors.clay : colors.line, backgroundColor: on ? colors.claySoft : colors.paper }}
+            >
+              <Text style={{ color: on ? colors.clayInk : colors.ink2, fontSize: 12, fontWeight: on ? "700" : "500" }}>
+                {value === 1 ? "يوم" : value === 7 ? "أسبوع" : value === 14 ? "أسبوعين" : value === 30 ? "شهر" : `${ar(value)} أيام`}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
       {poll.length < 4 ? (
         <Pressable
           onPress={() => onChange([...poll, ""])}
