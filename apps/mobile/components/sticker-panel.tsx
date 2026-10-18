@@ -114,8 +114,9 @@ export function StickerPanel({
     if (first?.index != null) setCurrent(first.index);
   }).current;
 
-  const ink = tone === "dark" ? "#fff" : colors.ink;
-  const soft = tone === "dark" ? "rgba(255,255,255,.55)" : colors.muted;
+  // على الورق اللوحةُ على الأرضية لا في بطاقة، فحبرُها حبرُ الأرضية (القاعدة ٢٦٢).
+  const ink = tone === "dark" ? "#fff" : colors.groundInk;
+  const soft = tone === "dark" ? "rgba(255,255,255,.55)" : colors.groundMuted;
   const cell = tone === "dark" ? "rgba(255,255,255,.06)" : colors.paper;
   const page = pages[current] ?? pages[0];
   const height = CELL * 2 + 10 + 28;
@@ -131,25 +132,28 @@ export function StickerPanel({
         <Text style={{ color: soft, fontSize: 12.5, textAlign: "center", marginTop: 50 }}>ما فيه ملصقات بعد</Text>
       ) : (
         <>
+          {/* اسمُ المجموعة في الوسط، والسعرُ أو «مملوكة» في طرفٍ والنقاطُ في الآخر. */}
           <View style={{ height: 28, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 4 }}>
-            <Text numberOfLines={1} style={{ flex: 1, minWidth: 0, color: ink, fontSize: 13, fontWeight: "700" }}>
+            <View style={{ flex: 1, flexDirection: "row" }}>
+              {page && (page.price > 0 || page.owned) ? (
+                <Text style={{ color: page.owned ? soft : colors.clay, fontSize: 11, fontWeight: "700" }}>
+                  {page.owned ? "مملوكة" : `${ar(page.price)} نقطة`}
+                </Text>
+              ) : null}
+            </View>
+            <Text numberOfLines={1} style={{ flexShrink: 1, color: ink, fontSize: 13, fontWeight: "700", textAlign: "center" }}>
               {page?.pack}
             </Text>
-            {page && (page.price > 0 || page.owned) ? (
-              <Text style={{ color: page.owned ? soft : colors.clay, fontSize: 11, fontWeight: "700" }}>
-                {page.owned ? "مملوكة" : `${ar(page.price)} نقطة`}
-              </Text>
-            ) : null}
-            {page && page.count > 1 ? (
-              <View style={{ flexDirection: "row", gap: 4 }}>
-                {Array.from({ length: page.count }, (_, i) => (
-                  <View
-                    key={i}
-                    style={{ width: i === page.index ? 14 : 5, height: 5, borderRadius: 3, backgroundColor: i === page.index ? colors.clay : soft }}
-                  />
-                ))}
-              </View>
-            ) : null}
+            <View style={{ flex: 1, flexDirection: "row", justifyContent: "flex-end", gap: 4 }}>
+              {page && page.count > 1
+                ? Array.from({ length: page.count }, (_, i) => (
+                    <View
+                      key={i}
+                      style={{ width: i === page.index ? 14 : 5, height: 5, borderRadius: 3, backgroundColor: i === page.index ? colors.clay : soft }}
+                    />
+                  ))
+                : null}
+            </View>
           </View>
 
           {width > 0 ? (
