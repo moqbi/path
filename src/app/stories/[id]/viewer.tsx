@@ -35,7 +35,7 @@ type Story = {
   trackSeconds: number | null;
   videoMuted: boolean;
   /** تقريبُ الصورة وإزاحتُها كما وضعها صاحبُها في التطبيق (القاعدة ٢٩٦). */
-  frame: { z: number; x: number; y: number } | null;
+  frame: { z: number; x: number; y: number; a?: number } | null;
   myReaction: string | null;
 };
 
@@ -164,11 +164,22 @@ export function StoryViewer({
 
   return (
     <div className="screen" style={{ background: "#0b1219" }}>
-      <div className="relative grow overflow-hidden">
+      <div className="relative grow overflow-hidden" style={{ containerType: "size" }}>
+        {/* صورةٌ أصغرُ من الشاشة (القاعدة ٣٠٢): حولها نسخةٌ مغبّشةٌ منها لا فراغٌ أسود. */}
+        {story.frame && story.frame.z < 1 && !story.video ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={`${BASE}/api/media/${story.mediaId}`}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 h-full w-full scale-110 object-cover"
+            style={{ filter: "blur(28px) brightness(.65)" }}
+          />
+        ) : null}
         {/* قصّةٌ وضع صاحبُها صورتَها بتقريبٍ وإزاحة تملأ الشاشةَ بهما كما رآها، وغيرُها كما كانت. */}
         <div
           className="absolute inset-0"
-          style={story.frame ? { transform: `translate(${story.frame.x * 100}%, ${story.frame.y * 100}%) scale(${story.frame.z})` } : undefined}
+          style={frameStyle(story.frame)}
         >
         {story.video ? (
           <video
@@ -407,3 +418,20 @@ export function StoryViewer({
 
 /** من تفاعل — من قائمة المشاهدين نفسها، فلا يُسأل الخادم مرّتين. */
 const reactedCount = (story: Story) => story.viewers.filter((person) => person.reaction).length;
+
+/**
+ * موضعُ صورة القصّة (القاعدتان ٢٩٦ و٣٠٢): بنسبتها (`a`) صندوقٌ يملأ الشاشة بنسبة الصورة
+ * نفسها — فإبعادُها يُري طرفيها — ثمّ الإزاحةُ والتقريب. وبلا نسبةٍ الصندوقُ الشاشةُ كما كان.
+ */
+function frameStyle(frame: { z: number; x: number; y: number; a?: number } | null): React.CSSProperties | undefined {
+  if (!frame) return undefined;
+  if (!frame.a) return { transform: `translate(${frame.x * 100}%, ${frame.y * 100}%) scale(${frame.z})` };
+  return {
+    inset: "auto",
+    left: "50%",
+    top: "50%",
+    width: `max(100cqw, calc(100cqh * ${frame.a}))`,
+    height: `max(100cqh, calc(100cqw / ${frame.a}))`,
+    transform: `translate(-50%, -50%) translate(${frame.x * 100}cqw, ${frame.y * 100}cqh) scale(${frame.z})`,
+  };
+}
