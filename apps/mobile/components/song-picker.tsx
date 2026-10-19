@@ -32,7 +32,7 @@ export function SongPicker({
   onPick,
   onClose,
 }: {
-  onPick: (track: Track, start: number, full: boolean) => void;
+  onPick: (track: Track, start: number, full: boolean, seconds: number) => void;
   onClose: () => void;
 }) {
   const insets = useSafeAreaInsets();
@@ -61,7 +61,7 @@ export function SongPicker({
       </View>
 
       {chosen ? (
-        <Trim track={chosen} onDone={(start, full) => onPick(chosen, start, full)} onOther={() => setChosen(null)} />
+        <Trim track={chosen} onDone={(start, full, seconds) => onPick(chosen, start, full, seconds)} onOther={() => setChosen(null)} />
       ) : (
         <>
           <View
@@ -158,21 +158,25 @@ function Row({ track, onChoose }: { track: Track; onChoose: () => void }) {
   );
 }
 
+/** أقصرُ مقطعٍ يُقصّ — كـ`CLIP_MIN_SECONDS` في الخادم. */
+const CLIP_MIN = 3;
+
 /**
- * شريطُ القصّ: ثلاثون عموداً لثلاثين ثانية، وفوقها نافذةٌ تُسحب. **كاملةً** تملأ
- * الشريطَ كلَّه ولا تُسحب، و**مقطعاً** نافذةُ عشرين تُسحب حيث شاء. والزمنُ
- * من اليسار إلى اليمين كأيّ شريط تشغيل (كصوت القصّة — القاعدة ٢٣٨). والأعمدةُ
- * رسمٌ ثابتٌ من معرّف الأغنية لا موجتُها: المعاينةُ على دِيزر لا عندنا لنقرأها.
+ * شريطُ القصّ: ستّون عموداً لثلاثين ثانية، وفوقها نافذةٌ بمقبضين (القاعدة ٣٠٣).
+ * **كاملةً** تملأ الشريطَ ولا تُسحب، و**مقطعاً** بدايتُه ونهايتُه بحرّيّة صاحبها —
+ * لا نافذةُ عشرين ثابتة — وبينهما ثلاثُ ثوانٍ على الأقلّ. اللمسةُ تأخذ أقربَ
+ * المقبضين إليها، ومن داخل النافذة بعيداً عنهما تسحبها كلَّها بطولها. والزمنُ من
+ * اليسار إلى اليمين كأيّ شريط تشغيل (كصوت القصّة — القاعدة ٢٣٨). والأعمدةُ رسمٌ
+ * ثابتٌ من معرّف الأغنية لا موجتُها: المعاينةُ على دِيزر لا عندنا لنقرأها.
  */
-function Trim({ track, onDone, onOther }: { track: Track; onDone: (start: number, full: boolean) => void; onOther: () => void }) {
+function Trim({ track, onDone, onOther }: { track: Track; onDone: (start: number, full: boolean, seconds: number) => void; onOther: () => void }) {
   const { width: screen } = useWindowDimensions();
   const width = screen - 48;
   const px = width / PREVIEW_SECONDS;
-  const span = PREVIEW_SECONDS - NOTE_SECONDS;
   const [start, setStart] = useState(0);
+  const [end, setEnd] = useState(NOTE_SECONDS);
   // كاملةً افتراضاً: من لا يريد أن يقصّ لا يُطلب منه شيء.
   const [full, setFull] = useState(true);
-  const length = full ? PREVIEW_SECONDS : NOTE_SECONDS;
   const [url, setUrl] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const key = `trim:${track.id}`;
@@ -186,12 +190,14 @@ function Trim({ track, onDone, onOther }: { track: Track; onDone: (start: number
     });
   }, [track.id]);
 
-  const live = useRef({ start, url, full });
-  live.current = { start, url, full };
-  const from = useRef(0);
+  const live = useRef({ start, end, url, full });
+  live.current = { start, end, url, full };
+  const grab = useRef<{ part: "start" | "end" | "both"; start: number; end: number }>({ part: "both", start: 0, end: 0 });
 
-  const play = (at: number, link = live.current.url) => {
-    if (link) void playClip(key, link, live.current.full ? 0 : at, live.current.full ? PREVIEW_SECONDS : NOTE_SECONDS);
+  const play = (from = live.current.start, to = live.current.end, link = live.current.url) => {
+    if (!link) return;
+    if (live.current.full) void playClip(key, link, 0, PREVIEW_SECONDS);
+    else void playClip(key, link, Math.round(from), Math.round(to) - Math.round(from));
   };
 
   useEffect(() => {
@@ -200,7 +206,7 @@ function Trim({ track, onDone, onOther }: { track: Track; onDone: (start: number
       .then((link) => {
         if (!alive) return;
         setUrl(link);
-        play(0, link);
+        play(0, PREVIEW_SECONDS, link);
       })
       .catch((error: Error) => alive && setProblem(error.message));
     return () => {
@@ -216,15 +222,37 @@ function Trim({ track, onDone, onOther }: { track: Track; onDone: (start: number
       onStartShouldSetPanResponder: () => !live.current.full,
       onMoveShouldSetPanResponder: () => !live.current.full,
       onPanResponderTerminationRequest: () => false,
-      onPanResponderGrant: () => {
-        from.current = live.current.start;
+      onPanResponderGrant: (event) => {
+        const { start: from, end: to } = live.current;
+        const at = event.nativeEvent.locationX / px;
+        // أقربُ المقبضين في مدى ثلاث ثوانٍ، وإلّا فداخلُ النافذة يسحبها كلَّها.
+        const near = Math.abs(at - from) <= Math.abs(at - to) ? "start" : "end";
+        const gap = Math.min(Math.abs(at - from), Math.abs(at - to));
+        const part = gap <= 3 || at < from || at > to ? near : "both";
+        grab.current = { part, start: from, end: to };
       },
       onPanResponderMove: (_e, g) => {
-        setStart(Math.max(0, Math.min(span, from.current + g.dx / px)));
+        const { part, start: from, end: to } = grab.current;
+        const shift = g.dx / px;
+        if (part === "start") setStart(Math.max(0, Math.min(to - CLIP_MIN, from + shift)));
+        else if (part === "end") setEnd(Math.min(PREVIEW_SECONDS, Math.max(from + CLIP_MIN, to + shift)));
+        else {
+          const moved = Math.max(-from, Math.min(PREVIEW_SECONDS - to, shift));
+          setStart(from + moved);
+          setEnd(to + moved);
+        }
       },
-      onPanResponderRelease: () => play(Math.round(live.current.start)),
+      onPanResponderRelease: () => {
+        const { start: from, end: to } = live.current;
+        // النهايةُ تُسمع بآخر ثلاثٍ قبلها، والبدايةُ والنافذةُ من أوّلها.
+        if (grab.current.part === "end") play(Math.max(from, to - 3), to);
+        else play(from, to);
+      },
     }),
   ).current;
+
+  const from = Math.round(start);
+  const to = Math.round(end);
 
   return (
     <View style={{ flex: 1, paddingHorizontal: 24, alignItems: "center" }}>
@@ -240,7 +268,7 @@ function Trim({ track, onDone, onOther }: { track: Track; onDone: (start: number
 
       <Pressable
         accessibilityLabel={clip.playing ? "إيقاف" : "استمع"}
-        onPress={() => (clip.playing ? void stopClip() : play(Math.round(start)))}
+        onPress={() => (clip.playing ? void stopClip() : play())}
         style={{ marginTop: 20, width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.14)" }}
       >
         {!url && !problem ? <ActivityIndicator color="#fff" /> : clip.playing ? <PauseIcon size={20} color="#fff" /> : <PlayIcon size={20} color="#fff" />}
@@ -257,12 +285,12 @@ function Trim({ track, onDone, onOther }: { track: Track; onDone: (start: number
               if (full === value) return;
               setFull(value);
               live.current.full = value;
-              play(value ? 0 : Math.round(live.current.start));
+              play();
             }}
             style={{ paddingHorizontal: 16, height: 34, borderRadius: 9, alignItems: "center", justifyContent: "center", backgroundColor: full === value ? "#F6B93B" : "transparent" }}
           >
             <Text style={{ color: full === value ? "#0E1A24" : "#fff", fontSize: 13, fontWeight: "800" }}>
-              {value ? `كاملة · ${ar(PREVIEW_SECONDS)} ث` : `قصّ مقطع · ${ar(NOTE_SECONDS)} ث`}
+              {value ? `كاملة ${ar(PREVIEW_SECONDS)} ث` : "قصّ مقطع"}
             </Text>
           </Pressable>
         ))}
@@ -270,30 +298,43 @@ function Trim({ track, onDone, onOther }: { track: Track; onDone: (start: number
 
       {/* الشريط: الزمنُ من اليسار إلى اليمين أيّاً كان اتّجاهُ الكتابة. */}
       <View {...pan.panHandlers} style={{ width, height: 64, marginTop: 20, direction: "ltr" }}>
-        <View style={{ position: "absolute", left: 0, right: 0, top: 8, bottom: 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+        {/* ما فوق الشريط لا يأخذ اللمس، فيُقاس `locationX` من الشريط نفسه. */}
+        <View pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, top: 8, bottom: 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           {bars.map((h, i) => {
             const t = (i / bars.length) * PREVIEW_SECONDS;
-            const inside = full || (t >= start && t < start + NOTE_SECONDS);
+            const inside = full || (t >= start && t < end);
             return <View key={i} style={{ width: 3, height: 44 * h, borderRadius: 2, backgroundColor: inside ? "#fff" : "rgba(255,255,255,.28)" }} />;
           })}
         </View>
         <View
+          pointerEvents="none"
           style={{
             position: "absolute",
             top: 0,
             bottom: 0,
             left: full ? 0 : start * px,
-            width: length * px,
+            width: (full ? PREVIEW_SECONDS : end - start) * px,
             borderRadius: 12,
             borderWidth: 3,
             borderColor: "#F6B93B",
           }}
         />
+        {full
+          ? null
+          : ([start, end] as const).map((at, i) => (
+              <View
+                key={i}
+                pointerEvents="none"
+                style={{ position: "absolute", top: 14, bottom: 14, left: at * px - 7, width: 14, borderRadius: 7, backgroundColor: "#F6B93B", alignItems: "center", justifyContent: "center" }}
+              >
+                <View style={{ width: 2, height: 14, borderRadius: 1, backgroundColor: "#0E1A24" }} />
+              </View>
+            ))}
       </View>
       <Text style={{ color: "rgba(255,255,255,.7)", fontSize: 12, marginTop: 10 }}>
         {full
-          ? `الأغنية كما هي · ${clock(0)} — ${clock(PREVIEW_SECONDS)}`
-          : `${clock(start)} — ${clock(start + NOTE_SECONDS)} · اسحب النافذة لتختار عشرين ثانية`}
+          ? `الأغنية كما هي، من \u2066${clock(0)}\u2069 إلى \u2066${clock(PREVIEW_SECONDS)}\u2069`
+          : `من \u2066${clock(from)}\u2069 إلى \u2066${clock(to)}\u2069، ${ar(to - from)} ث — اسحب طرفَي النافذة`}
       </Text>
       {problem ? <Text style={{ color: "#FF7A5A", fontSize: 13, marginTop: 12 }}>{problem}</Text> : null}
 
@@ -308,7 +349,7 @@ function Trim({ track, onDone, onOther }: { track: Track; onDone: (start: number
         <Pressable
           onPress={() => {
             void stopClip();
-            onDone(full ? 0 : Math.round(start), full);
+            onDone(full ? 0 : from, full, full ? PREVIEW_SECONDS : to - from);
           }}
           disabled={!url}
           style={{ flex: 1.3, height: 48, borderRadius: 12, flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center", backgroundColor: "#F6B93B", opacity: url ? 1 : 0.45 }}

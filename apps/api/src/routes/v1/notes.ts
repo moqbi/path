@@ -13,6 +13,7 @@ const noteInput = z.object({
   text: z.string().max(200).optional(),
   trackId: z.string().regex(/^\d{1,15}$/).optional(),
   trackStart: z.number().int().min(0).max(30).optional(),
+  trackSeconds: z.number().int().min(1).max(30).optional(),
   trackFull: z.boolean().optional(),
   groupId: cuid.nullable().optional(),
 });

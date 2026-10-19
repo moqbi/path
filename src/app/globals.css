@@ -706,6 +706,56 @@ h3 {
 .glass-btn:hover {
   background: rgba(255, 255, 255, 0.16);
 }
+/* شريطٌ بمقبضين (القاعدة ٣٠٣): مدخلان متراكبان، والمسارُ للعين وحدها والمقبضان يأخذان اللمس. */
+.dual-range {
+  position: relative;
+  height: 28px;
+}
+.dual-range::before,
+.dual-range-fill {
+  content: "";
+  position: absolute;
+  top: 12px;
+  height: 4px;
+  border-radius: 2px;
+}
+.dual-range::before {
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.22);
+}
+.dual-range-fill {
+  background: #f6b93b;
+}
+.dual-range input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+}
+.dual-range input::-webkit-slider-thumb {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid #f6b93b;
+  pointer-events: auto;
+  cursor: grab;
+}
+.dual-range input::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid #f6b93b;
+  pointer-events: auto;
+  cursor: grab;
+}
+
 .glass-field {
   padding: 0 14px;
   height: 46px;
