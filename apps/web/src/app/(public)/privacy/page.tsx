@@ -42,15 +42,6 @@ export default function PrivacyPage() {
               IP address and a random app-generated device ID used only to fight fake accounts.
             </li>
             <li>
-              <strong>Phone number and contacts (optional):</strong> you may add your mobile number, verified
-              by an SMS code sent through Google Firebase Authentication (Google receives the number to send
-              the code); it is never shown to anyone. If you tap &quot;Contacts&quot; in Add Friend, the
-              app reads only the phone numbers in your address book (no names), turns each one into a SHA-256
-              hash on your device, and sends the hashes to match them against verified numbers. We do not store
-              your contacts or the hashes. People who have your verified number can find you this way unless
-              you turn off &quot;People with my number can find me&quot; in Privacy settings.
-            </li>
-            <li>
               <strong>Sign in with Apple, Google, Snapchat or TikTok:</strong> if you choose one of these,
               we receive only your account identifier and display name (and email, when the provider shares
               it). We do not post to, read from, or access anything else in your account with that provider.
@@ -62,8 +53,7 @@ export default function PrivacyPage() {
             </li>
             <li>
               <strong>Who sees your posts:</strong> only your circle, or the friends/groups you choose for each
-              moment. There is no public feed or browsing of people: search finds an exact handle or full name
-              only, and contact matching finds only people whose verified number is in your contacts.
+              moment. There is no public discovery or search by name or email.
             </li>
             <li>
               <strong>Storage and retention:</strong> data in a PostgreSQL database and files in private
@@ -130,19 +120,6 @@ export default function PrivacyPage() {
               قريبٌ منك — ولا يُحفظ لمن لم يفعّله.
             </li>
             <li>
-              <strong>رقم جوالك</strong> إن أضفته — اختياريّ: نتأكّد منه برمزٍ في
-              رسالة SMS تُرسلها خدمة Firebase من جوجل (يصلها الرقمُ لترسل إليه الرمز)، ولا
-              يظهر لأحد. ومن عنده رقمُك في جهات اتصاله يجدك به ما
-              لم تُطفئ «من عنده رقمي يلقاني» في الخصوصية. ويُحذف حين تُزيله أو
-              تحذف حسابك.
-            </li>
-            <li>
-              <strong>جهات الاتصال</strong> حين تضغط أنت «جهات الاتصال» في «إضافة
-              صديق»: يقرأ التطبيقُ الأرقامَ وحدها (لا الأسماء)، ويحوّل كلَّ رقمٍ
-              على جهازك إلى تجزئةٍ (SHA-256) فلا يُرسَل الرقمُ نفسه، ويرسل التجزئاتِ لنطابقها بالأرقام
-              المؤكَّدة — ثمّ تُنسى: لا نحفظ دفترك ولا تجزئاته.
-            </li>
-            <li>
               <strong>دائرتك</strong>: من أضفتَ ومن أضافك، وتصنيفاتُك لهم —
               وتصنيفك لشخصٍ لا يراه هو ولا غيره.
             </li>
@@ -163,7 +140,7 @@ export default function PrivacyPage() {
             </li>
           </ul>
           <p>
-            ولا نحفظ دفتر هاتفك، ولا نتتبّعك عبر تطبيقاتٍ أخرى، ولا نشتري عنك
+            ولا نجمع دفتر هاتفك، ولا نتتبّعك عبر تطبيقاتٍ أخرى، ولا نشتري عنك
             بياناتٍ من أحد.
           </p>
         </DocSection>

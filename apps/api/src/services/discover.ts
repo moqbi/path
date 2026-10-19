@@ -8,7 +8,7 @@ import { blockedWith, circleIds } from "./visibility";
  * الكامل، والإضافةُ وجهاً لوجه. كلاهما يُري **بطاقةً** — صورةً واسماً ورقم عضوية
  * (القاعدة ٢٠) — والإضافةُ بعدها طلبٌ يقبله صاحبُه أو يدعه: الحارسُ القبول.
  */
-export const CARD = {
+const CARD = {
   id: true,
   memberNo: true,
   name: true,
@@ -35,7 +35,7 @@ function fold(text: string): string {
 }
 
 /** يُرفق بكلّ بطاقةٍ علاقتَها بالسائل: صديق، أو طلبٌ منه، أو طلبٌ إليه. */
-export async function withRelation<T extends { id: string }>(userId: string, people: T[]) {
+async function withRelation<T extends { id: string }>(userId: string, people: T[]) {
   if (people.length === 0) return [];
   const ids = people.map((p) => p.id);
   const [friends, pending] = await Promise.all([

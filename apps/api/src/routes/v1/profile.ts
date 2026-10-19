@@ -8,7 +8,6 @@ import {
   pageQuery,
   deviceInput,
   passwordChangeInput,
-  phoneFirebaseInput,
   privacyInput,
   profileInput,
 } from "@athar/shared";
@@ -21,8 +20,6 @@ import * as feed from "../../services/feed";
 import * as auth from "../../services/auth";
 import * as push from "../../services/push";
 import * as oauth from "../../services/oauth";
-import * as phone from "../../services/phone";
-import { rateLimitUser } from "../../middleware/rate-limit";
 
 /**
  * حسابي.
@@ -34,13 +31,6 @@ export const profileRoutes = new Hono()
   .use("*", requireAuth)
 
   .get("/", async (c) => c.json({ user: await profile.me(me(c)) }))
-
-  /** رقمُ الجوال مؤكَّداً برمز هويّة Firebase (القاعدة ٢٩٧) — يُقرأ من الرمز لا من الطلب. */
-  .post("/phone/firebase", rateLimitUser(20, 3600), zValidator("json", phoneFirebaseInput), async (c) =>
-    c.json(await phone.verifyFirebasePhone(me(c), c.req.valid("json").idToken)),
-  )
-  .post("/phone/skip", async (c) => c.json(await phone.skipPhone(me(c))))
-  .delete("/phone", async (c) => c.json(await phone.removePhone(me(c))))
 
   /** أرقام «أنا» — تُقرأ مرّةً مع الشاشة لا مع كل لحظة. */
   .get("/stats", async (c) => c.json(await profile.stats(me(c))))

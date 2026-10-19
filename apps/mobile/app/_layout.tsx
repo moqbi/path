@@ -27,7 +27,6 @@ import { ReactSheet } from "../components/react-sheet";
 import { AddSheet, openAddSheet } from "../components/add-sheet";
 import { CreateSheet, NoteSheet } from "../components/note-sheet";
 import { Tour } from "../components/tour";
-import { PhoneGate } from "../components/phone-gate";
 import { applyTheme, colors, themeStore, veil } from "../theme/tokens";
 import { dismissOpen } from "../lib/swipe-open";
 import { Launch, UpdateWait, useLaunch } from "../components/launch";
@@ -311,8 +310,6 @@ function Gate() {
       <Stack.Screen name="note/new" options={{ presentation: "fullScreenModal", animation: "slide_from_bottom" }} />
       {/* والقصّةُ الجديدة كاميرا بملء الشاشة تصعد كذلك (القاعدة ٢٧٠). */}
       <Stack.Screen name="stories/new" options={{ presentation: "fullScreenModal", animation: "slide_from_bottom", gestureEnabled: false }} />
-      {/* رقمُ الجوال بعد الدخول — يُتخطّى بزرّه لا بسحبة (القاعدة ٢٩٧). */}
-      <Stack.Screen name="phone" options={{ presentation: "fullScreenModal", animation: "slide_from_bottom", gestureEnabled: false }} />
     </Stack>
     {/* نافذةُ الصورة هنا لا في البطاقة: لا جدَّ لها يلتقط سحبتها. */}
     <PhotoViewer />
@@ -326,7 +323,6 @@ function Gate() {
     <CreateSheet />
     {/* الجولةُ طبقةٌ فوق المكدّس كلّه، لمن دخل وحده. */}
     {me ? <Tour key={me.id} /> : null}
-    {me ? <PhoneGate key={`phone-${me.id}`} /> : null}
     {/* بطاقةُ إعلان الصنف — بعد الجولة لا معها (القاعدة ٢٦٧). */}
     {me ? <StorePromo key={`promo-${me.id}`} /> : null}
     </>

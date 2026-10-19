@@ -1,14 +1,13 @@
 import { maskPresence } from "../../lib/presence";
 import { Hono } from "hono";
 import { z } from "zod";
-import { contactsInput, cuid, friendGroupInput, groupInput, pageQuery } from "@athar/shared";
+import { cuid, friendGroupInput, groupInput, pageQuery } from "@athar/shared";
 import { unknownKinds } from "../../lib/client-kinds";
 import { zValidator } from "../../lib/validate";
 import { requireAuth, me } from "../../middleware/auth";
 import * as circle from "../../services/circle";
 import * as feed from "../../services/feed";
 import * as discover from "../../services/discover";
-import * as phone from "../../services/phone";
 import { rateLimitUser } from "../../middleware/rate-limit";
 
 const byId = z.object({ id: cuid });
@@ -32,15 +31,6 @@ export const circleRoutes = new Hono()
     rateLimitUser(30, 600),
     zValidator("json", z.object({ q: z.string().max(60) })),
     async (c) => c.json({ people: await discover.findPeople(me(c), c.req.valid("json").q) }),
-  )
-
-  /**
-   * جهاتُ الاتصال (القاعدة ٢٩٧): تجزئاتٌ من دفتر صاحبها تُطابَق بأرقامٍ مؤكَّدة
-   * ولا تُخزَّن. عشرٌ في الساعة: الدفترُ لا يتغيّر كلّ دقيقة، وبابٌ بلا حدٍّ يُسأل
-   * عن كلّ رقمٍ سعوديّ ليُعرف من سجّل.
-   */
-  .post("/contacts", rateLimitUser(10, 3600), zValidator("json", contactsInput), async (c) =>
-    c.json({ people: await phone.matchContacts(me(c), c.req.valid("json").hashes) }),
   )
 
   /** وجهاً لوجه: منارةٌ تعيش دقيقةً ومن حولك على ١٥٠ متراً، وتنبيهُ من فعّله (القاعدتان ٢٨٠ و٢٨٢). */
