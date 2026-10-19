@@ -20,6 +20,8 @@ export async function packs(userId: string) {
       id: true,
       name: true,
       priceCoins: true,
+      // لـ«وصل حديثاً» في المتجر: مجموعةٌ جديدة خبرٌ كالصنف الجديد.
+      createdAt: true,
       purchases: { where: { userId }, select: { id: true } },
       stickers: { select: { id: true, mediaId: true }, orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
     },

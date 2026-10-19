@@ -13,6 +13,9 @@ import { useStore, type StoreItem } from "../../lib/queries";
 import { usePullRefresh } from "../../lib/refresh";
 import { coinText } from "../../lib/format";
 import { colors } from "../../theme/tokens";
+import { DEV_FEATURES } from "../../lib/dev-features";
+import { useStickers } from "../../lib/stickers";
+import { PackShelf, freshPacks } from "../../components/sticker-store";
 
 /**
  * عنوان صفٍّ في «المميز» — واللهب رسمٌ لا إيموجي، كبقية أيقونات التطبيق.
@@ -63,9 +66,17 @@ export default function Store() {
   // حشوةُ الحافّة العليا في الرأس الداكن نفسه — انظر `components/screen-header.tsx`.
   const insets = useSafeAreaInsets();
   const store = useStore();
-  const pullRefresh = usePullRefresh(store.refetch);
+  // الملصقاتُ شريحةٌ بجانب الأنواع (القاعدة ٢٩٧) — في نسخة التطوير وحدها كواجهتها (القاعدة ٢٩١).
+  const stickers = useStickers(DEV_FEATURES);
+  const pullRefresh = usePullRefresh(() =>
+    Promise.all([store.refetch(), DEV_FEATURES ? stickers.refetch() : null]),
+  );
   const [slug, setSlug] = useState("");
   const data = store.data;
+  const packs = stickers.data?.packs ?? [];
+  const plusPacks = packs.filter((pack) => (pack.priceCoins ?? 0) === 0);
+  const paidPacks = packs.filter((pack) => (pack.priceCoins ?? 0) > 0);
+  const newPacks = freshPacks(packs);
   // من بطاقة الإعلان: الصنفُ تُفتح بطاقتُه فوق المتجر (القاعدة ٢٦٧).
   // والمعرّفُ يُمسك في الحالة ثمّ يُمسح من العنوان: لو بقي فيه لفُتحت البطاقة
   // ثانيةً مع كلّ عودةٍ إلى التبويب، ولو مُسح وحده لأُغلقت لحظةَ فُتحت.
@@ -123,6 +134,8 @@ export default function Store() {
     { slug: "kind:FRAME", name: "الإطارات", kinds: ["FRAME"], other: "الإطارات الأخرى" },
     { slug: "kind:THEME", name: "الثيمات", kinds: ["THEME", "BACKGROUND"], other: "الثيمات الأخرى" },
   ] as const;
+  const STICKERS = { slug: "kind:STICKER", name: "الملصقات" };
+  const stickerTab = slug === STICKERS.slug;
   const kindTab = KINDS.find((row) => row.slug === slug) ?? null;
   const grouped = (() => {
     if (!kindTab || !data) return [];
@@ -186,6 +199,7 @@ export default function Store() {
           {[
             { slug: "", name: "المميز" },
             ...KINDS,
+            ...(DEV_FEATURES && packs.length > 0 ? [STICKERS] : []),
             ...(data?.categories ?? []).filter(
               // «التمائم» اسمُها القديم: خادمٌ لم تمرّ عليه هجرةُ الاسم بعدُ (القاعدة ٢٧١).
               (row) => !KINDS.some((kind) => kind.name === row.name.trim()) && row.name.trim() !== "التمائم",
@@ -242,7 +256,21 @@ export default function Store() {
             <RefreshControl {...pullRefresh} tintColor={colors.clay} />
           }
         >
-          {kindTab ? (
+          {stickerTab ? (
+            <>
+              {/* قسمان — **بقرار المالك**: ما مع آثار+، ثمّ ما يُشترى بالنقاط. */}
+              {plusPacks.length > 0 ? (
+                <Row title="ملصقات آثار+">
+                  <PackShelf packs={plusPacks} isPlus={data?.isPlus ?? false} />
+                </Row>
+              ) : null}
+              {paidPacks.length > 0 ? (
+                <Row title="ملصقات أخرى">
+                  <PackShelf packs={paidPacks} isPlus={data?.isPlus ?? false} />
+                </Row>
+              ) : null}
+            </>
+          ) : kindTab ? (
             grouped.length > 0 ? (
               grouped.map((row) => shelf(row.title, row.items))
             ) : (
@@ -256,6 +284,12 @@ export default function Store() {
             <>
               {/* ترتيبُ «المميز» — **بقرار المالك**: الجديد، فالتشارمز، فالإطارات، فالثيمات، فالمحدود. */}
               {shelf("وصل حديثاً", data?.rows.fresh ?? [], true)}
+              {/* مجموعةُ ملصقاتٍ جديدة خبرٌ كالصنف الجديد — صفٌّ تحته في القسم نفسه. */}
+              {DEV_FEATURES && newPacks.length > 0 ? (
+                <View style={{ marginTop: -12 }}>
+                  <PackShelf strip packs={newPacks} isPlus={data?.isPlus ?? false} />
+                </View>
+              ) : null}
               {(data?.rows.charms?.length ?? 0) > 0 ? shelf("التشارمز", data?.rows.charms ?? []) : null}
               {(data?.rows.frames?.length ?? 0) > 0 ? shelf("الإطارات", data?.rows.frames ?? []) : null}
               {(data?.rows.themes?.length ?? 0) > 0 ? shelf("ثيمات آثار", data?.rows.themes ?? []) : null}
