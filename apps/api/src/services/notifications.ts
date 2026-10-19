@@ -99,7 +99,7 @@ async function derive(userId: string, limit: number): Promise<Note[]> {
 
   const person = { select: { id: true, name: true, avatarMediaId: true } };
 
-  const [reactions, comments, tags, friendships, messages, gifts, fresh, grants, plusGifts, invites] = await Promise.all([
+  const [reactions, comments, tags, friendships, messages, gifts, fresh, grants, plusGifts, invites, stickerGifts] = await Promise.all([
     prisma.reaction.findMany({
       where: { moment: { authorId: userId }, userId: { not: userId } },
       select: {
@@ -223,6 +223,13 @@ async function derive(userId: string, limit: number): Promise<Note[]> {
       where: { id: "main", enabled: true, announcedAt: { not: null } },
       select: { every: true, coins: true, announcedAt: true },
     }),
+    // مجموعاتُ الملصقات المُهداة (القاعدة ٢٩٨) — تُشتقّ من صفّ الملكيّة كهدايا المتجر.
+    prisma.stickerPurchase.findMany({
+      where: { userId, giftedById: { not: null } },
+      select: { id: true, createdAt: true, pack: { select: { name: true } }, giftedBy: person },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    }),
   ]);
 
   const notes: Note[] = [
@@ -281,6 +288,20 @@ async function derive(userId: string, limit: number): Promise<Note[]> {
               kind: "GIFT" as const,
               at: row.createdAt,
               text: `${row.giftedBy.name} أهداك ${row.item.name}`,
+              href: "me",
+              person: row.giftedBy,
+            },
+          ]
+        : [],
+    ),
+    ...stickerGifts.flatMap((row) =>
+      row.giftedBy
+        ? [
+            {
+              id: `gs-${row.id}`,
+              kind: "GIFT" as const,
+              at: row.createdAt,
+              text: `${row.giftedBy.name} أهداك ملصقات ${row.pack.name}`,
               href: "me",
               person: row.giftedBy,
             },

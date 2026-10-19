@@ -275,6 +275,7 @@ model User {
   tags           MomentTag[]
   purchases      Purchase[]
   giftsGiven     Purchase[]      @relation("GiftGiver")
+  stickerGiftsGiven StickerPurchase[] @relation("StickerGiftGiver")
   plusGiftsSent  PlusGift[]      @relation("PlusGiftGiver")
   plusGiftsGot   PlusGift[]      @relation("PlusGiftRecipient")
   topUps         CoinTopUp[]
@@ -303,7 +304,7 @@ model User {
   blocksGot        Block[]           @relation("Blocked")
   accessEvents     AccessEvent[]
   coinGrants       CoinGrant[]       @relation("CoinGrantTo")
-  stickerPurchases StickerPurchase[]
+  stickerPurchases StickerPurchase[] @relation("StickerOwner")
   coinGrantsGiven  CoinGrant[]       @relation("CoinGrantBy")
 
   /// من دعاه (القاعدة ٢٤٣): رقمُ عضويّةٍ يكتبه عند التسجيل أو في أيّامه
@@ -1049,11 +1050,15 @@ model StickerPurchase {
   userId    String
   packId    String
   paidCoins Int
+  /// المُهدي حين تكون هديّةً (القاعدة ٢٩٨) — والإشعارُ يُشتقّ منه كهدايا المتجر.
+  giftedById String?
   createdAt DateTime    @default(now())
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User        @relation("StickerOwner", fields: [userId], references: [id], onDelete: Cascade)
   pack      StickerPack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  giftedBy  User?       @relation("StickerGiftGiver", fields: [giftedById], references: [id], onDelete: SetNull)
 
   @@unique([userId, packId])
+  @@index([giftedById, createdAt])
 }
 
 /// ملصقٌ واحد: صورةٌ للجميع كصورة الصنف، ولا يُرسله إلا مشتركُ آثار+.

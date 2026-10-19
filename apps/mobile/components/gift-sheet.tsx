@@ -10,6 +10,8 @@ import { keys, useStore, type StoreItem } from "../lib/queries";
 import { ar, coinText, daysLabel } from "../lib/format";
 import { colors } from "../theme/tokens";
 import { billingReady, buyGift, prices } from "../lib/billing";
+import { DEV_FEATURES } from "../lib/dev-features";
+import { useStickers, type StickerPack } from "../lib/stickers";
 
 /**
  * الإهداء: المتجر يُفتح في نافذة فوق ملف صاحبك، لا في شاشة تُغادر مكانك.
@@ -97,7 +99,36 @@ function Sheet({
   */
   const [pick, setPick] = useState<StoreItem | null>(null);
   const [planId, setPlanId] = useState<string | null>(null);
-  const [kind, setKind] = useState<"FRAME" | "CHARM" | "THEME">("FRAME");
+  const [kind, setKind] = useState<"FRAME" | "CHARM" | "THEME" | "STICKER">("FRAME");
+  /*
+    الملصقاتُ المدفوعة تُهدى أيضاً (القاعدة ٢٩٨) — **بقرار المالك**، وما مع آثار+ لا:
+    يُفتح بالاشتراك. وما يملكه الصديقُ منها يُعرض «عنده». في نسخة التطوير وحدها.
+  */
+  const stickers = useStickers(DEV_FEATURES);
+  const giftable = (stickers.data?.packs ?? []).filter((pack) => (pack.priceCoins ?? 0) > 0);
+  const friendPacks = useQuery({
+    queryKey: ["sticker-owned", friendId],
+    queryFn: () => api<{ owned: string[] }>(`/v1/stickers/owned/${friendId}`),
+    enabled: DEV_FEATURES && giftable.length > 0,
+  });
+  const [pickPack, setPickPack] = useState<StickerPack | null>(null);
+  const giftPack = useMutation({
+    mutationFn: (packId: string) =>
+      api<{ ok?: string }>(`/v1/stickers/packs/${packId}/gift`, {
+        method: "POST",
+        body: JSON.stringify({ to: friendId }),
+      }),
+    onSuccess: (data, packId) => {
+      setNote({ ok: data.ok ?? "وصلته الهدية" });
+      setSent((list) => [...list, packId]);
+      setPickPack(null);
+      void client.invalidateQueries({ queryKey: keys.store });
+      void client.invalidateQueries({ queryKey: ["sticker-owned", friendId] });
+    },
+    onError: (problem) =>
+      setNote({ error: problem instanceof Error ? problem.message : "تعذّر الإهداء" }),
+    onSettled: () => setBusy(null),
+  });
 
   const gift = useMutation({
     mutationFn: ({ itemId, plan }: { itemId: string; plan?: string }) =>
@@ -197,8 +228,11 @@ function Sheet({
     { key: "FRAME", label: "الإطارات", kinds: ["FRAME"] },
     { key: "CHARM", label: "التشارمز", kinds: ["CHARM"] },
     { key: "THEME", label: "الثيمات", kinds: ["THEME", "BACKGROUND"] },
+    { key: "STICKER", label: "الملصقات", kinds: [] },
   ] as const;
+  const tabs = KINDS.filter((row) => row.key !== "STICKER" || (DEV_FEATURES && giftable.length > 0));
   const tab = KINDS.find((row) => row.key === kind)!;
+  const packOwned = new Set([...(friendPacks.data?.owned ?? []), ...sent]);
   const items = (store.data?.items ?? []).filter((item) => (tab.kinds as readonly string[]).includes(item.kind));
   const collections = (store.data?.collections ?? []).filter((one) => (tab.kinds as readonly string[]).includes(one.kind));
   const known = new Set(collections.map((one) => one.id));
@@ -324,7 +358,7 @@ function Sheet({
         </View>
 
         <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
-          {KINDS.map((row) => {
+          {tabs.map((row) => {
             const on = row.key === kind;
             return (
               <Pressable
@@ -332,6 +366,7 @@ function Sheet({
                 onPress={() => {
                   setKind(row.key);
                   setPick(null);
+                  setPickPack(null);
                 }}
                 style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: on ? colors.clay : colors.line, backgroundColor: on ? colors.clay : colors.card }}
               >
@@ -348,7 +383,50 @@ function Sheet({
             atTop.current = event.nativeEvent.contentOffset.y <= 0;
           }}
         >
-          {sections.length === 0 && !store.isLoading ? (
+          {kind === "STICKER" ? (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+              {giftable.map((pack) => {
+                const already = packOwned.has(pack.id);
+                const chosen = pickPack?.id === pack.id;
+                return (
+                  <Pressable
+                    key={pack.id}
+                    disabled={already || busy !== null}
+                    onPress={() => {
+                      setNote(null);
+                      setPickPack(pack);
+                    }}
+                    style={{
+                      width: "31%",
+                      alignItems: "center",
+                      gap: 8,
+                      borderRadius: 16,
+                      borderWidth: chosen ? 2 : 1,
+                      borderColor: chosen ? colors.clay : colors.line,
+                      backgroundColor: colors.paper,
+                      paddingHorizontal: 8,
+                      paddingTop: 12,
+                      paddingBottom: 12,
+                      opacity: already ? 0.55 : 1,
+                    }}
+                  >
+                    <View style={{ width: 60, height: 60, flexDirection: "row", flexWrap: "wrap", gap: 2 }}>
+                      {pack.stickers.slice(0, 4).map((one) => (
+                        <MediaImage key={one.id} mediaId={one.mediaId} resizeMode="contain" style={{ width: 29, height: 29 }} />
+                      ))}
+                    </View>
+                    <Text numberOfLines={1} style={{ color: colors.ink, fontSize: 11.5, fontWeight: "500" }}>
+                      {pack.name}
+                    </Text>
+                    <Text style={{ color: colors.clayInk, fontSize: 10.5, fontWeight: "600" }}>
+                      {already ? "عنده" : coinText(pack.priceCoins ?? 0)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
+          {kind !== "STICKER" && sections.length === 0 && !store.isLoading ? (
             <Text style={{ color: colors.muted, fontSize: 12.5, textAlign: "center", marginTop: 16 }}>ما فيه {tab.label} بعد.</Text>
           ) : null}
           {sections.map((section) => (
@@ -417,6 +495,36 @@ function Sheet({
             </View>
           ))}
         </ScrollView>
+
+        {/* المجموعةُ المختارة: ملصقاتُها كلُّها ثمّ «أهدِ» — ما يُهدى يُرى قبل شرائه. */}
+        {pickPack ? (
+          <View style={{ borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 12, gap: 8 }}>
+            <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "700" }}>
+              {pickPack.name} · {ar(pickPack.stickers.length)} ملصق
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+              {pickPack.stickers.map((one) => (
+                <MediaImage key={one.id} mediaId={one.mediaId} resizeMode="contain" style={{ width: 48, height: 48 }} />
+              ))}
+            </ScrollView>
+            <Pressable
+              disabled={busy !== null || coins < (pickPack.priceCoins ?? 0)}
+              onPress={() => {
+                setBusy(pickPack.id);
+                giftPack.mutate(pickPack.id);
+              }}
+              style={{ height: 46, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay, opacity: busy || coins < (pickPack.priceCoins ?? 0) ? 0.6 : 1 }}
+            >
+              <Text style={{ color: colors.onBrand, fontSize: 14, fontWeight: "700" }}>
+                {busy
+                  ? "نُهدي…"
+                  : coins < (pickPack.priceCoins ?? 0)
+                    ? "رصيدك لا يكفي"
+                    : `أهدِ بـ${coinText(pickPack.priceCoins ?? 0)}`}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         {/* الصنفُ المختار: مدّتُه إن كان له مُدَد، ثمّ «أهدِ». */}
         {pick ? (

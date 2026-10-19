@@ -93,14 +93,17 @@ export async function me(userId: string) {
 export async function stats(userId: string) {
   const { circleIds } = await import("./visibility");
 
-  const [moments, friends, sent, got] = await Promise.all([
+  const [moments, friends, sent, got, stickerSent, stickerGot] = await Promise.all([
     prisma.moment.count({ where: { authorId: userId } }),
     circleIds(userId).then((ids) => ids.length),
     prisma.purchase.count({ where: { giftedById: userId } }),
     prisma.purchase.count({ where: { userId, giftedById: { not: null } } }),
+    // ومجموعاتُ الملصقات المُهداة هدايا كذلك (القاعدة ٢٩٨).
+    prisma.stickerPurchase.count({ where: { giftedById: userId } }),
+    prisma.stickerPurchase.count({ where: { userId, giftedById: { not: null } } }),
   ]);
 
-  return { moments, friends, sent, got };
+  return { moments, friends, sent: sent + stickerSent, got: got + stickerGot };
 }
 
 /**
