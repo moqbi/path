@@ -10,6 +10,8 @@ export type StickerPack = {
   name: string;
   priceCoins?: number;
   owned?: boolean;
+  /** خادمٌ قديم لا يرسله، فلا تدخل المجموعةُ «وصل حديثاً». */
+  createdAt?: string;
   stickers: { id: string; mediaId: string }[];
 };
 
