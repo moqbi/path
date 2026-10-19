@@ -195,6 +195,8 @@ export const privacyInput = z.object({
    * ولا يُكتب إلا إن أُرسل.
    */
   hideOnline: z.boolean().optional(),
+  /** «من عنده رقمي يجدني» (القاعدة ٢٩٧) — اختياريٌّ لنسخٍ قديمة لا ترسله. */
+  findByPhone: z.boolean().optional(),
 });
 
 /**

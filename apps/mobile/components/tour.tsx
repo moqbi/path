@@ -8,6 +8,7 @@ import { useRouter } from "expo-router";
 import { api } from "../lib/api";
 import { useFan } from "./composer-fan";
 import { getItem, setItem } from "../lib/store";
+import { usePhonePrompt } from "../lib/phone-prompt";
 import { colors } from "../theme/tokens";
 
 /**
@@ -108,6 +109,7 @@ export function Tour() {
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let unsub: (() => void) | undefined;
     void Promise.all([
       getItem(KEY).catch(() => null),
       getItem(OLD_KEY).catch(() => null),
@@ -117,14 +119,27 @@ export function Tour() {
         السفليّ يُرسم بعد الشاشة — ولا دائرة بلا هدف.
       */
       if (seen !== "1") {
-        timer = setTimeout(() => {
+        const begin = () => {
           startTour();
           // من رأى الجولة القديمة ليس جديداً: لا يُفتح له ملفُّ الإدارة بعدها.
           useTour.setState({ first: seenOld !== "1" });
+        };
+        timer = setTimeout(() => {
+          // شاشةُ الرقم بعد الدخول أوّلاً (القاعدة ٢٩٧): الجولةُ طبقةٌ فوق كلّ شيء.
+          if (!usePhonePrompt.getState().open) return begin();
+          unsub = usePhonePrompt.subscribe((state) => {
+            if (state.open) return;
+            unsub?.();
+            unsub = undefined;
+            timer = setTimeout(begin, 800);
+          });
         }, 1800);
       }
     });
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      unsub?.();
+    };
   }, []);
 
   // زرُّ الرجوع في أندرويد يُغلقها كما كانت النافذة تُغلق.

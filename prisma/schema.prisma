@@ -230,6 +230,17 @@ model User {
   /// الجنس ليخاطبه «سنتك في كتاب» بصيغته (القاعدة ٢٦٠) — اختياريٌّ يُختار في «تعديل
   /// الملف»، وفارغُه مذكّرٌ كما كان قبله، و`UNSPECIFIED` صيغةٌ محايدة. لا يُعرض لأحد.
   gender          Gender?
+  /// رقمُ الجوال بصيغة E.164 (القاعدة ٢٩٧) — **لا يُكتب إلا مؤكَّداً** برمز SMS:
+  /// رقمٌ بلا تأكيد يُظهر حساباً لأصدقاء صاحب الرقم الحقيقيّ على أنّه هو. ولا يُعرض لأحد.
+  phone           String?   @unique
+  /// تجزئتُه (sha256 لـ E.164) — بها وحدها تُطابَق جهاتُ الاتصال المرفوعة مجزَّأة.
+  phoneHash       String?   @unique
+  phoneVerifiedAt DateTime?
+  /// ضغطَ «تخطَّ» في شاشة الرقم بعد الدخول — فلا تُعرض عليه ثانيةً.
+  phoneSkippedAt  DateTime?
+  /// «من عنده رقمي يجدني» — مفتوحٌ افتراضاً ويُطفأ من الخصوصية.
+  findByPhone     Boolean   @default(true)
+  phoneCode       PhoneCode?
 
   /// التنبيهات: ما يصل الجهاز ومتى.
   /// حقلٌ لكل نوع لا قائمةٌ في نصّ: الاستعلام يقرأ ما يحتاجه وحده،
@@ -1556,4 +1567,16 @@ model PlusGift {
 
   @@index([giverId, status, createdAt])
   @@index([recipientId, status, doneAt])
+}
+
+/// رمزُ تأكيد الجوال (القاعدة ٢٩٧): واحدٌ لكلّ حساب، مجزَّأٌ كرمز البريد (القاعدة ١١٩ب)،
+/// يعيش عشر دقائق ويُقبل خمسَ محاولات. والرقمُ هنا لا في `User` حتى يُؤكَّد.
+model PhoneCode {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone     String
+  codeHash  String
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  sentAt    DateTime @default(now())
 }

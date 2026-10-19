@@ -324,6 +324,13 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID="...web..."
 SNAP_CLIENT_ID="..."
 TIKTOK_CLIENT_KEY="..."
 TIKTOK_CLIENT_SECRET="..."
+
+# رمزُ تأكيد الجوال (القاعدة ٢٩٧) عبر TextBee — جوّالُ أندرويد بشريحته.
+# بلا مفتاحٍ يُكتب الرمزُ في السجلّ ولا يُرسَل. ومعرّفُ الجهاز اختياريّ.
+TEXTBEE_API_KEY="..."
+TEXTBEE_DEVICE_ID="..."
+# رموزُ الدول المقبولة للتأكيد، مفصولةً بفاصلة (الافتراضيّ 966 وحده).
+# SMS_COUNTRIES="966"
 ```
 
 > **تيك توك** (developers.tiktok.com ← تطبيق ← Login Kit، نطاقُ `user.info.basic`):

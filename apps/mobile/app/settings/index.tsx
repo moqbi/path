@@ -14,7 +14,8 @@ import { appleReady, confirmWithApple } from "../../lib/providers";
 import { startTour } from "../../components/tour";
 import { keys } from "../../lib/queries";
 import { useSession } from "../../lib/session";
-import { SITE_URL, hasSite } from "@athar/shared";
+import { SITE_URL, hasSite, maskPhone } from "@athar/shared";
+import { DEV_FEATURES } from "../../lib/dev-features";
 import { ar } from "../../lib/format";
 import { brandGradient, colors } from "../../theme/tokens";
 import { FollowRow } from "../../components/social";
@@ -50,6 +51,8 @@ export default function Settings() {
   const [place, setPlace] = useState(me?.shareLocation !== false);
   // وضعُ التخفّي — مطفأٌ افتراضاً، ولمشتركي آثار+ وحدهم (القاعدة ٢٥١).
   const [hidden, setHidden] = useState(Boolean(me?.hideOnline && me?.isPlus));
+  // «من عنده رقمي يجدني» — مفتوحٌ افتراضاً (القاعدة ٢٩٧).
+  const [findMe, setFindMe] = useState(me?.findByPhone !== false);
   const [said, setSaid] = useState<string | null>(null);
   const [name, setName] = useState("");
 
@@ -64,6 +67,7 @@ export default function Settings() {
           interactGroupId: interact,
           shareLocation: place,
           hideOnline: hidden,
+          ...(DEV_FEATURES ? { findByPhone: findMe } : {}),
           // وإشعارُ الإشارة يُحفظ من «التنبيهات»، فلا يُرسل من هنا.
         }),
       }),
@@ -102,6 +106,18 @@ export default function Settings() {
           <VerifyEmail verified={Boolean(me.emailVerifiedAt)} hasEmail={Boolean(me.email)} />
           <ChangePassword hasPassword={me.hasPassword !== false} />
           <ChangeEmail current={me.email} hasPassword={me.hasPassword !== false} />
+
+          {DEV_FEATURES ? (
+            <Link
+              title="رقم الجوال"
+              right={
+                <Text style={{ color: colors.muted, fontSize: 12, writingDirection: "ltr" }}>
+                  {me.phone ? `\u200E${maskPhone(me.phone)}\u200E` : "اربطه"}
+                </Text>
+              }
+              onPress={() => router.push("/phone" as never)}
+            />
+          ) : null}
 
           <Link
             title="قائمة الحظر"
@@ -160,6 +176,17 @@ export default function Settings() {
                 setHidden(next);
               }}
             />
+            {DEV_FEATURES ? (
+              <>
+                <View style={{ height: 1, backgroundColor: colors.line, marginHorizontal: 16 }} />
+                <Toggle
+                  title="من عنده رقمي يلقاني"
+                  note="من حفظ رقمك في جهات اتصاله يشوفك في «جهات الاتصال» — والرقم نفسه ما يظهر لأحد"
+                  value={findMe}
+                  onChange={setFindMe}
+                />
+              </>
+            ) : null}
           </View>
 
           <Pressable onPress={() => { setSaid(null); save.mutate(); }} disabled={save.isPending}>

@@ -11,15 +11,17 @@ import { Avatar } from "./avatar";
 import { NameTag } from "./name-tag";
 import { Qr } from "./share-profile";
 import { InviteProgress } from "./invite-progress";
-import { BackIcon, PinIcon, SearchIcon, ShareIcon, UserPlusIcon } from "./icons";
+import { BackIcon, ContactsIcon, PinIcon, SearchIcon, ShareIcon, UserPlusIcon } from "./icons";
 import { api } from "../lib/api";
 import { ar } from "../lib/format";
 import { useSession } from "../lib/session";
 import { BEACON_SERVICE, beacon } from "../lib/nearby-beacon";
 import { useAddFriend, type FoundPerson } from "../lib/add-friend";
+import { DEV_FEATURES } from "../lib/dev-features";
+import { contactsReady, syncContacts } from "../lib/contacts";
 import { colors } from "../theme/tokens";
 
-type Mode = "home" | "near" | "qr";
+type Mode = "home" | "near" | "qr" | "contacts";
 
 const useAddSheet = create<{ mode: Mode | null }>(() => ({ mode: null }));
 
@@ -65,13 +67,16 @@ function Body({ mode, close }: { mode: Mode; close: () => void }) {
     />
   );
 
-  const title = mode === "near" ? "من حولك" : mode === "qr" ? "رمزك ورابطك" : "إضافة صديق";
+  const title =
+    mode === "near" ? "من حولك" : mode === "qr" ? "رمزك ورابطك" : mode === "contacts" ? "جهات الاتصال" : "إضافة صديق";
   const subtitle =
     mode === "near"
       ? "افتحوها معاً وأنتم قريبين"
       : mode === "qr"
         ? "لمن يقف أمامك يمسحه، ولمن تراسله الرابط"
-        : "بالمعرّف أو الاسم الكامل، أو من حولك";
+        : mode === "contacts"
+          ? "مين من جهات اتصالك في آثار"
+          : "بالمعرّف أو الاسم الكامل، أو من حولك";
 
   return (
     <GlassSheet
@@ -87,6 +92,7 @@ function Body({ mode, close }: { mode: Mode; close: () => void }) {
       {mode === "home" ? <Home go={go} row={row} /> : null}
       {mode === "near" ? <Near row={row} /> : null}
       {mode === "qr" ? <QrPane /> : null}
+      {mode === "contacts" ? <ContactsPane row={row} close={close} /> : null}
       {error ? <Text style={{ color: "#FF9C84", fontSize: 12.5, textAlign: "center", paddingBottom: 12 }}>{error}</Text> : null}
     </GlassSheet>
   );
@@ -217,6 +223,9 @@ function Home({ go, row }: { go: (mode: Mode) => void; row: (p: FoundPerson) => 
         )
       ) : null}
 
+      {DEV_FEATURES ? (
+        <Door label="جهات الاتصال" hint="مين من اللي عندك رقمه في آثار" icon={<ContactsIcon size={19} color="#fff" />} to="contacts" />
+      ) : null}
       <Door label="من حولك" hint="لمن يقف جنبك الحين" icon={<PinIcon size={19} color="#fff" />} to="near" />
       <Door label="الرمز والرابط" hint="رمز QR ورابط ملفك للمشاركة" icon={<ShareIcon size={18} color="#fff" />} to="qr" />
     </SheetScrollView>
@@ -418,6 +427,90 @@ function Near({ row }: { row: (p: FoundPerson, alias?: boolean) => React.ReactNo
         {rang
           ? "نبّهنا من فعّل «من حولك» قريباً منك — وتبقى ظاهراً لهم عشر دقائق."
           : "موقعك لا يُرسل لأحد — يظهر معرّفك وصورتك لمن فتحها جنبك، ومن فعّل تنبيهها يوصله خبر بلا اسم."}
+      </Text>
+    </SheetScrollView>
+  );
+}
+
+/**
+ * جهاتُ الاتصال (القاعدة ٢٩٧): تُقرأ الأرقامُ وحدها وتُجزَّأ على الجهاز وتُطابَق
+ * بأرقامٍ مؤكَّدة، ولا يُخزَّن منها شيء. ومن لم يربط رقمه يُدعى إليه — بلا رقمه لا
+ * يجده من عنده رقمُه.
+ */
+function ContactsPane({ row, close }: { row: (p: FoundPerson) => React.ReactNode; close: () => void }) {
+  const router = useRouter();
+  const me = useSession((s) => s.me);
+  const [state, setState] = useState<"asking" | "done" | "denied" | "unavailable" | "error">("asking");
+  const [people, setPeople] = useState<FoundPerson[]>([]);
+  const [scanned, setScanned] = useState(0);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void syncContacts()
+      .then((result) => {
+        if (!alive) return;
+        if ("unavailable" in result) setState("unavailable");
+        else if ("denied" in result) setState("denied");
+        else {
+          setPeople(result.people);
+          setScanned(result.scanned);
+          setState("done");
+        }
+      })
+      .catch((error: unknown) => {
+        if (!alive) return;
+        setProblem(error instanceof Error ? error.message : "تعذّرت المزامنة");
+        setState("error");
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const note = (text: string) => (
+    <Text style={{ color: "rgba(255,255,255,.7)", fontSize: 13, textAlign: "center", lineHeight: 21 }}>{text}</Text>
+  );
+
+  return (
+    <SheetScrollView name="add-contacts" contentContainerStyle={{ padding: 16, paddingTop: 8, gap: 10 }}>
+      {state === "asking" ? (
+        <View style={{ alignItems: "center", paddingVertical: 28, gap: 10 }}>
+          <ActivityIndicator color="#fff" />
+          {note("نقرأ الأرقام وحدها ونطابقها — ما يُحفظ منها شيء")}
+        </View>
+      ) : null}
+      {state === "unavailable" ? note("هذي الميزة تحتاج تحديث التطبيق من المتجر.") : null}
+      {state === "denied" ? note("نحتاج إذن جهات الاتصال — يُفعَّل من إعدادات الجهاز.") : null}
+      {state === "error" ? note(problem ?? "تعذّرت المزامنة") : null}
+      {state === "done" ? (
+        people.length ? (
+          <View>
+            <Text style={{ color: "rgba(255,255,255,.6)", fontSize: 12, marginBottom: 2 }}>
+              من جهات اتصالك في آثار ({ar(people.length)})
+            </Text>
+            {people.map((person) => row(person))}
+          </View>
+        ) : (
+          note(scanned ? "ما لقينا أحداً من جهات اتصالك في آثار بعد — ادعهم برابطك." : "ما فيه أرقام في جهات اتصالك.")
+        )
+      ) : null}
+      {state === "done" && me && !me.phone ? (
+        <Pressable
+          onPress={() => {
+            close();
+            router.push("/phone" as never);
+          }}
+          style={[glassRow, { padding: 14, marginTop: 6 }]}
+        >
+          <Text style={{ color: "#fff", fontSize: 14, fontWeight: "800" }}>اربط رقمك</Text>
+          <Text style={{ color: "rgba(255,255,255,.6)", fontSize: 12, marginTop: 2 }}>
+            عشان اللي عندهم رقمك يلقونك هم بعد
+          </Text>
+        </Pressable>
+      ) : null}
+      <Text style={{ color: "rgba(255,255,255,.4)", fontSize: 11, textAlign: "center", marginTop: 8 }}>
+        {contactsReady ? "الأرقام تُرسل مجزّأةً لا كما هي ولا تُخزَّن، ويظهر لك من ربط رقمه وسمح أن يُوجد به." : ""}
       </Text>
     </SheetScrollView>
   );
