@@ -5,8 +5,7 @@ import { useState, useTransition } from "react";
 import { blockUser, createGroupWith, removeFriend, setFriendGroup, startConversation } from "@/app/actions";
 import { SwipeRow } from "@/components/swipe-row";
 import { Sheet } from "@/components/sheet";
-import { CheckIcon, MessageIcon, TagIcon, UserPlusIcon } from "@/components/icons";
-import { ShareProfile } from "@/app/me/share";
+import { CheckIcon, MessageIcon, TagIcon } from "@/components/icons";
 
 type Group = { id: string; name: string };
 
@@ -148,26 +147,3 @@ function GroupSheet({
   );
 }
 
-/**
- * زرُّ الإضافة في رأس الأصدقاء — كالجوّال (القاعدة ٢٨١)، وفي الويب يفتح نافذةَ
- * المشاركة بالرابط والرمز: الويبُ لا يحمل البحث ولا «من حولك» بعد.
- */
-export function AddFriendButton({ name, memberNo }: { name: string; memberNo: number }) {
-  return (
-    <ShareProfile
-      name={name}
-      memberNo={memberNo}
-      trigger={(open) => (
-        <button
-          type="button"
-          onClick={open}
-          aria-label="إضافة صديق"
-          className="flex h-10 w-10 items-center justify-center rounded-full"
-          style={{ background: "rgba(255,255,255,.08)", color: "var(--color-chrome-ink)" }}
-        >
-          <UserPlusIcon size={20} />
-        </button>
-      )}
-    />
-  );
-}
