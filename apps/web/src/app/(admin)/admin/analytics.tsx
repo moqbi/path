@@ -224,6 +224,34 @@ export async function AnalyticsSection() {
     prisma.coinTopUp.findMany({ where: bought(week), distinct: ["userId"], select: { userId: true } }),
   ]);
 
+  // آثار+ هذا الشهر: من أوّله بتوقيت الرياض، ويُقارن بالمدّة نفسها من الشهر الماضي.
+  const riyadhNow = new Date(now + OFFSET);
+  const monthStart = new Date(Date.UTC(riyadhNow.getUTCFullYear(), riyadhNow.getUTCMonth(), 1) - OFFSET);
+  const lastMonthStart = new Date(Date.UTC(riyadhNow.getUTCFullYear(), riyadhNow.getUTCMonth() - 1, 1) - OFFSET);
+  const month = { gte: monthStart };
+  const lastMonth = {
+    gte: lastMonthStart,
+    lt: new Date(Math.min(lastMonthStart.getTime() + (now - monthStart.getTime()), monthStart.getTime())),
+  };
+  // المشتركون من المتجر حسابٌ لا حدث: من اشترى ثمّ أعاد الشراء يُعدّ مرّة.
+  const subscribers = (type: string, at: { gte: Date; lt?: Date }) =>
+    prisma.billingEvent
+      .findMany({ where: { type, at }, distinct: ["appUserId"], select: { appUserId: true } })
+      .then((rows) => rows.length);
+  const granted = (createdAt: { gte: Date; lt?: Date }) =>
+    prisma.moderationLog
+      .findMany({ where: { action: "PLUS_GRANTED", createdAt }, distinct: ["ownerId"], select: { ownerId: true } })
+      .then((rows) => rows.length);
+  const [subsNow, subsBefore, renewals, grantsNow, grantsBefore, endedNow, endedBefore] = await Promise.all([
+    subscribers("INITIAL_PURCHASE", month),
+    subscribers("INITIAL_PURCHASE", lastMonth),
+    subscribers("RENEWAL", month),
+    granted(month),
+    granted(lastMonth),
+    prisma.user.count({ where: { plusEndedAt: month } }),
+    prisma.user.count({ where: { plusEndedAt: lastMonth } }),
+  ]);
+
   const series = (rows: { day: Date; n: number }[]) => {
     const byDay = new Map(rows.map((row) => [keyOf(new Date(row.day)), row.n]));
     return Array.from({ length: 30 }, (_, i) => {
@@ -316,6 +344,24 @@ export async function AnalyticsSection() {
             value={`${ar(source("app"))} تطبيق`}
             hint={`${ar(source("web"))} ويب · أجهزة: ${ar(platform("ios"))} آيفون، ${ar(platform("android"))} أندرويد`}
           />
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-2.5 text-[15px] font-bold">آثار+ هذا الشهر</h2>
+        <p className="mb-2.5 text-[12px] text-muted">
+          من {dayMonth(new Date(monthStart.getTime() + OFFSET))} حتى الآن، ويُقارن بالمدّة نفسها من الشهر الماضي.
+        </p>
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
+          <Tile label="مشتركون جدد" value={ar(subsNow)} hint="اشتراكٌ أوّل من المتجر — كلُّ حسابٍ مرّة">
+            <Delta now={subsNow} before={subsBefore} />
+          </Tile>
+          <Tile label="جدّدوا" value={ar(renewals)} hint="تجديدٌ تلقائيّ هذا الشهر" />
+          <Tile label="مُنحوا من اللوحة" value={ar(grantsNow)}>
+            <Delta now={grantsNow} before={grantsBefore} />
+          </Tile>
+          <Tile label="انتهى اشتراكهم" value={ar(endedNow)} hint={`${ar(endedBefore)} في الفترة نفسها الماضية`} />
+          <Tile label="مشتركون الآن" value={ar(plus)} hint={`${pct(plus, total)} من الكل`} />
         </div>
       </section>
 
@@ -423,7 +469,7 @@ export async function AnalyticsSection() {
       <p className="text-[11px] leading-relaxed text-muted">
         «نشط» من فتح التطبيق أو الموقع وهو داخلٌ بحسابه. الأيّامُ بتوقيت الرياض. وما قبل
         بدء سجلّ الأيّام تقريبٌ من آثارٍ مؤكَّدة (الدخول والكتابة)، فأعمدتُه قد تكون أقصر
-        من الحقيقة. والمدفوعُ بعملة الشراء قبل حصّة آبل، ويشمل مشتريات الاختبار (Sandbox)
+        من الحقيقة. والمدفوعُ بعملة الشراء قبل حصّة آبل، وهو وأرقامُ آثار+ تشمل مشتريات الاختبار (Sandbox)
         ما دامت مفتوحةً على الخادم.
       </p>
     </div>
