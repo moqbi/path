@@ -311,6 +311,11 @@ export default async function SettingsPage() {
           <ShieldIcon size={15} />
           ما يُنشر لأصدقائك لا يخرج عنهم.
         </p>
+
+        {/* رقمُ البناء للدعم، يُكتب وقت البناء (القاعدة ٣٠٨). */}
+        <p dir="ltr" className="latin select-text pb-4 text-center text-[11px] text-muted">
+          ATHAR Moments · web {process.env.NEXT_PUBLIC_BUILD}
+        </p>
       </main>
     </div>
   );

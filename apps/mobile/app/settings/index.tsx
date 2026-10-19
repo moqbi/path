@@ -18,6 +18,7 @@ import { SITE_URL, hasSite } from "@athar/shared";
 import { ar } from "../../lib/format";
 import { brandGradient, colors } from "../../theme/tokens";
 import { FollowRow } from "../../components/social";
+import { versionLine } from "../../lib/version";
 
 type Group = { id: string; name: string; count: number };
 
@@ -301,6 +302,11 @@ export default function Settings() {
           وروابطُها من اللوحة، هي نفسها التي يعرضها ذيلُ الموقع.
         */}
         <FollowRow />
+
+        {/* رقمُ النسخة للدعم: من الجهاز نفسه، فيتبدّل مع كلّ بناءٍ وتحديث (القاعدة ٣٠٨). */}
+        <Text selectable style={{ color: colors.muted, fontSize: 11, textAlign: "center", marginTop: 18, writingDirection: "ltr" }}>
+          ATHAR Moments {versionLine()}
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );

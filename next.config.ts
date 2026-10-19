@@ -1,5 +1,23 @@
 import type { NextConfig } from "next";
+import { execSync } from "node:child_process";
 import { BASE } from "./src/lib/base";
+
+/*
+  رقمُ البناء يُكتب وقت البناء لا باليد (القاعدة ٣٠٨): الالتزامُ القصير
+  وتاريخُ اليوم بتوقيت الرياض، فكلُّ بناءٍ جديد يحمل رقمه بنفسه. وبلا git
+  (نسخةٌ منسوخةٌ بلا تاريخ) يبقى التاريخُ وحده.
+*/
+function buildStamp(): string {
+  const day = new Date(Date.now() + 3 * 3600_000).toISOString().slice(0, 10);
+  try {
+    const sha = execSync("git rev-parse --short=7 HEAD", { stdio: ["ignore", "pipe", "ignore"] })
+      .toString()
+      .trim();
+    return sha ? `${sha} · ${day}` : day;
+  } catch {
+    return day;
+  }
+}
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -12,6 +30,8 @@ const nextConfig: NextConfig = {
     وهي تُدمج في حزمة المتصفّح وقت البناء، فتغييرُها يستلزم بناءً جديداً.
   */
   basePath: BASE,
+
+  env: { NEXT_PUBLIC_BUILD: buildStamp() },
 
   /**
    * يمنع `next dev` من حقن كتلة `nextjs-agent-rules` في CLAUDE.md.
