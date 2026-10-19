@@ -19,6 +19,23 @@ const TOP = process.env.DEEZER_TOP_PLAYLIST || "11163315344";
 export const PREVIEW_SECONDS = 30;
 export const NOTE_SECONDS = 20;
 
+/** أقصرُ مقطعٍ يُقصّ — دون ثلاث ثوانٍ نقرةٌ لا أغنية. */
+export const CLIP_MIN_SECONDS = 3;
+
+/**
+ * ما يُسمع من المعاينة (القاعدة ٣٠٣): كاملةً، أو من البداية إلى النهاية كما اختارها
+ * صاحبُها بأيّ طول بين ثلاثٍ وثلاثين. ونسخةٌ لا ترسل الطول تبقى على عشرين من حيث بدأت.
+ */
+export function clipOf(input: { start?: number; seconds?: number; full?: boolean }) {
+  if (input.full) return { start: 0, seconds: PREVIEW_SECONDS };
+  if (input.seconds == null) {
+    return { start: Math.max(0, Math.min(PREVIEW_SECONDS - NOTE_SECONDS, Math.round(input.start ?? 0))), seconds: NOTE_SECONDS };
+  }
+  const start = Math.max(0, Math.min(PREVIEW_SECONDS - CLIP_MIN_SECONDS, Math.round(input.start ?? 0)));
+  const seconds = Math.max(CLIP_MIN_SECONDS, Math.min(PREVIEW_SECONDS - start, Math.round(input.seconds)));
+  return { start, seconds };
+}
+
 export type Track = {
   id: string;
   title: string;

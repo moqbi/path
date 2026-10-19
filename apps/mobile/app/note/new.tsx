@@ -18,7 +18,7 @@ import { colors } from "../../theme/tokens";
 /**
  * نوتٌ جديدة (القاعدة ٢٦٩) — **بقرار المالك**، بهيئة إنستقرام: صورتُك في الوسط
  * وفوقها الفقاعة، وتحتها «عبارة» أو «أغنية». والأغنيةُ قائمةٌ وبحثٌ ثمّ قصُّ
- * عشرين ثانية (`SongPicker`). وفي الأسفل الجمهور — الدائرةُ كلُّها أو تصنيف —
+ * مقطعاً ببدايته ونهايته (`SongPicker`). وفي الأسفل الجمهور — الدائرةُ كلُّها أو تصنيف —
  * ثمّ «شارك». والنوتُ الجديدة تحلّ محلّ القديمة.
  */
 export default function NewNote() {
@@ -32,7 +32,7 @@ export default function NewNote() {
 
   const input = useRef<RNTextInput>(null);
   const [text, setText] = useState("");
-  const [track, setTrack] = useState<{ track: Track; start: number; full: boolean } | null>(null);
+  const [track, setTrack] = useState<{ track: Track; start: number; full: boolean; seconds: number } | null>(null);
   const [picking, setPicking] = useState(false);
   const [groupId, setGroupId] = useState<string | null>(null);
   const [choosing, setChoosing] = useState(false);
@@ -45,6 +45,7 @@ export default function NewNote() {
           text: text.trim() || undefined,
           trackId: track?.track.id,
           trackStart: track?.start,
+          trackSeconds: track?.seconds,
           trackFull: track?.full,
           groupId,
         }),
@@ -193,8 +194,8 @@ export default function NewNote() {
       {picking ? (
         <SongPicker
           onClose={() => setPicking(false)}
-          onPick={(picked, start, full) => {
-            setTrack({ track: picked, start, full });
+          onPick={(picked, start, full, seconds) => {
+            setTrack({ track: picked, start, full, seconds });
             setPicking(false);
           }}
         />

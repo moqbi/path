@@ -83,7 +83,7 @@ export default function NewStory() {
     أو أغنيةٌ من القائمة نفسها التي في النوت (القاعدة ٢٧٧) — **بقرار المالك**: الموسيقى
     بابان، صوتٌ خاصّ من فيديو في الاستديو أو أغنيةٌ من دِيزر، وصاحبُها يختار.
   */
-  const [song, setSong] = useState<{ track: Track; start: number; full: boolean } | null>(null);
+  const [song, setSong] = useState<{ track: Track; start: number; full: boolean; seconds: number } | null>(null);
   const [songPicking, setSongPicking] = useState(false);
   const [musicMenu, setMusicMenu] = useState(false);
   /** صوتُ المقطع نفسه: يُكتم بزرّ، ومع الموسيقى يُكتم افتراضاً ويُعاد بالزرّ نفسه. */
@@ -202,7 +202,7 @@ export default function NewStory() {
           audience: only ? picked : undefined,
           stickers: stickers.length ? stickers : undefined,
           audio: sound ? { mediaId: sound.mediaId, start: sound.start, end: sound.end } : undefined,
-          track: song && !sound ? { id: song.track.id, start: song.start, full: song.full } : undefined,
+          track: song && !sound ? { id: song.track.id, start: song.start, seconds: song.seconds, full: song.full } : undefined,
           muted: draft.video && muteVideo ? true : undefined,
           frame: DEV_FEATURES && (frame.z !== 1 || frame.x || frame.y) ? frame : undefined,
         }),
@@ -509,8 +509,8 @@ export default function NewStory() {
       {songPicking ? (
         <SongPicker
           onClose={() => setSongPicking(false)}
-          onPick={(track, start, full) => {
-            setSong({ track, start, full });
+          onPick={(track, start, full, seconds) => {
+            setSong({ track, start, full, seconds });
             setSound(null);
             setSongPicking(false);
             if (draft?.video) setMuteVideo(true);

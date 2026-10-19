@@ -35,6 +35,8 @@ import { ar, relative } from "@/lib/format";
 /** طولُ ما يُسمع من الأغنية، وطولُ المعاينة كلّها — كالخادم (القاعدة ٢٦٩). */
 const NOTE_SECONDS = 20;
 const PREVIEW_SECONDS = 30;
+/** أقصرُ مقطعٍ يُقصّ — كـ`CLIP_MIN_SECONDS` في الخادم (القاعدة ٣٠٣). */
+const CLIP_MIN = 3;
 const TEXT_MAX = 60;
 const FACES = ["SMILE", "LAUGH", "GASP", "SAD", "LOVE"] as const;
 
@@ -532,7 +534,9 @@ function NoteComposer({ groups, onClose }: { groups: Group[]; onClose: () => voi
   const [query, setQuery] = useState("");
   const [tracks, setTracks] = useState<Track[] | null>(null);
   const [track, setTrack] = useState<Track | null>(null);
+  // البدايةُ والنهايةُ بحرّيّة صاحبها، لا نافذةُ عشرين (القاعدة ٣٠٣).
   const [startAt, setStartAt] = useState(0);
+  const [endAt, setEndAt] = useState(NOTE_SECONDS);
   // كاملةً افتراضاً، والقصُّ اختيارُ صاحبها (القاعدة ٢٧٧).
   const [full, setFull] = useState(true);
   const [groupId, setGroupId] = useState<string | null>(null);
@@ -552,19 +556,19 @@ function NoteComposer({ groups, onClose }: { groups: Group[]; onClose: () => voi
     return () => clearTimeout(timer);
   }, [picking, query]);
 
-  async function listen(at = startAt) {
+  async function listen(from = startAt, to = endAt) {
     if (!track) return;
     const said = await songPreview(track.id);
     if (!said.url) return setError(said.error ?? "تعذّر التشغيل");
     if (full) clip.play(said.url, 0, PREVIEW_SECONDS);
-    else clip.play(said.url, at);
+    else clip.play(said.url, from, to - from);
   }
 
   function publish() {
     setError(null);
     start(async () => {
       clip.stop();
-      const said = await postNote({ text, trackId: track?.id ?? null, trackStart: full ? 0 : startAt, trackFull: full, groupId });
+      const said = await postNote({ text, trackId: track?.id ?? null, trackStart: full ? 0 : startAt, trackSeconds: full ? PREVIEW_SECONDS : endAt - startAt, trackFull: full, groupId });
       if (said.error) setError(said.error);
       else onClose();
     });
@@ -635,27 +639,45 @@ function NoteComposer({ groups, onClose }: { groups: Group[]; onClose: () => voi
                 className="h-8 grow rounded-[9px] text-[12.5px] font-extrabold"
                 style={full === value ? { background: "#F6B93B", color: "#14212b" } : undefined}
               >
-                {value ? `كاملة · ${ar(PREVIEW_SECONDS)} ث` : `قصّ مقطع · ${ar(NOTE_SECONDS)} ث`}
+                {value ? `كاملة ${ar(PREVIEW_SECONDS)} ث` : "قصّ مقطع"}
               </button>
             ))}
           </div>
         ) : null}
 
         {track && full ? null : track ? (
-          <label className="block">
+          <div>
             <span className="mb-1.5 flex justify-between text-[11.5px] opacity-70">
-              <span>المقطع: من الثانية {ar(startAt)} إلى {ar(startAt + NOTE_SECONDS)}</span>
+              <span>
+                المقطع: من الثانية {ar(startAt)} إلى {ar(endAt)} — {ar(endAt - startAt)} ثانية
+              </span>
             </span>
-            <input
-              type="range"
-              min={0}
-              max={PREVIEW_SECONDS - NOTE_SECONDS}
-              value={startAt}
-              onChange={(event) => setStartAt(Number(event.target.value))}
-              onPointerUp={() => void listen()}
-              className="w-full accent-[#F6B93B]"
-            />
-          </label>
+            {/* مقبضان على شريطٍ واحد: البدايةُ والنهايةُ، وبينهما ثلاثُ ثوانٍ على الأقلّ. */}
+            <div className="dual-range" dir="ltr">
+              <span
+                className="dual-range-fill"
+                style={{ left: `${(startAt / PREVIEW_SECONDS) * 100}%`, right: `${100 - (endAt / PREVIEW_SECONDS) * 100}%` }}
+              />
+              <input
+                type="range"
+                aria-label="البداية"
+                min={0}
+                max={PREVIEW_SECONDS}
+                value={startAt}
+                onChange={(event) => setStartAt(Math.min(Number(event.target.value), endAt - CLIP_MIN))}
+                onPointerUp={() => void listen()}
+              />
+              <input
+                type="range"
+                aria-label="النهاية"
+                min={0}
+                max={PREVIEW_SECONDS}
+                value={endAt}
+                onChange={(event) => setEndAt(Math.max(Number(event.target.value), startAt + CLIP_MIN))}
+                onPointerUp={() => void listen(Math.max(startAt, endAt - 3), endAt)}
+              />
+            </div>
+          </div>
         ) : picking ? (
           <div>
             <span className="glass-field mb-2 flex items-center gap-2">

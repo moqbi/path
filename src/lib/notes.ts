@@ -2,7 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { guard } from "@/lib/moderation";
 import { visibleAuthors } from "@/lib/visibility";
-import { NOTE_SECONDS, PREVIEW_SECONDS, previewUrl, trackById } from "@/lib/music";
+import { clipOf, previewUrl, trackById } from "@/lib/music";
 
 /**
  * النوت على الويب — نسخةُ `apps/api/src/services/notes.ts` (القاعدة ٢٦٩) حرفاً
@@ -78,16 +78,15 @@ export async function listNotes(userId: string): Promise<NoteView[]> {
 
 export async function postNote(
   userId: string,
-  input: { text?: string; trackId?: string | null; trackStart?: number; trackFull?: boolean; groupId?: string | null },
+  input: { text?: string; trackId?: string | null; trackStart?: number; trackSeconds?: number; trackFull?: boolean; groupId?: string | null },
 ) {
   const text = (input.text ?? "").trim().replace(/\s+/g, " ").slice(0, NOTE_TEXT_MAX);
   if (!text && !input.trackId) throw new Error("اكتب شيئاً أو اختر أغنية");
   if (text) await guard(text);
 
   const track = input.trackId ? await trackById(input.trackId) : null;
-  // كاملةً (ثلاثون من أوّلها) أو مقصوصةً (عشرون من حيث اختار) — الخيارُ لصاحبها.
-  const full = Boolean(input.trackFull);
-  const start = full ? 0 : Math.max(0, Math.min(PREVIEW_SECONDS - NOTE_SECONDS, Math.round(input.trackStart ?? 0)));
+  // كاملةً أو من البداية إلى النهاية كما اختارها صاحبُها (القاعدة ٣٠٣).
+  const clip = clipOf({ start: input.trackStart, seconds: input.trackSeconds, full: input.trackFull });
 
   let groupId: string | null = null;
   if (input.groupId) {
@@ -109,8 +108,8 @@ export async function postNote(
         trackTitle: track?.title ?? null,
         trackArtist: track?.artist ?? null,
         trackCover: track?.cover ?? null,
-        trackStart: track ? start : 0,
-        trackSeconds: full ? PREVIEW_SECONDS : NOTE_SECONDS,
+        trackStart: track ? clip.start : 0,
+        trackSeconds: clip.seconds,
         groupId,
         expiresAt: new Date(Date.now() + NOTE_HOURS * 3_600_000),
       },

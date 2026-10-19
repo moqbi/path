@@ -4,7 +4,7 @@ import { getObject, putObject } from "@athar/storage";
 import { guard } from "../lib/moderation";
 import { badRequest, notFound } from "../lib/errors";
 import { NoFfmpeg, trimAudio } from "../lib/process";
-import { NOTE_SECONDS, PREVIEW_SECONDS, previewUrl, trackById } from "./music";
+import { NOTE_SECONDS, clipOf, previewUrl, trackById } from "./music";
 import { circleIds, visibleAuthors } from "./visibility";
 import { dropMedia } from "./media";
 import { push } from "./push";
@@ -193,7 +193,7 @@ export async function post(
     audience?: string[];
     stickers?: StorySticker[];
     audio?: { mediaId: string; start: number; end: number };
-    track?: { id: string; start?: number; full?: boolean };
+    track?: { id: string; start?: number; seconds?: number; full?: boolean };
     muted?: boolean;
     frame?: { z: number; x: number; y: number; a?: number };
   },
@@ -243,12 +243,12 @@ export async function post(
   const audio = input.audio ? await cutSound(userId, input.audio) : null;
   /*
     الأغنيةُ تُقرأ من دِيزر بمعرّفها (القاعدة ٢٧٧) — اسمٌ وفنّانٌ يرسلهما الجهاز يُكتب
-    فيهما أيُّ شيء — كاملةً بثلاثينها أو عشرين من حيث اختار، كالنوت.
+    فيهما أيُّ شيء — كاملةً بثلاثينها أو من البداية إلى النهاية كما اختارها (القاعدة ٣٠٣).
   */
   const track = input.track ? await trackById(input.track.id) : null;
-  const full = Boolean(input.track?.full);
-  const trackSeconds = track ? (full ? PREVIEW_SECONDS : NOTE_SECONDS) : null;
-  const trackStart = track && !full ? Math.max(0, Math.min(PREVIEW_SECONDS - NOTE_SECONDS, Math.round(input.track?.start ?? 0))) : 0;
+  const clip = track && input.track ? clipOf(input.track) : null;
+  const trackSeconds = clip?.seconds ?? null;
+  const trackStart = clip?.start ?? 0;
   const stickers = (input.stickers ?? [])
     .filter((item) => item.kind !== "music" || audio || track)
     .map((item) => (item.kind === "place" && !locate ? { ...item, lat: undefined, lng: undefined } : item));
