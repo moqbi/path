@@ -18,6 +18,8 @@ onlyBuiltDependencies:
   - unrs-resolver
 patchedDependencies:
   expo-router: patches/expo-router.patch
+  # يُضيف `expo-share-intent` هدفَ المشاركة إلى مشروع Xcode، و`xcode` يسقط على مجموعةٍ بلا مسار.
+  xcode@3.0.1: patches/xcode@3.0.1.patch
 
 # ترقياتٌ أمنيّة لحزمٍ غير مباشرة داخل إصدارها الرئيسيّ نفسه (تدقيق أكتوبر).
 # ما يحتاج إصداراً رئيسيّاً آخر لا يُفرض هنا: يُكسر أباه.

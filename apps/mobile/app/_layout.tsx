@@ -16,6 +16,7 @@ import {
 import { Tajawal_400Regular, Tajawal_700Bold } from "@expo-google-fonts/tajawal";
 import { Montserrat_500Medium, Montserrat_700Bold } from "@expo-google-fonts/montserrat";
 import { useSession } from "../lib/session";
+import { useShareIn } from "../lib/share-in";
 import { claimSavedInviter, watchInviteLinks } from "../lib/invite-ref";
 import { primeAccess } from "../lib/api";
 import { markFirstSeen } from "../lib/rate";
@@ -99,6 +100,9 @@ function Gate() {
   const { me, ready, restore } = useSession();
   const segments = useSegments();
   const router = useRouter();
+
+  // ما شُورك من الاستديو أو يوتيوب يفتح شاشةَ النشر جاهزةً به (القاعدة ٣٠٦).
+  useShareIn(Boolean(me));
 
   // رابطُ ملفٍّ فُتح قبل التسجيل يقول من دعاه (القاعدة ٢٤٣).
   useEffect(() => watchInviteLinks(), []);
