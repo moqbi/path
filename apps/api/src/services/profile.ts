@@ -49,6 +49,9 @@ export async function me(userId: string) {
       shareLocation: true,
       hideOnline: true,
       gender: true,
+      phone: true,
+      phoneSkippedAt: true,
+      findByPhone: true,
       notifyOnTag: true,
       notifyDm: true,
       notifyFriend: true,
@@ -170,6 +173,7 @@ export async function savePrivacy(
     shareLocation: boolean;
     notifyOnTag?: boolean;
     hideOnline?: boolean;
+    findByPhone?: boolean;
   },
 ) {
   // التخفّي لمشتركي آثار+ وحدهم — يُفحص هنا لا في الشاشة: الطلبُ يُرسل بيد.
@@ -195,6 +199,7 @@ export async function savePrivacy(
       // التنبيهات، فكتابتُه افتراضاً تطفئه في كل حفظٍ للخصوصية.
       ...(input.notifyOnTag === undefined ? {} : { notifyOnTag: input.notifyOnTag }),
       ...(input.hideOnline === undefined ? {} : { hideOnline: input.hideOnline }),
+      ...(input.findByPhone === undefined ? {} : { findByPhone: input.findByPhone }),
     },
   });
   return { ok: true };

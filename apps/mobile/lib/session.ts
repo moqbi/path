@@ -56,6 +56,12 @@ export type Me = {
   hideOnline?: boolean;
   /** صيغةُ خطاب الكتاب (القاعدة ٢٦٠): فارغٌ = مذكّر كما كان. نسخةُ خادمٍ قديمة لا ترسله. */
   gender?: "MALE" | "FEMALE" | "UNSPECIFIED" | null;
+  /** رقمُ الجوال المؤكَّد (القاعدة ٢٩٧) — لصاحبه وحده. نسخةُ خادمٍ قديمة لا ترسله. */
+  phone?: string | null;
+  /** ضغطَ «تخطَّ» في شاشة الرقم — فلا تُعرض ثانيةً. */
+  phoneSkippedAt?: string | null;
+  /** «من عنده رقمي يجدني». */
+  findByPhone?: boolean;
   notifyOnTag: boolean;
   /** هل على الحساب كلمةُ مرور؟ من دخل بمزوّدٍ لا كلمةَ له حتى يضعها. */
   hasPassword?: boolean;
