@@ -531,6 +531,15 @@ cd /root/athar-build && git pull origin main && pnpm install --frozen-lockfile
 cd apps/mobile && npx expo-doctor
 ```
 
+**الحسابُ عند آبل فرديّ لا شركة**: حيث يُكتب نوعُ الفريق فهو
+`EXPO_APPLE_TEAM_TYPE=INDIVIDUAL`، لا `COMPANY_OR_ORGANIZATION`.
+
+**App Group يُفعَّل باليد مرّةً واحدة** (منذ ٠٫١٫٤ — امتدادُ المشاركة، القاعدة ٣٠٦):
+EAS لا يقدر عليه بمفتاح الـAPI («Failed to patch capabilities: APP_GROUPS»).
+في developer.apple.com ← Identifiers: أنشئ App Group `group.app.athar.mobile`،
+وفعّله على `app.athar.mobile`، وأنشئ `app.athar.mobile.share-extension` به. ثمّ
+يُبنى بـ`EXPO_NO_CAPABILITY_SYNC=1` أمامَ الأمر، وملفُّ التوقيع الجديد يُقبل (Y).
+
 **الطريقُ الأوّل — EAS يبني ويرفع**:
 
 ```bash
