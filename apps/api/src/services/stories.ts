@@ -195,7 +195,7 @@ export async function post(
     audio?: { mediaId: string; start: number; end: number };
     track?: { id: string; start?: number; full?: boolean };
     muted?: boolean;
-    frame?: { z: number; x: number; y: number };
+    frame?: { z: number; x: number; y: number; a?: number };
   },
 ) {
   /*

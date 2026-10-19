@@ -23,7 +23,7 @@ import { StoryCamera, GlassPill, SendMark, disc } from "../../components/story-c
 import { colors } from "../../theme/tokens";
 import { ClockIcon, CloseIcon, LockIcon, MusicIcon, PinIcon, SpeakerIcon, StickerIcon, TrashIcon } from "../../components/icons";
 import { PeopleSheet, type Friend } from "../../components/people-sheet";
-import { FramedMedia, NO_FRAME, useFrameGesture, type StoryFrame } from "../../components/story-frame";
+import { FramedMedia, NO_FRAME, fitFrame, useFrameGesture, type StoryFrame } from "../../components/story-frame";
 import { DEV_FEATURES } from "../../lib/dev-features";
 import { useCircle } from "../../lib/queries";
 
@@ -111,7 +111,9 @@ export default function NewStory() {
     التطوير وحدها حتى تُجرَّب.
   */
   const [frame, setFrame] = useState<StoryFrame>(NO_FRAME);
-  const frameGesture = useFrameGesture(frame, setFrame, screen.width, screen.height);
+  // الموضعُ الذي تبدأ منه الصورة — كاملةً إن خالفت نسبةَ الشاشة — وإليه تعود بنقرتين.
+  const [home, setHome] = useState<StoryFrame>(NO_FRAME);
+  const frameGesture = useFrameGesture(frame, setFrame, screen.width, screen.height, home);
 
   /**
    * المقطعُ: الفلاترُ للصور وحدها (القاعدة ١٣١). والموسيقى تبقى — **بقرار المالك**
@@ -163,6 +165,10 @@ export default function NewStory() {
       seconds,
       start: 0,
     });
+    // من الاستديو بنسبةٍ أخرى: كاملةً لا مقصوصة (القاعدة ٣٠٢).
+    const fit = fitFrame(asset.width, asset.height, screen.width, screen.height);
+    setHome(fit);
+    setFrame(fit);
     if (video) dropSound();
   }
 
@@ -245,6 +251,7 @@ export default function NewStory() {
     setPanel(null);
     setError(null);
     setFrame(NO_FRAME);
+    setHome(NO_FRAME);
   }
 
   const long = draft.video && draft.seconds > STORY_SECONDS;
@@ -257,14 +264,25 @@ export default function NewStory() {
       ) : DEV_FEATURES ? (
         /* طبقةُ الصورة تأخذ ما لم يأخذه نصٌّ ولا ملصقٌ فوقها: سحبٌ وتقريبٌ ونقرتان تُعيدانها. */
         <View {...frameGesture.panHandlers} style={{ position: "absolute", left: 0, top: 0, width: screen.width, height: screen.height }}>
-          <FramedMedia frame={frame} width={screen.width} height={screen.height}>
-            {draft.video ? (
-              <StoryVideo source={draft.uri} local width={screen.width} height={screen.height} loop muted={muteVideo} cover />
-            ) : !filter ? (
-              <Image source={{ uri: draft.uri }} style={{ width: screen.width, height: screen.height }} resizeMode="cover" />
-            ) : (
-              <LocalFiltered uri={draft.uri} filter={filter} width={screen.width} height={screen.height} cover />
-            )}
+          <FramedMedia
+            frame={frame}
+            width={screen.width}
+            height={screen.height}
+            backdrop={
+              draft.video ? null : (
+                <Image source={{ uri: draft.uri }} style={{ width: screen.width, height: screen.height }} resizeMode="cover" blurRadius={40} />
+              )
+            }
+          >
+            {(w, h) =>
+              draft.video ? (
+                <StoryVideo source={draft.uri} local width={w} height={h} loop muted={muteVideo} cover />
+              ) : !filter ? (
+                <Image source={{ uri: draft.uri }} style={{ width: w, height: h }} resizeMode="cover" />
+              ) : (
+                <LocalFiltered uri={draft.uri} filter={filter} width={w} height={h} cover />
+              )
+            }
           </FramedMedia>
         </View>
       ) : draft.video ? (

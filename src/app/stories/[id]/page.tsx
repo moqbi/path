@@ -49,9 +49,10 @@ export default async function StoriesPage({ params }: { params: Promise<{ id: st
 }
 
 /** تقريبُ صورة القصّة وإزاحتُها (القاعدة ٢٩٦) — ما لا يُقرأ منها يُترك. */
-function frameOf(value: unknown): { z: number; x: number; y: number } | null {
+function frameOf(value: unknown): { z: number; x: number; y: number; a?: number } | null {
   if (!value || typeof value !== "object") return null;
-  const { z, x, y } = value as Record<string, unknown>;
+  const { z, x, y, a } = value as Record<string, unknown>;
   if (typeof z !== "number" || typeof x !== "number" || typeof y !== "number") return null;
-  return { z, x, y };
+  // `a` نسبةُ الصورة (القاعدة ٣٠٢) — قصصٌ قبلها بلا نسبة.
+  return typeof a === "number" && a > 0 ? { z, x, y, a } : { z, x, y };
 }

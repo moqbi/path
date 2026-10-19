@@ -138,9 +138,14 @@ export const storyInput = z.object({
     .optional(),
   /** صوتُ المقطع مكتوم — للفيديو وحده. */
   muted: z.boolean().optional(),
-  /** تقريبُ الصورة وإزاحتُها بنسبة الشاشة (القاعدة ٢٩٦). */
+  /** تقريبُ الصورة وإزاحتُها بنسبة الشاشة (القاعدة ٢٩٦)، و`a` نسبةُ الصورة نفسها (القاعدة ٣٠٢). */
   frame: z
-    .object({ z: z.number().min(0.5).max(4), x: z.number().min(-1).max(1), y: z.number().min(-1).max(1) })
+    .object({
+      z: z.number().min(0.2).max(4),
+      x: z.number().min(-1).max(1),
+      y: z.number().min(-1).max(1),
+      a: z.number().min(0.1).max(10).optional(),
+    })
     .optional(),
 });
 

@@ -15,6 +15,7 @@ import { ReportButton } from "../../components/report-sheet";
 import { Sheet } from "../../components/sheet";
 import { Filtered } from "../../components/filtered";
 import { FramedMedia, type StoryFrame } from "../../components/story-frame";
+import { MediaImage } from "../../components/media-image";
 import { DEV_FEATURES } from "../../lib/dev-features";
 import { StoryVideo } from "../../components/story-video";
 import { CloseIcon, EyeIcon, LockIcon, ScreenshotIcon } from "../../components/icons";
@@ -413,12 +414,21 @@ export default function StoryViewer() {
     <Animated.View style={{ position: "absolute", left: 0, width: screen.width, height: screen.height, top: lift }}>
       {/* المقطع يُشغَّل، والصورة تُرسم بفلترها. و`<Image>` لا يفكّ MP4. */}
       {/* بملء الشاشة وبتقريب صاحبها وإزاحته (القاعدة ٢٩٦) — في نسخة التطوير وحدها حتى تُجرَّب. */}
-      <FramedMedia frame={DEV_FEATURES ? story.frame : null} width={screen.width} height={screen.height}>
-      {video ? (
+      <FramedMedia
+        frame={DEV_FEATURES ? story.frame : null}
+        width={screen.width}
+        height={screen.height}
+        backdrop={
+          video ? null : (
+            <MediaImage mediaId={story.mediaId} style={{ width: screen.width, height: screen.height }} resizeMode="cover" blurRadius={40} />
+          )
+        }
+      >
+      {(w, h) => video ? (
         <StoryVideo
           source={story.mediaId}
-          width={screen.width}
-          height={screen.height}
+          width={w}
+          height={h}
           paused={paused}
           muted={Boolean(story.videoMuted)}
           cover={DEV_FEATURES}
@@ -428,8 +438,8 @@ export default function StoryViewer() {
         <Filtered
           mediaId={story.mediaId}
           filter={story.filter}
-          width={screen.width}
-          height={screen.height}
+          width={w}
+          height={h}
           cover={DEV_FEATURES}
         />
       )}
