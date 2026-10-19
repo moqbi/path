@@ -51,6 +51,7 @@ import { ReportContext } from "./report-context";
 import { linkedMany, type LinkedResult } from "@/lib/linked";
 import { StickersSection } from "./stickers";
 import { OccasionsSection } from "./occasions";
+import { AnalyticsSection } from "./analytics";
 
 const FIELD =
   "rounded-xl border border-line bg-card px-4 text-[13.5px] text-ink outline-none focus:border-clay";
@@ -486,6 +487,7 @@ const LOG_ACTION: Record<string, string> = {
 };
 
 const SECTIONS = [
+  { key: "analytics", label: "التحليلات", store: false },
   { key: "tags", label: "الوسوم", store: false },
   { key: "users", label: "الحسابات", store: false },
   { key: "store", label: "المتجر", store: true },
@@ -761,7 +763,8 @@ export default async function AdminPage({
       />
 
       <main className="scroll-area admin-main px-5 py-5">
-        <div className="admin-stats mb-6 grid grid-cols-4 gap-2">
+        {/* على قسم التحليلات أرقامُه تحلّ محلّ هذا الصفّ (القاعدة ٣٠٧). */}
+        <div className={`admin-stats mb-6 grid-cols-4 gap-2 ${section === "analytics" ? "hidden" : "grid"}`}>
           {[
             { value: userCount, label: "مستخدم" },
             { value: items.length, label: "صنف" },
@@ -2198,6 +2201,7 @@ export default async function AdminPage({
           </>
         ) : null}
 
+        {section === "analytics" ? <AnalyticsSection /> : null}
         {section === "stickers" ? <StickersSection /> : null}
         {section === "occasions" ? <OccasionsSection /> : null}
 
