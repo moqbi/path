@@ -7,6 +7,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { prisma } from "@/lib/db";
 import { deliverTo } from "@/lib/dm";
 import { clientIp } from "@/lib/rate-limit";
+import { riyadhDay } from "@/lib/riyadh-day";
 
 const scrypt = promisify(scryptCallback) as (
   password: string,
@@ -120,6 +121,14 @@ async function touch(id: string, lastSeenAt: Date | null) {
   if (lastSeenAt && Date.now() - lastSeenAt.getTime() < 60_000) return;
   try {
     await prisma.user.update({ where: { id }, data: { lastSeenAt: new Date() } });
+  } catch {}
+  // يومُ النشاط للوحة التحليلات (القاعدة ٣٠٧) — والقيدُ الفريد يجعل تكرارَه لا شيء.
+  try {
+    const day = riyadhDay();
+    await prisma.dailyActive.createMany({
+      data: [{ day: new Date(Date.UTC(day.y, day.m - 1, day.d)), userId: id, source: "web" }],
+      skipDuplicates: true,
+    });
   } catch {}
   /*
     ومن أين دخل — لكشف الحسابات المرتبطة في اللوحة (القاعدة ١٩٤). على الويب

@@ -303,6 +303,7 @@ model User {
   blocksMade       Block[]           @relation("Blocker")
   blocksGot        Block[]           @relation("Blocked")
   accessEvents     AccessEvent[]
+  activeDays       DailyActive[]
   coinGrants       CoinGrant[]       @relation("CoinGrantTo")
   stickerPurchases StickerPurchase[] @relation("StickerOwner")
   coinGrantsGiven  CoinGrant[]       @relation("CoinGrantBy")
@@ -490,6 +491,20 @@ model Block {
 /// (القاعدة ١٩٤). صفٌّ لكل ثلاثيّة (حساب، عنوان، جهاز) يُحدَّث ولا يتكاثر،
 /// ويُكنس بعد تسعين يوماً. والفراغُ نصٌّ فارغ لا `null`: قيدُ الفرادة في
 /// Postgres يعدّ كلَّ `null` مختلفاً فيتكاثر الصفّ.
+/// يومٌ نشطٌ لحساب — صفٌّ واحدٌ لكل حسابٍ في كل يومٍ بتوقيت الرياض، للوحة التحليلات
+/// (القاعدة ٣٠٧). `lastSeenAt` يقول آخرَ مرّة لا أيّامَ الحضور، فلا يُرسم منه خطٌّ زمنيّ.
+model DailyActive {
+  /// منتصفُ ليل يوم الرياض بالتوقيت العالميّ (`riyadhDay`).
+  day    DateTime @db.Date
+  userId String
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// «app» أو «web» — أوّلُ ما ظهر منه في يومه، و«» لما مُلئ من قبل الجدول.
+  source String   @default("")
+
+  @@id([day, userId])
+  @@index([day])
+}
+
 model AccessEvent {
   id      String   @id @default(cuid())
   userId  String

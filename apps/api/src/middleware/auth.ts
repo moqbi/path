@@ -4,6 +4,7 @@ import { readAccess, type Claims } from "../lib/tokens";
 import { forbidden, unauthorized } from "../lib/errors";
 import { recordAccess } from "../services/access";
 import { passed } from "../lib/throttle";
+import { dayKey, riyadhDay } from "../lib/riyadh-day";
 
 /**
  * الهوية من التوكن وحده.
@@ -46,6 +47,23 @@ function markSeen(userId: string): void {
   if (!passed(`seen:${userId}`, 60_000)) return;
   void prisma.user
     .update({ where: { id: userId }, data: { lastSeenAt: new Date() } })
+    .catch(() => undefined);
+  markActive(userId);
+}
+
+/**
+ * يومُ النشاط للوحة التحليلات (القاعدة ٣٠٧): صفٌّ لكل حسابٍ في يومه بتوقيت
+ * الرياض، يُكتب مرّةً في اليوم لا مع كل ختمٍ — والبوّابةُ في الذاكرة، والقيدُ
+ * الفريد يحرس ما بعد إعادة التشغيل.
+ */
+function markActive(userId: string): void {
+  const day = riyadhDay();
+  if (!passed(`active:${userId}:${dayKey(day)}`, 26 * 3_600_000)) return;
+  void prisma.dailyActive
+    .createMany({
+      data: [{ day: new Date(Date.UTC(day.y, day.m - 1, day.d)), userId, source: "app" }],
+      skipDuplicates: true,
+    })
     .catch(() => undefined);
 }
 
