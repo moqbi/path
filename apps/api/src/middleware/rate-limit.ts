@@ -13,7 +13,7 @@ type Hit = { count: number; resetAt: number };
 const hits = new Map<string, Hit>();
 
 // تنظيفٌ كسول: ما انتهت نافذته يُحذف عند أول مرورٍ بعدها.
-export function take(key: string, limit: number, windowMs: number): boolean {
+function take(key: string, limit: number, windowMs: number): boolean {
   const now = Date.now();
   const hit = hits.get(key);
   if (!hit || hit.resetAt <= now) {

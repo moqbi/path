@@ -38,8 +38,8 @@ export function maskPhone(e164: string): string {
   return `${e164.slice(0, 4)} ${e164.slice(4, 5)}•• ••• ${e164.slice(-2)}`;
 }
 
-export const phoneStartInput = z.object({ phone: z.string().trim().min(8).max(24) });
-export const phoneVerifyInput = z.object({ code: z.string().trim().regex(/^\d{6}$/) });
+/** رمزُ هويّة Firebase بعد تأكيد الرقم هناك — الرقمُ يُقرأ منه على الخادم. */
+export const phoneFirebaseInput = z.object({ idToken: z.string().min(100).max(4096) });
 
 /** حدُّ ما يُرفع في المرّة: دفترٌ بألفي رقم يكفي الناس، وما فوقه يُقطع. */
 export const CONTACTS_MAX = 2000;

@@ -43,7 +43,8 @@ export default function PrivacyPage() {
             </li>
             <li>
               <strong>Phone number and contacts (optional):</strong> you may add your mobile number, verified
-              by an SMS code; it is never shown to anyone. If you tap &quot;Contacts&quot; in Add Friend, the
+              by an SMS code sent through Google Firebase Authentication (Google receives the number to send
+              the code); it is never shown to anyone. If you tap &quot;Contacts&quot; in Add Friend, the
               app reads only the phone numbers in your address book (no names), turns each one into a SHA-256
               hash on your device, and sends the hashes to match them against verified numbers. We do not store
               your contacts or the hashes. People who have your verified number can find you this way unless
@@ -130,7 +131,8 @@ export default function PrivacyPage() {
             </li>
             <li>
               <strong>رقم جوالك</strong> إن أضفته — اختياريّ: نتأكّد منه برمزٍ في
-              رسالة SMS، ولا يظهر لأحد. ومن عنده رقمُك في جهات اتصاله يجدك به ما
+              رسالة SMS تُرسلها خدمة Firebase من جوجل (يصلها الرقمُ لترسل إليه الرمز)، ولا
+              يظهر لأحد. ومن عنده رقمُك في جهات اتصاله يجدك به ما
               لم تُطفئ «من عنده رقمي يلقاني» في الخصوصية. ويُحذف حين تُزيله أو
               تحذف حسابك.
             </li>

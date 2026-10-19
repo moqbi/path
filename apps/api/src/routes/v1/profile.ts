@@ -8,8 +8,7 @@ import {
   pageQuery,
   deviceInput,
   passwordChangeInput,
-  phoneStartInput,
-  phoneVerifyInput,
+  phoneFirebaseInput,
   privacyInput,
   profileInput,
 } from "@athar/shared";
@@ -36,12 +35,9 @@ export const profileRoutes = new Hono()
 
   .get("/", async (c) => c.json({ user: await profile.me(me(c)) }))
 
-  /** رقمُ الجوال برمز SMS (القاعدة ٢٩٧) — يُكتب مؤكَّداً أو لا يُكتب. */
-  .post("/phone", rateLimitUser(6, 3600), zValidator("json", phoneStartInput), async (c) =>
-    c.json(await phone.startPhone(me(c), c.req.valid("json").phone)),
-  )
-  .post("/phone/verify", rateLimitUser(20, 3600), zValidator("json", phoneVerifyInput), async (c) =>
-    c.json(await phone.verifyPhone(me(c), c.req.valid("json").code)),
+  /** رقمُ الجوال مؤكَّداً برمز هويّة Firebase (القاعدة ٢٩٧) — يُقرأ من الرمز لا من الطلب. */
+  .post("/phone/firebase", rateLimitUser(20, 3600), zValidator("json", phoneFirebaseInput), async (c) =>
+    c.json(await phone.verifyFirebasePhone(me(c), c.req.valid("json").idToken)),
   )
   .post("/phone/skip", async (c) => c.json(await phone.skipPhone(me(c))))
   .delete("/phone", async (c) => c.json(await phone.removePhone(me(c))))

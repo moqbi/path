@@ -92,7 +92,16 @@
       "expo-apple-authentication",
       "./plugins/with-rtl",
       "./plugins/with-purpose",
-      "./plugins/with-links"
+      "./plugins/with-links",
+      "./plugins/with-firebase",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "dynamic"
+          }
+        }
+      ]
     ],
     "extra": {
       "eas": {
