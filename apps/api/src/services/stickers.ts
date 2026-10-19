@@ -1,5 +1,6 @@
 import { prisma } from "@athar/db";
 import { badRequest, forbidden, notFound } from "../lib/errors";
+import { circleIds } from "./visibility";
 
 /** ما يُقال مكان الملصق حيث لا يُرسم: نسخةٌ قديمة، وتنبيهٌ على القفل، ومقتطفُ المحادثة. */
 export const STICKER_TEXT = "ملصق";
@@ -91,6 +92,73 @@ export async function buyPack(userId: string, packId: string) {
     throw problem;
   }
   return { ok: `اشتريت ${pack.name}` };
+}
+
+/** ما يملكه الصديقُ من المجموعات المدفوعة — لنافذة الإهداء («عنده»)، وللأصدقاء وحدهم. */
+export async function friendPacks(userId: string, toUserId: string) {
+  const circle = await circleIds(userId);
+  if (!circle.includes(toUserId)) throw forbidden("الإهداء للأصدقاء فقط");
+  const rows = await prisma.stickerPurchase.findMany({ where: { userId: toUserId }, select: { packId: true } });
+  return { owned: rows.map((row) => row.packId) };
+}
+
+/**
+ * إهداءُ مجموعةٍ مدفوعة (القاعدة ٢٩٨) — **بقرار المالك**: كإهداء الصنف (القاعدة ٣٩)
+ * للأصدقاء وحدهم، والخصمُ من المُهدي بسعرها هو بلا خصم آثار+ (القاعدة ٢٩٤)، والملكيّةُ
+ * للمُهدى إليه تبقى ولا تنتهي. وما مع آثار+ لا يُهدى: يُفتح بالاشتراك لا بالشراء. والخصمُ
+ * بشرط «الرصيدُ يكفي» والملكيّةُ في معاملةٍ واحدة، والقيدُ الفريد يردّ هديّتين معاً.
+ */
+export async function giftPack(userId: string, packId: string, toUserId: string) {
+  if (toUserId === userId) throw badRequest("الإهداء لصاحبك لا لنفسك");
+  const circle = await circleIds(userId);
+  if (!circle.includes(toUserId)) throw forbidden("الإهداء للأصدقاء فقط");
+
+  const [pack, friend] = await Promise.all([
+    prisma.stickerPack.findFirst({
+      where: { id: packId, hidden: false, stickers: { some: {} } },
+      select: { id: true, name: true, priceCoins: true },
+    }),
+    prisma.user.findUnique({ where: { id: toUserId }, select: { name: true } }),
+  ]);
+  if (!pack || !friend) throw notFound("المجموعة غير موجودة");
+  if (pack.priceCoins <= 0) throw badRequest("هذه المجموعة مع آثار+ — لا تُهدى");
+  const owned = await prisma.stickerPurchase.findUnique({
+    where: { userId_packId: { userId: toUserId, packId } },
+    select: { id: true },
+  });
+  if (owned) throw badRequest(`${friend.name} يملكها أصلاً`);
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const paid = await tx.user.updateMany({
+        where: { id: userId, coins: { gte: pack.priceCoins } },
+        data: { coins: { decrement: pack.priceCoins } },
+      });
+      if (paid.count === 0) throw badRequest("رصيدك لا يكفي");
+      await tx.stickerPurchase.create({
+        data: { userId: toUserId, packId, paidCoins: pack.priceCoins, giftedById: userId },
+      });
+    });
+  } catch (problem) {
+    if ((problem as { code?: string }).code === "P2002") throw badRequest(`${friend.name} يملكها أصلاً`);
+    throw problem;
+  }
+
+  // سطرٌ عند الطرفين كهدايا المتجر (القاعدة ٩١)، والطرفُ الآخر إشارة.
+  const label = `ملصقات ${pack.name}`;
+  const [sent, got] = await prisma.$transaction([
+    prisma.moment.create({ data: { authorId: userId, kind: "GIFT_SENT", text: label } }),
+    prisma.moment.create({ data: { authorId: toUserId, kind: "GIFT_GOT", text: label } }),
+  ]);
+  await prisma.momentTag.createMany({
+    data: [
+      { momentId: sent.id, userId: toUserId },
+      { momentId: got.id, userId },
+    ],
+    skipDuplicates: true,
+  });
+
+  return { ok: `أُهديت ${label} إلى ${friend.name}` };
 }
 
 /** نصٌّ أو ملصق — أحدُهما لا شيء. */
