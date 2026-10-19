@@ -1,12 +1,14 @@
 import { prisma } from "@/lib/db";
-import { ar } from "@/lib/format";
+import { ar, riyals } from "@/lib/format";
 
 /*
   لوحةُ التحليلات (القاعدة ٣٠٧): من يستعمل التطبيق، وكم يعود، وماذا يفعل.
 
   «النشطون» من `lastSeenAt` للأرقام الكبيرة — آخرُ ظهورٍ صادقٌ منذ اليوم الأوّل —
   ومن `DailyActive` للخطّ الزمنيّ: `lastSeenAt` يقول آخرَ مرّة لا أيّامَ الحضور.
-  والأيّامُ أيّامُ الرياض (+٣) كجرس الصباح.
+  والأيّامُ أيّامُ الرياض (+٣) كجرس الصباح، **والأسبوعُ يبدأ السبت**: «هذا الأسبوع»
+  من منتصف ليل السبت إلى الآن، ويُقارن بالمدّة نفسها من الأسبوع الماضي — أسبوعٌ
+  بدأ أمس لا يُقاس على أسبوعٍ كامل.
 */
 
 const DAY = 86_400_000;
@@ -19,6 +21,11 @@ function riyadhMidnight(at: number): Date {
 }
 
 const keyOf = (date: Date) => date.toISOString().slice(0, 10);
+
+/** «٢٥/١٠» من منتصف ليلٍ بالتوقيت العالميّ. */
+function dayMonth(day: Date): string {
+  return `${ar(day.getUTCDate())}/${ar(day.getUTCMonth() + 1)}`;
+}
 
 /** ما يكتبه الحساب بيده — لا أسطرُ النظام (الوصول، والانضمام، والهدايا…). */
 const OWN_KINDS = ["PHOTO", "PLACE", "THOUGHT", "MUSIC", "SLEEP", "WAKE"] as const;
@@ -36,7 +43,7 @@ function Delta({ now, before }: { now: number; before: number }) {
   return (
     <span className="text-[11px] font-semibold" style={{ color: up ? "#2f7d4f" : "#b4443a" }}>
       {up ? "▲" : "▼"} {ar(Math.abs(change))}٪
-      <span className="font-normal text-muted"> عن الأسبوع الماضي</span>
+      <span className="font-normal text-muted"> عن الفترة نفسها من الأسبوع الماضي</span>
     </span>
   );
 }
@@ -131,37 +138,49 @@ export async function AnalyticsSection() {
   const today = riyadhMidnight(now);
   const since30 = new Date(today.getTime() - 29 * DAY);
   const ago = (days: number) => new Date(now - days * DAY);
-  const week = { gte: ago(7) };
-  const lastWeek = { gte: ago(14), lt: ago(7) };
+  // السبتُ الأخير بتوقيت الرياض: `getUTCDay` على الوقت المُزاح يومُ الرياض (السبت ٦).
+  const sinceSaturday = (new Date(now + OFFSET).getUTCDay() + 1) % 7;
+  const weekDay = new Date(today.getTime() - sinceSaturday * DAY);
+  const weekStart = new Date(weekDay.getTime() - OFFSET);
+  const week = { gte: weekStart };
+  // المدّةُ نفسها من الأسبوع الماضي: من سبته إلى مثل هذه الساعة.
+  const lastWeek = { gte: new Date(weekStart.getTime() - 7 * DAY), lt: ago(7) };
+  const lastWeekFull = { gte: new Date(weekStart.getTime() - 7 * DAY), lt: weekStart };
+  const lastWeekDay = new Date(weekDay.getTime() - 7 * DAY);
+  const yesterdayLastWeek = new Date(today.getTime() - 7 * DAY);
+  const bought = (when: object) => ({ source: "STORE", createdAt: when });
 
   const [
-    total, newWeek, newLastWeek, dau, wau, mau, plus,
+    total, newWeek, newLastWeek, dau, wau, wauBefore, mau, plus,
     cohort, cohortBack, daily, signups, weekly, sources, platforms, liveStories, liveNotes,
-    activity,
+    activity, packs, coinsNow, coinsBefore, buyers,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: week } }),
     prisma.user.count({ where: { createdAt: lastWeek } }),
     prisma.user.count({ where: { lastSeenAt: { gte: ago(1) } } }),
     prisma.user.count({ where: { lastSeenAt: week } }),
+    prisma.$queryRaw<{ n: number }[]>`
+      SELECT COUNT(DISTINCT "userId")::int AS n FROM "DailyActive"
+      WHERE "day" >= ${lastWeekDay}::date AND "day" <= ${yesterdayLastWeek}::date`,
     prisma.user.count({ where: { lastSeenAt: { gte: ago(30) } } }),
     prisma.user.count({ where: { isPlus: true, plusUntil: { gt: new Date(now) } } }),
-    // العودة: من سجّل في الأسبوع الذي قبل هذا، كم منهم ظهر هذا الأسبوع.
-    prisma.user.count({ where: { createdAt: lastWeek } }),
-    prisma.user.count({ where: { createdAt: lastWeek, lastSeenAt: week } }),
+    // العودة: من سجّل الأسبوعَ الماضي (السبت إلى الجمعة)، كم منهم ظهر هذا الأسبوع.
+    prisma.user.count({ where: { createdAt: lastWeekFull } }),
+    prisma.user.count({ where: { createdAt: lastWeekFull, lastSeenAt: week } }),
     prisma.$queryRaw<{ day: Date; n: number }[]>`
       SELECT "day", COUNT(*)::int AS n FROM "DailyActive"
       WHERE "day" >= ${since30}::date GROUP BY "day"`,
     prisma.$queryRaw<{ day: Date; n: number }[]>`
       SELECT (("createdAt" + interval '3 hours')::date) AS day, COUNT(*)::int AS n FROM "User"
       WHERE "createdAt" >= ${new Date(since30.getTime() - OFFSET)} GROUP BY 1`,
-    // النشطون في كل أسبوعٍ من الثمانية الأخيرة — كلُّ حسابٍ مرّةً في أسبوعه.
+    // النشطون في كل أسبوعٍ من الثمانية الأخيرة — من السبت، وكلُّ حسابٍ مرّةً في أسبوعه.
     prisma.$queryRaw<{ w: number; n: number }[]>`
-      SELECT ((${today}::date - "day") / 7)::int AS w, COUNT(DISTINCT "userId")::int AS n
-      FROM "DailyActive" WHERE "day" > ${today}::date - 56 GROUP BY 1`,
+      SELECT ((${weekDay}::date + 6 - "day") / 7)::int AS w, COUNT(DISTINCT "userId")::int AS n
+      FROM "DailyActive" WHERE "day" >= ${weekDay}::date - 49 GROUP BY 1`,
     prisma.$queryRaw<{ source: string; n: number }[]>`
       SELECT "source", COUNT(DISTINCT "userId")::int AS n FROM "DailyActive"
-      WHERE "day" > ${today}::date - 7 GROUP BY 1`,
+      WHERE "day" >= ${weekDay}::date GROUP BY 1`,
     prisma.$queryRaw<{ platform: string; n: number }[]>`
       SELECT "platform", COUNT(DISTINCT "userId")::int AS n FROM "DeviceToken" GROUP BY 1`,
     prisma.story.count({ where: { expiresAt: { gt: new Date(now) } } }),
@@ -182,39 +201,103 @@ export async function AnalyticsSection() {
         before: await count(lastWeek),
       })),
     ),
+    /*
+      شراءُ النقاط: ما أودعه حدثُ المتجر وحده (`source = STORE`) — لا منحُ اللوحة ولا
+      رصيدُ آثار+. والمبلغُ ما دفعه المشتري قبل حصّة آبل، بعملة شرائه.
+    */
+    prisma.coinPack.findMany({
+      orderBy: [{ sortOrder: "asc" }, { coins: "asc" }],
+      select: { id: true, name: true, coins: true, hidden: true },
+    }),
+    prisma.coinTopUp.groupBy({
+      by: ["packId"],
+      where: bought(week),
+      _count: { _all: true },
+      _sum: { coins: true, paidHalalas: true },
+    }),
+    prisma.coinTopUp.groupBy({
+      by: ["packId"],
+      where: bought(lastWeek),
+      _count: { _all: true },
+      _sum: { coins: true, paidHalalas: true },
+    }),
+    prisma.coinTopUp.findMany({ where: bought(week), distinct: ["userId"], select: { userId: true } }),
   ]);
 
   const series = (rows: { day: Date; n: number }[]) => {
     const byDay = new Map(rows.map((row) => [keyOf(new Date(row.day)), row.n]));
     return Array.from({ length: 30 }, (_, i) => {
       const day = new Date(since30.getTime() + i * DAY);
-      const [, m, d] = keyOf(day).split("-");
-      return {
-        label: `${ar(Number(d))}/${ar(Number(m))}`,
-        tip: `${ar(Number(d))}/${ar(Number(m))}`,
-        value: byDay.get(keyOf(day)) ?? 0,
-      };
+      return { label: dayMonth(day), tip: dayMonth(day), value: byDay.get(keyOf(day)) ?? 0 };
     });
   };
   const weeks = Array.from({ length: 8 }, (_, i) => {
     const back = 7 - i;
     const value = weekly.find((row) => row.w === back)?.n ?? 0;
-    const label = back === 0 ? "هذا" : `−${ar(back)}`;
-    return { label, tip: back === 0 ? "آخر ٧ أيام" : `قبل ${ar(back)} أسبوع`, value };
+    const from = dayMonth(new Date(weekDay.getTime() - back * 7 * DAY));
+    return {
+      label: back === 0 ? "هذا" : from,
+      tip: back === 0 ? `هذا الأسبوع (من السبت ${from})` : `أسبوع السبت ${from}`,
+      value,
+    };
   });
   const source = (name: string) => sources.find((row) => row.source === name)?.n ?? 0;
   const platform = (name: string) => platforms.find((row) => row.platform === name)?.n ?? 0;
 
+  type Sale = { count: number; coins: number; paid: number };
+  const tally = (rows: typeof coinsNow) => {
+    const byPack = new Map<string | null, Sale>(
+      rows.map((row) => [
+        row.packId,
+        { count: row._count._all, coins: row._sum.coins ?? 0, paid: row._sum.paidHalalas ?? 0 },
+      ]),
+    );
+    const sum = [...byPack.values()].reduce(
+      (all, one) => ({ count: all.count + one.count, coins: all.coins + one.coins, paid: all.paid + one.paid }),
+      { count: 0, coins: 0, paid: 0 },
+    );
+    return { byPack, sum };
+  };
+  const salesNow = tally(coinsNow);
+  const salesBefore = tally(coinsBefore);
+  const EMPTY: Sale = { count: 0, coins: 0, paid: 0 };
+  // الظاهرةُ كلُّها ولو لم تُبع، والمخفيّةُ إن بيعت، وباقةٌ حُذفت بعد بيعها سطرٌ وحده.
+  const packRows = [
+    ...packs
+      .filter((pack) => !pack.hidden || salesNow.byPack.has(pack.id) || salesBefore.byPack.has(pack.id))
+      .map((pack) => ({
+        key: pack.id,
+        name: pack.name,
+        coins: pack.coins,
+        now: salesNow.byPack.get(pack.id) ?? EMPTY,
+        before: salesBefore.byPack.get(pack.id) ?? EMPTY,
+      })),
+    ...(salesNow.byPack.has(null) || salesBefore.byPack.has(null)
+      ? [{
+          key: "gone",
+          name: "باقة محذوفة",
+          coins: 0,
+          now: salesNow.byPack.get(null) ?? EMPTY,
+          before: salesBefore.byPack.get(null) ?? EMPTY,
+        }]
+      : []),
+  ];
+
   return (
     <div className="flex flex-col gap-5">
+      <p className="text-[12px] text-muted">
+        هذا الأسبوع من السبت {dayMonth(weekDay)} حتى الآن، ويُقارن بالفترة نفسها من الأسبوع الماضي.
+      </p>
+
       <section>
         <h2 className="mb-2.5 text-[15px] font-bold">المستخدمون</h2>
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-          <Tile label="كل المستخدمين" value={ar(total)} hint={`+${ar(newWeek)} آخر ٧ أيام`}>
+          <Tile label="كل المستخدمين" value={ar(total)} hint={`${pct(plus, total)} منهم مشتركون في آثار+`} />
+          <Tile label="مستخدمون جدد هذا الأسبوع" value={ar(newWeek)} hint={`${ar(newLastWeek)} في الفترة نفسها الماضية`}>
             <Delta now={newWeek} before={newLastWeek} />
           </Tile>
-          <Tile label="نشطون آخر ٧ أيام" value={ar(wau)} hint={`${pct(wau, total)} من الكل`}>
-            <Delta now={wau} before={weeks[6]?.value ?? 0} />
+          <Tile label="نشطون هذا الأسبوع" value={ar(wau)} hint={`${pct(wau, total)} من الكل`}>
+            <Delta now={wau} before={wauBefore[0]?.n ?? 0} />
           </Tile>
           <Tile label="نشطون آخر ٢٤ ساعة" value={ar(dau)} hint={`${pct(dau, total)} من الكل`} />
           <Tile label="نشطون آخر ٣٠ يوماً" value={ar(mau)} hint={`${pct(mau, total)} من الكل`} />
@@ -228,7 +311,6 @@ export async function AnalyticsSection() {
             value={pct(cohortBack, cohort)}
             hint={`${ar(cohortBack)} من ${ar(cohort)} سجّلوا الأسبوع الماضي وظهروا هذا الأسبوع`}
           />
-          <Tile label="مشتركو آثار+" value={ar(plus)} hint={`${pct(plus, total)} من الكل`} />
           <Tile
             label="من أين نشطوا هذا الأسبوع"
             value={`${ar(source("app"))} تطبيق`}
@@ -237,12 +319,69 @@ export async function AnalyticsSection() {
         </div>
       </section>
 
+      <section>
+        <h2 className="mb-2.5 text-[15px] font-bold">شراء النقاط هذا الأسبوع</h2>
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          <Tile label="عمليات الشراء" value={ar(salesNow.sum.count)}>
+            <Delta now={salesNow.sum.count} before={salesBefore.sum.count} />
+          </Tile>
+          <Tile label="المشترون" value={ar(buyers.length)} hint="كلُّ حسابٍ مرّةً مهما اشترى" />
+          <Tile label="النقاط المُشتراة" value={ar(salesNow.sum.coins)} />
+          <Tile label="المدفوع" value={riyals(salesNow.sum.paid)} hint="قبل حصّة آبل">
+            <Delta now={salesNow.sum.paid} before={salesBefore.sum.paid} />
+          </Tile>
+        </div>
+        <figure className="mt-3 overflow-x-auto rounded-2xl border border-line bg-card px-4 py-3.5">
+          <figcaption className="mb-2 text-[13px] font-bold">حسب الباقة</figcaption>
+          <table className="w-full min-w-[420px] text-[12.5px]">
+            <thead>
+              <tr className="text-[11px] text-muted">
+                <th className="py-1 text-start font-normal">الباقة</th>
+                <th className="py-1 text-start font-normal">العمليات</th>
+                <th className="py-1 text-start font-normal">النقاط</th>
+                <th className="py-1 text-start font-normal">المدفوع</th>
+                <th className="py-1 text-start font-normal">الماضي</th>
+              </tr>
+            </thead>
+            <tbody>
+              {packRows.map((row) => (
+                <tr key={row.key} className="border-t border-line">
+                  <td className="py-1.5">
+                    {row.name}
+                    {/* «٥٠٠ نقطة · ٥٠٠ نقطة» حين يكون العددُ في الاسم نفسه. */}
+                    {row.coins && !row.name.includes(ar(row.coins)) && !row.name.includes(String(row.coins)) ? (
+                      <span className="text-muted"> · {ar(row.coins)} نقطة</span>
+                    ) : null}
+                  </td>
+                  <td className="py-1.5 font-bold">{ar(row.now.count)}</td>
+                  <td className="py-1.5">{ar(row.now.coins)}</td>
+                  <td className="py-1.5">{riyals(row.now.paid)}</td>
+                  <td className="py-1.5 text-muted">{ar(row.before.count)}</td>
+                </tr>
+              ))}
+              {packRows.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-2 text-muted">لا باقات بعد.</td>
+                </tr>
+              ) : null}
+              <tr className="border-t border-line font-bold">
+                <td className="py-1.5">المجموع</td>
+                <td className="py-1.5">{ar(salesNow.sum.count)}</td>
+                <td className="py-1.5">{ar(salesNow.sum.coins)}</td>
+                <td className="py-1.5">{riyals(salesNow.sum.paid)}</td>
+                <td className="py-1.5 font-normal text-muted">{ar(salesBefore.sum.count)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </figure>
+      </section>
+
       <section className="grid gap-3 lg:grid-cols-2">
         <Bars title="النشطون يومياً — آخر ٣٠ يوماً" rows={series(daily)} unit="مستخدم" />
         <Bars title="التسجيلات يومياً — آخر ٣٠ يوماً" rows={series(signups)} unit="تسجيل" />
-        <Bars title="النشطون أسبوعياً — آخر ٨ أسابيع" rows={weeks} unit="مستخدم" every={1} peak="أسبوع" />
+        <Bars title="النشطون أسبوعياً (من السبت) — آخر ٨ أسابيع" rows={weeks} unit="مستخدم" every={1} peak="أسبوع" />
         <figure className="rounded-2xl border border-line bg-card px-4 py-3.5">
-          <figcaption className="mb-2 text-[13px] font-bold">النشاط آخر ٧ أيام</figcaption>
+          <figcaption className="mb-2 text-[13px] font-bold">النشاط هذا الأسبوع</figcaption>
           <table className="w-full text-[12.5px]">
             <thead>
               <tr className="text-[11px] text-muted">
@@ -284,7 +423,8 @@ export async function AnalyticsSection() {
       <p className="text-[11px] leading-relaxed text-muted">
         «نشط» من فتح التطبيق أو الموقع وهو داخلٌ بحسابه. الأيّامُ بتوقيت الرياض. وما قبل
         بدء سجلّ الأيّام تقريبٌ من آثارٍ مؤكَّدة (الدخول والكتابة)، فأعمدتُه قد تكون أقصر
-        من الحقيقة.
+        من الحقيقة. والمدفوعُ بعملة الشراء قبل حصّة آبل، ويشمل مشتريات الاختبار (Sandbox)
+        ما دامت مفتوحةً على الخادم.
       </p>
     </div>
   );
