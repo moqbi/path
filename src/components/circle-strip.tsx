@@ -536,9 +536,9 @@ function NoteComposer({ groups, onClose }: { groups: Group[]; onClose: () => voi
   const [track, setTrack] = useState<Track | null>(null);
   // البدايةُ والنهايةُ بحرّيّة صاحبها، لا نافذةُ عشرين (القاعدة ٣٠٣).
   const [startAt, setStartAt] = useState(0);
-  const [endAt, setEndAt] = useState(NOTE_SECONDS);
-  // كاملةً افتراضاً، والقصُّ اختيارُ صاحبها (القاعدة ٢٧٧).
-  const [full, setFull] = useState(true);
+  const [endAt, setEndAt] = useState(PREVIEW_SECONDS);
+  // كاملةً افتراضاً، ومن أراد قصّ سحب طرفي الشريط — بلا زرٍّ يختار بينهما (القاعدة ٣٠٥).
+  const full = startAt === 0 && endAt === PREVIEW_SECONDS;
   const [groupId, setGroupId] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -560,8 +560,7 @@ function NoteComposer({ groups, onClose }: { groups: Group[]; onClose: () => voi
     if (!track) return;
     const said = await songPreview(track.id);
     if (!said.url) return setError(said.error ?? "تعذّر التشغيل");
-    if (full) clip.play(said.url, 0, PREVIEW_SECONDS);
-    else clip.play(said.url, from, to - from);
+    clip.play(said.url, from, to - from);
   }
 
   function publish() {
@@ -626,31 +625,25 @@ function NoteComposer({ groups, onClose }: { groups: Group[]; onClose: () => voi
         ) : null}
 
         {track ? (
-          <div className="flex gap-1 rounded-xl p-[3px]" style={{ background: "rgba(255,255,255,.1)" }}>
-            {([true, false] as const).map((value) => (
-              <button
-                key={String(value)}
-                type="button"
-                aria-pressed={full === value}
-                onClick={() => {
-                  clip.stop();
-                  setFull(value);
-                }}
-                className="h-8 grow rounded-[9px] text-[12.5px] font-extrabold"
-                style={full === value ? { background: "#F6B93B", color: "#14212b" } : undefined}
-              >
-                {value ? `كاملة ${ar(PREVIEW_SECONDS)} ث` : "قصّ مقطع"}
-              </button>
-            ))}
-          </div>
-        ) : null}
-
-        {track && full ? null : track ? (
           <div>
             <span className="mb-1.5 flex justify-between text-[11.5px] opacity-70">
               <span>
-                المقطع: من الثانية {ar(startAt)} إلى {ar(endAt)} — {ar(endAt - startAt)} ثانية
+                {full ? "الأغنية كاملة — اسحب الطرفين لتقصّ منها" : `المقطع: من الثانية ${ar(startAt)} إلى ${ar(endAt)} — ${ar(endAt - startAt)} ثانية`}
               </span>
+              {full ? null : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStartAt(0);
+                    setEndAt(PREVIEW_SECONDS);
+                    void listen(0, PREVIEW_SECONDS);
+                  }}
+                  className="font-extrabold"
+                  style={{ color: "#F6B93B" }}
+                >
+                  كاملة
+                </button>
+              )}
             </span>
             {/* مقبضان على شريطٍ واحد: البدايةُ والنهايةُ، وبينهما ثلاثُ ثوانٍ على الأقلّ. */}
             <div className="dual-range" dir="ltr">
@@ -704,7 +697,7 @@ function NoteComposer({ groups, onClose }: { groups: Group[]; onClose: () => voi
                     onClick={() => {
                       setTrack(row);
                       setStartAt(0);
-                      setEndAt(NOTE_SECONDS);
+                      setEndAt(PREVIEW_SECONDS);
                       setPicking(false);
                     }}
                     className="flex items-center gap-2.5 rounded-xl px-1.5 py-1.5 text-start hover:bg-white/10"
