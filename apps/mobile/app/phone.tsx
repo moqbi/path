@@ -12,6 +12,7 @@ import { useSession } from "../lib/session";
 import { contactsReady } from "../lib/contacts";
 import { openAddSheet } from "../components/add-sheet";
 import { usePhonePrompt } from "../lib/phone-prompt";
+import { confirmCode, phoneAuthReady, sendCode } from "../lib/phone-auth";
 import { brandGradient, colors } from "../theme/tokens";
 
 type Step = "number" | "code" | "done";
@@ -69,16 +70,16 @@ export default function PhoneScreen() {
   const send = () =>
     run(async () => {
       const e164 = normalizePhone(raw.startsWith("+") ? raw : `0${raw.replace(/^0+/, "")}`);
-      if (!e164) throw new Error("اكتب رقم جوال صحيح");
-      const res = await api<{ phone: string; already: boolean }>("/v1/me/phone", {
-        method: "POST",
-        body: JSON.stringify({ phone: e164 }),
-      });
-      setPhone(res.phone);
-      if (res.already) {
+      if (!e164 || !e164.startsWith("+966")) throw new Error("اكتب رقم جوال سعودي صحيح");
+      if (me?.phone === e164) {
+        setPhone(e164);
         setStep("done");
         return;
       }
+      if (!phoneAuthReady) throw new Error("هذي الميزة تحتاج تحديث التطبيق من المتجر");
+      // الرمزُ من Firebase إلى الجوال مباشرةً — خادمُنا لا يراه ولا يرسله.
+      await sendCode(e164);
+      setPhone(e164);
       setStep("code");
       setCode("");
       setWait(60);
@@ -87,7 +88,9 @@ export default function PhoneScreen() {
 
   const verify = (value = code) =>
     run(async () => {
-      await api("/v1/me/phone/verify", { method: "POST", body: JSON.stringify({ code: value }) });
+      const idToken = await confirmCode(value);
+      // الخادمُ يتحقّق من رمز الهويّة بمفاتيح Google بنفسه ويقرأ الرقمَ منه (القاعدة ١٢١).
+      await api("/v1/me/phone/firebase", { method: "POST", body: JSON.stringify({ idToken }) });
       await refresh();
       setStep("done");
     });

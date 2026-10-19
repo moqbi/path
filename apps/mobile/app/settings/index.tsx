@@ -16,6 +16,7 @@ import { keys } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { SITE_URL, hasSite, maskPhone } from "@athar/shared";
 import { DEV_FEATURES } from "../../lib/dev-features";
+import { phoneAuthReady } from "../../lib/phone-auth";
 import { ar } from "../../lib/format";
 import { brandGradient, colors } from "../../theme/tokens";
 import { FollowRow } from "../../components/social";
@@ -107,7 +108,7 @@ export default function Settings() {
           <ChangePassword hasPassword={me.hasPassword !== false} />
           <ChangeEmail current={me.email} hasPassword={me.hasPassword !== false} />
 
-          {DEV_FEATURES ? (
+          {DEV_FEATURES && (phoneAuthReady || me.phone) ? (
             <Link
               title="رقم الجوال"
               right={
