@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Animated, Easing, Pressable, Share, View } from "react-native";
+import { ActivityIndicator, Animated, Easing, Linking, Pressable, Share, View } from "react-native";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { useMutation } from "@tanstack/react-query";
@@ -15,7 +15,7 @@ import { BackIcon, PinIcon, SearchIcon, ShareIcon, UserPlusIcon } from "./icons"
 import { api } from "../lib/api";
 import { ar } from "../lib/format";
 import { useSession } from "../lib/session";
-import { BEACON_SERVICE, beacon } from "../lib/nearby-beacon";
+import { BEACON_SERVICE, beacon, bleState, type BleState } from "../lib/nearby-beacon";
 import { useAddFriend, type FoundPerson } from "../lib/add-friend";
 import { colors } from "../theme/tokens";
 
@@ -265,7 +265,8 @@ function Near({ row }: { row: (p: FoundPerson, alias?: boolean) => React.ReactNo
   const [state, setState] = useState<"asking" | "on" | "denied">("asking");
   const [geo, setGeo] = useState<FoundPerson[]>([]);
   const [ble, setBle] = useState<FoundPerson[]>([]);
-  const [bleOn, setBleOn] = useState(false);
+  const [ble$, setBle$] = useState<BleState>(beacon ? "asking" : "none");
+  const bleOn = ble$ === "on" || ble$ === "asking";
   const [rang, setRang] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -279,6 +280,12 @@ function Near({ row }: { row: (p: FoundPerson, alias?: boolean) => React.ReactNo
   useEffect(() => {
     let alive = true;
     void (async () => {
+      // إذنُ البلوتوث يُطلب أوّلاً وإذنُ الموقع بعد أن يُجاب: نافذتا نظامٍ معاً قد
+      // تبتلع آبل إحداهما، فلا يُرى سؤالُ البلوتوث أصلاً.
+      for (let i = 0; beacon && beacon.authorization() === "undetermined" && i < 100; i++) {
+        await new Promise((r) => setTimeout(r, 300));
+        if (!alive) return;
+      }
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (!alive) return;
       if (status !== "granted") {
@@ -319,7 +326,8 @@ function Near({ row }: { row: (p: FoundPerson, alias?: boolean) => React.ReactNo
     // المسحُ يبدأ قبل الرمز — فيُطلب إذنُ البلوتوث مع فتح الشاشة ولو تعثّر الخادم —
     // والبثُّ ينتظر رمزَه. وما لم يصل يُعاد بعد ربع دقيقة لا بعد خمس دقائق.
     native.start(BEACON_SERVICE, "");
-    setBleOn(native.authorization() !== "denied");
+    setBle$(bleState());
+    const watch = setInterval(() => setBle$(bleState()), 1000);
     let renew: ReturnType<typeof setTimeout> | null = null;
     const fresh = async () => {
       let ok = false;
@@ -335,7 +343,6 @@ function Near({ row }: { row: (p: FoundPerson, alias?: boolean) => React.ReactNo
     void fresh();
     const poll = setInterval(() => {
       const seen = native.seen();
-      setBleOn(native.authorization() !== "denied");
       if (!seen.length) {
         setBle([]);
         return;
@@ -351,6 +358,7 @@ function Near({ row }: { row: (p: FoundPerson, alias?: boolean) => React.ReactNo
       alive = false;
       if (renew) clearTimeout(renew);
       clearInterval(poll);
+      clearInterval(watch);
       native.stop();
     };
   }, []);
@@ -398,6 +406,11 @@ function Near({ row }: { row: (p: FoundPerson, alias?: boolean) => React.ReactNo
         })}
       </View>
 
+      <View style={{ flexDirection: "row", justifyContent: "center", gap: 8, marginBottom: 12 }}>
+        {ble$ !== "none" ? <Signal label="البلوتوث" state={ble$} /> : null}
+        <Signal label="الموقع" state={state === "on" ? "on" : state === "denied" ? "denied" : "asking"} />
+      </View>
+
       {state === "denied" && !bleOn ? (
         <Text style={{ color: "#FF9C84", fontSize: 12.5, textAlign: "center" }}>
           نحتاج إذن الموقع لنعرف من حولك — يُفعَّل من إعدادات الجهاز.
@@ -420,6 +433,31 @@ function Near({ row }: { row: (p: FoundPerson, alias?: boolean) => React.ReactNo
           : "موقعك لا يُرسل لأحد — يظهر معرّفك وصورتك لمن فتحها جنبك، ومن فعّل تنبيهها يوصله خبر بلا اسم."}
       </Text>
     </SheetScrollView>
+  );
+}
+
+type SignalState = "on" | "asking" | "off" | "denied";
+
+const SIGNAL: Record<SignalState, { text: string; dot: string }> = {
+  on: { text: "يعمل", dot: "#4CD08A" },
+  asking: { text: "بانتظار الإذن", dot: "#F6B93B" },
+  off: { text: "مطفأ في الجهاز", dot: "#FF9C84" },
+  denied: { text: "بلا إذن — افتح الإعدادات", dot: "#FF9C84" },
+};
+
+/** شارةُ مصدرٍ في الرادار: يعرف صاحبُها بماذا يُبحث عنه الآن، وما المرفوضُ يفتح الإعدادات. */
+function Signal({ label, state }: { label: string; state: SignalState }) {
+  const s = SIGNAL[state];
+  return (
+    <Pressable
+      disabled={state !== "denied"}
+      onPress={() => void Linking.openSettings()}
+      style={{ ...glassRow, flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 }}
+    >
+      <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: s.dot }} />
+      <Text style={{ color: "#fff", fontSize: 11.5, fontWeight: "700" }}>{label}</Text>
+      <Text style={{ color: "rgba(255,255,255,.65)", fontSize: 11.5 }}>{s.text}</Text>
+    </Pressable>
   );
 }
 
