@@ -4,9 +4,9 @@ import { currentUser } from "@/lib/auth";
 import { conversationsFor, KEEP_DAYS } from "@/lib/dm";
 import { Avatar, Empty, NameTag } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
-import { AthrHeaderMark } from "@/components/brand";
+import { AthrPageMark } from "@/components/brand";
 import { ClockIcon, SearchIcon, StarIcon } from "@/components/icons";
-import { ar, timeOfDay } from "@/lib/format";
+import { ar, relative, timeOfDay } from "@/lib/format";
 import { deleteConversation, markDelivered } from "@/app/actions";
 import { Ticks, receiptOf } from "@/components/receipt";
 import { groupsFor } from "@/lib/groups";
@@ -20,12 +20,6 @@ function preview(last: { kind: string; body: string; seconds: number | null }): 
   return last.body;
 }
 
-const FILTERS = [
-  { key: "", label: "الكل" },
-  { key: "unread", label: "غير مقروءة" },
-  { key: "online", label: "متصلون" },
-] as const;
-
 /**
  * المحادثات: العلامة في الرأس، ثم بحث، ثم مرشّحات، ثم الصفوف —
  * الاسم والوقت في سطر، وآخر رسالة تحته، وشارة تقول كم ينتظر.
@@ -34,136 +28,87 @@ const FILTERS = [
 export default async function MessagesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; f?: string }>;
+  searchParams: Promise<{ q?: string }>;
 }) {
   const user = await currentUser();
   if (!user) redirect("/login");
 
-  const { q, f } = await searchParams;
+  const { q } = await searchParams;
   const term = (q ?? "").trim();
-  const filter = FILTERS.some((item) => item.key === f) ? f! : "";
 
   // فتحُ الشاشة يعني أنّ ما وصلني قد وصل فعلاً: نكتب التسليم قبل القراءة.
   await markDelivered();
 
   const [conversations, groups] = await Promise.all([conversationsFor(user.id), groupsFor(user.id)]);
 
-  const online = (at: Date | null | undefined) =>
-    Boolean(at && Date.now() - at.getTime() < 3 * 60_000);
   const match = (name: string) => !term || name.includes(term);
 
-  const threads = conversations
-    .filter((row) => match(row.other.name))
-    .filter((row) =>
-      filter === "unread" ? row.unseen > 0 : filter === "online" ? online(row.other.lastSeenAt) : true,
-    );
-  const unreadTotal =
-    conversations.reduce((sum, row) => sum + row.unseen, 0) + groups.reduce((sum, row) => sum + row.unseen, 0);
+  const threads = conversations.filter((row) => match(row.other.name));
 
   // ثلاثةُ أقسامٍ كالجوّال (القاعدتان ٢٢٠ و٢٦٤): المفضّلةُ بترتيب تثبيتها، فالمجموعات، فالبقيّة.
   const pinned = threads
     .filter((row) => row.pinnedAt)
     .sort((a, b) => a.pinnedAt!.getTime() - b.pinnedAt!.getTime());
   const rest = threads.filter((row) => !row.pinnedAt);
-  const groupRows = groups
-    .filter((row) => match(row.name))
-    .filter((row) => (filter === "unread" ? row.unseen > 0 : filter === "online" ? false : true));
+  const groupRows = groups.filter((row) => match(row.name));
 
   return (
     <div className="screen">
       {/*
-        الرأس علامةٌ وبحث، بلا أيقونة «محادثة جديدة»: كانت تفتح الأصدقاء،
-        وهم تبويبٌ في الشريط تحت — وهذه الشاشة صارت محادثاتٍ فقط.
+        رأسٌ كالجوّال (القاعدة ٨٦): العلامةُ ثمّ اسمُ الشاشة، والبحثُ حقلٌ على
+        الورق تحته — بلا مرشّحات: الأقسامُ تطوي ما لا يُراد.
       */}
-      <header className="chrome px-4 pb-3 pt-4">
-        <div className="mb-3 flex items-center justify-between">
-          <AthrHeaderMark />
-        </div>
+      <header className="chrome flex items-center px-5 pb-3 pt-4">
+        <AthrPageMark label="المحادثات" />
+      </header>
 
+      <main className="scroll-area px-4 pt-3">
         <form
           action="/messages"
-          className="flex items-center gap-2 rounded-xl px-3"
-          style={{ background: "var(--color-chrome-2)", height: 40 }}
+          className="mb-2 flex items-center gap-2 rounded-2xl border border-line bg-card px-4"
+          style={{ height: 46 }}
         >
-          <span style={{ color: "var(--color-chrome-muted)" }}>
-            <SearchIcon size={17} />
+          <span className="text-muted">
+            <SearchIcon size={18} />
           </span>
           <input
             name="q"
             defaultValue={term}
             suppressHydrationWarning
-            placeholder="تحدّث مع… ابحث باسم صاحبك"
+            placeholder="ابحث باسم صديق"
             aria-label="ابحث"
-            className="min-w-0 grow bg-transparent text-[13px] outline-none"
-            style={{ color: "var(--color-chrome-ink)" }}
+            className="min-w-0 grow bg-transparent text-[14px] text-ink outline-none"
           />
         </form>
-      </header>
 
-      <div className="shrink-0 px-4 pb-1 pt-3">
-        <div className="no-bar flex gap-2 overflow-x-auto">
-          {FILTERS.map((item) => {
-            const on = filter === item.key;
-            const badge = item.key === "unread" && unreadTotal > 0 ? unreadTotal : 0;
-            return (
-              <Link
-                key={item.key || "all"}
-                href={item.key ? `/messages?f=${item.key}` : "/messages"}
-                className="flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-[12.5px] font-semibold"
-                style={{
-                  background: on ? "var(--color-clay)" : "var(--color-card)",
-                  color: on ? "var(--color-on-brand)" : "var(--color-ink-2)",
-                  border: `1px solid ${on ? "var(--color-clay)" : "var(--color-line)"}`,
-                }}
-              >
-                {item.label}
-                {badge > 0 ? (
-                  <span
-                    className="flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold"
-                    style={{
-                      background: on ? "var(--color-on-brand)" : "var(--color-clay)",
-                      color: on ? "var(--color-clay)" : "var(--color-on-brand)",
-                    }}
-                  >
-                    {ar(badge)}
-                  </span>
-                ) : null}
-              </Link>
-            );
-          })}
-        </div>
-      </div>
-
-      <main className="scroll-area px-4 pt-2">
         {threads.length === 0 && groupRows.length === 0 ? (
           <Empty
-            title={term || filter ? "ما فيه شيء هنا" : "ما عندك محادثات"}
-            hint={term || filter ? undefined : "افتح أصدقائك واضغط أيقونة الرسالة بجانب صاحبك."}
-            action={term || filter ? undefined : { href: "/circle", label: "افتح أصدقائي" }}
+            title={term ? "ما فيه شيء هنا" : "ما عندك محادثات"}
+            hint={term ? undefined : "افتح أصدقائك واضغط أيقونة الرسالة بجانب صاحبك."}
+            action={term ? undefined : { href: "/circle", label: "افتح أصدقائي" }}
           />
         ) : null}
 
         {pinned.length > 0 ? (
           <Section title="المفضّلة" count={pinned.length}>
-            {pinned.map((conversation, index) => (
-              <ConversationRow key={conversation.id} conversation={conversation} index={index} meId={user.id} />
+            {pinned.map((conversation) => (
+              <ConversationRow key={conversation.id} conversation={conversation} meId={user.id} />
             ))}
           </Section>
         ) : null}
 
         {groupRows.length > 0 ? (
           <Section title="المجموعات" count={groupRows.length}>
-            {groupRows.map((group, index) => (
+            {groupRows.map((group) => (
               <Link
                 key={group.id}
                 href={`/group/${group.id}`}
-                className="flex items-center gap-3 p-3"
-                style={{ background: "var(--color-card)", borderTop: index === 0 ? "none" : "1px solid var(--color-line)" }}
+                className="flex items-center gap-3 px-1 py-2.5"
               >
                 <GroupFace photoMediaId={group.photoMediaId} size={48} />
                 <span className="min-w-0 grow">
                   <span className="flex items-baseline gap-1.5">
-                    <span dir="auto" className="truncate text-[14.5px] font-bold">{group.name}</span>
+                    <span dir="auto" className="truncate text-[15px] font-bold text-ground-ink">{group.name}</span>
                     <span className="shrink-0 text-[11px] text-faint">{ar(group.members)} عضو</span>
                     <span className="grow" />
                     {group.last ? (
@@ -174,7 +119,7 @@ export default async function MessagesPage({
                     <span
                       className="min-w-0 grow truncate text-[12.5px]"
                       style={{
-                        color: group.unseen > 0 ? "var(--color-ink)" : "var(--color-muted)",
+                        color: group.unseen > 0 ? "var(--color-ground-ink)" : "var(--color-ground-muted)",
                         fontWeight: group.unseen > 0 ? 600 : 400,
                       }}
                     >
@@ -200,9 +145,9 @@ export default async function MessagesPage({
         ) : null}
 
         {rest.length > 0 ? (
-          <Section title="المحادثات" count={rest.length} header={pinned.length > 0 || groupRows.length > 0}>
-            {rest.map((conversation, index) => (
-              <ConversationRow key={conversation.id} conversation={conversation} index={index} meId={user.id} />
+          <Section title="المحادثات" count={rest.length}>
+            {rest.map((conversation) => (
+              <ConversationRow key={conversation.id} conversation={conversation} meId={user.id} />
             ))}
           </Section>
         ) : null}
@@ -221,35 +166,24 @@ export default async function MessagesPage({
 }
 
 /** قسمٌ يُطوى ويُفتح — كقسمَي الأصدقاء (القاعدة ١٦١)، و`details` يحفظ حالته بلا جافاسكربت. */
-function Section({
-  title,
-  count,
-  header = true,
-  children,
-}: {
-  title: string;
-  count: number;
-  header?: boolean;
-  children: React.ReactNode;
-}) {
-  if (!header) return <div className="mb-4 overflow-hidden rounded-2xl border border-line bg-card">{children}</div>;
+function Section({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
   return (
-    <details open className="group mb-4">
-      <summary className="mb-2 flex cursor-pointer list-none items-center gap-2 text-[11.5px] font-semibold tracking-wide text-ground-faint [&::-webkit-details-marker]:hidden">
-        <span className="grow">
+    <details open className="group mb-3">
+      <summary className="flex cursor-pointer list-none items-center gap-2 py-3 [&::-webkit-details-marker]:hidden">
+        <span className="grow text-[15px] font-bold text-ground-ink">
           {title} ({ar(count)})
         </span>
-        <span className="text-[12px] text-ground-muted group-open:hidden">إظهار</span>
-        <span className="hidden text-[12px] text-ground-muted group-open:inline">إخفاء</span>
+        <span className="text-[12.5px] font-semibold text-ground-ink-2 group-open:hidden">إظهار</span>
+        <span className="hidden text-[12.5px] font-semibold text-ground-ink-2 group-open:inline">إخفاء</span>
       </summary>
-      <div className="overflow-hidden rounded-2xl border border-line bg-card">{children}</div>
+      <div>{children}</div>
     </details>
   );
 }
 
 type Row = Awaited<ReturnType<typeof conversationsFor>>[number];
 
-function ConversationRow({ conversation, index, meId }: { conversation: Row; index: number; meId: string }) {
+function ConversationRow({ conversation, meId }: { conversation: Row; meId: string }) {
   const online = Boolean(conversation.other.lastSeenAt && Date.now() - conversation.other.lastSeenAt.getTime() < 3 * 60_000);
   return (
     <PinRow
@@ -259,8 +193,7 @@ function ConversationRow({ conversation, index, meId }: { conversation: Row; ind
     >
       <Link
         href={`/messages/${conversation.id}`}
-        className="flex items-center gap-3 p-3"
-        style={{ background: "var(--color-card)", borderTop: index === 0 ? "none" : "1px solid var(--color-line)" }}
+        className="flex items-center gap-3 px-1 py-2.5"
       >
         <span className="relative shrink-0">
           <Avatar
@@ -280,44 +213,40 @@ function ConversationRow({ conversation, index, meId }: { conversation: Row; ind
 
         <span className="min-w-0 grow">
           <span className="flex items-baseline gap-1.5">
-            <span dir="auto" className="truncate text-[14.5px] font-bold">{conversation.other.name}</span>
+            <span dir="auto" className="truncate text-[15px] font-bold text-ground-ink">{conversation.other.name}</span>
             <NameTag isPlus={conversation.other.isPlus} tag={conversation.other.tag} size={10} />
             {conversation.pinnedAt ? (
               <span className="shrink-0 text-clay-ink" aria-label="مفضّلة">
                 <StarIcon size={12} />
               </span>
             ) : null}
-            <span className="grow" />
             {conversation.last ? (
-              <span className="flex shrink-0 items-center gap-1 text-[10.5px] text-faint">
-                {conversation.last.senderId === meId ? <Ticks state={receiptOf(conversation.last)} size={14} /> : null}
-                {timeOfDay(conversation.last.createdAt)}
-              </span>
+              <span className="shrink-0 text-[11px] text-ground-muted">{relative(conversation.last.createdAt)}</span>
             ) : null}
           </span>
 
-          <span className="mt-0.5 flex items-center gap-2">
+          <span className="mt-0.5 flex items-center gap-1.5">
+            {conversation.last?.senderId === meId ? <Ticks state={receiptOf(conversation.last)} size={14} /> : null}
             <span
-              className="min-w-0 grow truncate text-[12.5px]"
+              className="min-w-0 grow truncate text-[13px]"
               style={{
-                color: conversation.unseen > 0 ? "var(--color-ink)" : "var(--color-muted)",
+                color: conversation.unseen > 0 ? "var(--color-ground-ink)" : "var(--color-ground-muted)",
                 fontWeight: conversation.unseen > 0 ? 600 : 400,
               }}
             >
-              {conversation.last
-                ? `${conversation.last.senderId === meId ? "أنت: " : ""}${preview(conversation.last)}`
-                : "ابدأ الحديث"}
+              {conversation.last ? preview(conversation.last) : "ابدأ الحديث"}
             </span>
-            {conversation.unseen > 0 ? (
-              <span
-                className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1 text-[10.5px] font-bold"
-                style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
-              >
-                {ar(conversation.unseen)}
-              </span>
-            ) : null}
           </span>
         </span>
+
+        {conversation.unseen > 0 ? (
+          <span
+            className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1 text-[10.5px] font-bold"
+            style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+          >
+            {ar(conversation.unseen)}
+          </span>
+        ) : null}
       </Link>
     </PinRow>
   );

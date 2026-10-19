@@ -1,3 +1,4 @@
+import { BackButton } from "@/components/nav";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
@@ -52,7 +53,11 @@ export default async function NotificationsPage({
     <div className="screen">
       {/* الإعدادات تُفتح من تبويب «أنا»، فلا ترس هنا. */}
       <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
-        <AthrPageMark label="الإشعارات" />
+        {/* تُفتح من الجرس في رأس اللحظات لا من تبويب (القاعدة ٢٦١)، فلها رجوع. */}
+        <div className="flex min-w-0 items-center gap-1">
+          <BackButton href="/" />
+          <AthrPageMark label="الإشعارات" />
+        </div>
         {all.length > 0 ? <ClearNotes /> : null}
       </header>
 

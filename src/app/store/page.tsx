@@ -4,12 +4,23 @@ import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { TabBar } from "@/components/tab-bar";
 import { AthrPageMark } from "@/components/brand";
-import { FlameIcon, InfoIcon, SparkIcon } from "@/components/icons";
+import { FlameIcon, InfoIcon, PlusIcon, SparkIcon } from "@/components/icons";
 import { StoreGrid, type Item } from "./grid";
 import { coinText } from "@/lib/format";
 
-/** كم صنفاً يظهر في صفّ «وصل حديثاً» — صفٌّ واحد من ثلاثة. */
-const FRESH = 3;
+/** كم صنفاً يظهر في صفّ «وصل حديثاً». */
+const FRESH = 10;
+/** صفٌّ يُمرَّر بعشرةٍ ثمّ «عرض الكل» — كالجوّال (القاعدة ٢٦٦). */
+const STRIP_MAX = 10;
+
+/** شرائحُ الأنواع بعد «المميز» — كالجوّال (القاعدة ٤٤د). */
+const KINDS = [
+  { key: "charms", label: "التشارمز", kinds: ["CHARM"] },
+  { key: "frames", label: "الإطارات", kinds: ["FRAME"] },
+  { key: "themes", label: "الثيمات", kinds: ["THEME", "BACKGROUND"] },
+] as const;
+/** تصنيفٌ باسم نوعٍ لا يُرسم شريحةً ثانية (القاعدة ١٦٥) — والاسمُ القديم معه (القاعدة ٢٧١). */
+const KIND_NAMES = new Set(["التشارمز", "التمائم", "الإطارات", "الثيمات"]);
 
 /**
  * المتجر: شريط تصنيفات، ثم صفوف.
@@ -21,14 +32,14 @@ const FRESH = 3;
 export default async function StorePage({
   searchParams,
 }: {
-  searchParams: Promise<{ c?: string }>;
+  searchParams: Promise<{ c?: string; k?: string; all?: string }>;
 }) {
   const user = await currentUser();
   if (!user) redirect("/login");
 
-  const { c } = await searchParams;
+  const { c, k, all: expanded } = await searchParams;
 
-  const [categories, every, purchases, bundled] = await Promise.all([
+  const [categories, every, purchases, bundled, collections] = await Promise.all([
     prisma.storeCategory.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),
     // والمخفيّ لا يُعرض: بابُ الموسميّ — يُرفع ويُنزل بلا حذفٍ يُضيع
     // ما اشتراه أحد (`hidden`).
@@ -45,13 +56,16 @@ export default async function StorePage({
     }),
     prisma.purchase.findMany({ where: { userId: user.id, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, select: { itemId: true } }),
     prisma.bundleItem.findMany({ select: { itemId: true }, distinct: ["itemId"] }),
+    prisma.storeCollection.findMany({ orderBy: { sortOrder: "asc" }, select: { id: true, name: true, kind: true } }),
   ]);
 
   // ما في حزمةٍ يُباع فيها وحدها — **بقرار المالك**، كالخادم (`storefront`).
   const inBundle = new Set(bundled.map((row) => row.itemId));
   const all = every.filter((item) => !inBundle.has(item.id));
 
-  const category = categories.find((row) => row.slug === c) ?? null;
+  const kind = KINDS.find((row) => row.key === k) ?? null;
+  const category = kind ? null : (categories.find((row) => row.slug === c) ?? null);
+  const chips = categories.filter((row) => !KIND_NAMES.has(row.name.trim()));
   const owned = purchases.map((row) => row.itemId);
   const daysHere = Math.floor((Date.now() - user.createdAt.getTime()) / 86_400_000);
 
@@ -69,8 +83,9 @@ export default async function StorePage({
     holds: item.holds.map((row) => row.item),
   });
 
-  const grid = (items: typeof every) => (
+  const grid = (items: typeof every, row = false) => (
     <StoreGrid
+      row={row}
       items={items.map(shape)}
       owned={owned}
       isPlus={user.isPlus}
@@ -84,14 +99,52 @@ export default async function StorePage({
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .slice(0, FRESH);
   // الحزم المحدودة لها صفّها تحت، فلا تُعاد هنا.
-  const themes = all.filter(
-    (item) => (item.kind === "THEME" || item.kind === "BACKGROUND") && !item.limited,
-  );
+  const ofKind = (kinds: readonly string[]) => all.filter((item) => kinds.includes(item.kind) && !item.limited);
+  const charms = ofKind(["CHARM"]);
+  const frames = ofKind(["FRAME"]);
+  const themes = ofKind(["THEME", "BACKGROUND"]);
   // والحزمةُ بمدّة عرضٍ محدودةٌ بطبعها (القاعدة ٢٨٤).
   const timed = (item: (typeof all)[number]) => item.kind === "BUNDLE" && item.hideAt !== null;
   const limited = all.filter((item) => item.limited || timed(item));
   // والحزم صفٌّ بنفسها: ما جُمع في باقةٍ واحدة لا يُقرأ بين الأصناف المفردة.
   const bundles = all.filter((item) => item.kind === "BUNDLE" && !item.limited && !timed(item));
+
+  // رابطُ «عرض الكل» لقسمٍ بعينه: يُبقي الشريحةَ المفتوحة ويُعيد القسمَ شبكة.
+  const base = kind ? `/store?k=${kind.key}` : "/store";
+  const strip = (key: string, title: string, items: typeof every, flame = false) =>
+    items.length === 0 ? null : (
+      <Row
+        key={key}
+        title={title}
+        flame={flame}
+        more={
+          items.length > STRIP_MAX
+            ? expanded === key
+              ? { href: base, label: "عرض أقل" }
+              : { href: `${base}${base.includes("?") ? "&" : "?"}all=${key}`, label: "عرض الكل" }
+            : null
+        }
+      >
+        {expanded === key ? grid(items) : grid(items.slice(0, STRIP_MAX), true)}
+      </Row>
+    );
+
+  // أقسامُ النوع بمجموعاته ثمّ «… الأخرى» (القاعدة ٤٤د)، والمختلطةُ في كلّ نوعٍ فيها (١٩٧).
+  const kindSections = (() => {
+    if (!kind) return null;
+    const items = all.filter((item) => (kind.kinds as readonly string[]).includes(item.kind));
+    const sections = collections
+      .filter((one) => !one.kind || (kind.kinds as readonly string[]).includes(one.kind))
+      .map((one) => strip(one.id, one.name, items.filter((item) => item.collectionId === one.id)));
+    const rest = items.filter((item) => !item.collectionId || !collections.some((one) => one.id === item.collectionId));
+    return (
+      <>
+        {sections}
+        {rest.length > 0 ? strip("rest", `${kind.label} الأخرى`, rest) : null}
+        {items.length === 0 ? grid([]) : null}
+      </>
+    );
+  })();
 
   return (
     <div className="screen">
@@ -112,18 +165,24 @@ export default async function StorePage({
           <span className="text-[12.5px] font-semibold text-gold">
             رصيدك {coinText(user.coins)}
           </span>
+          {/* «+» يقول إنّ اللافتة بابُ الشحن — كالجوّال (القاعدة ٧٣ج). */}
+          <PlusIcon size={14} className="text-gold" />
         </Link>
       </header>
 
-      {/* شريط التصنيفات: «المميز» أولاً، ثم ما يضيفه المشرف. */}
+      {/* الشرائح: «المميز»، فالأنواع، فما يضيفه المشرف — كالجوّال (القاعدة ٤٤د). */}
       <div className="shrink-0 px-5 pb-1 pt-3">
         <div className="no-bar flex gap-2 overflow-x-auto">
-          {[{ slug: "", name: "المميز" }, ...categories].map((chip) => {
-            const on = (category?.slug ?? "") === chip.slug;
+          {[
+            { slug: "", name: "المميز", href: "/store", on: !kind && !category },
+            ...KINDS.map((row) => ({ slug: `k-${row.key}`, name: row.label, href: `/store?k=${row.key}`, on: kind?.key === row.key })),
+            ...chips.map((row) => ({ slug: row.slug, name: row.name, href: `/store?c=${row.slug}`, on: category?.slug === row.slug })),
+          ].map((chip) => {
+            const on = chip.on;
             return (
               <Link
                 key={chip.slug || "featured"}
-                href={chip.slug ? `/store?c=${chip.slug}` : "/store"}
+                href={chip.href}
                 className="shrink-0 rounded-full px-4 py-2 text-[12.5px] font-semibold"
                 style={{
                   background: on ? "var(--color-clay)" : "var(--color-card)",
@@ -141,17 +200,17 @@ export default async function StorePage({
       <main className="scroll-area px-5 pt-4">
         {category ? (
           grid(all.filter((item) => item.categoryId === category.id))
+        ) : kind ? (
+          kindSections
         ) : (
           <>
-            <Row title="وصل حديثاً" flame>
-              {grid(fresh)}
-            </Row>
-
-            {themes.length > 0 ? <Row title="ثيمات آثار">{grid(themes)}</Row> : null}
-
-            {bundles.length > 0 ? <Row title="الحزم">{grid(bundles)}</Row> : null}
-
-            {limited.length > 0 ? <Row title="حزم محدودة">{grid(limited)}</Row> : null}
+            {/* ترتيبُ «المميز» (القاعدة ٤٤د): وصل حديثاً، فالتشارمز، فالإطارات، فالثيمات، فالمحدود. */}
+            {strip("fresh", "وصل حديثاً", fresh, true)}
+            {strip("charms", "التشارمز", charms)}
+            {strip("frames", "الإطارات", frames)}
+            {strip("themes", "ثيمات آثار", themes)}
+            {strip("bundles", "الحزم", bundles)}
+            {strip("limited", "حزم محدودة", limited)}
           </>
         )}
 
@@ -188,22 +247,32 @@ export default async function StorePage({
 function Row({
   title,
   flame = false,
+  more = null,
   children,
 }: {
   title: string;
   flame?: boolean;
+  /** «عرض الكل» أو «عرض أقل» في رأس القسم (القاعدة ٢٦٦). */
+  more?: { href: string; label: string } | null;
   children: React.ReactNode;
 }) {
   return (
     <section>
-      <h2 className="mb-2.5 flex items-center gap-1.5 text-[14px] font-bold">
-        {flame ? (
-          <span style={{ color: "var(--color-live)" }}>
-            <FlameIcon size={16} />
-          </span>
+      <div className="mb-1 flex items-center gap-1.5">
+        <h2 className="flex grow items-center gap-1.5 text-[16px] font-bold text-ground-ink">
+          {flame ? (
+            <span style={{ color: "var(--color-live)" }}>
+              <FlameIcon size={16} />
+            </span>
+          ) : null}
+          {title}
+        </h2>
+        {more ? (
+          <Link href={more.href} scroll={false} className="shrink-0 text-[12.5px] font-semibold text-clay-ink">
+            {more.label}
+          </Link>
         ) : null}
-        {title}
-      </h2>
+      </div>
       {children}
     </section>
   );

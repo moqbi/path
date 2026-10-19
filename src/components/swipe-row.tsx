@@ -20,6 +20,7 @@ export function SwipeRow({
   secondIcon,
   icons = false,
   surface = "var(--color-ground)",
+  extra = [],
   children,
 }: {
   onDelete: () => void | Promise<void>;
@@ -37,6 +38,11 @@ export function SwipeRow({
   icons?: boolean | "trash" | "flag" | "shield";
   /** لونُ ما يُزاح — الورقُ في القوائم، والبطاقةُ في التعليقات. */
   surface?: string;
+  /**
+   * أفعالٌ قبل الاثنين — المحادثةُ والتصنيفُ في صفّ الصديق كالجوّال (القاعدة
+   * ٢٦٨). أيقونةٌ لكلٍّ، والكلمةُ اسمُ الزرّ.
+   */
+  extra?: { label: string; icon: React.ReactNode; run: () => void | Promise<void>; color?: string }[];
   children: React.ReactNode;
 }) {
   const [offset, setOffset] = useState(0);
@@ -47,7 +53,7 @@ export function SwipeRow({
 
   const second = onSecond && secondLabel ? { run: onSecond, label: secondLabel } : null;
   const width = icons ? 64 : REVEAL;
-  const reveal = second ? width * 2 : width;
+  const reveal = (second ? width * 2 : width) + extra.length * width;
 
   function fire(run: () => void | Promise<void>) {
     setOpen(false);
@@ -58,6 +64,19 @@ export function SwipeRow({
   return (
     <div className="relative overflow-hidden" style={{ touchAction: "pan-y" }}>
       <div className="absolute inset-y-0 left-0 flex" style={{ width: reveal }}>
+        {extra.map((action) => (
+          <button
+            key={action.label}
+            type="button"
+            disabled={pending}
+            onClick={() => fire(action.run)}
+            aria-label={action.label}
+            className="flex grow items-center justify-center px-2 disabled:opacity-60"
+            style={{ background: action.color ?? "var(--color-clay)", color: "#fff" }}
+          >
+            {action.icon}
+          </button>
+        ))}
         {second ? (
           <button
             type="button"

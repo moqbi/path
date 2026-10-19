@@ -64,19 +64,20 @@ export function ProfileShell({
       <div className="shrink-0">
         {cover}
 
-        <div className="relative px-5" style={{ marginTop: -62 }}>
-          <div
-            className="mb-2 flex justify-center"
-            style={{
-              transform: `scale(${0.7 + shrink * 0.3})`,
-              transformOrigin: "center top",
-              marginBottom: 8 - progress * 14,
-            }}
-          >
-            {avatar}
+        {/*
+          هيئةُ `ProfileHead` في الجوّال (القاعدة ٢٣٣): الصورةُ في طرف البداية تعبر
+          حافّة الغلاف، والاسمُ ووسمُه بجانبها تحت الحافّة، وما بعدهما من الطرف نفسه.
+        */}
+        <div className="relative px-5" style={{ marginTop: -52 }}>
+          <div className="flex items-end gap-3" style={{ marginBottom: 6 - progress * 10 }}>
+            <div
+              className="shrink-0"
+              style={{ transform: `scale(${0.7 + shrink * 0.3})`, transformOrigin: "right bottom" }}
+            >
+              {avatar}
+            </div>
+            <div className="min-w-0 grow pb-3">{identity}</div>
           </div>
-
-          {identity}
 
           <div
             ref={foldRef}
@@ -98,7 +99,6 @@ export function ProfileShell({
       <main
         ref={scroll}
         className="scroll-area relative px-5 pt-4"
-        style={{ borderTop: "1px solid var(--color-line)" }}
       >
         {children}
       </main>

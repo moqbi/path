@@ -5,38 +5,19 @@ import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { CIRCLE_CAP, circleIds } from "@/lib/circle";
 import { storyRings } from "@/lib/stories";
-import {
-  acceptFriend,
-  ignoreFriend,
-  blockUser,
-  removeFriend,
-  setFriendGroup,
-  startConversation,
-} from "@/app/actions";
-import { SwipeRow } from "@/components/swipe-row";
+import { acceptFriend, ignoreFriend } from "@/app/actions";
+import { AddFriendButton, FriendRow } from "@/components/friend-row";
 import { CircleStrip } from "@/components/circle-strip";
 import { listNotes } from "@/lib/notes";
 import { Avatar, Empty, NameTag } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
-import { CheckIcon, CloseIcon, MessageIcon } from "@/components/icons";
+import { CheckIcon, CloseIcon } from "@/components/icons";
 import { AthrPageMark } from "@/components/brand";
 import { ar, presence, relative } from "@/lib/format";
 
-const TABS = [
-  { key: "friends", label: "أصدقائي" },
-  { key: "groups", label: "تصنيفاتي" },
-] as const;
-
-export default async function CirclePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ t?: string; g?: string }>;
-}) {
+export default async function CirclePage() {
   const user = await currentUser();
   if (!user) redirect("/login");
-
-  const { t, g } = await searchParams;
-  const tab = TABS.some((item) => item.key === t) ? t! : "friends";
 
   const [ids, requests, groups, rings, notes] = await Promise.all([
     circleIds(user.id),
@@ -92,73 +73,95 @@ export default async function CirclePage({
     for (const member of group.members) groupOf.set(member.userId, { id: group.id, name: group.name });
   }
 
-  const active = groups.find((group) => group.id === g) ?? null;
-  const shown = active ? members.filter((m) => groupOf.get(m.id)?.id === active.id) : members;
-
-  // المتصلون أولاً — من يمكن أن يردّ الآن يستحق أن يُرى أولاً.
+  // المتصلون أوّلاً — من يمكن أن يردّ الآن يستحقّ أن يُرى أوّلاً.
   const online = (member: (typeof members)[number]) =>
-    member.lastSeenAt && Date.now() - member.lastSeenAt.getTime() < 3 * 60_000;
-  const ordered = [...shown].sort((a, b) => {
-    const diff = Number(online(b)) - Number(online(a));
-    return diff !== 0 ? diff : a.name.localeCompare(b.name, "ar");
-  });
+    Boolean(member.lastSeenAt && Date.now() - member.lastSeenAt.getTime() < 3 * 60_000);
+  const byName = (a: (typeof members)[number], b: (typeof members)[number]) => a.name.localeCompare(b.name, "ar");
+  const live = members.filter(online).sort(byName);
+  const away = members.filter((member) => !online(member)).sort(byName);
+  const options = groups.map((group) => ({ id: group.id, name: group.name }));
+
+  // سطرُ الصديق: «المدينة | آخر ظهور» كالجوّال (القاعدة ٣١).
+  const row = (member: (typeof members)[number]) => {
+    const seen = presence(member.lastSeenAt) || "ما فتح التطبيق بعد";
+    return (
+      <FriendRow key={member.id} id={member.id} name={member.name} group={groupOf.get(member.id) ?? null} groups={options}>
+        <span className="relative shrink-0">
+          <Avatar
+            name={member.name}
+            size={46}
+            frame={member.frame}
+            charm={member.charm}
+            mediaId={member.avatarMediaId}
+          />
+          {online(member) ? (
+            <span
+              className="absolute bottom-0 left-0 block h-3 w-3 rounded-full"
+              style={{ background: "#3fbf6a", border: "2px solid var(--color-card)" }}
+            />
+          ) : null}
+        </span>
+        <span className="min-w-0 grow">
+          <span className="mb-0.5 flex items-center gap-1.5 text-[15px] font-bold text-ink">
+            <span dir="auto" className="truncate">{member.name}</span>
+            <NameTag isPlus={member.isPlus} tag={member.tag} size={10} />
+            {groupOf.get(member.id) ? (
+              <span
+                className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                style={{ background: "var(--color-chip)", color: "var(--color-muted)" }}
+              >
+                {groupOf.get(member.id)!.name}
+              </span>
+            ) : null}
+          </span>
+          <span
+            className="block truncate text-[12px]"
+            style={{ color: online(member) ? "#2f9e58" : "var(--color-faint)" }}
+          >
+            {member.city ? `${member.city}  |  ${seen}` : seen}
+          </span>
+        </span>
+      </FriendRow>
+    );
+  };
 
   return (
     <div className="screen">
-      {/* لا زرّ زائد في الرأس: كان يفتح «مقترحون» وهو تبويبٌ ظاهرٌ تحته. */}
-      <header className="chrome flex items-center px-5 pb-3 pt-4">
+      {/* رأسُ الجوّال (القاعدة ٢٦٨): ما بقي من السقف وزرُّ الإضافة. */}
+      <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
         <AthrPageMark label="الأصدقاء" />
+        <div className="flex items-center gap-2.5">
+          <span className="text-[12px]" style={{ color: "var(--color-chrome-muted)" }}>
+            بقي {ar(Math.max(0, CIRCLE_CAP - ids.length))}
+          </span>
+          <AddFriendButton name={user.name} memberNo={user.memberNo} />
+        </div>
       </header>
 
-      {/* شريط القصص: قصتك أولاً ثم من عندهم جديد. */}
-      <div className="shrink-0" style={{ borderBottom: "1px solid var(--color-line)" }}>
-        <CircleStrip
-          rings={rings}
-          notes={notes}
-          me={{ id: user.id, name: user.name, avatarMediaId: user.avatarMediaId }}
-          groups={groups.map((group) => ({ id: group.id, name: group.name }))}
-        />
-      </div>
-
-      <div className="shrink-0 px-5 pb-1 pt-3">
-        <div className="no-bar flex gap-2 overflow-x-auto">
-          {TABS.map((item) => {
-            const on = tab === item.key;
-            return (
-              <Link
-                key={item.key}
-                href={`/circle?t=${item.key}`}
-                className="shrink-0 rounded-full px-4 py-2 text-[12.5px] font-semibold"
-                style={{
-                  background: on ? "var(--color-clay)" : "var(--color-card)",
-                  color: on ? "var(--color-on-brand)" : "var(--color-ink-2)",
-                  border: `1px solid ${on ? "var(--color-clay)" : "var(--color-line)"}`,
-                }}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
+      {/*
+        قائمةٌ واحدة — **بقرار المالك**، كالجوّال: القصصُ والنوت في أعلاها، ثمّ
+        الطلبات، ثمّ الأصدقاء متصلاً وغيرَ متصل بقسمين يُطويان. والتصنيفُ فعلٌ
+        في سحبة الصفّ لا تبويب.
+      */}
+      <main className="scroll-area px-5 pb-4">
+        <div className="-mx-5 mb-2">
+          <CircleStrip
+            rings={rings}
+            notes={notes}
+            me={{ id: user.id, name: user.name, avatarMediaId: user.avatarMediaId }}
+            groups={groups.map((group) => ({ id: group.id, name: group.name }))}
+          />
         </div>
-      </div>
 
-      <main className="scroll-area px-5 pb-4 pt-3">
         {requests.length > 0 ? (
-          // قسمٌ يُطوى ويُفتح — **بقرار المالك**، كالجوّال. و`details` يحفظ حالتَه بلا جافاسكربت.
-          <details open className="group mb-5">
-            <summary className="mb-2 flex cursor-pointer list-none items-center gap-2 text-[11.5px] font-semibold tracking-wide text-faint [&::-webkit-details-marker]:hidden">
-              <span className="h-2 w-2 rounded-full" style={{ background: "var(--color-clay)" }} />
-              <span className="grow">طلبات الصداقة ({ar(requests.length)})</span>
-              <span className="text-[12px] text-muted group-open:hidden">إظهار</span>
-              <span className="hidden text-[12px] text-muted group-open:inline">إخفاء</span>
-            </summary>
-            <div className="flex flex-col gap-2">
-              {requests.map((request) => (
-                <div
-                  key={request.id}
-                  className="flex items-center gap-3 rounded-2xl border bg-card p-3"
-                  style={{ borderColor: "var(--color-clay)" }}
-                >
+          <Fold label="طلبات الصداقة" count={requests.length} dot="var(--color-clay)">
+            {requests.map((request) => (
+              <div
+                key={request.id}
+                className="flex items-center gap-3 rounded-2xl border bg-card p-3"
+                style={{ borderColor: "var(--color-clay)" }}
+              >
+                <Link href={`/u/${request.requester.id}`} className="flex min-w-0 grow items-center gap-3">
                   <Avatar
                     name={request.requester.name}
                     size={44}
@@ -168,220 +171,78 @@ export default async function CirclePage({
                   />
                   <div className="min-w-0 grow">
                     <p className="flex items-center gap-1.5 truncate text-[14px] font-semibold">
-                      {request.requester.name}
+                      <span dir="auto" className="truncate">{request.requester.name}</span>
                       <NameTag isPlus={request.requester.isPlus} tag={request.requester.tag} size={10} />
                     </p>
                     <p className="text-[11.5px] text-faint">طلب {relative(request.createdAt)}</p>
                   </div>
-                  <form action={acceptFriend.bind(null, request.id)} className="shrink-0">
-                    <button
-                      type="submit"
-                      aria-label={`اقبل ${request.requester.name}`}
-                      className="flex h-10 w-10 items-center justify-center rounded-full"
-                      style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
-                    >
-                      <CheckIcon size={17} />
-                    </button>
-                  </form>
-                  <form action={ignoreFriend.bind(null, request.id)} className="shrink-0">
-                    <button
-                      type="submit"
-                      aria-label={`تجاهل ${request.requester.name}`}
-                      className="flex h-10 w-10 items-center justify-center rounded-full border border-line text-muted"
-                    >
-                      <CloseIcon size={16} />
-                    </button>
-                  </form>
-                </div>
-              ))}
-            </div>
-          </details>
-        ) : null}
-
-        {tab === "friends" ? (
-          <>
-            <div className="mb-2 flex items-baseline justify-between">
-              <p className="text-[13.5px] font-bold">
-                أصدقاؤك <span className="text-muted">({ar(ids.length)})</span>
-              </p>
-              <p className="text-[11px] text-faint">
-                بقي {ar(CIRCLE_CAP - ids.length)} من {ar(CIRCLE_CAP)}
-              </p>
-            </div>
-
-            {members.length === 0 ? (
-              <Empty
-                title="ما عندك أصدقاء بعد"
-                hint="لا بحث هنا — شارك رابط ملفك مع من تعرفهم، ومن يفتحه يضيفك."
-              />
-            ) : (
-              <div className="overflow-hidden rounded-2xl border border-line bg-card">
-                {ordered.map((member, index) => (
-                  <SwipeRow
-                    key={member.id}
-                    confirmLabel="إزالة"
-                    onDelete={removeFriend.bind(null, member.id)}
-                    secondLabel="حظر"
-                    onSecond={blockUser.bind(null, member.id)}
-                    icons
+                </Link>
+                <form action={acceptFriend.bind(null, request.id)} className="shrink-0">
+                  <button
+                    type="submit"
+                    aria-label={`اقبل ${request.requester.name}`}
+                    className="flex h-10 w-10 items-center justify-center rounded-full"
+                    style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
                   >
-                    <div
-                      className="flex items-center gap-3 p-3"
-                      style={{
-                        background: "var(--color-card)",
-                        borderTop: index === 0 ? "none" : "1px solid var(--color-line)",
-                      }}
-                    >
-                      <Link href={`/u/${member.id}`} aria-label={`ملف ${member.name}`} className="relative shrink-0">
-                        <Avatar
-                          name={member.name}
-                          size={46}
-                          frame={member.frame}
-                          charm={member.charm}
-                          mediaId={member.avatarMediaId}
-                        />
-                        {online(member) ? (
-                          <span
-                            className="absolute bottom-0 left-0 block h-3 w-3 rounded-full"
-                            style={{ background: "#3fbf6a", border: "2px solid var(--color-card)" }}
-                          />
-                        ) : null}
-                      </Link>
-
-                      <Link href={`/u/${member.id}`} className="min-w-0 grow">
-                        <p className="mb-0.5 flex items-center gap-1.5 truncate text-[14.5px] font-semibold">
-                          {member.name}
-                          <NameTag isPlus={member.isPlus} tag={member.tag} size={10} />
-                          {groupOf.get(member.id) ? (
-                            <span
-                              className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                              style={{ background: "var(--color-chip)", color: "var(--color-muted)" }}
-                            >
-                              {groupOf.get(member.id)!.name}
-                            </span>
-                          ) : null}
-                        </p>
-                        <p
-                          className="truncate text-[11.5px]"
-                          style={{ color: online(member) ? "#2f9e58" : "var(--color-faint)" }}
-                        >
-                          {presence(member.lastSeenAt) || "ما فتح التطبيق بعد"}
-                        </p>
-                      </Link>
-
-                      <form action={startConversation.bind(null, member.id)} className="shrink-0">
-                        <button
-                          type="submit"
-                          aria-label={`محادثة ${member.name}`}
-                          className="flex h-10 w-10 items-center justify-center rounded-full border border-line text-ink-2"
-                        >
-                          <MessageIcon size={17} />
-                        </button>
-                      </form>
-                    </div>
-                  </SwipeRow>
-                ))}
+                    <CheckIcon size={17} />
+                  </button>
+                </form>
+                <form action={ignoreFriend.bind(null, request.id)} className="shrink-0">
+                  <button
+                    type="submit"
+                    aria-label={`تجاهل ${request.requester.name}`}
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-line text-muted"
+                  >
+                    <CloseIcon size={16} />
+                  </button>
+                </form>
               </div>
-            )}
-          </>
+            ))}
+          </Fold>
         ) : null}
 
-        {tab === "groups" ? (
+        {members.length === 0 ? (
+          <Empty title="ما عندك أصدقاء بعد" hint="اضغط زرّ الإضافة في الأعلى وشارك رابط ملفك مع من تعرفهم." />
+        ) : (
           <>
-            <div className="no-bar mb-3 flex gap-2 overflow-x-auto pb-1">
-              {[{ id: "", name: "الكل" }, ...groups].map((chip) => {
-                const on = (g ?? "") === chip.id;
-                return (
-                  <Link
-                    key={chip.id || "all"}
-                    href={chip.id ? `/circle?t=groups&g=${chip.id}` : "/circle?t=groups"}
-                    className="shrink-0 rounded-full px-4 py-2 text-[12.5px] font-semibold"
-                    style={{
-                      background: on ? "var(--color-clay)" : "var(--color-card)",
-                      color: on ? "var(--color-on-brand)" : "var(--color-ink-2)",
-                      border: `1px solid ${on ? "var(--color-clay)" : "var(--color-line)"}`,
-                    }}
-                  >
-                    {chip.name}
-                  </Link>
-                );
-              })}
-              <Link
-                href="/settings"
-                className="shrink-0 rounded-full border border-dashed border-line px-4 py-2 text-[12.5px] font-semibold text-muted"
-              >
-                + تصنيف
-              </Link>
-            </div>
-
-            {groups.length === 0 ? (
-              <Empty
-                title="لا تصنيفات بعد"
-                hint="العائلة، الزملاء… التصنيف لك وحدك ولا يراه أحد."
-                action={{ href: "/settings", label: "أنشئ تصنيفاً" }}
-              />
-            ) : (
-              <div className="overflow-hidden rounded-2xl border border-line bg-card">
-                {shown.map((member, index) => (
-                  <div
-                    key={member.id}
-                    className="flex flex-wrap items-center gap-2 p-3"
-                    style={{ borderTop: index === 0 ? "none" : "1px solid var(--color-line)" }}
-                  >
-                    <Avatar
-                      name={member.name}
-                      size={38}
-                      frame={member.frame}
-                          charm={member.charm}
-                      mediaId={member.avatarMediaId}
-                    />
-                    <span className="min-w-0 grow truncate text-[14px] font-semibold">
-                      {member.name}
-                    </span>
-                    <form
-                      action={setFriendGroup.bind(null, member.id)}
-                      className="flex w-full flex-wrap gap-2"
-                    >
-                      {groups.map((option) => {
-                        const on = groupOf.get(member.id)?.id === option.id;
-                        return (
-                          <button
-                            key={option.id}
-                            type="submit"
-                            name="groupId"
-                            value={option.id}
-                            className="h-9 rounded-full px-3 text-[12px] font-semibold"
-                            style={{
-                              background: on ? "var(--color-clay)" : "transparent",
-                              color: on ? "var(--color-on-brand)" : "var(--color-ink-2)",
-                              border: `1px solid ${on ? "var(--color-clay)" : "var(--color-line)"}`,
-                            }}
-                          >
-                            {option.name}
-                          </button>
-                        );
-                      })}
-                      {groupOf.get(member.id) ? (
-                        <button
-                          type="submit"
-                          name="groupId"
-                          value=""
-                          className="h-9 rounded-full border border-line px-3 text-[12px] font-semibold text-muted"
-                        >
-                          بلا تصنيف
-                        </button>
-                      ) : null}
-                    </form>
-                  </div>
-                ))}
-              </div>
-            )}
+            <Fold label="متصل" count={live.length} dot="var(--color-live)">
+              {live.map((member) => row(member))}
+            </Fold>
+            <Fold label="غير متصل" count={away.length} dot="var(--color-faint)">
+              {away.map((member) => row(member))}
+            </Fold>
           </>
-        ) : null}
-
+        )}
       </main>
 
       <TabBar active="/circle" />
     </div>
+  );
+}
+
+/** قسمٌ يُطوى ويُفتح كالجوّال (القاعدة ١٦١) — و`details` يحفظ حالتَه بلا جافاسكربت. */
+function Fold({
+  label,
+  count,
+  dot,
+  children,
+}: {
+  label: string;
+  count: number;
+  dot: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <details open className={`group ${count > 0 ? "mb-4" : "mb-0"}`}>
+      <summary className="flex cursor-pointer list-none items-center gap-2 py-3 [&::-webkit-details-marker]:hidden">
+        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: dot }} />
+        <span className="grow text-[15px] font-bold text-ground-ink">
+          {label} ({ar(count)})
+        </span>
+        <span className="text-[12.5px] font-semibold text-ground-ink-2 group-open:hidden">إظهار</span>
+        <span className="hidden text-[12.5px] font-semibold text-ground-ink-2 group-open:inline">إخفاء</span>
+      </summary>
+      {count > 0 ? <div className="flex flex-col gap-2.5">{children}</div> : null}
+    </details>
   );
 }

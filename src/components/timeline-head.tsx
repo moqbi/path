@@ -10,8 +10,6 @@ const COVER = 176;
 /** أقصى ما يتمدّد الغلاف بالسحب، وحدّ الإفلات الذي يعني «حدّث». */
 const MAX_PULL = 96;
 const TRIGGER = 56;
-/** مركز عمود الصور من حافة الشاشة اليمنى: حشوة px-5 زائد نصف عمود w-14. */
-const SPINE = 48;
 
 /**
  * رأس الخط الزمني: الغلاف، وصورة العرض **داخله** جالسة على محور خط
@@ -158,30 +156,17 @@ export function TimelineHead({
           {/* الغلاف ودرعه يذوبان معاً في أرضية الصفحة — طبقةٌ واحدة لكل الشاشات. */}
           <CoverLayer mediaId={coverMediaId} themeMediaId={themeCoverMediaId} spec={coverSpec} y={coverY} x={coverX} zoom={coverZoom} />
 
-          <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 px-5 pb-4">
-            <div className="flex w-14 shrink-0 justify-center">{avatar}</div>
-            <div className="min-w-0 grow pb-1.5">
-              <p
-                className="flex items-center gap-1.5 truncate text-[14px] font-semibold"
-                style={{ color: "#fff", textShadow: "0 1px 2px rgba(14,26,36,.6), 0 0 12px rgba(14,26,36,.45)" }}
-              >
-                {name}
-                {tag}
-              </p>
-              {/* تحت الاسم: كم لك معنا. الساعة يعرفها الجهاز، والمدة لا. */}
-              <p
-                className="text-[11.5px]"
-                style={{ color: "rgba(255,255,255,.92)", textShadow: "0 1px 2px rgba(14,26,36,.6), 0 0 12px rgba(14,26,36,.45)" }}
-              >
-                لك معانا {since}
-              </p>
-            </div>
+          {/*
+            زرُّ التحديث يمينَ الغلاف قبل الصورة، والاسمُ بعدها — كالجوّال
+            (القاعدتان ١٥٨ و١٦٥: قرصٌ ٢٤ ورسمُه ١٤)، بلا وصلِ خيطٍ تحت الصورة.
+          */}
+          <div className="absolute inset-x-0 bottom-0 flex items-center gap-3 px-4 pb-4">
             <button
               type="button"
               onClick={refresh}
               disabled={pending}
               aria-label="تحديث الخط الزمني"
-              className="mb-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full disabled:opacity-60"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full disabled:opacity-60"
               // قرصٌ داكن لا شفّاف: بلا درعٍ على الغلاف كان الأبيضُ يذوب في صورةٍ فاتحة.
               style={{ background: "rgba(14,26,36,.38)", color: "#fff" }}
             >
@@ -193,22 +178,29 @@ export function TimelineHead({
                   animation: spinning ? "athr-spin 900ms linear infinite" : undefined,
                 }}
               >
-                <RefreshIcon size={17} />
+                <RefreshIcon size={14} />
               </span>
             </button>
+            <div className="shrink-0">{avatar}</div>
+            <div className="min-w-0 grow">
+              <p
+                className="flex items-center gap-1.5 truncate text-[16px] font-bold"
+                style={{ color: "#fff", textShadow: "0 1px 2px rgba(14,26,36,.6), 0 0 12px rgba(14,26,36,.45)" }}
+              >
+                {name}
+                {tag}
+              </p>
+              {/* تحت الاسم: كم لك معنا. الساعة يعرفها الجهاز، والمدة لا. */}
+              <p
+                className="text-[12px]"
+                style={{ color: "rgba(255,255,255,.92)", textShadow: "0 1px 2px rgba(14,26,36,.6), 0 0 12px rgba(14,26,36,.45)" }}
+              >
+                لك معانا {since}
+              </p>
+            </div>
           </div>
-
-          {/* الخط يبدأ من أسفل الصورة داخل الغلاف نفسه. */}
-          <span
-            className="absolute block w-px"
-            style={{ right: SPINE, bottom: 0, height: 10, background: "rgba(255,255,255,.75)" }}
-          />
         </div>
-
-        {/* ثم يواصل نزوله حتى أول لحظة، فيصير خطاً واحداً متصلاً. */}
-        <div className="relative" style={{ height: 16 }}>
-          <span className="absolute block w-px bg-line" style={{ right: SPINE, top: 0, bottom: 0 }} />
-        </div>
+        <div style={{ height: 8 }} />
       </div>
 
       <main
