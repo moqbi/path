@@ -11,7 +11,8 @@ const byId = z.object({ id: cuid });
 
 const noteInput = z.object({
   text: z.string().max(200).optional(),
-  trackId: z.string().regex(/^\d{1,15}$/).optional(),
+  // `am:` أغنيةٌ من Apple Music (القاعدة ٣٠٤).
+  trackId: z.string().regex(/^(am:)?\d{1,15}$/).optional(),
   trackStart: z.number().int().min(0).max(30).optional(),
   trackSeconds: z.number().int().min(1).max(30).optional(),
   trackFull: z.boolean().optional(),
@@ -50,10 +51,11 @@ export const noteRoutes = new Hono()
 export const musicRoutes = new Hono()
   .use("*", requireAuth)
   .get("/top", rateLimitUser(30, 60), async (c) => c.json({ tracks: await topTracks() }))
+  // `apple=1` يجمع Apple Music إلى دِيزر — ترسله نسخةُ التطوير وحدها حتى يُعتمد (القاعدة ٣٠٤).
   .get("/search", rateLimitUser(30, 60), async (c) =>
-    c.json({ tracks: await searchTracks(c.req.query("q") ?? "") }),
+    c.json({ tracks: await searchTracks(c.req.query("q") ?? "", c.req.query("apple") === "1") }),
   )
   // معاينةُ أغنيةٍ قبل اختيارها — لشريط القصّ.
-  .get("/:id/preview", rateLimitUser(60, 60), zValidator("param", z.object({ id: z.string().regex(/^\d{1,15}$/) })), async (c) =>
+  .get("/:id/preview", rateLimitUser(60, 60), zValidator("param", z.object({ id: z.string().regex(/^(am:)?\d{1,15}$/) })), async (c) =>
     c.json({ url: await previewUrl(c.req.valid("param").id) }),
   );

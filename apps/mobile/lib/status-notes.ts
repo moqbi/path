@@ -3,6 +3,7 @@ import { Audio } from "expo-av";
 import { useQuery } from "@tanstack/react-query";
 import { create } from "zustand";
 import { api } from "./api";
+import { DEV_FEATURES } from "./dev-features";
 
 /**
  * النوت (القاعدة ٢٦٩): فقاعةٌ فوق صورة صاحبها في شريط القصص — سطرٌ أو
@@ -36,7 +37,15 @@ export type StatusNote = {
   seconds: number | null;
 };
 
-export type Track = { id: string; title: string; artist: string; cover: string | null; duration: number };
+export type Track = {
+  id: string;
+  title: string;
+  artist: string;
+  cover: string | null;
+  duration: number;
+  /** `apple` يُكتب بجانبها «Apple Music» (القاعدة ٣٠٤) — والقديمُ بلا الحقل دِيزر. */
+  source?: "deezer" | "apple";
+};
 
 export const NOTE_TEXT_MAX = 60;
 export const PREVIEW_SECONDS = 30;
@@ -131,7 +140,10 @@ export function useTracks(query: string) {
   return useQuery({
     queryKey: ["music", needle],
     queryFn: () =>
-      api<{ tracks: Track[] }>(needle ? `/v1/music/search?q=${encodeURIComponent(needle)}` : "/v1/music/top"),
+      api<{ tracks: Track[] }>(
+        // Apple Music مع دِيزر في نسخة التطوير وحدها حتى يُعتمد (القاعدة ٣٠٤).
+        needle ? `/v1/music/search?q=${encodeURIComponent(needle)}${DEV_FEATURES ? "&apple=1" : ""}` : "/v1/music/top",
+      ),
     staleTime: 5 * 60_000,
   });
 }
