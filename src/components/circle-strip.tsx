@@ -541,6 +541,8 @@ function NoteComposer({ groups, onClose }: { groups: Group[]; onClose: () => voi
   const full = startAt === 0 && endAt === PREVIEW_SECONDS;
   const [groupId, setGroupId] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
+  // القصُّ بعد اختيار الأغنية مباشرةً، لا في شاشة النشر (القاعدة ٣٠٥).
+  const [trimming, setTrimming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -601,6 +603,11 @@ function NoteComposer({ groups, onClose }: { groups: Group[]; onClose: () => voi
             <span className="min-w-0 grow">
               <span dir="auto" className="block truncate text-[13.5px] font-bold">{track.title}</span>
               <span dir="auto" className="block truncate text-[11.5px] opacity-70">{track.artist}</span>
+              {trimming ? null : (
+                <span className="block text-[11px]" style={{ color: "#F6B93B" }}>
+                  {full ? "الأغنية كاملة" : `مقطع ${ar(endAt - startAt)} ثانية`}
+                </span>
+              )}
             </span>
             <button
               type="button"
@@ -616,6 +623,7 @@ function NoteComposer({ groups, onClose }: { groups: Group[]; onClose: () => voi
               onClick={() => {
                 clip.stop();
                 setTrack(null);
+                setTrimming(false);
               }}
               className="shrink-0 text-[12px] font-semibold opacity-70"
             >
@@ -624,7 +632,7 @@ function NoteComposer({ groups, onClose }: { groups: Group[]; onClose: () => voi
           </div>
         ) : null}
 
-        {track ? (
+        {track && trimming ? (
           <div>
             <span className="mb-1.5 flex justify-between text-[11.5px] opacity-70">
               <span>
@@ -670,8 +678,33 @@ function NoteComposer({ groups, onClose }: { groups: Group[]; onClose: () => voi
                 onPointerUp={() => void listen(Math.max(startAt, endAt - 3), endAt)}
               />
             </div>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  clip.stop();
+                  setTrack(null);
+                  setTrimming(false);
+                  setPicking(true);
+                }}
+                className="glass-btn grow"
+              >
+                أغنية أخرى
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  clip.stop();
+                  setTrimming(false);
+                }}
+                className="grow rounded-xl text-[13.5px] font-extrabold"
+                style={{ background: "#F6B93B", color: "#14212b", height: 44 }}
+              >
+                تمّ
+              </button>
+            </div>
           </div>
-        ) : picking ? (
+        ) : track ? null : picking ? (
           <div>
             <span className="glass-field mb-2 flex items-center gap-2">
               <SearchIcon size={16} className="opacity-60" />
@@ -699,6 +732,7 @@ function NoteComposer({ groups, onClose }: { groups: Group[]; onClose: () => voi
                       setStartAt(0);
                       setEndAt(PREVIEW_SECONDS);
                       setPicking(false);
+                      setTrimming(true);
                     }}
                     className="flex items-center gap-2.5 rounded-xl px-1.5 py-1.5 text-start hover:bg-white/10"
                   >
@@ -756,7 +790,7 @@ function NoteComposer({ groups, onClose }: { groups: Group[]; onClose: () => voi
 
         <button
           type="button"
-          disabled={!ready || pending}
+          disabled={!ready || pending || trimming}
           onClick={publish}
           className="brand-gradient rounded-xl text-[15px] font-bold disabled:opacity-40"
           style={{ height: 50, color: "var(--color-on-brand)" }}
