@@ -112,7 +112,7 @@ function Body({ note }: { note: StatusNote }) {
               {note.trackTitle}
             </Text>
             <Text numberOfLines={1} style={{ color: "rgba(255,255,255,.6)", fontSize: 12, writingDirection: "auto" }}>
-              {note.trackArtist} · Deezer
+              {note.trackArtist} · {note.trackId.startsWith("am:") ? "Apple Music" : "Deezer"}
             </Text>
           </View>
           <View style={{ width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.14)" }}>
