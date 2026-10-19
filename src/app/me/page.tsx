@@ -9,11 +9,12 @@ import { MomentCard } from "@/components/moment-card";
 import { EditProfileSheet } from "./edit-sheet";
 import { ProfileCover } from "./cover";
 import { ProfileShell } from "./shell";
+import { StatLine } from "./stat-line";
 import { Accessories, type Owned } from "./accessories";
 import { coverStyle, NameTag } from "@/components/ui";
 import { AvatarMenu } from "@/components/avatar-menu";
 import { TabBar } from "@/components/tab-bar";
-import { BookIcon, ExitIcon, GearIcon, GiftIcon, SparkIcon, WithIcon } from "@/components/icons";
+import { BookIcon, ExitIcon, GearIcon, SparkIcon } from "@/components/icons";
 import { AthrPageMark } from "@/components/brand";
 import { ar, dayLabel, membership } from "@/lib/format";
 
@@ -27,7 +28,7 @@ export default async function ProfilePage({
   const user = await currentUser();
   if (!user) redirect("/login");
 
-  const [ids, moments, mine, places, purchases, sentGifts] = await Promise.all([
+  const [ids, moments, mine, places, purchases, sentGifts, stickerSent, stickerGot] = await Promise.all([
     circleIds(user.id),
     archive(user.id),
     myMoments(user.id),
@@ -59,6 +60,9 @@ export default async function ProfilePage({
     }),
     // الهدايا تُعدّ من `Purchase.giftedById` — لا عمودَ عدادٍ يُكتب ويُنسى.
     prisma.purchase.count({ where: { giftedById: user.id } }),
+    // ومجموعاتُ الملصقات المُهداة هدايا كذلك — كالخادم (القاعدة ٢٩٨).
+    prisma.stickerPurchase.count({ where: { giftedById: user.id } }),
+    prisma.stickerPurchase.count({ where: { userId: user.id, giftedById: { not: null } } }),
   ]);
 
   const days: { label: string; items: typeof mine }[] = [];
@@ -76,21 +80,21 @@ export default async function ProfilePage({
   // ما وصلك هديةً: شراءٌ باسمك دفع ثمنه غيرك.
   const gotGifts = purchases.filter((row) => row.giftedBy).length;
 
-  /* أربعة أرقام بأيقوناتها: ما نشرت، ومن معك، وما أهديت، وما أُهدي إليك.
-     و«شهر معنا» انتقل إلى رأس اللحظات تحت الاسم، فمكانه هناك لا هنا. */
-  const stats = [
-    { value: ar(moments.length), label: "لحظة", icon: <BookIcon size={14} /> },
-    { value: ar(ids.length), label: "صديق", icon: <WithIcon size={14} /> },
-    { value: ar(sentGifts), label: "أهديت", icon: <GiftIcon size={14} /> },
-    { value: ar(gotGifts), label: "أُهدي لك", icon: <GiftIcon size={14} /> },
-  ];
-
   return (
     <div className="screen">
       {/* رأسٌ كبقية التبويبات: العلامة ثم فاصل ثم اسم الشاشة. والمشاركةُ في زرّ
           الإضافة برأس الأصدقاء كالجوّال (القاعدة ٢٨١) — بابان لشيءٍ واحد. */}
       <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
         <AthrPageMark label="الملف الشخصي" />
+        {/* الإعداداتُ قرصٌ في الرأس كالجوّال (القاعدة ٢٩٢)، لا زرٌّ في الصفّ. */}
+        <Link
+          href="/settings"
+          aria-label="الإعدادات والخصوصية"
+          className="flex h-10 w-10 items-center justify-center rounded-full"
+          style={{ background: "rgba(255,255,255,.08)", color: "var(--color-chrome-ink)" }}
+        >
+          <GearIcon size={20} />
+        </Link>
       </header>
 
       {/*
@@ -148,25 +152,8 @@ export default async function ProfilePage({
                 .join("  │  ")}
             </p>
 
-            {/* الأرقام تحت الاسم: أيقونةٌ ثم رقمٌ ثم اسمه. */}
-            <div className="mx-auto mb-1 mt-3 flex max-w-[320px] items-stretch">
-              {stats.map((stat, index) => (
-                <div
-                  key={stat.label}
-                  className="flex-1 px-1 text-center"
-                  style={{ borderRight: index === 0 ? "none" : "1px solid var(--color-line)" }}
-                >
-                  <span
-                    className="mx-auto mb-1 flex h-7 w-7 items-center justify-center rounded-full"
-                    style={{ background: "var(--color-chip)", color: "var(--color-ground-ink-2)" }}
-                  >
-                    {stat.icon}
-                  </span>
-                  <p className="text-[15px] font-bold leading-none text-ground-ink">{stat.value}</p>
-                  <p className="mt-0.5 text-[10px] text-ground-muted">{stat.label}</p>
-                </div>
-              ))}
-            </div>
+            {/* سطرٌ واحد كالجوّال (القاعدة ٢٩٣) — بقرار المالك. */}
+            <StatLine moments={moments.length} friends={ids.length} sent={sentGifts + stickerSent} got={gotGifts + stickerGot} />
           </>
         }
         actions={
@@ -204,14 +191,6 @@ export default async function ProfilePage({
               equippedTheme={user.backgroundId}
               equippedCharm={user.charmId}
             />
-            <Link
-              href="/settings"
-              aria-label="الإعدادات والخصوصية"
-              className="flex w-11 shrink-0 items-center justify-center rounded-xl border border-line bg-card text-ink-2"
-              style={{ height: 46 }}
-            >
-              <GearIcon size={18} />
-            </Link>
             {/* الخروج هنا وحده: كان مكرّراً فوق الغلاف بلا داعٍ. */}
             <form action={signOut} className="shrink-0">
               <button
