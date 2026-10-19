@@ -9,7 +9,7 @@ import { Sheet } from "@/components/sheet";
 import { ar } from "@/lib/format";
 
 /** رمزُ QR بمسارٍ واحد وفي وسطه العلامة — تصحيحُ «H» يحتمل ما تغطّيه. */
-function Qr({ value, size }: { value: string; size: number }) {
+export function Qr({ value, size }: { value: string; size: number }) {
   const { d, count } = useMemo(() => {
     const { modules } = create(value, { errorCorrectionLevel: "H" });
     const n = modules.size;

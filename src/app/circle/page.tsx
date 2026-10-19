@@ -6,7 +6,8 @@ import { prisma } from "@/lib/db";
 import { CIRCLE_CAP, circleIds } from "@/lib/circle";
 import { storyRings } from "@/lib/stories";
 import { acceptFriend, ignoreFriend } from "@/app/actions";
-import { AddFriendButton, FriendRow } from "@/components/friend-row";
+import { FriendRow } from "@/components/friend-row";
+import { AddFriendButton } from "@/components/add-sheet";
 import { CircleStrip } from "@/components/circle-strip";
 import { listNotes } from "@/lib/notes";
 import { Avatar, Empty, NameTag } from "@/components/ui";
@@ -134,7 +135,15 @@ export default async function CirclePage() {
           <span className="text-[12px]" style={{ color: "var(--color-chrome-muted)" }}>
             بقي {ar(Math.max(0, CIRCLE_CAP - ids.length))}
           </span>
-          <AddFriendButton name={user.name} memberNo={user.memberNo} />
+          <AddFriendButton
+            me={{
+              name: user.name,
+              memberNo: user.memberNo,
+              avatarMediaId: user.avatarMediaId,
+              frame: user.frame,
+              charm: user.charm,
+            }}
+          />
         </div>
       </header>
 
