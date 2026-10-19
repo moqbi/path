@@ -295,16 +295,6 @@ export const UserPlusIcon = ({ size = 20, color = "currentColor" }: Props) => (
   </Svg>
 );
 
-/** جهاتُ الاتصال: دفترٌ بوجهٍ ومشابك على حافّته (القاعدة ٢٩٧). */
-export const ContactsIcon = ({ size = 20, color = "currentColor" }: Props) => (
-  <Svg {...stroke(size, color)}>
-    <Path d="M6 3.5h11a1.5 1.5 0 0 1 1.5 1.5v14a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 19V5A1.5 1.5 0 0 1 6 3.5Z" />
-    <Path d="M11.5 8.5a2.25 2.25 0 1 1 0 4.5 2.25 2.25 0 0 1 0-4.5Z" />
-    <Path d="M7.5 16.5c.6-1.7 2.1-2.7 4-2.7s3.4 1 4 2.7" />
-    <Path d="M3 7.5h3M3 12h3M3 16.5h3" />
-  </Svg>
-);
-
 /** حذفُ محادثة: سلّةٌ بغطاءٍ وخطّين — كأيقونات صفّ الصديق (القاعدة ٢٠٣). */
 export const TrashIcon = ({ size = 20, color = "currentColor" }: Props) => (
   <Svg {...stroke(size, color)}>

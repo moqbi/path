@@ -16,7 +16,6 @@
         "NSPhotoLibraryUsageDescription": "يفتح آثار مومنتس ألبوم صورك حين تختار أنت صورةً لتنشرها، مثلاً: صورة لحظةٍ تشاركها مع دائرتك في الخط الزمني، أو صورة قصة، أو صورة عرضٍ أو غلافٍ لملفك، أو صورة ترسلها لصديق في المحادثة. لا يُرفع إلا الصورة التي تختارها بنفسك.",
         "NSLocationWhenInUseUsageDescription": "يستعمل آثار مومنتس موقعك أثناء فتح التطبيق ليعرض الأماكن القريبة منك فتختار منها حين تضيف مكاناً للحظتك، مثلاً: «في مقهى على الكورنيش»، وليكتب لحظة «وصل إلى جدة» حين تنتقل إلى مدينة أخرى، وليُظهرك لمن فتح «من حولك» بجانبك في اللحظة نفسها حين تفتحها أنت لتضيفه. يظهر المكان أو المدينة لدائرتك وحدها.",
         "NSBluetoothAlwaysUsageDescription": "يستعمل آثار مومنتس البلوتوث حين تفتح «من حولك» بنفسك ليجد من فتحها جنبك في المكان نفسه، مثلاً: صديقٌ جديد على طاولتك في المقهى فتضيفه. يُبثّ رمزٌ مؤقّت يتبدّل لا اسمُك، ويتوقّف البثّ حين تغلق الشاشة.",
-        "NSContactsUsageDescription": "يقرأ آثار مومنتس أرقام جهات اتصالك حين تضغط أنت «جهات الاتصال» في «إضافة صديق»، ليُريك من منهم في آثار فتضيفه، مثلاً: صديقٌ عندك رقمه سجّل في التطبيق. تُرسل الأرقام مجزّأةً لا كما هي، ولا نقرأ الأسماء ولا نحفظ دفترك.",
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleDevelopmentRegion": "ar",
         "CFBundleLocalizations": [
@@ -59,8 +58,7 @@
       "permissions": [
         "RECORD_AUDIO",
         "CAMERA",
-        "ACCESS_FINE_LOCATION",
-        "READ_CONTACTS"
+        "ACCESS_FINE_LOCATION"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -92,16 +90,7 @@
       "expo-apple-authentication",
       "./plugins/with-rtl",
       "./plugins/with-purpose",
-      "./plugins/with-links",
-      "./plugins/with-firebase",
-      [
-        "expo-build-properties",
-        {
-          "ios": {
-            "useFrameworks": "dynamic"
-          }
-        }
-      ]
+      "./plugins/with-links"
     ],
     "extra": {
       "eas": {

@@ -324,11 +324,6 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID="...web..."
 SNAP_CLIENT_ID="..."
 TIKTOK_CLIENT_KEY="..."
 TIKTOK_CLIENT_SECRET="..."
-
-# تأكيدُ الجوال (القاعدة ٢٩٧): معرّفُ مشروع Firebase — رمزُ الهويّة يُفحص بجمهوره ومُصدِره.
-# بلاه يُردّ «تأكيد الجوال غير مفعّل».
-FIREBASE_PROJECT_ID="..."
-# SMS_COUNTRIES="966"
 ```
 
 > **تيك توك** (developers.tiktok.com ← تطبيق ← Login Kit، نطاقُ `user.info.basic`):
