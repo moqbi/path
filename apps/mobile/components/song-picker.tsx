@@ -169,8 +169,8 @@ const CLIP_MIN = 3;
 
 /**
  * شريطُ القصّ: ستّون عموداً لثلاثين ثانية، وفوقها نافذةٌ بمقبضين (القاعدة ٣٠٣).
- * **كاملةً** تملأ الشريطَ ولا تُسحب، و**مقطعاً** بدايتُه ونهايتُه بحرّيّة صاحبها —
- * لا نافذةُ عشرين ثابتة — وبينهما ثلاثُ ثوانٍ على الأقلّ. اللمسةُ تأخذ أقربَ
+ * تبدأ **كاملةً** على الشريط كلّه، ومن أراد قصّ سحب طرفيها — بلا زرٍّ يختار بين
+ * «كاملة» و«قصّ» (القاعدة ٣٠٥) — وبينهما ثلاثُ ثوانٍ على الأقلّ. اللمسةُ تأخذ أقربَ
  * المقبضين إليها، ومن داخل النافذة بعيداً عنهما تسحبها كلَّها بطولها. والزمنُ من
  * اليسار إلى اليمين كأيّ شريط تشغيل (كصوت القصّة — القاعدة ٢٣٨). والأعمدةُ رسمٌ
  * ثابتٌ من معرّف الأغنية لا موجتُها: المعاينةُ على دِيزر لا عندنا لنقرأها.
@@ -180,9 +180,8 @@ function Trim({ track, onDone, onOther }: { track: Track; onDone: (start: number
   const width = screen - 48;
   const px = width / PREVIEW_SECONDS;
   const [start, setStart] = useState(0);
-  const [end, setEnd] = useState(NOTE_SECONDS);
-  // كاملةً افتراضاً: من لا يريد أن يقصّ لا يُطلب منه شيء.
-  const [full, setFull] = useState(true);
+  // كاملةً افتراضاً: النافذةُ الشريطُ كلُّه، ومن أراد قصّ سحب طرفيها — بلا زرٍّ يختار بينهما.
+  const [end, setEnd] = useState(PREVIEW_SECONDS);
   const [url, setUrl] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const key = `trim:${track.id}`;
@@ -196,14 +195,12 @@ function Trim({ track, onDone, onOther }: { track: Track; onDone: (start: number
     });
   }, [track.id]);
 
-  const live = useRef({ start, end, url, full });
-  live.current = { start, end, url, full };
+  const live = useRef({ start, end, url });
+  live.current = { start, end, url };
   const grab = useRef<{ part: "start" | "end" | "both"; start: number; end: number }>({ part: "both", start: 0, end: 0 });
 
   const play = (from = live.current.start, to = live.current.end, link = live.current.url) => {
-    if (!link) return;
-    if (live.current.full) void playClip(key, link, 0, PREVIEW_SECONDS);
-    else void playClip(key, link, Math.round(from), Math.round(to) - Math.round(from));
+    if (link) void playClip(key, link, Math.round(from), Math.round(to) - Math.round(from));
   };
 
   useEffect(() => {
@@ -224,9 +221,8 @@ function Trim({ track, onDone, onOther }: { track: Track; onDone: (start: number
 
   const pan = useRef(
     PanResponder.create({
-      // الكاملةُ لا تُسحب: نافذتُها الشريطُ كلُّه.
-      onStartShouldSetPanResponder: () => !live.current.full,
-      onMoveShouldSetPanResponder: () => !live.current.full,
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
       onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: (event) => {
         const { start: from, end: to } = live.current;
@@ -259,6 +255,7 @@ function Trim({ track, onDone, onOther }: { track: Track; onDone: (start: number
 
   const from = Math.round(start);
   const to = Math.round(end);
+  const full = from === 0 && to === PREVIEW_SECONDS;
 
   return (
     <View style={{ flex: 1, paddingHorizontal: 24, alignItems: "center" }}>
@@ -280,35 +277,13 @@ function Trim({ track, onDone, onOther }: { track: Track; onDone: (start: number
         {!url && !problem ? <ActivityIndicator color="#fff" /> : clip.playing ? <PauseIcon size={20} color="#fff" /> : <PlayIcon size={20} color="#fff" />}
       </Pressable>
 
-      {/* كاملةً أو مقطعاً — والتبديلُ يُعيد السماع من حيث تبدأ. */}
-      <View style={{ flexDirection: "row", marginTop: 24, padding: 3, borderRadius: 12, backgroundColor: "rgba(255,255,255,.1)" }}>
-        {([true, false] as const).map((value) => (
-          <Pressable
-            key={String(value)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: full === value }}
-            onPress={() => {
-              if (full === value) return;
-              setFull(value);
-              live.current.full = value;
-              play();
-            }}
-            style={{ paddingHorizontal: 16, height: 34, borderRadius: 9, alignItems: "center", justifyContent: "center", backgroundColor: full === value ? "#F6B93B" : "transparent" }}
-          >
-            <Text style={{ color: full === value ? "#0E1A24" : "#fff", fontSize: 13, fontWeight: "800" }}>
-              {value ? `كاملة ${ar(PREVIEW_SECONDS)} ث` : "قصّ مقطع"}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
       {/* الشريط: الزمنُ من اليسار إلى اليمين أيّاً كان اتّجاهُ الكتابة. */}
       <View {...pan.panHandlers} style={{ width, height: 64, marginTop: 20, direction: "ltr" }}>
         {/* ما فوق الشريط لا يأخذ اللمس، فيُقاس `locationX` من الشريط نفسه. */}
         <View pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, top: 8, bottom: 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           {bars.map((h, i) => {
             const t = (i / bars.length) * PREVIEW_SECONDS;
-            const inside = full || (t >= start && t < end);
+            const inside = t >= start && t < end;
             return <View key={i} style={{ width: 3, height: 44 * h, borderRadius: 2, backgroundColor: inside ? "#fff" : "rgba(255,255,255,.28)" }} />;
           })}
         </View>
@@ -318,30 +293,43 @@ function Trim({ track, onDone, onOther }: { track: Track; onDone: (start: number
             position: "absolute",
             top: 0,
             bottom: 0,
-            left: full ? 0 : start * px,
-            width: (full ? PREVIEW_SECONDS : end - start) * px,
+            left: start * px,
+            width: (end - start) * px,
             borderRadius: 12,
             borderWidth: 3,
             borderColor: "#F6B93B",
           }}
         />
-        {full
-          ? null
-          : ([start, end] as const).map((at, i) => (
-              <View
-                key={i}
-                pointerEvents="none"
-                style={{ position: "absolute", top: 14, bottom: 14, left: at * px - 7, width: 14, borderRadius: 7, backgroundColor: "#F6B93B", alignItems: "center", justifyContent: "center" }}
-              >
-                <View style={{ width: 2, height: 14, borderRadius: 1, backgroundColor: "#0E1A24" }} />
-              </View>
-            ))}
+        {([start, end] as const).map((at, i) => (
+          <View
+            key={i}
+            pointerEvents="none"
+            style={{ position: "absolute", top: 14, bottom: 14, left: at * px - 7, width: 14, borderRadius: 7, backgroundColor: "#F6B93B", alignItems: "center", justifyContent: "center" }}
+          >
+            <View style={{ width: 2, height: 14, borderRadius: 1, backgroundColor: "#0E1A24" }} />
+          </View>
+        ))}
       </View>
-      <Text style={{ color: "rgba(255,255,255,.7)", fontSize: 12, marginTop: 10 }}>
-        {full
-          ? `الأغنية كما هي، من \u2066${clock(0)}\u2069 إلى \u2066${clock(PREVIEW_SECONDS)}\u2069`
-          : `من \u2066${clock(from)}\u2069 إلى \u2066${clock(to)}\u2069، ${ar(to - from)} ث — اسحب طرفَي النافذة`}
-      </Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10 }}>
+        <Text style={{ color: "rgba(255,255,255,.7)", fontSize: 12 }}>
+          {full
+            ? "الأغنية كاملة — اسحب طرفَي النافذة لتقصّ منها"
+            : `من \u2066${clock(from)}\u2069 إلى \u2066${clock(to)}\u2069، ${ar(to - from)} ث`}
+        </Text>
+        {full ? null : (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              setStart(0);
+              setEnd(PREVIEW_SECONDS);
+              play(0, PREVIEW_SECONDS);
+            }}
+            hitSlop={8}
+          >
+            <Text style={{ color: "#F6B93B", fontSize: 12, fontWeight: "800" }}>كاملة</Text>
+          </Pressable>
+        )}
+      </View>
       {problem ? <Text style={{ color: "#FF7A5A", fontSize: 13, marginTop: 12 }}>{problem}</Text> : null}
 
       <View style={{ flex: 1 }} />
