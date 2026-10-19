@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, Pressable, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, useWindowDimensions } from "react-native";
+import { View, Pressable, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, Image, useWindowDimensions } from "react-native";
 import { PhotoFrameEditor } from "../components/photo-frame";
 import { Text, TextInput } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,6 +20,7 @@ import { ar } from "../lib/format";
 import { appleNearby, appleSearch } from "../lib/apple-places";
 import { SourceSheet } from "../components/source-sheet";
 import { takeShot } from "../lib/capture";
+import { takeShared } from "../lib/share-in";
 import { colors } from "../theme/tokens";
 
 /** مكانٌ قريب كما يردّه `/v1/places/nearby`. */
@@ -240,6 +241,19 @@ export default function Compose() {
     قائمةٌ تحت الكاميرا بحالتها كلّها، فلا `useEffect` يُنبّهها.
   */
   useFocusEffect(() => {
+    // وما شُورك من تطبيقٍ آخر (القاعدة ٣٠٦) يُقرأ مرّةً كلقطة الكاميرا.
+    const shared = takeShared();
+    if (shared?.kind === "PHOTO") {
+      setPicture(shared.picture);
+      setPhotoPos({ x: 50, y: 50 });
+      // أندرويد قد لا يقول الأبعاد، والإطارُ يُحسب منها.
+      if (!shared.picture.width) {
+        Image.getSize(shared.picture.uri, (width, height) =>
+          setPicture((now) => (now?.uri === shared.picture.uri ? { ...now, width, height } : now)),
+        );
+      }
+    } else if (shared?.kind === "MUSIC") setMusicUrl(shared.url);
+    else if (shared?.kind === "THOUGHT") setText(shared.text.slice(0, TEXT_MAX));
     const shot = takeShot();
     if (shot && !shot.video) {
       setPicture({ uri: shot.uri, width: shot.width, height: shot.height, mime: shot.mime });

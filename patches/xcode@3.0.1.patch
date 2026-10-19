@@ -1,0 +1,11 @@
+diff --git a/lib/pbxProject.js b/lib/pbxProject.js
+--- a/lib/pbxProject.js
++++ b/lib/pbxProject.js
+@@ -1680,6 +1680,6 @@ function correctForPath(file, project, group) {
+     var r_group_dir = new RegExp('^' + group + '[\\\\/]');
+ 
+-    if (project.pbxGroupByName(group).path)
++    if (project.pbxGroupByName(group) && project.pbxGroupByName(group).path)
+         file.path = file.path.replace(r_group_dir, '');
+ 
+     return file;
