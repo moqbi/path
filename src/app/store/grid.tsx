@@ -177,7 +177,10 @@ export function StoreGrid({
   credit,
   daysHere,
   equipped,
+  row = false,
 }: {
+  /** صفٌّ يُمرَّر أفقياً لا شبكة — أقسامُ «المميز» والمجموعات (القاعدة ٢٦٦). */
+  row?: boolean;
   items: Item[];
   owned: string[];
   isPlus: boolean;
@@ -226,7 +229,13 @@ export function StoreGrid({
         />
       ) : null}
 
-      <div className="mb-6 grid grid-cols-3 gap-3">
+      <div
+        className={
+          row
+            ? "no-bar -mx-5 mb-6 flex gap-3 overflow-x-auto px-5 pt-2.5 [&>*]:w-[29%] [&>*]:shrink-0"
+            : "mb-6 grid grid-cols-3 gap-3"
+        }
+      >
         {items.map((item) => {
           const have = ownedSet.has(item.id);
           const worn = have && wornId(item) === item.id;

@@ -118,6 +118,15 @@ export const BlockIcon = ({ size = 20, className }: IconProps) => (
   </svg>
 );
 
+/** إضافةُ صديق: رأسٌ وكتفان وعلامةُ جمع — زرُّ رأس الأصدقاء. */
+export const UserPlusIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <circle cx="10" cy="7.5" r="3.5" />
+    <path d="M3.5 19.5c.6-3.3 3.2-5.5 6.5-5.5s5.9 2.2 6.5 5.5" />
+    <path d="M16 8.5h5M18.5 6v5" />
+  </svg>
+);
+
 /** إزالةُ صديق: رأسٌ وكتفان وعلامةُ طرح. */
 export const UserMinusIcon = ({ size = 20, className }: IconProps) => (
   <svg {...base(size)} className={className}>

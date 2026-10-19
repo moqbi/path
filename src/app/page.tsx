@@ -18,7 +18,9 @@ import { WeeklyCard } from "@/components/weekly-card";
 import { welcome } from "@/lib/welcome";
 import { weeklyFor, weeklyShown } from "@/lib/weekly";
 import { AthrHeaderMark } from "@/components/brand";
-import { SparkIcon } from "@/components/icons";
+import { BellIcon, SparkIcon } from "@/components/icons";
+import { unseenCount } from "@/lib/notifications";
+import { Lenses } from "@/components/lenses";
 import { ar, dayLabel, membership } from "@/lib/format";
 
 const MONTHS = [
@@ -46,13 +48,14 @@ export default async function TimelinePage({
   // «آثارنا» من مزايا آثار+ — من اختارها بلا اشتراكٍ يُؤخذ إلى صفحته.
   if (view === "together" && !user.isPlus) redirect("/subscribe");
 
-  const [ids, memories, hello, week] = await Promise.all([
+  const [ids, memories, hello, week, unseen] = await Promise.all([
     circleIds(user.id),
     // بطاقةُ اليوم في العدسة الأولى وحدها (القاعدة ٢٣٥).
     view === "" ? memoriesToday(user.id) : Promise.resolve(null),
     // والترحيبُ (القاعدة ٢٤٦) وملخّصُ الجمعة (القاعدة ٢٤٥) كالجوّال — ولا يُسقط فشلُهما الخطّ.
     view === "" ? welcome(user.id).catch(() => null) : Promise.resolve(null),
     view === "" ? weeklyShown(user.id).then((shown) => (shown ? weeklyFor(user.id) : null)).catch(() => null) : Promise.resolve(null),
+    unseenCount(user.id).catch(() => 0),
   ]);
 
   const moments =
@@ -124,6 +127,31 @@ export default async function TimelinePage({
             آثار+
           </Link>
 
+          {/*
+            الإشعاراتُ جرسٌ هنا لا تبويب — كالجوّال (القاعدة ٢٦١)، والنقطةُ لما لم
+            يُقرأ (القاعدة ٢٣١). وعلى سطح المكتب لها عمودُها فلا يتكرّر الجرس.
+          */}
+          <Link
+            href="/notifications"
+            aria-label="الإشعارات"
+            className="desk-hide relative flex h-10 w-10 items-center justify-center rounded-full"
+            style={{ background: "rgba(255,255,255,.08)", color: "var(--color-chrome-ink)" }}
+          >
+            <BellIcon size={20} />
+            {unseen > 0 ? (
+              <span
+                className="absolute block rounded-full"
+                style={{
+                  top: 8,
+                  right: 9,
+                  width: 9,
+                  height: 9,
+                  background: "var(--color-live)",
+                  border: "1.5px solid var(--color-chrome)",
+                }}
+              />
+            ) : null}
+          </Link>
         </div>
       </header>
 
@@ -154,35 +182,16 @@ export default async function TimelinePage({
         */}
         {user.email && !user.emailVerifiedAt ? <VerifyBanner email={user.email} /> : null}
 
+
         {/*
-           العدساتُ الثلاث ظاهرةً على سطح المكتب — **بقرار المالك**. على
-           الجوّال بابُها الضغطُ المطوّل على «اللحظات» (القاعدة ٣٢)، والفأرةُ
-           لا تضغط مطوّلاً: بابٌ لا يُكتشف بالفأرة ليس باباً.
+           العدساتُ الثلاث قرصٌ بجانب عنوان أوّل يوم — كالجوّال (القاعدة ٢٦١)،
+           ولا ضغطةَ مطوّلة. وبلا أيّامٍ يجلس وحده في أعلى ما تحت الغلاف.
         */}
-        <nav className="desk-only mb-3 gap-1 rounded-2xl border border-line bg-card p-1">
-          {[
-            { key: "", label: "اللحظات", href: "/" },
-            { key: "private", label: "اللحظات الخاصة", href: "/?view=private" },
-            { key: "together", label: "آثارنا", href: user.isPlus ? "/?view=together" : "/subscribe" },
-          ].map((lens) => {
-            const on = view === lens.key;
-            return (
-              <Link
-                key={lens.key || "all"}
-                href={lens.href}
-                aria-current={on ? "page" : undefined}
-                className="flex h-10 grow items-center justify-center gap-1 rounded-xl text-[13px] font-semibold"
-                style={{
-                  background: on ? "var(--color-clay)" : "transparent",
-                  color: on ? "var(--color-on-brand)" : "var(--color-ink-2)",
-                }}
-              >
-                {lens.label}
-                {lens.key === "together" && !user.isPlus ? <SparkIcon size={12} /> : null}
-              </Link>
-            );
-          })}
-        </nav>
+        {days.length === 0 ? (
+          <div className="flex justify-end py-4">
+            <Lenses view={view} isPlus={user.isPlus} />
+          </div>
+        ) : null}
 
         {view === "private" ? (
           <p className="mb-1 text-[11.5px] leading-relaxed text-muted">
@@ -276,13 +285,14 @@ export default async function TimelinePage({
           />
         ) : (
           <div className="spine relative">
-            {days.map((day) => (
+            {days.map((day, index) => (
               <section key={day.label}>
                 <div className="relative flex items-center gap-3 py-4">
                   <div className="flex w-14 justify-center">
                     <span className="block h-1.5 w-1.5 rounded-full bg-ground-line" />
                   </div>
-                  <h2 className="text-[15px] font-bold text-ground-ink-2">{day.label}</h2>
+                  <h2 className="min-w-0 grow text-[15px] font-bold text-ground-ink-2">{day.label}</h2>
+                  {index === 0 ? <Lenses view={view} isPlus={user.isPlus} /> : null}
                 </div>
                 {day.items.map((moment) => (
                   <MomentCard
@@ -300,7 +310,7 @@ export default async function TimelinePage({
       </TimelineHead>
 
       <ComposerFan />
-      <TabBar active="/" view={view} />
+      <TabBar active="/" />
     </div>
   );
 }

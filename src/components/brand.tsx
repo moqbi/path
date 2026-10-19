@@ -93,7 +93,8 @@ export function AthrHeaderMark() {
   return (
     <span className="flex items-center gap-3">
       <AthrMark size={44} />
-      <span className="latin" style={{ fontSize: 23, fontWeight: 700, letterSpacing: ".06em", color: "var(--color-chrome-ink)" }}>
+      {/* أقربُ إلى الجوّال (١٦ وتباعدُ ٢)، والرمزُ ٤٤ كما في القاعدة ٧. */}
+      <span className="latin" style={{ fontSize: 18, fontWeight: 700, letterSpacing: "2px", color: "var(--color-chrome-ink)" }}>
         ATHAR
       </span>
     </span>

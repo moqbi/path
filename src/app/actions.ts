@@ -1310,6 +1310,34 @@ export async function setFriendGroup(friendId: string, formData: FormData): Prom
   revalidatePath("/circle");
 }
 
+/**
+ * تصنيفٌ جديد ومعه الصديقُ فيه — حقلُ نافذة التصنيف في صفّ الصديق (القاعدة ٢٦٨).
+ * يردّ نصَّ الخطأ ولا يرميه (القاعدة ٩٠).
+ */
+export async function createGroupWith(friendId: string, name: string): Promise<string | null> {
+  const user = await requireUser();
+  const clean = name.trim().slice(0, 20);
+  if (!clean) return "اكتب اسم التصنيف";
+  if (!(await circleIds(user.id)).includes(friendId)) return "ليس من أصدقائك";
+
+  const last = await prisma.friendGroup.findFirst({
+    where: { ownerId: user.id },
+    orderBy: { sortOrder: "desc" },
+    select: { sortOrder: true },
+  });
+  const group = await prisma.friendGroup.upsert({
+    where: { ownerId_name: { ownerId: user.id, name: clean } },
+    create: { ownerId: user.id, name: clean, sortOrder: (last?.sortOrder ?? 0) + 1 },
+    update: {},
+    select: { id: true },
+  });
+  const mine = await prisma.friendGroup.findMany({ where: { ownerId: user.id }, select: { id: true } });
+  await prisma.groupMember.deleteMany({ where: { userId: friendId, groupId: { in: mine.map((one) => one.id) } } });
+  await prisma.groupMember.create({ data: { groupId: group.id, userId: friendId } });
+  revalidatePath("/circle");
+  return null;
+}
+
 export async function savePrivacy(formData: FormData): Promise<void> {
   const user = await requireUser();
 

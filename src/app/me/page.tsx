@@ -15,13 +15,7 @@ import { AvatarMenu } from "@/components/avatar-menu";
 import { TabBar } from "@/components/tab-bar";
 import { BookIcon, ExitIcon, GearIcon, GiftIcon, SparkIcon, WithIcon } from "@/components/icons";
 import { AthrPageMark } from "@/components/brand";
-import { ShareProfile } from "./share";
-import { ar, dayLabel } from "@/lib/format";
-
-const MONTHS = [
-  "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
-  "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر",
-];
+import { ar, dayLabel, membership } from "@/lib/format";
 
 export default async function ProfilePage({
   searchParams,
@@ -67,8 +61,6 @@ export default async function ProfilePage({
     prisma.purchase.count({ where: { giftedById: user.id } }),
   ]);
 
-  const joined = `${MONTHS[user.createdAt.getMonth()]} ${ar(user.createdAt.getFullYear())}`;
-
   const days: { label: string; items: typeof mine }[] = [];
   for (const moment of mine) {
     const label = dayLabel(moment.createdAt);
@@ -95,12 +87,10 @@ export default async function ProfilePage({
 
   return (
     <div className="screen">
-      {/* رأسٌ كبقية التبويبات: العلامة ثم فاصل ثم اسم الشاشة. */}
-      {/* بلا ترسٍ في الرأس: الخصوصية زرٌّ بجانب الإكسسوارات تحت. */}
-      {/* المشاركة في الطرف المقابل للعلامة: رابط ملفك ورقم عضويتك. */}
+      {/* رأسٌ كبقية التبويبات: العلامة ثم فاصل ثم اسم الشاشة. والمشاركةُ في زرّ
+          الإضافة برأس الأصدقاء كالجوّال (القاعدة ٢٨١) — بابان لشيءٍ واحد. */}
       <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
         <AthrPageMark label="الملف الشخصي" />
-        <ShareProfile name={user.name} memberNo={user.memberNo} />
       </header>
 
       {/*
@@ -133,29 +123,29 @@ export default async function ProfilePage({
           />
         }
         identity={
-          <>
-            <h1 className="flex flex-wrap items-center justify-center gap-2 text-center text-[20px] font-semibold text-ground-ink">
-              {user.name}
-              <NameTag isPlus={user.isPlus} tag={user.tag} size={12} />
-            </h1>
-            {user.handle ? (
-              <p dir="ltr" className="mt-0.5 text-center text-[13px] text-ground-muted">
-                @{user.handle}
-              </p>
-            ) : null}
-          </>
+          <h1 className="flex min-w-0 items-center gap-2 text-[20px] font-bold text-ground-ink">
+            <span dir="auto" className="truncate">{user.name}</span>
+            <NameTag isPlus={user.isPlus} tag={user.tag} size={12} />
+          </h1>
         }
         fold={
           <>
             {user.bio ? (
-              <p className="mx-auto mt-2 max-w-[300px] text-center text-[12.5px] leading-relaxed text-ground-ink-2">
+              <p dir="auto" className="mt-1 text-[13px] leading-relaxed text-ground-ink-2">
                 {user.bio}
               </p>
             ) : null}
 
-            <p className="mt-1.5 text-center text-[11.5px] text-ground-muted">
-              عضوية رقم {ar(user.memberNo)}
-              {user.city ? ` · ${user.city}` : ""} · انضم {joined}
+            {/* سطرُ العضويّة كالجوّال (القاعدة ٢٣٣): والمعرّفُ معزولٌ فلا يجرّ الفواصل. */}
+            <p className="mt-1.5 text-[12.5px] text-ground-muted">
+              {[
+                `عضوية رقم ${ar(user.memberNo)}`,
+                user.handle ? `\u2068@${user.handle}\u2069` : null,
+                user.city,
+                `لك معانا ${membership(user.createdAt)}`,
+              ]
+                .filter(Boolean)
+                .join("  │  ")}
             </p>
 
             {/* الأرقام تحت الاسم: أيقونةٌ ثم رقمٌ ثم اسمه. */}
