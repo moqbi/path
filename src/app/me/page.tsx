@@ -14,7 +14,7 @@ import { Accessories, type Owned } from "./accessories";
 import { coverStyle, NameTag } from "@/components/ui";
 import { AvatarMenu } from "@/components/avatar-menu";
 import { TabBar } from "@/components/tab-bar";
-import { BookIcon, ExitIcon, GearIcon, SparkIcon } from "@/components/icons";
+import { BookIcon, CalendarIcon, ExitIcon, GearIcon, SparkIcon } from "@/components/icons";
 import { AthrPageMark } from "@/components/brand";
 import { ar, dayLabel, membership } from "@/lib/format";
 
@@ -86,7 +86,16 @@ export default async function ProfilePage({
           الإضافة برأس الأصدقاء كالجوّال (القاعدة ٢٨١) — بابان لشيءٍ واحد. */}
       <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
         <AthrPageMark label="الملف الشخصي" />
-        {/* الإعداداتُ قرصٌ في الرأس كالجوّال (القاعدة ٢٩٢)، لا زرٌّ في الصفّ. */}
+        {/* التقويمُ والإعداداتُ قرصان في الرأس كالجوّال (القاعدة ٢٩٢)، لا زرٌّ في الصفّ. */}
+        <div className="flex items-center gap-2">
+        <Link
+          href="/calendar"
+          aria-label="التقويم"
+          className="flex h-10 w-10 items-center justify-center rounded-full"
+          style={{ background: "rgba(255,255,255,.08)", color: "var(--color-chrome-ink)" }}
+        >
+          <CalendarIcon size={20} />
+        </Link>
         <Link
           href="/settings"
           aria-label="الإعدادات والخصوصية"
@@ -95,6 +104,7 @@ export default async function ProfilePage({
         >
           <GearIcon size={20} />
         </Link>
+        </div>
       </header>
 
       {/*

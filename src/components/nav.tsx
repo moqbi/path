@@ -39,17 +39,20 @@ export function useGoBack(href?: string) {
   }, [href, router]);
 }
 
-export function BackButton({ href }: { href?: string }) {
+export function BackButton({ href, end = false }: { href?: string; end?: boolean }) {
   const back = useGoBack(href);
   return (
     <button
       type="button"
       aria-label="رجوع"
       onClick={back}
-      className="-mr-2 flex h-10 w-10 items-center justify-center"
-      style={{ color: "var(--color-chrome-muted)" }}
+      className={`${end ? "-ml-2" : "-mr-2"} flex h-10 w-10 shrink-0 items-center justify-center`}
+      style={{ color: end ? "var(--color-chrome-ink)" : "var(--color-chrome-muted)" }}
     >
-      <BackIcon size={19} />
+      {/* في طرف الرأس الآخر سهمٌ يشير إلى الخارج — كرأس الجوّال (`ScreenHeader`). */}
+      <span style={{ display: "block", transform: end ? "scaleX(-1)" : undefined }}>
+        <BackIcon size={19} />
+      </span>
     </button>
   );
 }

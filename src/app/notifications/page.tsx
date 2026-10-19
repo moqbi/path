@@ -1,13 +1,11 @@
-import { BackButton } from "@/components/nav";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { markSeen, notifications, type NoteKind } from "@/lib/notifications";
 import { NoteRow } from "@/components/note-row";
 import { ClearNotes } from "@/components/note-dismiss";
-import { Empty } from "@/components/ui";
+import { Empty, ScreenHeader } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
-import { AthrPageMark } from "@/components/brand";
 import { dayLabel } from "@/lib/format";
 
 const FILTERS = [
@@ -52,14 +50,8 @@ export default async function NotificationsPage({
   return (
     <div className="screen">
       {/* الإعدادات تُفتح من تبويب «أنا»، فلا ترس هنا. */}
-      <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
-        {/* تُفتح من الجرس في رأس اللحظات لا من تبويب (القاعدة ٢٦١)، فلها رجوع. */}
-        <div className="flex min-w-0 items-center gap-1">
-          <BackButton href="/" />
-          <AthrPageMark label="الإشعارات" />
-        </div>
-        {all.length > 0 ? <ClearNotes /> : null}
-      </header>
+      {/* تُفتح من الجرس في رأس اللحظات لا من تبويب (القاعدة ٢٦١)، فلها رجوع. */}
+      <ScreenHeader title="الإشعارات" back="/" action={all.length > 0 ? <ClearNotes /> : undefined} />
 
       <div className="shrink-0 px-5 pb-1 pt-3">
         <div className="no-bar flex gap-2 overflow-x-auto">

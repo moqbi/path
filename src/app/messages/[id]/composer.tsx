@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { sendGroupMessage, sendGroupPhoto, sendMessage, sendPhoto, sendVoice } from "@/app/actions";
 import { ImagePicker } from "@/components/image-picker";
-import { CameraIcon, CloseIcon, MicIcon, StickerIcon } from "@/components/icons";
+import { CloseIcon, MicIcon, PlusIcon, SendIcon, StickerIcon } from "@/components/icons";
 import { StickerPanel, useStickersAllowed } from "@/components/sticker-panel";
 import { ar } from "@/lib/format";
 
@@ -47,6 +47,9 @@ export function Composer({
   const [seconds, setSeconds] = useState(0);
   const [taping, setTaping] = useState(false);
   const [stickers, setStickers] = useState(false);
+  const [body, setBody] = useState("");
+  const formRef = useRef<HTMLFormElement>(null);
+  const textRef = useRef<HTMLTextAreaElement>(null);
   // الملصقاتُ في المحادثة الثنائيّة كخادمها (القاعدة ٢٩١) — المجموعةُ بلا ملصق.
   const stickersAllowed = useStickersAllowed() && !groupId;
   const [pending, start] = useTransition();
@@ -162,7 +165,13 @@ export function Composer({
           </button>
         </div>
       ) : (
+        /*
+          شريطٌ واحد كالجوّال (القاعدة ٢٩٥): الزائدُ يرسل صورةً (المتصفّحُ يعرض الكاميرا
+          والاستوديو معاً)، ثمّ الحقلُ يطول مع النصّ، ثمّ الملصقات، ثمّ المايكُ ما دام
+          الحقلُ فارغاً والإرسالُ حين يُكتب شيء — في قرصٍ واحد.
+        */
         <form
+          ref={formRef}
           action={async (data) => {
             if (groupId) {
               const said = await sendGroupMessage(groupId, data);
@@ -170,23 +179,14 @@ export function Composer({
             } else {
               await sendMessage(conversationId, data);
             }
+            setBody("");
+            if (textRef.current) textRef.current.style.height = "";
             setError(null);
             onSent?.();
           }}
-          className={`flex items-center ${compact ? "gap-1.5" : "gap-2"}`}
+          className="flex items-end rounded-[21px] border bg-card px-1 py-[3px]"
+          style={{ borderColor: stickers ? "var(--color-clay)" : "var(--color-line)", minHeight: 42 }}
         >
-          <input
-            name="body"
-            required
-            maxLength={2000}
-            autoComplete="off"
-            placeholder="اكتب رسالة…"
-            className={`min-w-0 grow rounded-full border border-line bg-card text-[13.5px] text-ink outline-none placeholder:text-faint focus:border-clay ${
-              compact ? "px-3.5" : "px-5"
-            }`}
-            style={{ height: compact ? 42 : 48 }}
-          />
-
           <ImagePicker
             label="أرسل صورة"
             maxSize={1200}
@@ -201,12 +201,36 @@ export function Composer({
                 return said.error ?? undefined;
               });
             }}
-            className={`flex shrink-0 items-center justify-center rounded-full border border-line bg-card text-ink-2 ${
-              compact ? "h-10 w-10" : "h-11 w-11"
-            }`}
+            className="flex h-[34px] w-[34px] shrink-0 items-center justify-center text-ink-2"
           >
-            <CameraIcon size={19} />
+            <PlusIcon size={20} />
           </ImagePicker>
+
+          <textarea
+            ref={textRef}
+            name="body"
+            required
+            rows={1}
+            maxLength={2000}
+            value={body}
+            onChange={(event) => {
+              setBody(event.target.value);
+              // يطول مع النصّ إلى ١١٠ ثمّ يُمرَّر داخله.
+              event.target.style.height = "auto";
+              event.target.style.height = `${Math.min(110, event.target.scrollHeight)}px`;
+            }}
+            onFocus={() => setStickers(false)}
+            onKeyDown={(event) => {
+              // Enter يرسل على الحاسوب، وShift+Enter سطرٌ جديد. وعلى الجوّال سطرٌ جديد كالتطبيق.
+              if (event.key === "Enter" && !event.shiftKey && !("ontouchstart" in window)) {
+                event.preventDefault();
+                if (body.trim()) formRef.current?.requestSubmit();
+              }
+            }}
+            placeholder="اكتب رسالة…"
+            className="min-w-0 grow resize-none bg-transparent px-1 py-2 text-[13.5px] leading-[1.45] text-ink outline-none placeholder:text-faint"
+            style={{ maxHeight: 110 }}
+          />
 
           {stickersAllowed ? (
             <button
@@ -214,34 +238,35 @@ export function Composer({
               aria-label="الملصقات"
               aria-expanded={stickers}
               onClick={() => setStickers((v) => !v)}
-              className={`flex shrink-0 items-center justify-center rounded-full border border-line bg-card ${
-                compact ? "h-10 w-10" : "h-11 w-11"
-              }`}
-              style={{ color: stickers ? "var(--color-clay-ink)" : "var(--color-ink-2)" }}
+              className="flex h-[34px] w-[34px] shrink-0 items-center justify-center"
+              style={{ color: stickers ? "var(--color-clay)" : "var(--color-muted)" }}
             >
               <StickerIcon size={19} />
             </button>
           ) : null}
 
-          {groupId ? null : <button
-            type="button"
-            aria-label="رسالة صوتية"
-            disabled={pending}
-            onClick={() => void begin()}
-            className={`flex shrink-0 items-center justify-center rounded-full border border-line bg-card text-ink-2 disabled:opacity-50 ${
-              compact ? "h-10 w-10" : "h-11 w-11"
-            }`}
-          >
-            <MicIcon size={19} />
-          </button>}
-
-          <button
-            type="submit"
-            className={`brand-gradient shrink-0 rounded-full text-[13.5px] font-bold ${compact ? "px-3.5" : "px-5"}`}
-            style={{ height: compact ? 42 : 48, color: "var(--color-on-brand)" }}
-          >
-            إرسال
-          </button>
+          {body.trim() || groupId ? (
+            <button
+              type="submit"
+              aria-label="إرسال"
+              disabled={!body.trim()}
+              className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full disabled:opacity-50"
+              style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+            >
+              <SendIcon size={16} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              aria-label="رسالة صوتية"
+              disabled={pending}
+              onClick={() => void begin()}
+              className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full disabled:opacity-50"
+              style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+            >
+              <MicIcon size={17} />
+            </button>
+          )}
         </form>
       )}
 

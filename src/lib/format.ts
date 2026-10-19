@@ -129,3 +129,14 @@ function count(n: number, one: string, two: string, few: string, many: string): 
   if (n <= 10) return `${ar(n)} ${few}`;
   return `${ar(n)} ${many}`;
 }
+
+/** مدّةُ صنفٍ بمُدَد: «يوم»، «يومان»، «أسبوع»، «شهر» — نسخةُ الجوّال (القاعدة ٤٤ج). */
+export function daysLabel(days: number): string {
+  if (days === 1) return "يوم";
+  if (days === 2) return "يومان";
+  if (days === 7) return "أسبوع";
+  if (days === 30) return "شهر";
+  if (days === 90) return "٣ أشهر";
+  if (days === 365) return "سنة";
+  return days <= 10 ? `${ar(days)} أيام` : `${ar(days)} يوماً`;
+}

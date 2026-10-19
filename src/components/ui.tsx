@@ -381,8 +381,6 @@ export function ScreenHeader({
   back,
   action,
   titleHref,
-  display = false,
-  mark = false,
 }: {
   title: string;
   back?: string;
@@ -393,31 +391,29 @@ export function ScreenHeader({
   /** العلامة بدل الاسم العاري: الرمز، ثم فاصل، ثم اسم الشاشة. */
   mark?: boolean;
 }) {
+  /*
+    بهيئة رأس الجوّال (`apps/mobile/components/screen-header.tsx`) — **بقرار المالك**
+    (القاعدة ٢٩٩): العلامةُ ثمّ الاسم في طرف البداية، والفعلُ ثمّ الرجوعُ في الطرف الآخر.
+    و`mark` و`display` يُقبلان ولا يُقرآن: الاسمُ يحمل العلامةَ دائماً (القاعدة ٨٦).
+  */
   return (
-    <header className="chrome flex items-center justify-between px-5 pb-3 pt-4">
+    <header className="chrome flex items-center gap-2.5 px-5 pb-3 pt-4">
       {/*
         السحب من الحافة يرجع في كل شاشةٍ لها رجوع — والزرّ يرجع إلى ما
         جاء منه المستخدم فعلاً لا إلى وجهةٍ مكتوبة هنا.
       */}
       <BackSwipe href={back} />
-      <div className="flex items-center gap-1">
-        {back ? <BackButton href={back} /> : null}
-        {mark ? (
-          <AthrPageMark label={title} />
-        ) : titleHref ? (
-          <Link href={titleHref} className="text-[18px] font-semibold">
-            {title}
+      <div className="min-w-0 grow">
+        {titleHref ? (
+          <Link href={titleHref} className="block min-w-0">
+            <AthrPageMark label={title} />
           </Link>
         ) : (
-          <h1
-            className={display ? "text-[23px]" : "text-[18px] font-semibold"}
-            style={display ? { fontFamily: "var(--font-display)" } : undefined}
-          >
-            {title}
-          </h1>
+          <AthrPageMark label={title} />
         )}
       </div>
       {action}
+      {back ? <BackButton href={back} end /> : null}
     </header>
   );
 }
