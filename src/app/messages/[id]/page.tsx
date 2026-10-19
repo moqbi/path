@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { conversationFor, VOICE_SECONDS } from "@/lib/dm";
 import { markConversationRead } from "@/app/actions";
-import { Avatar, ScreenHeader } from "@/components/ui";
+import { ScreenHeader } from "@/components/ui";
 import { Thread } from "./thread";
 import { Composer } from "./composer";
 import { ChatScroll } from "@/components/chat-scroll";
@@ -28,15 +28,6 @@ export default async function ThreadPage({
         title={conversation.other.name}
         titleHref={`/u/${conversation.other.id}`}
         back="/messages"
-        action={
-          <Avatar
-            name={conversation.other.name}
-            size={34}
-            frame={conversation.other.frame}
-            charm={conversation.other.charm}
-            mediaId={conversation.other.avatarMediaId}
-          />
-        }
       />
 
       <ChatScroll last={conversation.messages.at(-1)?.id ?? null}>

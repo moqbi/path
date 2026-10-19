@@ -24,7 +24,7 @@ import {
   MessageIcon,
   WithIcon,
 } from "@/components/icons";
-import { ar, dayLabel } from "@/lib/format";
+import { ar, dayLabel, membership } from "@/lib/format";
 
 /** ما يُعرض عن صنفٍ ملبوس حين تُضغط صورة العرض. */
 const WORN = {
@@ -37,11 +37,6 @@ const WORN = {
   priceCoins: true,
   plusOnly: true,
 } as const;
-
-const MONTHS = [
-  "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
-  "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر",
-];
 
 /** ملف صديق: مخططه ولحظاته — لا يفتحه إلا من هو في دائرته. */
 export default async function FriendProfilePage({
@@ -73,6 +68,8 @@ export default async function FriendProfilePage({
       id: true,
       memberNo: true,
       name: true,
+      handle: true,
+      bio: true,
       city: true,
       isPlus: true,
       isOpen: true,
@@ -126,7 +123,7 @@ export default async function FriendProfilePage({
     );
   }
 
-  const [moments, theirCircle, frames, theirs, mine] = await Promise.all([
+  const [moments, theirs, mine] = await Promise.all([
     /*
       بابٌ ثانٍ ظاهرٌ لا توسعةٌ لـ`visibleWhere()` (القاعدة ٢٣): الصديق
       يقرأ ما وُجّه إليه، والزائرُ لحسابٍ مفتوح يقرأ ما وُجّه إلى
@@ -143,15 +140,9 @@ export default async function FriendProfilePage({
       orderBy: { createdAt: "desc" },
       take: 40,
     }),
-    circleIds(id),
-    // أصناف المتجر كلها تُقرأ هنا لتُعرض في نافذة الإهداء بلا مغادرة الملف:
-    // الإطار والثيم والتشارم كلّها تُهدى.
-    prisma.storeItem.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.purchase.findMany({ where: { userId: id, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, select: { itemId: true } }),
     prisma.purchase.findMany({ where: { userId: viewer.id, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, select: { itemId: true } }),
   ]);
-
-  const joined = `${MONTHS[person.createdAt.getMonth()]} ${ar(person.createdAt.getFullYear())}`;
 
   const days: { label: string; items: typeof moments }[] = [];
   for (const moment of moments) {
@@ -163,26 +154,16 @@ export default async function FriendProfilePage({
 
   return (
     <div className="screen">
-      <ScreenHeader title={person.name} mark />
+      <ScreenHeader title={person.name} back="/circle" />
 
       <div className="scroll-area">
-        <div className="relative shrink-0 overflow-hidden" style={{ height: 140 }}>
-          <CoverLayer
-            mediaId={person.coverMediaId}
-            themeMediaId={person.background?.coverMediaId}
-            spec={person.background?.spec}
-            x={person.coverX}
-            y={person.coverY}
-            zoom={person.coverZoom}
-          />
-        </div>
-
-        <div className="relative px-5" style={{ marginTop: -34 }}>
-          <div className="mb-3 flex items-end justify-between">
-            {/* الصورة تُضغط: عرضها، أو معلومات ما يلبسه صاحبها. */}
+        <ProfileHead
+          person={person}
+          avatar={
+            /* الصورة تُضغط: عرضها، أو معلومات ما يلبسه صاحبها. */
             <AvatarMenu
               name={person.name}
-              size={96}
+              size={104}
               frame={person.frame}
               charm={person.charm}
               mediaId={person.avatarMediaId}
@@ -190,85 +171,42 @@ export default async function FriendProfilePage({
               charmItem={person.charm}
               owned={mine.map((row) => row.itemId)}
             />
-            {/*
-              الإهداء والمحادثة و«آثارنا» لأصدقائك: الأوّل للأصدقاء وحدهم
-              (القاعدة ٣٩)، والثاني يُفتح بينكما، والثالث ما جمعكما —
-              ولا شيء من ذلك بينك وبين حسابٍ مفتوح لم تُضِفه بعد.
-              فيظهر له زرُّ الإضافة مكانها.
-            */}
-            {friend ? (
-              <div className="flex items-center gap-2 pb-1.5">
+          }
+        >
+          {/*
+            الإهداء والمحادثة و«آثارنا» لأصدقائك: الأوّل للأصدقاء وحدهم
+            (القاعدة ٣٩)، والثاني يُفتح بينكما، والثالث ما جمعكما —
+            ولا شيء من ذلك بينك وبين حسابٍ مفتوح لم تُضِفه بعد.
+            فيظهر له زرُّ الإضافة مكانها.
+          */}
+          {friend ? (
+            <>
+              {/* المتجرُ كلُّه يُجلب ساعةَ تُفتح النافذة لا مع كل ملف (القاعدة ١٦٢). */}
               <GiftButton
-                items={frames.map((item) => ({
-                  id: item.id,
-                  name: item.name,
-                  spec: item.spec,
-                  priceCoins: item.priceCoins,
-                  plusOnly: item.plusOnly,
-                  earnedAfterDays: item.earnedAfterDays,
-                  mediaId: item.mediaId,
-                }))}
-                owned={theirs.map((row) => row.itemId)}
+                grow
+                friendOwned={theirs.map((row) => row.itemId)}
                 friendId={person.id}
                 friendName={person.name}
                 friendIsPlus={person.isPlus}
-                credit={viewer.coins}
-                isPlus={viewer.isPlus}
               />
-              <Link
-                href={`/?view=together&with=${person.id}`}
-                className="flex items-center gap-1.5 rounded-xl border border-line bg-card px-3.5 text-[13px] font-semibold text-ink-2"
-                style={{ height: 42 }}
-              >
+              <Link href={`/?view=together&with=${person.id}`} className={`${ACTION} grow`} style={{ height: 46 }}>
                 <WithIcon size={16} />
                 آثارنا
               </Link>
-              <form action={startConversation.bind(null, person.id)}>
-                <button
-                  type="submit"
-                  aria-label="محادثة"
-                  className="flex w-11 items-center justify-center rounded-xl border border-line bg-card text-ink-2"
-                  style={{ height: 42 }}
-                >
-                  <MessageIcon size={17} />
+              <ChatButton id={person.id} />
+            </>
+          ) : (
+            /* الحسابُ المفتوح: يُضاف فيقبل بنفسه، ويُراسَل بلا إضافة (القاعدة ٢٢١). */
+            <>
+              <form action={requestFriend.bind(null, person.id)} className="flex grow">
+                <button type="submit" className="brand-gradient grow rounded-xl text-[13.5px] font-bold" style={{ height: 46, color: "var(--color-on-brand)" }}>
+                  أضفه
                 </button>
               </form>
-            </div>
-            ) : (
-              /* الحسابُ المفتوح: يُضاف فيقبل بنفسه، ويُراسَل بلا إضافة (القاعدة ٢٢١). */
-              <div className="flex items-center gap-2 pb-1.5">
-                <form action={requestFriend.bind(null, person.id)}>
-                  <button
-                    type="submit"
-                    className="brand-gradient rounded-xl px-4 text-[13px] font-bold"
-                    style={{ height: 42, color: "var(--color-on-brand)" }}
-                  >
-                    أضفه
-                  </button>
-                </form>
-                <form action={startConversation.bind(null, person.id)}>
-                  <button
-                    type="submit"
-                    aria-label="محادثة"
-                    className="flex w-11 items-center justify-center rounded-xl border border-line bg-card text-ink-2"
-                    style={{ height: 42 }}
-                  >
-                    <MessageIcon size={17} />
-                  </button>
-                </form>
-              </div>
-            )}
-          </div>
-
-          <h1 className="mb-1 flex flex-wrap items-center gap-2 text-[19px] font-bold text-ground-ink">
-            {person.name}
-            <NameTag isPlus={person.isPlus} tag={person.tag} size={11} />
-          </h1>
-          <p className="mb-4 text-[12.5px] text-ground-muted">
-            عضوية رقم {ar(person.memberNo)} · {person.city ? `${person.city} · ` : null}
-            معك من {joined} · {ar(theirCircle.length)} من أصدقائه
-          </p>
-        </div>
+              <ChatButton id={person.id} />
+            </>
+          )}
+        </ProfileHead>
 
         <div className="px-5">
           {moments.length === 0 ? (
@@ -310,6 +248,8 @@ type Person = {
   id: string;
   memberNo: number;
   name: string;
+  handle: string | null;
+  bio: string | null;
   city: string | null;
   isPlus: boolean;
   createdAt: Date;
@@ -349,41 +289,31 @@ function LockedProfile({
   sentByMe: boolean;
   incoming: string | null;
 }) {
-  const joined = `${MONTHS[person.createdAt.getMonth()]} ${ar(person.createdAt.getFullYear())}`;
-
   return (
     <div className="screen">
-      <ScreenHeader title={person.name} mark />
+      <ScreenHeader title={person.name} back="/circle" />
 
       <div className="scroll-area">
-        <div className="relative shrink-0 overflow-hidden" style={{ height: 140 }}>
-          <CoverLayer
-            mediaId={person.coverMediaId}
-            themeMediaId={person.background?.coverMediaId}
-            spec={person.background?.spec}
-            x={person.coverX}
-            y={person.coverY}
-            zoom={person.coverZoom}
-          />
-        </div>
-
-        <div className="relative px-5" style={{ marginTop: -34 }}>
-          <div className="mb-3 flex items-end justify-between">
+        <ProfileHead
+          person={person}
+          extra={mutual > 0 ? (mutual === 1 ? "صديق مشترك واحد" : `${ar(mutual)} أصدقاء مشتركين`) : null}
+          avatar={
             <Avatar
               name={person.name}
-              size={96}
+              size={104}
               frame={person.frame}
               charm={person.charm}
               mediaId={person.avatarMediaId}
             />
-
+          }
+        >
             {incoming ? (
-              <div className="flex items-center gap-2 pb-1.5">
-                <form action={acceptFriend.bind(null, incoming)}>
+              <>
+                <form action={acceptFriend.bind(null, incoming)} className="flex grow">
                   <button
                     type="submit"
-                    className="flex items-center gap-1.5 rounded-xl px-4 text-[13px] font-bold"
-                    style={{ height: 42, background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+                    className="flex grow items-center justify-center gap-1.5 rounded-xl px-4 text-[13.5px] font-bold"
+                    style={{ height: 46, background: "var(--color-clay)", color: "var(--color-on-brand)" }}
                   >
                     <CheckIcon size={16} />
                     اقبل
@@ -394,44 +324,31 @@ function LockedProfile({
                     type="submit"
                     aria-label="تجاهل"
                     className="flex w-11 items-center justify-center rounded-xl border border-line bg-card text-muted"
-                    style={{ height: 42 }}
+                    style={{ height: 46 }}
                   >
                     <CloseIcon size={17} />
                   </button>
                 </form>
-              </div>
+              </>
             ) : sentByMe ? (
               <span
-                className="flex items-center rounded-xl border border-line bg-card px-4 text-[13px] font-semibold text-muted"
-                style={{ height: 42, marginBottom: 6 }}
+                className="flex grow items-center justify-center rounded-xl border border-line bg-card px-4 text-[13px] font-semibold text-muted"
+                style={{ height: 46 }}
               >
                 طلبك معلّق
               </span>
             ) : (
-              <form action={requestFriend.bind(null, person.id)} className="pb-1.5">
+              <form action={requestFriend.bind(null, person.id)} className="flex grow">
                 <button
                   type="submit"
-                  className="brand-gradient rounded-xl px-4 text-[13px] font-bold"
-                  style={{ height: 42, color: "var(--color-on-brand)" }}
+                  className="brand-gradient grow rounded-xl px-4 text-[13.5px] font-bold"
+                  style={{ height: 46, color: "var(--color-on-brand)" }}
                 >
                   أضفه
                 </button>
               </form>
             )}
-          </div>
-
-          <h1 className="mb-1 flex flex-wrap items-center gap-2 text-[19px] font-bold text-ground-ink">
-            {person.name}
-            <NameTag isPlus={person.isPlus} tag={person.tag} size={11} />
-          </h1>
-          <p className="mb-4 text-[12.5px] text-ground-muted">
-            عضوية رقم {ar(person.memberNo)} · {person.city ? `${person.city} · ` : null}
-            في آثار من {joined}
-            {mutual > 0
-              ? ` · ${mutual === 1 ? "صديق مشترك واحد" : `${ar(mutual)} أصدقاء مشتركين`}`
-              : ""}
-          </p>
-        </div>
+        </ProfileHead>
 
         {/* مكانُ اللحظات يقول لماذا لا تُرى — لا فراغٌ يُقرأ «ما نشر شي». */}
         <div className="px-5">
@@ -450,5 +367,80 @@ function LockedProfile({
 
       <TabBar active="/circle" />
     </div>
+  );
+}
+
+const ACTION =
+  "flex items-center justify-center gap-1.5 rounded-xl border border-line bg-card px-3.5 text-[13.5px] font-semibold text-ink";
+
+/** زرُّ المحادثة بمقاس صفّ الأزرار (٤٦) — قرصٌ في طرف الصفّ كالجوّال. */
+function ChatButton({ id }: { id: string }) {
+  return (
+    <form action={startConversation.bind(null, id)}>
+      <button
+        type="submit"
+        aria-label="محادثة"
+        className="flex w-[46px] items-center justify-center rounded-xl border border-line bg-card text-ink-2"
+        style={{ height: 46 }}
+      >
+        <MessageIcon size={18} />
+      </button>
+    </form>
+  );
+}
+
+/**
+ * رأسُ ملف الصديق بهيئة «أنا» — نسخةُ `ProfileHead` في الجوّال (القاعدة ٢٣٣): الغلاف،
+ * ثمّ الصورةُ (١٠٤) في طرف البداية تعبر حافّته والاسمُ ووسمُه بجانبها، ثمّ سطرُ العضويّة
+ * بعرض الشاشة، ثمّ صفُّ الأزرار بمقاسٍ واحد. بلا عددِ أصدقائه (القاعدة ٨٧ب).
+ */
+function ProfileHead({
+  person,
+  avatar,
+  extra = null,
+  children,
+}: {
+  person: Person;
+  avatar: React.ReactNode;
+  /** سطرٌ يُلحق بالعضويّة — «صديق مشترك واحد» في بطاقة من ليس صديقاً. */
+  extra?: string | null;
+  children: React.ReactNode;
+}) {
+  const line = [
+    `عضوية رقم ${ar(person.memberNo)}`,
+    person.handle ? `\u2068@${person.handle}\u2069` : null,
+    person.city,
+    `لك معانا ${membership(person.createdAt)}`,
+    extra,
+  ].filter(Boolean);
+  return (
+    <>
+      <div className="relative shrink-0 overflow-hidden" style={{ height: 176 }}>
+        <CoverLayer
+          mediaId={person.coverMediaId}
+          themeMediaId={person.background?.coverMediaId}
+          spec={person.background?.spec}
+          x={person.coverX}
+          y={person.coverY}
+          zoom={person.coverZoom}
+        />
+      </div>
+      <div className="relative px-5" style={{ marginTop: -52 }}>
+        <div className="flex items-end gap-3">
+          <div className="shrink-0">{avatar}</div>
+          <h1 className="flex min-w-0 grow items-center gap-2 pb-3 text-[20px] font-bold text-ground-ink">
+            <span dir="auto" className="truncate">{person.name}</span>
+            <NameTag isPlus={person.isPlus} tag={person.tag} size={12} />
+          </h1>
+        </div>
+        {person.bio ? (
+          <p dir="auto" className="mt-1 text-[13px] leading-relaxed text-ground-ink-2">
+            {person.bio}
+          </p>
+        ) : null}
+        <p className="mt-1.5 text-[12.5px] text-ground-muted">{line.join("  │  ")}</p>
+        <div className="mb-2 mt-3.5 flex gap-2.5">{children}</div>
+      </div>
+    </>
   );
 }

@@ -109,13 +109,13 @@ export function AthrHeaderMark() {
 export function AthrPageMark({ label }: { label: string }) {
   return (
     // ٤٠ ارتفاعاً دائماً: رأسٌ بلا زرٍّ بجانب العلامة كان يقصر عن غيره.
-    <span className="flex items-center gap-3" style={{ minHeight: 44 }}>
-      <AthrMark size={44} />
+    <span className="flex min-w-0 items-center gap-3" style={{ minHeight: 44 }}>
+      <span className="shrink-0"><AthrMark size={44} /></span>
       <span
         aria-hidden="true"
         style={{ width: 1, height: 18, background: "var(--color-chrome-line)" }}
       />
-      <span style={{ fontSize: 18, fontWeight: 700, color: "var(--color-chrome-ink)" }}>
+      <span className="truncate" dir="auto" style={{ fontSize: 18, fontWeight: 700, color: "var(--color-chrome-ink)" }}>
         {label}
       </span>
     </span>

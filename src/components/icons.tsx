@@ -73,6 +73,15 @@ export const WithIcon = ({ size = 20, className }: IconProps) => (
   </svg>
 );
 
+/** التقويم — نسخةُ الجوّال (القاعدة ٢٩٢). */
+export const CalendarIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M6.5 5.5h11A1.5 1.5 0 0 1 19 7v11.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 18.5V7a1.5 1.5 0 0 1 1.5-1.5Z" />
+    <path d="M5 10h14M9 3.5v3.5M15 3.5v3.5" />
+    <path d="M9 14h.01M12 14h.01M15 14h.01M9 17h.01M12 17h.01" />
+  </svg>
+);
+
 export const ClockIcon = ({ size = 20, className }: IconProps) => (
   <svg {...base(size)} className={className}>
     <circle cx="12" cy="12" r="8.4" />
@@ -179,6 +188,13 @@ export const PrivateIcon = ({ size = 20, className }: IconProps) => (
 export const CheckIcon = ({ size = 20, className }: IconProps) => (
   <svg {...base(size)} className={className} strokeWidth={2}>
     <path d="M5 12.5 10 17.5 19 7" />
+  </svg>
+);
+
+/** الإرسال: طائرةٌ ورقيّة إلى اليسار — نسخةُ الجوّال (القاعدة ٢٩٥)، مملوءةٌ لا خطّ. */
+export const SendIcon = ({ size = 20, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+    <path d="M21.99 21 1 12l20.99-9L22 10 7 12l15 2z" />
   </svg>
 );
 
