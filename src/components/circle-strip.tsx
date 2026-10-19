@@ -57,7 +57,7 @@ export type StripNote = {
 
 type Me = { id: string; name: string; avatarMediaId: string | null };
 type Group = { id: string; name: string };
-type Track = { id: string; title: string; artist: string; cover: string | null; duration: number };
+type Track = { id: string; title: string; artist: string; cover: string | null; duration: number; source?: "deezer" | "apple" };
 
 /**
  * شريطُ الدائرة: القصصُ والنوت في صفٍّ واحد — كتبويب الأصدقاء في الجوّال
@@ -704,6 +704,7 @@ function NoteComposer({ groups, onClose }: { groups: Group[]; onClose: () => voi
                     onClick={() => {
                       setTrack(row);
                       setStartAt(0);
+                      setEndAt(NOTE_SECONDS);
                       setPicking(false);
                     }}
                     className="flex items-center gap-2.5 rounded-xl px-1.5 py-1.5 text-start hover:bg-white/10"
@@ -716,6 +717,8 @@ function NoteComposer({ groups, onClose }: { groups: Group[]; onClose: () => voi
                       <span dir="auto" className="block truncate text-[13px] font-semibold">{row.title}</span>
                       <span dir="auto" className="block truncate text-[11px] opacity-65">{row.artist}</span>
                     </span>
+                    {/* شرطُ آبل لما يُعرض من كتالوجها: اسمُها بجانب الأغنية (القاعدة ٣٠٤). */}
+                    {row.source === "apple" ? <AppleMusicTag /> : null}
                   </button>
                 ))
               )}
@@ -769,5 +772,13 @@ function NoteComposer({ groups, onClose }: { groups: Group[]; onClose: () => voi
         </button>
       </div>
     </GlassSheet>
+  );
+}
+
+function AppleMusicTag() {
+  return (
+    <span className="latin shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: "rgba(255,255,255,.14)" }}>
+      Apple Music
+    </span>
   );
 }

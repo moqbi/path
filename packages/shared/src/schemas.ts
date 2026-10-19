@@ -135,7 +135,7 @@ export const storyInput = z.object({
   /** أو أغنيةٌ من دِيزر (القاعدة ٣٠٣): كاملةً بثلاثينها، أو من البداية إلى النهاية بطولها. */
   track: z
     .object({
-      id: z.string().regex(/^\d{1,15}$/),
+      id: z.string().regex(/^(am:)?\d{1,15}$/),
       start: z.number().int().min(0).max(30).optional(),
       seconds: z.number().int().min(1).max(30).optional(),
       full: z.boolean().optional(),

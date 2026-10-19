@@ -844,7 +844,8 @@ export async function findSongs(query: string): Promise<{ tracks: Track[]; error
   const user = await requireUser();
   if (!hit(`music:${user.id}`, 30, 60_000)) return { tracks: [], error: TOO_MANY };
   try {
-    return { tracks: await searchTracks(String(query ?? "")) };
+    // Apple Music مع دِيزر للمالك وممنوحي اللوحة وحدهم حتى يُعتمد (القاعدة ٣٠٤).
+    return { tracks: await searchTracks(String(query ?? ""), canTryStickers(user)) };
   } catch (error) {
     return { tracks: [], error: noteError(error) };
   }

@@ -1,4 +1,5 @@
 import "server-only";
+import { APPLE_PREFIX, appleReady, appleSearch, appleSong } from "@/lib/apple-music";
 
 /**
  * الأغاني من دِيزر — نسخةُ `apps/api/src/services/music.ts` (القاعدة ٢٦٩):
@@ -29,7 +30,14 @@ export function clipOf(input: { start?: number; seconds?: number; full?: boolean
   return { start, seconds };
 }
 
-export type Track = { id: string; title: string; artist: string; cover: string | null; duration: number };
+export type Track = {
+  id: string;
+  title: string;
+  artist: string;
+  cover: string | null;
+  duration: number;
+  source?: "deezer" | "apple";
+};
 
 type Raw = {
   id: number;
@@ -52,6 +60,7 @@ function shape(row: Raw): Track | null {
     artist: row.artist?.name ?? "",
     cover: row.album?.cover_medium ?? row.album?.cover_small ?? null,
     duration: row.duration ?? 0,
+    source: "deezer",
   };
 }
 
@@ -72,15 +81,60 @@ export async function topTracks(): Promise<Track[]> {
   return tracks;
 }
 
-export async function searchTracks(query: string): Promise<Track[]> {
+/** ما يُطوى قبل المقارنة: الأغنيةُ نفسها في المصدرين تُعرض مرّةً. */
+function keyOf(track: Track): string {
+  const fold = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/\(.*?\)|\[.*?\]/g, "")
+      .replace(/[ً-ْـ]/g, "")
+      .replace(/[^\p{L}\p{N}]+/gu, "");
+  return `${fold(track.title)}|${fold(track.artist)}`;
+}
+
+/**
+ * بحثٌ واحدٌ يجمع المصدرين (القاعدة ٣٠٤): دِيزر وApple Music معاً، متناوبين، وما
+ * تكرّر بينهما يُعرض مرّةً من أوّلهما. وفشلُ أحدهما لا يُفرغ القائمة.
+ */
+export async function searchTracks(query: string, withApple = false): Promise<Track[]> {
   const q = query.trim().slice(0, 80);
   if (!q) return topTracks();
-  const body = await get<{ data?: Raw[] }>(`/search?q=${encodeURIComponent(q)}&limit=30`);
-  return (body.data ?? []).map(shape).filter((row): row is Track => row !== null);
+  const [deezer, apple] = await Promise.allSettled([
+    get<{ data?: Raw[] }>(`/search?q=${encodeURIComponent(q)}&limit=30`).then((body) =>
+      (body.data ?? []).map(shape).filter((row): row is Track => row !== null),
+    ),
+    withApple && appleReady()
+      ? appleSearch(q).then((rows) => rows.map(({ preview: _, ...row }): Track => ({ ...row, source: "apple" })))
+      : Promise.resolve([] as Track[]),
+  ]);
+  const a = deezer.status === "fulfilled" ? deezer.value : [];
+  const b = apple.status === "fulfilled" ? apple.value : [];
+  if (apple.status === "rejected") console.warn("[music] Apple Music:", apple.reason);
+  if (deezer.status === "rejected" && !b.length) throw deezer.reason;
+  const seen = new Set<string>();
+  const out: Track[] = [];
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    for (const row of [a[i], b[i]]) {
+      if (!row) continue;
+      const key = keyOf(row);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(row);
+    }
+  }
+  return out;
 }
 
 /** الأغنيةُ بمعرّفها — اسمُها وفنّانها من دِيزر لا ممّا يرسله المتصفّح. */
 export async function trackById(id: string): Promise<Track & { preview: string }> {
+  if (id.startsWith(APPLE_PREFIX)) {
+    const song = await appleSong(id.slice(APPLE_PREFIX.length)).catch((error: unknown) => {
+      console.warn("[music] Apple Music:", error);
+      throw new Error(UNAVAILABLE);
+    });
+    if (!song) throw new Error("الأغنية غير متاحة");
+    return { ...song, source: "apple" };
+  }
   if (!/^\d{1,15}$/.test(id)) throw new Error("الأغنية غير موجودة");
   const row = await get<Raw>(`/track/${id}`);
   const track = shape(row);

@@ -136,6 +136,12 @@ function Row({ track, onChoose }: { track: Track; onChoose: () => void }) {
           {track.artist} · {clock(track.duration)}
         </Text>
       </View>
+      {/* شرطُ آبل لما يُعرض من كتالوجها: اسمُها بجانب الأغنية (القاعدة ٣٠٤). */}
+      {track.source === "apple" ? (
+        <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, backgroundColor: "rgba(255,255,255,.14)" }}>
+          <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>Apple Music</Text>
+        </View>
+      ) : null}
       {/* سماعٌ قبل الاختيار: الضغطةُ على الصفّ تختار، وهذا الزرّ يُسمع فقط. */}
       <Pressable
         accessibilityLabel={clip.playing ? "إيقاف" : "استمع"}
