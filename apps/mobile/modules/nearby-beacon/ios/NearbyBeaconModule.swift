@@ -44,6 +44,17 @@ final class Beacon: NSObject, CBCentralManagerDelegate, CBPeripheralManagerDeleg
     }
   }
 
+  /** حالُ البلوتوث نفسه لا إذنُه: مسموحٌ ومطفأٌ من مركز التحكّم لا يبثّ شيئاً. */
+  func power() -> String {
+    switch central?.state {
+    case .poweredOn: return "on"
+    case .poweredOff: return "off"
+    case .unauthorized: return "denied"
+    case .unsupported: return "unsupported"
+    default: return "unknown"
+    }
+  }
+
   /** ما سُمع في الثواني العشر الأخيرة: رمزٌ وأقوى إشارة. */
   func list() -> [[String: Any]] {
     lock.lock()
@@ -118,6 +129,10 @@ public class NearbyBeaconModule: Module {
 
     Function("stop") {
       self.beacon.stop()
+    }
+
+    Function("power") { () -> String in
+      return self.beacon.power()
     }
 
     Function("seen") { () -> [[String: Any]] in
