@@ -156,6 +156,23 @@ function sweep(now: number) {
   for (const [id, at] of sent) if (now - at > SEND_MS) sent.delete(id);
 }
 
+/**
+ * أوّلُ فتحٍ لـ«من حولك» يفعّل تنبيهَها (القاعدة ٣٠٩): من سمح بالبلوتوث أو الموقع
+ * ليرى من حوله يريد أن يُرى ويُنبَّه. ومرّةً واحدة — من أطفأه بعدها لا يُعاد عليه.
+ * ويردّ `true` حين فعّله الآن، فيُعيد الجوّالُ قراءةَ إعداداته.
+ */
+export async function autoNotify(userId: string): Promise<boolean> {
+  try {
+    const { count } = await prisma.user.updateMany({
+      where: { id: userId, nearbyDecidedAt: null },
+      data: { notifyNearby: true, nearbyDecidedAt: new Date() },
+    });
+    return count > 0;
+  } catch {
+    return false;
+  }
+}
+
 /** يحفظ موضعَ من فعّل التنبيه، ويمحوه لمن أطفأه. والفشلُ يُبتلع: خبرٌ زائد. */
 export async function rememberSpot(userId: string, spot: { lat: number; lng: number }) {
   try {
@@ -214,6 +231,8 @@ export async function nearby(userId: string, spot: { lat: number; lng: number })
   sweep(now);
   const kept = beacons.get(userId)?.until ?? 0;
   beacons.set(userId, { ...spot, at: now, until: kept });
+  // قبل حفظ الموضع: هو يقرأ المفتاحَ الذي قد يُفعَّل الآن.
+  const autoOn = await autoNotify(userId);
   void rememberSpot(userId, spot);
 
   const blocked = new Set(await blockedWith(userId));
@@ -226,7 +245,7 @@ export async function nearby(userId: string, spot: { lat: number; lng: number })
     const d = meters(spot, beacon);
     if (d <= NEAR_METERS) distance.set(id, d);
   }
-  if (distance.size === 0) return { people: [], rang };
+  if (distance.size === 0) return { people: [], rang, autoOn };
 
   const people = await prisma.user.findMany({
     where: { id: { in: [...distance.keys()] } },
@@ -234,7 +253,7 @@ export async function nearby(userId: string, spot: { lat: number; lng: number })
   });
   // الأقربُ أوّلاً: من يجلس معك على الطاولة قبل من في آخر المقهى.
   people.sort((a, b) => (distance.get(a.id) ?? 0) - (distance.get(b.id) ?? 0));
-  return { people: await withRelation(userId, people), rang };
+  return { people: await withRelation(userId, people), rang, autoOn };
 }
 
 /**

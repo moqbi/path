@@ -212,10 +212,18 @@ export async function saveNotifications(userId: string, input: NotifyInput) {
   const from = input.quietFrom ?? null;
   const to = input.quietTo ?? null;
   const quiet = from !== null && to !== null;
+  // تبديلُ «من حولك» باليد يحسمه فلا يُفعَّل وحده بعدها (القاعدة ٣٠٩). والحفظُ بقيمته
+  // نفسها ليس تبديلاً: كلُّ حفظٍ يرسل المفاتيحَ كلَّها.
+  const before =
+    input.notifyNearby === undefined
+      ? null
+      : await prisma.user.findUnique({ where: { id: userId }, select: { notifyNearby: true } });
+  const decided = before !== null && before.notifyNearby !== input.notifyNearby;
 
   await prisma.user.update({
     where: { id: userId },
     data: {
+      ...(decided ? { nearbyDecidedAt: new Date() } : null),
       notifyDm: input.notifyDm,
       notifyFriend: input.notifyFriend,
       notifyOnTag: input.notifyOnTag,
