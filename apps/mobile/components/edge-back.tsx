@@ -45,6 +45,8 @@ export function EdgeBack({
   };
   const go = useRef(back);
   go.current = back;
+  const onBackRef = useRef(onBack);
+  onBackRef.current = onBack;
 
   const pan = useRef(
     PanResponder.create({
@@ -73,7 +75,15 @@ export function EdgeBack({
         const w = sizes.current.width;
         const distance = Math.abs(gesture.dx);
         const fast = Math.abs(gesture.vx) > 0.6;
-        if (distance > w / 3 || (fast && distance > 40)) {
+        if ((distance > w / 3 || (fast && distance > 40)) && onBackRef.current) {
+          /*
+            رجوعٌ بعينه يبدّل ما في الشاشة نفسها (عدسةُ «آثارنا») أو يدفع شاشةً فوقها — لا
+            شاشةَ تحتها تنكشف. فإكمالُ الانزلاق إلى الحافّة كان يُري صفحةً بيضاء قبل
+            الوجهة (القاعدة ٣١٤): تُردّ الشاشةُ مكانها في الحال ويُرجَع.
+          */
+          shift.setValue(0);
+          go.current();
+        } else if (distance > w / 3 || (fast && distance > 40)) {
           const to = from.current === "right" ? -w : w;
           Animated.timing(shift, { toValue: to, duration: 180, easing: Easing.out(Easing.quad), useNativeDriver: true }).start(() => {
             go.current();
