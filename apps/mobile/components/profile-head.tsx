@@ -35,7 +35,7 @@ export function ProfileHead({
   note,
 }: {
   /** النوتُ فوق الصورة (القاعدة ٢٦٩) — ضغطُها يفتحها ويُسمع أغنيتها. */
-  note?: { id: string; text: string | null; trackTitle: string | null; trackArtist: string | null } | null;
+  note?: { id: string; text: string | null; trackTitle: string | null; trackArtist: string | null; gifId?: string | null; gifW?: number | null; gifH?: number | null } | null;
   name: string;
   isPlus: boolean;
   tag?: { name: string; bg: string; fg: string } | null;
@@ -90,7 +90,7 @@ export function ProfileHead({
               onPress={() => openNote(note.id)}
               style={{ position: "absolute", bottom: size - 6, left: -30, right: -30, alignItems: "center", zIndex: 3 }}
             >
-              <NoteBubble text={note.text} trackTitle={note.trackTitle} trackArtist={note.trackArtist} />
+              <NoteBubble text={note.text} trackTitle={note.trackTitle} trackArtist={note.trackArtist} gif={note.gifId ? { id: note.gifId, w: note.gifW, h: note.gifH } : null} />
             </Pressable>
           ) : null}
         </View>

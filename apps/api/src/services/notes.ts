@@ -4,6 +4,7 @@ import { badRequest, notFound } from "../lib/errors";
 import { visibleAuthors } from "./visibility";
 import { push } from "./push";
 import { clipOf, previewUrl, trackById } from "./music";
+import { gifById } from "./giphy";
 
 /**
  * النوت (القاعدة ٢٦٩) — **بقرار المالك**: فقاعةٌ فوق صورة صاحبها في شريط
@@ -44,6 +45,9 @@ const NOTE = {
   trackCover: true,
   trackStart: true,
   trackSeconds: true,
+  gifId: true,
+  gifW: true,
+  gifH: true,
   groupId: true,
   createdAt: true,
   expiresAt: true,
@@ -74,15 +78,25 @@ export async function list(userId: string) {
 
 export async function post(
   userId: string,
-  input: { text?: string; trackId?: string; trackStart?: number; trackSeconds?: number; trackFull?: boolean; groupId?: string | null },
+  input: {
+    text?: string;
+    trackId?: string;
+    trackStart?: number;
+    trackSeconds?: number;
+    trackFull?: boolean;
+    gifId?: string;
+    groupId?: string | null;
+  },
 ) {
   const text = (input.text ?? "").trim().replace(/\s+/g, " ").slice(0, NOTE_TEXT_MAX);
-  if (!text && !input.trackId) throw badRequest("اكتب شيئاً أو اختر أغنية");
+  if (!text && !input.trackId && !input.gifId) throw badRequest("اكتب شيئاً أو اختر أغنية أو صورة متحركة");
   if (text) await guard(text);
 
   // الأغنيةُ تُقرأ من دِيزر بمعرّفها: اسمٌ وفنّانٌ يرسلهما الجهاز يُكتب فيهما أيُّ شيء.
   const track = input.trackId ? await trackById(input.trackId) : null;
   // كاملةً أو من البداية إلى النهاية كما اختارها صاحبُها (القاعدة ٣٠٣).
+  // والصورةُ المتحرّكة كذلك بمعرّفها من GIPHY (القاعدة ٣١٥).
+  const gif = input.gifId ? await gifById(input.gifId) : null;
   const clip = clipOf({ start: input.trackStart, seconds: input.trackSeconds, full: input.trackFull });
 
   let groupId: string | null = null;
@@ -108,6 +122,9 @@ export async function post(
         trackCover: track?.cover ?? null,
         trackStart: track ? clip.start : 0,
         trackSeconds: clip.seconds,
+        gifId: gif?.id ?? null,
+        gifW: gif?.w ?? null,
+        gifH: gif?.h ?? null,
         groupId,
         expiresAt: new Date(Date.now() + NOTE_HOURS * 3_600_000),
       },

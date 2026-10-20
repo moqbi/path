@@ -40,6 +40,10 @@ export type NoteView = {
   trackTitle: string | null;
   trackArtist: string | null;
   trackCover: string | null;
+  /** صورةٌ متحرّكة من GIPHY (القاعدة ٣١٥). */
+  gifId: string | null;
+  gifW: number | null;
+  gifH: number | null;
   createdAt: Date;
   groupName: string | null;
   seen: boolean;
@@ -61,6 +65,9 @@ export async function listNotes(userId: string): Promise<NoteView[]> {
       trackTitle: true,
       trackArtist: true,
       trackCover: true,
+      gifId: true,
+      gifW: true,
+      gifH: true,
       createdAt: true,
       author: { select: { id: true, name: true, avatarMediaId: true } },
       group: { select: { name: true } },

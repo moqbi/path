@@ -48,6 +48,10 @@ export type StripNote = {
   trackTitle: string | null;
   trackArtist: string | null;
   trackCover: string | null;
+  /** صورةٌ متحرّكة من GIPHY (القاعدة ٣١٥). */
+  gifId: string | null;
+  gifW: number | null;
+  gifH: number | null;
   createdAt: Date;
   groupName: string | null;
   seen: boolean;
@@ -254,7 +258,11 @@ function RingFace({ name, mediaId, state }: { name: string; mediaId: string | nu
   );
 }
 
-/** فقاعةُ النوت فوق الصورة — سطرُ الأغنية ثمّ العبارة، وذيلٌ ينزل إلى الصورة. */
+/**
+ * فقاعةُ النوت فوق الصورة — سطرُ الأغنية ثمّ العبارة، وذيلٌ ينزل إلى الصورة. والصورةُ
+ * المتحرّكة (القاعدة ٣١٥) أعلاها: وحدَها في الصغيرة، وبنسبتها فوق ما فيها في الكبيرة —
+ * ورابطُها يُبنى من معرّفها كالجوّال.
+ */
 function Bubble({ note, empty = false, large = false }: { note: StripNote | null; empty?: boolean; large?: boolean }) {
   return (
     <span className={large ? "note-bubble note-bubble-large" : "note-bubble"}>
@@ -264,8 +272,19 @@ function Bubble({ note, empty = false, large = false }: { note: StripNote | null
             <PlusIcon size={10} />
             نوت
           </span>
+        ) : note.gifId && !large ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={`https://media.giphy.com/media/${note.gifId}/200w.gif`} alt="" className="block h-[30px] max-w-[66px] rounded-md object-cover" />
         ) : (
           <>
+            {note.gifId ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={`https://media.giphy.com/media/${note.gifId}/200w.gif`}
+                alt=""
+                className="mb-1.5 block max-h-[160px] max-w-[180px] rounded-[10px] object-cover"
+              />
+            ) : null}
             {note.trackTitle ? (
               <span className="flex min-w-0 max-w-full items-center gap-1 font-bold">
                 <MusicIcon size={large ? 13 : 10} className="shrink-0 text-clay-ink" />

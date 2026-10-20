@@ -96,7 +96,7 @@ function Body({ note }: { note: StatusNote }) {
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 22 }}
       >
         <View style={{ alignItems: "center", paddingTop: 4 }}>
-          <NoteBubble size="large" text={note.text} trackTitle={note.trackTitle} trackArtist={note.trackArtist} playing={clip.playing} />
+          <NoteBubble size="large" text={note.text} trackTitle={note.trackTitle} trackArtist={note.trackArtist} playing={clip.playing} gif={note.gifId ? { id: note.gifId, w: note.gifW, h: note.gifH } : null} />
           <View style={{ marginTop: 4 }}>
             <Avatar name={note.author.name} size={72} mediaId={note.author.avatarMediaId} frame={note.author.frame} charm={note.author.charm} />
           </View>

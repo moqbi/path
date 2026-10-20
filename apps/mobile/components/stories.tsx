@@ -144,7 +144,7 @@ function Item({
       <View style={{ height: BUBBLE_ROOM, justifyContent: "flex-end", zIndex: 2, marginBottom: -8 }}>
         {note || mine ? (
           <Pressable accessibilityLabel={note ? "النوت" : "نوت جديدة"} hitSlop={6} onPress={onBubble}>
-            <NoteBubble text={note?.text} trackTitle={note?.trackTitle} trackArtist={note?.trackArtist} empty={!note} />
+            <NoteBubble text={note?.text} trackTitle={note?.trackTitle} trackArtist={note?.trackArtist} empty={!note} gif={note?.gifId ? { id: note.gifId, w: note.gifW, h: note.gifH } : null} />
           </Pressable>
         ) : null}
       </View>
