@@ -189,7 +189,7 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
       take: limit,
     }),
     // التفاعلُ على قصّتي ونوتي (القاعدة ٣١١): في صفّ المشاهدة نفسه، فلا جدولَ يُكتب.
-    // ورفعُ الوجه يمسح \`reaction\` فيذهب الخبرُ معه، والقصّةُ والنوتُ تُكنسان بعد يومٍ فيذهب.
+    // ورفعُ الوجه يمسح `reaction` فيذهب الخبرُ معه، والقصّةُ والنوتُ تُكنسان بعد يومٍ فيذهب.
     prisma.storyView.findMany({
       where: { story: { authorId: userId }, userId: { not: userId }, reaction: { not: null }, reactedAt: { not: null } },
       select: {
