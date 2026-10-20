@@ -90,7 +90,7 @@ export default function NewNote() {
           >
             {track ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6, maxWidth: "100%", marginBottom: 4 }}>
-                <MusicIcon size={13} color="#F6B93B" />
+                <MusicIcon size={13} color={colors.clay} />
                 <Text numberOfLines={1} style={{ flexShrink: 1, color: colors.chromeInk, fontSize: 13, fontWeight: "700", writingDirection: "auto" }}>
                   {track.track.title}
                 </Text>
@@ -125,19 +125,19 @@ export default function NewNote() {
         <View style={{ flexDirection: "row", gap: 10, marginTop: 18 }}>
           <Pressable
             onPress={() => input.current?.focus()}
-            style={{ height: 40, paddingHorizontal: 18, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: colors.chrome2 }}
+            style={{ height: 40, paddingHorizontal: 18, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
           >
-            <Text style={{ color: colors.chromeInk, fontSize: 13, fontWeight: "700" }}>عبارة</Text>
+            <Text style={{ color: colors.onBrand, fontSize: 13, fontWeight: "700" }}>عبارة</Text>
           </Pressable>
           <Pressable
             onPress={() => {
               input.current?.blur();
               setPicking(true);
             }}
-            style={{ height: 40, paddingHorizontal: 18, borderRadius: 20, flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center", backgroundColor: colors.chrome2 }}
+            style={{ height: 40, paddingHorizontal: 18, borderRadius: 20, flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
           >
-            <MusicIcon size={14} color="#F6B93B" />
-            <Text style={{ color: colors.chromeInk, fontSize: 13, fontWeight: "700" }}>{track ? "غيّر الأغنية" : "أغنية"}</Text>
+            <MusicIcon size={14} color={colors.onBrand} />
+            <Text style={{ color: colors.onBrand, fontSize: 13, fontWeight: "700" }}>{track ? "غيّر الأغنية" : "أغنية"}</Text>
           </Pressable>
         </View>
       </View>
@@ -157,7 +157,7 @@ export default function NewNote() {
                   style={{ flexDirection: "row", alignItems: "center", height: 44, paddingHorizontal: 14 }}
                 >
                   <Text style={{ flex: 1, color: colors.chromeInk, fontSize: 14 }}>{row.name}</Text>
-                  {groupId === row.id ? <CheckIcon size={16} color="#F6B93B" /> : null}
+                  {groupId === row.id ? <CheckIcon size={16} color={colors.clay} /> : null}
                 </Pressable>
               ))}
               {groups.length === 0 ? (
