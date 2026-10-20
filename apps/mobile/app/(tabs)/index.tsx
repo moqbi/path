@@ -26,6 +26,8 @@ import { useTabTop } from "../../lib/tab-top";
 import { playRefresh } from "../../lib/sound";
 import { NameTag } from "../../components/name-tag";
 import { colors } from "../../theme/tokens";
+import { DEV_FEATURES } from "../../lib/dev-features";
+import { SCROLL_CLOCK_H, ScrollClock, clockMinutes } from "../../components/scroll-clock";
 
 const COVER = COVER_HEIGHT;
 
@@ -124,8 +126,10 @@ export default function Timeline() {
     نزل في يومٍ طويل يعرف أين هو منه بلا أن يقرأ بطاقةً بطاقة.
   */
   const list = useRef<SectionList<Moment>>(null);
-  const [clock, setClock] = useState<string | null>(null);
+  const [clock, setClock] = useState<{ text: string; minutes: number } | null>(null);
   const clockFade = useRef(new Animated.Value(0)).current;
+  // ساعةٌ تناظريّة تنزلق مع موضع التمرير (القاعدة ٣١٢) — في نسخة التطوير وحدها.
+  const clockSlide = useRef(new Animated.Value(0)).current;
   const clockTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showClock = () => {
     if (clockTimer.current) clearTimeout(clockTimer.current);
@@ -139,7 +143,10 @@ export default function Timeline() {
   };
   const onViewable = useRef(({ viewableItems }: { viewableItems: { item: Moment | undefined }[] }) => {
     const first = viewableItems.find((row) => row.item && "createdAt" in row.item)?.item;
-    if (first) setClock(timeOfDay(new Date(first.createdAt)));
+    if (first) {
+      const at = new Date(first.createdAt);
+      setClock({ text: timeOfDay(at), minutes: clockMinutes(at) });
+    }
     // وما مرّ على الشاشة يُكتب «شافها» — منه لوحةُ صاحب اللحظة.
     markSeen(viewableItems.flatMap((row) => (row.item && "createdAt" in row.item ? [row.item.id] : [])));
   }).current;
@@ -508,7 +515,13 @@ export default function Timeline() {
           // موضعُ رأس القائمة وحده هو ما يأذن للسحب أن يلتقط الإيماءة.
           scrollEventThrottle={16}
           onScroll={(event) => {
-            atTop.current = event.nativeEvent.contentOffset.y <= 1;
+            const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+            atTop.current = contentOffset.y <= 1;
+            if (DEV_FEATURES) {
+              const room = layoutMeasurement.height - SCROLL_CLOCK_H - 20 - barSpace;
+              const span = Math.max(1, contentSize.height - layoutMeasurement.height);
+              clockSlide.setValue(Math.max(0, Math.min(1, contentOffset.y / span)) * Math.max(0, room));
+            }
           }}
           onEndReachedThreshold={0.6}
           onEndReached={() => {
@@ -581,7 +594,9 @@ export default function Timeline() {
           }
         />
 
-        {clock ? (
+        {clock && DEV_FEATURES ? (
+          <ScrollClock text={clock.text} minutes={clock.minutes} fade={clockFade} slide={clockSlide} />
+        ) : clock ? (
           <Animated.View
             pointerEvents="none"
             style={{
@@ -599,7 +614,7 @@ export default function Timeline() {
             }}
           >
             <ClockIcon size={14} color={colors.chromeInk} />
-            <Text style={{ color: colors.chromeInk, fontSize: 11.5, fontWeight: "700" }}>{clock}</Text>
+            <Text style={{ color: colors.chromeInk, fontSize: 11.5, fontWeight: "700" }}>{clock.text}</Text>
           </Animated.View>
         ) : null}
         </View>
