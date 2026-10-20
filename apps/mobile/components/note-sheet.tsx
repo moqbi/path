@@ -88,92 +88,100 @@ function Body({ note }: { note: StatusNote }) {
 
   return (
     <GlassSheet title={mine ? "نوتك" : note.author.name} subtitle={relative(new Date(note.createdAt))} onClose={close}>
-      <View style={{ alignItems: "center", paddingTop: 4 }}>
-        <NoteBubble size="large" text={note.text} trackTitle={note.trackTitle} trackArtist={note.trackArtist} playing={clip.playing} />
-        <View style={{ marginTop: 4 }}>
-          <Avatar name={note.author.name} size={72} mediaId={note.author.avatarMediaId} frame={note.author.frame} charm={note.author.charm} />
+      {/* `GlassSheet` بلا حشوةٍ لما فيه: كانت الوجوهُ تلتصق بحافّتها السفلى فتُقصّ،
+          وشريطُ الأغنية بحافّتيها. والحشوةُ حشوةُ نافذة التفاعل نفسُها. */}
+      <SheetScrollView
+        name="body"
+        style={{ flexGrow: 0 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 22 }}
+      >
+        <View style={{ alignItems: "center", paddingTop: 4 }}>
+          <NoteBubble size="large" text={note.text} trackTitle={note.trackTitle} trackArtist={note.trackArtist} playing={clip.playing} />
+          <View style={{ marginTop: 4 }}>
+            <Avatar name={note.author.name} size={72} mediaId={note.author.avatarMediaId} frame={note.author.frame} charm={note.author.charm} />
+          </View>
         </View>
-      </View>
 
-      {note.trackId ? (
-        <Pressable
-          onPress={listen}
-          style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 14, padding: 10, borderRadius: 14, backgroundColor: "rgba(255,255,255,.08)" }}
-        >
-          {note.trackCover ? (
-            <Image source={{ uri: note.trackCover }} style={{ width: 44, height: 44, borderRadius: 8 }} />
-          ) : (
-            <View style={{ width: 44, height: 44, borderRadius: 8, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.1)" }}>
-              <MusicIcon size={18} color="#fff" />
+        {note.trackId ? (
+          <Pressable
+            onPress={listen}
+            style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 14, padding: 10, borderRadius: 14, backgroundColor: "rgba(255,255,255,.08)" }}
+          >
+            {note.trackCover ? (
+              <Image source={{ uri: note.trackCover }} style={{ width: 44, height: 44, borderRadius: 8 }} />
+            ) : (
+              <View style={{ width: 44, height: 44, borderRadius: 8, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.1)" }}>
+                <MusicIcon size={18} color="#fff" />
+              </View>
+            )}
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text numberOfLines={1} style={{ color: "#fff", fontSize: 14, fontWeight: "700", writingDirection: "auto" }}>
+                {note.trackTitle}
+              </Text>
+              <Text numberOfLines={1} style={{ color: "rgba(255,255,255,.6)", fontSize: 12, writingDirection: "auto" }}>
+                {note.trackArtist} · {note.trackId.startsWith("am:") ? "Apple Music" : "Deezer"}
+              </Text>
             </View>
-          )}
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text numberOfLines={1} style={{ color: "#fff", fontSize: 14, fontWeight: "700", writingDirection: "auto" }}>
-              {note.trackTitle}
-            </Text>
-            <Text numberOfLines={1} style={{ color: "rgba(255,255,255,.6)", fontSize: 12, writingDirection: "auto" }}>
-              {note.trackArtist} · {note.trackId.startsWith("am:") ? "Apple Music" : "Deezer"}
-            </Text>
-          </View>
-          <View style={{ width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.14)" }}>
-            {clip.loading ? <ActivityIndicator size="small" color="#fff" /> : clip.playing ? <PauseIcon size={15} color="#fff" /> : <PlayIcon size={15} color="#fff" />}
-          </View>
-        </Pressable>
-      ) : null}
+            <View style={{ width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.14)" }}>
+              {clip.loading ? <ActivityIndicator size="small" color="#fff" /> : clip.playing ? <PauseIcon size={15} color="#fff" /> : <PlayIcon size={15} color="#fff" />}
+            </View>
+          </Pressable>
+        ) : null}
 
-      {mine ? (
-        <>
-          {note.groupName ? (
-            <Text style={{ color: "rgba(255,255,255,.6)", fontSize: 12, textAlign: "center", marginTop: 10 }}>
-              لتصنيف {note.groupName} وحده
-            </Text>
-          ) : null}
-          <Viewers noteId={note.id} hasTrack={Boolean(note.trackId)} />
-          <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
-            <Pressable
-              onPress={() => {
-                close();
-                router.push("/note/new" as never);
-              }}
-              style={{ flex: 1, height: 46, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.14)" }}
-            >
-              <Text style={{ color: "#fff", fontSize: 13.5, fontWeight: "700" }}>نوت جديدة</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => drop.mutate()}
-              disabled={drop.isPending}
-              style={{ flex: 1, height: 46, borderRadius: 14, flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,122,90,.18)" }}
-            >
-              <TrashIcon size={15} color="#FF7A5A" />
-              <Text style={{ color: "#FF7A5A", fontSize: 13.5, fontWeight: "700" }}>احذفها</Text>
-            </Pressable>
-          </View>
-        </>
-      ) : (
-        <View style={{ flexDirection: "row", justifyContent: "center", gap: 12, marginTop: 16 }}>
-          {FACES.map((kind) => {
-            const on = note.myReaction === kind;
-            return (
+        {mine ? (
+          <>
+            {note.groupName ? (
+              <Text style={{ color: "rgba(255,255,255,.6)", fontSize: 12, textAlign: "center", marginTop: 10 }}>
+                لتصنيف {note.groupName} وحده
+              </Text>
+            ) : null}
+            <Viewers noteId={note.id} hasTrack={Boolean(note.trackId)} />
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
               <Pressable
-                key={kind}
-                accessibilityLabel="تفاعل"
-                onPress={() => react.mutate(on ? null : kind)}
-                style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: 26,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: on ? "rgba(246,185,59,.28)" : "rgba(255,255,255,.08)",
-                  transform: [{ scale: on ? 1.08 : 1 }],
+                onPress={() => {
+                  close();
+                  router.push("/note/new" as never);
                 }}
+                style={{ flex: 1, height: 46, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.14)" }}
               >
-                <ReactionGlyph kind={kind} size={38} />
+                <Text style={{ color: "#fff", fontSize: 13.5, fontWeight: "700" }}>نوت جديدة</Text>
               </Pressable>
-            );
-          })}
-        </View>
-      )}
+              <Pressable
+                onPress={() => drop.mutate()}
+                disabled={drop.isPending}
+                style={{ flex: 1, height: 46, borderRadius: 14, flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,122,90,.18)" }}
+              >
+                <TrashIcon size={15} color="#FF7A5A" />
+                <Text style={{ color: "#FF7A5A", fontSize: 13.5, fontWeight: "700" }}>احذفها</Text>
+              </Pressable>
+            </View>
+          </>
+        ) : (
+          <View style={{ flexDirection: "row", justifyContent: "center", gap: 12, marginTop: 16 }}>
+            {FACES.map((kind) => {
+              const on = note.myReaction === kind;
+              return (
+                <Pressable
+                  key={kind}
+                  accessibilityLabel="تفاعل"
+                  onPress={() => react.mutate(on ? null : kind)}
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 26,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: on ? "rgba(246,185,59,.28)" : "rgba(255,255,255,.08)",
+                    transform: [{ scale: on ? 1.08 : 1 }],
+                  }}
+                >
+                  <ReactionGlyph kind={kind} size={38} />
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+      </SheetScrollView>
     </GlassSheet>
   );
 }
