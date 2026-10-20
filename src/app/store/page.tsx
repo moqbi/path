@@ -4,6 +4,7 @@ import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { TabBar } from "@/components/tab-bar";
 import { AthrPageMark } from "@/components/brand";
+import { ScreenHeader } from "@/components/ui";
 import { FlameIcon, InfoIcon, PlusIcon, SparkIcon } from "@/components/icons";
 import { StoreGrid, type Item } from "./grid";
 import { coinText } from "@/lib/format";
@@ -109,25 +110,30 @@ export default async function StorePage({
   // والحزم صفٌّ بنفسها: ما جُمع في باقةٍ واحدة لا يُقرأ بين الأصناف المفردة.
   const bundles = all.filter((item) => item.kind === "BUNDLE" && !item.limited && !timed(item));
 
-  // رابطُ «عرض الكل» لقسمٍ بعينه: يُبقي الشريحةَ المفتوحة ويُعيد القسمَ شبكة.
+  /*
+    «عرض الكل» يفتح القسمَ في صفحته كالجوّال (القاعدة ٣١٠): رابطٌ يُبقي الشريحة
+    ويحمل مفتاحَ القسم، والصفحةُ تُرسم بعد أن تُسجَّل الأقسامُ كلُّها (`sections`).
+  */
   const base = kind ? `/store?k=${kind.key}` : "/store";
-  const strip = (key: string, title: string, items: typeof every, flame = false) =>
-    items.length === 0 ? null : (
+  const sections = new Map<string, { title: string; items: typeof every }>();
+  const strip = (key: string, title: string, items: typeof every, flame = false) => {
+    if (items.length === 0) return null;
+    sections.set(key, { title, items });
+    return (
       <Row
         key={key}
         title={title}
         flame={flame}
         more={
           items.length > STRIP_MAX
-            ? expanded === key
-              ? { href: base, label: "عرض أقل" }
-              : { href: `${base}${base.includes("?") ? "&" : "?"}all=${key}`, label: "عرض الكل" }
+            ? { href: `${base}${base.includes("?") ? "&" : "?"}all=${encodeURIComponent(key)}`, label: "عرض الكل" }
             : null
         }
       >
-        {expanded === key ? grid(items) : grid(items.slice(0, STRIP_MAX), true)}
+        {grid(items.slice(0, STRIP_MAX), true)}
       </Row>
     );
+  };
 
   // أقسامُ النوع بمجموعاته ثمّ «… الأخرى» (القاعدة ٤٤د)، والمختلطةُ في كلّ نوعٍ فيها (١٩٧).
   const kindSections = (() => {
@@ -145,6 +151,29 @@ export default async function StorePage({
       </>
     );
   })();
+
+  // ترتيبُ «المميز» (القاعدة ٤٤د): وصل حديثاً، فالتشارمز، فالإطارات، فالثيمات، فالمحدود.
+  const featured = (
+    <>
+      {strip("fresh", "وصل حديثاً", fresh, true)}
+      {strip("charms", "التشارمز", charms)}
+      {strip("frames", "الإطارات", frames)}
+      {strip("themes", "ثيمات آثار", themes)}
+      {strip("bundles", "الحزم", bundles)}
+      {strip("limited", "حزم محدودة", limited)}
+    </>
+  );
+
+  const section = expanded && !category ? sections.get(expanded) : undefined;
+  if (section) {
+    return (
+      <div className="screen">
+        <ScreenHeader title={section.title} back={base} />
+        <main className="scroll-area px-5 pb-6 pt-4">{grid(section.items)}</main>
+        <TabBar active="/store" />
+      </div>
+    );
+  }
 
   return (
     <div className="screen">
@@ -203,15 +232,7 @@ export default async function StorePage({
         ) : kind ? (
           kindSections
         ) : (
-          <>
-            {/* ترتيبُ «المميز» (القاعدة ٤٤د): وصل حديثاً، فالتشارمز، فالإطارات، فالثيمات، فالمحدود. */}
-            {strip("fresh", "وصل حديثاً", fresh, true)}
-            {strip("charms", "التشارمز", charms)}
-            {strip("frames", "الإطارات", frames)}
-            {strip("themes", "ثيمات آثار", themes)}
-            {strip("bundles", "الحزم", bundles)}
-            {strip("limited", "حزم محدودة", limited)}
-          </>
+          featured
         )}
 
         {!user.isPlus ? (
@@ -252,7 +273,7 @@ function Row({
 }: {
   title: string;
   flame?: boolean;
-  /** «عرض الكل» أو «عرض أقل» في رأس القسم (القاعدة ٢٦٦). */
+  /** «عرض الكل» في رأس القسم يفتحه في صفحته (القاعدتان ٢٦٦ و٣١٠). */
   more?: { href: string; label: string } | null;
   children: React.ReactNode;
 }) {
