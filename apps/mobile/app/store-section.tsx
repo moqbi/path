@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { ActivityIndicator, ScrollView } from "react-native";
+import { ActivityIndicator, ScrollView, View } from "react-native";
+import { Text } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ScreenHeader } from "../components/screen-header";
@@ -15,19 +16,20 @@ import { colors } from "../theme/tokens";
  */
 export default function StoreSection() {
   const router = useRouter();
-  const { title, ids } = useStoreSection();
+  const { title, parts } = useStoreSection();
   const store = useStore();
   const data = store.data;
 
   // فُتحت بلا قسمٍ (إعادة تحميلٍ أو رابطٍ مباشر): لا شيء تعرضه، فترجع إلى المتجر.
   useEffect(() => {
-    if (ids.length === 0) router.replace("/store" as never);
-  }, [ids.length]);
+    if (parts.length === 0) router.replace("/store" as never);
+  }, [parts.length]);
 
-  const order = new Map(ids.map((id, index) => [id, index]));
-  const items = (data?.items ?? [])
-    .filter((item) => order.has(item.id))
-    .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+  // كلُّ قسمٍ بأصنافه من الاستعلام بترتيبه، وما خلا منها (بيعٌ أُخفي بعد الفتح) لا يُرسم.
+  const byId = new Map((data?.items ?? []).map((item) => [item.id, item]));
+  const sections = parts
+    .map((part) => ({ title: part.title, items: part.ids.flatMap((id) => (byId.has(id) ? [byId.get(id)!] : [])) }))
+    .filter((part) => part.items.length > 0);
 
   return (
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
@@ -36,15 +38,23 @@ export default function StoreSection() {
         <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
       ) : (
         <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}>
-          <StoreGrid
-            items={items}
-            owned={data.owned}
-            expires={data.expires ?? {}}
-            isPlus={data.isPlus}
-            coins={data.coins}
-            daysHere={data.daysHere}
-            equipped={data.equipped}
-          />
+          {/* قسمٌ واحد بلا عنوان، وأكثرُ منه كلٌّ بعنوان مجموعته (القاعدة ٣١٣). */}
+          {sections.map((part) => (
+            <View key={part.title}>
+              {sections.length > 1 ? (
+                <Text style={{ color: colors.groundInk, fontSize: 14, fontWeight: "700", marginBottom: 10 }}>{part.title}</Text>
+              ) : null}
+              <StoreGrid
+                items={part.items}
+                owned={data.owned}
+                expires={data.expires ?? {}}
+                isPlus={data.isPlus}
+                coins={data.coins}
+                daysHere={data.daysHere}
+                equipped={data.equipped}
+              />
+            </View>
+          ))}
         </ScrollView>
       )}
     </SafeAreaView>

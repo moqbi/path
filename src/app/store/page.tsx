@@ -115,10 +115,22 @@ export default async function StorePage({
     ويحمل مفتاحَ القسم، والصفحةُ تُرسم بعد أن تُسجَّل الأقسامُ كلُّها (`sections`).
   */
   const base = kind ? `/store?k=${kind.key}` : "/store";
-  const sections = new Map<string, { title: string; items: typeof every }>();
-  const strip = (key: string, title: string, items: typeof every, flame = false) => {
+  /** أصنافُ نوعٍ أقساماً بمجموعاته ثمّ «… الأخرى» — للشريحة ولصفحة «عرض الكل» معاً. */
+  const groupOf = (row: (typeof KINDS)[number], pool: typeof every) => {
+    const items = pool.filter((item) => (row.kinds as readonly string[]).includes(item.kind));
+    const parts = collections
+      .filter((one) => !one.kind || (row.kinds as readonly string[]).includes(one.kind))
+      .map((one) => ({ title: one.name, items: items.filter((item) => item.collectionId === one.id) }))
+      .filter((part) => part.items.length > 0);
+    const rest = items.filter((item) => !item.collectionId || !collections.some((one) => one.id === item.collectionId));
+    if (rest.length > 0) parts.push({ title: parts.length > 0 ? `${row.label} الأخرى` : row.label, items: rest });
+    return parts;
+  };
+  const sections = new Map<string, { title: string; parts: { title: string; items: typeof every }[] }>();
+  // صفُّ نوعٍ في «المميز» يُفتح مجموعةً مجموعة كشريحته (القاعدة ٣١٣)، وغيرُه قسماً واحداً.
+  const strip = (key: string, title: string, items: typeof every, flame = false, group?: (typeof KINDS)[number]) => {
     if (items.length === 0) return null;
-    sections.set(key, { title, items });
+    sections.set(key, { title, parts: group ? groupOf(group, items) : [{ title, items }] });
     return (
       <Row
         key={key}
@@ -152,15 +164,15 @@ export default async function StorePage({
     );
   })();
 
-  // ترتيبُ «المميز» (القاعدة ٤٤د): وصل حديثاً، فالتشارمز، فالإطارات، فالثيمات، فالمحدود.
+  // ترتيبُ «المميز» (القاعدة ٣١٣): وصل حديثاً، فالمحدود، فالتشارمز، فالإطارات، فالثيمات، فالحزم.
   const featured = (
     <>
       {strip("fresh", "وصل حديثاً", fresh, true)}
-      {strip("charms", "التشارمز", charms)}
-      {strip("frames", "الإطارات", frames)}
-      {strip("themes", "ثيمات آثار", themes)}
-      {strip("bundles", "الحزم", bundles)}
       {strip("limited", "حزم محدودة", limited)}
+      {strip("charms", "التشارمز", charms, false, KINDS[0])}
+      {strip("frames", "الإطارات", frames, false, KINDS[1])}
+      {strip("themes", "ثيمات آثار", themes, false, KINDS[2])}
+      {strip("bundles", "الحزم", bundles)}
     </>
   );
 
@@ -169,7 +181,16 @@ export default async function StorePage({
     return (
       <div className="screen">
         <ScreenHeader title={section.title} back={base} />
-        <main className="scroll-area px-5 pb-6 pt-4">{grid(section.items)}</main>
+        <main className="scroll-area px-5 pb-6 pt-4">
+          {section.parts.map((part) => (
+            <section key={part.title}>
+              {section.parts.length > 1 ? (
+                <h2 className="mb-1 text-[16px] font-bold text-ground-ink">{part.title}</h2>
+              ) : null}
+              {grid(part.items)}
+            </section>
+          ))}
+        </main>
         <TabBar active="/store" />
       </div>
     );
