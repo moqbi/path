@@ -296,10 +296,12 @@ function Near({ row }: { row: (p: FoundPerson, alias?: boolean) => React.ReactNo
       const beat = async () => {
         try {
           const here = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-          const res = await api<{ people: FoundPerson[]; rang?: number }>("/v1/circle/nearby", {
+          const res = await api<{ people: FoundPerson[]; rang?: number; autoOn?: boolean }>("/v1/circle/nearby", {
             method: "POST",
             body: JSON.stringify({ lat: here.coords.latitude, lng: here.coords.longitude }),
           });
+          // فعّل الخادمُ التنبيهَ الآن: تُقرأ الإعداداتُ ثانيةً فيظهر مفعّلاً (القاعدة ٣٠٩).
+          if (res.autoOn) void useSession.getState().refresh();
           if (!alive) return;
           setGeo(res.people);
           if (res.rang) setRang(true);
@@ -332,7 +334,10 @@ function Near({ row }: { row: (p: FoundPerson, alias?: boolean) => React.ReactNo
     const fresh = async () => {
       let ok = false;
       try {
-        const { token } = await api<{ token: string }>("/v1/circle/nearby/token", { method: "POST" });
+        const { token, autoOn } = await api<{ token: string; autoOn?: boolean }>("/v1/circle/nearby/token", {
+          method: "POST",
+        });
+        if (autoOn) void useSession.getState().refresh();
         if (alive) native.start(BEACON_SERVICE, token);
         ok = true;
       } catch {

@@ -1401,10 +1401,14 @@ export async function saveNotifications(formData: FormData): Promise<void> {
   const quiet = on("quiet");
   const from = quiet ? minutes("quietFrom") : null;
   const to = quiet ? minutes("quietTo") : null;
+  // تبديلُ «من حولك» باليد يحسمه فلا يُفعَّل وحده بعدها (القاعدة ٣٠٩).
+  const before = await prisma.user.findUnique({ where: { id: user.id }, select: { notifyNearby: true } });
+  const decided = before !== null && before.notifyNearby !== on("notifyNearby");
 
   await prisma.user.update({
     where: { id: user.id },
     data: {
+      ...(decided ? { nearbyDecidedAt: new Date() } : null),
       notifyDm: on("notifyDm"),
       notifyFriend: on("notifyFriend"),
       notifyOnTag: on("notifyOnTag"),

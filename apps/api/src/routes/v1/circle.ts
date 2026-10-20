@@ -43,7 +43,9 @@ export const circleRoutes = new Hono()
     async (c) => c.json(await discover.nearby(me(c), c.req.valid("json"))),
   )
   /** بالبلوتوث (القاعدة ٢٨٢): رمزٌ يُبثّ بدل المعرّف، وما التُقط يُحلّ إلى بطاقات. */
-  .post("/nearby/token", rateLimitUser(40, 600), (c) => c.json(discover.beaconToken(me(c))))
+  .post("/nearby/token", rateLimitUser(40, 600), async (c) =>
+    c.json({ ...discover.beaconToken(me(c)), autoOn: await discover.autoNotify(me(c)) }),
+  )
   .post(
     "/nearby/seen",
     rateLimitUser(150, 300),
