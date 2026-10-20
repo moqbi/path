@@ -2,7 +2,7 @@ import { MemoriesCard } from "../../components/memories-card";
 import { TabBackdrop } from "../../components/tab-backdrop";
 import { WelcomeCard } from "../../components/welcome-card";
 import { WeeklyCard } from "../../components/weekly-card";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBarSpace } from "../../components/glass-bar";
 import { scrolled } from "../../lib/scrolled";
 import { markSeen } from "../../lib/seen";
@@ -10,7 +10,6 @@ import { View, SectionList, ActivityIndicator, Pressable, Animated, Easing, PanR
 import { Text } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { EdgeBack } from "../../components/edge-back";
 import { MomentCard, SPINE_W } from "../../components/moment-card";
 import { COVER_HEIGHT, CoverLayer } from "../../components/cover";
 import { Avatar } from "../../components/avatar";
@@ -42,7 +41,7 @@ const PULL_TRIP = 62;
  * على محور الخيط، ومن أسفلها ينزل الخيط إلى لحظات اليوم. واللحظات
  * وحدها تمرّ تحته.
  */
-export default function Timeline() {
+export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
   // المحتوى يمرّ تحت الشريط الزجاجيّ، وآخرُه يُقرأ فوقه (القاعدة ٢٢٨).
   const barSpace = useBarSpace();
   const me = useSession((s) => s.me);
@@ -55,8 +54,22 @@ export default function Timeline() {
     والصورة تبقى، ويتبدّل ما تحتها وحده.
   */
   const params = useLocalSearchParams<{ view?: string; with?: string; from?: string }>();
-  const view = params.view === "private" || params.view === "together" ? params.view : "";
-  const withId = view === "together" ? (params.with ?? "") : "";
+  /*
+    «آثارنا» مع صديقٍ بعينه شاشةٌ في المكدّس (`app/together/[id].tsx`) تُرسم بهذا المكوّن
+    نفسه — **بقرار المالك** (القاعدة ٣١٤): سحبُ آبل الأصليّ من الحافّة اليمنى يُزيحها
+    فيظهر تحتها ما فُتحت منه، ملفُّ الصديق أو قائمةُ «آثارنا». وعدسةٌ تتبدّل في التبويب
+    نفسه لا شيءَ تحتها، فكان السحبُ يكشف صفحةً بيضاء.
+  */
+  const stacked = Boolean(lens);
+  const view = stacked ? "together" : params.view === "private" || params.view === "together" ? params.view : "";
+  const withId = stacked ? lens!.with : "";
+  // رابطٌ قديمٌ إلى العدسة بصديقٍ بعينه يُفتح شاشتَه في المكدّس فوق القائمة.
+  const legacyWith = !stacked && params.view === "together" ? (params.with ?? "") : "";
+  useEffect(() => {
+    if (!legacyWith) return;
+    router.setParams({ view: "together", with: "", from: undefined } as never);
+    router.push(`/together/${legacyWith}` as never);
+  }, [legacyWith, router]);
 
   const feed = useFeed(view === "private" ? "private" : "");
   const together = useTogether(withId);
@@ -231,28 +244,6 @@ export default function Timeline() {
   if (!me) return null;
 
   return (
-    /*
-      «آثارنا» تُفتح من ملفّ الصديق، والسحبُ من الحافّة يرجع إليه — **بقرار
-      المالك** (القاعدة ٢٣٤). والخطُّ الزمنيّ العاديّ بلا رجوع: هو أوّلُ التطبيق.
-    */
-    <EdgeBack
-      fallback={withId ? `/u/${withId}` : "/"}
-      enabled={view === "together" && Boolean(withId)}
-      onBack={() => {
-        /*
-          الرجوعُ إلى حيث فُتحت — **بقرار المالك**: من ملفّ الصديق يُرجع إلى ملفّه وتعود
-          العدسةُ الأولى فلا يُفتح التبويبُ على «آثارنا» بعدها، ومن قائمة «آثارنا»
-          نفسها يُرجع إلى القائمة.
-        */
-        if (params.from === "profile" && withId) {
-          const id = withId;
-          router.setParams({ view: undefined, with: undefined, from: undefined } as never);
-          router.navigate(`/u/${id}` as never);
-        } else {
-          router.setParams({ view: "together", with: "", from: undefined } as never);
-        }
-      }}
-    >
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       <TabBackdrop />
       {/*
@@ -537,7 +528,7 @@ export default function Timeline() {
               {section === days[0] ? (
                 <>
                   <View style={{ flex: 1 }} />
-                  <Lenses view={view} isPlus={me.isPlus} />
+                  <Lenses view={view} isPlus={me.isPlus} stacked={stacked} />
                 </>
               ) : null}
             </View>
@@ -550,7 +541,7 @@ export default function Timeline() {
             {days.length === 0 ? (
               <View style={{ flexDirection: "row", paddingVertical: 16 }}>
                 <View style={{ flex: 1 }} />
-                <Lenses view={view} isPlus={me.isPlus} />
+                <Lenses view={view} isPlus={me.isPlus} stacked={stacked} />
               </View>
             ) : null}
             <LensHead
@@ -560,8 +551,8 @@ export default function Timeline() {
               count={moments.length}
               since={since}
               people={circle.data?.members ?? []}
-              onPick={(id) => router.setParams({ view: "together", with: id, from: undefined } as never)}
-              onClear={() => router.setParams({ view: "together", with: "" })}
+              onPick={(id) => router.push(`/together/${id}` as never)}
+              onClear={() => router.back()}
             />
             </>
           }
@@ -622,10 +613,9 @@ export default function Timeline() {
 
       </Animated.View>
 
-      <ComposerFan />
+      {stacked ? null : <ComposerFan />}
       <PlusEnded />
     </SafeAreaView>
-    </EdgeBack>
   );
 }
 
@@ -765,7 +755,7 @@ function LensHead({
  * «أرشيفي وكتاب سنتي» في «أنا»، والمفتوحةُ مضيئةٌ فيه. و«آثارنا» لغير المشترك
  * تأخذه إلى صفحة الاشتراك (القاعدة ١٥٩).
  */
-function Lenses({ view, isPlus }: { view: string; isPlus: boolean }) {
+function Lenses({ view, isPlus, stacked = false }: { view: string; isPlus: boolean; stacked?: boolean }) {
   const router = useRouter();
   const items = [
     { key: "", label: "اللحظات", Icon: HomeIcon },
@@ -798,7 +788,9 @@ function Lenses({ view, isPlus }: { view: string; isPlus: boolean }) {
                   router.push("/subscribe" as never);
                   return;
                 }
-                router.setParams({ view: key || undefined, with: undefined, from: undefined } as never);
+                // من شاشة «آثارنا» في المكدّس: الرجوعُ إلى التبويب بعدسته.
+                if (stacked) router.dismissTo({ pathname: "/", params: { view: key || undefined } } as never);
+                else router.setParams({ view: key || undefined, with: undefined, from: undefined } as never);
               }}
               style={{
                 flexDirection: "row",
