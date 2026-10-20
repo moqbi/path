@@ -594,9 +594,10 @@ export default function Timeline() {
           }
         />
 
-        {clock && DEV_FEATURES ? (
+        {/* ساعةُ التمرير للعدسة الأولى وحدها — **بقرار المالك** (القاعدة ٣١٤). */}
+        {!clock || view ? null : DEV_FEATURES ? (
           <ScrollClock text={clock.text} minutes={clock.minutes} fade={clockFade} slide={clockSlide} />
-        ) : clock ? (
+        ) : (
           <Animated.View
             pointerEvents="none"
             style={{
@@ -616,7 +617,7 @@ export default function Timeline() {
             <ClockIcon size={14} color={colors.chromeInk} />
             <Text style={{ color: colors.chromeInk, fontSize: 11.5, fontWeight: "700" }}>{clock.text}</Text>
           </Animated.View>
-        ) : null}
+        )}
         </View>
 
       </Animated.View>

@@ -59,17 +59,19 @@ export default function NewNote() {
   const ready = (text.trim().length > 0 || Boolean(track)) && !share.isPending;
   const audience = groupId ? (groups.find((g) => g.id === groupId)?.name ?? "تصنيف") : "الدائرة كلها";
 
+  // أرضيتُها الشريطُ وحبرُها حبرُه (`chromeInk`) لا أبيضُ مكتوب: ثيمٌ شريطُه فاتح كان يُذيب
+  // الكتابةَ والأزرار (القاعدة ٣١٤).
   return (
     <View style={{ flex: 1, backgroundColor: colors.night }}>
       <View style={{ paddingTop: insets.top + 8, paddingHorizontal: 16, flexDirection: "row", alignItems: "center" }}>
         <Pressable
           accessibilityLabel="إغلاق"
           onPress={() => router.back()}
-          style={{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.12)" }}
+          style={{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: colors.chrome2 }}
         >
-          <CloseIcon size={17} color="#fff" />
+          <CloseIcon size={17} color={colors.chromeInk} />
         </Pressable>
-        <Text style={{ flex: 1, textAlign: "center", color: "#fff", fontSize: 16, fontWeight: "800", marginEnd: 40 }}>نوت</Text>
+        <Text style={{ flex: 1, textAlign: "center", color: colors.chromeInk, fontSize: 16, fontWeight: "800", marginEnd: 40 }}>نوت</Text>
       </View>
 
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingBottom: keyboard ? keyboard / 2 : 0 }}>
@@ -82,18 +84,18 @@ export default function NewNote() {
               paddingHorizontal: 14,
               paddingVertical: 10,
               borderRadius: 18,
-              backgroundColor: "rgba(255,255,255,.14)",
+              backgroundColor: colors.chromeLine,
               alignItems: "center",
             }}
           >
             {track ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6, maxWidth: "100%", marginBottom: 4 }}>
                 <MusicIcon size={13} color="#F6B93B" />
-                <Text numberOfLines={1} style={{ flexShrink: 1, color: "#fff", fontSize: 13, fontWeight: "700", writingDirection: "auto" }}>
+                <Text numberOfLines={1} style={{ flexShrink: 1, color: colors.chromeInk, fontSize: 13, fontWeight: "700", writingDirection: "auto" }}>
                   {track.track.title}
                 </Text>
                 <Pressable accessibilityLabel="احذف الأغنية" hitSlop={8} onPress={() => setTrack(null)}>
-                  <CloseIcon size={11} color="rgba(255,255,255,.7)" />
+                  <CloseIcon size={11} color={colors.chromeMuted} />
                 </Pressable>
               </View>
             ) : null}
@@ -102,20 +104,20 @@ export default function NewNote() {
               value={text}
               onChangeText={(value) => setText(value.replace(/\n/g, " ").slice(0, NOTE_TEXT_MAX))}
               placeholder={track ? "أضف عبارة…" : "اكتب نوت…"}
-              placeholderTextColor="rgba(255,255,255,.45)"
+              placeholderTextColor={colors.chromeMuted}
               multiline
               maxLength={NOTE_TEXT_MAX}
-              style={{ minWidth: 130, maxWidth: 222, color: "#fff", fontSize: 15, lineHeight: 22, textAlign: "center", paddingVertical: 2 }}
+              style={{ minWidth: 130, maxWidth: 222, color: colors.chromeInk, fontSize: 15, lineHeight: 22, textAlign: "center", paddingVertical: 2 }}
             />
           </View>
-          <View style={{ width: 10, height: 10, borderRadius: 5, marginTop: 3, backgroundColor: "rgba(255,255,255,.14)" }} />
+          <View style={{ width: 10, height: 10, borderRadius: 5, marginTop: 3, backgroundColor: colors.chromeLine }} />
         </Pressable>
 
         <View style={{ marginTop: 6 }}>
           <Avatar name={me?.name ?? ""} size={104} mediaId={me?.avatarMediaId ?? null} frame={me?.frame ?? null} charm={picking ? null : (me?.charm ?? null)} />
         </View>
 
-        <Text style={{ color: "rgba(255,255,255,.5)", fontSize: 11, marginTop: 10 }}>
+        <Text style={{ color: colors.chromeMuted, fontSize: 11, marginTop: 10 }}>
           {text.length > NOTE_TEXT_MAX - 15 ? `${ar(NOTE_TEXT_MAX - text.length)} حرفاً باقية` : "تبقى يوماً ثمّ تذهب"}
         </Text>
 
@@ -123,19 +125,19 @@ export default function NewNote() {
         <View style={{ flexDirection: "row", gap: 10, marginTop: 18 }}>
           <Pressable
             onPress={() => input.current?.focus()}
-            style={{ height: 40, paddingHorizontal: 18, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.12)" }}
+            style={{ height: 40, paddingHorizontal: 18, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: colors.chrome2 }}
           >
-            <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>عبارة</Text>
+            <Text style={{ color: colors.chromeInk, fontSize: 13, fontWeight: "700" }}>عبارة</Text>
           </Pressable>
           <Pressable
             onPress={() => {
               input.current?.blur();
               setPicking(true);
             }}
-            style={{ height: 40, paddingHorizontal: 18, borderRadius: 20, flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.12)" }}
+            style={{ height: 40, paddingHorizontal: 18, borderRadius: 20, flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center", backgroundColor: colors.chrome2 }}
           >
             <MusicIcon size={14} color="#F6B93B" />
-            <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>{track ? "غيّر الأغنية" : "أغنية"}</Text>
+            <Text style={{ color: colors.chromeInk, fontSize: 13, fontWeight: "700" }}>{track ? "غيّر الأغنية" : "أغنية"}</Text>
           </Pressable>
         </View>
       </View>
@@ -143,7 +145,7 @@ export default function NewNote() {
       {/* الجمهور ثمّ «شارك». */}
       <View style={{ paddingHorizontal: 16, paddingBottom: keyboard ? keyboard + 10 : insets.bottom + 14, gap: 10 }}>
         {choosing ? (
-          <View style={{ borderRadius: 16, backgroundColor: "rgba(255,255,255,.08)", paddingVertical: 6, maxHeight: 240 }}>
+          <View style={{ borderRadius: 16, backgroundColor: colors.chrome2, paddingVertical: 6, maxHeight: 240 }}>
             <ScrollView keyboardShouldPersistTaps="handled">
               {[{ id: null as string | null, name: "الدائرة كلها" }, ...groups.map((g) => ({ id: g.id as string | null, name: g.name }))].map((row) => (
                 <Pressable
@@ -154,12 +156,12 @@ export default function NewNote() {
                   }}
                   style={{ flexDirection: "row", alignItems: "center", height: 44, paddingHorizontal: 14 }}
                 >
-                  <Text style={{ flex: 1, color: "#fff", fontSize: 14 }}>{row.name}</Text>
+                  <Text style={{ flex: 1, color: colors.chromeInk, fontSize: 14 }}>{row.name}</Text>
                   {groupId === row.id ? <CheckIcon size={16} color="#F6B93B" /> : null}
                 </Pressable>
               ))}
               {groups.length === 0 ? (
-                <Text style={{ color: "rgba(255,255,255,.5)", fontSize: 12, paddingHorizontal: 14, paddingVertical: 6 }}>
+                <Text style={{ color: colors.chromeMuted, fontSize: 12, paddingHorizontal: 14, paddingVertical: 6 }}>
                   أنشئ تصنيفاً من سحب صفّ أيّ صديق في «الأصدقاء».
                 </Text>
               ) : null}
@@ -169,10 +171,10 @@ export default function NewNote() {
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           <Pressable
             onPress={() => setChoosing((v) => !v)}
-            style={{ flex: 1, height: 46, borderRadius: 23, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, backgroundColor: "rgba(255,255,255,.1)" }}
+            style={{ flex: 1, height: 46, borderRadius: 23, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, backgroundColor: colors.chrome2 }}
           >
-            <WithIcon size={16} color="#fff" />
-            <Text numberOfLines={1} style={{ flex: 1, color: "#fff", fontSize: 13 }}>
+            <WithIcon size={16} color={colors.chromeInk} />
+            <Text numberOfLines={1} style={{ flex: 1, color: colors.chromeInk, fontSize: 13 }}>
               مع: {audience}
             </Text>
           </Pressable>
