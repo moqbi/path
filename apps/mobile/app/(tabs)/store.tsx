@@ -16,10 +16,11 @@ import { colors } from "../../theme/tokens";
 import { DEV_FEATURES } from "../../lib/dev-features";
 import { useStickers } from "../../lib/stickers";
 import { PackShelf, freshPacks } from "../../components/sticker-store";
+import { openStoreSection } from "../../lib/store-section";
 
 /**
  * عنوان صفٍّ في «المميز» — واللهب رسمٌ لا إيموجي، كبقية أيقونات التطبيق.
- * و«عرض الكل» بجانبه حين يزيد القسم على عشرة (القاعدة ٢٦٦)، وضغطُه ثانيةً يطويه.
+ * و«عرض الكل» بجانبه حين يزيد القسم على عشرة (القاعدة ٢٦٦)، ويفتح القسمَ في صفحته (القاعدة ٣١٠).
  */
 function Row({
   title,
@@ -29,7 +30,7 @@ function Row({
 }: {
   title: string;
   flame?: boolean;
-  more?: { all: boolean; toggle: () => void } | null;
+  more?: (() => void) | null;
   children: React.ReactNode;
 }) {
   return (
@@ -38,10 +39,8 @@ function Row({
         {flame ? <FlameIcon size={16} color={colors.live} /> : null}
         <Text style={{ flex: 1, color: colors.groundInk, fontSize: 14, fontWeight: "700" }}>{title}</Text>
         {more ? (
-          <Pressable onPress={more.toggle} hitSlop={8}>
-            <Text style={{ color: colors.groundMuted, fontSize: 12.5, fontWeight: "600" }}>
-              {more.all ? "عرض أقلّ" : "عرض الكل"}
-            </Text>
+          <Pressable onPress={more} hitSlop={8}>
+            <Text style={{ color: colors.groundMuted, fontSize: 12.5, fontWeight: "600" }}>عرض الكل</Text>
           </Pressable>
         ) : null}
       </View>
@@ -89,8 +88,6 @@ export default function Store() {
   }, [params.item]);
   const focused = data?.items.find((item) => item.id === held) ?? null;
 
-  // أقسامٌ فُتحت بـ«عرض الكل» — بعنوانها، وتُطوى بتغيير الشريحة.
-  const [all, setAll] = useState<Set<string>>(new Set());
   const grid = (items: StoreItem[], strip = false) =>
     data ? (
       <StoreGrid
@@ -105,19 +102,18 @@ export default function Store() {
       />
     ) : null;
 
-  /** قسمٌ صفٌّ أفقيٌّ بعشرة، و«عرض الكل» يجعله شبكةً بكلّ ما فيه (القاعدة ٢٦٦). */
+  /**
+   * قسمٌ صفٌّ أفقيٌّ بعشرة (القاعدة ٢٦٦)، و«عرض الكل» يفتحه شبكةً بكلّ ما فيه في
+   * صفحةٍ مستقلّة (القاعدة ٣١٠) — كانت الشبكةُ تنفتح في مكانها فتدفع المتجرَ إلى أسفل.
+   */
   const shelf = (title: string, items: StoreItem[], flame = false) => {
-    const open = all.has(title);
-    const toggle = () =>
-      setAll((was) => {
-        const next = new Set(was);
-        if (next.has(title)) next.delete(title);
-        else next.add(title);
-        return next;
-      });
+    const more = () => {
+      openStoreSection(title, items.map((item) => item.id));
+      router.push("/store-section" as never);
+    };
     return (
-      <Row key={title} title={title} flame={flame} more={items.length > STRIP_MAX ? { all: open, toggle } : null}>
-        {grid(items, !open)}
+      <Row key={title} title={title} flame={flame} more={items.length > STRIP_MAX ? more : null}>
+        {grid(items, true)}
       </Row>
     );
   };
@@ -209,10 +205,7 @@ export default function Store() {
             return (
               <Pressable
                 key={chip.slug || "featured"}
-                onPress={() => {
-                  setSlug(chip.slug);
-                  setAll(new Set());
-                }}
+                onPress={() => setSlug(chip.slug)}
                 style={{
                   paddingHorizontal: 16,
                   paddingVertical: 8,
