@@ -55,7 +55,7 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
 
   const person = { select: { id: true, name: true, avatarMediaId: true } };
 
-  const [reactions, comments, tags, friendships, messages, gifts, fresh, grants, plusGifts, invites, stickerGifts] = await Promise.all([
+  const [reactions, comments, tags, friendships, messages, gifts, fresh, grants, plusGifts, invites, stickerGifts, storyReacts, noteReacts] = await Promise.all([
     prisma.reaction.findMany({
       where: { moment: { authorId: userId }, userId: { not: userId } },
       select: {
@@ -188,9 +188,50 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
       orderBy: { createdAt: "desc" },
       take: limit,
     }),
+    // التفاعلُ على قصّتي ونوتي (القاعدة ٣١١): في صفّ المشاهدة نفسه، فلا جدولَ يُكتب.
+    // ورفعُ الوجه يمسح \`reaction\` فيذهب الخبرُ معه، والقصّةُ والنوتُ تُكنسان بعد يومٍ فيذهب.
+    prisma.storyView.findMany({
+      where: { story: { authorId: userId }, userId: { not: userId }, reaction: { not: null }, reactedAt: { not: null } },
+      select: {
+        id: true,
+        reaction: true,
+        reactedAt: true,
+        story: { select: { mediaId: true, seconds: true } },
+        user: person,
+      },
+      orderBy: { reactedAt: "desc" },
+      take: limit,
+    }),
+    prisma.noteView.findMany({
+      where: { note: { authorId: userId }, userId: { not: userId }, reaction: { not: null }, reactedAt: { not: null } },
+      select: { id: true, reaction: true, reactedAt: true, user: person },
+      orderBy: { reactedAt: "desc" },
+      take: limit,
+    }),
   ]);
 
   const notes: Note[] = [
+    // بنوع التفاعل نفسه: الجوّالُ القائم يرسمه بوجهه بلا نوعٍ جديد يجهله.
+    ...storyReacts.map((row) => ({
+      id: `sr-${row.id}`,
+      kind: "REACTION" as const,
+      at: row.reactedAt!,
+      text: `${row.user.name} تفاعل مع قصتك`,
+      href: "/circle",
+      person: row.user,
+      reaction: row.reaction!,
+      // المقطعُ لا يُرسم صورةً مصغّرة.
+      thumb: row.story.seconds ? null : row.story.mediaId,
+    })),
+    ...noteReacts.map((row) => ({
+      id: `nr-${row.id}`,
+      kind: "REACTION" as const,
+      at: row.reactedAt!,
+      text: `${row.user.name} تفاعل مع نوتك`,
+      href: "/circle",
+      person: row.user,
+      reaction: row.reaction!,
+    })),
     ...reactions.map((row) => ({
       id: `r-${row.id}`,
       kind: "REACTION" as const,
