@@ -413,6 +413,10 @@ model StatusNote {
   trackStart   Int      @default(0)
   /// طولُه: عشرون مقصوصة، أو ثلاثون حين تُنشر الأغنيةُ كما هي (القاعدة ٢٧٧).
   trackSeconds Int      @default(20)
+  /// صورةٌ متحرّكة من GIPHY بمعرّفها (القاعدة ٣١٥) — الرابطُ يُشتقّ منه، والمقاسُ لنسبتها.
+  gifId        String?
+  gifW         Int?
+  gifH         Int?
   /// تصنيفٌ يُقصر عليه — وفارغٌ: الدائرة كلّها.
   groupId      String?
   createdAt    DateTime @default(now())

@@ -6,6 +6,7 @@ import { requireActive, requireAuth, me } from "../../middleware/auth";
 import { rateLimitUser } from "../../middleware/rate-limit";
 import * as notes from "../../services/notes";
 import { previewUrl, searchTracks, topTracks } from "../../services/music";
+import * as giphy from "../../services/giphy";
 
 const byId = z.object({ id: cuid });
 
@@ -16,6 +17,8 @@ const noteInput = z.object({
   trackStart: z.number().int().min(0).max(30).optional(),
   trackSeconds: z.number().int().min(1).max(30).optional(),
   trackFull: z.boolean().optional(),
+  // صورةٌ متحرّكة من GIPHY (القاعدة ٣١٥).
+  gifId: z.string().regex(giphy.GIF_ID).optional(),
   groupId: cuid.nullable().optional(),
 });
 
@@ -59,3 +62,12 @@ export const musicRoutes = new Hono()
   .get("/:id/preview", rateLimitUser(60, 60), zValidator("param", z.object({ id: z.string().regex(/^(am:)?\d{1,15}$/) })), async (c) =>
     c.json({ url: await previewUrl(c.req.valid("param").id) }),
   );
+
+/**
+ * الصورُ المتحرّكة من GIPHY عبر خادمنا (القاعدة ٣١٥): الرائجةُ ثمّ البحث، بحدّ
+ * الأغاني نفسه — والبحثُ يُرسَل مؤجَّلاً مع الكتابة.
+ */
+export const gifRoutes = new Hono()
+  .use("*", requireAuth)
+  .get("/trending", rateLimitUser(30, 60), async (c) => c.json(await giphy.trending()))
+  .get("/search", rateLimitUser(30, 60), async (c) => c.json(await giphy.search(c.req.query("q") ?? "")));

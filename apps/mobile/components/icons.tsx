@@ -1,4 +1,4 @@
-import Svg, { Circle, Path } from "react-native-svg";
+import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 /**
  * الأيقونات — نفس المسارات التي في `src/components/icons.tsx` حرفاً
@@ -367,6 +367,22 @@ export const MusicIcon = ({ size = 20, color = "currentColor" }: Props) => (
     <Path d="M9 18V5.5l11-2V16" />
     <Circle cx={6.5} cy={18} r={2.6} />
     <Circle cx={17.5} cy={16} r={2.6} />
+  </Svg>
+);
+
+/** فقاعةُ كلامٍ فيها علامتا اقتباس — «عبارة» النوت (القاعدة ٣١٥). */
+export const QuoteIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M20 11.5a7.5 7.5 0 0 1-11.2 6.5L4 19.5l1.5-4.3A7.5 7.5 0 1 1 20 11.5Z" />
+    <Path d="M9.2 9.6v2.6c0 .9-.5 1.6-1.4 2M14.2 9.6v2.6c0 .9-.5 1.6-1.4 2" />
+  </Svg>
+);
+
+/** «GIF» في إطارٍ مستدير — بابُ الصور المتحرّكة (القاعدة ٣١٥). */
+export const GifIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Rect x={2.5} y={5} width={19} height={14} rx={3.5} />
+    <Path d="M10 10.2a2.2 2.2 0 1 0 0 3.6V12H8.6M13 9.8v4.4M16.2 14.2V9.8h2.4M16.2 12h1.9" />
   </Svg>
 );
 

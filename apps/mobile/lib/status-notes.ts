@@ -27,6 +27,10 @@ export type StatusNote = {
   trackArtist: string | null;
   trackCover: string | null;
   trackStart: number;
+  /** صورةٌ متحرّكة من GIPHY (القاعدة ٣١٥) — وخادمٌ قديم بلا الحقول لا يرسلها. */
+  gifId?: string | null;
+  gifW?: number | null;
+  gifH?: number | null;
   groupId: string | null;
   groupName: string | null;
   createdAt: string;
@@ -46,6 +50,26 @@ export type Track = {
   /** `apple` يُكتب بجانبها «Apple Music» (القاعدة ٣٠٤) — والقديمُ بلا الحقل دِيزر. */
   source?: "deezer" | "apple";
 };
+
+/** صورةٌ متحرّكة في نتائج GIPHY: معرّفُها ومقاسُها ومصغّرتُها للشبكة. */
+export type Gif = { id: string; w: number; h: number; preview: string };
+
+/**
+ * رابطُ الصورة يُبنى من معرّفها (القاعدة ٣١٥) — لا يُحفظ عنوانٌ كتبه جهاز. وعرضُها
+ * ٢٠٠ (`200w`): أكبرُ ما تُرسم فيه فقاعةُ النوت.
+ */
+export const gifUrl = (id: string) => `https://media.giphy.com/media/${id}/200w.gif`;
+
+/** الرائجةُ قبل الكتابة، ثمّ البحثُ — من خادمنا (`/v1/gifs`). */
+export function useGifs(query: string) {
+  const q = query.trim();
+  return useQuery({
+    queryKey: ["gifs", q],
+    queryFn: () =>
+      api<{ enabled: boolean; gifs: Gif[] }>(q ? `/v1/gifs/search?q=${encodeURIComponent(q)}` : "/v1/gifs/trending"),
+    staleTime: 5 * 60_000,
+  });
+}
 
 export const NOTE_TEXT_MAX = 60;
 export const PREVIEW_SECONDS = 30;
