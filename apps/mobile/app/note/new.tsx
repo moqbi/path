@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, View, type TextInput as RNTextInput } from "react-native";
+import { ActivityIndicator, Platform, Pressable, ScrollView, View, type TextInput as RNTextInput } from "react-native";
+import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -24,6 +25,12 @@ import { colors } from "../../theme/tokens";
  * مقطعاً ببدايته ونهايته (`SongPicker`). وفي الأسفل الجمهور — الدائرةُ كلُّها أو تصنيف —
  * ثمّ «شارك». والنوتُ الجديدة تحلّ محلّ القديمة.
  */
+// زجاجُ الفقاعة فوق أرضية الشريط الداكنة: غبشٌ خفيف وحافّةٌ مضيئة، وأندرويد
+// بلا غبشٍ فيأخذ ملئاً أكثف قليلاً.
+const GLASS_FILL = Platform.OS === "android" ? "rgba(255,255,255,.14)" : "rgba(255,255,255,.07)";
+const GLASS_DOT = "rgba(255,255,255,.12)";
+const GLASS_EDGE = "rgba(255,255,255,.22)";
+
 export default function NewNote() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -93,21 +100,20 @@ export default function NewNote() {
         <Pressable onPress={() => input.current?.focus()} style={{ alignItems: "center", paddingHorizontal: 24 }}>
           <View
             style={{
-              minWidth: 190,
-              maxWidth: 280,
-              paddingHorizontal: 18,
-              paddingTop: 14,
-              paddingBottom: 12,
-              borderRadius: 26,
-              backgroundColor: colors.card,
+              minWidth: 150,
+              maxWidth: 240,
+              paddingHorizontal: 14,
+              paddingTop: 10,
+              paddingBottom: 9,
+              borderRadius: 22,
+              overflow: "hidden",
+              borderWidth: 1,
+              borderColor: GLASS_EDGE,
+              backgroundColor: GLASS_FILL,
               alignItems: "center",
-              shadowColor: "#000",
-              shadowOpacity: 0.22,
-              shadowRadius: 14,
-              shadowOffset: { width: 0, height: 6 },
-              elevation: 6,
             }}
           >
+            {Platform.OS !== "android" ? <BlurView intensity={40} tint="systemUltraThinMaterialLight" style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0 }} /> : null}
             {gif ? (
               <View style={{ marginBottom: 8 }}>
                 <Image
@@ -134,17 +140,17 @@ export default function NewNote() {
                   maxWidth: "100%",
                   marginBottom: 6,
                   paddingHorizontal: 10,
-                  height: 28,
-                  borderRadius: 14,
-                  backgroundColor: colors.paper,
+                  height: 26,
+                  borderRadius: 13,
+                  backgroundColor: "rgba(255,255,255,.12)",
                 }}
               >
-                <MusicIcon size={13} color={colors.clay} />
-                <Text numberOfLines={1} style={{ flexShrink: 1, color: colors.ink, fontSize: 13, fontWeight: "700", writingDirection: "auto" }}>
+                <MusicIcon size={12} color={colors.clay} />
+                <Text numberOfLines={1} style={{ flexShrink: 1, color: colors.chromeInk, fontSize: 12.5, fontWeight: "700", writingDirection: "auto" }}>
                   {track.track.title}
                 </Text>
                 <Pressable accessibilityLabel="احذف الأغنية" hitSlop={8} onPress={() => setTrack(null)}>
-                  <CloseIcon size={11} color={colors.muted} />
+                  <CloseIcon size={11} color={colors.chromeMuted} />
                 </Pressable>
               </View>
             ) : null}
@@ -153,22 +159,22 @@ export default function NewNote() {
               value={text}
               onChangeText={(value) => setText(value.replace(/\n/g, " ").slice(0, NOTE_TEXT_MAX))}
               placeholder={track || gif ? "أضف عبارة…" : "وش في بالك؟"}
-              placeholderTextColor={colors.faint}
+              placeholderTextColor={colors.chromeMuted}
               multiline
               maxLength={NOTE_TEXT_MAX}
-              style={{ minWidth: 150, maxWidth: 244, color: colors.ink, fontSize: 19, lineHeight: 28, fontWeight: "600", textAlign: "center", paddingVertical: 2 }}
+              style={{ minWidth: 120, maxWidth: 210, color: colors.chromeInk, fontSize: 16, lineHeight: 23, fontWeight: "600", textAlign: "center", paddingVertical: 0 }}
             />
             {text.length > NOTE_TEXT_MAX - 15 ? (
-              <Text style={{ color: colors.muted, fontSize: 11, marginTop: 4 }}>{ar(NOTE_TEXT_MAX - text.length)}</Text>
+              <Text style={{ color: colors.chromeMuted, fontSize: 10.5, marginTop: 3 }}>{ar(NOTE_TEXT_MAX - text.length)}</Text>
             ) : null}
           </View>
           {/* الذيلُ: نقطةٌ ثمّ أصغرُ منها تنزلان إلى الصورة — فقاعةُ خاطرة. */}
-          <View style={{ width: 14, height: 14, borderRadius: 7, marginTop: 5, backgroundColor: colors.card }} />
-          <View style={{ width: 8, height: 8, borderRadius: 4, marginTop: 3, backgroundColor: colors.card }} />
+          <View style={{ width: 11, height: 11, borderRadius: 6, marginTop: 5, borderWidth: 1, borderColor: GLASS_EDGE, backgroundColor: GLASS_DOT }} />
+          <View style={{ width: 6, height: 6, borderRadius: 3, marginTop: 3, borderWidth: 1, borderColor: GLASS_EDGE, backgroundColor: GLASS_DOT }} />
         </Pressable>
 
         <View style={{ marginTop: 4 }}>
-          <Avatar name={me?.name ?? ""} size={104} mediaId={me?.avatarMediaId ?? null} frame={me?.frame ?? null} charm={picking || gifing ? null : (me?.charm ?? null)} />
+          <Avatar name={me?.name ?? ""} size={92} mediaId={me?.avatarMediaId ?? null} frame={me?.frame ?? null} charm={picking || gifing ? null : (me?.charm ?? null)} />
         </View>
 
         <Text style={{ color: colors.chromeMuted, fontSize: 11, marginTop: 10 }}>تبقى يوماً ثمّ تذهب</Text>
