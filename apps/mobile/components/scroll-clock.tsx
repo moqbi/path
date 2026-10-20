@@ -1,28 +1,58 @@
 import { useEffect, useRef } from "react";
 import { Animated, Easing, View } from "react-native";
+import Svg, { Circle, Path } from "react-native-svg";
 import { Text } from "./type";
-import { colors } from "../theme/tokens";
 
-/** ارتفاعُ القرص — يُطرح من مدى انزلاقه فلا يخرج أسفلَ القائمة. */
-export const SCROLL_CLOCK_H = 24;
+/** ارتفاعُ الكبسولة — يُطرح من مدى انزلاقها فلا تخرج أسفلَ القائمة. */
+export const SCROLL_CLOCK_H = 32;
+
+const DIGITS = "٠١٢٣٤٥٦٧٨٩";
+/** ارتفاعُ سطر الرقم: العمودُ يُزاح بمضاعفاته فيقف الرقمُ المطلوب في النافذة. */
+const LINE = 19;
 
 /**
- * الدقائقُ متّصلةً عبر الأيام (القاعدة ٣١٢): دقائقُ اليوم ناقصاً ١٤٤٠ لكلّ يومٍ مضى.
- * فالعقاربُ تدور إلى الوراء كلّما نزلتَ في الخطّ، ولا تقفز من منتصف الليل إلى ما قبله.
+ * ألوانٌ ثابتة لا تتبع الثيم (القاعدة ٣١٣): كبسولةٌ تطفو فوق الخطّ كانت تأخذ
+ * ألوانَ البطاقة والشريط فتتشوّه مع ثيمٍ داكنٍ أو فاقع — والزجاجُ الداكن يُقرأ
+ * فوق أيّ أرضية.
  */
+const GLASS = "rgba(14,26,36,0.86)";
+const INK = "#FDFCF8";
+const SUN = "#F6B93B";
+const MOON = "#C9D3F2";
+
+/** دقيقةُ اليوم بتوقيت الجهاز — للشمس والقمر. */
 export function clockMinutes(date: Date): number {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const day = new Date(date);
-  day.setHours(0, 0, 0, 0);
-  const daysAgo = Math.round((start.getTime() - day.getTime()) / 86_400_000);
-  return date.getHours() * 60 + date.getMinutes() - daysAgo * 1440;
+  return date.getHours() * 60 + date.getMinutes();
+}
+
+/** عمودُ رقمٍ يدور إلى قيمته كعدّاد. */
+function Digit({ value }: { value: number }) {
+  const shift = useRef(new Animated.Value(-value * LINE)).current;
+  useEffect(() => {
+    Animated.timing(shift, {
+      toValue: -value * LINE,
+      duration: 420,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [value, shift]);
+  return (
+    <View style={{ height: LINE, overflow: "hidden" }}>
+      <Animated.View style={{ transform: [{ translateY: shift }] }}>
+        {DIGITS.split("").map((d) => (
+          <Text key={d} style={{ height: LINE, lineHeight: LINE, color: INK, fontSize: 15, fontWeight: "700" }}>
+            {d}
+          </Text>
+        ))}
+      </Animated.View>
+    </View>
+  );
 }
 
 /**
- * ساعةُ التمرير تناظريّةً صغيرة (القاعدة ٣١٢): قرصٌ داكن بعقربين يدوران إلى وقت
- * أعلى لحظةٍ ظاهرة، وبجانبه الوقتُ نصّاً — والقرصُ كلُّه ينزلق مع موضعك في القائمة
- * (`slide`) كمقبض التمرير. والعقاربُ على الخيط الأصليّ: تدور والقائمةُ تمرّ.
+ * ساعةُ التمرير (القاعدة ٣١٣): كبسولةٌ داكنة فيها شمسٌ أو هلال، والوقتُ بأرقامٍ تدور
+ * كالعدّاد إلى وقت أعلى لحظةٍ ظاهرة — وتنزلق على الحافّة اليسرى مع موضعك في القائمة
+ * (`slide`)، وتبهت بعد الإصبع (`fade`).
  */
 export function ScrollClock({
   text,
@@ -35,20 +65,13 @@ export function ScrollClock({
   fade: Animated.Value;
   slide: Animated.Value;
 }) {
-  const hands = useRef(new Animated.Value(minutes)).current;
-  useEffect(() => {
-    Animated.timing(hands, {
-      toValue: minutes,
-      duration: 450,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [minutes, hands]);
-
-  // الساعةُ نصفُ درجةٍ في الدقيقة، والدقائقُ ستُّ درجات.
-  const hour = hands.interpolate({ inputRange: [0, 720], outputRange: ["0deg", "360deg"], extrapolate: "extend" });
-  const minute = hands.interpolate({ inputRange: [0, 60], outputRange: ["0deg", "360deg"], extrapolate: "extend" });
-  const DIAL = 18;
+  // «٩:٤٥ م» ← أرقامُ الساعة واللاحقة.
+  const cut = text.lastIndexOf(" ");
+  const clock = cut > 0 ? text.slice(0, cut) : text;
+  const suffix = cut > 0 ? text.slice(cut + 1) : "";
+  const hour = Math.floor(minutes / 60);
+  const day = hour >= 6 && hour < 18;
+  const glyphs = clock.split("");
 
   return (
     <Animated.View
@@ -61,36 +84,44 @@ export function ScrollClock({
         transform: [{ translateY: slide }],
         flexDirection: "row",
         alignItems: "center",
-        gap: 5,
+        gap: 7,
         height: SCROLL_CLOCK_H,
-        paddingLeft: 3,
-        paddingRight: 9,
+        paddingHorizontal: 11,
         borderRadius: SCROLL_CLOCK_H / 2,
-        backgroundColor: colors.card,
-        borderWidth: 1,
-        borderColor: colors.line,
+        backgroundColor: GLASS,
         shadowColor: "#000",
-        shadowOpacity: 0.12,
-        shadowRadius: 6,
-        shadowOffset: { width: 0, height: 2 },
-        elevation: 3,
+        shadowOpacity: 0.22,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 3 },
+        elevation: 4,
       }}
     >
-      <View style={{ width: DIAL, height: DIAL, borderRadius: DIAL / 2, backgroundColor: colors.chrome }}>
-        {/* العقربُ عمودٌ بطول القطر نصفُه شفّاف: يدور حول وسطه فيبقى طرفُه المرسوم من المركز. */}
-        <Animated.View
-          style={{ position: "absolute", left: DIAL / 2 - 1, top: 3, width: 2, height: DIAL - 6, transform: [{ rotate: hour }] }}
-        >
-          <View style={{ height: (DIAL - 6) / 2, marginTop: 2, borderRadius: 1, backgroundColor: colors.chromeInk }} />
-        </Animated.View>
-        <Animated.View
-          style={{ position: "absolute", left: DIAL / 2 - 0.75, top: 2, width: 1.5, height: DIAL - 4, transform: [{ rotate: minute }] }}
-        >
-          <View style={{ height: (DIAL - 4) / 2, borderRadius: 1, backgroundColor: colors.gold }} />
-        </Animated.View>
-        <View style={{ position: "absolute", left: DIAL / 2 - 1.5, top: DIAL / 2 - 1.5, width: 3, height: 3, borderRadius: 1.5, backgroundColor: colors.gold }} />
+      {day ? (
+        <Svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke={SUN} strokeWidth={2} strokeLinecap="round">
+          <Circle cx={12} cy={12} r={4} />
+          <Path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+        </Svg>
+      ) : (
+        <Svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke={MOON} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <Path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" />
+        </Svg>
+      )}
+      {/* الأرقامُ من اليسار كما تُقرأ الساعة، والمفتاحُ من آخرها فتبقى أعمدةُ الدقائق
+          في مكانها حين تصير الساعةُ رقمين. */}
+      <View style={{ flexDirection: "row", direction: "ltr", alignItems: "center" }}>
+        {glyphs.map((ch, index) => {
+          const n = DIGITS.indexOf(ch);
+          const key = glyphs.length - index;
+          return n >= 0 ? (
+            <Digit key={key} value={n} />
+          ) : (
+            <Text key={key} style={{ height: LINE, lineHeight: LINE, color: INK, fontSize: 15, fontWeight: "700", paddingHorizontal: 1 }}>
+              {ch}
+            </Text>
+          );
+        })}
       </View>
-      <Text style={{ color: colors.ink, fontSize: 11, fontWeight: "700" }}>{text}</Text>
+      {suffix ? <Text style={{ color: "rgba(253,252,248,0.75)", fontSize: 12 }}>{suffix}</Text> : null}
     </Animated.View>
   );
 }

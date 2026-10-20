@@ -106,9 +106,13 @@ export default function Store() {
    * قسمٌ صفٌّ أفقيٌّ بعشرة (القاعدة ٢٦٦)، و«عرض الكل» يفتحه شبكةً بكلّ ما فيه في
    * صفحةٍ مستقلّة (القاعدة ٣١٠) — كانت الشبكةُ تنفتح في مكانها فتدفع المتجرَ إلى أسفل.
    */
-  const shelf = (title: string, items: StoreItem[], flame = false) => {
+  const shelf = (title: string, items: StoreItem[], flame = false, kind?: (typeof KINDS)[number]) => {
     const more = () => {
-      openStoreSection(title, items.map((item) => item.id));
+      // صفُّ نوعٍ في «المميز» يُفتح مجموعةً مجموعة كشريحته (القاعدة ٣١٣)، وغيرُه قسماً واحداً.
+      const parts = kind
+        ? groupOf(kind, items).map((row) => ({ title: row.title, ids: row.items.map((item) => item.id) }))
+        : [{ title, ids: items.map((item) => item.id) }];
+      openStoreSection(title, parts);
       router.push("/store-section" as never);
     };
     return (
@@ -133,20 +137,19 @@ export default function Store() {
   const STICKERS = { slug: "kind:STICKER", name: "الملصقات" };
   const stickerTab = slug === STICKERS.slug;
   const kindTab = KINDS.find((row) => row.slug === slug) ?? null;
-  const grouped = (() => {
-    if (!kindTab || !data) return [];
-    const mine = data.items.filter((item) => (kindTab.kinds as readonly string[]).includes(item.kind));
-    const groups = (data.collections ?? []).filter((one) =>
-      (kindTab.kinds as readonly string[]).includes(one.kind),
-    );
+  /** أصنافُ نوعٍ أقساماً بمجموعاته ثمّ «… الأخرى» — للشريحة ولصفحة «عرض الكل» معاً. */
+  const groupOf = (kind: (typeof KINDS)[number], pool: StoreItem[]) => {
+    const mine = pool.filter((item) => (kind.kinds as readonly string[]).includes(item.kind));
+    const groups = (data?.collections ?? []).filter((one) => (kind.kinds as readonly string[]).includes(one.kind));
     const known = new Set(groups.map((one) => one.id));
     const out = groups
       .map((one) => ({ title: one.name, items: mine.filter((item) => item.collectionId === one.id) }))
       .filter((row) => row.items.length > 0);
     const rest = mine.filter((item) => !item.collectionId || !known.has(item.collectionId));
-    if (rest.length > 0) out.push({ title: out.length > 0 ? kindTab.other : kindTab.name, items: rest });
+    if (rest.length > 0) out.push({ title: out.length > 0 ? kind.other : kind.name, items: rest });
     return out;
-  })();
+  };
+  const grouped = kindTab && data ? groupOf(kindTab, data.items) : [];
 
   return (
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
@@ -275,7 +278,7 @@ export default function Store() {
             grid((data?.items ?? []).filter((item) => item.categoryId === category.id))
           ) : (
             <>
-              {/* ترتيبُ «المميز» — **بقرار المالك**: الجديد، فالتشارمز، فالإطارات، فالثيمات، فالمحدود. */}
+              {/* ترتيبُ «المميز» — **بقرار المالك**: الجديد، فالمحدود، فالتشارمز، فالإطارات، فالثيمات، فالحزم. */}
               {shelf("وصل حديثاً", data?.rows.fresh ?? [], true)}
               {/* مجموعةُ ملصقاتٍ جديدة خبرٌ كالصنف الجديد — صفٌّ تحته في القسم نفسه. */}
               {DEV_FEATURES && newPacks.length > 0 ? (
@@ -283,16 +286,16 @@ export default function Store() {
                   <PackShelf strip packs={newPacks} isPlus={data?.isPlus ?? false} />
                 </View>
               ) : null}
-              {(data?.rows.charms?.length ?? 0) > 0 ? shelf("التشارمز", data?.rows.charms ?? []) : null}
-              {(data?.rows.frames?.length ?? 0) > 0 ? shelf("الإطارات", data?.rows.frames ?? []) : null}
-              {(data?.rows.themes?.length ?? 0) > 0 ? shelf("ثيمات آثار", data?.rows.themes ?? []) : null}
-              {(data?.rows.bundles?.length ?? 0) > 0 ? (
-                <Row title="الحزم">{grid(data?.rows.bundles ?? [])}</Row>
-              ) : null}
-
-              {/* صفٌّ فارغٌ لا يُرسم — **بقرار المالك** (القاعدة ٢٨٤). */}
+              {/* المحدودُ بعد الجديد — **بقرار المالك** (القاعدة ٣١٣): ما يذهب قريباً يُرى أوّلاً.
+                  وصفٌّ فارغٌ لا يُرسم (القاعدة ٢٨٤). */}
               {(data?.rows.limited?.length ?? 0) > 0 ? (
                 <Row title="حزم محدودة">{grid(data?.rows.limited ?? [])}</Row>
+              ) : null}
+              {(data?.rows.charms?.length ?? 0) > 0 ? shelf("التشارمز", data?.rows.charms ?? [], false, KINDS[0]) : null}
+              {(data?.rows.frames?.length ?? 0) > 0 ? shelf("الإطارات", data?.rows.frames ?? [], false, KINDS[1]) : null}
+              {(data?.rows.themes?.length ?? 0) > 0 ? shelf("ثيمات آثار", data?.rows.themes ?? [], false, KINDS[2]) : null}
+              {(data?.rows.bundles?.length ?? 0) > 0 ? (
+                <Row title="الحزم">{grid(data?.rows.bundles ?? [])}</Row>
               ) : null}
             </>
           )}

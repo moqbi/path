@@ -46,7 +46,7 @@ const ITEM = {
   },
 } as const;
 
-const FRESH = 3;
+const FRESH = 10;
 
 /**
  * ما يُعدّ مملوكاً الآن: مِلكٌ دائم، أو مدّةٌ لم تنقضِ.
