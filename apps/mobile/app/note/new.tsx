@@ -25,15 +25,26 @@ import { colors } from "../../theme/tokens";
  * مقطعاً ببدايته ونهايته (`SongPicker`). وفي الأسفل الجمهور — الدائرةُ كلُّها أو تصنيف —
  * ثمّ «شارك». والنوتُ الجديدة تحلّ محلّ القديمة.
  */
-// زجاجُ الفقاعة فوق أرضية الشريط الداكنة: غبشٌ خفيف وحافّةٌ مضيئة، وأندرويد
-// بلا غبشٍ فيأخذ ملئاً أكثف قليلاً.
-const GLASS_FILL = Platform.OS === "android" ? "rgba(255,255,255,.14)" : "rgba(255,255,255,.07)";
-const GLASS_DOT = "rgba(255,255,255,.12)";
-const GLASS_EDGE = "rgba(255,255,255,.22)";
+// زجاجُ الفقاعة يتبع أرضيتَها (الشريط): فوق داكنٍ زجاجٌ فاتحٌ شفيف، وفوق فاتحٍ — ثيمٌ
+// شريطُه فاتح — زجاجٌ داكن، وإلّا ذاب الأبيضُ في الأبيض. وأندرويد بلا غبشٍ فيأخذ ملئاً أكثف.
+function isDark(hex: string): boolean {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return true;
+  const n = parseInt(m[1], 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  return 0.299 * r + 0.587 * g + 0.114 * b < 140;
+}
+function glassOn(ground: string) {
+  const android = Platform.OS === "android";
+  return isDark(ground)
+    ? { fill: android ? "rgba(255,255,255,.14)" : "rgba(255,255,255,.07)", dot: "rgba(255,255,255,.12)", edge: "rgba(255,255,255,.22)", tint: "systemUltraThinMaterialLight" as const }
+    : { fill: android ? "rgba(20,24,28,.32)" : "rgba(20,24,28,.16)", dot: "rgba(20,24,28,.14)", edge: "rgba(20,24,28,.18)", tint: "systemUltraThinMaterialDark" as const };
+}
 
 export default function NewNote() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const glass = glassOn(colors.night);
   const keyboard = useKeyboardInset();
   const client = useQueryClient();
   const me = useSession((s) => s.me);
@@ -108,12 +119,12 @@ export default function NewNote() {
               borderRadius: 22,
               overflow: "hidden",
               borderWidth: 1,
-              borderColor: GLASS_EDGE,
-              backgroundColor: GLASS_FILL,
+              borderColor: glass.edge,
+              backgroundColor: glass.fill,
               alignItems: "center",
             }}
           >
-            {Platform.OS !== "android" ? <BlurView intensity={40} tint="systemUltraThinMaterialLight" style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0 }} /> : null}
+            {Platform.OS !== "android" ? <BlurView intensity={40} tint={glass.tint} style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0 }} /> : null}
             {gif ? (
               <View style={{ marginBottom: 8 }}>
                 <Image
@@ -169,8 +180,8 @@ export default function NewNote() {
             ) : null}
           </View>
           {/* الذيلُ: نقطةٌ ثمّ أصغرُ منها تنزلان إلى الصورة — فقاعةُ خاطرة. */}
-          <View style={{ width: 11, height: 11, borderRadius: 6, marginTop: 5, borderWidth: 1, borderColor: GLASS_EDGE, backgroundColor: GLASS_DOT }} />
-          <View style={{ width: 6, height: 6, borderRadius: 3, marginTop: 3, borderWidth: 1, borderColor: GLASS_EDGE, backgroundColor: GLASS_DOT }} />
+          <View style={{ width: 11, height: 11, borderRadius: 6, marginTop: 5, borderWidth: 1, borderColor: glass.edge, backgroundColor: glass.dot }} />
+          <View style={{ width: 6, height: 6, borderRadius: 3, marginTop: 3, borderWidth: 1, borderColor: glass.edge, backgroundColor: glass.dot }} />
         </Pressable>
 
         <View style={{ marginTop: 4 }}>
