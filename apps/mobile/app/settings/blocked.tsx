@@ -1,4 +1,5 @@
-import { View, Pressable, FlatList, ActivityIndicator } from "react-native";
+import { Spinner } from "../../components/spinner";
+import { View, Pressable, FlatList } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -50,7 +51,7 @@ export default function BlockedScreen() {
         }
         ListEmptyComponent={
           blocked.isLoading ? (
-            <ActivityIndicator color={colors.clay} />
+            <Spinner color={colors.clay} />
           ) : (
             <View style={{ borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, paddingVertical: 28 }}>
               <Text style={{ color: colors.muted, fontSize: 13, textAlign: "center" }}>

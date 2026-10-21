@@ -1,5 +1,6 @@
+import { Spinner } from "./spinner";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, View, useWindowDimensions } from "react-native";
+import { FlatList, Pressable, View, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
 import { Text, TextInput } from "./type";
 import { GifIcon, SearchIcon } from "./icons";
@@ -57,7 +58,7 @@ export function GifPicker({ onPick, onClose }: { onPick: (gif: Gif) => void; onC
 
       <View style={{ height: Math.round(height * 0.46), marginTop: 10 }}>
         {gifs.isLoading ? (
-          <ActivityIndicator style={{ marginTop: 40 }} color="#fff" />
+          <Spinner style={{ marginTop: 40 }} color="#fff" />
         ) : (
           <FlatList
             data={gifs.data?.gifs ?? []}

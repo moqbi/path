@@ -1,5 +1,6 @@
+import { Spinner } from "./spinner";
 import { useEffect } from "react";
-import { ActivityIndicator, Image, Pressable, View } from "react-native";
+import { Image, Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Text } from "./type";
@@ -123,7 +124,7 @@ function Body({ note }: { note: StatusNote }) {
               </Text>
             </View>
             <View style={{ width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.14)" }}>
-              {clip.loading ? <ActivityIndicator size="small" color="#fff" /> : clip.playing ? <PauseIcon size={15} color="#fff" /> : <PlayIcon size={15} color="#fff" />}
+              {clip.loading ? <Spinner size="small" color="#fff" /> : clip.playing ? <PauseIcon size={15} color="#fff" /> : <PlayIcon size={15} color="#fff" />}
             </View>
           </Pressable>
         ) : null}
@@ -205,7 +206,7 @@ function Viewers({ noteId, hasTrack }: { noteId: string; hasTrack: boolean }) {
         </Text>
       </View>
       {viewers.isLoading ? (
-        <ActivityIndicator color="#fff" style={{ marginVertical: 12 }} />
+        <Spinner color="#fff" style={{ marginVertical: 12 }} />
       ) : rows.length === 0 ? (
         <Text style={{ color: "rgba(255,255,255,.5)", fontSize: 12.5, paddingVertical: 8 }}>ما أحد شافها بعد.</Text>
       ) : (

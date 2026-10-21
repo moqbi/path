@@ -1,3 +1,4 @@
+import { Spinner } from "../../components/spinner";
 import { MemoriesCard } from "../../components/memories-card";
 import { TabBackdrop } from "../../components/tab-backdrop";
 import { WelcomeCard } from "../../components/welcome-card";
@@ -6,7 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBarSpace } from "../../components/glass-bar";
 import { scrolled } from "../../lib/scrolled";
 import { markSeen } from "../../lib/seen";
-import { View, SectionList, ActivityIndicator, Pressable, Animated, Easing, PanResponder } from "react-native";
+import { View, SectionList, Pressable, Animated, Easing, PanResponder } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -589,7 +590,7 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
           }
           ListEmptyComponent={
             (view === "together" ? together.isLoading : feed.isLoading) ? (
-              <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
+              <Spinner style={{ marginTop: 50 }} color={colors.clay} />
             ) : view === "together" && !friend ? null : (
               <View style={{ marginTop: 40, borderRadius: 18, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, padding: 24 }}>
                 <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "700", textAlign: "center", marginBottom: 6 }}>
@@ -611,7 +612,7 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
           }
           ListFooterComponent={
             feed.isFetchingNextPage ? (
-              <ActivityIndicator style={{ paddingVertical: 18 }} color={colors.clay} />
+              <Spinner style={{ paddingVertical: 18 }} color={colors.clay} />
             ) : null
           }
         />

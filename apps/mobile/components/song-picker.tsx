@@ -1,5 +1,6 @@
+import { Spinner } from "./spinner";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, FlatList, Image, PanResponder, Pressable, View, useWindowDimensions } from "react-native";
+import { FlatList, Image, PanResponder, Pressable, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text, TextInput } from "./type";
 import { BackIcon, CheckIcon, CloseIcon, PauseIcon, PlayIcon, SearchIcon } from "./icons";
@@ -91,7 +92,7 @@ export function SongPicker({
             {query.trim() ? "نتائج البحث" : "الأكثر استماعاً"}
           </Text>
           {tracks.isLoading ? (
-            <ActivityIndicator style={{ marginTop: 30 }} color="#fff" />
+            <Spinner style={{ marginTop: 30 }} color="#fff" />
           ) : tracks.isError ? (
             <Text style={{ color: "#FF7A5A", fontSize: 13, textAlign: "center", marginTop: 30 }}>
               {(tracks.error as Error).message}
@@ -153,7 +154,7 @@ function Row({ track, onChoose }: { track: Track; onChoose: () => void }) {
         style={{ width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.12)" }}
       >
         {clip.loading ? (
-          <ActivityIndicator size="small" color="#fff" />
+          <Spinner size="small" color="#fff" />
         ) : clip.playing ? (
           <PauseIcon size={14} color="#fff" />
         ) : (
@@ -274,7 +275,7 @@ function Trim({ track, onDone, onOther }: { track: Track; onDone: (start: number
         onPress={() => (clip.playing ? void stopClip() : play())}
         style={{ marginTop: 20, width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.14)" }}
       >
-        {!url && !problem ? <ActivityIndicator color="#fff" /> : clip.playing ? <PauseIcon size={20} color="#fff" /> : <PlayIcon size={20} color="#fff" />}
+        {!url && !problem ? <Spinner color="#fff" /> : clip.playing ? <PauseIcon size={20} color="#fff" /> : <PlayIcon size={20} color="#fff" />}
       </Pressable>
 
       {/* الشريط: الزمنُ من اليسار إلى اليمين أيّاً كان اتّجاهُ الكتابة. */}

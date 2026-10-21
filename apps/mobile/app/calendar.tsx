@@ -1,5 +1,6 @@
+import { Spinner } from "../components/spinner";
 import { useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -162,7 +163,7 @@ export default function CalendarScreen() {
             })}
           </View>
 
-          {current.isLoading ? <ActivityIndicator style={{ marginTop: 8 }} color={colors.clay} /> : null}
+          {current.isLoading ? <Spinner style={{ marginTop: 8 }} color={colors.clay} /> : null}
 
           <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", columnGap: 14, rowGap: 4, marginTop: 10 }}>
             <Legend color={DOT.national} label="وطنية" />

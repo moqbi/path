@@ -1,5 +1,6 @@
+import { Spinner } from "../../components/spinner";
 import { useState } from "react";
-import { View, Pressable, ScrollView, Image, ActivityIndicator, Dimensions } from "react-native";
+import { View, Pressable, ScrollView, Image, Dimensions } from "react-native";
 import { Text } from "../../components/type";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -398,7 +399,7 @@ export default function NewStory() {
             disabled={busy}
             style={{ width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay, opacity: busy ? 0.6 : 1 }}
           >
-            {busy ? <ActivityIndicator color={colors.onBrand} /> : <SendMark color={colors.onBrand} />}
+            {busy ? <Spinner color={colors.onBrand} /> : <SendMark color={colors.onBrand} />}
           </Pressable>
         </View>
       </View>

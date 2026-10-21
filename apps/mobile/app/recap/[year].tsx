@@ -1,5 +1,6 @@
+import { Spinner } from "../../components/spinner";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Image, Pressable, useWindowDimensions, View } from "react-native";
+import { Image, Pressable, useWindowDimensions, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
@@ -91,7 +92,7 @@ export default function RecapScreen() {
   if (recap.isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.night, alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator color={PAPER} />
+        <Spinner color={PAPER} />
       </View>
     );
   }

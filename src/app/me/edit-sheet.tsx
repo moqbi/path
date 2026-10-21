@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CloseIcon } from "@/components/icons";
+import { CloseIcon, PencilIcon } from "@/components/icons";
 import { type Frame } from "@/components/ui";
 import { ANIMATED } from "@/components/image-picker";
 import { ProfileCover } from "./cover";
@@ -29,7 +29,10 @@ export function EditProfileSheet({
   coverSpec,
   coverY,
   startOpen = false,
+  disc = false,
 }: {
+  /** قرصٌ بقلمٍ بجانب الاسم بدل زرٍّ في صفّ (القاعدة ٣٢٢). */
+  disc?: boolean;
   name: string;
   /** المشترك يرفع صورة عرضٍ متحركة. */
   isPlus?: boolean;
@@ -64,10 +67,15 @@ export function EditProfileSheet({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex min-w-0 grow items-center justify-center truncate rounded-xl border border-line bg-card px-2 text-[13.5px] font-semibold text-ink-2"
-        style={{ height: 46 }}
+        aria-label={disc ? "تعديل الملف" : undefined}
+        className={
+          disc
+            ? "flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-card text-ink"
+            : "flex min-w-0 grow items-center justify-center truncate rounded-xl border border-line bg-card px-2 text-[13.5px] font-semibold text-ink-2"
+        }
+        style={disc ? undefined : { height: 46 }}
       >
-        تعديل الملف
+        {disc ? <PencilIcon size={16} /> : "تعديل الملف"}
       </button>
 
       {open ? (

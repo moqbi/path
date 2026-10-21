@@ -1,5 +1,6 @@
+import { Spinner } from "./spinner";
 import { useMemo, useRef, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, View, type ViewToken } from "react-native";
+import { FlatList, Pressable, View, type ViewToken } from "react-native";
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Text } from "./type";
@@ -134,7 +135,7 @@ export function StickerPanel({
       style={{ height, borderRadius: 18, overflow: "hidden" }}
     >
       {stickers.isLoading ? (
-        <ActivityIndicator style={{ marginTop: 40 }} color={soft} />
+        <Spinner style={{ marginTop: 40 }} color={soft} />
       ) : pages.length === 0 ? (
         <Text style={{ color: soft, fontSize: 12.5, textAlign: "center", marginTop: 50 }}>ما فيه ملصقات بعد</Text>
       ) : (
@@ -274,7 +275,7 @@ function PackLock({
       disabled={busy}
       style={{ flexDirection: "row", alignItems: "center", gap: 6, height: 38, paddingHorizontal: 18, borderRadius: 19, backgroundColor: color, opacity: busy ? 0.7 : 1 }}
     >
-      {busy ? <ActivityIndicator size="small" color="#fff" /> : icon}
+      {busy ? <Spinner size="small" color="#fff" /> : icon}
       <Text style={{ color: "#fff", fontSize: 13, fontWeight: "800" }}>{label}</Text>
     </Pressable>
   );

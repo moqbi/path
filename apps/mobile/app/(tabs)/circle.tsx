@@ -1,3 +1,4 @@
+import { Spinner } from "../../components/spinner";
 import { BlockIcon, CheckIcon, MessageIcon, TagIcon, UserMinusIcon, UserPlusIcon } from "../../components/icons";
 import { usePullLogo } from "../../components/logo-refresh";
 import { Sheet } from "../../components/sheet";
@@ -8,7 +9,7 @@ import { TabBackdrop } from "../../components/tab-backdrop";
 import { useBarSpace } from "../../components/glass-bar";
 import { scrolled } from "../../lib/scrolled";
 import { useCallback, useRef, useState } from "react";
-import { View, FlatList, Pressable, ActivityIndicator } from "react-native";
+import { View, FlatList, Pressable } from "react-native";
 import { Text, TextInput } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -356,7 +357,7 @@ export default function Circle() {
         ListEmptyComponent={
           circle.isLoading ? (
             <View style={{ paddingTop: 60, alignItems: "center" }}>
-              <ActivityIndicator color={colors.clay} />
+              <Spinner color={colors.clay} />
             </View>
           ) : (
             /* لكل بابٍ فراغُه. */

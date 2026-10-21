@@ -1,5 +1,6 @@
+import { Spinner } from "./spinner";
 import { useState } from "react";
-import { ActivityIndicator, Image, Pressable, View } from "react-native";
+import { Image, Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Text } from "./type";
@@ -89,7 +90,7 @@ export function ShareChoice({
         تُنشر لحظةً جديدةً في خطّك — لمن؟
       </Text>
       {busy ? (
-        <ActivityIndicator color={dark ? "#fff" : colors.clay} />
+        <Spinner color={dark ? "#fff" : colors.clay} />
       ) : (
         <View style={{ flexDirection: "row", gap: 8 }}>
           <Pressable onPress={() => void go({ audience: "CIRCLE" })} style={chip}>

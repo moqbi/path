@@ -1,5 +1,6 @@
+import { Spinner } from "./spinner";
 import { useState } from "react";
-import { View, Pressable, Modal, ActivityIndicator } from "react-native";
+import { View, Pressable, Modal } from "react-native";
 import { Text } from "./type";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Avatar, firstColor, type Charm, type Frame } from "./avatar";
@@ -235,7 +236,7 @@ function ItemSheet({ item, onClose }: { item: NonNullable<WornItem>; onClose: ()
           }}
         >
           {buy.isPending ? (
-            <ActivityIndicator color={colors.onBrand} />
+            <Spinner color={colors.onBrand} />
           ) : (
             <Text style={{ color: colors.onBrand, fontSize: 14, fontWeight: "700" }}>
               {`اشترِ بـ${coinText(item.priceCoins)}`}

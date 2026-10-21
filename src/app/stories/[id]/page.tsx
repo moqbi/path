@@ -4,6 +4,7 @@ import { storiesOf, viewersOf } from "@/lib/stories";
 import type { StoryText } from "@/components/story-texts";
 import type { StorySticker } from "@/components/story-stickers";
 import { StoryViewer } from "./viewer";
+import { canTryStickers } from "@/lib/stickers";
 
 /** مشاهدة قصص شخص: شاشة كاملة، شريحة تلو أخرى. */
 export default async function StoriesPage({ params }: { params: Promise<{ id: string }> }) {
@@ -20,6 +21,7 @@ export default async function StoriesPage({ params }: { params: Promise<{ id: st
   return (
     <StoryViewer
       mine={mine}
+      canSave={mine && canTryStickers(user)}
       author={{
         id: stories[0].author.id,
         name: stories[0].author.name,

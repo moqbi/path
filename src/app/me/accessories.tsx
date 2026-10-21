@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { equip, unequip } from "@/app/actions";
-import { CheckIcon, CloseIcon } from "@/components/icons";
+import { CheckIcon, CloseIcon, SparkIcon } from "@/components/icons";
 import { frameInset, itemPaint } from "@/components/ui";
 import { BASE } from "@/lib/base";
 
@@ -32,7 +32,10 @@ export function Accessories({
   equippedFrame,
   equippedTheme,
   equippedCharm,
+  disc = false,
 }: {
+  /** قرصٌ بنجمةٍ بجانب الاسم بدل زرٍّ في صفّ (القاعدة ٣٢٢). */
+  disc?: boolean;
   owned: Owned[];
   equippedFrame: string | null;
   equippedTheme: string | null;
@@ -60,10 +63,15 @@ export function Accessories({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex shrink-0 items-center justify-center rounded-xl border border-line bg-card px-3.5 text-[13.5px] font-semibold text-ink-2"
-        style={{ height: 46 }}
+        aria-label={disc ? "إكسسواراتي" : undefined}
+        className={
+          disc
+            ? "flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-clay text-on-brand"
+            : "flex shrink-0 items-center justify-center rounded-xl border border-line bg-card px-3.5 text-[13.5px] font-semibold text-ink-2"
+        }
+        style={disc ? undefined : { height: 46 }}
       >
-        إكسسواراتي
+        {disc ? <SparkIcon size={16} /> : "إكسسواراتي"}
       </button>
 
       {open ? (

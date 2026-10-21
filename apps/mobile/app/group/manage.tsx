@@ -1,5 +1,6 @@
+import { Spinner } from "../../components/spinner";
 import { useEffect, useState } from "react";
-import { View, ScrollView, Pressable, ActivityIndicator, Alert } from "react-native";
+import { View, ScrollView, Pressable, Alert } from "react-native";
 import { Text, TextInput } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -216,7 +217,7 @@ export default function ManageGroup() {
     return (
       <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
         <ScreenHeader title="المجموعة" back="/messages" />
-        <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
+        <Spinner style={{ marginTop: 50 }} color={colors.clay} />
       </SafeAreaView>
     );
   }
@@ -257,7 +258,7 @@ export default function ManageGroup() {
                 }}
               >
                 {uploading || savePhoto.isPending ? (
-                  <ActivityIndicator size="small" color="#f7f5ef" />
+                  <Spinner size="small" color="#f7f5ef" />
                 ) : (
                   <CameraIcon size={15} color="#f7f5ef" />
                 )}
@@ -417,7 +418,7 @@ export default function ManageGroup() {
             </Text>
 
             {needle && candidates.isFetching && offered.length === 0 ? (
-              <ActivityIndicator style={{ marginTop: 14 }} color={colors.clay} />
+              <Spinner style={{ marginTop: 14 }} color={colors.clay} />
             ) : null}
 
             {offered.map((person) => (
@@ -479,7 +480,7 @@ export default function ManageGroup() {
             }}
           >
             {create.isPending ? (
-              <ActivityIndicator color={colors.onBrand} />
+              <Spinner color={colors.onBrand} />
             ) : (
               <Text style={{ color: colors.onBrand, fontSize: 14.5, fontWeight: "700" }}>أنشئ المجموعة</Text>
             )}

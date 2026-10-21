@@ -1,5 +1,6 @@
+import { Spinner } from "./spinner";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Text } from "./type";
@@ -124,7 +125,7 @@ function PackSheet({ pack, isPlus, onClose }: { pack: StickerPack; isPlus: boole
       disabled={busy}
       style={{ height: 46, borderRadius: 14, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, backgroundColor: color, opacity: busy ? 0.7 : 1 }}
     >
-      {busy ? <ActivityIndicator size="small" color={ink} /> : null}
+      {busy ? <Spinner size="small" color={ink} /> : null}
       <Text style={{ color: ink, fontSize: 14, fontWeight: "700" }}>{label}</Text>
     </Pressable>
   );

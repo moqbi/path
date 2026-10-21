@@ -1,5 +1,6 @@
+import { Spinner } from "../components/spinner";
 import { useEffect } from "react";
-import { ActivityIndicator, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { Text } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -35,7 +36,7 @@ export default function StoreSection() {
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
       <ScreenHeader title={title || "المتجر"} back="/store" />
       {!data ? (
-        <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
+        <Spinner style={{ marginTop: 50 }} color={colors.clay} />
       ) : (
         <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}>
           {/* قسمٌ واحد بلا عنوان، وأكثرُ منه كلٌّ بعنوان مجموعته (القاعدة ٣١٣). */}

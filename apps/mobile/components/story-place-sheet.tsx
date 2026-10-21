@@ -1,5 +1,6 @@
+import { Spinner } from "./spinner";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { useKeyboardInset } from "../lib/keyboard";
 import * as Location from "expo-location";
 import { Text, TextInput } from "./type";
@@ -152,7 +153,7 @@ export function StoryPlaceSheet({ onPick, onClose }: { onPick: (place: PickedPla
       {problem ? (
         <Text style={{ color: "#FF7A5A", fontSize: 13, textAlign: "center", marginTop: 24 }}>{problem}</Text>
       ) : !list ? (
-        <ActivityIndicator color="#fff" style={{ marginTop: 30 }} />
+        <Spinner color="#fff" style={{ marginTop: 30 }} />
       ) : list.length === 0 ? (
         <Text style={{ color: "rgba(255,255,255,.7)", fontSize: 13, textAlign: "center", marginTop: 24 }}>ما لقينا أماكن هنا.</Text>
       ) : (

@@ -1,7 +1,8 @@
+import { Spinner } from "../../components/spinner";
 import { useEffect, useState } from "react";
 import { scrolled } from "../../lib/scrolled";
 import { markSeen } from "../../lib/seen";
-import { View, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import { View, ScrollView, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useKeyboardInset } from "../../lib/keyboard";
 import { Text, TextInput } from "../../components/type";
@@ -41,7 +42,7 @@ export default function MomentPage() {
     return (
       <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
         <ScreenHeader title="لحظة" back="/" />
-        <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
+        <Spinner style={{ marginTop: 50 }} color={colors.clay} />
       </SafeAreaView>
     );
   }
@@ -179,7 +180,7 @@ export default function MomentPage() {
                 }}
               >
                 {comment.isPending ? (
-                  <ActivityIndicator size="small" color={colors.onBrand} />
+                  <Spinner size="small" color={colors.onBrand} />
                 ) : (
                   <SendIcon size={16} color={colors.onBrand} />
                 )}

@@ -7,6 +7,7 @@ import { frameBleed, type Charm, type Frame } from "./avatar";
 import { NameTag } from "./name-tag";
 import { BackIcon } from "./icons";
 import { PulseRing } from "./pulse-ring";
+import { MarqueeName } from "./marquee-name";
 import { colors } from "../theme/tokens";
 import { ar, membership } from "../lib/format";
 
@@ -121,7 +122,7 @@ export function ProfileHead({
           ) : null}
         </View>
         {/* التشارم تتدلّى من ركن الصورة نحو الاسم (القاعدة ٥٩): مسافةٌ تتّسع لها. */}
-        <View style={{ flex: 1, minWidth: 0, alignItems: "flex-start", paddingRight: 34, marginTop: size / 2 + 10 }}>
+        <View style={{ flex: 1, minWidth: 0, alignItems: "flex-start", paddingRight: 34, paddingLeft: actions ? 8 : 0, marginTop: size / 2 + 10 }}>
           <Pressable
             disabled={!onAccounts}
             onPress={onAccounts}
@@ -134,12 +135,17 @@ export function ProfileHead({
                 <BackIcon size={16} color={colors.groundInk} />
               </View>
             ) : null}
+            {actions ? (
+              // أقراصٌ في طرف السطر: الاسمُ الطويل ينزلق في مكانه لا يُقصّ (القاعدة ٣٢٢).
+              <MarqueeName name={name} style={{ color: colors.groundInk, fontSize: 20, fontWeight: "700", writingDirection: "auto" }} />
+            ) : (
             <Text
               numberOfLines={1}
               style={{ color: colors.groundInk, fontSize: 20, fontWeight: "700", flexShrink: 1, writingDirection: "auto" }}
             >
               {name}
             </Text>
+            )}
             <NameTag isPlus={isPlus} tag={tag} size={12} />
           </Pressable>
         </View>

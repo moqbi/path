@@ -1,5 +1,6 @@
+import { Spinner } from "./spinner";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, AccessibilityInfo, Animated, Easing, Pressable, View } from "react-native";
+import { AccessibilityInfo, Animated, Easing, Pressable, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import { useNavigation, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -183,7 +184,7 @@ function Body({ close }: { close: () => void }) {
                 </Text>
               </View>
               {busy === row.id ? (
-                <ActivityIndicator color="#fff" />
+                <Spinner color="#fff" />
               ) : active ? (
                 <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.clay, alignItems: "center", justifyContent: "center" }}>
                   <CheckIcon size={16} color={colors.onBrand} />
@@ -196,7 +197,7 @@ function Body({ close }: { close: () => void }) {
                   onPress={() => void run(`x${row.id}`, () => useSession.getState().removeAccount(row.id))}
                   style={{ width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.08)" }}
                 >
-                  {busy === `x${row.id}` ? <ActivityIndicator color="#fff" size="small" /> : <TrashIcon size={16} color="rgba(255,255,255,.75)" />}
+                  {busy === `x${row.id}` ? <Spinner color="#fff" size="small" /> : <TrashIcon size={16} color="rgba(255,255,255,.75)" />}
                 </Pressable>
               )}
             </Pressable>
@@ -226,7 +227,7 @@ function Body({ close }: { close: () => void }) {
             }}
           >
             <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.1)" }}>
-              {busy === "add" ? <ActivityIndicator color="#fff" /> : <PlusIcon size={20} color="#fff" />}
+              {busy === "add" ? <Spinner color="#fff" /> : <PlusIcon size={20} color="#fff" />}
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ color: "#fff", fontSize: 15, fontWeight: "700" }}>إضافة حساب</Text>
@@ -279,7 +280,7 @@ export function BackToParked() {
       <BackIcon size={16} color="#fff" />
       <Avatar name={parked.name} size={28} mediaId={parked.avatarMediaId} />
       {busy ? (
-        <ActivityIndicator color="#fff" size="small" />
+        <Spinner color="#fff" size="small" />
       ) : (
         <Text numberOfLines={1} style={{ color: "#fff", fontSize: 13, fontWeight: "700", maxWidth: 160, writingDirection: "auto" }}>
           {parked.name}

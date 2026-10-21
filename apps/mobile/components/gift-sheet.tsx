@@ -1,5 +1,6 @@
+import { Spinner } from "./spinner";
 import { useRef, useState } from "react";
-import { View, Pressable, Modal, ScrollView, ActivityIndicator, PanResponder, Animated, Dimensions } from "react-native";
+import { View, Pressable, Modal, ScrollView, PanResponder, Animated, Dimensions } from "react-native";
 import { Text } from "./type";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MediaImage } from "./media-image";
@@ -297,7 +298,7 @@ function Sheet({
           </Text>
         ) : null}
 
-        {store.isLoading ? <ActivityIndicator color={colors.clay} /> : null}
+        {store.isLoading ? <Spinner color={colors.clay} /> : null}
 
         {plusPlans.data && plusPlans.data.length > 0 ? (
           <View
@@ -344,7 +345,7 @@ function Sheet({
                   }}
                 >
                   {busy === `plus-${one.plan}` ? (
-                    <ActivityIndicator color={colors.goldInk} />
+                    <Spinner color={colors.goldInk} />
                   ) : (
                     <>
                       <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "700" }}>

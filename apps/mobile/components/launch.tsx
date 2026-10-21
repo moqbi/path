@@ -1,5 +1,6 @@
+import { Spinner } from "./spinner";
 import { useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, ActivityIndicator, Animated, Easing, Image, StyleSheet, View, useWindowDimensions } from "react-native";
+import { AccessibilityInfo, Animated, Easing, Image, StyleSheet, View, useWindowDimensions } from "react-native";
 import { justReloaded } from "../lib/fresh-update";
 import Svg, { Circle, Defs, Path, RadialGradient, Rect, Stop } from "react-native-svg";
 
@@ -256,7 +257,7 @@ export function UpdateWait() {
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: "#0d1c25", alignItems: "center", justifyContent: "center" }]}>
       <Image source={require("../assets/athr-mark.png")} style={{ width: 96, height: 96 }} resizeMode="contain" />
-      <ActivityIndicator color="#F6B93B" style={{ marginTop: 28 }} />
+      <Spinner color="#F6B93B" style={{ marginTop: 28 }} />
     </View>
   );
 }

@@ -1,5 +1,6 @@
+import { Spinner } from "../components/spinner";
 import { useEffect, useState } from "react";
-import { View, Pressable, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, Image, useWindowDimensions } from "react-native";
+import { View, Pressable, ScrollView, KeyboardAvoidingView, Platform, Image, useWindowDimensions } from "react-native";
 import { PhotoFrameEditor } from "../components/photo-frame";
 import { Text, TextInput } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -707,7 +708,7 @@ export default function Compose() {
             }}
           >
             {busy ? (
-              <ActivityIndicator color={colors.onBrand} />
+              <Spinner color={colors.onBrand} />
             ) : (
               <Text style={{ color: colors.onBrand, fontSize: 15.5, fontWeight: "700" }}>انشر</Text>
             )}

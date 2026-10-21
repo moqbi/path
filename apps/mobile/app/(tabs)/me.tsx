@@ -1,9 +1,10 @@
+import { Spinner } from "../../components/spinner";
 import { useBarSpace } from "../../components/glass-bar";
 import { usePullLogo } from "../../components/logo-refresh";
 import { TabBackdrop } from "../../components/tab-backdrop";
 import { scrolled } from "../../lib/scrolled";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { View, SectionList, Pressable, ActivityIndicator, Alert, Animated, AccessibilityInfo } from "react-native";
+import { View, SectionList, Pressable, Alert, Animated, AccessibilityInfo } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -18,7 +19,7 @@ import { MomentCard, SPINE_W } from "../../components/moment-card";
 import { AthrMark } from "../../components/brand";
 import { DEV_FEATURES } from "../../lib/dev-features";
 import {
-  BookIcon, CalendarIcon, ExitIcon, GearIcon, GiftIcon, SparkIcon, StarIcon, WithIcon,
+  BookIcon, CalendarIcon, ExitIcon, GearIcon, GiftIcon, PencilIcon, SparkIcon, StarIcon, WithIcon,
 } from "../../components/icons";
 import { api } from "../../lib/api";
 import { keys, type Moment } from "../../lib/queries";
@@ -298,6 +299,34 @@ export default function Me() {
               frameItem={me.frame}
               charmItem={me.charm}
               onAccounts={DEV_FEATURES ? openAccounts : undefined}
+              actions={
+                DEV_FEATURES ? (
+                  // التعديلُ والإكسسوارات أقراصٌ بجانب الاسم كملفّ الصديق (القاعدة ٣٢٢)،
+                  // والخروجُ في الإعدادات.
+                  <>
+                    <Spot id="me.edit">
+                      <Pressable
+                        accessibilityLabel="تعديل الملف"
+                        onPress={() => router.push("/me/edit" as never)}
+                        hitSlop={6}
+                        style={{ width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: colors.card }}
+                      >
+                        <PencilIcon size={16} color={colors.ink} />
+                      </Pressable>
+                    </Spot>
+                    <Spot id="me.accessories">
+                      <Pressable
+                        accessibilityLabel="إكسسواراتي"
+                        onPress={() => router.push("/me/accessories" as never)}
+                        hitSlop={6}
+                        style={{ width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
+                      >
+                        <SparkIcon size={16} color={colors.onBrand} />
+                      </Pressable>
+                    </Spot>
+                  </>
+                ) : undefined
+              }
             />
 
             {DEV_FEATURES ? (
@@ -314,6 +343,7 @@ export default function Me() {
             </View>
             )}
 
+            {DEV_FEATURES ? <View style={{ height: 14 }} /> : (
             <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: 20, marginTop: 10, marginBottom: 18 }}>
               {/* أهدافُ الجولة: كلُّ زرٍّ يُضاء في دوره. */}
               <Spot id="me.edit" grow>
@@ -342,6 +372,7 @@ export default function Me() {
                 }
               />
             </View>
+            )}
 
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 4 }}>
               <Text style={{ color: colors.groundInk, fontSize: 15, fontWeight: "700" }}>
@@ -376,7 +407,7 @@ export default function Me() {
         )}
         ListEmptyComponent={
           mine.isLoading ? (
-            <ActivityIndicator style={{ marginTop: 24 }} color={colors.clay} />
+            <Spinner style={{ marginTop: 24 }} color={colors.clay} />
           ) : (
             <View style={{ marginHorizontal: 20, borderRadius: 18, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, paddingVertical: 32, paddingHorizontal: 16 }}>
               <Text style={{ color: colors.muted, fontSize: 13, textAlign: "center" }}>

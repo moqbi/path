@@ -1,5 +1,6 @@
+import { Spinner } from "./spinner";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { create } from "zustand";
@@ -290,7 +291,7 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
               }}
             >
               {comment.isPending ? (
-                <ActivityIndicator size="small" color={colors.onBrand} />
+                <Spinner size="small" color={colors.onBrand} />
               ) : (
                 <SendIcon size={16} color={body.trim() ? colors.onBrand : "rgba(255,255,255,.45)"} />
               )}
@@ -350,7 +351,7 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
               }}
             >
               {comment.isPending ? (
-                <ActivityIndicator size="small" color={colors.onBrand} />
+                <Spinner size="small" color={colors.onBrand} />
               ) : (
                 <Text style={{ color: body.trim() ? colors.onBrand : "rgba(255,255,255,.45)", fontSize: 13.5, fontWeight: "700" }}>إرسال</Text>
               )}

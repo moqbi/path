@@ -1,5 +1,6 @@
+import { Spinner } from "../components/spinner";
 import { useEffect, useRef, useSyncExternalStore } from "react";
-import { AppState, Appearance, I18nManager, Platform, View, ActivityIndicator, StyleSheet } from "react-native";
+import { AppState, Appearance, I18nManager, Platform, View, StyleSheet } from "react-native";
 import { MediaImage } from "../components/media-image";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as Notifications from "expo-notifications";
@@ -273,7 +274,7 @@ function Gate() {
   if (!ready) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.groundSolid }}>
-        <ActivityIndicator color={colors.clay} />
+        <Spinner color={colors.clay} />
       </View>
     );
   }

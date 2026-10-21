@@ -1,5 +1,6 @@
+import { Spinner } from "../components/spinner";
 import { useEffect, useState } from "react";
-import { View, ScrollView, Pressable, ActivityIndicator, Platform } from "react-native";
+import { View, ScrollView, Pressable, Platform } from "react-native";
 import { Text } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -280,7 +281,7 @@ export default function Subscribe() {
                       {`يعادل ${offer.perMonth} شهرياً`}
                     </Text>
                   ) : null}
-                  {picked ? <ActivityIndicator color={colors.clay} style={{ marginTop: 8 }} /> : null}
+                  {picked ? <Spinner color={colors.clay} style={{ marginTop: 8 }} /> : null}
                 </Pressable>
                 );
               })}
@@ -299,7 +300,7 @@ export default function Subscribe() {
               style={{ height: 44, alignItems: "center", justifyContent: "center" }}
             >
               {recover.isPending ? (
-                <ActivityIndicator color={colors.muted} />
+                <Spinner color={colors.muted} />
               ) : (
                 <Text style={{ color: colors.clayInk, fontSize: 12.5, fontWeight: "600" }}>
                   استعادة المشتريات
@@ -309,7 +310,7 @@ export default function Subscribe() {
           </View>
         ) : billingReady() ? (
           <View style={{ paddingTop: 16, alignItems: "center" }}>
-            <ActivityIndicator color={colors.gold} />
+            <Spinner color={colors.gold} />
           </View>
         ) : (
           /*

@@ -1,9 +1,10 @@
+import { Spinner } from "../../components/spinner";
 import { useEffect, useRef, useState } from "react";
 import { usePullLogo } from "../../components/logo-refresh";
 import { useTabTop } from "../../lib/tab-top";
 import { TabBackdrop } from "../../components/tab-backdrop";
 import { useBarSpace } from "../../components/glass-bar";
-import { View, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import { View, ScrollView, Pressable } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -245,7 +246,7 @@ export default function Store() {
       ) : null}
 
       {store.isLoading ? (
-        <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
+        <Spinner style={{ marginTop: 50 }} color={colors.clay} />
       ) : (
         <View style={{ flex: 1 }}>
         <ScrollView

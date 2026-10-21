@@ -360,6 +360,30 @@ h3 {
   }
 }
 
+/* الاسمُ الطويل ينزلق في مكانه (القاعدة ٣٢٢): يقف أوّلاً، ثمّ يكشف آخرَه، ثمّ يعود. */
+.marquee {
+  animation: athr-marquee calc(var(--travel) * 2 + 2.8s) ease-in-out infinite;
+}
+@keyframes athr-marquee {
+  0%,
+  20% {
+    transform: translateX(0);
+  }
+  50%,
+  65% {
+    transform: translateX(var(--shift));
+  }
+  95%,
+  100% {
+    transform: translateX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee {
+    animation: none;
+  }
+}
+
 /* دوران زر التحديث أثناء الجلب. */
 @keyframes athr-spin {
   to {

@@ -438,3 +438,12 @@ export const OfflineIcon = ({ size = 20, color = "currentColor" }: Props) => (
     <Path d="M3 3l18 18" />
   </Svg>
 );
+
+/** سهمٌ نازلٌ إلى صينيّة — «احفظ» القصّة في الاستديو (القاعدة ٣٢٢). */
+export const DownloadIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M12 4v11" />
+    <Path d="M7.5 10.5L12 15l4.5-4.5" />
+    <Path d="M4.5 16.5v2a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-2" />
+  </Svg>
+);

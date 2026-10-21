@@ -1,5 +1,6 @@
+import { Spinner } from "../components/spinner";
 import { useState } from "react";
-import { View, Pressable, ActivityIndicator } from "react-native";
+import { View, Pressable } from "react-native";
 import { Text, TextInput } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useMutation } from "@tanstack/react-query";
@@ -65,7 +66,7 @@ export default function Forgot() {
             style={{ height: 50, borderRadius: 12, alignItems: "center", justifyContent: "center", opacity: ask.isPending ? 0.6 : 1 }}
           >
             {ask.isPending ? (
-              <ActivityIndicator color={colors.onBrand} />
+              <Spinner color={colors.onBrand} />
             ) : (
               <Text style={{ color: colors.onBrand, fontSize: 14.5, fontWeight: "700" }}>
                 أرسل الرابط
