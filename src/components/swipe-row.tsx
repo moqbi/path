@@ -23,8 +23,11 @@ export function SwipeRow({
   extra = [],
   tint,
   mainIcon,
+  gap = 0,
   children,
 }: {
+  /** فراغٌ قبل الأفعال: قلمُ التعديل يبدأ بعد زرّ التفاعل لا تحته (القاعدة ٣٢٤). */
+  gap?: number;
   /** لونُ الفعل الأوّل ورسمُه — قلمُ التعديل باللمسة لا بالمرجانيّ (القاعدة ٣١٩). */
   tint?: string;
   mainIcon?: React.ReactNode;
@@ -58,7 +61,7 @@ export function SwipeRow({
 
   const second = onSecond && secondLabel ? { run: onSecond, label: secondLabel } : null;
   const width = icons ? 64 : REVEAL;
-  const reveal = (second ? width * 2 : width) + extra.length * width;
+  const reveal = gap + (second ? width * 2 : width) + extra.length * width;
 
   function fire(run: () => void | Promise<void>) {
     setOpen(false);
@@ -68,7 +71,7 @@ export function SwipeRow({
 
   return (
     <div className="relative overflow-hidden" style={{ touchAction: "pan-y" }}>
-      <div className="absolute inset-y-0 left-0 flex" style={{ width: reveal }}>
+      <div className="absolute inset-y-0 flex" style={{ left: gap, width: reveal - gap }}>
         {extra.map((action) => (
           <button
             key={action.label}

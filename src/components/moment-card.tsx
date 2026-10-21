@@ -637,7 +637,7 @@ export function MomentCard({
     trial &&
     moment.author.id === viewerId && (kind === "THOUGHT" || kind === "PHOTO") && !moment.recapYear && moment.pollOptions.length === 0;
   const head = editable ? (
-    <MomentEditSwipe momentId={moment.id} text={moment.text ?? ""} required={kind === "THOUGHT"}>
+    <MomentEditSwipe momentId={moment.id} text={moment.text ?? ""} required={kind === "THOUGHT"} gap={media ? 0 : 48}>
       {body}
     </MomentEditSwipe>
   ) : (
