@@ -33,6 +33,8 @@ const shape = {
   // خياراتُ استطلاع المشرف — والأعدادُ من `/poll` (القاعدة ٢٨٩).
   pollOptions: true,
   pollEndsAt: true,
+  // «عُدّلت» (القاعدة ٣١٩).
+  editedAt: true,
   // «خاصة»: من يرى اللحظة يُقال له إنّها لم تُوجَّه إلى الدائرة كلّها.
   audience: true,
   createdAt: true,
@@ -69,6 +71,7 @@ const shape = {
       // ملصقُ التعليق (القاعدة ٢٩١).
       sticker: { select: { mediaId: true } },
       createdAt: true,
+      editedAt: true,
       user: {
         select: {
           id: true,

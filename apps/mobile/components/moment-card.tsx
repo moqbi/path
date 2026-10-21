@@ -5,7 +5,10 @@ import { Avatar, firstColor } from "./avatar";
 import { MediaImage } from "./media-image";
 import { viewPhoto } from "./photo-viewer";
 import { AthrMark } from "./brand";
-import { CameraIcon, TagIcon, PinIcon, PlayIcon, WithIcon, SunIcon, MoonIcon, PlaneIcon, GiftIcon, SparkIcon, PrivateIcon, ClockIcon } from "./icons";
+import { SwipeRow } from "./swipe-row";
+import { openEdit } from "./edit-sheet";
+import { DEV_FEATURES } from "../lib/dev-features";
+import { PencilIcon, CameraIcon, TagIcon, PinIcon, PlayIcon, WithIcon, SunIcon, MoonIcon, PlaneIcon, GiftIcon, SparkIcon, PrivateIcon, ClockIcon } from "./icons";
 import { MomentBar } from "./moment-bar";
 import { Poll } from "./poll";
 import { PHOTO_RATIO } from "./photo-frame";
@@ -15,7 +18,8 @@ import { openIn } from "../lib/browse";
 import { openMaps } from "../lib/maps";
 import { showVisitors } from "./place-visitors";
 import { ar, MONTHS, relative, timeOfDay } from "../lib/format";
-import { useCircle, type Moment } from "../lib/queries";
+import { useCircle, useRings, type Moment } from "../lib/queries";
+import { openNote, useStatusNotes } from "../lib/status-notes";
 
 /** عمود الصور على محور الخط: نفس ٥٦ التي في الويب (`w-14`). */
 export const SPINE_W = 56;
@@ -29,6 +33,9 @@ export const SPINE_W = 56;
 const EVENTS = new Set([
   "CITY", "PLACE", "SLEEP", "WAKE", "MUSIC", "FRIEND_ADDED", "GIFT_SENT", "GIFT_GOT", "JOINED", "TAG_GRANTED", "AVATAR_CHANGED", "COINS_GRANTED",
 ]);
+
+/** ما له متنٌ يكتبه صاحبُه فيُعدَّل (القاعدة ٣١٩) — كـ`EDITABLE` في الخادم. */
+const EDITABLE = new Set(["THOUGHT", "PHOTO"]);
 
 const EVENT_STYLE: Record<string, { bg: string; ink: string }> = {
   CITY: { bg: colors.night, ink: "#f7f5ef" },
@@ -227,12 +234,26 @@ export function MomentCard({
   const found = moment.reactions.find((r) => r.mine);
   const mineReaction = found ? { kind: found.kind, emoji: found.emoji } : null;
 
+  /*
+    قصّةٌ أو نوتٌ لم تُشاهَد لصاحب اللحظة (القاعدة ٣١٩): حلقةٌ حول صورته للقصّة،
+    ونقطةٌ في ركنها للنوت، والضغطُ يفتحها مباشرةً بدل ملفّه — وبالمشاهدة تذهب
+    العلامةُ ويعود الضغطُ إلى الملفّ. من استعلامَي الشريط نفسيهما فلا طلبَ زائد.
+  */
+  const rings = useRings();
+  const notes = useStatusNotes();
+  const others = DEV_FEATURES && moment.author.id !== viewerId;
+  const freshStory = others && Boolean(rings.data?.rings.find((r) => r.userId === moment.author.id && r.fresh));
+  const freshNote = others ? notes.data?.notes.find((n) => n.authorId === moment.author.id && !n.seen) ?? null : null;
+
   const spine = (
     <View style={{ width: SPINE_W, alignItems: "center", gap: 5 }}>
       <Pressable
-        onPress={() =>
-          router.push((moment.author.id === viewerId ? "/me" : `/u/${moment.author.id}`) as never)
-        }
+        accessibilityLabel={freshStory ? `قصة ${moment.author.name}` : freshNote ? `نوت ${moment.author.name}` : undefined}
+        onPress={() => {
+          if (freshStory) router.push(`/stories/${moment.author.id}` as never);
+          else if (freshNote) openNote(freshNote.id);
+          else router.push((moment.author.id === viewerId ? "/me" : `/u/${moment.author.id}`) as never);
+        }}
       >
         <Avatar
           name={moment.author.name}
@@ -241,6 +262,18 @@ export function MomentCard({
           frame={moment.author.frame}
           charm={moment.author.charm}
         />
+        {freshStory ? (
+          <View
+            pointerEvents="none"
+            style={{ position: "absolute", top: -4, left: -4, right: -4, bottom: -4, borderRadius: 99, borderWidth: 2.5, borderColor: colors.clay }}
+          />
+        ) : null}
+        {freshNote ? (
+          <View
+            pointerEvents="none"
+            style={{ position: "absolute", top: -3, right: -3, width: 15, height: 15, borderRadius: 8, borderWidth: 2, borderColor: colors.groundSolid, backgroundColor: colors.clay }}
+          />
+        ) : null}
       </Pressable>
       <Text style={{ color: colors.groundMuted, fontSize: 10, fontWeight: "600" }}>
         {timeOfDay(new Date(moment.createdAt))}
@@ -456,7 +489,18 @@ export function MomentCard({
     />
   ) : null;
 
-  const head = (
+  /*
+    تعديلُ النصّ بالسحب من اليسار إلى اليمين على متنها (القاعدة ٣١٩) — لصاحبها، وفي
+    الأنواع التي لها متنٌ يُكتب. والسحبُ على المتن وحده لا البطاقة كلّها: تحته وجوهٌ
+    تُمرَّر أفقياً وتعليقاتٌ تُسحب، والصفُّ الأبُ يلتقط قبل أبنائه فيبتلعها.
+  */
+  const editable =
+    DEV_FEATURES &&
+    moment.author.id === viewerId &&
+    EDITABLE.has(moment.kind) &&
+    !moment.recapYear &&
+    !(moment.pollOptions?.length ?? 0);
+  const body = (
     <View>
       {/*
         بلا صورةٍ يبدأ النصّ من أعلى البطاقة ويترك يسارَه لزرّ التفاعل في
@@ -466,7 +510,7 @@ export function MomentCard({
         onPress={open}
         style={
           media
-            ? { paddingHorizontal: 14, paddingTop: 10 }
+            ? { paddingHorizontal: 14, paddingTop: 10, minHeight: editable ? 40 : undefined }
             : { paddingRight: 14, paddingLeft: 52, paddingTop: 14, minHeight: 50 }
         }
       >
@@ -476,6 +520,7 @@ export function MomentCard({
         ) : moment.text ? (
           <Text style={{ color: colors.ink, fontSize: 13.5, lineHeight: 23, marginBottom: 8 }}>
             {moment.text}
+            {moment.editedAt ? <Text style={{ color: colors.faint, fontSize: 11 }}> · عُدّلت</Text> : null}
           </Text>
         ) : null}
         {moment.pollOptions?.length ? (
@@ -507,6 +552,22 @@ export function MomentCard({
         ) : null}
       </Pressable>
     </View>
+  );
+  const head = editable ? (
+    <SwipeRow
+      surface={colors.card}
+      width={64}
+      tint={colors.clay}
+      confirmLabel="عدّل اللحظة"
+      icons={{ delete: <PencilIcon size={22} color={colors.onBrand} /> }}
+      onDelete={() =>
+        openEdit({ kind: "moment", id: moment.id, text: moment.text ?? "", required: moment.kind === "THOUGHT" })
+      }
+    >
+      {body}
+    </SwipeRow>
+  ) : (
+    body
   );
 
   return (

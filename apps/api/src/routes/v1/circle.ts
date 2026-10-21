@@ -8,6 +8,7 @@ import { requireAuth, me } from "../../middleware/auth";
 import * as circle from "../../services/circle";
 import * as feed from "../../services/feed";
 import * as discover from "../../services/discover";
+import * as alerts from "../../services/story-alerts";
 import { rateLimitUser } from "../../middleware/rate-limit";
 
 const byId = z.object({ id: cuid });
@@ -111,6 +112,17 @@ export const circleRoutes = new Hono()
 
   .delete("/:id/block", zValidator("param", byId), async (c) =>
     c.json(await circle.unblockUser(me(c), c.req.valid("param").id)),
+  )
+
+  /** «نبّهني بقصصه ونوته» على صديقٍ بعينه (القاعدة ٣١٩). */
+  .get("/:id/alert", zValidator("param", byId), async (c) =>
+    c.json(await alerts.alertOf(me(c), c.req.valid("param").id)),
+  )
+  .put(
+    "/:id/alert",
+    zValidator("param", byId),
+    zValidator("json", z.object({ on: z.boolean() })),
+    async (c) => c.json(await alerts.setAlert(me(c), c.req.valid("param").id, c.req.valid("json").on)),
   );
 
 export const userRoutes = new Hono()

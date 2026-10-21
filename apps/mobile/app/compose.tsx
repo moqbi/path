@@ -424,7 +424,7 @@ export default function Compose() {
 
           {kind === "MUSIC" ? (
             <View style={{ marginBottom: 16 }}>
-              <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 23, marginBottom: 10 }}>
+              <Text style={{ color: colors.groundInk, fontSize: 13, lineHeight: 23, marginBottom: 10 }}>
                 الصق رابط الأغنية من سبوتيفاي أو يوتيوب أو ساوندكلاود — يُقرأ اسمها تلقائياً،
                 ومن يضغط عليها يسمعها.
               </Text>
@@ -476,7 +476,7 @@ export default function Compose() {
                     text.length >= TEXT_MAX
                       ? colors.live
                       : text.length > TEXT_MAX - 50
-                        ? colors.muted
+                        ? colors.groundInk
                         : "transparent",
                 }}
               >
@@ -599,8 +599,8 @@ export default function Compose() {
           {friends.length > 0 && kind !== "MUSIC" ? (
             <View style={{ marginTop: 20 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                <WithIcon size={14} color={colors.faint} />
-                <Text style={{ color: colors.faint, fontSize: 11.5, fontWeight: "600" }}>مع مين؟</Text>
+                <WithIcon size={14} color={colors.groundInk} />
+                <Text style={{ color: colors.groundInk, fontSize: 11.5, fontWeight: "600" }}>مع مين؟</Text>
               </View>
               <PickerButton
                 label={summary(withIds, "اختر من أصدقائك")}
@@ -613,8 +613,8 @@ export default function Compose() {
           {/* من يراها: الاختيار هنا يسبق النشر لأن الخصوصية لا تُصلَّح بعده. */}
           <View style={{ marginTop: 20 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
-              <LockIcon size={14} color={colors.faint} />
-              <Text style={{ color: colors.faint, fontSize: 11.5, fontWeight: "600" }}>مين يشوفها؟</Text>
+              <LockIcon size={14} color={colors.groundInk} />
+              <Text style={{ color: colors.groundInk, fontSize: 11.5, fontWeight: "600" }}>مين يشوفها؟</Text>
             </View>
 
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -644,7 +644,7 @@ export default function Compose() {
 
             {audience === "EXCEPT" ? (
               <View style={{ marginTop: 12 }}>
-                <Text style={{ color: colors.faint, fontSize: 11.5, marginBottom: 8, textAlign: "right" }}>
+                <Text style={{ color: colors.groundInk, fontSize: 11.5, marginBottom: 8, textAlign: "right" }}>
                   يشوفها كل أصدقائك ما عدا تصنيف:
                 </Text>
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -680,8 +680,8 @@ export default function Compose() {
 
         <View style={{ paddingHorizontal: 20, paddingBottom: 26, paddingTop: 6 }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 }}>
-            <LockIcon size={14} color={colors.faint} />
-            <Text style={{ color: colors.faint, fontSize: 11.5 }}>
+            <LockIcon size={14} color={colors.groundInk} />
+            <Text style={{ color: colors.groundInk, fontSize: 11.5 }}>
               {audience === "CIRCLE"
                 ? "يشوفها أصدقاؤك فقط"
                 : audience === "PICKED"

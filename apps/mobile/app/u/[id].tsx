@@ -6,7 +6,7 @@ import { View, Pressable, ActivityIndicator, Animated, RefreshControl } from "re
 import { Text } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ProfileHead } from "../../components/profile-head";
 import { COVER_HEIGHT, CoverLayer, StretchCover, useStretch } from "../../components/cover";
 import { playRefresh } from "../../lib/sound";
@@ -14,7 +14,8 @@ import { MediaImage } from "../../components/media-image";
 import { MomentCard } from "../../components/moment-card";
 import { ScreenHeader } from "../../components/screen-header";
 import { GiftButton } from "../../components/gift-sheet";
-import { MessageIcon, StarIcon, WithIcon } from "../../components/icons";
+import { BellPlusIcon, MessageIcon, StarIcon, WithIcon } from "../../components/icons";
+import { DEV_FEATURES } from "../../lib/dev-features";
 import { api } from "../../lib/api";
 import { keys, type Moment } from "../../lib/queries";
 import { ar } from "../../lib/format";
@@ -303,6 +304,7 @@ function Profile() {
                     >
                       <MessageIcon size={17} color={colors.ink2} />
                     </Pressable>
+                    {DEV_FEATURES ? <AlertBell friendId={who.id} name={who.name} /> : null}
                   </View>
                 ) : (
                   /*
@@ -385,3 +387,40 @@ function Profile() {
 /** ما مرّ على الشاشة من لحظاته يُكتب «شافها» (`lib/seen.ts`). */
 const onViewable = ({ viewableItems }: { viewableItems: { item: { id: string } | null }[] }) =>
   markSeen(viewableItems.flatMap((row) => (row.item ? [row.item.id] : [])));
+
+/**
+ * «نبّهني بقصصه ونوته» (القاعدة ٣١٩): جرسٌ في صفّ أزرار الصديق، يُضيء بلون اللمسة
+ * مفعّلاً. والخادمُ يقرع لمن يرى ما نُشر وحده.
+ */
+function AlertBell({ friendId, name }: { friendId: string; name: string }) {
+  const client = useQueryClient();
+  const key = ["story-alert", friendId];
+  const state = useQuery({ queryKey: key, queryFn: () => api<{ on: boolean }>(`/v1/circle/${friendId}/alert`) });
+  const flip = useMutation({
+    mutationFn: (on: boolean) => api<{ on: boolean }>(`/v1/circle/${friendId}/alert`, { method: "PUT", body: JSON.stringify({ on }) }),
+    onMutate: (on) => client.setQueryData(key, { on }),
+    onSuccess: (data) => client.setQueryData(key, data),
+    onError: () => void client.invalidateQueries({ queryKey: key }),
+  });
+  const on = state.data?.on ?? false;
+  return (
+    <Pressable
+      accessibilityLabel={on ? `أوقف تنبيهات قصص ${name} ونوته` : `نبّهني بقصص ${name} ونوته`}
+      accessibilityState={{ selected: on }}
+      disabled={state.isLoading || flip.isPending}
+      onPress={() => flip.mutate(!on)}
+      style={{
+        width: 46,
+        height: 46,
+        borderRadius: 12,
+        alignItems: "center",
+        justifyContent: "center",
+        borderWidth: 1,
+        borderColor: on ? colors.clay : colors.line,
+        backgroundColor: on ? colors.clay : colors.card,
+      }}
+    >
+      <BellPlusIcon size={18} color={on ? colors.onBrand : colors.ink2} on={on} />
+    </Pressable>
+  );
+}

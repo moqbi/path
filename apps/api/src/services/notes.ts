@@ -3,6 +3,7 @@ import { guard } from "../lib/moderation";
 import { badRequest, notFound } from "../lib/errors";
 import { visibleAuthors } from "./visibility";
 import { push } from "./push";
+import { announce } from "./story-alerts";
 import { clipOf, previewUrl, trackById } from "./music";
 import { gifById } from "./giphy";
 
@@ -131,6 +132,7 @@ export async function post(
       select: NOTE,
     }),
   ]);
+  void announce(userId, "note", note.id);
   return { note };
 }
 

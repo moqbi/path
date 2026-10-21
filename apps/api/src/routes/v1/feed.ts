@@ -1,7 +1,9 @@
 import { Hono } from "hono";
 import {
+  commentEditInput,
   commentInput,
   cuid,
+  momentEditInput,
   markInput,
   momentInput,
   pageQuery,
@@ -99,6 +101,11 @@ export const momentRoutes = new Hono()
     c.json(await moments.deleteMoment(me(c), c.req.valid("param").id)),
   )
 
+  /** تعديلُ النصّ لصاحبها (القاعدة ٣١٩). */
+  .patch("/:id", zValidator("param", byId), zValidator("json", momentEditInput), async (c) =>
+    c.json(await moments.editMoment(me(c), c.req.valid("param").id, c.req.valid("json").text)),
+  )
+
   .post("/:id/seen", zValidator("param", byId), async (c) =>
     c.json(await moments.markSeen(me(c), c.req.valid("param").id)),
   )
@@ -146,4 +153,9 @@ export const commentRoutes = new Hono()
 
   .delete("/:id", zValidator("param", byId), async (c) =>
     c.json(await moments.deleteComment(me(c), c.req.valid("param").id)),
+  )
+
+  /** تعديلُه لكاتبه وحده (القاعدة ٣١٩). */
+  .patch("/:id", zValidator("param", byId), zValidator("json", commentEditInput), async (c) =>
+    c.json(await moments.editComment(me(c), c.req.valid("param").id, c.req.valid("json").body)),
   );

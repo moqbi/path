@@ -26,7 +26,9 @@ export type PushKind =
   /** الذكرياتُ ومناسباتُ الصداقة وآثرك السنويّ (القاعدة ٢٣٥). */
   | "MEMORY"
   /** أحدٌ قريبٌ فتح «من حولك» (القاعدة ٢٨٢) — مطفأٌ حتى يفعّله صاحبُه. */
-  | "NEARBY";
+  | "NEARBY"
+  /** صديقٌ اختاره صاحبُه نزّل قصّةً أو نوتاً (القاعدة ٣١٩) — الاختيارُ هو المفتاح. */
+  | "STORY";
 
 /**
  * صوتُ كلّ نوعٍ وقناتُه على أندرويد (القاعدة ٢٥٣): عامٌّ لما يفعله الأصدقاء،
@@ -48,6 +50,7 @@ const SOUND_OF: Record<PushKind, keyof typeof SOUNDS> = {
   GRANT: "athar",
   MEMORY: "athar",
   NEARBY: "general",
+  STORY: "general",
 };
 
 /** أيُّ حقلٍ في `User` يحرس هذا النوع. */
@@ -61,6 +64,7 @@ const GATE: Record<PushKind, string | null> = {
   GRANT: null,
   MEMORY: "notifyMemories",
   NEARBY: "notifyNearby",
+  STORY: null,
 };
 
 /**

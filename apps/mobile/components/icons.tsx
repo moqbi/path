@@ -305,6 +305,23 @@ export const TrashIcon = ({ size = 20, color = "currentColor" }: Props) => (
   </Svg>
 );
 
+/** التعديل: قلمٌ مائل (القاعدة ٣١٩). */
+export const PencilIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M15.5 4.5l4 4L9 19H5v-4L15.5 4.5z" />
+    <Path d="M13.5 6.5l4 4" />
+  </Svg>
+);
+
+/** الجرس بشرطة: تنبيهُ قصص الصديق ونوته (القاعدة ٣١٩). */
+export const BellPlusIcon = ({ size = 20, color = "currentColor", on = false }: Props & { on?: boolean }) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15L6 16.5z" />
+    <Path d="M10 20.5a2 2 0 0 0 4 0" />
+    {on ? <Path d="M9.5 11.5l1.8 1.8 3.4-3.6" /> : null}
+  </Svg>
+);
+
 /** البلاغ: رايةٌ على سارية. */
 export const FlagIcon = ({ size = 20, color = "currentColor" }: Props) => (
   <Svg {...stroke(size, color)}>
