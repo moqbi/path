@@ -1,4 +1,5 @@
-import { View, Pressable, ScrollView, ActivityIndicator } from "react-native";
+import { Spinner } from "../../components/spinner";
+import { View, Pressable, ScrollView } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -95,7 +96,7 @@ export default function Accessories() {
           ما اشتريته وما أُهدي إليك — اضغط لتلبسه
         </Text>
 
-        {mine.isLoading ? <ActivityIndicator color={colors.clay} /> : null}
+        {mine.isLoading ? <Spinner color={colors.clay} /> : null}
 
         <Group
           title="الإطارات"

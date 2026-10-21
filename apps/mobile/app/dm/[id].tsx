@@ -1,6 +1,7 @@
+import { Spinner } from "../../components/spinner";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ReportButton } from "../../components/report-sheet";
-import { View, FlatList, Pressable, ActivityIndicator } from "react-native";
+import { View, FlatList, Pressable } from "react-native";
 import { Text, TextInput } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -144,7 +145,7 @@ function Voice({ mediaId, seconds, mine }: { mediaId: string; seconds: number; m
     >
       <View style={{ width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: mine ? "rgba(14,26,36,.18)" : colors.chip }}>
         {state === "loading" ? (
-          <ActivityIndicator size="small" color={ink} />
+          <Spinner size="small" color={ink} />
         ) : state === "playing" ? (
           <PauseIcon size={13} color={ink} />
         ) : (
@@ -418,7 +419,7 @@ export default function Conversation() {
           contentContainerStyle={{ paddingHorizontal: 14, paddingVertical: 14, gap: 6 }}
           ListEmptyComponent={
             thread.isLoading ? (
-              <ActivityIndicator style={{ marginTop: 40 }} color={colors.clay} />
+              <Spinner style={{ marginTop: 40 }} color={colors.clay} />
             ) : (
               <Text style={{ color: colors.groundMuted, fontSize: 13, textAlign: "center", paddingVertical: 24 }}>
                 لا رسائل بعد. اكتب أول سطر.

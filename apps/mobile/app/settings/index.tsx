@@ -1,5 +1,6 @@
+import { Spinner } from "../../components/spinner";
 import { useState } from "react";
-import { View, Pressable, Switch, ScrollView, ActivityIndicator, Linking } from "react-native";
+import { View, Pressable, Switch, ScrollView, Linking } from "react-native";
 import { Text, TextInput } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -171,7 +172,7 @@ export default function Settings() {
               style={{ height: 50, borderRadius: 12, alignItems: "center", justifyContent: "center", opacity: save.isPending ? 0.6 : 1 }}
             >
               {save.isPending ? (
-                <ActivityIndicator color={colors.onBrand} />
+                <Spinner color={colors.onBrand} />
               ) : (
                 <Text style={{ color: colors.onBrand, fontSize: 14.5, fontWeight: "700" }}>احفظ</Text>
               )}
@@ -622,7 +623,7 @@ function DeleteAccount() {
           </Text>
 
           {identities.isLoading ? (
-            <ActivityIndicator color={colors.muted} />
+            <Spinner color={colors.muted} />
           ) : viaApple ? null : (
             <>
               {!hasPassword && answer ? (
@@ -936,7 +937,7 @@ function NotifyPrefs() {
           style={{ height: 50, borderRadius: 12, alignItems: "center", justifyContent: "center", opacity: save.isPending ? 0.6 : 1 }}
         >
           {save.isPending ? (
-            <ActivityIndicator color={colors.onBrand} />
+            <Spinner color={colors.onBrand} />
           ) : (
             <Text style={{ color: colors.onBrand, fontSize: 14.5, fontWeight: "700" }}>
               احفظ التنبيهات

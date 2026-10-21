@@ -11,6 +11,7 @@ import { EditProfileSheet } from "./edit-sheet";
 import { ProfileCover } from "./cover";
 import { ProfileShell } from "./shell";
 import { StatLine } from "./stat-line";
+import { MarqueeName } from "@/components/marquee-name";
 import { Accessories, type Owned } from "./accessories";
 import { coverStyle, NameTag } from "@/components/ui";
 import { AvatarMenu } from "@/components/avatar-menu";
@@ -81,6 +82,49 @@ export default async function ProfilePage({
   // ما وصلك هديةً: شراءٌ باسمك دفع ثمنه غيرك.
   const gotGifts = purchases.filter((row) => row.giftedBy).length;
 
+  // أقراصُ التعديل والإكسسوارات بجانب الاسم (القاعدة ٣٢٢) للمالك وممنوحي اللوحة كلّها،
+  // والصفُّ القديم لغيرهم.
+  const discs = canTryStickers(user);
+  const editSheet = (disc: boolean) => (
+    <EditProfileSheet
+      name={user.name}
+      isPlus={user.isPlus}
+      handle={user.handle}
+      bio={user.bio}
+      city={user.city}
+      gender={user.gender}
+      avatarMediaId={user.avatarMediaId}
+      frame={user.frame}
+      charm={user.charm}
+      coverMediaId={user.coverMediaId}
+      coverSpec={user.background?.spec ?? null}
+      coverY={user.coverY}
+      startOpen={startEdit}
+      disc={disc}
+    />
+  );
+  const accessories = (disc: boolean) => (
+    <Accessories
+      /* والحزمة لا تُلبَس: ما فيها من أصناف مُلّك وحده، فهو ما يُعرض. */
+      owned={purchases
+        .filter((row): row is typeof row & { item: { kind: Owned["kind"] } } => row.item.kind !== "BUNDLE")
+        .map((row) => ({
+          id: row.item.id,
+          name: row.item.name,
+          spec: row.item.spec,
+          kind: row.item.kind,
+          mediaId: row.item.mediaId,
+          promoMediaId: row.item.promoMediaId,
+          frameHole: row.item.frameHole,
+          giftedBy: row.giftedBy?.name ?? null,
+        }))}
+      equippedFrame={user.frameId}
+      equippedTheme={user.backgroundId}
+      equippedCharm={user.charmId}
+      disc={disc}
+    />
+  );
+
   return (
     <div className="screen">
       {/* رأسٌ كبقية التبويبات: العلامة ثم فاصل ثم اسم الشاشة. والمشاركةُ في زرّ
@@ -138,10 +182,22 @@ export default async function ProfilePage({
           />
         }
         identity={
-          <h1 className="flex min-w-0 items-center gap-2 text-[20px] font-bold text-ground-ink">
-            <span dir="auto" className="truncate">{user.name}</span>
-            <NameTag isPlus={user.isPlus} tag={user.tag} size={12} />
-          </h1>
+          <div className="flex min-w-0 items-center gap-2">
+            <h1 className="flex min-w-0 grow items-center gap-2 text-[20px] font-bold text-ground-ink">
+              {discs ? (
+                <MarqueeName name={user.name} />
+              ) : (
+                <span dir="auto" className="truncate">{user.name}</span>
+              )}
+              <NameTag isPlus={user.isPlus} tag={user.tag} size={12} />
+            </h1>
+            {discs ? (
+              <div className="flex shrink-0 items-center gap-1.5">
+                {editSheet(true)}
+                {accessories(true)}
+              </div>
+            ) : null}
+          </div>
         }
         fold={
           <>
@@ -168,40 +224,13 @@ export default async function ProfilePage({
           </>
         }
         actions={
+          discs ? (
+            // والخروجُ في الإعدادات (القاعدة ٣٢٢)؛ ويبقى «تعديل الملف» يُفتح بـ`?edit=1`.
+            <div className="mb-2" />
+          ) : (
           <div className="mb-4 flex gap-2.5">
-            <EditProfileSheet
-              name={user.name}
-              isPlus={user.isPlus}
-              handle={user.handle}
-              bio={user.bio}
-              city={user.city}
-              gender={user.gender}
-              avatarMediaId={user.avatarMediaId}
-              frame={user.frame}
-              charm={user.charm}
-              coverMediaId={user.coverMediaId}
-              coverSpec={user.background?.spec ?? null}
-              coverY={user.coverY}
-              startOpen={startEdit}
-            />
-            <Accessories
-              /* والحزمة لا تُلبَس: ما فيها من أصناف مُلّك وحده، فهو ما يُعرض. */
-              owned={purchases
-                .filter((row): row is typeof row & { item: { kind: Owned["kind"] } } => row.item.kind !== "BUNDLE")
-                .map((row) => ({
-                  id: row.item.id,
-                  name: row.item.name,
-                  spec: row.item.spec,
-                  kind: row.item.kind,
-                  mediaId: row.item.mediaId,
-                  promoMediaId: row.item.promoMediaId,
-                  frameHole: row.item.frameHole,
-                  giftedBy: row.giftedBy?.name ?? null,
-                }))}
-              equippedFrame={user.frameId}
-              equippedTheme={user.backgroundId}
-              equippedCharm={user.charmId}
-            />
+            {editSheet(false)}
+            {accessories(false)}
             {/* الخروج هنا وحده: كان مكرّراً فوق الغلاف بلا داعٍ. */}
             <form action={signOut} className="shrink-0">
               <button
@@ -214,6 +243,7 @@ export default async function ProfilePage({
               </button>
             </form>
           </div>
+          )
         }
       >
         {/* لحظاتي أسفل زرّ التعديل مباشرة — هذا ما يُفتح التبويب لأجله. */}

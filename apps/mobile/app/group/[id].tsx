@@ -1,5 +1,6 @@
+import { Spinner } from "../../components/spinner";
 import { useEffect, useRef, useState } from "react";
-import { View, FlatList, Pressable, ActivityIndicator, Alert } from "react-native";
+import { View, FlatList, Pressable, Alert } from "react-native";
 import { Text, TextInput } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -144,7 +145,7 @@ export default function Group() {
           contentContainerStyle={{ paddingHorizontal: 14, paddingVertical: 14, gap: 6 }}
           ListEmptyComponent={
             thread.isLoading ? (
-              <ActivityIndicator style={{ marginTop: 40 }} color={colors.clay} />
+              <Spinner style={{ marginTop: 40 }} color={colors.clay} />
             ) : thread.isError ? (
               <Text style={{ color: colors.groundMuted, fontSize: 13, textAlign: "center", paddingVertical: 24 }}>
                 المجموعة غير موجودة.

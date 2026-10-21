@@ -439,3 +439,12 @@ export const OfflineIcon = ({ size = 20, className }: IconProps) => (
     <path d="M3 3l18 18" />
   </svg>
 );
+
+/** سهمٌ نازلٌ إلى صينيّة — حفظُ القصّة (القاعدة ٣٢٢). */
+export const DownloadIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M12 4v11" />
+    <path d="M7.5 10.5 12 15l4.5-4.5" />
+    <path d="M4.5 16.5v2a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-2" />
+  </svg>
+);

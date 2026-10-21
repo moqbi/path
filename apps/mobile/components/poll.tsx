@@ -1,5 +1,6 @@
+import { Spinner } from "./spinner";
 import { useEffect, useRef, useState } from "react";
-import { View, Pressable, ActivityIndicator, Animated, Easing } from "react-native";
+import { View, Pressable, Animated, Easing } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Text } from "./type";
 import { CheckIcon } from "./icons";
@@ -160,7 +161,7 @@ export function Poll({
       })}
 
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-        {state.isLoading || vote.isPending ? <ActivityIndicator size="small" color={colors.muted} /> : null}
+        {state.isLoading || vote.isPending ? <Spinner size="small" color={colors.muted} /> : null}
         <Text style={{ color: closed ? colors.ink2 : colors.muted, fontSize: 11.5, fontWeight: closed ? "700" : "400" }}>
           {status}
         </Text>

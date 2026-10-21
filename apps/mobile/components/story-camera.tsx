@@ -1,5 +1,6 @@
+import { Spinner } from "./spinner";
 import { useEffect, useRef, useState } from "react";
-import { View, Pressable, ActivityIndicator, PanResponder, Platform, type GestureResponderEvent } from "react-native";
+import { View, Pressable, PanResponder, Platform, type GestureResponderEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
 import { BlurView } from "expo-blur";
@@ -126,7 +127,7 @@ export function StoryCamera({
   if (!permission) {
     return (
       <View style={{ flex: 1, backgroundColor: "#000", alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator color="#fff" />
+        <Spinner color="#fff" />
       </View>
     );
   }

@@ -1,5 +1,6 @@
+import { Spinner } from "../components/spinner";
 import { useState } from "react";
-import { View, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import { View, ScrollView, Pressable } from "react-native";
 import { Text } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -92,7 +93,7 @@ export default function Coins() {
         </View>
 
         {packs.isLoading ? (
-          <ActivityIndicator style={{ marginTop: 30 }} color={colors.clay} />
+          <Spinner style={{ marginTop: 30 }} color={colors.clay} />
         ) : rows.length === 0 ? (
           <View style={{ borderRadius: 18, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, padding: 22 }}>
             <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "700", textAlign: "center", marginBottom: 6 }}>

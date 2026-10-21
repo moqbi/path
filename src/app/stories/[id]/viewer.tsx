@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { deleteStory, reactStory, seeStory, storyTrack } from "@/app/actions";
 import { Avatar } from "@/components/ui";
-import { CloseIcon, EyeIcon, ScreenshotIcon } from "@/components/icons";
+import { CloseIcon, EyeIcon, ScreenshotIcon, DownloadIcon } from "@/components/icons";
 import { filterCss, vignetteCss } from "@/components/story-composer";
 import { StoryTexts, type StoryText } from "@/components/story-texts";
 import { StoryStickers, type StorySticker } from "@/components/story-stickers";
@@ -53,10 +53,13 @@ export function StoryViewer({
   author,
   stories,
   mine,
+  canSave = false,
 }: {
   author: { id: string; name: string; avatarMediaId: string | null };
   stories: Story[];
   mine: boolean;
+  /** «احفظ» في الاستديو لصاحبها — للمالك وممنوحي اللوحة كلّها (القاعدة ٣٢٢). */
+  canSave?: boolean;
 }) {
   const router = useRouter();
   const [index, setIndex] = useState(0);
@@ -311,6 +314,18 @@ export function StoryViewer({
                 ? `شاهدها ${ar(story.seen)}${reactedCount(story) ? `، تفاعل ${ar(reactedCount(story))}` : ""}`
                 : "لم يشاهدها أحد بعد"}
             </button>
+            {/* الحفظُ لصاحبها (القاعدة ٣٢٢): الملفُّ كما رُفع، من بابه نفسه بالجلسة. */}
+            {canSave ? (
+              <a
+                href={`${BASE}/api/media/${story.mediaId}`}
+                download={`athar-story-${story.id}`}
+                className="pointer-events-auto flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] font-semibold"
+                style={{ background: "rgba(255,255,255,.16)", color: "#fff" }}
+              >
+                <DownloadIcon size={15} />
+                احفظ
+              </a>
+            ) : null}
             <form
               action={async () => {
                 await deleteStory(story.id);

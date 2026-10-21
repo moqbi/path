@@ -3,9 +3,9 @@ import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { IncognitoBox } from "./incognito";
 import { prisma } from "@/lib/db";
-import { createGroup, deleteGroup, savePrivacy } from "@/app/actions";
+import { createGroup, deleteGroup, savePrivacy, signOut } from "@/app/actions";
 import { ScreenHeader } from "@/components/ui";
-import { BookIcon, LifeIcon, ShieldIcon, SparkIcon } from "@/components/icons";
+import { BookIcon, ExitIcon, LifeIcon, ShieldIcon, SparkIcon } from "@/components/icons";
 import { DeleteAccount } from "@/app/me/delete";
 import { ChangeEmail } from "@/app/settings/email";
 import { ChangePassword } from "@/app/settings/password";
@@ -84,6 +84,17 @@ export default async function SettingsPage() {
               <span className="text-[13.5px] font-semibold">قائمة الحظر</span>
               <span className="text-[12px] text-muted">{ar(blocked)} محظور</span>
             </Link>
+
+            {/* الخروجُ هنا — صار «أنا» أقراصاً بجانب الاسم (القاعدة ٣٢٢). */}
+            <form action={signOut}>
+              <button
+                type="submit"
+                className="flex w-full items-center justify-between rounded-2xl border border-line bg-card p-4 text-right"
+              >
+                <span className="text-[13.5px] font-semibold">تسجيل الخروج</span>
+                <ExitIcon size={18} />
+              </button>
+            </form>
 
             {/* حذف الحساب هنا يُبحث عنه، لا في أسفل الملف. */}
             <DeleteAccount hasPassword={hasPassword} answer={user.email ?? user.name} hasEmail={Boolean(user.email)} />

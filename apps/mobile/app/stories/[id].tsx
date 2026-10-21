@@ -1,5 +1,6 @@
+import { Spinner } from "../../components/spinner";
 import { useEffect, useRef, useState } from "react";
-import { View, Pressable, ActivityIndicator, Dimensions, ScrollView, Animated, PanResponder } from "react-native";
+import { View, Pressable, Alert, Dimensions, ScrollView, Animated, PanResponder } from "react-native";
 import type { StorySticker, StoryText } from "@athar/shared";
 import { Audio } from "expo-av";
 import { StoryTexts } from "../../components/story-texts";
@@ -18,7 +19,8 @@ import { FramedMedia, type StoryFrame } from "../../components/story-frame";
 import { MediaImage } from "../../components/media-image";
 import { DEV_FEATURES } from "../../lib/dev-features";
 import { StoryVideo } from "../../components/story-video";
-import { CloseIcon, EyeIcon, LockIcon, ScreenshotIcon } from "../../components/icons";
+import { CloseIcon, DownloadIcon, EyeIcon, LockIcon, ScreenshotIcon } from "../../components/icons";
+import { canSaveMedia, saveMedia } from "../../lib/save-media";
 import { useScreenshot } from "../../lib/screenshot";
 import { api, baseUrl, currentAccess } from "../../lib/api";
 import { storiesQuery } from "../../lib/story-prefetch";
@@ -107,7 +109,8 @@ export default function StoryViewer() {
     ثانيةٍ ويضيع أوّلُه — والقصّةُ بصوتها طولُها طولُ مقطعها (القاعدة ٢٣٨).
   */
   const [waiting, setWaiting] = useState(false);
-  const paused = held || watching || dragging || waiting;
+  const [saving, setSaving] = useState(false);
+  const paused = held || watching || dragging || waiting || saving;
   const started = useRef(Date.now());
   // الوقفةُ لا تبدأ الشريحة من أوّلها: ما مضى منها يُحفظ ويُستأنف منه.
   const elapsed = useRef(0);
@@ -358,7 +361,7 @@ export default function StoryViewer() {
   if (feed.isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: "#0b1219", alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator color="#fff" />
+        <Spinner color="#fff" />
       </View>
     );
   }
@@ -548,6 +551,24 @@ export default function StoryViewer() {
               </Text>
             </Pressable>
 
+            {/* الحفظُ في الاستديو لصاحبها (القاعدة ٣٢٢) — والقصّةُ تقف ما دامت النافذةُ مفتوحة. */}
+            {DEV_FEATURES && canSaveMedia ? (
+              <Pressable
+                accessibilityLabel="احفظ القصة في الاستديو"
+                disabled={saving}
+                onPress={() => {
+                  setSaving(true);
+                  void saveMedia(story.mediaId, story.media.mime)
+                    .catch((error: Error) => Alert.alert("تعذّر الحفظ", error.message))
+                    .finally(() => setSaving(false));
+                }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: "rgba(255,255,255,.16)", opacity: saving ? 0.6 : 1 }}
+              >
+                <DownloadIcon size={15} color="#fff" />
+                <Text style={{ color: "#fff", fontSize: 12, fontWeight: "600" }}>{saving ? "يجهّزها…" : "احفظ"}</Text>
+              </Pressable>
+            ) : null}
+
             <Pressable
               onPress={() => remove.mutate(story.id)}
               style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: "rgba(255,255,255,.16)" }}
@@ -611,7 +632,7 @@ export default function StoryViewer() {
       {watching && mine ? (
         <Sheet title="من شاهد قصّتك" onClose={() => setWatching(false)}>
           {viewers.isLoading ? (
-            <ActivityIndicator color={colors.clay} style={{ marginVertical: 24 }} />
+            <Spinner color={colors.clay} style={{ marginVertical: 24 }} />
           ) : (viewers.data?.viewers.length ?? 0) === 0 ? (
             <Text style={{ textAlign: "center", color: colors.muted, fontSize: 13, marginVertical: 24 }}>
               لم يشاهدها أحدٌ من أصدقائك بعد.

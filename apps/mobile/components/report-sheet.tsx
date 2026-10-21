@@ -1,5 +1,6 @@
+import { Spinner } from "./spinner";
 import { useState } from "react";
-import { View, Pressable, Modal, ActivityIndicator } from "react-native";
+import { View, Pressable, Modal } from "react-native";
 import { Text, TextInput } from "./type";
 import { useMutation } from "@tanstack/react-query";
 import { CloseIcon, ShieldIcon } from "./icons";
@@ -177,7 +178,7 @@ export function ReportSheet({
               style={{ height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.live, opacity: !reason || send.isPending ? 0.6 : 1 }}
             >
               {send.isPending ? (
-                <ActivityIndicator color="#fff" />
+                <Spinner color="#fff" />
               ) : (
                 <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}>أرسل البلاغ</Text>
               )}

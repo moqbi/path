@@ -1,5 +1,6 @@
+import { Spinner } from "../../components/spinner";
 import { useEffect, useRef, useState } from "react";
-import { View, Pressable, ScrollView, ActivityIndicator, PanResponder, KeyboardAvoidingView, Platform, Image } from "react-native";
+import { View, Pressable, ScrollView, PanResponder, KeyboardAvoidingView, Platform, Image } from "react-native";
 import { Text, TextInput } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
@@ -250,7 +251,7 @@ export default function EditProfile() {
                 style={{ height: 50, borderRadius: 12, alignItems: "center", justifyContent: "center" }}
               >
                 {saving ? (
-                  <ActivityIndicator color={colors.onBrand} />
+                  <Spinner color={colors.onBrand} />
                 ) : (
                   <Text style={{ color: colors.onBrand, fontSize: 14.5, fontWeight: "700" }}>احفظ</Text>
                 )}
@@ -553,7 +554,7 @@ function CoverEditor({
 
         {busy ? (
           <View style={{ position: "absolute", inset: 0, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(14,26,36,.35)" }}>
-            <ActivityIndicator color="#f7f5ef" />
+            <Spinner color="#f7f5ef" />
           </View>
         ) : null}
       </View>
@@ -701,7 +702,7 @@ function AvatarEditor({
           }}
         >
           {busy ? (
-            <ActivityIndicator size="small" color={colors.onBrand} />
+            <Spinner size="small" color={colors.onBrand} />
           ) : (
             <CameraIcon size={16} color={colors.onBrand} />
           )}

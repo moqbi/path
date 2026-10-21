@@ -1,5 +1,6 @@
+import { Spinner } from "./spinner";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import { create } from "zustand";
 import { MOMENT_TEXT_MAX } from "@athar/shared";
@@ -102,7 +103,7 @@ function Body({ target, close }: { target: Target; close: () => void }) {
           }}
         >
           {busy ? (
-            <ActivityIndicator color={colors.onBrand} />
+            <Spinner color={colors.onBrand} />
           ) : (
             <Text style={{ color: colors.onBrand, fontSize: 14.5, fontWeight: "700" }}>احفظ التعديل</Text>
           )}

@@ -1,5 +1,6 @@
+import { Spinner } from "../../components/spinner";
 import { useMemo } from "react";
-import { View, Pressable, FlatList, ActivityIndicator, useWindowDimensions } from "react-native";
+import { View, Pressable, FlatList, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
@@ -95,7 +96,7 @@ export default function Archive() {
                     <Text style={{ color: "rgba(247,245,239,.6)", fontSize: 11 }}>{ar(row.moments)} لحظة</Text>
                   </Pressable>
                 ))}
-                {years.isLoading ? <ActivityIndicator color={colors.clay} /> : null}
+                {years.isLoading ? <Spinner color={colors.clay} /> : null}
                 {years.data && years.data.years.length === 0 ? (
                   <Text style={{ color: colors.muted, fontSize: 12 }}>انشر لحظتك الأولى ويبدأ كتابك.</Text>
                 ) : null}
@@ -131,12 +132,12 @@ export default function Archive() {
         }
         ListEmptyComponent={
           pages.isLoading ? (
-            <ActivityIndicator style={{ marginTop: 24 }} color={colors.clay} />
+            <Spinner style={{ marginTop: 24 }} color={colors.clay} />
           ) : (
             <Text style={{ color: colors.muted, fontSize: 13, textAlign: "center", marginTop: 24 }}>ما نشرت شي بعد.</Text>
           )
         }
-        ListFooterComponent={pages.isFetchingNextPage ? <ActivityIndicator style={{ marginTop: 12 }} color={colors.clay} /> : null}
+        ListFooterComponent={pages.isFetchingNextPage ? <Spinner style={{ marginTop: 12 }} color={colors.clay} /> : null}
       />
     </SafeAreaView>
   );

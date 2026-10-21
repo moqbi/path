@@ -1,9 +1,10 @@
+import { Spinner } from "../../components/spinner";
 import { useRef, useState } from "react";
 import { usePullLogo } from "../../components/logo-refresh";
 import { useTabTop } from "../../lib/tab-top";
 import { TabBackdrop } from "../../components/tab-backdrop";
 import { scrolled } from "../../lib/scrolled";
-import { View, FlatList, Pressable, ActivityIndicator } from "react-native";
+import { View, FlatList, Pressable } from "react-native";
 import { Text, TextInput } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -389,7 +390,7 @@ export default function Messages() {
         }}
         ListEmptyComponent={
           list.isLoading ? (
-            <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
+            <Spinner style={{ marginTop: 50 }} color={colors.clay} />
           ) : groups.length > 0 ? null : needle ? (
             others.length > 0 ? null : (
               <Text style={{ color: colors.groundMuted, fontSize: 13.5, textAlign: "center", marginTop: 40 }}>

@@ -1,5 +1,6 @@
+import { Spinner } from "../../components/spinner";
 import { useState } from "react";
-import { View, Pressable, ScrollView, ActivityIndicator, Platform } from "react-native";
+import { View, Pressable, ScrollView, Platform } from "react-native";
 import { Text, TextInput } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -119,7 +120,7 @@ export default function Beta() {
               style={{ height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center", opacity: send.isPending ? 0.5 : 1 }}
             >
               {send.isPending ? (
-                <ActivityIndicator color={colors.onBrand} />
+                <Spinner color={colors.onBrand} />
               ) : (
                 <Text style={{ color: colors.onBrand, fontSize: 14, fontWeight: "700" }}>انضم</Text>
               )}

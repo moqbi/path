@@ -1,5 +1,6 @@
+import { Spinner } from "./spinner";
 import { useRef } from "react";
-import { ActivityIndicator, Animated, Dimensions, Modal, PanResponder, Platform, Pressable, ScrollView, View } from "react-native";
+import { Animated, Dimensions, Modal, PanResponder, Platform, Pressable, ScrollView, View } from "react-native";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
@@ -182,7 +183,7 @@ export function PlaceVisitors() {
 
           <ScrollView style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 10 }}>
             {query.isLoading ? (
-              <ActivityIndicator color="#fff" style={{ marginVertical: 28 }} />
+              <Spinner color="#fff" style={{ marginVertical: 28 }} />
             ) : query.isError ? (
               <Text style={{ color: "rgba(255,255,255,.7)", textAlign: "center", marginVertical: 24 }}>
                 تعذّر جلب الزوّار

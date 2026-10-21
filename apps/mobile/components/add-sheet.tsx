@@ -1,5 +1,6 @@
+import { Spinner } from "./spinner";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Animated, Easing, Linking, Pressable, Share, View } from "react-native";
+import { Animated, Easing, Linking, Pressable, Share, View } from "react-native";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { useMutation } from "@tanstack/react-query";
@@ -148,7 +149,7 @@ function PersonRow({
         }}
       >
         {pending ? (
-          <ActivityIndicator size="small" color={colors.onBrand} />
+          <Spinner size="small" color={colors.onBrand} />
         ) : (
           <Text style={{ color: live ? colors.onBrand : "rgba(255,255,255,.6)", fontSize: 12.5, fontWeight: "700" }}>
             {LABEL[relation]}
@@ -197,7 +198,7 @@ function Home({ go, row }: { go: (mode: Mode) => void; row: (p: FoundPerson) => 
           style={{ flex: 1, color: "#fff", fontSize: 15 }}
         />
         {find.isPending ? (
-          <ActivityIndicator size="small" color="#fff" />
+          <Spinner size="small" color="#fff" />
         ) : ready ? (
           <Pressable onPress={search} hitSlop={8}>
             <Text style={{ color: colors.clay, fontWeight: "800" }}>ابحث</Text>

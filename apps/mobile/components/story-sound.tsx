@@ -1,5 +1,6 @@
+import { Spinner } from "./spinner";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Dimensions, PanResponder, Pressable, View } from "react-native";
+import { Dimensions, PanResponder, Pressable, View } from "react-native";
 import * as Picker from "expo-image-picker";
 import { Audio } from "expo-av";
 import { SOUND_SOURCE, STORY_SECONDS } from "@athar/shared";
@@ -107,7 +108,7 @@ export function StorySound({
 
       {busy ? (
         <View style={{ alignItems: "center", marginTop: 40, gap: 12 }}>
-          <ActivityIndicator color="#fff" />
+          <Spinner color="#fff" />
           <Text style={{ color: "rgba(255,255,255,.75)", fontSize: 13 }}>نسحب الصوت من المقطع…</Text>
         </View>
       ) : source ? (

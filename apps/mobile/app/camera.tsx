@@ -1,5 +1,6 @@
+import { Spinner } from "../components/spinner";
 import { useEffect, useRef, useState } from "react";
-import { View, Pressable, Image, ActivityIndicator, Dimensions, PanResponder, type GestureResponderEvent } from "react-native";
+import { View, Pressable, Image, Dimensions, PanResponder, type GestureResponderEvent } from "react-native";
 import { Text } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -104,7 +105,7 @@ export default function Camera() {
   if (!permission) {
     return (
       <View style={{ flex: 1, backgroundColor: "#000", alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator color="#fff" />
+        <Spinner color="#fff" />
       </View>
     );
   }

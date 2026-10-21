@@ -1,9 +1,10 @@
+import { Spinner } from "../../components/spinner";
 import { useEffect, useState } from "react";
 import { usePullLogo } from "../../components/logo-refresh";
 import { useBarSpace } from "../../components/glass-bar";
 import { scrolled } from "../../lib/scrolled";
 import { markSeen } from "../../lib/seen";
-import { View, Pressable, ActivityIndicator, Animated } from "react-native";
+import { View, Pressable, Animated } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -100,7 +101,7 @@ function ByNumber({ memberNo }: { memberNo: string }) {
       {found.isError ? (
         <Text style={{ color: colors.groundInk, fontSize: 13 }}>لا يوجد هذا الحساب</Text>
       ) : (
-        <ActivityIndicator color={colors.muted} />
+        <Spinner color={colors.muted} />
       )}
     </SafeAreaView>
   );
@@ -195,7 +196,7 @@ function Profile() {
       <ScreenHeader title={who?.name ?? "ملف"} back="/circle" />
 
       {person.isLoading ? (
-        <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
+        <Spinner style={{ marginTop: 50 }} color={colors.clay} />
       ) : !who ? (
         <Text style={{ color: colors.groundInk, fontSize: 13.5, textAlign: "center", marginTop: 50 }}>
           لا يوجد هذا الحساب.

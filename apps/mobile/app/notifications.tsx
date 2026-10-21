@@ -1,3 +1,4 @@
+import { Spinner } from "../components/spinner";
 import { useCallback, useMemo, useState } from "react";
 import { usePullLogo } from "../components/logo-refresh";
 import { useBarSpace } from "../components/glass-bar";
@@ -7,7 +8,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SwipeRow } from "../components/swipe-row";
 import { api } from "../lib/api";
 import { keys } from "../lib/queries";
-import { View, SectionList, Pressable, ScrollView, ActivityIndicator } from "react-native";
+import { View, SectionList, Pressable, ScrollView } from "react-native";
 import { Text } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -338,7 +339,7 @@ export default function Notifications() {
         ListEmptyComponent={
           notes.isLoading ? (
             <View style={{ paddingTop: 60, alignItems: "center" }}>
-              <ActivityIndicator color={colors.clay} />
+              <Spinner color={colors.clay} />
             </View>
           ) : (
             <View style={{ paddingTop: 60, paddingHorizontal: 30, alignItems: "center", gap: 8 }}>

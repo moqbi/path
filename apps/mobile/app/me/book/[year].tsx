@@ -1,5 +1,6 @@
+import { Spinner } from "../../../components/spinner";
 import { useState } from "react";
-import { View, FlatList, ActivityIndicator, Pressable, Alert, useWindowDimensions } from "react-native";
+import { View, FlatList, Pressable, Alert, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -106,7 +107,7 @@ export default function YearBook() {
               style={{ height: 34, paddingHorizontal: 12, borderRadius: 17, backgroundColor: "rgba(255,255,255,.12)", alignItems: "center", justifyContent: "center", opacity: canDownloadBook ? 1 : 0.6 }}
             >
               {saving ? (
-                <ActivityIndicator size="small" color="#F6B93B" />
+                <Spinner size="small" color="#F6B93B" />
               ) : (
                 <Text style={{ color: "#F6B93B", fontSize: 12.5, fontWeight: "700" }}>تحميل PDF</Text>
               )}
@@ -115,7 +116,7 @@ export default function YearBook() {
         }
       />
       {!data ? (
-        <ActivityIndicator style={{ marginTop: 40 }} color={colors.clay} />
+        <Spinner style={{ marginTop: 40 }} color={colors.clay} />
       ) : (
         <FlatList
           data={pages}

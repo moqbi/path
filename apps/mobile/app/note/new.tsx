@@ -1,5 +1,6 @@
+import { Spinner } from "../../components/spinner";
 import { useRef, useState } from "react";
-import { ActivityIndicator, Platform, Pressable, ScrollView, View, type TextInput as RNTextInput } from "react-native";
+import { Platform, Pressable, ScrollView, View, type TextInput as RNTextInput } from "react-native";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -255,7 +256,7 @@ export default function NewNote() {
             onPress={() => share.mutate()}
             style={{ height: 46, paddingHorizontal: 24, borderRadius: 23, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay, opacity: ready ? 1 : 0.45 }}
           >
-            {share.isPending ? <ActivityIndicator color={colors.onBrand} /> : <Text style={{ color: colors.onBrand, fontSize: 14, fontWeight: "800" }}>شارك</Text>}
+            {share.isPending ? <Spinner color={colors.onBrand} /> : <Text style={{ color: colors.onBrand, fontSize: 14, fontWeight: "800" }}>شارك</Text>}
           </Pressable>
         </View>
         {share.error ? (
