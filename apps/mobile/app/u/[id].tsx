@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { PullLogo, pullTint } from "../../components/logo-refresh";
 import { useBarSpace } from "../../components/glass-bar";
 import { scrolled } from "../../lib/scrolled";
 import { markSeen } from "../../lib/seen";
@@ -208,7 +209,7 @@ function Profile() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
           scrollEventThrottle={16}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} tintColor="#fff" />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} tintColor={pullTint("#fff")} />}
           data={list}
           keyExtractor={(item) => item.id}
           onViewableItemsChanged={onViewable}
@@ -235,6 +236,7 @@ function Profile() {
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: barSpace + 8 }}
           ListHeaderComponent={
             <>
+              <PullLogo refreshing={refreshing} />
               {/*
                 الغلاف طبقةٌ واحدة في كل الشاشات (القاعدة ٧١): صورةٌ ودرعٌ
                 تحت قناع الذوبان نفسه. وصورةٌ عاريةٌ في مربّعٍ رماديّ تنتهي

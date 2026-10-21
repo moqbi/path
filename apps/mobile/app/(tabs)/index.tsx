@@ -23,6 +23,7 @@ import { useSession } from "../../lib/session";
 import { ar, dayLabel, membership, MONTHS, timeOfDay } from "../../lib/format";
 import { useTabTop } from "../../lib/tab-top";
 import { playRefresh } from "../../lib/sound";
+import { LogoRefresh } from "../../components/logo-refresh";
 import { NameTag } from "../../components/name-tag";
 import { colors } from "../../theme/tokens";
 import { DEV_FEATURES } from "../../lib/dev-features";
@@ -424,6 +425,10 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
                 الجلب جارياً — فالحركة في مكان الفعل لا دوّارةٌ غريبة فوق
                 القائمة.
               */}
+              {pulling && DEV_FEATURES ? (
+                // والجلبُ الجاري شعارُ التطبيق يتنفّس وقوسُه يدور (القاعدة ٣٢١).
+                <LogoRefresh size={22} />
+              ) : (
               <Animated.View
                 style={{
                   transform: [
@@ -441,6 +446,7 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
               >
                 <RefreshIcon size={14} color="#fff" />
               </Animated.View>
+              )}
             </Pressable>
             <View style={{ width: SPINE_W, alignItems: "center" }}>
               <Avatar

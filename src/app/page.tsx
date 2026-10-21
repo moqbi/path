@@ -171,6 +171,7 @@ export default async function TimelinePage({
       </header>
 
       <TimelineHead
+        logo={trial}
         coverMediaId={user.coverMediaId}
         themeCoverMediaId={user.background?.coverMediaId}
         coverSpec={user.background?.spec ?? null}

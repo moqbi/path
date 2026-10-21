@@ -1,4 +1,5 @@
 import { useBarSpace } from "../../components/glass-bar";
+import { PullLogo, pullTint } from "../../components/logo-refresh";
 import { TabBackdrop } from "../../components/tab-backdrop";
 import { scrolled } from "../../lib/scrolled";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -271,9 +272,10 @@ export default function Me() {
         onScroll={onScroll}
         onScrollBeginDrag={scrolled}
         scrollEventThrottle={16}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} tintColor="#fff" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} tintColor={pullTint("#fff")} />}
         ListHeaderComponent={
           <>
+            <PullLogo refreshing={refreshing} />
             <StretchCover y={scrollY} height={COVER}>
               <CoverLayer mediaId={me.coverMediaId} themeMediaId={me.background?.coverMediaId} spec={me.background?.spec} height={COVER} x={me.coverX} y={me.coverY} zoom={me.coverZoom} />
             </StretchCover>

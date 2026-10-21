@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { PullLogo, pullTint } from "../components/logo-refresh";
 import { useBarSpace } from "../components/glass-bar";
 import { scrolled } from "../lib/scrolled";
 import { Alert } from "react-native";
@@ -242,9 +243,10 @@ export default function Notifications() {
         refreshControl={
           <RefreshControl
             {...pullRefresh}
-            tintColor={colors.clay}
+            tintColor={pullTint(colors.clay)}
           />
         }
+        ListHeaderComponent={<PullLogo refreshing={pullRefresh.refreshing} />}
         renderSectionHeader={({ section }) => (
           <Text
             style={{

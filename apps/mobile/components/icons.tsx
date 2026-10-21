@@ -427,3 +427,14 @@ export const CalendarIcon = ({ size = 20, color = "currentColor" }: Props) => (
     <Path d="M9 14h.01M12 14h.01M15 14h.01M9 17h.01M12 17h.01" />
   </Svg>
 );
+
+/** شبكةٌ مقطوعة — رسالةُ «ما فيه اتصال» (القاعدة ٣٢١). */
+export const OfflineIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M2 8.5a15 15 0 0 1 20 0" />
+    <Path d="M5.5 12a10 10 0 0 1 13 0" />
+    <Path d="M9 15.5a5 5 0 0 1 6 0" />
+    <Circle cx={12} cy={19} r={0.8} />
+    <Path d="M3 3l18 18" />
+  </Svg>
+);

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { PullLogo, pullTint } from "../../components/logo-refresh";
 import { useTabTop } from "../../lib/tab-top";
 import { TabBackdrop } from "../../components/tab-backdrop";
 import { useBarSpace } from "../../components/glass-bar";
@@ -249,9 +250,10 @@ export default function Store() {
         ref={list}
           contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: barSpace + 8 }}
           refreshControl={
-            <RefreshControl {...pullRefresh} tintColor={colors.clay} />
+            <RefreshControl {...pullRefresh} tintColor={pullTint(colors.clay)} />
           }
         >
+          <PullLogo refreshing={pullRefresh.refreshing} />
           {stickerTab ? (
             <>
               {/* قسمان — **بقرار المالك**: ما مع آثار+، ثمّ ما يُشترى بالنقاط. */}

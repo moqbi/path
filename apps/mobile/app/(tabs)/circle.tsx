@@ -1,4 +1,5 @@
 import { BlockIcon, CheckIcon, MessageIcon, TagIcon, UserMinusIcon, UserPlusIcon } from "../../components/icons";
+import { PullLogo, pullTint } from "../../components/logo-refresh";
 import { Sheet } from "../../components/sheet";
 import { openAddSheet } from "../../components/add-sheet";
 import { Spot } from "../../components/spot";
@@ -206,11 +207,12 @@ export default function Circle() {
         refreshControl={
           <RefreshControl
             {...pullRefresh}
-            tintColor={colors.clay}
+            tintColor={pullTint(colors.clay)}
           />
         }
         ListHeaderComponent={
           <>
+            <PullLogo refreshing={pullRefresh.refreshing} />
             {/* شريط القصص فوق الدائرة — مكانه في الويب نفسه. */}
             <StoryStrip rings={rings.data?.rings ?? []} meId={me?.id ?? ""} />
 

@@ -428,3 +428,14 @@ export const StickerIcon = ({ size = 20, className }: IconProps) => (
     <path d="M13 20v-5a2 2 0 0 1 2-2h5" />
   </svg>
 );
+
+/** شبكةٌ مقطوعة — رسالةُ «ما فيه اتصال» (القاعدة ٣٢١). */
+export const OfflineIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M2 8.5a15 15 0 0 1 20 0" />
+    <path d="M5.5 12a10 10 0 0 1 13 0" />
+    <path d="M9 15.5a5 5 0 0 1 6 0" />
+    <circle cx="12" cy="19" r="0.8" />
+    <path d="M3 3l18 18" />
+  </svg>
+);

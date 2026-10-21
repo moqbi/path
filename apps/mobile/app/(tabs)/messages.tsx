@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { PullLogo, pullTint } from "../../components/logo-refresh";
 import { useTabTop } from "../../lib/tab-top";
 import { TabBackdrop } from "../../components/tab-backdrop";
 import { scrolled } from "../../lib/scrolled";
@@ -233,6 +234,9 @@ export default function Messages() {
         keyboardShouldPersistTaps="handled"
         data={rows}
         ListHeaderComponent={
+          <>
+          <PullLogo refreshing={pullRefresh.refreshing} />
+          {
           groups.length > 0 ? (
             <View style={{ paddingBottom: 4 }}>
               {/* المجموعاتُ قسمٌ يُطوى كالمفضّلة (القاعدة ٢٦٤) — والبحثُ يفتحه. */}
@@ -285,6 +289,8 @@ export default function Messages() {
               ) : null}
             </View>
           ) : null
+          }
+          </>
         }
         ListFooterComponent={
           others.length > 0 ? (
@@ -311,7 +317,7 @@ export default function Messages() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingTop: 8, paddingBottom: barSpace + 8, flexGrow: 1 }}
         refreshControl={
-          <RefreshControl {...pullRefresh} tintColor={colors.clay} />
+          <RefreshControl {...pullRefresh} tintColor={pullTint(colors.clay)} />
         }
         renderItem={({ item: entry }) => {
           if ("head" in entry) {

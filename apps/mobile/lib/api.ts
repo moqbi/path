@@ -1,5 +1,6 @@
 import { randomUUID } from "expo-crypto";
 import { deleteItem, getItem, setItem } from "./store";
+import { NetworkError, reportOffline, reportOnline } from "./network";
 
 /**
  * بابُ الخادم الوحيد.
@@ -119,7 +120,22 @@ export async function api<T>(path: string, init: RequestInit = {}, retry = true)
   const token = access ?? (await getItem(ACCESS));
   if (token && !access) setAccess(token);
 
-  const response = await fetch(`${BASE}${path}`, {
+  /*
+    مهلةٌ لكلّ طلب (القاعدة ٣٢١): `fetch` في React Native بلا مهلة، فطلبٌ في شبكةٍ
+    ميّتة كان يعلق دقيقةً وأكثر والشاشةُ تدور. والرفعُ أطول: ملفٌّ على شبكةٍ بطيئة
+    يحتاج وقته. ومهلةٌ انقضت أو طلبٌ لم يخرج فشلُ شبكة — يُعلَن ويُستعاد منه.
+  */
+  const abort = new AbortController();
+  const cut = setTimeout(() => abort.abort(), init.body instanceof FormData ? 120_000 : 20_000);
+  const outer = init.signal;
+  if (outer) {
+    if (outer.aborted) abort.abort();
+    else outer.addEventListener("abort", () => abort.abort());
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${BASE}${path}`, {
     /*
        بلا مخبأ: `no-store` يجعل `fetch` يُلحق بالطلب ختماً زمنياً فلا
        يُعاد جوابٌ قديم من مخبأ النظام — كان السحبُ للتحديث يدور ولا يأتي
@@ -139,7 +155,17 @@ export async function api<T>(path: string, init: RequestInit = {}, retry = true)
       "x-moment-kinds": "2",
       ...init.headers,
     },
+    signal: abort.signal,
   });
+  } catch (error) {
+    // إلغاءٌ طلبه صاحبُ الطلب ليس انقطاعاً.
+    if (outer?.aborted) throw error;
+    reportOffline();
+    throw new NetworkError();
+  } finally {
+    clearTimeout(cut);
+  }
+  reportOnline();
 
   if (response.status === 401 && retry && (await renew())) {
     return api<T>(path, init, false);
