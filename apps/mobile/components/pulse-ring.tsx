@@ -18,21 +18,29 @@ const shared = [0, 1, 2].map(() => new Animated.Value(0));
 let users = 0;
 let running: Animated.CompositeAnimation | null = null;
 
+/*
+  **ثلاثُ نبضاتٍ ثمّ حلقةٌ ساكنة** (القاعدة ٣٢٩): الخطُّ الزمنيّ يبقى مركّباً تحت التبويبات
+  الأخرى، فحلقةٌ تنبض بلا نهاية كانت تدور والصاحبُ في المتجر أو المحادثات — والجوّالُ يسخن.
+  تعود تنبض حين تُرسم حلقةٌ جديدة (بطاقةٌ تدخل الشاشة) أو يعود التطبيقُ من الخلفيّة.
+*/
+const ROUNDS = 3;
+
 function start() {
   if (running) return;
-  running = Animated.parallel(
+  const round = Animated.parallel(
     shared.map((wave, i) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(i * 600),
-          Animated.timing(wave, { toValue: 1, duration: 1800, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-          Animated.timing(wave, { toValue: 0, duration: 0, useNativeDriver: true }),
-          Animated.delay((2 - i) * 600),
-        ]),
-      ),
+      Animated.sequence([
+        Animated.delay(i * 600),
+        Animated.timing(wave, { toValue: 1, duration: 1800, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(wave, { toValue: 0, duration: 0, useNativeDriver: true }),
+        Animated.delay((2 - i) * 600),
+      ]),
     ),
   );
-  running.start();
+  running = Animated.loop(round, { iterations: ROUNDS });
+  running.start(() => {
+    running = null;
+  });
 }
 
 function stop() {
@@ -79,9 +87,9 @@ export function PulseRing({ size, color = colors.clay }: { size: number; color?:
   };
   return (
     <View pointerEvents="none" style={{ position: "absolute", left: 0, top: 0, width: size, height: size }}>
-      {still ? (
-        <View style={ring} />
-      ) : (
+      {/* الحلقةُ الساكنة تبقى تحت النبض وبعده: «فيها ما لم تره» لا يذهب بوقوف الحركة. */}
+      <View style={ring} />
+      {still ? null : (
         waves.map((wave, i) => (
           <Animated.View
             key={i}

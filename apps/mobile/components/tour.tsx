@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactElement } from "react";
-import { View, Pressable, Animated, Easing, BackHandler, Platform, useWindowDimensions } from "react-native";
+import { View, Pressable, Animated, Easing, BackHandler, useWindowDimensions } from "react-native";
 import { create } from "zustand";
 import Svg, { Path } from "react-native-svg";
 import { Text } from "./type";
@@ -64,7 +64,7 @@ type Step = {
  * خطواتُ الجولة — **تعليميّةٌ لا سردٌ** (القاعدة ٣٢٦)، **بترتيب المالك**: ملفُّه أوّلاً
  * يغيّر صورتَه واسمَه ومعرّفَه ويحفظ، ثمّ بطاقةُ الترحيب يضيف منها حسابَ الإدارة —
  * فتُشطب منها خطوتان — ثمّ كيف يُضاف الناس من التعليقات والتفاعلات، ثمّ أبوابُ
- * الإضافة (المعرّف، ومن حولك، والرمز)، ثمّ القصص والنوت، فآثار+، فالمتجر.
+ * الإضافة (المعرّف، ومن حولك، والرمز)، ثمّ القصص والنوت، فآثار+.
  */
 const STEPS: Step[] = [
   {
@@ -159,16 +159,6 @@ const STEPS: Step[] = [
     coach: [],
     title: "آثار+",
     body: "شارةُ توثيق، وإيموجي حرّ، وآثارنا، والتخفّي، وأرشيفٌ بلا نهاية، ونقاطٌ كلّ شهر — ولك أن تشترك متى شئت.",
-  },
-  {
-    // شريطُ آبل الأصليّ لا يُقاس (القاعدة ٢٦١): بلا هدفٍ هناك، لا انتظارٌ لما لا يُرسم.
-    spot: Platform.OS === "ios" ? undefined : "tab.store",
-    route: "/store",
-    before: (router, path) => {
-      if (path === "/subscribe" && router.canGoBack()) router.back();
-    },
-    title: "المتجر",
-    body: "تشارمز وإطاراتٌ وثيمات بالنقاط — تُرى قبل شرائها، وتُلبَس من ملفك، وتُهدى لصديق.",
   },
 ];
 
