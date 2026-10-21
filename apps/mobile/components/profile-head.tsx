@@ -126,11 +126,11 @@ export function ProfileHead({
       {/* ما يخرج من الإطار تحت الصورة لا يلتصق بما بعده. */}
       <View style={{ alignItems: "flex-start", marginTop: 12 + frameBleed(size, frame) }}>
         {bio ? (
-          <Text style={{ color: colors.groundInk2, fontSize: 13.5, textAlign: "right", lineHeight: 22, writingDirection: "auto" }}>
+          <Text style={{ color: colors.groundInk, fontSize: 13.5, textAlign: "right", lineHeight: 22, writingDirection: "auto" }}>
             {bio}
           </Text>
         ) : null}
-        <Text style={{ color: colors.groundMuted, fontSize: 11.5, marginTop: bio ? 6 : 0, textAlign: "right" }}>{meta}</Text>
+        <Text style={{ color: colors.groundInk, fontSize: 11.5, marginTop: bio ? 6 : 0, textAlign: "right" }}>{meta}</Text>
       </View>
     </View>
   );

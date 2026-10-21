@@ -95,7 +95,7 @@ function ByNumber({ memberNo }: { memberNo: string }) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.ground, alignItems: "center", justifyContent: "center", gap: 10 }}>
       {found.isError ? (
-        <Text style={{ color: colors.muted, fontSize: 13 }}>لا يوجد هذا الحساب</Text>
+        <Text style={{ color: colors.groundInk, fontSize: 13 }}>لا يوجد هذا الحساب</Text>
       ) : (
         <ActivityIndicator color={colors.muted} />
       )}
@@ -181,7 +181,7 @@ function Profile() {
       {person.isLoading ? (
         <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
       ) : !who ? (
-        <Text style={{ color: colors.groundMuted, fontSize: 13.5, textAlign: "center", marginTop: 50 }}>
+        <Text style={{ color: colors.groundInk, fontSize: 13.5, textAlign: "center", marginTop: 50 }}>
           لا يوجد هذا الحساب.
         </Text>
       ) : (

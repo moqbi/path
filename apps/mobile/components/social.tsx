@@ -108,7 +108,7 @@ export function FollowRow({ title = "تابعنا" }: { title?: string }) {
 
   return (
     <View style={{ alignItems: "center", paddingTop: 22, paddingBottom: 8 }}>
-      <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "700", marginBottom: 10 }}>
+      <Text style={{ color: colors.groundInk, fontSize: 12, fontWeight: "700", marginBottom: 10 }}>
         {title}
       </Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 10 }}>
