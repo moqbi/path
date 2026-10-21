@@ -90,7 +90,7 @@ const STEPS: Step[] = [
     spot: "welcome.support",
     route: "/",
     tap: true,
-    skipMissing: 2,
+    skipMissing: 3,
     until: (ctx) => ctx.path.startsWith("/u/"),
     title: "أضف حساب آثار",
     body: "من بطاقة الترحيب: اضغط هنا لتفتح ملفّ حساب الإدارة — أخبار التطبيق وجديده في خطّك.",
@@ -523,9 +523,15 @@ export function Tour() {
         ))}
 
         {/* تعتيمٌ خفيف لا ظلام: الشاشةُ تبقى مقروءةً حول الدائرة. */}
-        <Svg pointerEvents="none" width={screen.width} height={screen.height} style={{ position: "absolute" }}>
-          <Path d={veil} fill="rgba(8,14,20,0.74)" fillRule="evenodd" />
-        </Svg>
+        {/*
+          `pointerEvents` على `Svg` نفسه لا يُقرأ في آبل: لوحتُه الأصليّة تأخذ اللمسةَ
+          كلَّها فلا يصل شيءٌ إلى الثقب. فتُلفّ في عرضٍ لا يأخذ لمساً.
+        */}
+        <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
+          <Svg width={screen.width} height={screen.height}>
+            <Path d={veil} fill="rgba(8,14,20,0.74)" fillRule="evenodd" />
+          </Svg>
+        </View>
 
         {circle ? (
           <Animated.View
