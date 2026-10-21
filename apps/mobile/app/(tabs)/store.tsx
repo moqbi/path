@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { PullLogo, pullTint } from "../../components/logo-refresh";
+import { usePullLogo } from "../../components/logo-refresh";
 import { useTabTop } from "../../lib/tab-top";
 import { TabBackdrop } from "../../components/tab-backdrop";
 import { useBarSpace } from "../../components/glass-bar";
-import { View, ScrollView, Pressable, ActivityIndicator, RefreshControl } from "react-native";
+import { View, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -71,6 +71,7 @@ export default function Store() {
   const pullRefresh = usePullRefresh(() =>
     Promise.all([store.refetch(), DEV_FEATURES ? stickers.refetch() : null]),
   );
+  const pull = usePullLogo({ ...pullRefresh, tint: colors.clay });
   const [slug, setSlug] = useState("");
   const data = store.data;
   const packs = stickers.data?.packs ?? [];
@@ -246,14 +247,12 @@ export default function Store() {
       {store.isLoading ? (
         <ActivityIndicator style={{ marginTop: 50 }} color={colors.clay} />
       ) : (
+        <View style={{ flex: 1 }}>
         <ScrollView
         ref={list}
           contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: barSpace + 8 }}
-          refreshControl={
-            <RefreshControl {...pullRefresh} tintColor={pullTint(colors.clay)} />
-          }
+        {...pull.props}
         >
-          <PullLogo refreshing={pullRefresh.refreshing} />
           {stickerTab ? (
             <>
               {/* قسمان — **بقرار المالك**: ما مع آثار+، ثمّ ما يُشترى بالنقاط. */}
@@ -320,6 +319,8 @@ export default function Store() {
             </Text>
           </View>
         </ScrollView>
+        {pull.overlay}
+        </View>
       )}
     </SafeAreaView>
   );

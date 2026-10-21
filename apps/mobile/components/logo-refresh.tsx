@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, Animated, Easing, Platform, View } from "react-native";
+import {
+  AccessibilityInfo,
+  Animated,
+  Easing,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  Platform,
+  RefreshControl,
+  View,
+} from "react-native";
 import { AthrMark } from "./brand";
 import { DEV_FEATURES } from "../lib/dev-features";
 import { colors } from "../theme/tokens";
@@ -73,23 +82,78 @@ export function LogoRefresh({ size = 32, color = colors.clay }: { size?: number;
 /** الشعارُ مكانَ دوّارة `RefreshControl` — على آبل في نسخة التطوير وحدها (القاعدة ٢٩١). */
 export const LOGO_PULL = DEV_FEATURES && Platform.OS === "ios";
 
-/** لونُ دوّارة النظام: شفّافةٌ حين يرسم الشعارُ مكانها. */
-export function pullTint(fallback: string): string {
-  return LOGO_PULL ? "transparent" : fallback;
-}
+/** كم يُسحب فوق أعلى القائمة حتى يُحدَّث — قريبٌ ممّا تطلبه دوّارةُ آبل. */
+const TRIGGER = 72;
 
 /**
- * الشعارُ في الفراغ الذي يفتحه السحب فوق القائمة: يُركَّب أوّلَ رأس القائمة
- * بإزاحةٍ سالبة، فآبل تُبقي ذلك الفراغَ ظاهراً ما دام التحديث جارياً.
+ * السحبُ للتحديث بالشعار لا بدوّارة النظام (القاعدة ٣٢١). كانت الدوّارةُ شفّافةً
+ * والشعارُ في رأس القائمة، فبقيت دوّارةُ آبل تُرى في أعلاها والشعارُ تحتها لحظةً.
+ * فلا `RefreshControl` هنا أصلاً: إفلاتُ السحبة بعد `TRIGGER` يُحدّث، والشعارُ
+ * طبقةٌ فوق أعلى القائمة يظهر مع الإصبع ويبقى ما دام الجلب. وبلا `LOGO_PULL`
+ * تعود الدوّارةُ كما كانت.
+ * `y` قيمةُ تمرير القائمة إن كانت لها (`useStretch`)، وإلّا يُنشأ لها مقياس.
  */
-export function PullLogo({ refreshing }: { refreshing: boolean }) {
-  if (!LOGO_PULL || !refreshing) return null;
-  return (
-    <View
-      pointerEvents="none"
-      style={{ position: "absolute", top: -52, left: 0, right: 0, height: 44, alignItems: "center", justifyContent: "center", zIndex: 20 }}
-    >
-      <LogoRefresh size={34} />
-    </View>
-  );
+export function usePullLogo({
+  refreshing,
+  onRefresh,
+  tint,
+  y,
+  top = 10,
+}: {
+  refreshing: boolean;
+  onRefresh: () => void;
+  tint: string;
+  y?: Animated.Value;
+  top?: number;
+}) {
+  const own = useRef(new Animated.Value(0)).current;
+  const value = y ?? own;
+  if (!LOGO_PULL) {
+    return {
+      props: { refreshControl: <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tint} /> },
+      overlay: null,
+    };
+  }
+  const onScrollEndDrag = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (!refreshing && event.nativeEvent.contentOffset.y < -TRIGGER) onRefresh();
+  };
+  return {
+    props: y
+      ? { onScrollEndDrag }
+      : {
+          onScrollEndDrag,
+          onScroll: Animated.event([{ nativeEvent: { contentOffset: { y: own } } }], { useNativeDriver: false }),
+          scrollEventThrottle: 16,
+        },
+    overlay: (
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          top,
+          left: 0,
+          right: 0,
+          alignItems: "center",
+          zIndex: 30,
+          opacity: refreshing ? 1 : value.interpolate({ inputRange: [-TRIGGER, -12], outputRange: [1, 0], extrapolate: "clamp" }),
+          transform: [
+            { scale: refreshing ? 1 : value.interpolate({ inputRange: [-TRIGGER, -12], outputRange: [1, 0.6], extrapolate: "clamp" }) },
+          ],
+        }}
+      >
+        <View
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "rgba(14,26,36,.55)",
+          }}
+        >
+          <LogoRefresh size={34} />
+        </View>
+      </Animated.View>
+    ),
+  };
 }

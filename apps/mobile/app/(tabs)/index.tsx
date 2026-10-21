@@ -362,6 +362,31 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
             <CoverLayer mediaId={me.coverMediaId} themeMediaId={me.background?.coverMediaId} spec={me.background?.spec} height={COVER} x={me.coverX} y={me.coverY} zoom={me.coverZoom} />
           </Animated.View>
 
+          {/*
+            الشعارُ مؤشّرُ التحديث في أعلى الغلاف (القاعدة ٣٢١): يظهر مع السحب ويبقى
+            ما دام الجلب — بالسحب أو بزرّ التحديث — حيث تكون دوّارةُ النظام عادةً.
+          */}
+          {DEV_FEATURES ? (
+            <Animated.View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                top: 10,
+                left: 0,
+                right: 0,
+                alignItems: "center",
+                opacity: pulling ? 1 : pull.interpolate({ inputRange: [8, PULL_TRIP], outputRange: [0, 1], extrapolate: "clamp" }),
+                transform: [
+                  { scale: pulling ? 1 : pull.interpolate({ inputRange: [8, PULL_TRIP], outputRange: [0.6, 1], extrapolate: "clamp" }) },
+                ],
+              }}
+            >
+              <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(14,26,36,.55)" }}>
+                <LogoRefresh size={34} />
+              </View>
+            </Animated.View>
+          ) : null}
+
           <View
             style={{
               position: "absolute",
@@ -425,9 +450,9 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
                 الجلب جارياً — فالحركة في مكان الفعل لا دوّارةٌ غريبة فوق
                 القائمة.
               */}
-              {pulling && DEV_FEATURES ? (
-                // والجلبُ الجاري شعارُ التطبيق يتنفّس وقوسُه يدور (القاعدة ٣٢١).
-                <LogoRefresh size={22} />
+              {DEV_FEATURES ? (
+                // السهمُ ساكن: مؤشّرُ التحديث الشعارُ في أعلى الغلاف (القاعدة ٣٢١).
+                <RefreshIcon size={14} color="#fff" />
               ) : (
               <Animated.View
                 style={{

@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
-import { PullLogo, pullTint } from "../../components/logo-refresh";
+import { usePullLogo } from "../../components/logo-refresh";
 import { useTabTop } from "../../lib/tab-top";
 import { TabBackdrop } from "../../components/tab-backdrop";
 import { scrolled } from "../../lib/scrolled";
-import { View, FlatList, Pressable, ActivityIndicator, RefreshControl } from "react-native";
+import { View, FlatList, Pressable, ActivityIndicator } from "react-native";
 import { Text, TextInput } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -109,6 +109,7 @@ export default function Messages() {
   });
 
   const pullRefresh = usePullRefresh(() => Promise.all([list.refetch(), groupList.refetch()]));
+  const pull = usePullLogo({ ...pullRefresh, tint: colors.clay });
   /*
     المفضّلة (القاعدة ٢٢٠): نجمةٌ بجانب الحذف في السحبة، تثبّت المحادثة أعلى
     القائمة أو تفكّها. وثلاثٌ حدّاً — والرابعةُ تفتح نافذةً في وسط الشاشة تقول
@@ -227,6 +228,7 @@ export default function Messages() {
         </View>
       </View>
 
+      <View style={{ flex: 1 }}>
       <FlatList
         ref={(node) => { listRef.current = node; }}
         // التمريرُ يطوي صفّاً مسحوباً مفتوحاً (القاعدة ٢١٣).
@@ -235,7 +237,6 @@ export default function Messages() {
         data={rows}
         ListHeaderComponent={
           <>
-          <PullLogo refreshing={pullRefresh.refreshing} />
           {
           groups.length > 0 ? (
             <View style={{ paddingBottom: 4 }}>
@@ -316,9 +317,7 @@ export default function Messages() {
         }
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingTop: 8, paddingBottom: barSpace + 8, flexGrow: 1 }}
-        refreshControl={
-          <RefreshControl {...pullRefresh} tintColor={pullTint(colors.clay)} />
-        }
+        {...pull.props}
         renderItem={({ item: entry }) => {
           if ("head" in entry) {
             const open = !shut(entry.head);
@@ -406,6 +405,8 @@ export default function Messages() {
           )
         }
       />
+      {pull.overlay}
+      </View>
       {/* المفضّلةُ ملأى: نافذةٌ في الوسط تقول الحدَّ وما يُفعل — بلهجتنا. */}
       <Modal visible={pinFull} transparent animationType="fade" onRequestClose={() => setPinFull(false)}>
         <Pressable
