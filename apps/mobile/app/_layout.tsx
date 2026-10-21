@@ -25,9 +25,11 @@ import { Suspended } from "../components/suspended";
 import { PhotoViewer } from "../components/photo-viewer";
 import { PlaceVisitors } from "../components/place-visitors";
 import { ReactSheet } from "../components/react-sheet";
+import { EditSheet } from "../components/edit-sheet";
 import { AddSheet, openAddSheet } from "../components/add-sheet";
 import { AccountsSheet, SwitchToast } from "../components/accounts-sheet";
 import { CreateSheet, NoteSheet } from "../components/note-sheet";
+import { openNote } from "../lib/status-notes";
 import { Tour } from "../components/tour";
 import { applyTheme, colors, themeStore, veil } from "../theme/tokens";
 import { dismissOpen } from "../lib/swipe-open";
@@ -198,6 +200,11 @@ function Gate() {
       const path = response.notification.request.content.data?.path;
       // «من حولك» نافذةٌ في الجذر لا شاشة (القاعدة ٢٨٢): تُفتح على الرادار مباشرةً.
       if (path === "/nearby") openAddSheet("near");
+      // جرسُ النوت (القاعدة ٣١٩): النوتُ نافذةٌ في الجذر لا شاشة.
+      else if (typeof path === "string" && path.startsWith("/notes/")) {
+        void client.invalidateQueries({ queryKey: ["statusNotes"] });
+        openNote(path.slice("/notes/".length));
+      }
       // جرسُ الصباح (القاعدة ٢٩٠): البطاقةُ قبله فارغةٌ ومخبّأة، فتُسأل من جديد.
       else if (path === "/") {
         void client.invalidateQueries({ queryKey: ["memories"] });
@@ -333,6 +340,7 @@ function Gate() {
     <PlaceVisitors />
     {/* ولوحةُ التفاعل نافذةٌ زجاجيّة كذلك (القاعدة ٢٤٧). */}
     <ReactSheet />
+    <EditSheet />
     <AddSheet />
     <AccountsSheet />
     <SwitchToast />

@@ -304,6 +304,9 @@ model User {
   groupsIn         GroupMember[]
   momentsSeenBy    MomentViewer[]
   blocksMade       Block[]           @relation("Blocker")
+  /// تنبيهُ القصّة والنوت (القاعدة ٣١٩): من فعّلتُه، ومن فعّلني.
+  storyAlertsOn    StoryAlert[]      @relation("AlertWatcher")
+  storyAlertsBy    StoryAlert[]      @relation("AlertFriend")
   blocksGot        Block[]           @relation("Blocked")
   accessEvents     AccessEvent[]
   activeDays       DailyActive[]
@@ -595,6 +598,8 @@ model Moment {
   pollOptions String[]  @default([])
   /// نهايةُ الاستطلاع: بعدها لا تصويتَ ولا تبديل، والنتيجةُ للجميع (القاعدة ٢٩٠).
   pollEndsAt  DateTime?
+  /// تعديلُ صاحبها نصَّها (القاعدة ٣١٩) — «عُدّلت» يُرى للجميع.
+  editedAt    DateTime?
 
   createdAt DateTime @default(now())
 
@@ -608,6 +613,19 @@ model Moment {
 
   @@index([authorId, createdAt])
   @@index([createdAt])
+}
+
+/// «نبّهني إذا نزّل قصة أو نوت» — يضعه صاحبُه على صديقٍ بعينه (القاعدة ٣١٩).
+model StoryAlert {
+  userId    String
+  friendId  String
+  createdAt DateTime @default(now())
+
+  user   User @relation("AlertWatcher", fields: [userId], references: [id], onDelete: Cascade)
+  friend User @relation("AlertFriend", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@id([userId, friendId])
+  @@index([friendId])
 }
 
 /// مَن اختير بعينه ليرى لحظةً خاصة.
@@ -688,6 +706,8 @@ model Comment {
   stickerId String?
   sticker   Sticker? @relation(fields: [stickerId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
+  /// تعديلُ كاتبه (القاعدة ٣١٩).
+  editedAt  DateTime?
 
   moment Moment @relation(fields: [momentId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)

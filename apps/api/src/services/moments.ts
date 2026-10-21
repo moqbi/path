@@ -334,6 +334,39 @@ export async function deleteMoment(userId: string, momentId: string) {
   return { ok: true };
 }
 
+/** أنواعٌ لها متنٌ يكتبه صاحبُها — وما سواها أسطرُ أحداثٍ لا نصَّ فيها يُعدَّل. */
+const EDITABLE = new Set(["THOUGHT", "PHOTO"]);
+
+/**
+ * تعديلُ نصّ اللحظة (القاعدة ٣١٩): لصاحبها وحده، والكلماتُ الممنوعة تُفحص كالنشر،
+ * و«عُدّلت» يبقى ظاهراً — لا نُخفي أنّ الكلام تغيّر (كالقاعدة ٣٥). ولا يُعدَّل سؤالُ
+ * استطلاعٍ صُوّت عليه، ولا ملخّصُ سنة: النصّان أرقامٌ وسؤالٌ لا كلام.
+ */
+export async function editMoment(userId: string, momentId: string, text: string) {
+  const moment = await prisma.moment.findUnique({
+    where: { id: momentId },
+    select: { authorId: true, kind: true, recapYear: true, pollOptions: true },
+  });
+  if (!moment) throw notFound("اللحظة غير موجودة");
+  if (moment.authorId !== userId) {
+    if (!(await canSeeMoment(userId, momentId))) throw notFound("اللحظة غير موجودة");
+    throw forbidden("لا تُعدَّل لحظة غيرك");
+  }
+  if (!EDITABLE.has(moment.kind) || moment.recapYear || moment.pollOptions.length > 0) {
+    throw badRequest("هذه اللحظة لا تُعدَّل");
+  }
+  const clean = text.trim();
+  if (moment.kind === "THOUGHT" && !clean) throw badRequest("اكتب شيئاً");
+  if (clean) await guard(clean);
+
+  const saved = await prisma.moment.update({
+    where: { id: momentId },
+    data: { text: clean || null, editedAt: new Date() },
+    select: { id: true, text: true, editedAt: true },
+  });
+  return { moment: saved };
+}
+
 /** التفاعل والتعليق يمرّان بحدّ صاحب اللحظة: «من يمكنه التفاعل معك». */
 async function assertCanInteract(userId: string, momentId: string) {
   if (!(await canSeeMoment(userId, momentId))) throw notFound("اللحظة غير موجودة");
@@ -514,6 +547,31 @@ export async function addComment(userId: string, momentId: string, body: string,
   }
 
   return comment;
+}
+
+/**
+ * تعديلُ تعليق (القاعدة ٣١٩): لكاتبه وحده — صاحبُ اللحظة يحذف ولا يُعدّل كلامَ غيره.
+ * والملصقُ لا يُعدَّل (القاعدة ٢٩١)، والكلماتُ تُفحص كالكتابة الأولى.
+ */
+export async function editComment(userId: string, commentId: string, body: string) {
+  const comment = await prisma.comment.findUnique({
+    where: { id: commentId },
+    select: { userId: true, stickerId: true, momentId: true },
+  });
+  if (!comment) throw notFound("التعليق غير موجود");
+  if (comment.userId !== userId) {
+    if (!(await canSeeMoment(userId, comment.momentId))) throw notFound("التعليق غير موجود");
+    throw forbidden("لا يُعدَّل تعليق غيرك");
+  }
+  if (comment.stickerId) throw badRequest("الملصق لا يُعدَّل");
+  await guard(body);
+
+  const saved = await prisma.comment.update({
+    where: { id: commentId },
+    data: { body: body.trim().slice(0, 500), editedAt: new Date() },
+    select: { id: true, body: true, editedAt: true },
+  });
+  return { comment: saved };
 }
 
 /** حذف تعليق: لكاتبه ولصاحب اللحظة. */

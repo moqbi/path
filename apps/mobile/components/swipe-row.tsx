@@ -28,8 +28,11 @@ export function SwipeRow({
   radius = 0,
   onSwiping,
   icons,
+  tint,
   children,
 }: {
+  /** لونُ الفعل الأوّل — قلمُ التعديل بلون اللمسة لا بالمرجانيّ (القاعدة ٣١٩). */
+  tint?: string;
   onDelete: () => void | Promise<void>;
   confirmLabel?: string;
   /** فعلٌ ثانٍ يظهر بجانب الأول — الحظر مثلاً بجانب الإزالة. */
@@ -194,7 +197,7 @@ export function SwipeRow({
           disabled={busy}
           onPress={() => fire(onDelete)}
           accessibilityLabel={confirmLabel}
-          style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 8, backgroundColor: colors.live, opacity: busy ? 0.6 : 1 }}
+          style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 8, backgroundColor: tint ?? colors.live, opacity: busy ? 0.6 : 1 }}
         >
           {icons ? (
             icons.delete

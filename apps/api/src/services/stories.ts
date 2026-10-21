@@ -8,6 +8,7 @@ import { NOTE_SECONDS, clipOf, previewUrl, trackById } from "./music";
 import { circleIds, visibleAuthors } from "./visibility";
 import { dropMedia } from "./media";
 import { push } from "./push";
+import { announce } from "./story-alerts";
 
 /**
  * القصص.
@@ -281,6 +282,8 @@ export async function post(
     },
     select: { id: true },
   });
+  // من فعّل تنبيهَ قصص صاحبها يصله جرس (القاعدة ٣١٩).
+  void announce(userId, "story", story.id);
   return story;
 }
 

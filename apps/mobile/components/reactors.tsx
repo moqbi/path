@@ -6,7 +6,9 @@ import { Text } from "./type";
 import { useRouter } from "expo-router";
 import { Avatar, frameBleed } from "./avatar";
 import { ReactionGlyph } from "./reactions";
-import { FlagIcon, ShieldIcon, TrashIcon } from "./icons";
+import { FlagIcon, PencilIcon, ShieldIcon, TrashIcon } from "./icons";
+import { openEdit } from "./edit-sheet";
+import { DEV_FEATURES } from "../lib/dev-features";
 import { NameTag } from "./name-tag";
 import { SwipeRow } from "./swipe-row";
 import { ReportSheet } from "./report-sheet";
@@ -217,6 +219,7 @@ export function CommentList({
               <NameTag isPlus={comment.user.isPlus} tag={comment.user.tag} size={9.5} />
               <Text style={{ color: colors.faint, fontSize: 10 }}>
                 {relative(new Date(comment.createdAt))}
+                {comment.editedAt ? " · عُدّل" : ""}
               </Text>
             </View>
             {comment.sticker ? (
@@ -258,7 +261,16 @@ export function CommentList({
             width={72}
             confirmLabel={mine ? "حذف التعليق" : "حذف بصلاحية الإشراف"}
             /* المشرفُ بدرعٍ لا بسلّة: يحذف بصلاحيةٍ تُسجَّل باسمه لا بملكية. */
-            icons={{ delete: mine ? <TrashIcon size={22} color="#fff" /> : <ShieldIcon size={22} color="#fff" /> }}
+            /* والقلمُ بجانب السلّة لكاتبه وحده (القاعدة ٣١٩) — والملصقُ لا يُعدَّل. */
+            lead={
+              DEV_FEATURES && mine && !comment.sticker
+                ? { label: "تعديل التعليق", run: () => openEdit({ kind: "comment", id: comment.id, text: comment.body, required: true }) }
+                : undefined
+            }
+            icons={{
+              delete: mine ? <TrashIcon size={22} color="#fff" /> : <ShieldIcon size={22} color="#fff" />,
+              lead: <PencilIcon size={22} color={colors.onBrand} />,
+            }}
             onDelete={() => drop.mutateAsync({ id: comment.id, mine }).then(() => undefined)}
           >
             {row}

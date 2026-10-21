@@ -70,6 +70,10 @@ export const commentInput = z
   .object({ body: z.string().trim().max(500).default(""), stickerId: cuid.optional() })
   .refine((input) => input.body.length > 0 || input.stickerId, { message: "اكتب شيئاً" });
 
+/** تعديلُ نصّ اللحظة والتعليق (القاعدة ٣١٩) — حدّاهما حدّا النشر. */
+export const momentEditInput = z.object({ text: z.string().trim().max(MOMENT_TEXT_MAX) });
+export const commentEditInput = z.object({ body: z.string().trim().min(1).max(500) });
+
 export const reactionInput = z.object({
   kind: z.enum(["SMILE", "LAUGH", "GASP", "SAD", "LOVE", "CAMERA", "CHAT", "PIN", "SLEEPY", "CUSTOM"]),
   emoji: z.string().max(8).optional(),
