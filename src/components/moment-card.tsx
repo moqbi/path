@@ -26,6 +26,8 @@ import { PlaceLink } from "@/components/place-link";
 import { Reactors } from "@/components/reactions";
 import { AuthorFaces } from "@/components/author-panel";
 import { CommentList } from "@/components/comments";
+import { MomentEditSwipe } from "@/components/edit-sheet";
+import { NoteMark, type StripNote } from "@/components/circle-strip";
 import { ar, relative, timeOfDay } from "@/lib/format";
 import type { FeedMoment } from "@/lib/feed";
 
@@ -113,6 +115,7 @@ function Spine({
   charm,
   at,
   hidden = false,
+  mark,
 }: {
   authorId: string;
   viewerId: string;
@@ -123,15 +126,33 @@ function Spine({
   at: Date;
   /** لحظةٌ لتصنيفٍ أو لأشخاصٍ بأعيانهم — لا للدائرة كلّها. */
   hidden?: boolean;
+  mark?: Mark;
 }) {
+  const avatar = <Avatar name={name} size={46} frame={frame} mediaId={mediaId} charm={charm} />;
+  /*
+    قصّةٌ أو نوتٌ لم تُشاهَد لصاحب اللحظة (القاعدة ٣١٩): حلقةٌ حول صورته للقصّة،
+    ونقطةٌ في ركنها للنوت، والضغطُ يفتحها بدل ملفّه — وبالمشاهدة تذهب العلامة.
+  */
+  const others = authorId !== viewerId;
   return (
     <div className="flex w-14 shrink-0 flex-col items-center gap-1.5">
-      <Link
-        href={authorId === viewerId ? "/me" : `/u/${authorId}`}
-        aria-label={`ملف ${name}`}
-      >
-        <Avatar name={name} size={46} frame={frame} mediaId={mediaId} charm={charm} />
-      </Link>
+      {others && mark?.story ? (
+        <Link href={`/stories/${authorId}`} aria-label={`قصة ${name}`} className="relative">
+          {avatar}
+          <span aria-hidden className="pointer-events-none absolute -inset-1 rounded-full border-[2.5px]" style={{ borderColor: "var(--color-clay)" }} />
+        </Link>
+      ) : others && mark?.note ? (
+        <NoteMark note={mark.note} label={`نوت ${name}`}>
+          {avatar}
+        </NoteMark>
+      ) : (
+        <Link
+          href={authorId === viewerId ? "/me" : `/u/${authorId}`}
+          aria-label={`ملف ${name}`}
+        >
+          {avatar}
+        </Link>
+      )}
       <span className="text-[10px] font-semibold text-ground-muted">{timeOfDay(at)}</span>
       {/*
         «خاصة» تحت الساعة — يراها صاحبُها ومن اختارهم، فيعرف كلٌّ منهم أنّ
@@ -159,10 +180,12 @@ function Comments({
   moment,
   viewerId,
   moderate = false,
+  trial = false,
 }: {
   moment: FeedMoment;
   viewerId: string;
   moderate?: boolean;
+  trial?: boolean;
 }) {
   if (moment.comments.length === 0) return null;
   const hidden = moment._count.comments - moment.comments.length;
@@ -174,6 +197,7 @@ function Comments({
         viewerId={viewerId}
         momentAuthorId={moment.author.id}
         moderate={moderate}
+        trial={trial}
       />
       {hidden > 0 ? (
         <Link href={`/m/${moment.id}`} className="text-[11.5px] font-semibold text-clay-ink">
@@ -193,10 +217,12 @@ function Bubble({
   moment,
   viewerId,
   moderate = false,
+  trial = false,
 }: {
   moment: FeedMoment;
   viewerId: string;
   moderate?: boolean;
+  trial?: boolean;
 }) {
   const hasComments = moment.comments.length > 0;
   const hasReactions = moment.reactions.length > 0;
@@ -208,7 +234,7 @@ function Bubble({
         <AuthorFaces momentId={moment.id} />
         {hasComments ? (
           <div className="rounded-2xl border border-line bg-card px-3 py-2.5">
-            <Comments moment={moment} viewerId={viewerId} moderate={moderate} />
+            <Comments moment={moment} viewerId={viewerId} moderate={moderate} trial={trial} />
           </div>
         ) : null}
       </div>
@@ -220,18 +246,32 @@ function Bubble({
     <div className="mt-2 rounded-2xl border border-line bg-card px-3 py-2.5">
       {hasReactions ? <Reactors reactions={moment.reactions} viewerId={viewerId} /> : null}
       {hasReactions && hasComments ? <div className="my-2.5 h-px bg-line" /> : null}
-      <Comments moment={moment} viewerId={viewerId} moderate={moderate} />
+      <Comments moment={moment} viewerId={viewerId} moderate={moderate} trial={trial} />
     </div>
   );
+}
+
+/** علامةُ القصّة والنوت على صورة صاحب اللحظة (القاعدة ٣١٩). */
+export type Mark = { story: boolean; note: StripNote | null };
+export type Marks = { stories: string[]; notes: StripNote[] };
+
+function markOf(marks: Marks | undefined, authorId: string): Mark | undefined {
+  if (!marks) return undefined;
+  return {
+    story: marks.stories.includes(authorId),
+    note: marks.notes.find((note) => note.authorId === authorId && !note.seen) ?? null,
+  };
 }
 
 function Row({
   moment,
   viewerId,
+  marks,
   children,
 }: {
   moment: FeedMoment;
   viewerId: string;
+  marks?: Marks;
   children: React.ReactNode;
 }) {
   return (
@@ -245,6 +285,7 @@ function Row({
         charm={moment.author.charm}
         at={moment.createdAt}
         hidden={moment.audience === "PICKED" || moment.audience === "GROUP"}
+        mark={markOf(marks, moment.author.id)}
       />
       <div className="min-w-0 grow">{children}</div>
     </article>
@@ -482,11 +523,17 @@ export function MomentCard({
   isPlus,
   /** صلاحية الإشراف: تُضاف «احذفها» إلى لوحة التفاعل على لحظة غيره. */
   moderate = false,
+  marks,
+  trial = false,
 }: {
   moment: FeedMoment;
   viewerId: string;
   isPlus: boolean;
   moderate?: boolean;
+  /** تعديلُ اللحظة والتعليق بالسحب (القاعدة ٣١٩) — للمشرفين أوّلاً (`canTryStickers`). */
+  trial?: boolean;
+  /** قصصُ الدائرة ونوتُها لعلامة الخطّ الزمنيّ (القاعدة ٣١٩) — من الصفحة لا من كلّ بطاقة. */
+  marks?: Marks;
 }) {
   const { author, kind } = moment;
   const withNames = moment.tags.map((t) => t.user.name);
@@ -505,7 +552,7 @@ export function MomentCard({
     );
 
     return (
-      <Row moment={moment} viewerId={viewerId}>
+      <Row moment={moment} viewerId={viewerId} marks={marks}>
         <MomentBar
           momentId={moment.id}
           momentKind={kind}
@@ -522,7 +569,7 @@ export function MomentCard({
                   <Photo mediaId={moment.mediaId} rounded x={moment.photoX ?? 50} y={moment.photoY ?? 50} />
                 </div>
               ) : null}
-              <Bubble moment={moment} viewerId={viewerId} moderate={moderate} />
+              <Bubble moment={moment} viewerId={viewerId} moderate={moderate} trial={trial} />
             </>
           }
         />
@@ -543,7 +590,7 @@ export function MomentCard({
     </div>
   ) : null;
 
-  const head = (
+  const body = (
     <>
       {/* بلا صورةٍ يبدأ النصّ من أعلى البطاقة بجانب الزرّ، ومعها يأتي تحتها. */}
       <div className={media ? "px-4 pt-3" : "min-h-[50px] pl-[52px] pr-4 pt-3.5"}>
@@ -551,7 +598,10 @@ export function MomentCard({
         {moment.recapYear && moment.text ? (
           <RecapBlock text={moment.text} />
         ) : moment.text ? (
-          <p dir="auto" className="mb-2 text-[13.5px] leading-relaxed text-ink">{moment.text}</p>
+          <p dir="auto" className="mb-2 text-[13.5px] leading-relaxed text-ink">
+            {moment.text}
+            {moment.editedAt ? <span className="text-[11px] text-faint"> · عُدّلت</span> : null}
+          </p>
         ) : null}
         {moment.pollOptions.length ? (
           <Poll momentId={moment.id} options={moment.pollOptions} endsAt={moment.pollEndsAt} author={moment.author.id === viewerId} />
@@ -581,9 +631,20 @@ export function MomentCard({
       </div>
     </>
   );
+  /* تعديلُ المتن بالسحب لصاحبها (القاعدة ٣١٩) — المتنُ وحده لا البطاقة. */
+  const editable =
+    trial &&
+    moment.author.id === viewerId && (kind === "THOUGHT" || kind === "PHOTO") && !moment.recapYear && moment.pollOptions.length === 0;
+  const head = editable ? (
+    <MomentEditSwipe momentId={moment.id} text={moment.text ?? ""} required={kind === "THOUGHT"}>
+      {body}
+    </MomentEditSwipe>
+  ) : (
+    body
+  );
 
   return (
-    <Row moment={moment} viewerId={viewerId}>
+    <Row moment={moment} viewerId={viewerId} marks={marks}>
       {/* زرّ التفاعل في أعلى البطاقة: يُلمس قبل القراءة لا بعدها. */}
       <div className="overflow-hidden rounded-2xl border border-line bg-card">
         <MomentBar
@@ -615,7 +676,7 @@ export function MomentCard({
               ) : null}
               {moment.comments.length > 0 ? (
                 <div className="mt-2.5 border-t border-line pt-2.5">
-                  <Comments moment={moment} viewerId={viewerId} moderate={moderate} />
+                  <Comments moment={moment} viewerId={viewerId} moderate={moderate} trial={trial} />
                 </div>
               ) : null}
             </div>

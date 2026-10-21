@@ -6,6 +6,7 @@ import { circleIds } from "@/lib/circle";
 import { signOut } from "@/app/actions";
 import { archive, myMoments } from "@/lib/feed";
 import { MomentCard } from "@/components/moment-card";
+import { canTryStickers } from "@/lib/stickers";
 import { EditProfileSheet } from "./edit-sheet";
 import { ProfileCover } from "./cover";
 import { ProfileShell } from "./shell";
@@ -253,6 +254,7 @@ export default async function ProfilePage({
                     moment={moment}
                     viewerId={user.id}
                     isPlus={user.isPlus}
+                    trial={canTryStickers(user)}
                   />
                 ))}
               </section>

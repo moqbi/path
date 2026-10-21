@@ -17,6 +17,8 @@ export type CommentShape = {
   createdAt: Date;
   /** ملصقٌ بدل النصّ (القاعدة ٢٩١). */
   sticker?: { mediaId: string } | null;
+  /** عدّله كاتبُه (القاعدة ٣١٩). */
+  editedAt?: Date | null;
   user: {
     id: string;
     name: string;
@@ -34,7 +36,10 @@ export function CommentList({
   size = 26,
   momentAuthorId,
   moderate = false,
+  trial = false,
 }: {
+  /** تعديلُ التعليق بالسحب (القاعدة ٣١٩) — للمشرفين يجرّبونه أوّلاً (`canTryStickers`). */
+  trial?: boolean;
   comments: CommentShape[];
   viewerId: string;
   size?: number;
@@ -56,6 +61,7 @@ export function CommentList({
             commentId={comment.id}
             mine={comment.user.id === viewerId || momentAuthorId === viewerId}
             moderate={moderate}
+            editText={trial && comment.user.id === viewerId && !comment.sticker ? comment.body : null}
            >
            <div className="flex items-start gap-2 py-0.5">
             <Link href={href} aria-label={`ملف ${comment.user.name}`} className="shrink-0">
@@ -78,6 +84,7 @@ export function CommentList({
                 <NameTag isPlus={comment.user.isPlus} tag={comment.user.tag} size={9.5} />
                 <span className="shrink-0 text-[10px] text-faint">
                   {relative(comment.createdAt)}
+                  {comment.editedAt ? " · عُدّل" : ""}
                 </span>
               </div>
               {comment.sticker ? (

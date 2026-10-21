@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import {
   deleteNote,
@@ -826,5 +827,37 @@ function AppleMusicTag() {
     <span className="latin shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: "rgba(255,255,255,.14)" }}>
       Apple Music
     </span>
+  );
+}
+
+/**
+ * صورةُ صاحب اللحظة حين له نوتٌ لم تُشاهَد (القاعدة ٣١٩): نقطةٌ في ركنها،
+ * والضغطُ يفتح النوت مكانها لا ملفّه. وبالإغلاق يُعاد رسمُ الصفحة فتذهب العلامة.
+ */
+export function NoteMark({ note, label, children }: { note: StripNote; label: string; children: React.ReactNode }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" aria-label={label} onClick={() => setOpen(true)} className="relative">
+        {children}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2"
+          style={{ background: "var(--color-clay)", borderColor: "var(--color-ground)" }}
+        />
+      </button>
+      {open ? (
+        <NoteSheet
+          note={note}
+          mine={false}
+          onClose={() => {
+            setOpen(false);
+            router.refresh();
+          }}
+          onReplace={() => setOpen(false)}
+        />
+      ) : null}
+    </>
   );
 }

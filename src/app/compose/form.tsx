@@ -200,7 +200,7 @@ export function ComposeForm({
 
         {kind === "MUSIC" ? (
           <div className="mb-4">
-            <p className="mb-2.5 text-[13px] leading-relaxed text-muted">
+            <p className="mb-2.5 text-[13px] leading-relaxed text-ground-ink">
               الصق رابط الأغنية من سبوتيفاي أو يوتيوب أو ساوندكلاود — يُقرأ اسمها تلقائياً،
               ومن يضغط عليها يسمعها.
             </p>
@@ -239,7 +239,7 @@ export function ComposeForm({
                   text.length >= TEXT_MAX
                     ? "var(--color-live)"
                     : text.length > TEXT_MAX - 50
-                      ? "var(--color-muted)"
+                      ? "var(--color-ground-ink)"
                       : "transparent",
               }}
             >
@@ -364,7 +364,7 @@ export function ComposeForm({
         */}
         {friends.length > 0 && kind !== "MUSIC" ? (
           <div className="mt-5">
-            <p className="mb-2.5 flex items-center gap-2 text-[11.5px] font-semibold tracking-wide text-faint">
+            <p className="mb-2.5 flex items-center gap-2 text-[11.5px] font-semibold tracking-wide text-ground-ink">
               <WithIcon size={14} /> مع مين؟
             </p>
             <PickerButton
@@ -383,7 +383,7 @@ export function ComposeForm({
           الاختيار هنا يسبق النشر لأن الخصوصية لا تُصلَّح بعده.
         */}
         <div className="mt-5">
-          <p className="mb-2.5 flex items-center gap-2 text-[11.5px] font-semibold tracking-wide text-faint">
+          <p className="mb-2.5 flex items-center gap-2 text-[11.5px] font-semibold tracking-wide text-ground-ink">
             <LockIcon size={14} /> مين يشوفها؟
           </p>
           <div className="flex flex-wrap gap-2">
@@ -417,7 +417,7 @@ export function ComposeForm({
 
           {audience === "EXCEPT" ? (
             <div className="mt-3">
-              <p className="mb-2 text-[11.5px] text-faint">يشوفها كل أصدقائك ما عدا تصنيف:</p>
+              <p className="mb-2 text-[11.5px] text-ground-ink">يشوفها كل أصدقائك ما عدا تصنيف:</p>
               <div className="flex flex-wrap gap-2">
                 {groups.map((group) => {
                   const on = except === group.id;
@@ -460,7 +460,7 @@ export function ComposeForm({
       </div>
 
       <div className="px-5 pb-8">
-        <p className="mb-3 flex items-center justify-center gap-2 text-[11.5px] text-faint">
+        <p className="mb-3 flex items-center justify-center gap-2 text-[11.5px] text-ground-ink">
           <LockIcon size={14} />
           {audience === "CIRCLE"
             ? "يشوفها أصدقاؤك فقط"

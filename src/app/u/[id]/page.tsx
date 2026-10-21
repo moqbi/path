@@ -13,6 +13,8 @@ import {
   startConversation,
 } from "@/app/actions";
 import { MomentCard } from "@/components/moment-card";
+import { AlertBell } from "@/components/edit-sheet";
+import { canTryStickers } from "@/lib/stickers";
 import { GiftButton } from "./gift";
 import { Avatar, CoverLayer, Empty, ScreenHeader, NameTag } from "@/components/ui";
 import { AvatarMenu } from "@/components/avatar-menu";
@@ -52,6 +54,12 @@ export default async function FriendProfilePage({
 
   const [ids, blocked] = await Promise.all([circleIds(viewer.id), blockedWith(viewer.id)]);
   const friend = ids.includes(id);
+  /* تنبيهُ قصّة الصديق ونوته (القاعدة ٣١٩) — للمشرفين يجرّبونه أوّلاً. */
+  const trial = canTryStickers(viewer);
+  const alertOn =
+    trial && friend
+      ? Boolean(await prisma.storyAlert.findUnique({ where: { userId_friendId: { userId: viewer.id, friendId: id } }, select: { userId: true } }))
+      : false;
   // من يتابعني وأنا حسابٌ مفتوح تُقرأ لحظاتُه عندي (القاعدة ٢٧٨) — بشرط الرؤية نفسه.
   const followsMe = !friend && Boolean(
     await prisma.friendship.findFirst({
@@ -195,6 +203,7 @@ export default async function FriendProfilePage({
                 آثارنا
               </Link>
               <ChatButton id={person.id} />
+              {trial ? <AlertBell friendId={person.id} name={person.name} initial={alertOn} /> : null}
             </>
           ) : (
             /* الحسابُ المفتوح: يُضاف فيقبل بنفسه، ويُراسَل بلا إضافة (القاعدة ٢٢١). */
@@ -229,6 +238,7 @@ export default async function FriendProfilePage({
                       viewerId={viewer.id}
                       isPlus={viewer.isPlus}
                       moderate={viewer.canModerate}
+                      trial={trial}
                     />
                   ))}
                 </section>

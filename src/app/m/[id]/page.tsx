@@ -10,6 +10,7 @@ import { Reactions, Reactors } from "@/components/reactions";
 import { AuthorSummary } from "@/components/author-panel";
 import { LockIcon, PrivateIcon } from "@/components/icons";
 import { CommentList } from "@/components/comments";
+import { canTryStickers } from "@/lib/stickers";
 import { EVENTS, EventLine } from "@/components/moment-card";
 import { Photo } from "@/components/photo";
 import { PinIcon } from "@/components/icons";
@@ -163,6 +164,7 @@ export default async function MomentPage({
                 size={30}
                 momentAuthorId={moment.author.id}
                 moderate={user.canModerate}
+                trial={canTryStickers(user)}
               />
             )}
           </section>
