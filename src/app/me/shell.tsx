@@ -16,6 +16,7 @@ const RANGE = 120;
  */
 export function ProfileShell({
   cover,
+  coverActions,
   avatar,
   identity,
   fold,
@@ -23,6 +24,8 @@ export function ProfileShell({
   children,
 }: {
   cover: ReactNode;
+  /** أقراصٌ تطفو على الغلاف في طرفه الأيسر — داخله لا فوق منطقة التمرير (القاعدة ١٧). */
+  coverActions?: ReactNode;
   avatar: ReactNode;
   identity: ReactNode;
   /** ما يُطوى: النبذة والسطر التعريفي والإحصاءات. */
@@ -62,7 +65,12 @@ export function ProfileShell({
   return (
     <>
       <div className="shrink-0">
-        {cover}
+        <div className="relative">
+          {cover}
+          {coverActions ? (
+            <div className="absolute bottom-3 left-4 z-10 flex items-center gap-2">{coverActions}</div>
+          ) : null}
+        </div>
 
         {/*
           هيئةُ `ProfileHead` في الجوّال (القاعدة ٢٣٣): الصورةُ في طرف البداية تعبر

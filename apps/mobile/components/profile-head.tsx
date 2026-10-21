@@ -38,10 +38,13 @@ export function ProfileHead({
   note,
   onAccounts,
   actions,
+  marquee,
   story,
 }: {
   /** أقراصُ الأفعال في طرف سطر الاسم — ملفُّ الصديق (القاعدة ٣٢٠). */
   actions?: React.ReactNode;
+  /** الاسمُ الطويل ينزلق في مكانه بدل أن يُقصّ (القاعدة ٣٢٢). */
+  marquee?: boolean;
   /**
    * قصّتُه على صورته (القاعدة ٣٢٠): الضغطُ يفتحها بدل قائمة الصورة، ودوائرُ تنبض حولها
    * ما دام فيها ما لم يُشاهَد (`fresh`)، وحلقةٌ ساكنة بعدها.
@@ -135,7 +138,7 @@ export function ProfileHead({
                 <BackIcon size={16} color={colors.groundInk} />
               </View>
             ) : null}
-            {actions ? (
+            {actions || marquee ? (
               // أقراصٌ في طرف السطر: الاسمُ الطويل ينزلق في مكانه لا يُقصّ (القاعدة ٣٢٢).
               <MarqueeName name={name} style={{ color: colors.groundInk, fontSize: 20, fontWeight: "700", writingDirection: "auto" }} />
             ) : (

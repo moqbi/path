@@ -281,6 +281,32 @@ export default function Me() {
             <StretchCover y={scrollY} height={COVER}>
               <CoverLayer mediaId={me.coverMediaId} themeMediaId={me.background?.coverMediaId} spec={me.background?.spec} height={COVER} x={me.coverX} y={me.coverY} zoom={me.coverZoom} />
             </StretchCover>
+            {DEV_FEATURES ? (
+              // التعديلُ والإكسسوارات على الغلاف في طرفه الأيسر (القاعدة ٣٢٣): سطرُ الاسم
+              // يضيق بالوسم. أقراصٌ داكنة لا شفّافة (القاعدة ٥٧)، والصورةُ في الطرف الآخر.
+              <View style={{ position: "absolute", top: COVER - 48, left: 16, flexDirection: "row", gap: 8, zIndex: 5 }}>
+                <Spot id="me.edit">
+                  <Pressable
+                    accessibilityLabel="تعديل الملف"
+                    onPress={() => router.push("/me/edit" as never)}
+                    hitSlop={6}
+                    style={{ width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(14,26,36,0.6)", borderWidth: 1, borderColor: "rgba(255,255,255,0.15)" }}
+                  >
+                    <PencilIcon size={16} color="#FFFFFF" />
+                  </Pressable>
+                </Spot>
+                <Spot id="me.accessories">
+                  <Pressable
+                    accessibilityLabel="إكسسواراتي"
+                    onPress={() => router.push("/me/accessories" as never)}
+                    hitSlop={6}
+                    style={{ width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(14,26,36,0.6)", borderWidth: 1, borderColor: "rgba(255,255,255,0.15)" }}
+                  >
+                    <SparkIcon size={16} color="#F6B93B" />
+                  </Pressable>
+                </Spot>
+              </View>
+            ) : null}
 
             {/* الصورةُ في طرف البداية، والاسمُ بجانبها (القاعدة ٢٣٣). */}
             <ProfileHead
@@ -299,34 +325,7 @@ export default function Me() {
               frameItem={me.frame}
               charmItem={me.charm}
               onAccounts={DEV_FEATURES ? openAccounts : undefined}
-              actions={
-                DEV_FEATURES ? (
-                  // التعديلُ والإكسسوارات أقراصٌ بجانب الاسم كملفّ الصديق (القاعدة ٣٢٢)،
-                  // والخروجُ في الإعدادات.
-                  <>
-                    <Spot id="me.edit">
-                      <Pressable
-                        accessibilityLabel="تعديل الملف"
-                        onPress={() => router.push("/me/edit" as never)}
-                        hitSlop={6}
-                        style={{ width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: colors.card }}
-                      >
-                        <PencilIcon size={16} color={colors.ink} />
-                      </Pressable>
-                    </Spot>
-                    <Spot id="me.accessories">
-                      <Pressable
-                        accessibilityLabel="إكسسواراتي"
-                        onPress={() => router.push("/me/accessories" as never)}
-                        hitSlop={6}
-                        style={{ width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
-                      >
-                        <SparkIcon size={16} color={colors.onBrand} />
-                      </Pressable>
-                    </Spot>
-                  </>
-                ) : undefined
-              }
+              marquee={DEV_FEATURES}
             />
 
             {DEV_FEATURES ? (

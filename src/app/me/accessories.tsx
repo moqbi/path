@@ -66,7 +66,7 @@ export function Accessories({
         aria-label={disc ? "إكسسواراتي" : undefined}
         className={
           disc
-            ? "flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-clay text-on-brand"
+            ? "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/15 bg-[rgba(14,26,36,0.6)] text-[#F6B93B] backdrop-blur-md"
             : "flex shrink-0 items-center justify-center rounded-xl border border-line bg-card px-3.5 text-[13.5px] font-semibold text-ink-2"
         }
         style={disc ? undefined : { height: 46 }}

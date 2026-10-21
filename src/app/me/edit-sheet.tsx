@@ -70,7 +70,7 @@ export function EditProfileSheet({
         aria-label={disc ? "تعديل الملف" : undefined}
         className={
           disc
-            ? "flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-card text-ink"
+            ? "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/15 bg-[rgba(14,26,36,0.6)] text-white backdrop-blur-md"
             : "flex min-w-0 grow items-center justify-center truncate rounded-xl border border-line bg-card px-2 text-[13.5px] font-semibold text-ink-2"
         }
         style={disc ? undefined : { height: 46 }}
