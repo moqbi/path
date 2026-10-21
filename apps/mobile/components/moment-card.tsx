@@ -548,6 +548,8 @@ export function MomentCard({
     <SwipeRow
       surface={colors.card}
       width={64}
+      // بلا صورةٍ يجلس زرُّ التفاعل على المتن في ركنه (١٢ + ٣٠)، فالقلمُ بعده.
+      start={media ? 0 : 48}
       tint={colors.clay}
       confirmLabel="عدّل اللحظة"
       icons={{ delete: <PencilIcon size={22} color={colors.onBrand} /> }}

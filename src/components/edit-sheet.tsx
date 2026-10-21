@@ -70,11 +70,13 @@ export function MomentEditSwipe({
   momentId,
   text,
   required,
+  gap = 0,
   children,
 }: {
   momentId: string;
   text: string;
   required: boolean;
+  gap?: number;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -87,6 +89,7 @@ export function MomentEditSwipe({
         tint="var(--color-clay)"
         mainIcon={<PencilIcon size={22} />}
         surface="var(--color-card)"
+        gap={gap}
       >
         {children}
       </SwipeRow>

@@ -29,8 +29,14 @@ export function SwipeRow({
   onSwiping,
   icons,
   tint,
+  start = 0,
   children,
 }: {
+  /**
+   * فراغٌ قبل الأفعال من الحافّة: زرُّ التفاعل يطفو في ركن البطاقة، فقلمُ
+   * التعديل يبدأ بعده لا تحته (القاعدة ٣٢٤).
+   */
+  start?: number;
   /** لونُ الفعل الأوّل — قلمُ التعديل بلون اللمسة لا بالمرجانيّ (القاعدة ٣١٩). */
   tint?: string;
   onDelete: () => void | Promise<void>;
@@ -68,7 +74,7 @@ export function SwipeRow({
   children: React.ReactNode;
 }) {
   const second = onSecond && secondLabel ? { run: onSecond, label: secondLabel } : null;
-  const reveal = width * (1 + (second ? 1 : 0) + (lead ? 1 : 0) + (extra ? 1 : 0));
+  const reveal = start + width * (1 + (second ? 1 : 0) + (lead ? 1 : 0) + (extra ? 1 : 0));
 
   const [busy, setBusy] = useState(false);
   /*
@@ -161,7 +167,7 @@ export function SwipeRow({
 
   return (
     <View ref={box} collapsable={false} style={{ position: "relative", overflow: "hidden", borderRadius: radius }}>
-      <View style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: reveal, flexDirection: "row" }}>
+      <View style={{ position: "absolute", top: 0, bottom: 0, left: start, width: reveal - start, flexDirection: "row" }}>
         {extra ? (
           <Pressable
             disabled={busy}
