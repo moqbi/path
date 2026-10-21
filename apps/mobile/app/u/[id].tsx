@@ -22,6 +22,8 @@ import { api } from "../../lib/api";
 import { keys, useRings, useTogether, type Moment } from "../../lib/queries";
 import { showToast } from "../../components/accounts-sheet";
 import { ar } from "../../lib/format";
+import { Spot } from "../../components/spot";
+import { tourSignal } from "../../components/tour";
 import { useSession } from "../../lib/session";
 import { useStatusNotes } from "../../lib/status-notes";
 import { colors } from "../../theme/tokens";
@@ -126,6 +128,8 @@ function Profile() {
     mutationFn: () => api<{ status: "PENDING" | "ACCEPTED" }>(`/v1/circle/${id}/request`, { method: "POST" }),
     // الحسابُ المفتوح يقبل في الحال (القاعدة ٢٢١): يُعاد جلبُ الملفّ فتظهر لحظاتُه.
     onSuccess: (row) => {
+      // الجولةُ تنتظر هذه الإضافة لتمضي (القاعدة ٣٢٦).
+      tourSignal("friend.added");
       if (row?.status === "ACCEPTED") {
         void person.refetch();
         void moments.refetch();
@@ -373,6 +377,7 @@ function Profile() {
                     «آثارنا» قبل أن يَقبل.
                   */
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <Spot id="profile.add" grow>
                   <Pressable
                     onPress={() => add.mutate()}
                     disabled={add.isPending || add.isSuccess}
@@ -396,6 +401,7 @@ function Profile() {
                       {add.isSuccess ? "أُرسل الطلب" : "أضفه"}
                     </Text>
                   </Pressable>
+                  </Spot>
                   {/* والحسابُ المفتوح يُراسَل بلا إضافة (القاعدة ٢٢١) — حسابُ الدعم —
                       والمشرفُ يُراسل أيَّ حساب (القاعدة ٣١٧). */}
                   {who.isOpen || me?.canGroups ? (

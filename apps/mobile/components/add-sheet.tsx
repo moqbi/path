@@ -19,6 +19,7 @@ import { useSession } from "../lib/session";
 import { BEACON_SERVICE, beacon, bleState, type BleState } from "../lib/nearby-beacon";
 import { useAddFriend, type FoundPerson } from "../lib/add-friend";
 import { colors } from "../theme/tokens";
+import { Spot } from "./spot";
 
 type Mode = "home" | "near" | "qr";
 
@@ -26,6 +27,12 @@ const useAddSheet = create<{ mode: Mode | null }>(() => ({ mode: null }));
 
 /** يفتح نافذةَ «إضافة صديق» (القاعدة ٢٨١) — من رأس تبويب الأصدقاء. */
 export const openAddSheet = (mode: Mode = "home") => useAddSheet.setState({ mode });
+
+/** يُغلقها — الجولةُ تمضي بعدها إلى القصص (القاعدة ٣٢٦). */
+export const closeAddSheet = () => useAddSheet.setState({ mode: null });
+
+/** أيُّ وجوهها مفتوح — الجولةُ تنتظر أن يفتحها صاحبُها بيده. */
+export const useAddMode = () => useAddSheet((s) => s.mode);
 
 const LABEL: Record<FoundPerson["relation"], string> = {
   none: "أضف",
@@ -170,6 +177,7 @@ function Home({ go, row }: { go: (mode: Mode) => void; row: (p: FoundPerson) => 
   const search = () => ready && find.mutate(query.trim());
 
   const Door = ({ label, hint, icon, to }: { label: string; hint: string; icon: React.ReactNode; to: Mode }) => (
+    <Spot id={`add.${to}`}>
     <Pressable onPress={() => go(to)} style={[glassRow, { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 }]}>
       <View style={{ width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.12)" }}>
         {icon}
@@ -180,10 +188,12 @@ function Home({ go, row }: { go: (mode: Mode) => void; row: (p: FoundPerson) => 
       </View>
       <Text style={{ color: "rgba(255,255,255,.5)", fontSize: 18 }}>‹</Text>
     </Pressable>
+    </Spot>
   );
 
   return (
     <SheetScrollView name="add-home" keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 12 }}>
+      <Spot id="add.search">
       <View style={[glassRow, { flexDirection: "row", alignItems: "center", gap: 8, height: 48, paddingHorizontal: 14 }]}>
         <SearchIcon size={18} color="rgba(255,255,255,.6)" />
         <TextInput
@@ -205,6 +215,7 @@ function Home({ go, row }: { go: (mode: Mode) => void; row: (p: FoundPerson) => 
           </Pressable>
         ) : null}
       </View>
+      </Spot>
 
       {find.error ? (
         <Text style={{ color: "#FF9C84", fontSize: 12.5 }}>{(find.error as Error).message}</Text>

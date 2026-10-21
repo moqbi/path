@@ -7,6 +7,7 @@ import { CameraIcon, CheckIcon, CloseIcon, ShareIcon, SparkIcon, PlusIcon } from
 import { ShareProfileSheet } from "./share-profile";
 import { InviteProgress } from "./invite-progress";
 import { useFan } from "./composer-fan";
+import { Spot } from "./spot";
 import { api } from "../lib/api";
 import { useSession } from "../lib/session";
 import { getItem, setItem } from "../lib/store";
@@ -151,6 +152,7 @@ export function WelcomeCard() {
   if (!shown.length) return null;
 
   return (
+    <Spot id="welcome.card">
     <View
       style={{
         marginTop: 14,
@@ -179,8 +181,8 @@ export function WelcomeCard() {
 
       <View style={{ marginTop: 6 }}>
         {shown.map((step) => (
+          <Spot key={step.key} id={`welcome.${step.key}`}>
           <Pressable
-            key={step.key}
             disabled={step.done}
             onPress={step.go}
             style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 }}
@@ -214,6 +216,7 @@ export function WelcomeCard() {
             </View>
             {step.done ? null : <Text style={{ color: colors.clayInk, fontSize: 18 }}>‹</Text>}
           </Pressable>
+          </Spot>
         ))}
       </View>
 
@@ -229,5 +232,6 @@ export function WelcomeCard() {
         />
       ) : null}
     </View>
+    </Spot>
   );
 }
