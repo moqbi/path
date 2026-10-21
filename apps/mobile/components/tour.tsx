@@ -205,6 +205,18 @@ async function measureSoon(id: string): Promise<Rect | null> {
   return null;
 }
 
+/** حسابُ الإدارة إن لم يكن مضافاً بعد — وإلّا `null`. */
+async function adminToAdd(): Promise<string | null> {
+  try {
+    const { account } = await api<{ account: { id: string } | null }>("/v1/site/support");
+    if (!account) return null;
+    const card = await api<{ friend: boolean }>(`/v1/users/${account.id}`);
+    return card.friend ? null : account.id;
+  } catch {
+    return null;
+  }
+}
+
 /** حولَ الهدف فراغٌ يتنفّس فيه — الدائرة لا تلتصق بحوافّه. */
 const PAD = 14;
 
@@ -286,8 +298,21 @@ export function Tour() {
       if (!alive) return;
       // ما فُعل من قبلُ لا يُطلب ثانيةً: خطوةُ بطاقة الترحيب المشطوبة لا تُرسم.
       if (id && !rect && current.skipMissing) {
-        const next = step + current.skipMissing;
-        setStep(next < STEPS.length ? next : null);
+        const skip = () => {
+          const next = step + (current.skipMissing ?? 1);
+          setStep(next < STEPS.length ? next : null);
+        };
+        if (id !== "welcome.support") return skip();
+        /*
+          بطاقةُ الترحيب غائبةٌ أو خطوتُها مشطوبة — وقد يكون حذفَ حسابَ الإدارة بعدها،
+          فالبطاقةُ لا تعود لأسبوعين مضيا أو لـ«×». فيُسأل الخادمُ نفسُه: إن لم يكن
+          مضافاً يُفتح ملفُّه، وخطوتُه التاليةُ «أضفه» تمضي كما هي (`until` يرى المسار).
+        */
+        void adminToAdd().then((adminId) => {
+          if (!alive) return;
+          if (adminId) router.push(`/u/${adminId}` as never);
+          else skip();
+        });
         return;
       }
       // التبويبُ أيقونةٌ وتحتها اسمُه: الدائرةُ تحتضن الاثنين لا الأيقونة وحدها.
@@ -475,43 +500,60 @@ export function Tour() {
     );
   }
 
-  const circle = hole
-    ? {
-        cx: hole.x + hole.width / 2,
-        cy: hole.y + hole.height / 2,
-        r: Math.max(hole.width, hole.height) / 2 + PAD,
-      }
+  /*
+    الثقبُ دائرةٌ حول الزرّ، **ومستطيلٌ مستدير حول ما عرضُه أكبر من ارتفاعه** — حقلُ البحث
+    وشريطُ القصص وبطاقةُ الترحيب: دائرةٌ حول صفٍّ بعرض الشاشة كانت تبتلع الشاشةَ كلَّها
+    فتُضاء وتُلمس معها ما ليس مقصوداً.
+  */
+  const wide = hole ? hole.width > hole.height * 1.6 : false;
+  const shape = hole
+    ? wide
+      ? {
+          x: hole.x - 8,
+          y: hole.y - 8,
+          w: hole.width + 16,
+          h: hole.height + 16,
+          r: Math.min(18, (hole.height + 16) / 2),
+        }
+      : (() => {
+          const r = Math.max(hole.width, hole.height) / 2 + PAD;
+          const cx = hole.x + hole.width / 2;
+          const cy = hole.y + hole.height / 2;
+          return { x: cx - r, y: cy - r, w: r * 2, h: r * 2, r };
+        })()
     : null;
 
-  // الحجابُ مستطيلُ الشاشة وفيه ثقبٌ دائريّ — قوسان يرسمان الدائرة.
-  const veil = circle
+  // الحجابُ مستطيلُ الشاشة وفيه الثقب — مستطيلٌ بأركانٍ مستديرة، والدائرةُ حالتُه الخاصّة.
+  const veil = shape
     ? `M0 0H${screen.width}V${screen.height}H0Z ` +
-      `M${circle.cx - circle.r} ${circle.cy}` +
-      `a${circle.r} ${circle.r} 0 1 0 ${circle.r * 2} 0` +
-      `a${circle.r} ${circle.r} 0 1 0 ${-circle.r * 2} 0Z`
+      `M${shape.x + shape.r} ${shape.y}H${shape.x + shape.w - shape.r}` +
+      `A${shape.r} ${shape.r} 0 0 1 ${shape.x + shape.w} ${shape.y + shape.r}V${shape.y + shape.h - shape.r}` +
+      `A${shape.r} ${shape.r} 0 0 1 ${shape.x + shape.w - shape.r} ${shape.y + shape.h}H${shape.x + shape.r}` +
+      `A${shape.r} ${shape.r} 0 0 1 ${shape.x} ${shape.y + shape.h - shape.r}V${shape.y + shape.r}` +
+      `A${shape.r} ${shape.r} 0 0 1 ${shape.x + shape.r} ${shape.y}Z`
     : `M0 0H${screen.width}V${screen.height}H0Z`;
 
   /*
     النافذةُ تحت الهدف إن كان في النصف الأعلى، وفوقه إن كان في الأسفل.
   */
-  const below = circle ? circle.cy < screen.height / 2 : false;
-  const cardStyle = circle
+  const below = shape ? shape.y + shape.h / 2 < screen.height / 2 : false;
+  const cardStyle = shape
     ? below
-      ? { top: circle.cy + circle.r + 18 }
-      : { bottom: screen.height - (circle.cy - circle.r) + 18 }
+      ? { top: shape.y + shape.h + 18 }
+      : { bottom: screen.height - shape.y + 18 }
     : { top: screen.height / 2 - 110 };
 
   /*
     ما حول الثقب يحجب اللمس، والثقبُ يتركه للزرّ تحته — أربعةُ مستطيلاتٍ حول
-    مربّع الدائرة. وخطوةٌ لا فعلَ فيها تحجب الشاشةَ كلَّها.
+    صندوقه. وخطوةٌ لا فعلَ فيها تحجب الشاشةَ كلَّها.
   */
   const blockers =
-    waiting && circle
+    waiting && shape
       ? [
-          { left: 0, right: 0, top: 0, height: Math.max(0, circle.cy - circle.r) },
-          { left: 0, right: 0, top: circle.cy + circle.r, bottom: 0 },
-          { left: 0, width: Math.max(0, circle.cx - circle.r), top: circle.cy - circle.r, height: circle.r * 2 },
-          { left: circle.cx + circle.r, right: 0, top: circle.cy - circle.r, height: circle.r * 2 },
+          { left: 0, right: 0, top: 0, height: Math.max(0, shape.y) },
+          { left: 0, right: 0, top: shape.y + shape.h, bottom: 0 },
+          { left: 0, width: Math.max(0, shape.x), top: shape.y, height: shape.h },
+          { left: shape.x + shape.w, right: 0, top: shape.y, height: shape.h },
         ]
       : [{ left: 0, right: 0, top: 0, bottom: 0 }];
 
@@ -533,20 +575,20 @@ export function Tour() {
           </Svg>
         </View>
 
-        {circle ? (
+        {shape ? (
           <Animated.View
             pointerEvents="none"
             style={{
               position: "absolute",
-              left: circle.cx - circle.r,
-              top: circle.cy - circle.r,
-              width: circle.r * 2,
-              height: circle.r * 2,
-              borderRadius: circle.r,
+              left: shape.x,
+              top: shape.y,
+              width: shape.w,
+              height: shape.h,
+              borderRadius: shape.r,
               borderWidth: 2,
               borderColor: colors.gold,
               opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.9, 0] }),
-              transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.35] }) }],
+              transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, wide ? 1.08 : 1.35] }) }],
             }}
           />
         ) : null}
@@ -556,7 +598,7 @@ export function Tour() {
           {words}
           {waiting ? (
             <Text style={{ color: colors.gold, fontSize: 13, fontWeight: "700", marginTop: 8, textAlign: "right" }}>
-              اضغط داخل الدائرة
+              {wide ? "اضغط داخل الإطار" : "اضغط داخل الدائرة"}
             </Text>
           ) : null}
           {controls}

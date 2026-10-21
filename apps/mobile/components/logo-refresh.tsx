@@ -19,7 +19,20 @@ import { colors } from "../theme/tokens";
  * ومن طلب «قلّل الحركة» يرى العلامةَ ساكنةً وقوسَها ثابتاً.
  * `size` قطرُ القوس، والعلامةُ نحو ثلثيه.
  */
-export function LogoRefresh({ size = 32, color = colors.clay }: { size?: number; color?: string }) {
+export function LogoRefresh({
+  size = 32,
+  color = colors.clay,
+  active = true,
+}: {
+  size?: number;
+  color?: string;
+  /**
+   * يدور ما دام الجلبُ جارياً وحده. طبقةُ السحب مركّبةٌ في ستّ شاشاتٍ وتبويباتُها
+   * كلُّها حيّة، وكانت حلقتاها تدوران وهي شفّافةٌ لا تُرى — اثنتا عشرة حركةً بلا
+   * توقّفٍ تُسخّن الجوّال.
+   */
+  active?: boolean;
+}) {
   const [still, setStill] = useState(false);
   const turn = useRef(new Animated.Value(0)).current;
   const breath = useRef(new Animated.Value(0)).current;
@@ -29,7 +42,7 @@ export function LogoRefresh({ size = 32, color = colors.clay }: { size?: number;
   }, []);
 
   useEffect(() => {
-    if (still) return;
+    if (still || !active) return;
     const spin = Animated.loop(
       Animated.timing(turn, { toValue: 1, duration: 900, easing: Easing.linear, useNativeDriver: true }),
     );
@@ -45,7 +58,7 @@ export function LogoRefresh({ size = 32, color = colors.clay }: { size?: number;
       spin.stop();
       pulse.stop();
     };
-  }, [still]);
+  }, [still, active]);
 
   const mark = Math.round(size * 0.64);
   return (
@@ -151,7 +164,7 @@ export function usePullLogo({
             backgroundColor: "rgba(14,26,36,.55)",
           }}
         >
-          <LogoRefresh size={34} />
+          <LogoRefresh size={34} active={refreshing} />
         </View>
       </Animated.View>
     ),

@@ -383,7 +383,7 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
               }}
             >
               <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(14,26,36,.55)" }}>
-                <LogoRefresh size={34} />
+                <LogoRefresh size={34} active={pulling} />
               </View>
             </Animated.View>
           ) : null}
