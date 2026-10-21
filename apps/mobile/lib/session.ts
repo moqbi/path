@@ -1,6 +1,16 @@
 import { create } from "zustand";
 import { getItem } from "./store";
-import { api, clearTokens, saveTokens } from "./api";
+import { adoptRefreshToken, api, clearTokens, renewAccess, saveTokens } from "./api";
+import {
+  MAX_ACCOUNTS,
+  forgetAccount,
+  listAccounts,
+  parkToken,
+  peekParked,
+  rememberAccount,
+  takeParked,
+  type Account,
+} from "./accounts";
 import { startBilling, stopBilling } from "./billing";
 import { disablePush } from "./push";
 
@@ -88,13 +98,47 @@ type State = {
   signIn: (email: string, password: string) => Promise<void>;
   /** جلسةٌ صدرت من بابٍ آخر (مزوّد): يُعتمد صاحبُها كما هو. */
   adopt: (user: Me) => Promise<void>;
-  signOut: () => Promise<void>;
+  /** يردّ `true` إن انتقل إلى الحساب الآخر على الجهاز بدل أن يخرج إلى الدخول. */
+  signOut: () => Promise<boolean>;
   refresh: () => Promise<void>;
+  /** الحسابات على الجهاز (القاعدة ٣١٦) — النشطُ بينها. */
+  accounts: Account[];
+  /** الحسابُ المركون الذي يُعاد إليه من شاشة الدخول إن تراجع صاحبُه عن إضافة ثانٍ. */
+  parked: Account | null;
+  /** يركن الحسابَ النشط ويفتح الدخولَ لحسابٍ ثانٍ. */
+  addAccount: () => Promise<void>;
+  switchAccount: (id: string) => Promise<void>;
+  /** يُخرج حساباً مركوناً من الجهاز: يُبطل جلستَه على الخادم ويمحوه. */
+  removeAccount: (id: string) => Promise<void>;
 };
 
-export const useSession = create<State>((set) => ({
+const faceOf = (user: Me): Account => ({
+  id: user.id,
+  name: user.name,
+  memberNo: user.memberNo,
+  avatarMediaId: user.avatarMediaId,
+});
+
+/** من دخل من جديد بحسابٍ مركون: نسختُه القديمة تُبطَل لا تبقى جلسةً ثانية. */
+async function dropStale(id: string): Promise<void> {
+  const old = await takeParked(id);
+  if (!old) return;
+  await api("/v1/auth/logout", { method: "POST", body: JSON.stringify({ refreshToken: old }) }).catch(() => {});
+}
+
+/** يكتب وجهَ النشط ويقرأ القائمة — ومعها المركونُ إن لم يكن هو النشط. */
+async function settle(user: Me | null): Promise<{ accounts: Account[]; parked: Account | null }> {
+  if (user) await rememberAccount(faceOf(user));
+  const accounts = await listAccounts();
+  const parked = accounts.find((row) => row.id !== user?.id) ?? null;
+  return { accounts, parked };
+}
+
+export const useSession = create<State>((set, get) => ({
   me: null,
   ready: false,
+  accounts: [],
+  parked: null,
 
   /**
    * عند الإقلاع: إن كان في المخزن توكنٌ نسأل به عن صاحبه.
@@ -105,15 +149,20 @@ export const useSession = create<State>((set) => ({
   async restore() {
     const token = await getItem("athr.access");
     const refresh = await getItem("athr.refresh");
-    if (!token && !refresh) return set({ ready: true, me: null });
+    if (!token && !refresh) {
+      // لا نشط — ومركونٌ إن وُجد يُعاد إليه بدل شاشة الدخول.
+      const { parked } = await settle(null);
+      if (parked) return get().switchAccount(parked.id).catch(() => undefined);
+      return set({ ready: true, me: null, accounts: [], parked: null });
+    }
 
     try {
       const { user } = await api<{ user: Me }>("/v1/me");
       void startBilling(user.id).catch(() => {});
-      set({ me: user, ready: true });
+      set({ me: user, ready: true, ...(await settle(user)) });
     } catch {
       await clearTokens();
-      set({ me: null, ready: true });
+      set({ me: null, ready: true, ...(await settle(null)) });
     }
   },
 
@@ -125,12 +174,13 @@ export const useSession = create<State>((set) => ({
      فيُعاد الجلب. ما لبسه محفوظٌ على الخادم، والعرضُ هو الذي نقص.
   */
   async adopt(user) {
+    await dropStale(user.id);
     void startBilling(user.id).catch(() => {});
     try {
       const full = await api<{ user: Me }>("/v1/me");
-      set({ me: full.user, ready: true });
+      set({ me: full.user, ready: true, ...(await settle(full.user)) });
     } catch {
-      set({ me: user, ready: true });
+      set({ me: user, ready: true, ...(await settle(user)) });
     }
   },
 
@@ -140,13 +190,15 @@ export const useSession = create<State>((set) => ({
       { method: "POST", body: JSON.stringify({ email, password, device: "mobile" }) },
     );
     await saveTokens(data.accessToken, data.refreshToken);
+    await dropStale(data.user.id);
     const { user } = await api<{ user: Me }>("/v1/me");
     // المشتري يُربط بحسابه هنا: بلا ذلك يشتري لمعرّفٍ مجهول فلا نعرف لمن نفعّل.
     void startBilling(user.id).catch(() => {});
-    set({ me: user, ready: true });
+    set({ me: user, ready: true, ...(await settle(user)) });
   },
 
   async signOut() {
+    const leaving = get().me?.id;
     const refreshToken = await getItem("athr.refresh");
     // الخروج يُبطل التوكن على الخادم أيضاً: مسحُه من الجهاز وحده يترك
     // جلسةً حيّةً ثلاثين يوماً لمن نسخها قبل الخروج.
@@ -160,15 +212,96 @@ export const useSession = create<State>((set) => ({
     await disablePush();
     await clearTokens();
     await stopBilling();
-    set({ me: null, ready: true });
+    if (leaving) await forgetAccount(leaving);
+    // حسابٌ ثانٍ على الجهاز: الخروجُ من أحدهما دخولٌ إلى الآخر لا شاشةُ الدخول.
+    const { parked } = await settle(null);
+    if (parked) {
+      try {
+        await get().switchAccount(parked.id);
+        return true;
+      } catch {
+        /* جلستُه انتهت — يُمحى ويُكمل الخروج */
+      }
+    }
+    set({ me: null, ready: true, ...(await settle(null)) });
+    return false;
   },
 
   async refresh() {
     try {
       const { user } = await api<{ user: Me }>("/v1/me");
-      set({ me: user });
+      set({ me: user, ...(await settle(user)) });
     } catch {
       /* الشاشة تبقى بما لديها */
     }
+  },
+
+  async addAccount() {
+    const me = get().me;
+    if (!me) return;
+    const rows = await listAccounts();
+    if (rows.filter((row) => row.id !== me.id).length >= MAX_ACCOUNTS - 1) {
+      throw new Error(`حسابان على الأكثر في الجهاز الواحد`);
+    }
+    const refresh = await getItem("athr.refresh");
+    if (!refresh) throw new Error("تعذّر حفظ جلسة هذا الحساب");
+    await rememberAccount(faceOf(me));
+    // يُركن ولا يخرج: جلستُه على الخادم باقية، والجهازُ يبقى مسجّلاً له حتى يدخل الثاني.
+    await parkToken(me.id, refresh);
+    await clearTokens();
+    await stopBilling();
+    set({ me: null, ready: true, ...(await settle(null)) });
+  },
+
+  async switchAccount(id) {
+    const from = get().me;
+    if (from?.id === id) return;
+    const target = await peekParked(id);
+    if (!target) {
+      await forgetAccount(id);
+      set(await settle(from));
+      throw new Error("انتهت جلسة هذا الحساب — سجّل دخوله من جديد");
+    }
+
+    // النشطُ يُركن أوّلاً بتوكنه الحاليّ، ثمّ يُؤخذ المركون.
+    const current = from ? await getItem("athr.refresh") : null;
+    if (from && current) await parkToken(from.id, current);
+    await takeParked(id);
+    await adoptRefreshToken(target);
+
+    try {
+      if (!(await renewAccess())) throw new Error("expired");
+      const { user } = await api<{ user: Me }>("/v1/me");
+      void startBilling(user.id).catch(() => {});
+      set({ me: user, ready: true, ...(await settle(user)) });
+    } catch {
+      // جلسةُ المركون أُبطلت (تغيّرت كلمتُه، أو حُذف): يُمحى ويُعاد الأوّل.
+      await forgetAccount(id);
+      if (from) {
+        const back = await takeParked(from.id);
+        if (back) {
+          await adoptRefreshToken(back);
+          await renewAccess().catch(() => false);
+        }
+        set({ me: from, ready: true, ...(await settle(from)) });
+      } else {
+        await clearTokens();
+        set({ me: null, ready: true, ...(await settle(null)) });
+      }
+      throw new Error("انتهت جلسة هذا الحساب — سجّل دخوله من جديد");
+    }
+  },
+
+  async removeAccount(id) {
+    if (get().me?.id === id) return;
+    const token = await takeParked(id);
+    if (token) {
+      await api("/v1/auth/logout", {
+        method: "POST",
+        body: JSON.stringify({ refreshToken: token }),
+      }).catch(() => {});
+    }
+    await forgetAccount(id);
+    set(await settle(get().me));
   },
 }));

@@ -31,6 +31,7 @@ import { api } from "../lib/api";
 import { openIn } from "../lib/browse";
 import { SITE_URL, hasSite } from "@athar/shared";
 import { useSession } from "../lib/session";
+import { BackToParked } from "../components/accounts-sheet";
 import { brandGradient, colors } from "../theme/tokens";
 
 type Phase = "intro" | "leaving" | "form";
@@ -402,6 +403,8 @@ export default function Login() {
   return (
     <View style={{ flex: 1, backgroundColor: "#171d24" }}>
       <Sky />
+      {/* من ضغط «إضافة حساب» ثمّ تراجع يعود إلى حسابه (القاعدة ٣١٦). */}
+      <BackToParked />
 
       {/*
         المقدّمة مرفوعةٌ من السياق، والخيارات في الأسفل فوق حشوة ٤٠ —

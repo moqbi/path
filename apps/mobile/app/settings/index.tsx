@@ -579,8 +579,9 @@ function DeleteAccount() {
     try {
       const body = viaApple ? { apple: await confirmWithApple() } : { password };
       await api("/v1/me/delete", { method: "POST", body: JSON.stringify(body) });
-      await signOut();
-      router.replace("/login?deleted=1" as never);
+      // حسابٌ ثانٍ على الجهاز يُفتح بعد الحذف (القاعدة ٣١٦).
+      const moved = await signOut();
+      router.replace((moved ? "/" : "/login?deleted=1") as never);
     } catch (problem) {
       const code = (problem as { code?: string } | null)?.code;
       // إغلاقُ نافذة آبل تراجعٌ لا خطأ.

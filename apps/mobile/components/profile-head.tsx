@@ -5,6 +5,7 @@ import { NoteBubble } from "./note-bubble";
 import { openNote } from "../lib/status-notes";
 import { frameBleed, type Charm, type Frame } from "./avatar";
 import { NameTag } from "./name-tag";
+import { BackIcon } from "./icons";
 import { colors } from "../theme/tokens";
 import { ar, membership } from "../lib/format";
 
@@ -33,7 +34,10 @@ export function ProfileHead({
   frameItem,
   charmItem,
   note,
+  onAccounts,
 }: {
+  /** سهمٌ على يمين الاسم يفتح نافذةَ الحسابات (القاعدة ٣١٦) — في «أنا» وحدها. */
+  onAccounts?: () => void;
   /** النوتُ فوق الصورة (القاعدة ٢٦٩) — ضغطُها يفتحها ويُسمع أغنيتها. */
   note?: { id: string; text: string | null; trackTitle: string | null; trackArtist: string | null; gifId?: string | null; gifW?: number | null; gifH?: number | null } | null;
   name: string;
@@ -96,7 +100,18 @@ export function ProfileHead({
         </View>
         {/* التشارم تتدلّى من ركن الصورة نحو الاسم (القاعدة ٥٩): مسافةٌ تتّسع لها. */}
         <View style={{ flex: 1, minWidth: 0, alignItems: "flex-start", paddingRight: 34, marginTop: size / 2 + 10 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, maxWidth: "100%" }}>
+          <Pressable
+            disabled={!onAccounts}
+            onPress={onAccounts}
+            accessibilityLabel={onAccounts ? "الحسابات" : undefined}
+            hitSlop={8}
+            style={{ flexDirection: "row", alignItems: "center", gap: 8, maxWidth: "100%" }}
+          >
+            {onAccounts ? (
+              <View style={{ transform: [{ rotate: "-90deg" }] }}>
+                <BackIcon size={16} color={colors.groundInk} />
+              </View>
+            ) : null}
             <Text
               numberOfLines={1}
               style={{ color: colors.groundInk, fontSize: 20, fontWeight: "700", flexShrink: 1, writingDirection: "auto" }}
@@ -104,7 +119,7 @@ export function ProfileHead({
               {name}
             </Text>
             <NameTag isPlus={isPlus} tag={tag} size={12} />
-          </View>
+          </Pressable>
         </View>
       </View>
 

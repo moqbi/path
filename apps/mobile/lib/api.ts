@@ -47,6 +47,12 @@ export const saveTokens = async (accessToken: string, refreshToken: string) => {
   ]);
 };
 
+/** يُبدَّل الحسابُ النشط: توكنُ تجديده وحده، والوصولُ يُطلب به من جديد. */
+export const adoptRefreshToken = async (refreshToken: string) => {
+  setAccess(null);
+  await Promise.all([deleteItem(ACCESS), setItem(REFRESH, refreshToken)]);
+};
+
 export const clearTokens = async () => {
   setAccess(null);
   await Promise.all([
