@@ -11,6 +11,7 @@ import { ProfileHead } from "../../components/profile-head";
 import { Spot } from "../../components/spot";
 import { COVER_HEIGHT, CoverLayer, StretchCover, useStretch } from "../../components/cover";
 import { useTabTop } from "../../lib/tab-top";
+import { openAccounts, useDoubleTapSwitch } from "../../components/accounts-sheet";
 import { playRefresh } from "../../lib/sound";
 import { MomentCard, SPINE_W } from "../../components/moment-card";
 import { AthrMark } from "../../components/brand";
@@ -190,6 +191,8 @@ export default function Me() {
     void Promise.all([refreshMe(), stats.refetch(), mine.refetch()]).finally(() => setRefreshing(false));
   };
   useTabTop(() => list.current?.getScrollResponder()?.scrollTo({ y: 0, animated: true }));
+  // تعدّدُ الحسابات (القاعدة ٣١٦) في نسخة التطوير وحدها حتى يُجرَّب.
+  useDoubleTapSwitch(DEV_FEATURES);
 
   const days = useMemo(() => {
     const out: { title: string; data: Moment[] }[] = [];
@@ -291,6 +294,7 @@ export default function Me() {
               charm={me.charm}
               frameItem={me.frame}
               charmItem={me.charm}
+              onAccounts={DEV_FEATURES ? openAccounts : undefined}
             />
 
             {DEV_FEATURES ? (
@@ -329,7 +333,7 @@ export default function Me() {
                     {
                       text: "اخرج",
                       style: "destructive",
-                      onPress: () => void signOut().then(() => router.replace("/login")),
+                      onPress: () => void signOut().then((moved) => router.replace(moved ? "/" : "/login")),
                     },
                   ])
                 }

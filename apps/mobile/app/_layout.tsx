@@ -1,4 +1,4 @@
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { AppState, Appearance, I18nManager, Platform, View, ActivityIndicator, StyleSheet } from "react-native";
 import { MediaImage } from "../components/media-image";
 import { Stack, useRouter, useSegments } from "expo-router";
@@ -26,6 +26,7 @@ import { PhotoViewer } from "../components/photo-viewer";
 import { PlaceVisitors } from "../components/place-visitors";
 import { ReactSheet } from "../components/react-sheet";
 import { AddSheet, openAddSheet } from "../components/add-sheet";
+import { AccountsSheet } from "../components/accounts-sheet";
 import { CreateSheet, NoteSheet } from "../components/note-sheet";
 import { Tour } from "../components/tour";
 import { applyTheme, colors, themeStore, veil } from "../theme/tokens";
@@ -112,6 +113,17 @@ function Gate() {
     // ختمُ أوّل فتحٍ لطلب التقييم: يُكتب مرّةً ولا يزيد (`lib/rate.ts`).
     void markFirstSeen();
   }, [restore]);
+
+  /*
+    تبديلُ الحساب (القاعدة ٣١٦): ما في الذاكرة من استعلاماتٍ للحساب السابق —
+    خطُّه وأصدقاؤه ومحادثاتُه — يُمحى، وإلّا رُسم لحظةً تحت اسم الآخر.
+  */
+  const lastId = useRef<string | null>(null);
+  useEffect(() => {
+    const id = me?.id ?? null;
+    if (lastId.current && id && lastId.current !== id) client.clear();
+    if (id) lastId.current = id;
+  }, [me?.id]);
 
   useEffect(() => {
     if (!ready) return;
@@ -322,6 +334,7 @@ function Gate() {
     {/* ولوحةُ التفاعل نافذةٌ زجاجيّة كذلك (القاعدة ٢٤٧). */}
     <ReactSheet />
     <AddSheet />
+    <AccountsSheet />
     {/* النوت ونافذةُ «قصة أو نوت» — في الجذر للسبب نفسه (القاعدة ٢٦٩). */}
     <NoteSheet />
     <CreateSheet />
