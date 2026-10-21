@@ -45,12 +45,18 @@ export function GlassSheet({
   subtitle,
   onClose,
   children,
+  overlay,
 }: {
   icon?: React.ReactNode;
   title: string;
   subtitle?: string;
   onClose: () => void;
   children: React.ReactNode;
+  /**
+   * طبقةٌ بملء الشاشة فوق النافذة — داخل `Modal` نفسه: آبل تعرض النافذةَ فوق كلّ ما
+   * في الجذر، فالجولةُ هناك تُرسم خلفها (القاعدة ٣٢٨).
+   */
+  overlay?: React.ReactNode;
 }) {
   const insets = useSafeAreaInsets();
   const drag = useRef(new Animated.Value(0)).current;
@@ -189,6 +195,7 @@ export function GlassSheet({
           </View>
         </Animated.View>
       </KeyboardAvoidingView>
+      {overlay}
     </Modal>
   );
 }

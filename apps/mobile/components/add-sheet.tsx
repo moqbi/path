@@ -8,6 +8,7 @@ import { create } from "zustand";
 import { SITE_URL, hasSite } from "@athar/shared";
 import { Text, TextInput } from "./type";
 import { GlassSheet, SheetScrollView } from "./glass-sheet";
+import { TourPortal } from "./tour";
 import { Avatar } from "./avatar";
 import { NameTag } from "./name-tag";
 import { Qr } from "./share-profile";
@@ -91,6 +92,7 @@ function Body({ mode, close }: { mode: Mode; close: () => void }) {
       title={title}
       subtitle={subtitle}
       onClose={close}
+      overlay={<TourPortal />}
     >
       {mode === "home" ? <Home go={go} row={row} /> : null}
       {mode === "near" ? <Near row={row} /> : null}

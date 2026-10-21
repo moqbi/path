@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
-import { View, Pressable, Animated, Easing, BackHandler, useWindowDimensions } from "react-native";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactElement } from "react";
+import { View, Pressable, Animated, Easing, BackHandler, Platform, useWindowDimensions } from "react-native";
 import { create } from "zustand";
 import Svg, { Path } from "react-native-svg";
 import { Text } from "./type";
 import { measureSpot, type Rect } from "./spot";
-import { usePathname, useRouter } from "expo-router";
+import { usePathname, useRouter, type Router } from "expo-router";
 import { closeAddSheet, useAddMode } from "./add-sheet";
 import { CheckIcon } from "./icons";
 import { api } from "../lib/api";
@@ -57,7 +57,7 @@ type Step = {
    */
   skipMissing?: number;
   /** يجري قبل الخطوة. */
-  before?: () => void;
+  before?: (router: Router, path: string) => void;
 };
 
 /**
@@ -90,7 +90,7 @@ const STEPS: Step[] = [
     spot: "welcome.support",
     route: "/",
     tap: true,
-    skipMissing: 3,
+    skipMissing: 2,
     until: (ctx) => ctx.path.startsWith("/u/"),
     title: "أضف حساب آثار",
     body: "من بطاقة الترحيب: اضغط هنا لتفتح ملفّ حساب الإدارة — أخبار التطبيق وجديده في خطّك.",
@@ -104,15 +104,20 @@ const STEPS: Step[] = [
     body: "هكذا يُضاف أيُّ حساب: من ملفّه.",
   },
   {
-    spot: "welcome.card",
-    route: "/",
-    title: "خطوتان تمّتا",
-    body: "صورتك وحساب آثار — شُطبتا من بطاقة الترحيب. والباقي: ادعُ صديقاً وانشر أوّل لحظة.",
+    /*
+      **يبقى على ملفّ الإدارة** — بقرار المالك: لحظاتُه تحته الآن بوجوه من تفاعل
+      وتعليقاتهم، فالشرحُ يُقرأ فوق ما يشرحه لا في الخطّ الزمنيّ.
+    */
+    coach: [],
+    title: "من التعليقات والتفاعلات",
+    body: "تحت لحظات حساب آثار وجوهُ من تفاعل وتعليقاتُهم — اضغط صورة أيّ واحدٍ منهم يفتح ملفّه، ومنه «أضفه».",
   },
   {
+    spot: "welcome.card",
     route: "/",
-    title: "من التعليقات والتفاعلات",
-    body: "تحت كلّ لحظةٍ وجوهُ من تفاعل وتعليقاتُهم — اضغط صورة أيّ واحدٍ منهم يفتح ملفّه، ومنه «أضفه». حساب آثار يملأ خطّك بالناس من اليوم.",
+    skipMissing: 1,
+    title: "خطوتان تمّتا",
+    body: "صورتك وحساب آثار — شُطبتا من بطاقة الترحيب. والباقي: ادعُ صديقاً وانشر أوّل لحظة.",
   },
   {
     spot: "circle.add",
@@ -152,14 +157,29 @@ const STEPS: Step[] = [
     body: "اضغط صورتك: قصةٌ تعيش يوماً، أو نوتٌ — عبارةٌ أو أغنيةٌ تطفو فوق صورتك عند أصدقائك.",
   },
   {
+    /*
+      **خطوةُ فعل** لا «التالي»: كانت الشاشةُ كلُّها محجوبةً والزرُّ مضاءً، فمن ضغطه لم
+      يحدث شيء — يُقرأ تعليقاً. الآن الضغطةُ تفتح صفحةَ الاشتراك.
+    */
     spot: "header.plus",
     route: "/",
+    tap: true,
+    until: (ctx) => ctx.path === "/subscribe",
     title: "آثار+",
-    body: "اشتراكٌ بمزايا لك وحدك: شارةُ توثيق، وإيموجي حرّ، وآثارنا، والتخفّي، وأرشيفٌ بلا نهاية، ونقاطٌ كلّ شهر.",
+    body: "اضغط هنا لترى ما يُعطيك الاشتراك.",
   },
   {
-    spot: "tab.store",
+    coach: [],
+    title: "آثار+",
+    body: "شارةُ توثيق، وإيموجي حرّ، وآثارنا، والتخفّي، وأرشيفٌ بلا نهاية، ونقاطٌ كلّ شهر — ولك أن تشترك متى شئت.",
+  },
+  {
+    // شريطُ آبل الأصليّ لا يُقاس (القاعدة ٢٦١): بلا هدفٍ هناك، لا انتظارٌ لما لا يُرسم.
+    spot: Platform.OS === "ios" ? undefined : "tab.store",
     route: "/store",
+    before: (router, path) => {
+      if (path === "/subscribe" && router.canGoBack()) router.back();
+    },
     title: "المتجر",
     body: "تشارمز وإطاراتٌ وثيمات بالنقاط — تُرى قبل شرائها، وتُلبَس من ملفك، وتُهدى لصديق.",
   },
@@ -200,7 +220,7 @@ async function measureSoon(id: string): Promise<Rect | null> {
   for (let attempt = 0; attempt < 10; attempt += 1) {
     const rect = await measureSpot(id);
     if (rect) return rect;
-    await new Promise((done) => setTimeout(done, 200));
+    await new Promise((done) => setTimeout(done, 100));
   }
   return null;
 }
@@ -286,14 +306,19 @@ export function Tour() {
     setMeasured(false);
     const current = STEPS[step];
     const id = current.spot ?? "";
-    current.before?.();
+    current.before?.(router, path);
     /*
       الشاشةُ والقوسُ أوّلاً ثمّ القياس: الهدفُ في تبويبٍ آخر أو داخل نافذة،
       ولا يُقاس قبل أن يُرسم ويقف (القوسُ يطير ٤٢٠ مللي، والنافذةُ تصعد).
     */
     if (current.route && path !== current.route) router.navigate(current.route as never);
     useFan.setState({ open: Boolean(current.fan) });
-    const settle = new Promise((done) => setTimeout(done, current.route || id.startsWith("add.") ? 560 : 120));
+    /*
+      **مهلٌ قصيرة** — كانت ٥٦٠ لكلّ شاشةٍ ونافذة و٣٨٠ بين الخطوات فتُحسّ الجولةُ
+      بطيئة. القياسُ يعيد المحاولة وحده إن لم يُرسم الهدفُ بعد.
+    */
+    const moving = current.route && path !== current.route;
+    const settle = new Promise((done) => setTimeout(done, moving ? 280 : id.startsWith("add.") ? 320 : 40));
     void settle.then(() => (id ? measureSoon(id) : null)).then((rect) => {
       if (!alive) return;
       // ما فُعل من قبلُ لا يُطلب ثانيةً: خطوةُ بطاقة الترحيب المشطوبة لا تُرسم.
@@ -320,7 +345,7 @@ export function Tour() {
       setMeasured(true);
       Animated.timing(fade, {
         toValue: 1,
-        duration: 260,
+        duration: 180,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start();
@@ -340,11 +365,11 @@ export function Tour() {
     const current = STEPS[step];
     const ctx: Ctx = { path, signals, addMode };
     if (current.until?.(ctx)) {
-      const timer = setTimeout(() => setStep(step + 1 < STEPS.length ? step + 1 : null), 380);
+      const timer = setTimeout(() => setStep(step + 1 < STEPS.length ? step + 1 : null), 120);
       return () => clearTimeout(timer);
     }
     if (current.at && !path.startsWith(current.at)) {
-      const timer = setTimeout(() => setStep(Math.max(0, step - 1)), 380);
+      const timer = setTimeout(() => setStep(Math.max(0, step - 1)), 200);
       return () => clearTimeout(timer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -385,6 +410,20 @@ export function Tour() {
     }
   }
 
+  /*
+    **والجولةُ داخل نافذة الإضافة حين تكون مفتوحة** (`TourPortal`): النافذةُ `Modal`،
+    وآبل تعرضها فوق كلّ ما في الجذر — فكان الإطارُ والسطران خلفها. القياسُ بإحداثيّات
+    الشاشة (`measureInWindow`) فيقع في المكان نفسه هناك.
+  */
+  const layer = draw();
+  const inSheet = addMode !== null;
+  useLayoutEffect(() => {
+    usePortal.setState({ node: inSheet ? layer : null });
+  });
+  useEffect(() => () => usePortal.setState({ node: null }), []);
+  return inSheet ? null : layer;
+
+  function draw(): ReactElement | null {
   if (step === null || !measured) return null;
 
   const current = STEPS[step];
@@ -606,4 +645,12 @@ export function Tour() {
       </Animated.View>
     </View>
   );
+  }
+}
+
+/** ما تُرسم به الجولةُ داخل نافذة الإضافة — يقرؤه `TourPortal` هناك. */
+const usePortal = create<{ node: ReactElement | null }>(() => ({ node: null }));
+
+export function TourPortal() {
+  return usePortal((state) => state.node);
 }
