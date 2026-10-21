@@ -788,6 +788,8 @@ export async function setAdminScope(userId: string, formData: FormData): Promise
     where: { id: userId },
     data: { adminScope: scope, canModerate: moderate },
   });
+  // من صار مشرفاً لا يُحظر (القاعدة ٣١٨): ما سبق من حظرٍ عليه يُرفع.
+  if (scope === "ALL") await prisma.block.deleteMany({ where: { blockedId: userId } });
   revalidatePath("/admin");
 }
 

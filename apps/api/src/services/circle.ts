@@ -472,6 +472,9 @@ export async function setFriendGroup(userId: string, friendId: string, groupId: 
 /** الحظر: لا يرى أحدهما الآخر ولا يتفاعل معه، والصداقة تُفكّ إن وُجدت. */
 export async function blockUser(userId: string, targetId: string) {
   if (targetId === userId) throw badRequest("لا يمكنك حظر نفسك");
+  // المشرفُ لا يُحظر (القاعدة ٣١٨): بابُ الدعم والإشراف لا يُغلق من طرفٍ واحد.
+  const target = await prisma.user.findUnique({ where: { id: targetId }, select: { role: true, adminScope: true } });
+  if (target?.role === "ADMIN" || target?.adminScope === "ALL") throw forbidden("لا يمكن حظر حساب الإدارة");
 
   await prisma.$transaction([
     prisma.block.upsert({
