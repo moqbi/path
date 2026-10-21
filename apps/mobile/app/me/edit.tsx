@@ -131,10 +131,10 @@ export default function EditProfile() {
             />
 
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={{ color: colors.ink, fontSize: 12.5, fontWeight: "600" }}>
+              <Text style={{ color: colors.groundInk, fontSize: 12.5, fontWeight: "700" }}>
                 صورة العرض
               </Text>
-              <Text style={{ color: colors.muted, fontSize: 11.5, lineHeight: 19, marginTop: 2 }}>
+              <Text style={{ color: colors.groundInk, fontSize: 11.5, lineHeight: 19, marginTop: 2 }}>
                 اضغط الكاميرا على حافة صورتك لتغييرها.
               </Text>
 
@@ -144,7 +144,7 @@ export default function EditProfile() {
                   {pictureError}
                 </Text>
               ) : me.isPlus ? (
-                <Text style={{ color: colors.faint, fontSize: 11, lineHeight: 18, marginTop: 4 }}>
+                <Text style={{ color: colors.groundInk, fontSize: 11, lineHeight: 18, marginTop: 4 }}>
                   صورة متحركة؟ {ANIMATED_RULE}
                 </Text>
               ) : null}
@@ -158,7 +158,7 @@ export default function EditProfile() {
 
             <Field label="المعرّف">
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <Text style={{ color: colors.muted, fontSize: 15 }}>@</Text>
+                <Text style={{ color: colors.groundInk, fontSize: 15 }}>@</Text>
                 <TextInput
                   value={handle}
                   onChangeText={setHandle}
@@ -170,7 +170,7 @@ export default function EditProfile() {
                   style={[INPUT, { flex: 1, minWidth: 0, textAlign: "left" }]}
                 />
               </View>
-              <Text style={{ color: colors.muted, fontSize: 11, marginTop: 4, textAlign: "right" }}>
+              <Text style={{ color: colors.groundInk, fontSize: 11, marginTop: 4, textAlign: "right" }}>
                 حروف إنجليزية وأرقام و_ ، من ٣ إلى ٢٠ حرفاً. يظهر تحت اسمك.
               </Text>
             </Field>
@@ -234,7 +234,7 @@ export default function EditProfile() {
                   );
                 })}
               </View>
-              <Text style={{ color: colors.faint, fontSize: 11.5, marginTop: 6 }}>لا يظهر لأحد — يستعمله كتاب سنتك ليخاطبك بصيغتك.</Text>
+              <Text style={{ color: colors.groundInk, fontSize: 11.5, marginTop: 6 }}>لا يظهر لأحد — يستعمله كتاب سنتك ليخاطبك بصيغتك.</Text>
             </Field>
 
             {error ? (
@@ -292,12 +292,12 @@ function Field({
     <View style={{ gap: 6 }}>
       <View style={{ flexDirection: "row", alignItems: "center" }}>
         <Text
-          style={{ flex: 1, minWidth: 0, color: colors.ink2, fontSize: 12.5, fontWeight: "600", textAlign: "right" }}
+          style={{ flex: 1, minWidth: 0, color: colors.groundInk, fontSize: 12.5, fontWeight: "700", textAlign: "right" }}
         >
           {label}
         </Text>
         {hint ? (
-          <Text style={{ color: warn ? colors.live : colors.muted, fontSize: 11 }}>{hint}</Text>
+          <Text style={{ color: warn ? colors.live : colors.groundInk, fontSize: 11 }}>{hint}</Text>
         ) : null}
       </View>
       {children}

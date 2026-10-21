@@ -92,7 +92,7 @@ export default function Accessories() {
       <ScreenHeader title="إكسسواراتي" back="/me" />
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40, direction: "rtl" }}>
-        <Text style={{ color: colors.muted, fontSize: 11.5, marginBottom: 14, textAlign: "right" }}>
+        <Text style={{ color: colors.groundInk, fontSize: 11.5, marginBottom: 14, textAlign: "right" }}>
           ما اشتريته وما أُهدي إليك — اضغط لتلبسه
         </Text>
 
@@ -142,7 +142,7 @@ function Group({
 
   return (
     <View style={{ marginBottom: 18 }}>
-      <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600", marginBottom: 8, textAlign: "right" }}>
+      <Text style={{ color: colors.groundInk, fontSize: 12, fontWeight: "700", marginBottom: 8, textAlign: "right" }}>
         {title}
       </Text>
 
