@@ -1,5 +1,5 @@
 import { BlockIcon, CheckIcon, MessageIcon, TagIcon, UserMinusIcon, UserPlusIcon } from "../../components/icons";
-import { PullLogo, pullTint } from "../../components/logo-refresh";
+import { usePullLogo } from "../../components/logo-refresh";
 import { Sheet } from "../../components/sheet";
 import { openAddSheet } from "../../components/add-sheet";
 import { Spot } from "../../components/spot";
@@ -8,7 +8,7 @@ import { TabBackdrop } from "../../components/tab-backdrop";
 import { useBarSpace } from "../../components/glass-bar";
 import { scrolled } from "../../lib/scrolled";
 import { useCallback, useRef, useState } from "react";
-import { View, FlatList, Pressable, ActivityIndicator, RefreshControl } from "react-native";
+import { View, FlatList, Pressable, ActivityIndicator } from "react-native";
 import { Text, TextInput } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -78,6 +78,7 @@ export default function Circle() {
     }, [refetchCircle]),
   );
   const pullRefresh = usePullRefresh(() => Promise.all([circle.refetch(), rings.refetch()]));
+  const pull = usePullLogo({ ...pullRefresh, tint: colors.clay });
   const router = useRouter();
   const client = useQueryClient();
   const me = useSession((state) => state.me);
@@ -192,6 +193,7 @@ export default function Circle() {
         }
       />
 
+      <View style={{ flex: 1 }}>
       <FlatList
         ref={(node) => { list.current = node; }}
         // التمريرُ يطوي صفّاً مسحوباً مفتوحاً (القاعدة ٢١٣).
@@ -204,15 +206,9 @@ export default function Circle() {
         keyExtractor={(item) => item.id}
         scrollEnabled={!swiping}
         contentContainerStyle={{ paddingBottom: barSpace + 8, flexGrow: 1 }}
-        refreshControl={
-          <RefreshControl
-            {...pullRefresh}
-            tintColor={pullTint(colors.clay)}
-          />
-        }
+        {...pull.props}
         ListHeaderComponent={
           <>
-            <PullLogo refreshing={pullRefresh.refreshing} />
             {/* شريط القصص فوق الدائرة — مكانه في الويب نفسه. */}
             <StoryStrip rings={rings.data?.rings ?? []} meId={me?.id ?? ""} />
 
@@ -372,6 +368,8 @@ export default function Circle() {
           )
         }
       />
+      {pull.overlay}
+      </View>
 
       {/*
         نافذةُ التصنيف (القاعدة ٢٦٨): تصنيفاتُك بعلامةٍ على الحاليّ، و«بلا تصنيف»،

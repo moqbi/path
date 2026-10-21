@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { PullLogo, pullTint } from "../../components/logo-refresh";
+import { usePullLogo } from "../../components/logo-refresh";
 import { useBarSpace } from "../../components/glass-bar";
 import { scrolled } from "../../lib/scrolled";
 import { markSeen } from "../../lib/seen";
-import { View, Pressable, ActivityIndicator, Animated, RefreshControl } from "react-native";
+import { View, Pressable, ActivityIndicator, Animated } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -181,6 +181,7 @@ function Profile() {
     setRefreshing(true);
     void Promise.all([person.refetch(), moments.refetch()]).finally(() => setRefreshing(false));
   };
+  const pull = usePullLogo({ refreshing, onRefresh: reload, tint: "#fff", y: scrollY });
 
   return (
     // شاشةٌ في المكدّس فوق الشريط (القاعدة ٢٦١): سحبةُ آبل الأصليّة رجوعُها.
@@ -200,6 +201,7 @@ function Profile() {
           لا يوجد هذا الحساب.
         </Text>
       ) : (
+        <View style={{ flex: 1 }}>
         <Animated.FlatList
           onScroll={onScroll}
           onScrollBeginDrag={scrolled}
@@ -209,7 +211,7 @@ function Profile() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
           scrollEventThrottle={16}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} tintColor={pullTint("#fff")} />}
+        {...pull.props}
           data={list}
           keyExtractor={(item) => item.id}
           onViewableItemsChanged={onViewable}
@@ -236,7 +238,6 @@ function Profile() {
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: barSpace + 8 }}
           ListHeaderComponent={
             <>
-              <PullLogo refreshing={refreshing} />
               {/*
                 الغلاف طبقةٌ واحدة في كل الشاشات (القاعدة ٧١): صورةٌ ودرعٌ
                 تحت قناع الذوبان نفسه. وصورةٌ عاريةٌ في مربّعٍ رماديّ تنتهي
@@ -440,6 +441,8 @@ function Profile() {
             )
           }
         />
+        {pull.overlay}
+        </View>
       )}
     </SafeAreaView>
     </>

@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { PullLogo, pullTint } from "../components/logo-refresh";
+import { usePullLogo } from "../components/logo-refresh";
 import { useBarSpace } from "../components/glass-bar";
 import { scrolled } from "../lib/scrolled";
 import { Alert } from "react-native";
@@ -7,7 +7,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SwipeRow } from "../components/swipe-row";
 import { api } from "../lib/api";
 import { keys } from "../lib/queries";
-import { View, SectionList, Pressable, ScrollView, ActivityIndicator, RefreshControl } from "react-native";
+import { View, SectionList, Pressable, ScrollView, ActivityIndicator } from "react-native";
 import { Text } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -120,6 +120,7 @@ export default function Notifications() {
   const barSpace = useBarSpace();
   const notes = useNotes();
   const pullRefresh = usePullRefresh(notes.refetch);
+  const pull = usePullLogo({ ...pullRefresh, tint: colors.clay });
   const router = useRouter();
   const [filter, setFilter] = useState<string>("");
 
@@ -232,6 +233,7 @@ export default function Notifications() {
         </ScrollView>
       </View>
 
+      <View style={{ flex: 1 }}>
       <SectionList
         // التمريرُ يطوي صفّاً مسحوباً مفتوحاً (القاعدة ٢١٣).
         onScrollBeginDrag={scrolled}
@@ -240,13 +242,7 @@ export default function Notifications() {
         stickySectionHeadersEnabled={false}
         scrollEnabled={!swiping}
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: barSpace + 8, flexGrow: 1 }}
-        refreshControl={
-          <RefreshControl
-            {...pullRefresh}
-            tintColor={pullTint(colors.clay)}
-          />
-        }
-        ListHeaderComponent={<PullLogo refreshing={pullRefresh.refreshing} />}
+        {...pull.props}
         renderSectionHeader={({ section }) => (
           <Text
             style={{
@@ -358,6 +354,8 @@ export default function Notifications() {
           )
         }
       />
+      {pull.overlay}
+      </View>
     </SafeAreaView>
   );
 }

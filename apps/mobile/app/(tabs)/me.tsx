@@ -1,9 +1,9 @@
 import { useBarSpace } from "../../components/glass-bar";
-import { PullLogo, pullTint } from "../../components/logo-refresh";
+import { usePullLogo } from "../../components/logo-refresh";
 import { TabBackdrop } from "../../components/tab-backdrop";
 import { scrolled } from "../../lib/scrolled";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { View, SectionList, Pressable, ActivityIndicator, Alert, Animated, RefreshControl, AccessibilityInfo } from "react-native";
+import { View, SectionList, Pressable, ActivityIndicator, Alert, Animated, AccessibilityInfo } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -191,6 +191,7 @@ export default function Me() {
     setRefreshing(true);
     void Promise.all([refreshMe(), stats.refetch(), mine.refetch()]).finally(() => setRefreshing(false));
   };
+  const pull = usePullLogo({ refreshing, onRefresh: reload, tint: "#fff", y: scrollY });
   useTabTop(() => list.current?.getScrollResponder()?.scrollTo({ y: 0, animated: true }));
   // تعدّدُ الحسابات (القاعدة ٣١٦) في نسخة التطوير وحدها حتى يُجرَّب.
   useDoubleTapSwitch(DEV_FEATURES);
@@ -258,6 +259,7 @@ export default function Me() {
         ) : null}
       </View>
 
+      <View style={{ flex: 1 }}>
       <Animated.SectionList
         ref={list as never}
         // حقلُ التعليق داخل القائمة: آبل تُزيح المحتوى بقدر الكيبورد وتُظهر
@@ -272,10 +274,9 @@ export default function Me() {
         onScroll={onScroll}
         onScrollBeginDrag={scrolled}
         scrollEventThrottle={16}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} tintColor={pullTint("#fff")} />}
+        {...pull.props}
         ListHeaderComponent={
           <>
-            <PullLogo refreshing={refreshing} />
             <StretchCover y={scrollY} height={COVER}>
               <CoverLayer mediaId={me.coverMediaId} themeMediaId={me.background?.coverMediaId} spec={me.background?.spec} height={COVER} x={me.coverX} y={me.coverY} zoom={me.coverZoom} />
             </StretchCover>
@@ -385,6 +386,8 @@ export default function Me() {
           )
         }
       />
+      {pull.overlay}
+      </View>
 
     </SafeAreaView>
   );
