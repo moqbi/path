@@ -26,7 +26,7 @@ import { PhotoViewer } from "../components/photo-viewer";
 import { PlaceVisitors } from "../components/place-visitors";
 import { ReactSheet } from "../components/react-sheet";
 import { AddSheet, openAddSheet } from "../components/add-sheet";
-import { AccountsSheet } from "../components/accounts-sheet";
+import { AccountsSheet, SwitchToast } from "../components/accounts-sheet";
 import { CreateSheet, NoteSheet } from "../components/note-sheet";
 import { Tour } from "../components/tour";
 import { applyTheme, colors, themeStore, veil } from "../theme/tokens";
@@ -335,6 +335,7 @@ function Gate() {
     <ReactSheet />
     <AddSheet />
     <AccountsSheet />
+    <SwitchToast />
     {/* النوت ونافذةُ «قصة أو نوت» — في الجذر للسبب نفسه (القاعدة ٢٦٩). */}
     <NoteSheet />
     <CreateSheet />
