@@ -82,7 +82,7 @@ export default async function ProfilePage({
   // ما وصلك هديةً: شراءٌ باسمك دفع ثمنه غيرك.
   const gotGifts = purchases.filter((row) => row.giftedBy).length;
 
-  // أقراصُ التعديل والإكسسوارات بجانب الاسم (القاعدة ٣٢٢) للمالك وممنوحي اللوحة كلّها،
+  // أقراصُ التعديل والإكسسوارات على الغلاف (القاعدة ٣٢٣) للمالك وممنوحي اللوحة كلّها،
   // والصفُّ القديم لغيرهم.
   const discs = canTryStickers(user);
   const editSheet = (disc: boolean) => (
@@ -169,6 +169,15 @@ export default async function ProfilePage({
             height={176}
           />
         }
+        coverActions={
+          discs ? (
+            // التعديلُ والإكسسوارات على الغلاف (القاعدة ٣٢٣): سطرُ الاسم يضيق بالوسم.
+            <>
+              {editSheet(true)}
+              {accessories(true)}
+            </>
+          ) : null
+        }
         avatar={
           <AvatarMenu
             name={user.name}
@@ -191,12 +200,6 @@ export default async function ProfilePage({
               )}
               <NameTag isPlus={user.isPlus} tag={user.tag} size={12} />
             </h1>
-            {discs ? (
-              <div className="flex shrink-0 items-center gap-1.5">
-                {editSheet(true)}
-                {accessories(true)}
-              </div>
-            ) : null}
           </div>
         }
         fold={
