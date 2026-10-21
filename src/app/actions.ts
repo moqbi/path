@@ -1478,6 +1478,9 @@ export async function changePassword(
 export async function blockUser(targetId: string): Promise<void> {
   const user = await requireUser();
   if (targetId === user.id) throw new Error("لا يمكنك حظر نفسك");
+  // المشرفُ لا يُحظر (القاعدة ٣١٨) — كباب الخادم.
+  const target = await prisma.user.findUnique({ where: { id: targetId }, select: { role: true, adminScope: true } });
+  if (target?.role === "ADMIN" || target?.adminScope === "ALL") throw new Error("لا يمكن حظر حساب الإدارة");
 
   await prisma.$transaction([
     prisma.block.upsert({
