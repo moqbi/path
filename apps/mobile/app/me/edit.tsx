@@ -19,6 +19,7 @@ import { useSession } from "../../lib/session";
 import { brandGradient, colors } from "../../theme/tokens";
 import { BIO_MAX } from "@athar/shared";
 import { ar } from "../../lib/format";
+import { tourSignal } from "../../components/tour";
 
 // بمقاس الغلاف الحقيقيّ: ما يُضبط هنا هو ما يُرى هناك.
 const COVER_H = COVER_HEIGHT;
@@ -77,6 +78,8 @@ export default function EditProfile() {
       });
       await refresh();
       await client.invalidateQueries({ queryKey: keys.me });
+      // الجولةُ تنتظر الحفظ لتمضي إلى بطاقة الترحيب (القاعدة ٣٢٦).
+      tourSignal("profile.saved");
       // النافذة تُغلق نفسها بعد الحفظ — لا تحويلَ من الإجراء.
       router.back();
     } catch (problem) {
@@ -125,6 +128,7 @@ export default function EditProfile() {
               charm={me.charm}
               onError={setPictureError}
               onChanged={async () => {
+                tourSignal("avatar");
                 await refresh();
                 await client.invalidateQueries({ queryKey: keys.me });
               }}
@@ -153,7 +157,15 @@ export default function EditProfile() {
 
           <View style={{ paddingHorizontal: 20, paddingTop: 16, gap: 12 }}>
             <Field label="الاسم">
-              <TextInput value={name} onChangeText={setName} maxLength={40} style={INPUT} />
+              <TextInput
+                value={name}
+                onChangeText={(next) => {
+                  setName(next);
+                  if (next.trim() && next.trim() !== me.name) tourSignal("name");
+                }}
+                maxLength={40}
+                style={INPUT}
+              />
             </Field>
 
             <Field label="المعرّف">
@@ -161,7 +173,10 @@ export default function EditProfile() {
                 <Text style={{ color: colors.groundInk, fontSize: 15 }}>@</Text>
                 <TextInput
                   value={handle}
-                  onChangeText={setHandle}
+                  onChangeText={(next) => {
+                    setHandle(next);
+                    if (next.trim() && next.trim() !== (me.handle ?? "")) tourSignal("handle");
+                  }}
                   maxLength={20}
                   autoCapitalize="none"
                   autoCorrect={false}
