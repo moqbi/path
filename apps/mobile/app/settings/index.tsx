@@ -290,8 +290,8 @@ export default function Settings() {
         />
 
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16 }}>
-          <ShieldIcon size={15} color={colors.muted} />
-          <Text style={{ color: colors.muted, fontSize: 11.5 }}>
+          <ShieldIcon size={15} color={colors.groundInk} />
+          <Text style={{ color: colors.groundInk, fontSize: 11.5 }}>
             ما يُنشر لأصدقائك لا يخرج عنهم.
           </Text>
         </View>
@@ -304,7 +304,7 @@ export default function Settings() {
         <FollowRow />
 
         {/* رقمُ النسخة للدعم: من الجهاز نفسه، فيتبدّل مع كلّ بناءٍ وتحديث (القاعدة ٣٠٨). */}
-        <Text selectable style={{ color: colors.muted, fontSize: 11, textAlign: "center", marginTop: 18, writingDirection: "ltr" }}>
+        <Text selectable style={{ color: colors.groundInk, fontSize: 11, textAlign: "center", marginTop: 18, writingDirection: "ltr" }}>
           ATHAR Moments {versionLine()}
         </Text>
       </ScrollView>

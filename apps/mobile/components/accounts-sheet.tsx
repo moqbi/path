@@ -227,11 +227,6 @@ function Body({ close }: { close: () => void }) {
           </Pressable>
         ) : null}
 
-        {rows.length > 1 ? (
-          <Text style={{ color: "rgba(255,255,255,.5)", fontSize: 11.5, textAlign: "center", marginTop: 12, lineHeight: 18 }}>
-            التنبيهات تصل للحساب المفتوح وحده
-          </Text>
-        ) : null}
         {error ? <Text style={{ color: "#FF9C84", fontSize: 12.5, textAlign: "center", marginTop: 10 }}>{error}</Text> : null}
       </View>
     </GlassSheet>

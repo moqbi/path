@@ -53,7 +53,7 @@ function Stat({ icon, value, label, first }: { icon: React.ReactNode; value: str
         {icon}
       </View>
       <Text style={{ color: colors.groundInk, fontSize: 15, fontWeight: "700" }}>{value}</Text>
-      <Text style={{ color: colors.groundMuted, fontSize: 10, marginTop: 2 }}>{label}</Text>
+      <Text style={{ color: colors.groundInk, fontSize: 10, marginTop: 2 }}>{label}</Text>
     </View>
   );
 }
@@ -87,7 +87,7 @@ function CountUp({ to }: { to: number }) {
  *  والهديتان رقمان: ما أهديتَه وما أُهدي لك، والصفرُ منهما لا يُكتب (القاعدة ٢٩٣). */
 function StatLine({ s }: { s?: { moments: number; friends: number; sent: number; got: number } }) {
   const item = (to: number, label: string) => (
-    <Text style={{ color: colors.groundMuted, fontSize: 13 }}>
+    <Text style={{ color: colors.groundInk, fontSize: 13 }}>
       <Text style={{ color: colors.groundInk, fontSize: 15, fontWeight: "800" }}>
         <CountUp to={to} />
       </Text>{" "}
@@ -342,7 +342,7 @@ export default function Me() {
 
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 4 }}>
               <Text style={{ color: colors.groundInk, fontSize: 15, fontWeight: "700" }}>
-                لحظاتي <Text style={{ color: colors.groundMuted, fontSize: 12, fontWeight: "400" }}>{ar(s?.moments ?? 0)}</Text>
+                لحظاتي <Text style={{ color: colors.groundInk, fontSize: 12, fontWeight: "400" }}>{ar(s?.moments ?? 0)}</Text>
               </Text>
               {/* «أرشيفي» و«سنتك في كتاب» (القاعدة ٢٤٤): بابُهما عند لحظاتك لا بعد آخرها. */}
               <Spot id="me.archive">
@@ -363,7 +363,7 @@ export default function Me() {
             <View style={{ width: SPINE_W, alignItems: "center" }}>
               <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.groundLine }} />
             </View>
-            <Text style={{ color: colors.groundInk2, fontSize: 15, fontWeight: "700" }}>{section.title}</Text>
+            <Text style={{ color: colors.groundInk, fontSize: 15, fontWeight: "700" }}>{section.title}</Text>
           </View>
         )}
         renderItem={({ item }) => (
