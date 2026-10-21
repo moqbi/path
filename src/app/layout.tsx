@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { TAGLINE_AR, TAGLINE_EN } from "@/components/brand";
 import { currentUser } from "@/lib/auth";
+import { canTryStickers } from "@/lib/stickers";
+import { OfflineBanner } from "@/components/offline-banner";
 import { parsePalette, themeVars, veilOf } from "@/lib/theme";
 import { NavProbe } from "@/components/nav";
 import { BASE, asset } from "@/lib/base";
@@ -59,6 +61,8 @@ export default async function RootLayout({
       }}
     >
       <NavProbe />
+      {/* «ما فيه اتصال» (القاعدة ٣٢١) — للمالك وممنوحي اللوحة كلّها كنسخة التطوير. */}
+      {user && canTryStickers(user) ? <OfflineBanner /> : null}
       {children}
     </div>
   );

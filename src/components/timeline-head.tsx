@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { RefreshIcon } from "@/components/icons";
+import { LogoRefresh } from "@/components/logo-refresh";
 import { CoverLayer } from "@/components/ui";
 import { playRefresh } from "@/lib/sound";
 
@@ -33,7 +34,10 @@ export function TimelineHead({
   tag,
   since,
   children,
+  logo = false,
 }: {
+  /** مؤشّرُ التحديث بالشعار (القاعدة ٣٢١) — للمالك وممنوحي اللوحة كلّها. */
+  logo?: boolean;
   coverMediaId: string | null;
   /** غلافُ الثيم الملبوس (القاعدة ٢٨٨). */
   themeCoverMediaId?: string | null;
@@ -166,10 +170,14 @@ export function TimelineHead({
               onClick={refresh}
               disabled={pending}
               aria-label="تحديث الخط الزمني"
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full disabled:opacity-60"
+              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${logo ? "" : "disabled:opacity-60"}`}
               // قرصٌ داكن لا شفّاف: بلا درعٍ على الغلاف كان الأبيضُ يذوب في صورةٍ فاتحة.
               style={{ background: "rgba(14,26,36,.38)", color: "#fff" }}
             >
+              {logo && pending ? (
+                // والجلبُ الجاري شعارُ التطبيق يتنفّس وقوسُه يدور (القاعدة ٣٢١).
+                <LogoRefresh size={22} />
+              ) : (
               <span
                 style={{
                   display: "block",
@@ -180,6 +188,7 @@ export function TimelineHead({
               >
                 <RefreshIcon size={14} />
               </span>
+              )}
             </button>
             <div className="shrink-0">{avatar}</div>
             <div className="min-w-0 grow">

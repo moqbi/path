@@ -28,6 +28,9 @@ import { ReactSheet } from "../components/react-sheet";
 import { EditSheet } from "../components/edit-sheet";
 import { AddSheet, openAddSheet } from "../components/add-sheet";
 import { AccountsSheet, SwitchToast } from "../components/accounts-sheet";
+import { DEV_FEATURES } from "../lib/dev-features";
+import { OfflineBanner } from "../components/offline-banner";
+import { isNetworkError } from "../lib/network";
 import { CreateSheet, NoteSheet } from "../components/note-sheet";
 import { openNote } from "../lib/status-notes";
 import { Tour } from "../components/tour";
@@ -91,8 +94,10 @@ const client = new QueryClient({
   defaultOptions: {
     queries: {
       // شبكةُ الجوّال تتقطّع: محاولةٌ واحدة إضافية تكفي، والمزيد يُبقي
-      // الشاشة دوّارةً بلا خبر.
-      retry: 1,
+      // الشاشة دوّارةً بلا خبر. وفشلُ الشبكة يوقف الاستعلامَ حتى يعود
+      // الاتصال (`onlineManager` ← `lib/network.ts`) فيُستأنف وحده (القاعدة ٣٢١).
+      retry: (count, error) => (isNetworkError(error) ? count < 3 : count < 1),
+      retryDelay: (count) => Math.min(1000 * 2 ** count, 8000),
       staleTime: 30_000,
       refetchOnWindowFocus: false,
     },
@@ -344,6 +349,8 @@ function Gate() {
     <AddSheet />
     <AccountsSheet />
     <SwitchToast />
+    {/* «ما فيه اتصال» زجاجٌ في أعلى الشاشة (القاعدة ٣٢١). */}
+    {DEV_FEATURES ? <OfflineBanner /> : null}
     {/* النوت ونافذةُ «قصة أو نوت» — في الجذر للسبب نفسه (القاعدة ٢٦٩). */}
     <NoteSheet />
     <CreateSheet />
