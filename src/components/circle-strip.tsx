@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { PulseRings } from "@/components/pulse-rings";
 import { useEffect, useRef, useState, useTransition } from "react";
 import {
   deleteNote,
@@ -831,7 +832,7 @@ function AppleMusicTag() {
 }
 
 /**
- * صورةُ صاحب اللحظة حين له نوتٌ لم تُشاهَد (القاعدة ٣١٩): نقطةٌ في ركنها،
+ * صورةُ صاحب اللحظة حين له نوتٌ لم تُشاهَد (القاعدة ٣١٩): دوائرُ تنبض حولها (القاعدة ٣٢٠)،
  * والضغطُ يفتح النوت مكانها لا ملفّه. وبالإغلاق يُعاد رسمُ الصفحة فتذهب العلامة.
  */
 export function NoteMark({ note, label, children }: { note: StripNote; label: string; children: React.ReactNode }) {
@@ -840,12 +841,8 @@ export function NoteMark({ note, label, children }: { note: StripNote; label: st
   return (
     <>
       <button type="button" aria-label={label} onClick={() => setOpen(true)} className="relative">
-        {children}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2"
-          style={{ background: "var(--color-clay)", borderColor: "var(--color-ground)" }}
-        />
+        <PulseRings />
+        <span className="relative">{children}</span>
       </button>
       {open ? (
         <NoteSheet

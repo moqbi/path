@@ -29,6 +29,7 @@ export function GiftButton({
   friendIsPlus,
   friendOwned,
   grow,
+  disc,
 }: {
   friendId: string;
   friendName: string;
@@ -36,11 +37,22 @@ export function GiftButton({
   friendOwned: string[];
   /** يملأ مكانه في صفّ أزرار الملف بمقاس أزرار «أنا». */
   grow?: boolean;
+  /** قرصُ أيقونةٍ بلا كلمة — بجانب اسم الصديق في ملفّه (القاعدة ٣٢٠). */
+  disc?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
+      {disc ? (
+        <Pressable
+          accessibilityLabel={`إهداء ${friendName}`}
+          onPress={() => setOpen(true)}
+          style={{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
+        >
+          <GiftIcon size={18} color={colors.ink2} />
+        </Pressable>
+      ) : (
       <Pressable
         onPress={() => setOpen(true)}
         style={{
@@ -60,6 +72,7 @@ export function GiftButton({
         <GiftIcon size={16} color={colors.ink2} />
         <Text style={{ color: grow ? colors.ink : colors.ink2, fontSize: grow ? 13.5 : 13, fontWeight: "600" }}>إهداء</Text>
       </Pressable>
+      )}
 
       {open ? (
         <Sheet

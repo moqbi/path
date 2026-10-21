@@ -16,6 +16,9 @@ import { MomentCard } from "@/components/moment-card";
 import { AlertBell } from "@/components/edit-sheet";
 import { canTryStickers } from "@/lib/stickers";
 import { GiftButton } from "./gift";
+import { PulseRings } from "@/components/pulse-rings";
+import { storyRings } from "@/lib/stories";
+import { togetherMoments } from "@/lib/together";
 import { Avatar, CoverLayer, Empty, ScreenHeader, NameTag } from "@/components/ui";
 import { AvatarMenu } from "@/components/avatar-menu";
 import { TabBar } from "@/components/tab-bar";
@@ -43,10 +46,13 @@ const WORN = {
 /** ملف صديق: مخططه ولحظاته — لا يفتحه إلا من هو في دائرته. */
 export default async function FriendProfilePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { id } = await params;
+  const { tab: tabParam } = await searchParams;
 
   const viewer = await currentUser();
   if (!viewer) redirect("/login");
@@ -153,8 +159,20 @@ export default async function FriendProfilePage({
     prisma.purchase.findMany({ where: { userId: viewer.id, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, select: { itemId: true } }),
   ]);
 
+  /*
+    ملفُّ الصديق بهيئة «الآن» (القاعدة ٣٢٠) — للمالك وممنوحي اللوحة أوّلاً (`canTryStickers`):
+    أفعالُه أقراصٌ بجانب اسمه، وقصّتُه على صورته، وتحت الرأس «لحظاته | آثارنا».
+    و«آثارنا» لمشتركي آثار+ (القاعدة ١٥٩) — والخادمُ يفحصها هنا لا الرابطُ وحده.
+  */
+  const fresh = trial && friend;
+  const tab = fresh && tabParam === "together" && viewer.isPlus ? "together" : "moments";
+  const [shown, ring] = await Promise.all([
+    tab === "together" ? togetherMoments(viewer.id, id) : Promise.resolve(moments),
+    fresh ? storyRings(viewer.id).then((rings) => rings.find((r) => r.userId === id) ?? null) : Promise.resolve(null),
+  ]);
+
   const days: { label: string; items: typeof moments }[] = [];
-  for (const moment of moments) {
+  for (const moment of shown) {
     const label = dayLabel(moment.createdAt);
     const last = days.at(-1);
     if (last && last.label === label) last.items.push(moment);
@@ -169,7 +187,9 @@ export default async function FriendProfilePage({
         <ProfileHead
           person={person}
           avatar={
-            /* الصورة تُضغط: عرضها، أو معلومات ما يلبسه صاحبها. */
+            /* الصورة تُضغط: عرضها، أو معلومات ما يلبسه صاحبها — أو قصّته إن كانت له (القاعدة ٣٢٠). */
+            <span className="relative block">
+            {ring?.fresh ? <PulseRings /> : null}
             <AvatarMenu
               name={person.name}
               size={104}
@@ -180,6 +200,40 @@ export default async function FriendProfilePage({
               charmItem={person.charm}
               owned={mine.map((row) => row.itemId)}
             />
+            {ring ? (
+              <Link
+                href={`/stories/${person.id}`}
+                aria-label={`قصة ${person.name}`}
+                className="absolute inset-0 z-10 rounded-full"
+                style={ring.fresh ? undefined : { boxShadow: "0 0 0 3px color-mix(in srgb, var(--color-ground-ink) 35%, transparent)" }}
+              />
+            ) : null}
+            </span>
+          }
+          actions={
+            fresh ? (
+              <>
+                <GiftButton
+                  disc
+                  friendOwned={theirs.map((row) => row.itemId)}
+                  friendId={person.id}
+                  friendName={person.name}
+                  friendIsPlus={person.isPlus}
+                />
+                <form action={startConversation.bind(null, person.id)}>
+                  <button type="submit" aria-label="محادثة" className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}>
+                    <MessageIcon size={17} />
+                  </button>
+                </form>
+                <AlertBell
+                  disc
+                  friendId={person.id}
+                  name={person.name}
+                  initial={alertOn}
+                  avatar={<Avatar name={person.name} size={26} mediaId={person.avatarMediaId} />}
+                />
+              </>
+            ) : null
           }
         >
           {/*
@@ -188,7 +242,25 @@ export default async function FriendProfilePage({
             ولا شيء من ذلك بينك وبين حسابٍ مفتوح لم تُضِفه بعد.
             فيظهر له زرُّ الإضافة مكانها.
           */}
-          {friend ? (
+          {fresh ? (
+            /* «لحظاته | آثارنا» — والإهداءُ في القرص فوق لا قسماً هنا (القاعدة ٣٢٠). */
+            <nav role="tablist" aria-label="أقسام الملف" className="flex grow gap-1 rounded-full bg-chip p-1">
+              {([["moments", "لحظاته", `/u/${person.id}`], ["together", "آثارنا", viewer.isPlus ? `/u/${person.id}?tab=together` : "/subscribe"]] as const).map(
+                ([key, label, href]) => (
+                  <Link
+                    key={key}
+                    href={href}
+                    role="tab"
+                    aria-selected={tab === key}
+                    className="flex h-9 grow items-center justify-center rounded-full text-[13px] font-bold text-ink"
+                    style={{ background: tab === key ? "var(--color-card)" : "transparent" }}
+                  >
+                    {label}
+                  </Link>
+                ),
+              )}
+            </nav>
+          ) : friend ? (
             <>
               {/* المتجرُ كلُّه يُجلب ساعةَ تُفتح النافذة لا مع كل ملف (القاعدة ١٦٢). */}
               <GiftButton
@@ -203,7 +275,6 @@ export default async function FriendProfilePage({
                 آثارنا
               </Link>
               <ChatButton id={person.id} />
-              {trial ? <AlertBell friendId={person.id} name={person.name} initial={alertOn} /> : null}
             </>
           ) : (
             /* الحسابُ المفتوح: يُضاف فيقبل بنفسه، ويُراسَل بلا إضافة (القاعدة ٢٢١). */
@@ -219,8 +290,8 @@ export default async function FriendProfilePage({
         </ProfileHead>
 
         <div className="px-5">
-          {moments.length === 0 ? (
-            <Empty title="ما نشر شي بعد" />
+          {shown.length === 0 ? (
+            <Empty title={tab === "together" ? "ما جمعتكما لحظةٌ بعد" : "ما نشر شي بعد"} />
           ) : (
             <div className="spine relative">
               {days.map((day) => (
@@ -413,8 +484,11 @@ function ProfileHead({
   person,
   avatar,
   extra = null,
+  actions = null,
   children,
 }: {
+  /** أقراصُ الأفعال في طرف سطر الاسم — ملفُّ الصديق (القاعدة ٣٢٠). */
+  actions?: React.ReactNode;
   person: Person;
   avatar: React.ReactNode;
   /** سطرٌ يُلحق بالعضويّة — «صديق مشترك واحد» في بطاقة من ليس صديقاً. */
@@ -447,6 +521,7 @@ function ProfileHead({
             <span dir="auto" className="truncate">{person.name}</span>
             <NameTag isPlus={person.isPlus} tag={person.tag} size={12} />
           </h1>
+          {actions ? <div className="flex shrink-0 items-center gap-1.5 pb-2">{actions}</div> : null}
         </div>
         {person.bio ? (
           <p dir="auto" className="mt-1 text-[13px] leading-relaxed text-ground-ink">

@@ -17,7 +17,8 @@ import { GiftButton } from "../../components/gift-sheet";
 import { BellPlusIcon, MessageIcon, StarIcon, WithIcon } from "../../components/icons";
 import { DEV_FEATURES } from "../../lib/dev-features";
 import { api } from "../../lib/api";
-import { keys, type Moment } from "../../lib/queries";
+import { keys, useRings, useTogether, type Moment } from "../../lib/queries";
+import { showToast } from "../../components/accounts-sheet";
 import { ar } from "../../lib/format";
 import { useSession } from "../../lib/session";
 import { useStatusNotes } from "../../lib/status-notes";
@@ -159,6 +160,18 @@ function Profile() {
 
   const who = person.data?.person;
 
+  /*
+    ملفُّ الصديق بهيئة «الآن» (القاعدة ٣٢٠) — في نسخة التطوير وحدها (القاعدة ٢٩١):
+    أفعالُه أقراصٌ بجانب اسمه، وقصّتُه على صورته، وتحت الرأس «لحظاتها | آثارنا».
+  */
+  const fresh = DEV_FEATURES && person.data?.friend === true;
+  const rings = useRings();
+  const ring = fresh && who ? rings.data?.rings.find((r) => r.userId === who.id) ?? null : null;
+  const [tab, setTab] = useState<"moments" | "together">("moments");
+  const together = useTogether(fresh && tab === "together" ? id ?? "" : "");
+  const list = tab === "together" ? together.data?.moments ?? [] : moments.data?.moments ?? [];
+  const listLoading = tab === "together" ? together.isLoading : moments.isLoading;
+
   // السحبُ من أعلى يمدّ الغلاف ويُعيد جلب الملف ولحظاته — كاللحظات و«أنا».
   const { y: scrollY, onScroll } = useStretch();
   const [refreshing, setRefreshing] = useState(false);
@@ -196,7 +209,7 @@ function Profile() {
           keyboardDismissMode="interactive"
           scrollEventThrottle={16}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} tintColor="#fff" />}
-          data={moments.data?.moments ?? []}
+          data={list}
           keyExtractor={(item) => item.id}
           onViewableItemsChanged={onViewable}
           viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
@@ -251,6 +264,28 @@ function Profile() {
                   charm={who.charm}
                   frameItem={who.frame}
                   charmItem={who.charm}
+                  story={ring ? { fresh: ring.fresh, open: () => router.push(`/stories/${who.id}` as never) } : null}
+                  actions={
+                    fresh ? (
+                      <>
+                        <GiftButton
+                          disc
+                          friendId={who.id}
+                          friendName={who.name}
+                          friendIsPlus={who.isPlus}
+                          friendOwned={person.data?.owned ?? []}
+                        />
+                        <Pressable
+                          accessibilityLabel="محادثة"
+                          onPress={() => talk.mutate()}
+                          style={{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
+                        >
+                          <MessageIcon size={17} color={colors.onBrand} />
+                        </Pressable>
+                        <AlertBell friendId={who.id} name={who.name} avatarMediaId={who.avatarMediaId} disc />
+                      </>
+                    ) : null
+                  }
                 />
               </View>
 
@@ -279,7 +314,28 @@ function Profile() {
                   ثلاثة أفعال: إهداءٌ من مكانه، وآثارنا، ومحادثة. والحظر
                   ليس هنا — مكانه صفّ الصديق في الدائرة (القاعدة ٣٨).
                 */}
-                {person.data?.friend ? (
+                {fresh ? (
+                  /*
+                    «لحظاتها | آثارنا» — والهدايا في القرص فوق لا قسماً هنا (القاعدة ٣٢٠).
+                    و«آثارنا» لمشتركي آثار+ (القاعدة ١٥٩): غيرُ المشترك يُؤخذ إلى صفحته.
+                  */
+                  <View accessibilityRole="tablist" style={{ flexDirection: "row", gap: 4, padding: 4, borderRadius: 22, backgroundColor: colors.chip }}>
+                    {([["moments", "لحظاته"], ["together", "آثارنا"]] as const).map(([key, label]) => (
+                      <Pressable
+                        key={key}
+                        accessibilityRole="tab"
+                        accessibilityState={{ selected: tab === key }}
+                        onPress={() => {
+                          if (key === "together" && !me?.isPlus) return router.push("/subscribe" as never);
+                          setTab(key);
+                        }}
+                        style={{ flex: 1, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: tab === key ? colors.card : "transparent" }}
+                      >
+                        <Text style={{ color: colors.ink, fontSize: 13, fontWeight: "700" }}>{label}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : person.data?.friend ? (
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                     <GiftButton
                       grow
@@ -353,7 +409,11 @@ function Profile() {
             </>
           }
           ListEmptyComponent={
-            moments.isLoading ? null : person.data?.friend === false && !person.data?.follower && !moderating ? (
+            listLoading ? null : tab === "together" ? (
+              <Text style={{ color: colors.groundFaint, fontSize: 12.5, textAlign: "center", paddingVertical: 24 }}>
+                ما جمعتكما لحظةٌ بعد.
+              </Text>
+            ) : person.data?.friend === false && !person.data?.follower && !moderating ? (
               /* مكانُ اللحظات يقول لماذا لا تُرى — لا سطرٌ يُقرأ «ما نشر شي». */
               <View
                 style={{
@@ -392,14 +452,22 @@ const onViewable = ({ viewableItems }: { viewableItems: { item: { id: string } |
  * «نبّهني بقصصه ونوته» (القاعدة ٣١٩): جرسٌ في صفّ أزرار الصديق، يُضيء بلون اللمسة
  * مفعّلاً. والخادمُ يقرع لمن يرى ما نُشر وحده.
  */
-function AlertBell({ friendId, name }: { friendId: string; name: string }) {
+function AlertBell({ friendId, name, avatarMediaId, disc }: { friendId: string; name: string; avatarMediaId?: string | null; disc?: boolean }) {
   const client = useQueryClient();
   const key = ["story-alert", friendId];
   const state = useQuery({ queryKey: key, queryFn: () => api<{ on: boolean }>(`/v1/circle/${friendId}/alert`) });
   const flip = useMutation({
     mutationFn: (on: boolean) => api<{ on: boolean }>(`/v1/circle/${friendId}/alert`, { method: "PUT", body: JSON.stringify({ on }) }),
     onMutate: (on) => client.setQueryData(key, { on }),
-    onSuccess: (data) => client.setQueryData(key, data),
+    onSuccess: (data) => {
+      client.setQueryData(key, data);
+      // سطرٌ زجاجيّ كـ«تمّ التبديل» (القاعدة ٣٢٠) يقول ما جرى ولمن.
+      showToast({
+        name,
+        avatarMediaId: avatarMediaId ?? null,
+        lead: data.on ? "تم تفعيل إشعارات القصص والنوت لـ" : "تم إيقاف إشعارات القصص والنوت لـ",
+      });
+    },
     onError: () => void client.invalidateQueries({ queryKey: key }),
   });
   const on = state.data?.on ?? false;
@@ -410,9 +478,9 @@ function AlertBell({ friendId, name }: { friendId: string; name: string }) {
       disabled={state.isLoading || flip.isPending}
       onPress={() => flip.mutate(!on)}
       style={{
-        width: 46,
-        height: 46,
-        borderRadius: 12,
+        width: disc ? 40 : 46,
+        height: disc ? 40 : 46,
+        borderRadius: disc ? 20 : 12,
         alignItems: "center",
         justifyContent: "center",
         borderWidth: 1,

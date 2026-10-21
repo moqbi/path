@@ -1,3 +1,4 @@
+import { PulseRing } from "./pulse-ring";
 import { View, Pressable, Image } from "react-native";
 import { Text } from "./type";
 import { useRouter } from "expo-router";
@@ -235,8 +236,8 @@ export function MomentCard({
   const mineReaction = found ? { kind: found.kind, emoji: found.emoji } : null;
 
   /*
-    قصّةٌ أو نوتٌ لم تُشاهَد لصاحب اللحظة (القاعدة ٣١٩): حلقةٌ حول صورته للقصّة،
-    ونقطةٌ في ركنها للنوت، والضغطُ يفتحها مباشرةً بدل ملفّه — وبالمشاهدة تذهب
+    قصّةٌ أو نوتٌ لم تُشاهَد لصاحب اللحظة (القاعدة ٣١٩): دوائرُ تنبض حول صورته،
+    والضغطُ يفتحها مباشرةً بدل ملفّه — وبالمشاهدة تذهب
     العلامةُ ويعود الضغطُ إلى الملفّ. من استعلامَي الشريط نفسيهما فلا طلبَ زائد.
   */
   const rings = useRings();
@@ -255,6 +256,8 @@ export function MomentCard({
           else router.push((moment.author.id === viewerId ? "/me" : `/u/${moment.author.id}`) as never);
         }}
       >
+        {/* دوائرُ تنبض حول الصورة للقصّة والنوت سواء — **بقرار المالك** (`PulseRing`). */}
+        {freshStory || freshNote ? <PulseRing size={46} /> : null}
         <Avatar
           name={moment.author.name}
           size={46}
@@ -262,18 +265,6 @@ export function MomentCard({
           frame={moment.author.frame}
           charm={moment.author.charm}
         />
-        {freshStory ? (
-          <View
-            pointerEvents="none"
-            style={{ position: "absolute", top: -4, left: -4, right: -4, bottom: -4, borderRadius: 99, borderWidth: 2.5, borderColor: colors.clay }}
-          />
-        ) : null}
-        {freshNote ? (
-          <View
-            pointerEvents="none"
-            style={{ position: "absolute", top: -3, right: -3, width: 15, height: 15, borderRadius: 8, borderWidth: 2, borderColor: colors.groundSolid, backgroundColor: colors.clay }}
-          />
-        ) : null}
       </Pressable>
       <Text style={{ color: colors.groundMuted, fontSize: 10, fontWeight: "600" }}>
         {timeOfDay(new Date(moment.createdAt))}
