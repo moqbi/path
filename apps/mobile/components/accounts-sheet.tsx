@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, View } from "react-native";
+import { ActivityIndicator, AccessibilityInfo, Animated, Easing, Pressable, View } from "react-native";
+import * as Haptics from "expo-haptics";
 import { useNavigation, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { create } from "zustand";
 import { Text } from "./type";
 import { GlassSheet } from "./glass-sheet";
+import { useBarSpace } from "./glass-bar";
 import { Avatar } from "./avatar";
 import { BackIcon, CheckIcon, PlusIcon, TrashIcon, UserIcon } from "./icons";
 import { MAX_ACCOUNTS } from "../lib/accounts";
@@ -16,6 +18,82 @@ const useAccountsSheet = create<{ open: boolean }>(() => ({ open: false }));
 
 /** نافذةُ الحسابات (القاعدة ٣١٦) — من السهم بجانب الاسم في «أنا». */
 export const openAccounts = () => useAccountsSheet.setState({ open: true });
+
+/** «تمّ التبديل إلى فلان» — يُعرض فوق الشريط ثمّ يذهب. */
+const useSwitched = create<{ face: { name: string; avatarMediaId: string | null; at: number } | null }>(() => ({ face: null }));
+
+/**
+ * التبديلُ كما في واتساب — **بقرار المالك**: نقرةٌ تحت الإصبع ساعةَ يُفهم القصد،
+ * ونقرةُ نجاحٍ حين يكتمل، وسطرٌ في أسفل الشاشة يقول إلى من.
+ */
+async function switchTo(id: string): Promise<void> {
+  await useSession.getState().switchAccount(id);
+  void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+  const me = useSession.getState().me;
+  if (me) useSwitched.setState({ face: { name: me.name, avatarMediaId: me.avatarMediaId, at: Date.now() } });
+}
+
+/** في الجذر: يطفو فوق الشريط السفليّ، ويبهت بعد ثانيتين. */
+export function SwitchToast() {
+  const face = useSwitched((s) => s.face);
+  const space = useBarSpace();
+  const show = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!face) return;
+    AccessibilityInfo.announceForAccessibility?.(`تم التبديل إلى ${face.name}`);
+    show.setValue(0);
+    const run = Animated.sequence([
+      Animated.timing(show, { toValue: 1, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.delay(1800),
+      Animated.timing(show, { toValue: 0, duration: 260, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+    ]);
+    run.start(({ finished }) => finished && useSwitched.setState({ face: null }));
+    return () => run.stop();
+  }, [face?.at]);
+
+  if (!face) return null;
+  const lift = show.interpolate({ inputRange: [0, 1], outputRange: [16, 0] });
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        left: 0,
+        right: 0,
+        bottom: space - 4,
+        alignItems: "center",
+        zIndex: 60,
+        opacity: show,
+        transform: [{ translateY: lift }],
+      }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8,
+          paddingVertical: 6,
+          paddingLeft: 14,
+          paddingRight: 6,
+          borderRadius: 22,
+          backgroundColor: "rgba(20,24,28,.88)",
+          maxWidth: "86%",
+          shadowColor: "#000",
+          shadowOpacity: 0.25,
+          shadowRadius: 10,
+          shadowOffset: { width: 0, height: 4 },
+          elevation: 6,
+        }}
+      >
+        <Avatar name={face.name} size={26} mediaId={face.avatarMediaId} />
+        <Text numberOfLines={1} style={{ color: "#fff", fontSize: 13.5, fontWeight: "600", flexShrink: 1 }}>
+          تم التبديل إلى <Text style={{ fontWeight: "800", writingDirection: "auto" }}>{face.name}</Text>
+        </Text>
+      </View>
+    </Animated.View>
+  );
+}
 
 /**
  * الحساباتُ على الجهاز في نافذةٍ زجاجيّة — **بقرار المالك**، حسابان على الأكثر:
@@ -71,7 +149,7 @@ function Body({ close }: { close: () => void }) {
               disabled={active || busy !== null}
               onPress={() =>
                 void run(row.id, async () => {
-                  await useSession.getState().switchAccount(row.id);
+                  await switchTo(row.id);
                   close();
                 })
               }
@@ -174,7 +252,7 @@ export function BackToParked() {
       onPress={async () => {
         setBusy(true);
         try {
-          await useSession.getState().switchAccount(parked.id);
+          await switchTo(parked.id);
           router.replace("/");
         } catch {
           setBusy(false);
@@ -227,9 +305,14 @@ export function useDoubleTapSwitch(enabled = true) {
         return;
       }
       last.current = 0;
-      const { me, parked, switchAccount } = useSession.getState();
+      const { me, parked } = useSession.getState();
       if (!me || !parked) return;
-      void switchAccount(parked.id).catch(() => openAccounts());
+      // النقرةُ ساعةَ تُفهم الضغطتان، قبل أن يُسأل الخادم.
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+      void switchTo(parked.id).catch(() => {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
+        openAccounts();
+      });
     });
   }, [navigation, enabled]);
 }
