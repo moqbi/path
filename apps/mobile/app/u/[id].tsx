@@ -334,8 +334,9 @@ function Profile() {
                       {add.isSuccess ? "أُرسل الطلب" : "أضفه"}
                     </Text>
                   </Pressable>
-                  {/* والحسابُ المفتوح يُراسَل بلا إضافة (القاعدة ٢٢١) — حسابُ الدعم. */}
-                  {who.isOpen ? (
+                  {/* والحسابُ المفتوح يُراسَل بلا إضافة (القاعدة ٢٢١) — حسابُ الدعم —
+                      والمشرفُ يُراسل أيَّ حساب (القاعدة ٣١٧). */}
+                  {who.isOpen || me?.canGroups ? (
                     <Pressable
                       accessibilityLabel="محادثة"
                       onPress={() => talk.mutate()}

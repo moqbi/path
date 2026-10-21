@@ -4,6 +4,7 @@ import { guard } from "../lib/moderation";
 import { MESSAGE_KEEP_DAYS, VOICE_SECONDS } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { blockedWith, circleIds } from "./visibility";
+import { canRunGroups } from "./groups";
 import { assertSticker, STICKER_TEXT } from "./stickers";
 
 /**
@@ -58,11 +59,13 @@ export async function open(userId: string, otherId: string) {
   const circle = await circleIds(userId);
   if (!circle.includes(otherId)) {
     // والحسابُ المفتوح يردّ على من يتابعه وإن لم يكن من دائرته (القاعدة ٢٦٣).
-    const [open, blocked] = await Promise.all([
+    // والمشرفُ يبدأ محادثةً مع أيّ حساب (القاعدة ٣١٧) — هو لا الطرفُ الآخر.
+    const [open, blocked, staff] = await Promise.all([
       prisma.user.count({ where: { id: { in: [userId, otherId] }, isOpen: true } }),
       blockedWith(userId),
+      canRunGroups(userId),
     ]);
-    if (open === 0 || blocked.includes(otherId)) throw forbidden("المحادثة بعد قبول الإضافة");
+    if ((open === 0 && !staff) || blocked.includes(otherId)) throw forbidden("المحادثة بعد قبول الإضافة");
   }
 
   const { aId, bId } = pairKey(userId, otherId);
