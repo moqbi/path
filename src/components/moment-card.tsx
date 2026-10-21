@@ -27,6 +27,7 @@ import { Reactors } from "@/components/reactions";
 import { AuthorFaces } from "@/components/author-panel";
 import { CommentList } from "@/components/comments";
 import { MomentEditSwipe } from "@/components/edit-sheet";
+import { PulseRings } from "@/components/pulse-rings";
 import { NoteMark, type StripNote } from "@/components/circle-strip";
 import { ar, relative, timeOfDay } from "@/lib/format";
 import type { FeedMoment } from "@/lib/feed";
@@ -130,16 +131,16 @@ function Spine({
 }) {
   const avatar = <Avatar name={name} size={46} frame={frame} mediaId={mediaId} charm={charm} />;
   /*
-    قصّةٌ أو نوتٌ لم تُشاهَد لصاحب اللحظة (القاعدة ٣١٩): حلقةٌ حول صورته للقصّة،
-    ونقطةٌ في ركنها للنوت، والضغطُ يفتحها بدل ملفّه — وبالمشاهدة تذهب العلامة.
+    قصّةٌ أو نوتٌ لم تُشاهَد لصاحب اللحظة (القاعدة ٣١٩): دوائرُ تنبض حول صورته
+    (القاعدة ٣٢٠)، والضغطُ يفتحها بدل ملفّه — وبالمشاهدة تذهب العلامة.
   */
   const others = authorId !== viewerId;
   return (
     <div className="flex w-14 shrink-0 flex-col items-center gap-1.5">
       {others && mark?.story ? (
         <Link href={`/stories/${authorId}`} aria-label={`قصة ${name}`} className="relative">
-          {avatar}
-          <span aria-hidden className="pointer-events-none absolute -inset-1 rounded-full border-[2.5px]" style={{ borderColor: "var(--color-clay)" }} />
+          <PulseRings />
+          <span className="relative">{avatar}</span>
         </Link>
       ) : others && mark?.note ? (
         <NoteMark note={mark.note} label={`نوت ${name}`}>

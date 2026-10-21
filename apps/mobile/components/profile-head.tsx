@@ -6,6 +6,7 @@ import { openNote } from "../lib/status-notes";
 import { frameBleed, type Charm, type Frame } from "./avatar";
 import { NameTag } from "./name-tag";
 import { BackIcon } from "./icons";
+import { PulseRing } from "./pulse-ring";
 import { colors } from "../theme/tokens";
 import { ar, membership } from "../lib/format";
 
@@ -35,7 +36,16 @@ export function ProfileHead({
   charmItem,
   note,
   onAccounts,
+  actions,
+  story,
 }: {
+  /** أقراصُ الأفعال في طرف سطر الاسم — ملفُّ الصديق (القاعدة ٣٢٠). */
+  actions?: React.ReactNode;
+  /**
+   * قصّتُه على صورته (القاعدة ٣٢٠): الضغطُ يفتحها بدل قائمة الصورة، ودوائرُ تنبض حولها
+   * ما دام فيها ما لم يُشاهَد (`fresh`)، وحلقةٌ ساكنة بعدها.
+   */
+  story?: { fresh: boolean; open: () => void } | null;
   /** سهمٌ على يمين الاسم يفتح نافذةَ الحسابات (القاعدة ٣١٦) — في «أنا» وحدها. */
   onAccounts?: () => void;
   /** النوتُ فوق الصورة (القاعدة ٢٦٩) — ضغطُها يفتحها ويُسمع أغنيتها. */
@@ -79,6 +89,7 @@ export function ProfileHead({
       */}
       <View style={{ flexDirection: "row", alignItems: "flex-start", marginTop: -size / 2 }}>
         <View>
+          {story?.fresh ? <PulseRing size={size} /> : null}
           <AvatarMenu
             name={name}
             size={size}
@@ -88,6 +99,17 @@ export function ProfileHead({
             frameItem={frameItem}
             charmItem={charmItem}
           />
+          {story ? (
+            <Pressable
+              accessibilityLabel={`قصة ${name}`}
+              onPress={story.open}
+              style={{ position: "absolute", left: 0, top: 0, width: size, height: size, borderRadius: size / 2, zIndex: 2 }}
+            >
+              {story.fresh ? null : (
+                <View pointerEvents="none" style={{ position: "absolute", left: -4, top: -4, right: -4, bottom: -4, borderRadius: size, borderWidth: 2, borderColor: colors.groundInk, opacity: 0.35 }} />
+              )}
+            </Pressable>
+          ) : null}
           {note ? (
             <Pressable
               accessibilityLabel="النوت"
@@ -121,6 +143,9 @@ export function ProfileHead({
             <NameTag isPlus={isPlus} tag={tag} size={12} />
           </Pressable>
         </View>
+        {actions ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: size / 2 + 6 }}>{actions}</View>
+        ) : null}
       </View>
 
       {/* ما يخرج من الإطار تحت الصورة لا يلتصق بما بعده. */}

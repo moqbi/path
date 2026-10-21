@@ -876,3 +876,33 @@ h3 {
     box-shadow: none;
   }
 }
+
+/*
+  دوائرُ تنبض حول صورةٍ فيها قصّةٌ أو نوتٌ لم تُشاهَد (القاعدة ٣٢٠) — `PulseRings`.
+  ومن طلب «قلّل الحركة» يرى حلقةً ثابتةً واحدة.
+*/
+@keyframes athr-ripple {
+  0% {
+    opacity: 0;
+    transform: scale(1);
+  }
+  15% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.45);
+  }
+}
+.pulse-ring {
+  animation: athr-ripple 1800ms cubic-bezier(0.2, 0.8, 0.3, 1) infinite backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse-ring {
+    animation: none;
+    opacity: 1;
+  }
+  .pulse-ring + .pulse-ring {
+    display: none;
+  }
+}

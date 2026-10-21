@@ -31,6 +31,7 @@ export function GiftButton({
   friendIsPlus,
   friendOwned,
   grow = false,
+  disc = false,
 }: {
   friendId: string;
   friendName: string;
@@ -38,10 +39,22 @@ export function GiftButton({
   friendOwned: string[];
   /** يملأ مكانه في صفّ أزرار الملف بمقاس أزرار «أنا» (القاعدة ٢٣٣). */
   grow?: boolean;
+  /** قرصُ أيقونةٍ بلا كلمة بجانب اسم الصديق (القاعدة ٣٢٠). */
+  disc?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   return (
     <>
+      {disc ? (
+        <button
+          type="button"
+          aria-label={`إهداء ${friendName}`}
+          onClick={() => setOpen(true)}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line bg-card text-ink-2"
+        >
+          <GiftIcon size={18} />
+        </button>
+      ) : (
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -53,6 +66,7 @@ export function GiftButton({
         <GiftIcon size={16} />
         إهداء
       </button>
+      )}
       {open ? (
         <GiftSheet
           friendId={friendId}

@@ -19,8 +19,16 @@ const useAccountsSheet = create<{ open: boolean }>(() => ({ open: false }));
 /** نافذةُ الحسابات (القاعدة ٣١٦) — من السهم بجانب الاسم في «أنا». */
 export const openAccounts = () => useAccountsSheet.setState({ open: true });
 
-/** «تمّ التبديل إلى فلان» — يُعرض فوق الشريط ثمّ يذهب. */
-const useSwitched = create<{ face: { name: string; avatarMediaId: string | null; at: number } | null }>(() => ({ face: null }));
+/**
+ * سطرٌ زجاجيّ فوق الشريط ثمّ يذهب: «تمّ التبديل إلى فلان» (القاعدة ٣١٦)، و«تمّ تفعيل
+ * إشعارات القصص والنوت لفلان» (القاعدة ٣١٩) — بالهيئة نفسها، وجهٌ ثمّ سطر.
+ */
+const useSwitched = create<{ face: { name: string; avatarMediaId: string | null; lead: string; at: number } | null }>(() => ({ face: null }));
+
+/** يعرض السطرَ الزجاجيّ: `lead` قبل الاسم والاسمُ بعده بوزنٍ أثقل. */
+export function showToast(face: { name: string; avatarMediaId: string | null; lead: string }) {
+  useSwitched.setState({ face: { ...face, at: Date.now() } });
+}
 
 /**
  * التبديلُ كما في واتساب — **بقرار المالك**: نقرةٌ تحت الإصبع ساعةَ يُفهم القصد،
@@ -30,7 +38,7 @@ async function switchTo(id: string): Promise<void> {
   await useSession.getState().switchAccount(id);
   void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   const me = useSession.getState().me;
-  if (me) useSwitched.setState({ face: { name: me.name, avatarMediaId: me.avatarMediaId, at: Date.now() } });
+  if (me) showToast({ name: me.name, avatarMediaId: me.avatarMediaId, lead: "تم التبديل إلى " });
 }
 
 /** في الجذر: يطفو فوق الشريط السفليّ، ويبهت بعد ثانيتين. */
@@ -41,7 +49,7 @@ export function SwitchToast() {
 
   useEffect(() => {
     if (!face) return;
-    AccessibilityInfo.announceForAccessibility?.(`تم التبديل إلى ${face.name}`);
+    AccessibilityInfo.announceForAccessibility?.(`${face.lead}${face.name}`);
     show.setValue(0);
     const run = Animated.sequence([
       Animated.timing(show, { toValue: 1, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
@@ -88,7 +96,7 @@ export function SwitchToast() {
       >
         <Avatar name={face.name} size={26} mediaId={face.avatarMediaId} />
         <Text numberOfLines={1} style={{ color: "#fff", fontSize: 13.5, fontWeight: "600", flexShrink: 1 }}>
-          تم التبديل إلى <Text style={{ fontWeight: "800", writingDirection: "auto" }}>{face.name}</Text>
+          {face.lead}<Text style={{ fontWeight: "800", writingDirection: "auto" }}>{face.name}</Text>
         </Text>
       </View>
     </Animated.View>

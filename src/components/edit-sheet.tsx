@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { editComment, editMoment, setStoryAlert } from "@/app/actions";
 import { Sheet } from "@/components/sheet";
@@ -95,32 +96,95 @@ export function MomentEditSwipe({
 }
 
 /** جرسُ ملفّ الصديق (القاعدة ٣١٩): يُضيء بلون اللمسة مفعّلاً. */
-export function AlertBell({ friendId, name, initial }: { friendId: string; name: string; initial: boolean }) {
+export function AlertBell({
+  friendId,
+  name,
+  initial,
+  disc = false,
+  avatar = null,
+}: {
+  friendId: string;
+  name: string;
+  initial: boolean;
+  /** قرصٌ ٤٠ بجانب الاسم (القاعدة ٣٢٠) بدل زرّ صفّ الأزرار. */
+  disc?: boolean;
+  /** صورةُ الصديق في السطر الزجاجيّ. */
+  avatar?: React.ReactNode;
+}) {
   const [on, setOn] = useState(initial);
   const [pending, start] = useTransition();
+  const [toast, setToast] = useState<{ on: boolean; at: number } | null>(null);
   return (
-    <button
-      type="button"
-      aria-pressed={on}
-      aria-label={on ? `أوقف تنبيهات قصص ${name} ونوته` : `نبّهني بقصص ${name} ونوته`}
-      title={on ? "تنبيهات قصصه ونوته مفعّلة" : "نبّهني بقصصه ونوته"}
-      disabled={pending}
-      onClick={() =>
-        start(async () => {
-          setOn(!on);
-          const said = await setStoryAlert(friendId, !on);
-          setOn(said.on);
-        })
-      }
-      className="flex w-[46px] shrink-0 items-center justify-center rounded-xl border disabled:opacity-60"
-      style={{
-        height: 46,
-        borderColor: on ? "var(--color-clay)" : "var(--color-line)",
-        background: on ? "var(--color-clay)" : "var(--color-card)",
-        color: on ? "var(--color-on-brand)" : "var(--color-ink-2)",
-      }}
-    >
-      <BellPlusIcon size={18} on={on} />
-    </button>
+    <>
+      <button
+        type="button"
+        aria-pressed={on}
+        aria-label={on ? `أوقف تنبيهات قصص ${name} ونوته` : `نبّهني بقصص ${name} ونوته`}
+        title={on ? "تنبيهات قصصه ونوته مفعّلة" : "نبّهني بقصصه ونوته"}
+        disabled={pending}
+        onClick={() =>
+          start(async () => {
+            setOn(!on);
+            const said = await setStoryAlert(friendId, !on);
+            setOn(said.on);
+            if (!said.error) setToast({ on: said.on, at: Date.now() });
+          })
+        }
+        className={`flex shrink-0 items-center justify-center border disabled:opacity-60 ${disc ? "h-10 w-10 rounded-full" : "w-[46px] rounded-xl"}`}
+        style={{
+          height: disc ? 40 : 46,
+          borderColor: on ? "var(--color-clay)" : "var(--color-line)",
+          background: on ? "var(--color-clay)" : "var(--color-card)",
+          color: on ? "var(--color-on-brand)" : "var(--color-ink-2)",
+        }}
+      >
+        <BellPlusIcon size={18} on={on} />
+      </button>
+      {toast ? (
+        <GlassToast key={toast.at} avatar={avatar} onDone={() => setToast(null)}>
+          {toast.on ? "تم تفعيل إشعارات القصص والنوت لـ" : "تم إيقاف إشعارات القصص والنوت لـ"}
+          <b dir="auto" className="font-extrabold">{name}</b>
+        </GlassToast>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * سطرٌ زجاجيّ فوق الشريط السفليّ ثمّ يذهب — نسخةُ `SwitchToast` في الجوّال (القاعدة ٣٢٠).
+ * على جسد الصفحة (القاعدة ٩٢)، ومثبّتٌ بـ`.shell-fixed` فلا يطير خارج الهيكل (القاعدة ٨).
+ */
+function GlassToast({ avatar, children, onDone }: { avatar: React.ReactNode; children: React.ReactNode; onDone: () => void }) {
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setShown(true));
+    const hide = setTimeout(() => setShown(false), 2000);
+    const done = setTimeout(onDone, 2300);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(hide);
+      clearTimeout(done);
+    };
+  }, []);
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    <div role="status" className="shell-fixed z-[60] flex justify-center px-4" style={{ paddingBottom: 96 }}>
+      <div
+        className="flex max-w-[86%] items-center gap-2 rounded-full py-1.5 pl-3.5 pr-1.5 text-[13.5px] font-semibold text-white"
+        style={{
+          background: "rgba(20,24,28,.88)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          boxShadow: "0 4px 10px rgba(0,0,0,.25)",
+          opacity: shown ? 1 : 0,
+          transform: shown ? "none" : "translateY(16px)",
+          transition: "opacity 220ms ease-out, transform 220ms cubic-bezier(.2,.8,.3,1)",
+        }}
+      >
+        {avatar}
+        <span className="truncate">{children}</span>
+      </div>
+    </div>,
+    document.body,
   );
 }
