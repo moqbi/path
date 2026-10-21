@@ -32,6 +32,8 @@ export function MarqueeName({ name, style }: { name: string; style: TextStyle })
         Animated.delay(1200),
         Animated.timing(shift, { toValue: 0, duration: travel, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
       ]),
+      // ثلاثُ دوراتٍ ثمّ يقف على أوّله: من قرأه مرّةً عرفه، وحركةٌ لا تقف تُسخّن الجوّال.
+      { iterations: 3 },
     );
     loop.start();
     return () => loop.stop();
