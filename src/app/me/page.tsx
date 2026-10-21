@@ -145,13 +145,13 @@ export default async function ProfilePage({
         fold={
           <>
             {user.bio ? (
-              <p dir="auto" className="mt-1 text-[13px] leading-relaxed text-ground-ink-2">
+              <p dir="auto" className="mt-1 text-[13px] leading-relaxed text-ground-ink">
                 {user.bio}
               </p>
             ) : null}
 
             {/* سطرُ العضويّة كالجوّال (القاعدة ٢٣٣): والمعرّفُ معزولٌ فلا يجرّ الفواصل. */}
-            <p className="mt-1.5 text-[12.5px] text-ground-muted">
+            <p className="mt-1.5 text-[12.5px] text-ground-ink">
               {[
                 `عضوية رقم ${ar(user.memberNo)}`,
                 user.handle ? `\u2068@${user.handle}\u2069` : null,
@@ -218,7 +218,7 @@ export default async function ProfilePage({
         {/* لحظاتي أسفل زرّ التعديل مباشرة — هذا ما يُفتح التبويب لأجله. */}
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-[15px] font-bold text-ground-ink">
-            لحظاتي <span className="text-[12px] font-normal text-ground-muted">{ar(moments.length)}</span>
+            لحظاتي <span className="text-[12px] font-normal text-ground-ink">{ar(moments.length)}</span>
           </h2>
           {/*
             «أرشيفي» و«سنتك في كتاب» (القاعدة ٢٤٤): كانا بطاقتين بعد آخر لحظة لا
@@ -245,7 +245,7 @@ export default async function ProfilePage({
                   <div className="flex w-14 justify-center">
                     <span className="block h-1.5 w-1.5 rounded-full bg-ground-line" />
                   </div>
-                  <h3 className="text-[15px] font-bold text-ground-ink-2">{day.label}</h3>
+                  <h3 className="text-[15px] font-bold text-ground-ink">{day.label}</h3>
                 </div>
                 {day.items.map((moment) => (
                   <MomentCard

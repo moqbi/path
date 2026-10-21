@@ -30,7 +30,7 @@ function CountUp({ to }: { to: number }) {
  */
 export function StatLine({ moments, friends, sent, got }: { moments: number; friends: number; sent: number; got: number }) {
   const item = (to: number, label: string) => (
-    <span className="text-[13px] text-ground-muted">
+    <span className="text-[13px] text-ground-ink">
       <span className="text-[15px] font-extrabold text-ground-ink">
         <CountUp to={to} />
       </span>{" "}

@@ -1,22 +1,12 @@
 import type { NextConfig } from "next";
-import { execSync } from "node:child_process";
 import { BASE } from "./src/lib/base";
 
 /*
-  رقمُ البناء يُكتب وقت البناء لا باليد (القاعدة ٣٠٨): الالتزامُ القصير
-  وتاريخُ اليوم بتوقيت الرياض، فكلُّ بناءٍ جديد يحمل رقمه بنفسه. وبلا git
-  (نسخةٌ منسوخةٌ بلا تاريخ) يبقى التاريخُ وحده.
+  رقمُ البناء يُكتب وقت البناء لا باليد (القاعدة ٣٠٨): تاريخُ اليوم بتوقيت
+  الرياض وحده — **بقرار المالك**، بلا الالتزام القصير: سبعةُ حروفٍ لا يقرؤها أحد.
 */
 function buildStamp(): string {
-  const day = new Date(Date.now() + 3 * 3600_000).toISOString().slice(0, 10);
-  try {
-    const sha = execSync("git rev-parse --short=7 HEAD", { stdio: ["ignore", "pipe", "ignore"] })
-      .toString()
-      .trim();
-    return sha ? `${sha} · ${day}` : day;
-  } catch {
-    return day;
-  }
+  return new Date(Date.now() + 3 * 3600_000).toISOString().slice(0, 10);
 }
 
 const nextConfig: NextConfig = {

@@ -71,11 +71,14 @@ export async function canChat(userId: string, otherId: string): Promise<boolean>
   if (userId === otherId) return false;
   if ((await circleIds(userId)).includes(otherId)) return true;
   // والحسابُ المفتوح يردّ على من يتابعه وإن لم يكن من دائرته (القاعدة ٢٦٣).
-  const [open, blocked] = await Promise.all([
+  // والمشرفُ يبدأ محادثةً مع أيّ حساب (القاعدة ٣١٧) — هو لا الطرفُ الآخر.
+  const [open, blocked, me] = await Promise.all([
     prisma.user.count({ where: { id: { in: [userId, otherId] }, isOpen: true } }),
     blockedWith(userId),
+    prisma.user.findUnique({ where: { id: userId }, select: { role: true, adminScope: true } }),
   ]);
-  return open > 0 && !blocked.includes(otherId);
+  const staff = me?.role === "ADMIN" || me?.adminScope === "ALL";
+  return (open > 0 || staff) && !blocked.includes(otherId);
 }
 
 /** عدد الأصدقاء المشتركين بين اثنين. */

@@ -307,13 +307,13 @@ export default async function SettingsPage() {
           </span>
         </Link>
 
-        <p className="flex items-center justify-center gap-2 pb-4 text-[11.5px] text-muted">
+        <p className="flex items-center justify-center gap-2 pb-4 text-[11.5px] text-ground-ink">
           <ShieldIcon size={15} />
           ما يُنشر لأصدقائك لا يخرج عنهم.
         </p>
 
         {/* رقمُ البناء للدعم، يُكتب وقت البناء (القاعدة ٣٠٨). */}
-        <p dir="ltr" className="latin select-text pb-4 text-center text-[11px] text-muted">
+        <p dir="ltr" className="latin select-text pb-4 text-center text-[11px] text-ground-ink">
           ATHAR Moments · web {process.env.NEXT_PUBLIC_BUILD}
         </p>
       </main>

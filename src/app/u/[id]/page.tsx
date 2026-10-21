@@ -119,6 +119,7 @@ export default async function FriendProfilePage({
         mutual={mutual}
         sentByMe={pending?.requesterId === viewer.id}
         incoming={pending && pending.requesterId === id ? pending.id : null}
+        staff={viewer.role === "ADMIN" || viewer.adminScope === "ALL"}
       />
     );
   }
@@ -219,7 +220,7 @@ export default async function FriendProfilePage({
                     <div className="flex w-14 justify-center">
                       <span className="block h-1.5 w-1.5 rounded-full bg-ground-line" />
                     </div>
-                    <h2 className="text-[15px] font-bold text-ground-ink-2">{day.label}</h2>
+                    <h2 className="text-[15px] font-bold text-ground-ink">{day.label}</h2>
                   </div>
                   {day.items.map((moment) => (
                     <MomentCard
@@ -283,11 +284,14 @@ function LockedProfile({
   mutual,
   sentByMe,
   incoming,
+  staff,
 }: {
   person: Person;
   mutual: number;
   sentByMe: boolean;
   incoming: string | null;
+  /** المشرفُ يُراسل أيَّ حسابٍ بلا إضافة (القاعدة ٣١٧). */
+  staff: boolean;
 }) {
   return (
     <div className="screen">
@@ -348,6 +352,7 @@ function LockedProfile({
                 </button>
               </form>
             )}
+            {staff ? <ChatButton id={person.id} /> : null}
         </ProfileHead>
 
         {/* مكانُ اللحظات يقول لماذا لا تُرى — لا فراغٌ يُقرأ «ما نشر شي». */}
@@ -434,11 +439,11 @@ function ProfileHead({
           </h1>
         </div>
         {person.bio ? (
-          <p dir="auto" className="mt-1 text-[13px] leading-relaxed text-ground-ink-2">
+          <p dir="auto" className="mt-1 text-[13px] leading-relaxed text-ground-ink">
             {person.bio}
           </p>
         ) : null}
-        <p className="mt-1.5 text-[12.5px] text-ground-muted">{line.join("  │  ")}</p>
+        <p className="mt-1.5 text-[12.5px] text-ground-ink">{line.join("  │  ")}</p>
         <div className="mb-2 mt-3.5 flex gap-2.5">{children}</div>
       </div>
     </>
