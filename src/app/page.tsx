@@ -21,6 +21,10 @@ import { AthrHeaderMark } from "@/components/brand";
 import { BellIcon, SparkIcon } from "@/components/icons";
 import { unseenCount } from "@/lib/notifications";
 import { Lenses } from "@/components/lenses";
+import { canTryStickers } from "@/lib/stickers";
+import { storyRings } from "@/lib/stories";
+import { listNotes } from "@/lib/notes";
+import type { Marks } from "@/components/moment-card";
 import { ar, dayLabel, membership } from "@/lib/format";
 
 const MONTHS = [
@@ -41,6 +45,17 @@ export default async function TimelinePage({
 }) {
   const user = await currentUser();
   if (!user) redirect("/login");
+  /*
+    علامةُ القصّة والنوت على صور الخطّ (القاعدة ٣١٩) — للمشرفين يجرّبونها أوّلاً
+    كالجوّال في نسخة التطوير. تُقرأ مرّةً للصفحة لا لكلّ بطاقة.
+  */
+  const trial = canTryStickers(user);
+  const marks: Marks | undefined = trial
+    ? await Promise.all([storyRings(user.id), listNotes(user.id)]).then(([rings, notes]) => ({
+        stories: rings.filter((ring) => ring.fresh).map((ring) => ring.userId),
+        notes: notes.filter((note) => note.authorId !== user.id && !note.seen),
+      }))
+    : undefined;
 
   const params = await searchParams;
   const view = params.view === "private" || params.view === "together" ? params.view : "";
@@ -301,6 +316,8 @@ export default async function TimelinePage({
                     viewerId={user.id}
                     isPlus={user.isPlus}
                     moderate={user.canModerate}
+                    trial={trial}
+                    marks={marks}
                   />
                 ))}
               </section>

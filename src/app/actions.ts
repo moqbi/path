@@ -2731,3 +2731,72 @@ export async function buyStickerPack(packId: string): Promise<{ ok?: string; err
   if (!canTryStickers(user)) return { error: "غير متاح" };
   return buyPack(user.id, String(packId));
 }
+
+
+// ───────────────────────── التعديل وتنبيهُ القصص (القاعدة ٣١٩) ─────────────────────────
+
+/** ما له متنٌ يكتبه صاحبُه — كـ`EDITABLE` في الخادم حرفاً بحرف. */
+const EDITABLE: ReadonlySet<string> = new Set(["THOUGHT", "PHOTO"]);
+
+/** تعديلُ نصّ لحظتي — كبابِ الخادم (`editMoment`)، ويردّ الخطأ نصّاً (القاعدة ٩٠). */
+export async function editMoment(momentId: string, text: string): Promise<{ error?: string }> {
+  const user = await requireUser();
+  const moment = await prisma.moment.findUnique({
+    where: { id: momentId },
+    select: { authorId: true, kind: true, recapYear: true, pollOptions: true },
+  });
+  if (!moment || moment.authorId !== user.id) return { error: "اللحظة غير موجودة" };
+  if (!EDITABLE.has(moment.kind) || moment.recapYear || moment.pollOptions.length > 0) {
+    return { error: "هذه اللحظة لا تُعدَّل" };
+  }
+  const clean = text.trim().slice(0, 250);
+  if (moment.kind === "THOUGHT" && !clean) return { error: "اكتب شيئاً" };
+  try {
+    if (clean) await guard(clean);
+  } catch (problem) {
+    return { error: problem instanceof Error ? problem.message : "تعذّر الحفظ" };
+  }
+  await prisma.moment.update({ where: { id: momentId }, data: { text: clean || null, editedAt: new Date() } });
+  revalidatePath("/");
+  revalidatePath("/me");
+  revalidatePath(`/m/${momentId}`);
+  return {};
+}
+
+/** تعديلُ تعليقي — لكاتبه وحده، والملصقُ لا يُعدَّل (كبابِ الخادم `editComment`). */
+export async function editComment(commentId: string, body: string): Promise<{ error?: string }> {
+  const user = await requireUser();
+  const comment = await prisma.comment.findUnique({
+    where: { id: commentId },
+    select: { userId: true, stickerId: true, momentId: true },
+  });
+  if (!comment || comment.userId !== user.id) return { error: "التعليق غير موجود" };
+  if (comment.stickerId) return { error: "الملصق لا يُعدَّل" };
+  const clean = body.trim().slice(0, 500);
+  if (!clean) return { error: "اكتب شيئاً" };
+  try {
+    await guard(clean);
+  } catch (problem) {
+    return { error: problem instanceof Error ? problem.message : "تعذّر الحفظ" };
+  }
+  await prisma.comment.update({ where: { id: commentId }, data: { body: clean, editedAt: new Date() } });
+  revalidatePath("/");
+  revalidatePath(`/m/${comment.momentId}`);
+  return {};
+}
+
+/** «نبّهني بقصصه ونوته» — للأصدقاء وحدهم (كبابِ الخادم `setAlert`). */
+export async function setStoryAlert(friendId: string, on: boolean): Promise<{ on: boolean; error?: string }> {
+  const user = await requireUser();
+  if (!on) {
+    await prisma.storyAlert.deleteMany({ where: { userId: user.id, friendId } });
+    return { on: false };
+  }
+  if (!(await circleIds(user.id)).includes(friendId)) return { on: false, error: "للأصدقاء وحدهم" };
+  await prisma.storyAlert.upsert({
+    where: { userId_friendId: { userId: user.id, friendId } },
+    create: { userId: user.id, friendId },
+    update: {},
+  });
+  return { on: true };
+}

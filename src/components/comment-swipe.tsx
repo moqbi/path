@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { deleteMyComment, removeCommentAsAdmin, reportComment } from "@/app/actions";
 import { Sheet } from "@/components/sheet";
 import { SwipeRow } from "@/components/swipe-row";
+import { EditSheet } from "@/components/edit-sheet";
+import { PencilIcon } from "@/components/icons";
 
 const REASONS: { key: string; label: string }[] = [
   { key: "SPAM", label: "إزعاج أو إعلان" },
@@ -24,8 +26,11 @@ export function CommentSwipe({
   commentId,
   mine,
   moderate,
+  editText = null,
   children,
 }: {
+  /** نصُّ تعليقي — بالقلم يُعدَّل بجانب السلّة (القاعدة ٣١٩). والملصقُ بلا قلم. */
+  editText?: string | null;
   commentId: string;
   /** تعليقي أو على لحظتي: يُحذف من بابي. */
   mine: boolean;
@@ -34,6 +39,7 @@ export function CommentSwipe({
 }) {
   const router = useRouter();
   const [reporting, setReporting] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [gone, setGone] = useState(false);
 
   if (gone) return null;
@@ -55,6 +61,11 @@ export function CommentSwipe({
           confirmLabel={mine ? "حذف التعليق" : "حذف بصلاحية الإشراف"}
           icons={mine ? "trash" : "shield"}
           surface="var(--color-card)"
+          extra={
+            editText !== null
+              ? [{ label: "تعديل التعليق", icon: <PencilIcon size={22} />, run: () => setEditing(true) }]
+              : []
+          }
         >
           {children}
         </SwipeRow>
@@ -68,6 +79,9 @@ export function CommentSwipe({
           {children}
         </SwipeRow>
       )}
+      {editing && editText !== null ? (
+        <EditSheet target={{ kind: "comment", id: commentId, text: editText, required: true }} onClose={() => setEditing(false)} />
+      ) : null}
       {reporting ? (
         <ReportSheet
           title="بلاغ عن تعليق"

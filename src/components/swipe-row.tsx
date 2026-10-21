@@ -21,8 +21,13 @@ export function SwipeRow({
   icons = false,
   surface = "var(--color-ground)",
   extra = [],
+  tint,
+  mainIcon,
   children,
 }: {
+  /** لونُ الفعل الأوّل ورسمُه — قلمُ التعديل باللمسة لا بالمرجانيّ (القاعدة ٣١٩). */
+  tint?: string;
+  mainIcon?: React.ReactNode;
   onDelete: () => void | Promise<void>;
   confirmLabel?: string;
   /** فعلٌ ثانٍ يظهر بجانب الأول — الحظر مثلاً بجانب الإزالة. */
@@ -95,9 +100,11 @@ export function SwipeRow({
           onClick={() => fire(onDelete)}
           aria-label={confirmLabel}
           className="flex grow items-center justify-center gap-1.5 px-2 text-[13px] font-bold disabled:opacity-60"
-          style={{ background: "var(--color-live)", color: "#fff" }}
+          style={{ background: tint ?? "var(--color-live)", color: tint ? "var(--color-on-brand)" : "#fff" }}
         >
-          {icons === "trash" ? (
+          {mainIcon ? (
+            mainIcon
+          ) : icons === "trash" ? (
             <TrashIcon size={22} />
           ) : icons === "flag" ? (
             <FlagIcon size={22} />

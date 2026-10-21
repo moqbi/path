@@ -146,6 +146,23 @@ export const UserMinusIcon = ({ size = 20, className }: IconProps) => (
 );
 
 /** حذفُ محادثة: سلّةٌ بغطاءٍ وخطّين — نسخةُ الجوّال. */
+/** التعديل: قلمٌ مائل (القاعدة ٣١٩) — نسخةُ الجوّال. */
+export const PencilIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M15.5 4.5l4 4L9 19H5v-4L15.5 4.5z" />
+    <path d="M13.5 6.5l4 4" />
+  </svg>
+);
+
+/** جرسُ تنبيه قصص الصديق ونوته (القاعدة ٣١٩)، وبعلامةٍ حين يُفعَّل. */
+export const BellPlusIcon = ({ size = 20, className, on = false }: IconProps & { on?: boolean }) => (
+  <svg {...base(size)} className={className}>
+    <path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15L6 16.5z" />
+    <path d="M10 20.5a2 2 0 0 0 4 0" />
+    {on ? <path d="M9.5 11.5l1.8 1.8 3.4-3.6" /> : null}
+  </svg>
+);
+
 export const TrashIcon = ({ size = 20, className }: IconProps) => (
   <svg {...base(size)} className={className}>
     <path d="M4 6.5h16" />
