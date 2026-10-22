@@ -320,7 +320,8 @@ export function MomentCard({
     قائمة، فلا يُرى من المخطّط إلا نقاطُ الأيام. فكلُّ بطاقةٍ ترسم قطعتَها بطولها وحشوتِها، والصورةُ
     فوقها عقدةٌ عليها — وقطعُ البطاقات المتتالية خيطٌ واحد. بحبر الأرضية لا بخطّها الباهت.
   */
-  const thread = <SpineThread />;
+  // وفي صفحة اللحظة نفسها لا خيطَ: بطاقةٌ وحدها لا مخطّطَ تتعلّق به.
+  const thread = here ? null : <SpineThread />;
 
   if (isEvent) {
     const { title, subtitle } = eventText(moment, withNames, viewerId);
