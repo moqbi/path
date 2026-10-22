@@ -1,4 +1,5 @@
 import { Spinner } from "../../components/spinner";
+import { BackChevron } from "../../components/screen-header";
 import { MemoriesCard } from "../../components/memories-card";
 import { TabBackdrop } from "../../components/tab-backdrop";
 import { WelcomeCard } from "../../components/welcome-card";
@@ -267,6 +268,17 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
         }}
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          {/* «آثارنا» شاشةٌ في المكدّس: رجوعُها في طرف البداية — اليمين (القاعدة ٣٣٠). */}
+          {stacked ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="رجوع"
+              hitSlop={12}
+              onPress={() => (router.canGoBack() ? router.back() : router.replace("/" as never))}
+            >
+              <BackChevron />
+            </Pressable>
+          ) : null}
           <AthrMark size={32} />
           <Text face="latin" style={{ color: colors.chromeInk, fontSize: 16, fontWeight: "700", letterSpacing: 2 }}>
             ATHAR

@@ -197,7 +197,12 @@ function Profile() {
         من صفّ صديق أو تعليقٍ أو لحظة، ومن فتحه يريد أن يعود حيث كان لا إلى
         رأس التبويب. والوجهةُ المكتوبة للفتح المباشر وحده (القاعدة ٧٧).
       */}
-      <ScreenHeader title={who?.name ?? "ملف"} back="/circle" />
+      {/* جرسُ قصصه ونوته في طرف الرأس الأيسر — **بقرار المالك** (القاعدة ٣٣٠)، والرجوعُ يمينه. */}
+      <ScreenHeader
+        title={who?.name ?? "ملف"}
+        back="/circle"
+        right={fresh && who ? <AlertBell friendId={who.id} name={who.name} avatarMediaId={who.avatarMediaId} chrome /> : undefined}
+      />
 
       {person.isLoading ? (
         <Spinner style={{ marginTop: 50 }} color={colors.clay} />
@@ -290,7 +295,6 @@ function Profile() {
                         >
                           <MessageIcon size={17} color={colors.onBrand} />
                         </Pressable>
-                        <AlertBell friendId={who.id} name={who.name} avatarMediaId={who.avatarMediaId} disc />
                       </>
                     ) : null
                   }
@@ -464,7 +468,7 @@ const onViewable = ({ viewableItems }: { viewableItems: { item: { id: string } |
  * «نبّهني بقصصه ونوته» (القاعدة ٣١٩): جرسٌ في صفّ أزرار الصديق، يُضيء بلون اللمسة
  * مفعّلاً. والخادمُ يقرع لمن يرى ما نُشر وحده.
  */
-function AlertBell({ friendId, name, avatarMediaId, disc }: { friendId: string; name: string; avatarMediaId?: string | null; disc?: boolean }) {
+function AlertBell({ friendId, name, avatarMediaId, disc, chrome }: { friendId: string; name: string; avatarMediaId?: string | null; disc?: boolean; chrome?: boolean }) {
   const client = useQueryClient();
   const key = ["story-alert", friendId];
   const state = useQuery({ queryKey: key, queryFn: () => api<{ on: boolean }>(`/v1/circle/${friendId}/alert`) });
@@ -489,18 +493,30 @@ function AlertBell({ friendId, name, avatarMediaId, disc }: { friendId: string; 
       accessibilityState={{ selected: on }}
       disabled={state.isLoading || flip.isPending}
       onPress={() => flip.mutate(!on)}
-      style={{
-        width: disc ? 40 : 46,
-        height: disc ? 40 : 46,
-        borderRadius: disc ? 20 : 12,
-        alignItems: "center",
-        justifyContent: "center",
-        borderWidth: 1,
-        borderColor: on ? colors.clay : colors.line,
-        backgroundColor: on ? colors.clay : colors.card,
-      }}
+      style={
+        chrome
+          ? {
+              // قرصُ الرأس الداكن بمقاس أقراص الرؤوس (القاعدة ٥٢).
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: on ? colors.clay : "rgba(255,255,255,.08)",
+            }
+          : {
+              width: disc ? 40 : 46,
+              height: disc ? 40 : 46,
+              borderRadius: disc ? 20 : 12,
+              alignItems: "center",
+              justifyContent: "center",
+              borderWidth: 1,
+              borderColor: on ? colors.clay : colors.line,
+              backgroundColor: on ? colors.clay : colors.card,
+            }
+      }
     >
-      <BellPlusIcon size={18} color={on ? colors.onBrand : colors.ink2} on={on} />
+      <BellPlusIcon size={18} color={on ? colors.onBrand : chrome ? colors.chromeInk : colors.ink2} on={on} />
     </Pressable>
   );
 }

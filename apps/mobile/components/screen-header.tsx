@@ -36,6 +36,23 @@ export function ScreenHeader({
   */
   const insets = useSafeAreaInsets();
 
+  const backButton =
+    back !== undefined ? (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="رجوع"
+        hitSlop={12}
+        onPress={() => (router.canGoBack() ? router.back() : router.replace(back as never))}
+      >
+        <BackChevron />
+      </Pressable>
+    ) : null;
+
+  /*
+    **الرجوعُ في طرف البداية — اليمين** (القاعدة ٣٣٠): أوّلُ صفٍّ في جذرٍ من اليمين يجلس
+    يميناً، والقارئُ العربيّ يبدأ من هناك كما يبدأ سحبُ آبل الأصليّ من الحافّة اليمنى. ثمّ
+    العلامةُ والعنوان، وما في `right` من أزرارٍ في الطرف الآخر — اليسار (الاسمُ تاريخيّ).
+  */
   return (
     <View
       style={{
@@ -49,6 +66,7 @@ export function ScreenHeader({
         backgroundColor: colors.chrome,
       }}
     >
+      {backButton}
       <AthrMark size={32} />
       {onTitlePress ? (
         <Pressable accessibilityRole="link" onPress={onTitlePress} style={{ flex: 1, minWidth: 0 }} hitSlop={8}>
@@ -63,25 +81,15 @@ export function ScreenHeader({
       )}
 
       {right}
-
-      {back !== undefined ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="رجوع"
-          hitSlop={12}
-          onPress={() => (router.canGoBack() ? router.back() : router.replace(back as never))}
-        >
-          <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-            <Path
-              d="M9 5l7 7-7 7"
-              stroke={colors.chromeInk}
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </Svg>
-        </Pressable>
-      ) : null}
     </View>
+  );
+}
+
+/** سهمُ الرجوع: يشير يميناً — إلى حيث جئت في قراءةٍ من اليمين. */
+export function BackChevron({ color = colors.chromeInk }: { color?: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path d="M9 5l7 7-7 7" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
   );
 }
