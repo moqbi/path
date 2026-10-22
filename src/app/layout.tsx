@@ -4,6 +4,7 @@ import { TAGLINE_AR, TAGLINE_EN } from "@/components/brand";
 import { currentUser } from "@/lib/auth";
 import { canTryStickers } from "@/lib/stickers";
 import { OfflineBanner } from "@/components/offline-banner";
+import { OpeningPromo } from "@/components/opening-promo";
 import { parsePalette, themeVars, veilOf } from "@/lib/theme";
 import { NavProbe } from "@/components/nav";
 import { BASE, asset } from "@/lib/base";
@@ -63,6 +64,8 @@ export default async function RootLayout({
       <NavProbe />
       {/* «ما فيه اتصال» (القاعدة ٣٢١) — للمالك وممنوحي اللوحة كلّها كنسخة التطوير. */}
       {user && canTryStickers(user) ? <OfflineBanner /> : null}
+      {/* بطاقةُ الإعلان عند الفتح (القاعدتان ٢٦٧ و٣٣٥). */}
+      {user ? <OpeningPromo coins={user.coins} isPlus={user.isPlus} /> : null}
       {children}
     </div>
   );

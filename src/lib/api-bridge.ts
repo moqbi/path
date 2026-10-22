@@ -16,7 +16,7 @@ const BASE = process.env.INTERNAL_API_URL ?? `http://127.0.0.1:${process.env.API
 
 export class BridgeError extends Error {}
 
-export async function apiAs<T>(userId: string, path: string, init: { method: string; body?: unknown } = { method: "GET" }): Promise<T> {
+export async function apiAs<T>(userId: string, path: string, init: { method: string; body?: unknown; headers?: Record<string, string> } = { method: "GET" }): Promise<T> {
   const secret = process.env.JWT_ACCESS_SECRET;
   if (!secret) throw new BridgeError("غير متاح الآن");
   const token = await new SignJWT({ role: "USER" })
@@ -39,6 +39,7 @@ export async function apiAs<T>(userId: string, path: string, init: { method: str
         authorization: `Bearer ${token}`,
         ...(init.body === undefined ? {} : { "content-type": "application/json" }),
         ...(ip ? { "cf-connecting-ip": ip } : {}),
+        ...init.headers,
       },
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
     });

@@ -19,6 +19,7 @@ import { welcome } from "@/lib/welcome";
 import { weeklyFor, weeklyShown } from "@/lib/weekly";
 import { AthrHeaderMark } from "@/components/brand";
 import { BellIcon, SparkIcon } from "@/components/icons";
+import { SearchButton } from "@/components/search-sheet";
 import { unseenCount } from "@/lib/notifications";
 import { Lenses } from "@/components/lenses";
 import { canTryStickers } from "@/lib/stickers";
@@ -141,6 +142,9 @@ export default async function TimelinePage({
             <SparkIcon size={13} />
             آثار+
           </Link>
+
+          {/* البحثُ الذكيّ بين آثار+ والجرس (القاعدة ٣٣٥) — مقابلَ نسخة التطوير. */}
+          {trial ? <SearchButton isPlus={user.isPlus} /> : null}
 
           {/*
             الإشعاراتُ جرسٌ هنا لا تبويب — كالجوّال (القاعدة ٢٦١)، والنقطةُ لما لم
