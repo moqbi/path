@@ -27,10 +27,10 @@ function PersonRow({ person, action, onOpen }: { person: GroupPerson; action?: R
     <Pressable disabled={!onOpen} onPress={onOpen} style={{ flexDirection: "row", alignItems: "center", gap: 11, paddingVertical: 9 }}>
       <Avatar name={person.name} size={38} mediaId={person.avatarMediaId} frame={person.frame} charm={person.charm} />
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text numberOfLines={1} style={{ color: colors.ink, fontSize: 14, fontWeight: "600", writingDirection: "auto" }}>
+        <Text numberOfLines={1} style={{ color: colors.groundInk, fontSize: 14, fontWeight: "600", writingDirection: "auto" }}>
           {person.name}
         </Text>
-        <Text style={{ color: colors.faint, fontSize: 11 }}>#{ar(person.memberNo)}</Text>
+        <Text style={{ color: colors.groundInk, fontSize: 11 }}>#{ar(person.memberNo)}</Text>
       </View>
       {action}
     </Pressable>
@@ -271,7 +271,7 @@ export default function ManageGroup() {
               disabled={savePhoto.isPending}
               onPress={() => (editing ? savePhoto.mutate(null) : setPhoto(null))}
             >
-              <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600" }}>إزالة الصورة</Text>
+              <Text style={{ color: colors.groundInk, fontSize: 12, fontWeight: "700" }}>إزالة الصورة</Text>
             </Pressable>
           ) : null}
         </View>
@@ -279,7 +279,7 @@ export default function ManageGroup() {
         {/* الاسم: يكتبه المشرف ويُقرأ لغيره. */}
         {canManage ? (
           <View style={{ gap: 8 }}>
-            <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600" }}>اسم المجموعة</Text>
+            <Text style={{ color: colors.groundInk, fontSize: 12, fontWeight: "700" }}>اسم المجموعة</Text>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <TextInput
                 value={name}
@@ -301,13 +301,13 @@ export default function ManageGroup() {
             </View>
           </View>
         ) : (
-          <Text style={{ color: colors.ink, fontSize: 18, fontWeight: "700", textAlign: "center" }}>{group.data?.name}</Text>
+          <Text style={{ color: colors.groundInk, fontSize: 18, fontWeight: "700", textAlign: "center" }}>{group.data?.name}</Text>
         )}
 
         {/* الأعضاء الحاليّون. */}
         {editing ? (
           <View>
-            <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600", marginBottom: 4 }}>
+            <Text style={{ color: colors.groundInk, fontSize: 12, fontWeight: "700", marginBottom: 4 }}>
               الأعضاء ({ar(members.length)})
             </Text>
             {members.map((person) => (
@@ -362,7 +362,7 @@ export default function ManageGroup() {
         {/* المختارون قبل الإنشاء أو قبل الإضافة. */}
         {picked.length > 0 ? (
           <View>
-            <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600", marginBottom: 4 }}>
+            <Text style={{ color: colors.groundInk, fontSize: 12, fontWeight: "700", marginBottom: 4 }}>
               {editing ? "سيُضافون" : "الأعضاء"} ({ar(picked.length)})
             </Text>
             {picked.map((person) => (
@@ -398,7 +398,7 @@ export default function ManageGroup() {
         */}
         {canManage ? (
           <View>
-            <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600", marginBottom: 8 }}>
+            <Text style={{ color: colors.groundInk, fontSize: 12, fontWeight: "700", marginBottom: 8 }}>
               أضف أعضاء برقم العضوية
             </Text>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, height: 46, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}>
@@ -413,7 +413,7 @@ export default function ManageGroup() {
                 style={{ flex: 1, color: colors.ink, fontSize: 15, textAlign: "right" }}
               />
             </View>
-            <Text style={{ color: colors.faint, fontSize: 11, marginTop: 6 }}>
+            <Text style={{ color: colors.groundInk, fontSize: 11, marginTop: 6 }}>
               أكثر من رقم؟ افصل بينها بمسافة أو فاصلة.
             </Text>
 
