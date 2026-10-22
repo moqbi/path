@@ -482,6 +482,7 @@ function AlertBell({ friendId, name, avatarMediaId, disc, chrome }: { friendId: 
         name,
         avatarMediaId: avatarMediaId ?? null,
         lead: data.on ? "تم تفعيل إشعارات القصص والنوت لـ" : "تم إيقاف إشعارات القصص والنوت لـ",
+        place: "cover",
       });
     },
     onError: () => void client.invalidateQueries({ queryKey: key }),

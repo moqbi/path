@@ -24,11 +24,16 @@ export const openAccounts = () => useAccountsSheet.setState({ open: true });
  * سطرٌ زجاجيّ فوق الشريط ثمّ يذهب: «تمّ التبديل إلى فلان» (القاعدة ٣١٦)، و«تمّ تفعيل
  * إشعارات القصص والنوت لفلان» (القاعدة ٣١٩) — بالهيئة نفسها، وجهٌ ثمّ سطر.
  */
-const useSwitched = create<{ face: { name: string; avatarMediaId: string | null; lead: string; at: number } | null }>(() => ({ face: null }));
+const useSwitched = create<{
+  face: { name: string; avatarMediaId: string | null; lead: string; at: number; place: "bottom" | "cover" } | null;
+}>(() => ({ face: null }));
 
-/** يعرض السطرَ الزجاجيّ: `lead` قبل الاسم والاسمُ بعده بوزنٍ أثقل. */
-export function showToast(face: { name: string; avatarMediaId: string | null; lead: string }) {
-  useSwitched.setState({ face: { ...face, at: Date.now() } });
+/**
+ * يعرض السطرَ الزجاجيّ: `lead` قبل الاسم والاسمُ بعده بوزنٍ أثقل. و`place: "cover"` يُطفيه
+ * على وسط الغلاف تحت الرأس (القاعدة ٣٣١) — جرسُ الملفّ في أعلاه، فالخبرُ حيث ضُغط.
+ */
+export function showToast(face: { name: string; avatarMediaId: string | null; lead: string; place?: "bottom" | "cover" }) {
+  useSwitched.setState({ face: { ...face, place: face.place ?? "bottom", at: Date.now() } });
 }
 
 /**
@@ -46,6 +51,7 @@ async function switchTo(id: string): Promise<void> {
 export function SwitchToast() {
   const face = useSwitched((s) => s.face);
   const space = useBarSpace();
+  const insets = useSafeAreaInsets();
   const show = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -62,7 +68,9 @@ export function SwitchToast() {
   }, [face?.at]);
 
   if (!face) return null;
-  const lift = show.interpolate({ inputRange: [0, 1], outputRange: [16, 0] });
+  const onCover = face.place === "cover";
+  // يدخل من جهته: من أسفل فوق الشريط، ومن أعلى على الغلاف.
+  const lift = show.interpolate({ inputRange: [0, 1], outputRange: [onCover ? -16 : 16, 0] });
   return (
     <Animated.View
       pointerEvents="none"
@@ -70,7 +78,8 @@ export function SwitchToast() {
         position: "absolute",
         left: 0,
         right: 0,
-        bottom: space - 4,
+        // الرأسُ ٥٦ تحت الحافّة، والغلافُ ١٧٦ تحته — فالسطرُ في وسط الغلاف تقريباً.
+        ...(onCover ? { top: insets.top + 56 + 70 } : { bottom: space - 4 }),
         alignItems: "center",
         zIndex: 60,
         opacity: show,
