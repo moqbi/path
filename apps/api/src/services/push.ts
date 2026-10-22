@@ -181,7 +181,14 @@ async function badgeOf(userId: string): Promise<number | null> {
  * حسابٍ فتح التنبيه ولديه جهاز، يُستثنى منها من في وضعه الهادئ، وتُرسل
  * دفعاتٍ من مئة — أقصى ما تقبله خدمة Expo في الطلب الواحد.
  */
-export async function broadcast(kind: PushKind, title: string, body: string, path?: string): Promise<number> {
+export async function broadcast(
+  kind: PushKind,
+  title: string,
+  body: string,
+  path?: string,
+  /** حصرٌ إضافيّ — جرسٌ لميزةٍ في نسخة التطوير وحدها يُقرع لطاقمها (القاعدة ٣٣٥). */
+  only?: Record<string, unknown>,
+): Promise<number> {
   // التبويبُ يُشتقّ من القاعدة، وخبيئتُه لا تعرف بالخبر حتى تُنسى.
   forgetAllNotifications();
 
@@ -189,7 +196,7 @@ export async function broadcast(kind: PushKind, title: string, body: string, pat
   let sent = 0;
   for (;;) {
     const users = await prisma.user.findMany({
-      where: { ...(GATE[kind] ? { [GATE[kind]!]: true } : null), devices: { some: {} } },
+      where: { ...(GATE[kind] ? { [GATE[kind]!]: true } : null), ...only, devices: { some: {} } },
       select: { id: true, quietFrom: true, quietTo: true, devices: { select: { token: true } } },
       orderBy: { id: "asc" },
       take: 500,

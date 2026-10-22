@@ -26,7 +26,7 @@ import { expirePlus } from "./services/plus";
 import { sweepModerationLog } from "./services/reports";
 import { pushCoinGrants } from "./services/coin-grants";
 import { announceInvites, rewardInvites } from "./services/invites";
-import { announceStore } from "./services/store-news";
+import { announcePacks, announceStore } from "./services/store-news";
 import { expireListings, expireRentals } from "./services/store";
 import { sweepAccess } from "./services/access";
 import { storyRoutes } from "./routes/v1/stories";
@@ -40,6 +40,7 @@ import { archiveRoutes } from "./routes/v1/archive";
 import { gifRoutes, musicRoutes, noteRoutes } from "./routes/v1/notes";
 import { stickerRoutes } from "./routes/v1/stickers";
 import { calendarRoutes } from "./routes/v1/calendar";
+import { searchRoutes } from "./routes/v1/search";
 import { sweep as sweepNotes } from "./services/notes";
 import { sweepPendingSignups } from "./services/auth";
 import { UNVERIFIED_MINUTES } from "@athar/shared";
@@ -132,6 +133,8 @@ setInterval(
     void expireListings().catch((error) => console.error("✗ مدّة العرض", error));
     // وجديدُ المتجر: ما رُفع من اللوحة يُقرع به جرسٌ مرّةً واحدة.
     void announceStore().catch((error) => console.error("✗ إعلان المتجر", error));
+    // ومجموعاتُ الملصقات الجديدة (القاعدة ٣٣٥).
+    void announcePacks().catch((error) => console.error("✗ إعلان الملصقات", error));
     // وسجلُّ الدخول الأقدم من تسعين يوماً يُكنس (القاعدة ١٩٤).
     void sweepAccess().catch((error) => console.error("✗ كنس سجلّ الدخول", error));
     // وسجلُّ الإشراف بعد ستّين يوماً (القاعدة ١٩٩).
@@ -189,6 +192,7 @@ app.route("/v1/music", musicRoutes);
 app.route("/v1/gifs", gifRoutes);
 app.route("/v1/stickers", stickerRoutes);
 app.route("/v1/calendar", calendarRoutes);
+app.route("/v1/search", searchRoutes);
 app.route("/v1/recap", recapRoutes);
 app.route("/v1/webhooks", webhookRoutes);
 /** بابُ اللوحة — الدور يُفحص فيه لا في العرض. */
