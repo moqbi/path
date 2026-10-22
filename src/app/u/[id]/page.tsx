@@ -181,7 +181,22 @@ export default async function FriendProfilePage({
 
   return (
     <div className="screen">
-      <ScreenHeader title={person.name} back="/circle" />
+      {/* جرسُ قصصه ونوته في طرف الرأس الأيسر — **بقرار المالك** (القاعدة ٣٣٠). */}
+      <ScreenHeader
+        title={person.name}
+        back="/circle"
+        action={
+          fresh ? (
+            <AlertBell
+              chrome
+              friendId={person.id}
+              name={person.name}
+              initial={alertOn}
+              avatar={<Avatar name={person.name} size={26} mediaId={person.avatarMediaId} />}
+            />
+          ) : null
+        }
+      />
 
       <div className="scroll-area">
         <ProfileHead
@@ -225,13 +240,6 @@ export default async function FriendProfilePage({
                     <MessageIcon size={17} />
                   </button>
                 </form>
-                <AlertBell
-                  disc
-                  friendId={person.id}
-                  name={person.name}
-                  initial={alertOn}
-                  avatar={<Avatar name={person.name} size={26} mediaId={person.avatarMediaId} />}
-                />
               </>
             ) : null
           }
@@ -298,7 +306,7 @@ export default async function FriendProfilePage({
                 <section key={day.label}>
                   <div className="relative flex items-center gap-3 py-4">
                     <div className="flex w-14 justify-center">
-                      <span className="block h-1.5 w-1.5 rounded-full bg-ground-line" />
+                      <span className="block h-2 w-2 rounded-full" style={{ background: "color-mix(in srgb, var(--color-ground-ink) 45%, transparent)" }} />
                     </div>
                     <h2 className="text-[15px] font-bold text-ground-ink">{day.label}</h2>
                   </div>

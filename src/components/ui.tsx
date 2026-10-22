@@ -393,7 +393,7 @@ export function ScreenHeader({
 }) {
   /*
     بهيئة رأس الجوّال (`apps/mobile/components/screen-header.tsx`) — **بقرار المالك**
-    (القاعدة ٢٩٩): العلامةُ ثمّ الاسم في طرف البداية، والفعلُ ثمّ الرجوعُ في الطرف الآخر.
+    (القاعدة ٢٩٩): الرجوعُ ثمّ العلامةُ والاسم في طرف البداية، والفعلُ في الطرف الآخر (القاعدة ٣٣٠).
     و`mark` و`display` يُقبلان ولا يُقرآن: الاسمُ يحمل العلامةَ دائماً (القاعدة ٨٦).
   */
   return (
@@ -403,6 +403,11 @@ export function ScreenHeader({
         جاء منه المستخدم فعلاً لا إلى وجهةٍ مكتوبة هنا.
       */}
       <BackSwipe href={back} />
+      {/*
+        **الرجوعُ في طرف البداية — اليمين** (القاعدة ٣٣٠): أوّلُ الصفّ في جذرٍ من اليمين،
+        وسهمُه يشير يميناً إلى حيث جئت. والفعلُ (`action`) آخرُ الصفّ — اليسار.
+      */}
+      {back ? <BackButton href={back} end /> : null}
       <div className="min-w-0 grow">
         {titleHref ? (
           <Link href={titleHref} className="block min-w-0">
@@ -413,7 +418,6 @@ export function ScreenHeader({
         )}
       </div>
       {action}
-      {back ? <BackButton href={back} end /> : null}
     </header>
   );
 }

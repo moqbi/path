@@ -277,7 +277,7 @@ export default async function ProfilePage({
               <section key={day.label}>
                 <div className="relative flex items-center gap-3 py-4">
                   <div className="flex w-14 justify-center">
-                    <span className="block h-1.5 w-1.5 rounded-full bg-ground-line" />
+                    <span className="block h-2 w-2 rounded-full" style={{ background: "color-mix(in srgb, var(--color-ground-ink) 45%, transparent)" }} />
                   </div>
                   <h3 className="text-[15px] font-bold text-ground-ink">{day.label}</h3>
                 </div>

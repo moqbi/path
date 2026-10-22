@@ -6,6 +6,8 @@
 export function PulseRings() {
   return (
     <span aria-hidden className="pointer-events-none absolute inset-0">
+      {/* حلقةٌ ساكنة تبقى بعد النبضات الثلاث (القاعدة ٣٢٩): «فيها ما لم تره» لا يذهب بوقوف الحركة. */}
+      <span className="absolute rounded-full" style={{ inset: -3, border: "2.5px solid var(--color-clay)" }} />
       {[0, 600, 1200].map((delay) => (
         <span
           key={delay}
