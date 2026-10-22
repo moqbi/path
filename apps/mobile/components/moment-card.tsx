@@ -25,6 +25,26 @@ import { openNote, useStatusNotes } from "../lib/status-notes";
 /** عمود الصور على محور الخط: نفس ٥٦ التي في الويب (`w-14`). */
 export const SPINE_W = 56;
 
+/** قطعةُ الخيط في عمود الصور: من أعلى الصفّ إلى أسفله، في وسط العمود (القاعدة ٣٣٢). */
+export function SpineThread({ top = 0, bottom = 0 }: { top?: number; bottom?: number }) {
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        top,
+        bottom,
+        // `right` يمينٌ حقيقيّ (انظر «اتجاه التطبيق على الجوّال»): العمودُ أوّلُ الصفّ من اليمين.
+        right: SPINE_W / 2 - 1,
+        width: 2,
+        borderRadius: 1,
+        backgroundColor: colors.groundInk,
+        opacity: 0.28,
+      }}
+    />
+  );
+}
+
 /**
  * ما يُقرأ سطراً لا بطاقة.
  *
@@ -266,7 +286,7 @@ export function MomentCard({
           charm={moment.author.charm}
         />
       </Pressable>
-      <Text style={{ color: colors.groundMuted, fontSize: 10, fontWeight: "600" }}>
+      <Text style={{ color: colors.groundMuted, fontSize: 10, fontWeight: "600", backgroundColor: colors.groundSolid, paddingHorizontal: 3, borderRadius: 4, overflow: "hidden" }}>
         {timeOfDay(new Date(moment.createdAt))}
       </Text>
       {/*
@@ -294,6 +314,13 @@ export function MomentCard({
       ) : null}
     </View>
   );
+
+  /*
+    **الخيطُ الذي تتعلّق به اللحظات** (القاعدة ٣٣٢): كان `SpineLine` مكتوباً ولا يُرسم في أيّ
+    قائمة، فلا يُرى من المخطّط إلا نقاطُ الأيام. فكلُّ بطاقةٍ ترسم قطعتَها بطولها وحشوتِها، والصورةُ
+    فوقها عقدةٌ عليها — وقطعُ البطاقات المتتالية خيطٌ واحد. بحبر الأرضية لا بخطّها الباهت.
+  */
+  const thread = <SpineThread />;
 
   if (isEvent) {
     const { title, subtitle } = eventText(moment, withNames, viewerId);
@@ -419,6 +446,7 @@ export function MomentCard({
 
     return (
       <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, paddingBottom: 20 }}>
+        {thread}
         {spine}
         <View style={{ flex: 1 }}>
           <MomentBar
@@ -565,6 +593,7 @@ export function MomentCard({
 
   return (
     <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, paddingBottom: 20 }}>
+      {thread}
       {spine}
 
       <View

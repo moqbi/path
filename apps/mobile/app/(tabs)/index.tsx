@@ -12,7 +12,7 @@ import { View, SectionList, Pressable, Animated, Easing, PanResponder } from "re
 import { Text } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { MomentCard, SPINE_W } from "../../components/moment-card";
+import { MomentCard, SPINE_W, SpineThread } from "../../components/moment-card";
 import { COVER_HEIGHT, CoverLayer } from "../../components/cover";
 import { Avatar } from "../../components/avatar";
 import { AthrMark } from "../../components/brand";
@@ -565,8 +565,9 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
           }}
           renderSectionHeader={({ section }) => (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 16 }}>
-              <View style={{ width: SPINE_W, alignItems: "center" }}>
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.groundLine }} />
+              <View style={{ width: SPINE_W, alignItems: "center", justifyContent: "center", alignSelf: "stretch" }}>
+                <SpineThread top={-16} bottom={-16} />
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.groundInk, opacity: 0.45 }} />
               </View>
               <Text style={{ color: colors.groundInk2, fontSize: 15, fontWeight: "700" }}>{section.title}</Text>
               {section === days[0] ? (

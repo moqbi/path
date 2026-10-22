@@ -15,7 +15,7 @@ import { COVER_HEIGHT, CoverLayer, StretchCover, useStretch } from "../../compon
 import { useTabTop } from "../../lib/tab-top";
 import { openAccounts, useDoubleTapSwitch } from "../../components/accounts-sheet";
 import { playRefresh } from "../../lib/sound";
-import { MomentCard, SPINE_W } from "../../components/moment-card";
+import { MomentCard, SPINE_W, SpineThread } from "../../components/moment-card";
 import { AthrMark } from "../../components/brand";
 import { DEV_FEATURES } from "../../lib/dev-features";
 import {
@@ -393,8 +393,9 @@ export default function Me() {
         }
         renderSectionHeader={({ section }) => (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20, paddingVertical: 16 }}>
-            <View style={{ width: SPINE_W, alignItems: "center" }}>
-              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.groundLine }} />
+            <View style={{ width: SPINE_W, alignItems: "center", justifyContent: "center", alignSelf: "stretch" }}>
+              <SpineThread top={-16} bottom={-16} />
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.groundInk, opacity: 0.45 }} />
             </View>
             <Text style={{ color: colors.groundInk, fontSize: 15, fontWeight: "700" }}>{section.title}</Text>
           </View>

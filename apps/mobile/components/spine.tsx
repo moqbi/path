@@ -1,7 +1,7 @@
 import { View } from "react-native";
 import { Text } from "./type";
 import { colors } from "../theme/tokens";
-import { SPINE_W } from "./moment-card";
+import { SPINE_W, SpineThread } from "./moment-card";
 
 /** مركز عمود الصور من حافة الشاشة: حشوة ٢٠ زائد نصف العمود. */
 export const SPINE_X = 20 + SPINE_W / 2;
@@ -35,8 +35,9 @@ export function SpineLine({ children }: { children: React.ReactNode }) {
 export function DayMark({ label }: { label: string }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 16 }}>
-      <View style={{ width: SPINE_W, alignItems: "center" }}>
-        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.groundLine }} />
+      <View style={{ width: SPINE_W, alignItems: "center", justifyContent: "center", alignSelf: "stretch" }}>
+        <SpineThread top={-16} bottom={-16} />
+        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.groundInk, opacity: 0.45 }} />
       </View>
       <Text style={{ color: colors.groundInk2, fontSize: 15, fontWeight: "700" }}>{label}</Text>
     </View>
