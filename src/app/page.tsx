@@ -209,12 +209,6 @@ export default async function TimelinePage({
           </div>
         ) : null}
 
-        {view === "private" ? (
-          <p className="mb-1 text-[11.5px] leading-relaxed text-muted">
-            ما نُشر لتصنيفٍ من أصدقائك أو لأشخاص بأعيانهم — غيرهم لا يراها أصلاً.
-          </p>
-        ) : null}
-
         {hello?.show ? <WelcomeCard data={hello} name={user.name} memberNo={user.memberNo} /> : null}
         {week ? <WeeklyCard week={week} /> : null}
         {memories ? <MemoriesCard data={memories} /> : null}

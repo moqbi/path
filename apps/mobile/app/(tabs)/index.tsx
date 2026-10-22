@@ -413,6 +413,27 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
             }}
           >
             {/*
+              **الخيطُ يصعد في الغلاف حتى مستوى الصورة** — **بقرار المالك** (القاعدة ٣٣٤): على محور
+              عمود الصور نفسه فيتّصل بما تحته، من حافّة الغلاف إلى منتصف الصورة. أبيضُ بظلّ كنصّ الغلاف
+              (القاعدة ٥٧): حبرُ الأرضية يذوب في الصورة.
+            */}
+            <View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                bottom: 0,
+                height: 16 + 34,
+                right: 20 + SPINE_W / 2 - 1,
+                width: 2,
+                borderRadius: 1,
+                backgroundColor: "rgba(255,255,255,.8)",
+                shadowColor: "#0e1a24",
+                shadowOpacity: 0.5,
+                shadowRadius: 3,
+                shadowOffset: { width: 0, height: 0 },
+              }}
+            />
+            {/*
               زرُّ التحديث في الطرف الأيمن قبل الصورة — **بقرار المالك** —
               والصورةُ والاسم يتقدّمان يساراً بعده. فلم تعد الصورة على محور
               الخيط، فذهب وصلُ الخيط تحتها: خيطٌ ينزل من تحت زرٍّ لا يعني شيئاً.
@@ -582,7 +603,12 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
             <MomentCard moment={item} viewerId={me.id} isPlus={me.isPlus} moderate={me.canModerate} />
           )}
           ListHeaderComponent={
-            <>
+            <View>
+            {/*
+              الخيطُ يصل الغلافَ بأوّل يوم (القاعدة ٣٣٤): ما بينهما من بطاقاتٍ يمرّ خلفها، ويُرى في
+              الفُرَج — بلا قطعةٍ هنا كان ينقطع تحت الغلاف.
+            */}
+            {days.length > 0 ? <SpineThread /> : null}
             {days.length === 0 ? (
               <View style={{ flexDirection: "row", paddingVertical: 16 }}>
                 <View style={{ flex: 1 }} />
@@ -599,7 +625,7 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
               onPick={(id) => router.push(`/together/${id}` as never)}
               onClear={() => router.back()}
             />
-            </>
+            </View>
           }
           ListEmptyComponent={
             (view === "together" ? together.isLoading : feed.isLoading) ? (
@@ -691,13 +717,8 @@ function LensHead({
   onPick: (id: string) => void;
   onClear: () => void;
 }) {
-  if (view === "private") {
-    return (
-      <Text style={{ color: colors.groundMuted, fontSize: 11.5, lineHeight: 19, paddingTop: 14, textAlign: "right" }}>
-        ما نُشر لتصنيفٍ من أصدقائك أو لأشخاص بأعيانهم — غيرهم لا يراها أصلاً.
-      </Text>
-    );
-  }
+  // بلا سطر شرحٍ فوق الخاصّة — **بقرار المالك** (القاعدة ٣٣٤): العينُ المشطوبة على كلّ لحظةٍ تقوله.
+  if (view === "private") return null;
 
   // العدسةُ الأولى: بطاقةُ اليوم — ذكرياتٌ ومناسباتٌ و«آثرك» (القاعدة ٢٣٥).
   // ومعها ترحيبُ الحساب الجديد (القاعدة ٢٤٦) وملخّصُ الجمعة (القاعدة ٢٤٥).
