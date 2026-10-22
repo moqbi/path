@@ -433,6 +433,20 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
                 opacity: 0.28,
               }}
             />
+            {/* ونهايتُه نقطةٌ كنقاط الأيام — **بقرار المالك**: الخيطُ يبدأ من شيء لا من فراغ. */}
+            <View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                bottom: COVER_THREAD - 4,
+                right: 20 + SPINE_W / 2 - 4,
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: colors.groundInk,
+                opacity: 0.45,
+              }}
+            />
             {/*
               زرُّ التحديث في الطرف الأيمن قبل الصورة — **بقرار المالك** —
               والصورةُ والاسم يتقدّمان يساراً بعده. فلم تعد الصورة على محور
