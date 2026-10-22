@@ -104,6 +104,7 @@ export function AlertBell({
   name,
   initial,
   disc = false,
+  chrome = false,
   avatar = null,
 }: {
   friendId: string;
@@ -111,6 +112,8 @@ export function AlertBell({
   initial: boolean;
   /** قرصٌ ٤٠ بجانب الاسم (القاعدة ٣٢٠) بدل زرّ صفّ الأزرار. */
   disc?: boolean;
+  /** قرصُ الرأس الداكن (القاعدة ٣٣٠): بمقاس أقراص الرؤوس ٤٠ وبحبر الشريط. */
+  chrome?: boolean;
   /** صورةُ الصديق في السطر الزجاجيّ. */
   avatar?: React.ReactNode;
 }) {
@@ -133,18 +136,25 @@ export function AlertBell({
             if (!said.error) setToast({ on: said.on, at: Date.now() });
           })
         }
-        className={`flex shrink-0 items-center justify-center border disabled:opacity-60 ${disc ? "h-10 w-10 rounded-full" : "w-[46px] rounded-xl"}`}
-        style={{
-          height: disc ? 40 : 46,
-          borderColor: on ? "var(--color-clay)" : "var(--color-line)",
-          background: on ? "var(--color-clay)" : "var(--color-card)",
-          color: on ? "var(--color-on-brand)" : "var(--color-ink-2)",
-        }}
+        className={`flex shrink-0 items-center justify-center disabled:opacity-60 ${chrome ? "h-10 w-10 rounded-full" : `border ${disc ? "h-10 w-10 rounded-full" : "w-[46px] rounded-xl"}`}`}
+        style={
+          chrome
+            ? {
+                background: on ? "var(--color-clay)" : "rgba(255,255,255,.08)",
+                color: on ? "var(--color-on-brand)" : "var(--color-chrome-ink)",
+              }
+            : {
+                height: disc ? 40 : 46,
+                borderColor: on ? "var(--color-clay)" : "var(--color-line)",
+                background: on ? "var(--color-clay)" : "var(--color-card)",
+                color: on ? "var(--color-on-brand)" : "var(--color-ink-2)",
+              }
+        }
       >
         <BellPlusIcon size={18} on={on} />
       </button>
       {toast ? (
-        <GlassToast key={toast.at} avatar={avatar} onDone={() => setToast(null)}>
+        <GlassToast key={toast.at} avatar={avatar} onDone={() => setToast(null)} onCover>
           {toast.on ? "تم تفعيل إشعارات القصص والنوت لـ" : "تم إيقاف إشعارات القصص والنوت لـ"}
           <b dir="auto" className="font-extrabold">{name}</b>
         </GlassToast>
@@ -157,7 +167,18 @@ export function AlertBell({
  * سطرٌ زجاجيّ فوق الشريط السفليّ ثمّ يذهب — نسخةُ `SwitchToast` في الجوّال (القاعدة ٣٢٠).
  * على جسد الصفحة (القاعدة ٩٢)، ومثبّتٌ بـ`.shell-fixed` فلا يطير خارج الهيكل (القاعدة ٨).
  */
-function GlassToast({ avatar, children, onDone }: { avatar: React.ReactNode; children: React.ReactNode; onDone: () => void }) {
+function GlassToast({
+  avatar,
+  children,
+  onDone,
+  onCover = false,
+}: {
+  avatar: React.ReactNode;
+  children: React.ReactNode;
+  onDone: () => void;
+  /** على وسط الغلاف تحت الرأس لا فوق الشريط (القاعدة ٣٣١): الجرسُ في الرأس، فالخبرُ حيث ضُغط. */
+  onCover?: boolean;
+}) {
   const [shown, setShown] = useState(false);
   useEffect(() => {
     const raf = requestAnimationFrame(() => setShown(true));
@@ -171,7 +192,12 @@ function GlassToast({ avatar, children, onDone }: { avatar: React.ReactNode; chi
   }, []);
   if (typeof document === "undefined") return null;
   return createPortal(
-    <div role="status" className="shell-fixed z-[60] flex justify-center px-4" style={{ paddingBottom: 96 }}>
+    <div
+      role="status"
+      className="shell-fixed z-[60] flex justify-center px-4"
+      // الرأسُ نحو ٧٢ والغلافُ تحته: السطرُ في وسط الغلاف تقريباً.
+      style={onCover ? { top: 140, bottom: "auto" } : { paddingBottom: 96 }}
+    >
       <div
         className="flex max-w-[86%] items-center gap-2 rounded-full py-1.5 pl-3.5 pr-1.5 text-[13.5px] font-semibold text-white"
         style={{
@@ -180,7 +206,7 @@ function GlassToast({ avatar, children, onDone }: { avatar: React.ReactNode; chi
           WebkitBackdropFilter: "blur(12px)",
           boxShadow: "0 4px 10px rgba(0,0,0,.25)",
           opacity: shown ? 1 : 0,
-          transform: shown ? "none" : "translateY(16px)",
+          transform: shown ? "none" : `translateY(${onCover ? -16 : 16}px)`,
           transition: "opacity 220ms ease-out, transform 220ms cubic-bezier(.2,.8,.3,1)",
         }}
       >

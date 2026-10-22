@@ -46,10 +46,10 @@ export function BackButton({ href, end = false }: { href?: string; end?: boolean
       type="button"
       aria-label="رجوع"
       onClick={back}
-      className={`${end ? "-ml-2" : "-mr-2"} flex h-10 w-10 shrink-0 items-center justify-center`}
+      className="-mr-2 flex h-10 w-10 shrink-0 items-center justify-center"
       style={{ color: end ? "var(--color-chrome-ink)" : "var(--color-chrome-muted)" }}
     >
-      {/* في طرف الرأس الآخر سهمٌ يشير إلى الخارج — كرأس الجوّال (`ScreenHeader`). */}
+      {/* `end`: سهمٌ يشير يميناً — إلى حيث جئت في قراءةٍ من اليمين، كرأس الجوّال (القاعدة ٣٣٠). */}
       <span style={{ display: "block", transform: end ? "scaleX(-1)" : undefined }}>
         <BackIcon size={19} />
       </span>

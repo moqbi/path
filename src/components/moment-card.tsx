@@ -154,7 +154,7 @@ function Spine({
           {avatar}
         </Link>
       )}
-      <span className="text-[10px] font-semibold text-ground-muted">{timeOfDay(at)}</span>
+      <span className="relative rounded px-[3px] text-[10px] font-semibold text-ground-muted" style={{ background: "var(--color-ground)" }}>{timeOfDay(at)}</span>
       {/*
         «خاصة» تحت الساعة — يراها صاحبُها ومن اختارهم، فيعرف كلٌّ منهم أنّ
         اللحظة لم تُوجَّه إلى الدائرة كلّها (القاعدة ٢٠٦).
