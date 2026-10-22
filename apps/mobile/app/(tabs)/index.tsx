@@ -44,6 +44,9 @@ const PULL_TRIP = 62;
  * على محور الخيط، ومن أسفلها ينزل الخيط إلى لحظات اليوم. واللحظات
  * وحدها تمرّ تحته.
  */
+/** ما يدخل الغلافَ من الخيط (القاعدة ٣٣٤): قطعةٌ قصيرة لا عمودٌ بطوله. */
+const COVER_THREAD = 22;
+
 export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
   // المحتوى يمرّ تحت الشريط الزجاجيّ، وآخرُه يُقرأ فوقه (القاعدة ٢٢٨).
   const barSpace = useBarSpace();
@@ -413,24 +416,21 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
             }}
           >
             {/*
-              **الخيطُ يصعد في الغلاف حتى مستوى الصورة** — **بقرار المالك** (القاعدة ٣٣٤): على محور
-              عمود الصور نفسه فيتّصل بما تحته، من حافّة الغلاف إلى منتصف الصورة. أبيضُ بظلّ كنصّ الغلاف
-              (القاعدة ٥٧): حبرُ الأرضية يذوب في الصورة.
+              **الخيطُ يدخل الغلافَ قليلاً** — **بقرار المالك** (القاعدة ٣٣٤): على محور عمود الصور نفسه
+              وبلونه، قطعةٌ قصيرة من حافّة الغلاف (`COVER_THREAD`) — لا حتى منتصف الصورة.
             */}
             <View
               pointerEvents="none"
               style={{
                 position: "absolute",
                 bottom: 0,
-                height: 16 + 34,
+                height: COVER_THREAD,
                 right: 20 + SPINE_W / 2 - 1,
                 width: 2,
                 borderRadius: 1,
-                backgroundColor: "rgba(255,255,255,.8)",
-                shadowColor: "#0e1a24",
-                shadowOpacity: 0.5,
-                shadowRadius: 3,
-                shadowOffset: { width: 0, height: 0 },
+                // لونُ الخيط تحته نفسُه (`SpineThread`) — **بقرار المالك**: الأبيضُ قُرئ خطّاً آخر.
+                backgroundColor: colors.groundInk,
+                opacity: 0.28,
               }}
             />
             {/*
