@@ -180,7 +180,7 @@ export function FilledImage({ mediaId, height = 62 }: { mediaId: string; height?
 }
 
 /** حدُّ الصفّ الأفقيّ، وما زاد يُرى بـ«عرض الكل» (القاعدة ٢٦٦). */
-export const STRIP_MAX = 10;
+export const STRIP_MAX = 5;
 
 /** حاويةُ البطاقات: شبكةٌ تلتفّ، أو صفٌّ يُمرَّر أفقياً بعرض الشاشة. */
 function Shelf({ strip, children }: { strip: boolean; children: React.ReactNode }) {
@@ -223,7 +223,7 @@ export function StoreGrid({
   focus?: string;
   onFocused?: () => void;
   /**
-   * صفٌّ واحدٌ يُمرَّر أفقياً بعشرةٍ على الأكثر (القاعدة ٢٦٦) — لأقسام المميز
+   * صفٌّ واحدٌ يُمرَّر أفقياً بخمسةٍ على الأكثر (القاعدة ٢٦٦) — لأقسام المميز
    * والمجموعات؛ و«عرض الكل» في رأس القسم يعيدها شبكة.
    */
   row?: boolean;

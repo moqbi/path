@@ -81,9 +81,47 @@ export async function promo(userId: string) {
   const item = await prisma.storeItem.findFirst({
     where: { hidden: false, promoAt: { gt: after } },
     orderBy: { promoAt: "desc" },
-    select: { ...ITEM, promoText: true },
+    select: { ...ITEM, promoText: true, promoAt: true },
   });
   return item;
+}
+
+/**
+ * الإعلانُ الأحدث ممّا لم يُرَ: صنفٌ (القاعدة ٢٦٧) أو مجموعةُ ملصقات (القاعدة ٣٣٥).
+ *
+ * والحدُّ واحدٌ للاثنين (`promoSeenAt`): رؤيةُ أحدهما تطوي ما قبله، فلا تتتابع بطاقتان
+ * عند الفتح. والجوّالُ القديم لا يسأل عن المجموعات (`packs`) فيبقى على الصنف كما كان.
+ * والمجموعةُ بلا ملصقٍ أو مخفيّة لا تُعلَن، ومن يملكها يُقال له «عندك».
+ */
+export async function promoFor(userId: string, withPacks: boolean) {
+  const item = await promo(userId);
+  if (!withPacks) return { item, pack: null };
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { promoSeenAt: true, createdAt: true, isPlus: true },
+  });
+  const floor = new Date(Date.now() - PROMO_DAYS * 86_400_000);
+  const after = [user?.promoSeenAt, user?.createdAt].reduce<Date>(
+    (latest, at) => (at && at > latest ? at : latest),
+    floor,
+  );
+  const row = await prisma.stickerPack.findFirst({
+    where: { hidden: false, promoAt: { gt: after }, stickers: { some: {} } },
+    orderBy: { promoAt: "desc" },
+    select: {
+      id: true,
+      name: true,
+      priceCoins: true,
+      promoAt: true,
+      purchases: { where: { userId }, select: { id: true } },
+      stickers: { select: { id: true, mediaId: true }, orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
+    },
+  });
+  if (!row) return { item, pack: null };
+  // الأحدثُ يُعرض وحده: صنفٌ أُعلن بعد المجموعة يسبقها، والعكس.
+  if (item?.promoAt && row.promoAt && item.promoAt > row.promoAt) return { item, pack: null };
+  const { purchases, promoAt: _at, ...pack } = row;
+  return { item: null, pack: { ...pack, owned: purchases.length > 0 } };
 }
 
 /** رآها: أغلقها أو فتح الصنف — فلا تعود إلا بإعلانٍ أحدث منها. */
@@ -129,7 +167,8 @@ export async function storefront(userId: string) {
   const expires = Object.fromEntries(
     purchases.filter((row) => row.expiresAt).map((row) => [row.itemId, row.expiresAt!.toISOString()]),
   );
-  const fresh = [...items].sort((a, b) => +b.createdAt - +a.createdAt).slice(0, FRESH);
+  // والحزمُ لها صفّاها («الحزم» و«حزم محدودة»)، فلا تُعاد في «وصل حديثاً» — **بقرار المالك**.
+  const fresh = items.filter((item) => item.kind !== "BUNDLE").sort((a, b) => +b.createdAt - +a.createdAt).slice(0, FRESH);
   const themes = items.filter(
     (item) => (item.kind === "THEME" || item.kind === "BACKGROUND") && !item.limited,
   );

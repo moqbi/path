@@ -16,7 +16,8 @@ import { MomentCard, SPINE_W, SpineThread } from "../../components/moment-card";
 import { COVER_HEIGHT, CoverLayer } from "../../components/cover";
 import { Avatar } from "../../components/avatar";
 import { AthrMark } from "../../components/brand";
-import { BellIcon, ClockIcon, HomeIcon, PrivateIcon, RefreshIcon, SparkIcon, StarIcon, WithIcon } from "../../components/icons";
+import { BellIcon, ClockIcon, HomeIcon, PrivateIcon, RefreshIcon, SearchIcon, SparkIcon, StarIcon, WithIcon } from "../../components/icons";
+import { openSearch } from "../../components/search-sheet";
 import { ComposerFan } from "../../components/composer-fan";
 import { Spot } from "../../components/spot";
 import { PlusEnded } from "../../components/plus-ended";
@@ -308,6 +309,18 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
             <Text style={{ color: colors.goldInk, fontSize: 12, fontWeight: "700" }}>آثار+</Text>
           </Pressable>
           </Spot>
+
+          {/* البحثُ الذكيّ بين آثار+ والإشعارات (القاعدة ٣٣٥) — في نسخة التطوير وحدها. */}
+          {DEV_FEATURES ? (
+            <Pressable
+              onPress={openSearch}
+              hitSlop={6}
+              accessibilityLabel="البحث الذكي"
+              style={{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.08)" }}
+            >
+              <SearchIcon size={19} color={colors.chromeInk} />
+            </Pressable>
+          ) : null}
 
           {/*
             الإشعاراتُ أيقونةٌ هنا لا تبويب — **بقرار المالك** (القاعدة ٢٦١): شريطُ

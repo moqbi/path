@@ -10,6 +10,9 @@ import { useSession } from "../lib/session";
 import { coinText } from "../lib/format";
 import type { StoreItem } from "../lib/queries";
 import { colors } from "../theme/tokens";
+import { DEV_FEATURES } from "../lib/dev-features";
+import { PackPromo } from "./pack-promo";
+import type { StickerPack } from "../lib/stickers";
 
 type Promo = StoreItem & { promoText: string | null; promoMediaId?: string | null };
 
@@ -29,15 +32,19 @@ export function StorePromo() {
   const touring = useTourOn();
   const router = useRouter();
   const [item, setItem] = useState<Promo | null>(null);
+  // أو مجموعةُ ملصقاتٍ جديدة (القاعدة ٣٣٥) — في نسخة التطوير وحدها كالملصقات.
+  const [pack, setPack] = useState<StickerPack | null>(null);
   // نسبةُ صورة الإعلان (عرض ÷ ارتفاع) كما وصلت: البطاقةُ تأخذ شكلَها فلا فراغ فوقها ولا تحتها.
   const [ratio, setRatio] = useState<number | null>(null);
 
   useEffect(() => {
     if (!me) return;
     let live = true;
-    void api<{ item: Promo | null }>("/v1/store/promo")
+    void api<{ item: Promo | null; pack?: StickerPack | null }>(`/v1/store/promo${DEV_FEATURES ? "?packs=1" : ""}`)
       .then((row) => {
-        if (live && row.item) setItem(row.item);
+        if (!live) return;
+        if (row.item) setItem(row.item);
+        else if (row.pack) setPack(row.pack);
       })
       .catch(() => {});
     return () => {
@@ -45,7 +52,19 @@ export function StorePromo() {
     };
   }, [me?.id]);
 
-  if (!item || touring) return null;
+  if (touring) return null;
+  if (pack && !item) {
+    return (
+      <PackPromo
+        pack={pack}
+        onClose={() => {
+          setPack(null);
+          void api("/v1/store/promo/seen", { method: "POST" }).catch(() => {});
+        }}
+      />
+    );
+  }
+  if (!item) return null;
 
   const done = () => {
     setItem(null);

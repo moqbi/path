@@ -28,6 +28,7 @@ import { PlaceVisitors } from "../components/place-visitors";
 import { ReactSheet } from "../components/react-sheet";
 import { EditSheet } from "../components/edit-sheet";
 import { AddSheet, openAddSheet } from "../components/add-sheet";
+import { SearchSheet } from "../components/search-sheet";
 import { AccountsSheet, SwitchToast } from "../components/accounts-sheet";
 import { DEV_FEATURES } from "../lib/dev-features";
 import { OfflineBanner } from "../components/offline-banner";
@@ -348,6 +349,7 @@ function Gate() {
     <ReactSheet />
     <EditSheet />
     <AddSheet />
+    <SearchSheet />
     <AccountsSheet />
     <SwitchToast />
     {/* «ما فيه اتصال» زجاجٌ في أعلى الشاشة (القاعدة ٣٢١). */}

@@ -1,5 +1,5 @@
 import { Spinner } from "./spinner";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -179,9 +179,29 @@ function PackSheet({ pack, isPlus, onClose }: { pack: StickerPack; isPlus: boole
 }
 
 /** صفٌّ أو شبكةٌ من بطاقات المجموعات، ومعاينةُ ما يُضغط منها. */
-export function PackShelf({ packs, isPlus, strip = false }: { packs: StickerPack[]; isPlus: boolean; strip?: boolean }) {
+export function PackShelf({
+  packs,
+  isPlus,
+  strip = false,
+  focus,
+  onFocused,
+}: {
+  packs: StickerPack[];
+  isPlus: boolean;
+  strip?: boolean;
+  /** مجموعةٌ تُفتح معاينتُها من جرسها (القاعدة ٣٣٥). */
+  focus?: string | null;
+  onFocused?: () => void;
+}) {
   const { width: screen } = useWindowDimensions();
   const [open, setOpen] = useState<StickerPack | null>(null);
+  useEffect(() => {
+    if (!focus) return;
+    const hit = packs.find((pack) => pack.id === focus);
+    if (!hit) return;
+    setOpen(hit);
+    onFocused?.();
+  }, [focus, packs]);
   const tile = Math.round((screen - 40 - 24) / 3.25);
   const cards = packs.map((pack) => (
     <PackCard key={pack.id} pack={pack} isPlus={isPlus} width={strip ? tile : "30.7%"} onPress={() => setOpen(pack)} />

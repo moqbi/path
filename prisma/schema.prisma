@@ -234,16 +234,16 @@ model User {
   /// التنبيهات: ما يصل الجهاز ومتى.
   /// حقلٌ لكل نوع لا قائمةٌ في نصّ: الاستعلام يقرأ ما يحتاجه وحده،
   /// والنوعُ الجديد عمودٌ بقيمةٍ افتراضية لا هجرةُ بياناتٍ لكل صفّ.
-  notifyDm         Boolean @default(true)
-  notifyFriend     Boolean @default(true)
-  notifyReaction   Boolean @default(true)
-  notifyComment    Boolean @default(true)
-  notifyStoreNew   Boolean @default(true)
-  notifyStoreDeals Boolean @default(true)
+  notifyDm         Boolean   @default(true)
+  notifyFriend     Boolean   @default(true)
+  notifyReaction   Boolean   @default(true)
+  notifyComment    Boolean   @default(true)
+  notifyStoreNew   Boolean   @default(true)
+  notifyStoreDeals Boolean   @default(true)
   /// الذكريات ومناسبات الصداقة وآثرك السنويّ — جرسُ الصباح (القاعدة ٢٣٥).
-  notifyMemories   Boolean @default(true)
+  notifyMemories   Boolean   @default(true)
   /// «من حولك»: أحدٌ قريبٌ فتحها — مطفأٌ حتى يفعّله صاحبُه (القاعدة ٢٨٢).
-  notifyNearby     Boolean @default(false)
+  notifyNearby     Boolean   @default(false)
   /// متى حُسم المفتاحُ: بأوّل فتحٍ لـ«من حولك» (يُفعَّل وحده) أو بيد صاحبه. وبعده لا
   /// يُفعَّل وحده ثانيةً — من أطفأه لا يُعاد عليه (القاعدة ٣٠٩).
   nearbyDecidedAt  DateTime?
@@ -263,25 +263,25 @@ model User {
 
   createdAt DateTime @default(now())
 
-  emailTokens    EmailToken[]
-  devices        DeviceToken[]
-  identities     AuthIdentity[]
-  tickets        SupportTicket[]
-  reports        Report[]        @relation("Reporter")
-  reportsAgainst Report[]        @relation("Reported")
-  sessions       RefreshToken[]
-  moments        Moment[]
-  reactions      Reaction[]
-  pollVotes      PollVote[]
-  views          View[]
-  comments       Comment[]
-  tags           MomentTag[]
-  purchases      Purchase[]
-  giftsGiven     Purchase[]      @relation("GiftGiver")
+  emailTokens       EmailToken[]
+  devices           DeviceToken[]
+  identities        AuthIdentity[]
+  tickets           SupportTicket[]
+  reports           Report[]          @relation("Reporter")
+  reportsAgainst    Report[]          @relation("Reported")
+  sessions          RefreshToken[]
+  moments           Moment[]
+  reactions         Reaction[]
+  pollVotes         PollVote[]
+  views             View[]
+  comments          Comment[]
+  tags              MomentTag[]
+  purchases         Purchase[]
+  giftsGiven        Purchase[]        @relation("GiftGiver")
   stickerGiftsGiven StickerPurchase[] @relation("StickerGiftGiver")
-  plusGiftsSent  PlusGift[]      @relation("PlusGiftGiver")
-  plusGiftsGot   PlusGift[]      @relation("PlusGiftRecipient")
-  topUps         CoinTopUp[]
+  plusGiftsSent     PlusGift[]        @relation("PlusGiftGiver")
+  plusGiftsGot      PlusGift[]        @relation("PlusGiftRecipient")
+  topUps            CoinTopUp[]
 
   media            Media[]           @relation("MediaOwner")
   conversationsA   Conversation[]    @relation("ConversationA")
@@ -698,14 +698,14 @@ model View {
 }
 
 model Comment {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   momentId  String
   userId    String
   body      String
   /// ملصقٌ بدل النصّ (القاعدة ٢٩١) — و`body` «ملصق» تقرؤه النسخُ القديمة.
   stickerId String?
-  sticker   Sticker? @relation(fields: [stickerId], references: [id], onDelete: SetNull)
-  createdAt DateTime @default(now())
+  sticker   Sticker?  @relation(fields: [stickerId], references: [id], onDelete: SetNull)
+  createdAt DateTime  @default(now())
   /// تعديلُ كاتبه (القاعدة ٣١٩).
   editedAt  DateTime?
 
@@ -1075,29 +1075,33 @@ model NationalDay {
 
 /// مجموعةُ ملصقاتٍ تُدار من اللوحة (القاعدة ٢٩١).
 model StickerPack {
-  id         String            @id @default(cuid())
-  name       String
-  sortOrder  Int               @default(0)
-  hidden     Boolean           @default(false)
+  id          String            @id @default(cuid())
+  name        String
+  sortOrder   Int               @default(0)
+  hidden      Boolean           @default(false)
   /// صفرٌ = مع اشتراك آثار+، وما فوقه = تُشترى بالنقاط وتُملَك ولو انتهى الاشتراك (القاعدة ٢٩٤).
-  priceCoins Int               @default(0)
-  createdAt  DateTime          @default(now())
-  stickers   Sticker[]
-  purchases  StickerPurchase[]
+  priceCoins  Int               @default(0)
+  /// ختمُ الجرس: يُكتب قبل الإرسال بشرط «لم يُختم» فلا تُعلَن مرّتين (القاعدة ٣٣٥).
+  announcedAt DateTime?
+  /// بطاقةُ الإعلان عند فتح التطبيق تُعرض لمن لم يرَ ما بعد هذا الختم (القاعدة ٣٣٥).
+  promoAt     DateTime?
+  createdAt   DateTime          @default(now())
+  stickers    Sticker[]
+  purchases   StickerPurchase[]
 }
 
 /// ملكيّةُ مجموعةٍ مدفوعة: صفٌّ لا يُمحى بانتهاء آثار+ (القاعدة ٢٩٤).
 model StickerPurchase {
-  id        String      @id @default(cuid())
-  userId    String
-  packId    String
-  paidCoins Int
+  id         String      @id @default(cuid())
+  userId     String
+  packId     String
+  paidCoins  Int
   /// المُهدي حين تكون هديّةً (القاعدة ٢٩٨) — والإشعارُ يُشتقّ منه كهدايا المتجر.
   giftedById String?
-  createdAt DateTime    @default(now())
-  user      User        @relation("StickerOwner", fields: [userId], references: [id], onDelete: Cascade)
-  pack      StickerPack @relation(fields: [packId], references: [id], onDelete: Cascade)
-  giftedBy  User?       @relation("StickerGiftGiver", fields: [giftedById], references: [id], onDelete: SetNull)
+  createdAt  DateTime    @default(now())
+  user       User        @relation("StickerOwner", fields: [userId], references: [id], onDelete: Cascade)
+  pack       StickerPack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  giftedBy   User?       @relation("StickerGiftGiver", fields: [giftedById], references: [id], onDelete: SetNull)
 
   @@unique([userId, packId])
   @@index([giftedById, createdAt])

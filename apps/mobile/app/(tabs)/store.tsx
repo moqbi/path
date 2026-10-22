@@ -82,7 +82,7 @@ export default function Store() {
   // من بطاقة الإعلان: الصنفُ تُفتح بطاقتُه فوق المتجر (القاعدة ٢٦٧).
   // والمعرّفُ يُمسك في الحالة ثمّ يُمسح من العنوان: لو بقي فيه لفُتحت البطاقة
   // ثانيةً مع كلّ عودةٍ إلى التبويب، ولو مُسح وحده لأُغلقت لحظةَ فُتحت.
-  const params = useLocalSearchParams<{ item?: string }>();
+  const params = useLocalSearchParams<{ item?: string; pack?: string }>();
   const [held, setHeld] = useState<string | null>(null);
   useEffect(() => {
     if (!params.item) return;
@@ -90,6 +90,16 @@ export default function Store() {
     router.setParams({ item: undefined } as never);
   }, [params.item]);
   const focused = data?.items.find((item) => item.id === held) ?? null;
+  // ومن جرس مجموعة ملصقاتٍ جديدة (القاعدة ٣٣٥): شريحةُ الملصقات ومعاينتُها مفتوحة.
+  const [heldPack, setHeldPack] = useState<string | null>(null);
+  useEffect(() => {
+    if (!params.pack) return;
+    if (DEV_FEATURES) {
+      setHeldPack(params.pack);
+      setSlug("kind:STICKER");
+    }
+    router.setParams({ pack: undefined } as never);
+  }, [params.pack]);
 
   const grid = (items: StoreItem[], strip = false) =>
     data ? (
@@ -259,12 +269,12 @@ export default function Store() {
               {/* قسمان — **بقرار المالك**: ما مع آثار+، ثمّ ما يُشترى بالنقاط. */}
               {plusPacks.length > 0 ? (
                 <Row title="ملصقات آثار+">
-                  <PackShelf packs={plusPacks} isPlus={data?.isPlus ?? false} />
+                  <PackShelf packs={plusPacks} isPlus={data?.isPlus ?? false} focus={heldPack} onFocused={() => setHeldPack(null)} />
                 </Row>
               ) : null}
               {paidPacks.length > 0 ? (
                 <Row title="ملصقات أخرى">
-                  <PackShelf packs={paidPacks} isPlus={data?.isPlus ?? false} />
+                  <PackShelf packs={paidPacks} isPlus={data?.isPlus ?? false} focus={heldPack} onFocused={() => setHeldPack(null)} />
                 </Row>
               ) : null}
             </>

@@ -12,7 +12,7 @@ import { coinText } from "@/lib/format";
 /** كم صنفاً يظهر في صفّ «وصل حديثاً». */
 const FRESH = 10;
 /** صفٌّ يُمرَّر بعشرةٍ ثمّ «عرض الكل» — كالجوّال (القاعدة ٢٦٦). */
-const STRIP_MAX = 10;
+const STRIP_MAX = 5;
 
 /** شرائحُ الأنواع بعد «المميز» — كالجوّال (القاعدة ٤٤د). */
 const KINDS = [
@@ -96,7 +96,9 @@ export default async function StorePage({
     />
   );
 
-  const fresh = [...all]
+  // والحزمُ لها صفّاها، فلا تُعاد في «وصل حديثاً» — **بقرار المالك**.
+  const fresh = all
+    .filter((item) => item.kind !== "BUNDLE")
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .slice(0, FRESH);
   // الحزم المحدودة لها صفّها تحت، فلا تُعاد هنا.
