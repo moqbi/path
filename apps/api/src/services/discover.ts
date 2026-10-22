@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { prisma } from "@athar/db";
+import { prisma, Prisma } from "@athar/db";
 import { badRequest } from "../lib/errors";
 import { blockedWith, circleIds } from "./visibility";
 
@@ -21,18 +21,30 @@ const CARD = {
   tag: { select: { name: true, bg: true, fg: true } },
 } as const;
 
-/** «أ» و«إ» و«آ» حرفٌ واحد، والتاءُ المربوطة هاءٌ، وفراغاتٌ كثيرة فراغٌ واحد. */
+/**
+ * ما تختلف كتابتُه حرفٌ واحد: «أ» و«إ» و«آ» و«ٱ» ألف، والتاءُ المربوطة هاء، و«ى» والياءُ
+ * الفارسيّة ياء، والكافُ الفارسيّة كاف — ويُنزع التشكيلُ والتطويلُ وعلاماتُ الاتجاه الخفيّة
+ * (يكتبها بعضُ الكيبوردات في الاسم العربيّ فلا يطابق ما يُكتب في البحث)، و«عبد الله»
+ * و«عبدالله» واحد. وفراغاتٌ كثيرة فراغٌ واحد.
+ */
 function fold(text: string): string {
   return text
     .normalize("NFKC")
-    .replace(/[ً-ْـ]/g, "")
-    .replace(/[أإآ]/g, "ا")
+    .replace(/[\u064B-\u065F\u0670\u0640\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g, "")
+    .replace(/[أإآٱ]/g, "ا")
     .replace(/ة/g, "ه")
-    .replace(/ى/g, "ي")
+    .replace(/[ىی]/g, "ي")
+    .replace(/ک/g, "ك")
     .replace(/\s+/g, " ")
+    .replace(/عبد /g, "عبد")
     .trim()
     .toLowerCase();
 }
+
+/** الطيُّ نفسُه في SQL — فالمطابقةُ في القاعدة لا في مرشّحين بكلمةٍ قد يقطعها تشكيل. */
+const FOLDED_NAME = Prisma.sql`lower(btrim(replace(regexp_replace(translate(
+  regexp_replace(normalize(name, NFKC), '[\u064B-\u065F\u0670\u0640\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]', '', 'g'),
+  'أإآٱةىیک', 'ااااهييك'), '\\s+', ' ', 'g'), 'عبد ', 'عبد')))`;
 
 /** يُرفق بكلّ بطاقةٍ علاقتَها بالسائل: صديق، أو طلبٌ منه، أو طلبٌ إليه. */
 async function withRelation<T extends { id: string }>(userId: string, people: T[]) {
@@ -87,17 +99,17 @@ export async function findPeople(userId: string, raw: string) {
   const folded = fold(q);
   let byName: typeof byHandle = [];
   if (folded.split(" ").length >= 2) {
-    // الطيُّ في Postgres يحتاج امتداداً؛ فالمرشّحون بأطول كلمةٍ بعد نزع ما تختلف
-    // كتابتُه في طرفيها (همزةُ الألف أوّلاً، والتاءُ المربوطة والياءُ آخراً)، ثمّ
-    // المطابقةُ التامّة بعد الطيّ هنا.
-    const longest = q.split(/\s+/).sort((a, b) => b.length - a.length)[0]!;
-    const core = longest.replace(/^[اأإآ]/, "").replace(/[ةهىي]$/, "");
-    const rough = await prisma.user.findMany({
-      where: { name: { contains: core.length >= 2 ? core : longest, mode: "insensitive" } },
-      select: CARD,
-      take: 500,
-    });
-    byName = rough.filter((person) => fold(person.name) === folded).slice(0, 10);
+    /*
+      المطابقةُ التامّةُ بعد الطيّ **في القاعدة**: كانت المرشّحون بأطول كلمةٍ (`contains`)
+      ثمّ المطابقةُ هنا — فاسمٌ عربيٌّ فيه تشكيلٌ أو تطويلٌ أو علامةُ اتجاهٍ خفيّة داخل
+      تلك الكلمة لا يصير مرشّحاً أصلاً، واللاتينيُّ لا يحمل شيئاً من ذلك فيُوجد.
+    */
+    const ids = await prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM "User" WHERE ${FOLDED_NAME} = ${folded} LIMIT 10
+    `;
+    byName = ids.length
+      ? await prisma.user.findMany({ where: { id: { in: ids.map((row) => row.id) } }, select: CARD })
+      : [];
   }
 
   const seen = new Set<string>();
