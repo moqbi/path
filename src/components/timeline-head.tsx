@@ -11,6 +11,7 @@ const COVER = 176;
 /** أقصى ما يتمدّد الغلاف بالسحب، وحدّ الإفلات الذي يعني «حدّث». */
 const MAX_PULL = 96;
 const TRIGGER = 56;
+const rubber = (delta: number) => (delta <= 0 ? 0 : MAX_PULL * (1 - Math.exp(-delta / 130)));
 
 /**
  * رأس الخط الزمني: الغلاف، وصورة العرض **داخله** جالسة على محور خط
@@ -99,8 +100,8 @@ export function TimelineHead({
       }
       event.preventDefault();
       setDragging(true);
-      // مقاومة: نصف المسافة تقريباً، فالسحب يُحسّ ثقيلاً كالورق لا كالمطاط.
-      set(Math.min(MAX_PULL, delta * 0.55));
+      // مقاومةٌ تثقل تدريجاً نحو الحدّ ولا تصطدم به (القاعدة ٣٤٢).
+      set(rubber(delta));
     };
     const onEnd = () => {
       if (from === null) return;
@@ -133,7 +134,7 @@ export function TimelineHead({
   function move(event: React.PointerEvent<HTMLElement>) {
     if (event.pointerType !== "mouse" || mouse.current === null) return;
     const delta = event.clientY - mouse.current;
-    set(delta <= 0 ? 0 : Math.min(MAX_PULL, delta * 0.55));
+    set(rubber(delta));
   }
   function up(event: React.PointerEvent<HTMLElement>) {
     if (event.pointerType !== "mouse" || mouse.current === null) return;
@@ -174,9 +175,10 @@ export function TimelineHead({
               // قرصٌ داكن لا شفّاف: بلا درعٍ على الغلاف كان الأبيضُ يذوب في صورةٍ فاتحة.
               style={{ background: "rgba(14,26,36,.38)", color: "#fff" }}
             >
-              {logo && pending ? (
-                // والجلبُ الجاري شعارُ التطبيق يتنفّس وقوسُه يدور (القاعدة ٣٢١).
-                <LogoRefresh size={22} />
+              {logo && (pending || pull > 0) ? (
+                // والجلبُ الجاري شعارُ التطبيق يتنفّس وقوسُه يدور (القاعدة ٣٢١)، وقبله
+                // يدور مع الإصبع وهو يسحب لا يقف ساكناً حتى يُفلت (القاعدة ٣٤٢).
+                <LogoRefresh size={22} turn={pending ? undefined : pull * 3.4} />
               ) : (
               <span
                 style={{

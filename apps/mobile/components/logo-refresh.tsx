@@ -148,9 +148,10 @@ export function usePullLogo({
           right: 0,
           alignItems: "center",
           zIndex: 30,
-          opacity: refreshing ? 1 : value.interpolate({ inputRange: [-TRIGGER, -12], outputRange: [1, 0], extrapolate: "clamp" }),
+          opacity: refreshing ? 1 : value.interpolate({ inputRange: [-TRIGGER, -8], outputRange: [1, 0], extrapolate: "clamp" }),
           transform: [
-            { scale: refreshing ? 1 : value.interpolate({ inputRange: [-TRIGGER, -12], outputRange: [1, 0.6], extrapolate: "clamp" }) },
+            { translateY: refreshing ? 0 : value.interpolate({ inputRange: [-TRIGGER, 0], outputRange: [0, -18], extrapolate: "clamp" }) },
+            { scale: refreshing ? 1 : value.interpolate({ inputRange: [-TRIGGER, -8], outputRange: [1, 0.6], extrapolate: "clamp" }) },
           ],
         }}
       >
@@ -164,7 +165,16 @@ export function usePullLogo({
             backgroundColor: "rgba(14,26,36,.55)",
           }}
         >
-          <LogoRefresh size={34} active={refreshing} />
+          {/* يدور مع الإصبع وهو يسحب — كان ساكناً حتى يُفلت (القاعدة ٣٤٢). */}
+          <Animated.View
+            style={{
+              transform: [
+                { rotate: refreshing ? "0deg" : value.interpolate({ inputRange: [-160, 0], outputRange: ["320deg", "0deg"], extrapolate: "clamp" }) },
+              ],
+            }}
+          >
+            <LogoRefresh size={34} active={refreshing} />
+          </Animated.View>
         </View>
       </Animated.View>
     ),
