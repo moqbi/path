@@ -116,7 +116,7 @@ export function WelcomeCard() {
       done: data.steps.support,
       icon: <SparkIcon size={16} color={colors.clayInk} />,
       title: `أضف ${data.supportName ?? "حساب آثار"}`,
-      hint: "أخبار التطبيق وجديده في خطّك الزمني من اليوم",
+      hint: "يمكنك إضافة أصدقاء جدد من التفاعلات والتعليقات.. تفاعل وعلّق ليضيفك المستخدمون الآخرون",
       go: () => data.supportId && router.push(`/u/${data.supportId}` as never),
     },
     {

@@ -1,6 +1,6 @@
 import { Spinner } from "./spinner";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Image, PanResponder, Pressable, View, useWindowDimensions } from "react-native";
+import { Animated, Easing, FlatList, Image, PanResponder, Pressable, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text, TextInput } from "./type";
 import { BackIcon, CheckIcon, CloseIcon, PauseIcon, PlayIcon, SearchIcon } from "./icons";
@@ -109,10 +109,6 @@ export function SongPicker({
               renderItem={({ item }) => <Row track={item} onChoose={() => setChosen(item)} />}
             />
           )}
-          {/* شرطُ دِيزر: اسمُه حيث تُعرض أغانيه. */}
-          <Text style={{ position: "absolute", bottom: insets.bottom + 6, alignSelf: "center", color: "rgba(255,255,255,.35)", fontSize: 10 }}>
-            الأغاني من Deezer
-          </Text>
         </>
       )}
     </View>
@@ -220,6 +216,24 @@ function Trim({ track, onDone, onOther }: { track: Track; onDone: (start: number
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [track.id]);
 
+  /*
+    مؤشّرُ التشغيل (القاعدة ٣٣٩): خطٌّ يمشي على الشريط مع المقطع من حيث بدأ إلى
+    حيث يقف — على الخيط الأصليّ بلا رسمٍ مع كلّ إطار. يختفي حين يقف المقطع.
+  */
+  const head = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!clip.playing || !clip.startedAt) return;
+    head.setValue(clip.from * px);
+    const run = Animated.timing(head, {
+      toValue: (clip.from + clip.seconds) * px,
+      duration: clip.seconds * 1000,
+      easing: Easing.linear,
+      useNativeDriver: true,
+    });
+    run.start();
+    return () => run.stop();
+  }, [clip.playing, clip.startedAt, px]);
+
   const pan = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -301,6 +315,12 @@ function Trim({ track, onDone, onOther }: { track: Track; onDone: (start: number
             borderColor: "#F6B93B",
           }}
         />
+        {clip.playing ? (
+          <Animated.View
+            pointerEvents="none"
+            style={{ position: "absolute", top: 4, bottom: 4, left: -1, width: 2, borderRadius: 1, backgroundColor: "#fff", transform: [{ translateX: head }] }}
+          />
+        ) : null}
         {([start, end] as const).map((at, i) => (
           <View
             key={i}
@@ -311,8 +331,9 @@ function Trim({ track, onDone, onOther }: { track: Track; onDone: (start: number
           </View>
         ))}
       </View>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10 }}>
-        <Text style={{ color: "rgba(255,255,255,.7)", fontSize: 12 }}>
+      {/* العبارةُ في صندوقٍ تحت الشريط — تُقرأ تعليمةً لا سطراً سائباً. */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 12, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, backgroundColor: "rgba(255,255,255,.1)", borderWidth: 1, borderColor: "rgba(255,255,255,.14)" }}>
+        <Text style={{ color: "rgba(255,255,255,.85)", fontSize: 12 }}>
           {full
             ? "الأغنية كاملة — اسحب طرفَي النافذة لتقصّ منها"
             : `من \u2066${clock(from)}\u2069 إلى \u2066${clock(to)}\u2069، ${ar(to - from)} ث`}

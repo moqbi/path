@@ -93,8 +93,16 @@ export const openNote = (noteId: string | null) => useOpenNote.setState({ noteId
  * مشغّلٌ واحد للنوت ومعاينات الأغاني: تشغيلُ مقطعٍ يوقف ما قبله، والمقطعُ
  * يقف بعد عشرين ثانيةً من بدايته — المعاينةُ ثلاثون والنوتُ عشرون منها.
  */
-type Player = { key: string | null; playing: boolean; loading: boolean };
-const usePlayer = create<Player>(() => ({ key: null, playing: false, loading: false }));
+type Player = {
+  key: string | null;
+  playing: boolean;
+  loading: boolean;
+  /** من أين بدأ المقطعُ ومتى وكم يدوم — لمؤشّر التشغيل في شريط القصّ (القاعدة ٣٣٩). */
+  from: number;
+  seconds: number;
+  startedAt: number;
+};
+const usePlayer = create<Player>(() => ({ key: null, playing: false, loading: false, from: 0, seconds: 0, startedAt: 0 }));
 let sound: Audio.Sound | null = null;
 let stopTimer: ReturnType<typeof setTimeout> | null = null;
 let ticket = 0;
@@ -124,7 +132,7 @@ export async function playClip(key: string, url: string, start: number, seconds 
       return;
     }
     sound = made.sound;
-    usePlayer.setState({ key, playing: true, loading: false });
+    usePlayer.setState({ key, playing: true, loading: false, from: start, seconds, startedAt: Date.now() });
     stopTimer = setTimeout(() => {
       if (mine !== ticket) return;
       void stopClip();
@@ -137,7 +145,14 @@ export async function playClip(key: string, url: string, start: number, seconds 
 
 export function useClip(key: string) {
   const state = usePlayer();
-  return { playing: state.key === key && state.playing, loading: state.key === key && state.loading };
+  const mine = state.key === key;
+  return {
+    playing: mine && state.playing,
+    loading: mine && state.loading,
+    from: state.from,
+    seconds: state.seconds,
+    startedAt: mine ? state.startedAt : 0,
+  };
 }
 
 /** مقطعُ نوتٍ برابطٍ طازج من خادمنا. */
