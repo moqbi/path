@@ -12,6 +12,8 @@ import { api } from "../../lib/api";
 import { ar, MONTHS } from "../../lib/format";
 import { momentLine, type ArchiveMoment, type ArchivePage } from "../../lib/archive";
 import { colors } from "../../theme/tokens";
+import { DEV_FEATURES } from "../../lib/dev-features";
+import { GalleryLobby } from "../../components/gallery-lobby";
 
 const COLUMNS = 3;
 const GAP = 6;
@@ -24,6 +26,11 @@ const GAP = 6;
  * «سنتك في كتاب» لكلّ سنة. ولغير المشترك آخرُ ستّة أشهر ويُقال كم خلفها.
  */
 export default function Archive() {
+  // «المعرض وكتاب السنة» بدل الأرشيف (القاعدة ٣٤٦) — في نسخة التطوير وحدها (القاعدة ٢٩١).
+  return DEV_FEATURES ? <GalleryLobby /> : <ArchiveGrid />;
+}
+
+function ArchiveGrid() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const tile = (width - 40 - GAP * (COLUMNS - 1)) / COLUMNS;

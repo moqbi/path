@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { Modal, Pressable, View, Dimensions, Animated, PanResponder, Platform } from "react-native";
 import { initialWindowMetrics, useSafeAreaInsets } from "react-native-safe-area-context";
 import { create } from "zustand";
@@ -55,12 +55,23 @@ export function PhotoViewer() {
   const scale = useRef(new Animated.Value(1)).current;
   const panX = useRef(new Animated.Value(0)).current;
   const panY = useRef(new Animated.Value(0)).current;
-  // إزاحةُ التقليب بين الصور — التاليةُ في اليسار كقراءة العربية (كـ`PhotoCarousel`).
+  /*
+    إزاحةُ التقليب بين الصور — التاليةُ في اليسار كقراءة العربية (كـ`PhotoCarousel`).
+    مطلقةٌ لا نسبيّة: `page` = موضعُ الصورة الحاليّة × العرض، وكلُّ صورةٍ في مكانها
+    منه. كانت نسبيّةً تُصفَّر بعد كلّ تقليب، والتصفيرُ يسبق رسمَ الحاليّة الجديدة
+    بإطار — فترمش الصورة. وكانت الحاليّةُ مكوّناً واحداً يتبدّل معرّفُه فيُعاد تحميلها.
+  */
   const page = useRef(new Animated.Value(0)).current;
+  const zero = useRef(new Animated.Value(0)).current;
+  const one = useRef(new Animated.Value(1)).current;
   const nav = useRef({ list, index, width: screen.width }).current;
   nav.list = list;
   nav.index = index;
   nav.width = screen.width;
+  // فتحُ صورةٍ يضع الشريطَ عليها قبل أوّل رسمة؛ بعد التقليب هو عليها أصلاً.
+  useLayoutEffect(() => {
+    if (index >= 0) page.setValue(index * screen.width);
+  }, [mediaId]); // eslint-disable-line react-hooks/exhaustive-deps
   const area = { width: screen.width, height: screen.height - insets.top - insets.bottom };
 
   /*
@@ -108,7 +119,6 @@ export function PhotoViewer() {
     if (tapTimer.current) clearTimeout(tapTimer.current);
     viewPhoto(null);
     drag.setValue(0);
-    page.setValue(0);
     apply(1, 0, 0);
   };
 
@@ -199,7 +209,7 @@ export function PhotoViewer() {
           const dx = point.x - gesture.start.x;
           const next = nav.index + Math.sign(dx);
           // خلف الطرفين مقاومةٌ تُحسّ ولا تُعبر.
-          page.setValue(next < 0 || next >= nav.list.length ? dx * 0.3 : dx);
+          page.setValue(nav.index * nav.width + (next < 0 || next >= nav.list.length ? dx * 0.3 : dx));
           return;
         }
         if (gesture.mode === "pan") {
@@ -221,12 +231,11 @@ export function PhotoViewer() {
           const step = Math.abs(dx) > nav.width * 0.22 || Math.abs(g.vx) > 0.4 ? Math.sign(dx || g.vx) : 0;
           const next = nav.index + step;
           if (step && next >= 0 && next < nav.list.length) {
-            Animated.timing(page, { toValue: step * nav.width, duration: 180, useNativeDriver: true }).start(() => {
-              useViewer.setState({ mediaId: nav.list[next] });
-              page.setValue(0);
-            });
+            Animated.timing(page, { toValue: next * nav.width, duration: 180, useNativeDriver: true }).start(() =>
+              useViewer.setState({ mediaId: nav.list[next] }),
+            );
           } else {
-            Animated.spring(page, { toValue: 0, useNativeDriver: true, bounciness: 0 }).start();
+            Animated.spring(page, { toValue: nav.index * nav.width, useNativeDriver: true, bounciness: 0 }).start();
           }
           return;
         }
@@ -262,32 +271,36 @@ export function PhotoViewer() {
           onPress={(e) => onTap({ x: e.nativeEvent.pageX, y: e.nativeEvent.pageY })}
           style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
         >
-          <Animated.View style={{ transform: [{ translateY: drag }, { translateX: page }, { translateX: panX }, { translateY: panY }, { scale }] }}>
-            {mediaId ? (
-              <MediaImage
-                mediaId={mediaId}
-                resizeMode="contain"
-                style={area}
-              />
-            ) : null}
-          </Animated.View>
-          {/* الجارتان: السابقةُ يميناً والتاليةُ يساراً، تتحرّكان مع الإصبع. */}
-          {[index - 1, index + 1].map((at) =>
-            at >= 0 && at < list.length ? (
+          {/*
+            الحاليّةُ وجارتاها مكوّنٌ لكلٍّ بمفتاح معرّفه: التقليبُ يُبقي الصورةَ التي ظهرت
+            تحت الإصبع مركّبةً كما هي ويغيّر ما حولها — لا تحميلَ ثانٍ ولا وميض.
+            والتقريبُ للحاليّة وحدها، وللجارتين قيمٌ ساكنة بالشكل نفسه.
+          */}
+          {(mediaId ? (index >= 0 ? [index - 1, index, index + 1] : [-1]) : []).map((at) => {
+            const id = at === -1 ? mediaId : list[at];
+            if (!id || (at !== -1 && (at < 0 || at >= list.length))) return null;
+            const here = at === index || at === -1;
+            return (
               <Animated.View
-                key={list[at]}
+                key={id}
                 pointerEvents="none"
                 style={{
                   position: "absolute",
                   left: 0,
                   top: (screen.height - area.height) / 2,
-                  transform: [{ translateY: drag }, { translateX: Animated.add(page, (index - at) * screen.width) }],
+                  transform: [
+                    { translateY: drag },
+                    { translateX: at === -1 ? zero : Animated.add(page, -at * screen.width) },
+                    { translateX: here ? panX : zero },
+                    { translateY: here ? panY : zero },
+                    { scale: here ? scale : one },
+                  ],
                 }}
               >
-                <MediaImage mediaId={list[at]} resizeMode="contain" style={area} />
+                <MediaImage mediaId={id} resizeMode="contain" style={area} />
               </Animated.View>
-            ) : null,
-          )}
+            );
+          })}
         </Pressable>
       </Animated.View>
 

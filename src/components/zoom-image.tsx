@@ -149,6 +149,7 @@ export function ZoomImage({
       <img
         src={src}
         alt=""
+        decoding="sync"
         draggable={false}
         style={{
           maxWidth: "100%",

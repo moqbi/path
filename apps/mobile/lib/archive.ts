@@ -95,3 +95,6 @@ export function momentLine(moment: ArchiveMoment): string {
       return moment.text ?? "";
   }
 }
+
+/** ما يراه غيرُ المشترك من أرشيفه — `FREE_ARCHIVE_DAYS` في الخادم (القاعدة ٢٤٤). */
+export const FREE_DAYS = 183;
