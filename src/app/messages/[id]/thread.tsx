@@ -1,5 +1,6 @@
 "use client";
 
+import { ZoomImage } from "@/components/zoom-image";
 import { useEffect, useRef, useState } from "react";
 import { editMessage } from "@/app/actions";
 import { Ticks, receiptOf } from "@/components/receipt";
@@ -190,12 +191,7 @@ function Shot({ mediaId }: { mediaId: string }) {
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: "rgba(8,14,20,.94)" }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={`${BASE}/api/media/${mediaId}`}
-            alt=""
-            style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
-          />
+          <ZoomImage src={`${BASE}/api/media/${mediaId}`} onClose={() => setOpen(false)} />
         </div>
       ) : null}
     </>

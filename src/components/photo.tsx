@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CloseIcon } from "@/components/icons";
+import { ZoomImage } from "@/components/zoom-image";
 import { BASE } from "@/lib/base";
 import { PHOTO_RATIO } from "@/lib/photo";
 
@@ -76,12 +77,7 @@ export function Photo({
           className="fixed inset-0 z-40 flex items-center justify-center p-4"
           style={{ background: "rgba(8,14,20,.94)", animation: "athr-veil 160ms ease both" }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={`${BASE}/api/media/${mediaId}`}
-            alt=""
-            style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
-          />
+          <ZoomImage src={`${BASE}/api/media/${mediaId}`} onClose={() => setOpen(false)} />
           <button
             type="button"
             aria-label="إغلاق"
@@ -89,7 +85,7 @@ export function Photo({
               stop(event);
               setOpen(false);
             }}
-            className="absolute left-4 top-4 flex h-10 w-10 items-center justify-center rounded-full"
+            className="absolute left-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full"
             style={{ background: "rgba(255,255,255,.16)", color: "#fff" }}
           >
             <CloseIcon size={18} />

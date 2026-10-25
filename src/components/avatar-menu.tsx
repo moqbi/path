@@ -1,5 +1,6 @@
 "use client";
 
+import { ZoomImage } from "@/components/zoom-image";
 import { useEffect, useState, useTransition } from "react";
 import { buyNow } from "@/app/actions";
 import { Avatar, itemPaint, type Charm, type Frame } from "@/components/ui";
@@ -97,12 +98,7 @@ export function AvatarMenu({
           style={{ background: "rgba(8,14,20,.94)", animation: "athr-veil 160ms ease both" }}
         >
           {mediaId ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={`${BASE}/api/media/${mediaId}`}
-              alt=""
-              style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: 18 }}
-            />
+            <ZoomImage src={`${BASE}/api/media/${mediaId}`} onClose={close} />
           ) : (
             <Avatar name={name} size={220} />
           )}
