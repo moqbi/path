@@ -790,6 +790,17 @@ h3 {
 .dual-range-fill {
   background: #f6b93b;
 }
+/* مؤشّرُ التشغيل يمشي مع المقطع (القاعدة ٣٣٩) — تحت المقبضين فلا يأخذ لمستهما. */
+.dual-range-head {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: #fff;
+  pointer-events: none;
+}
 .dual-range input {
   position: absolute;
   inset: 0;

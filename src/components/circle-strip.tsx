@@ -355,7 +355,21 @@ function useClip() {
   const audio = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
+  // الثانيةُ التي يُسمع منها الآن — لمؤشّر التشغيل على شريط القصّ (القاعدة ٣٣٩).
+  const [at, setAt] = useState(0);
   const span = useRef({ start: 0, seconds: NOTE_SECONDS });
+
+  // كلَّ إطارٍ ما دام يُسمع: `timeupdate` يأتي أربعَ مرّاتٍ في الثانية فيقفز المؤشّر.
+  useEffect(() => {
+    if (!playing) return;
+    let frame = 0;
+    const tick = () => {
+      if (audio.current) setAt(audio.current.currentTime);
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [playing]);
 
   useEffect(() => {
     return () => {
@@ -392,7 +406,7 @@ function useClip() {
     );
   }
 
-  return { playing, progress, play, stop };
+  return { playing, progress, at, play, stop };
 }
 
 function NoteSheet({
@@ -655,7 +669,8 @@ function NoteComposer({ groups, onClose }: { groups: Group[]; onClose: () => voi
 
         {track && trimming ? (
           <div>
-            <span className="mb-1.5 flex justify-between text-[11.5px] opacity-70">
+            {/* العبارةُ في صندوقٍ فوق الشريط — تعليمةٌ تُقرأ لا سطرٌ سائب. */}
+            <span className="mb-2 flex justify-between gap-2 rounded-xl px-3 py-2 text-[11.5px]" style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.14)" }}>
               <span>
                 {full ? "الأغنية كاملة — اسحب الطرفين لتقصّ منها" : `المقطع: من الثانية ${ar(startAt)} إلى ${ar(endAt)} — ${ar(endAt - startAt)} ثانية`}
               </span>
@@ -680,6 +695,7 @@ function NoteComposer({ groups, onClose }: { groups: Group[]; onClose: () => voi
                 className="dual-range-fill"
                 style={{ left: `${(startAt / PREVIEW_SECONDS) * 100}%`, right: `${100 - (endAt / PREVIEW_SECONDS) * 100}%` }}
               />
+              {clip.playing ? <span className="dual-range-head" style={{ left: `${(Math.min(clip.at, PREVIEW_SECONDS) / PREVIEW_SECONDS) * 100}%` }} /> : null}
               <input
                 type="range"
                 aria-label="البداية"

@@ -65,20 +65,38 @@ export async function morningBell(now = new Date()): Promise<number> {
       if (claimed.count === 0) continue;
       handled += 1;
 
+      /*
+        كلُّ جرسٍ في محاولته: كان فشلُ واحدٍ (حسابُ الأسبوع مثلاً) يُسقط ما بعده واليومُ
+        مختومٌ قبله، فيضيع صباحُ صاحبه بلا شيء. وكلُّ إرسالٍ سطرٌ في السجلّ — «لم يصلني
+        جرسُ الجمعة» يُجاب عنه من السجلّ لا بالتخمين.
+      */
+      const ring = async (label: string, title: string, body: string, path = "/") => {
+        const outcome = await push({ userId: user.id, kind: "MEMORY", title, body, path });
+        console.log(`[جرس الصباح] ${label} ← ${user.id}: ${outcome}`);
+        sent += 1;
+      };
       try {
+        // الجمعةُ: «أسبوعك في دائرتك» جرسٌ (القاعدة ٢٤٥)، والذكرى بعده جرسٌ آخر لا تُطوى فيه.
+        if (riyadhWeekday(now) === 5) {
+          const week = await weeklyFor(user.id, now).catch((problem) => {
+            console.error("✗ ملخّص الأسبوع", user.id, problem);
+            return null;
+          });
+          if (week) await ring("الأسبوع", "أسبوعك في دائرتك", weeklySentence(week));
+        }
         const message = await compose(user.id, today, recapDue && user.recapPushedYear !== recapYear ? recapYear : null);
         if (message) {
           if (message.recap) {
             await prisma.user.update({ where: { id: user.id }, data: { recapPushedYear: message.recap } });
           }
-          await push({ userId: user.id, kind: "MEMORY", title: message.title, body: message.body, path: message.path });
-          sent += 1;
+          await ring(message.recap ? "آثرك" : "ذكرى", message.title, message.body, message.path);
         }
+      } catch (problem) {
+        console.error("✗ جرس الصباح", user.id, problem);
+      }
+      try {
         const occasion = await occasionBell(user.id, today);
-        if (occasion) {
-          await push({ userId: user.id, kind: "MEMORY", title: occasion.title, body: occasion.body, path: "/" });
-          sent += 1;
-        }
+        if (occasion) await ring("مناسبة", occasion.title, occasion.body);
         // والمناسبةُ الوطنيّة جرسٌ وحدها باسمها (القاعدة ٢٩٢) — خلف مفتاح البيئة.
         if (nationalBellFor(user)) {
           for (const day of await nationalToday(user.id, today)) {
@@ -105,15 +123,6 @@ async function compose(userId: string, today: ReturnType<typeof riyadhDay>, reca
         path: `/recap/${recapYear}`,
       };
     }
-  }
-
-  /*
-    والجمعةُ جرسُها «أسبوعك في دائرتك» (القاعدة ٢٤٥) — **بقرار المالك**: جرسٌ
-    واحدٌ في اليوم يبقى، والذكرى في البطاقة لمن يفتح. وأسبوعٌ ساكنٌ لا يُقرع له.
-  */
-  if (riyadhWeekday() === 5) {
-    const week = await weeklyFor(userId);
-    if (week) return { recap: null, title: "أسبوعك في دائرتك", body: weeklySentence(week), path: "/" };
   }
 
   const memories = await memoriesFor(userId, today);

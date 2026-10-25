@@ -107,7 +107,10 @@ export type PushMessage = {
  * يُرسل تنبيهاً واحداً — بعد ثلاثة أبواب: تفضيلُ النوع، والوضع الهادئ،
  * ووجودُ جهازٍ مسجّل.
  */
-export async function push(message: PushMessage): Promise<void> {
+/** والنتيجةُ تُردّ لمن يكتبها في السجلّ — جرسٌ لم يصل يُعرف لماذا. */
+export type PushOutcome = "sent" | "off" | "quiet" | "no-device" | "error" | "gone";
+
+export async function push(message: PushMessage): Promise<PushOutcome> {
   try {
     /*
        وخبيئةُ الإشعارات تُنسى لصاحبها أوّلاً — قبل أبواب التفضيلات
@@ -133,13 +136,13 @@ export async function push(message: PushMessage): Promise<void> {
         devices: { select: { token: true } },
       },
     });
-    if (!user) return;
+    if (!user) return "gone";
 
     const gate = GATE[message.kind];
     const allowed = gate ? (user as unknown as Record<string, boolean>)[gate] : true;
-    if (allowed === false) return;
-    if (inQuietHours(user.quietFrom, user.quietTo)) return;
-    if (user.devices.length === 0) return;
+    if (allowed === false) return "off";
+    if (inQuietHours(user.quietFrom, user.quietTo)) return "quiet";
+    if (user.devices.length === 0) return "no-device";
 
     const badge = await badgeOf(message.userId);
     await deliver(
@@ -152,9 +155,11 @@ export async function push(message: PushMessage): Promise<void> {
         data: message.path ? { path: message.path } : {},
       })),
     );
+    return "sent";
   } catch (problem) {
     // تنبيهٌ لم يخرج لا يُسقط الفعل الذي معه.
     console.error("[push] تعذّر الإرسال", problem);
+    return "error";
   }
 }
 
