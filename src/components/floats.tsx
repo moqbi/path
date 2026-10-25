@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { ReactionGlyph } from "@/components/reactions";
 import { dropFloatComment, readFloats, sendFloatComment, type FloatComment, type Floats } from "@/app/float-actions";
 
@@ -93,7 +92,12 @@ export function FloatLayer({
   }, []);
 
   return (
-    <div className={`pointer-events-none ${fixed ? "fixed z-[80]" : "absolute z-[15]"} inset-0 overflow-hidden`} aria-hidden>
+    // يطير داخل حاويته وحدها (القاعدة ٣٤٥): الارتفاعُ بوحدات الحاوية لا الشاشة.
+    <div
+      className={`pointer-events-none ${fixed ? "fixed z-[80]" : "absolute z-[15]"} inset-0 overflow-hidden`}
+      style={{ containerType: "size" }}
+      aria-hidden
+    >
       {flyers.map((one) => (
         <span
           key={one.key}
@@ -103,7 +107,7 @@ export function FloatLayer({
               left: `${one.x}%`,
               top: `${bottom}%`,
               animationDuration: `${one.ms}ms`,
-              "--rise": `${bottom - top}vh`,
+              "--rise": `${bottom - top}cqh`,
               "--sway": `${(Math.random() < 0.5 ? -1 : 1) * (10 + Math.random() * 18)}px`,
             } as React.CSSProperties
           }
@@ -223,13 +227,12 @@ export function OwnerComments({ target, light = false }: { target: Target; light
 export function NoteFloats({ noteId, mine }: { noteId: string; mine: boolean }) {
   const target = { kind: "note" as const, id: noteId };
   const [data] = useFloats(target);
-  const [host, setHost] = useState<HTMLElement | null>(null);
-  useEffect(() => setHost(document.body), []);
   if (!data) return null;
   return (
-    <div className="w-full">
-      {host ? createPortal(<FloatLayer target={target} data={data} top={6} bottom={42} fixed />, host) : null}
-      {mine ? <OwnerComments target={target} /> : <CommentField target={target} />}
-    </div>
+    <>
+      {/* داخل النافذة وحدها: أبوها `relative` (القاعدة ٣٤٥). */}
+      <FloatLayer target={target} data={data} top={8} bottom={92} />
+      <div className="relative z-[16] w-full">{mine ? <OwnerComments target={target} /> : <CommentField target={target} />}</div>
+    </>
   );
 }

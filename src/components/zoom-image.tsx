@@ -12,7 +12,16 @@ type Point = { x: number; y: number };
  * وعلى الكمبيوتر العجلةُ تقرّب حول المؤشّر. والنقرةُ الواحدة تُغلق ما دامت غيرَ مقرَّبة.
  * والإزاحةُ محدودةٌ بما زاد من الصورة عن مكانها، فلا تخرج.
  */
-export function ZoomImage({ src, onClose }: { src: string; onClose: () => void }) {
+export function ZoomImage({
+  src,
+  onClose,
+  onSwipe,
+}: {
+  src: string;
+  onClose: () => void;
+  /** سحبةٌ أفقيّة على غير المقرَّبة تقلّب بين صور اللحظة (القاعدة ٣٤٥): ١ التالية، −١ السابقة. */
+  onSwipe?: (step: 1 | -1) => void;
+}) {
   const box = useRef<HTMLDivElement>(null);
   const [view, setView] = useState({ s: 1, x: 0, y: 0 });
   const [easing, setEasing] = useState(false);
@@ -21,6 +30,7 @@ export function ZoomImage({ src, onClose }: { src: string; onClose: () => void }
   const pointers = useRef(new Map<number, Point>());
   const pinch = useRef<{ dist: number; s: number; x: number; y: number; mid: Point } | null>(null);
   const moved = useRef(false);
+  const origin = useRef<Point>({ x: 0, y: 0 });
   const lastTap = useRef(0);
   const closer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -48,7 +58,10 @@ export function ZoomImage({ src, onClose }: { src: string; onClose: () => void }
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     setEasing(false);
-    if (pointers.current.size === 1) moved.current = false;
+    if (pointers.current.size === 1) {
+      moved.current = false;
+      origin.current = { x: event.clientX, y: event.clientY };
+    }
     if (pointers.current.size === 2) {
       const [a, b] = [...pointers.current.values()];
       pinch.current = {
@@ -89,7 +102,13 @@ export function ZoomImage({ src, onClose }: { src: string; onClose: () => void }
       setEasing(true);
       setView({ s: 1, x: 0, y: 0 });
     }
-    if (moved.current) return;
+    if (moved.current) {
+      // التاليةُ في اليسار كقراءة العربية: السحبُ يميناً يأتي بها.
+      const dx = event.clientX - origin.current.x;
+      const dy = event.clientY - origin.current.y;
+      if (onSwipe && live.current.s <= 1.05 && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) onSwipe(dx > 0 ? 1 : -1);
+      return;
+    }
     const time = Date.now();
     if (time - lastTap.current < 280) {
       lastTap.current = 0;

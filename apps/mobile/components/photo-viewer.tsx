@@ -4,6 +4,8 @@ import { initialWindowMetrics, useSafeAreaInsets } from "react-native-safe-area-
 import { create } from "zustand";
 import { MediaImage } from "./media-image";
 import { CloseIcon } from "./icons";
+import { Text } from "./type";
+import { ar } from "../lib/format";
 
 /**
  * الصورة المفتوحة — حالةٌ واحدة للتطبيق كلّه.
@@ -15,9 +17,14 @@ import { CloseIcon } from "./icons";
  * بدل أن تُغلق. فالنافذة تُركَّب مرّةً في الجذر (`_layout.tsx`)، ولا
  * جدَّ لها يلتقط شيئاً، والبطاقة تطلبها بـ`viewPhoto`.
  */
-const useViewer = create<{ mediaId: string | null }>(() => ({ mediaId: null }));
+const useViewer = create<{ mediaId: string | null; list: string[] }>(() => ({ mediaId: null, list: [] }));
 
-export const viewPhoto = (mediaId: string | null) => useViewer.setState({ mediaId });
+/**
+ * يفتح صورةً — ومعها `list` صورُ لحظتها كلُّها فتُقلَّب يميناً ويساراً وهي مفتوحة
+ * (القاعدة ٣٤٥): من فتح الثانية لا يُغلق ليفتح الثالثة.
+ */
+export const viewPhoto = (mediaId: string | null, list: string[] = []) =>
+  useViewer.setState({ mediaId, list: mediaId && list.includes(mediaId) ? list : [] });
 
 /** المسافة التي تُغلق بعدها السحبةُ الصورة. */
 const DISMISS = 90;
@@ -31,6 +38,8 @@ const middle = (a: Point, b: Point) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2
 
 export function PhotoViewer() {
   const mediaId = useViewer((state) => state.mediaId);
+  const list = useViewer((state) => state.list);
+  const index = mediaId ? list.indexOf(mediaId) : -1;
   /*
     الحافّةُ العليا من مقاييس الجهاز حين يغيب السياق: النافذةُ تُركَّب في
     الجذر، وهناك قد يردّ `useSafeAreaInsets` صفراً — فجلس زرُّ الإغلاق تحت
@@ -46,6 +55,12 @@ export function PhotoViewer() {
   const scale = useRef(new Animated.Value(1)).current;
   const panX = useRef(new Animated.Value(0)).current;
   const panY = useRef(new Animated.Value(0)).current;
+  // إزاحةُ التقليب بين الصور — التاليةُ في اليسار كقراءة العربية (كـ`PhotoCarousel`).
+  const page = useRef(new Animated.Value(0)).current;
+  const nav = useRef({ list, index, width: screen.width }).current;
+  nav.list = list;
+  nav.index = index;
+  nav.width = screen.width;
   const area = { width: screen.width, height: screen.height - insets.top - insets.bottom };
 
   /*
@@ -54,7 +69,7 @@ export function PhotoViewer() {
   */
   const now = useRef({ scale: 1, x: 0, y: 0 }).current;
   const gesture = useRef<{
-    mode: "none" | "pinch" | "pan" | "dismiss";
+    mode: "none" | "pinch" | "pan" | "dismiss" | "page";
     dist: number;
     scale: number;
     mid: Point;
@@ -93,6 +108,7 @@ export function PhotoViewer() {
     if (tapTimer.current) clearTimeout(tapTimer.current);
     viewPhoto(null);
     drag.setValue(0);
+    page.setValue(0);
     apply(1, 0, 0);
   };
 
@@ -128,7 +144,9 @@ export function PhotoViewer() {
       onStartShouldSetPanResponder: (e) => e.nativeEvent.touches.length >= 2,
       onMoveShouldSetPanResponder: (e, g) =>
         e.nativeEvent.touches.length >= 2 ||
-        (now.scale > 1.05 ? Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4 : g.dy > 6 && Math.abs(g.dy) > Math.abs(g.dx)),
+        (now.scale > 1.05
+          ? Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4
+          : (g.dy > 6 && Math.abs(g.dy) > Math.abs(g.dx)) || (nav.list.length > 1 && Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy))),
       onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: (e) => {
         const touch = e.nativeEvent.touches[0];
@@ -171,7 +189,19 @@ export function PhotoViewer() {
           gesture.last = point;
           return;
         }
-        if (gesture.mode === "none") gesture.mode = now.scale > 1.05 ? "pan" : "dismiss";
+        if (gesture.mode === "none") {
+          const dx = point.x - gesture.start.x;
+          const dy = point.y - gesture.start.y;
+          gesture.mode =
+            now.scale > 1.05 ? "pan" : nav.list.length > 1 && Math.abs(dx) > Math.abs(dy) ? "page" : "dismiss";
+        }
+        if (gesture.mode === "page") {
+          const dx = point.x - gesture.start.x;
+          const next = nav.index + Math.sign(dx);
+          // خلف الطرفين مقاومةٌ تُحسّ ولا تُعبر.
+          page.setValue(next < 0 || next >= nav.list.length ? dx * 0.3 : dx);
+          return;
+        }
         if (gesture.mode === "pan") {
           apply(
             now.scale,
@@ -186,6 +216,20 @@ export function PhotoViewer() {
       onPanResponderRelease: (_, g) => {
         const mode = gesture.mode;
         gesture.mode = "none";
+        if (mode === "page") {
+          const dx = g.dx;
+          const step = Math.abs(dx) > nav.width * 0.22 || Math.abs(g.vx) > 0.4 ? Math.sign(dx || g.vx) : 0;
+          const next = nav.index + step;
+          if (step && next >= 0 && next < nav.list.length) {
+            Animated.timing(page, { toValue: step * nav.width, duration: 180, useNativeDriver: true }).start(() => {
+              useViewer.setState({ mediaId: nav.list[next] });
+              page.setValue(0);
+            });
+          } else {
+            Animated.spring(page, { toValue: 0, useNativeDriver: true, bounciness: 0 }).start();
+          }
+          return;
+        }
         if (mode === "dismiss") {
           if (g.dy > DISMISS || g.vy > 1.2) {
             Animated.timing(drag, { toValue: screen.height, duration: 160, useNativeDriver: true }).start(close);
@@ -218,7 +262,7 @@ export function PhotoViewer() {
           onPress={(e) => onTap({ x: e.nativeEvent.pageX, y: e.nativeEvent.pageY })}
           style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
         >
-          <Animated.View style={{ transform: [{ translateY: drag }, { translateX: panX }, { translateY: panY }, { scale }] }}>
+          <Animated.View style={{ transform: [{ translateY: drag }, { translateX: page }, { translateX: panX }, { translateY: panY }, { scale }] }}>
             {mediaId ? (
               <MediaImage
                 mediaId={mediaId}
@@ -227,8 +271,38 @@ export function PhotoViewer() {
               />
             ) : null}
           </Animated.View>
+          {/* الجارتان: السابقةُ يميناً والتاليةُ يساراً، تتحرّكان مع الإصبع. */}
+          {[index - 1, index + 1].map((at) =>
+            at >= 0 && at < list.length ? (
+              <Animated.View
+                key={list[at]}
+                pointerEvents="none"
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: (screen.height - area.height) / 2,
+                  transform: [{ translateY: drag }, { translateX: Animated.add(page, (index - at) * screen.width) }],
+                }}
+              >
+                <MediaImage mediaId={list[at]} resizeMode="contain" style={area} />
+              </Animated.View>
+            ) : null,
+          )}
         </Pressable>
       </Animated.View>
+
+      {list.length > 1 ? (
+        <View pointerEvents="none" style={{ position: "absolute", bottom: insets.bottom + 24, left: 0, right: 0, alignItems: "center", gap: 8 }}>
+          <Text style={{ color: "#fff", fontSize: 12.5, fontWeight: "700" }}>
+            {ar(index + 1)}/{ar(list.length)}
+          </Text>
+          <View style={{ flexDirection: "row", gap: 5 }}>
+            {list.map((id, at) => (
+              <View key={id} style={{ width: at === index ? 16 : 6, height: 6, borderRadius: 3, backgroundColor: at === index ? "#fff" : "rgba(255,255,255,.45)" }} />
+            ))}
+          </View>
+        </View>
+      ) : null}
 
       <View style={{ position: "absolute", top: insets.top + 12, right: 16, zIndex: 10, elevation: 10 }} pointerEvents="box-none">
         <Pressable

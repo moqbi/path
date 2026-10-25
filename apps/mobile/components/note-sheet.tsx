@@ -94,11 +94,11 @@ function Body({ note }: { note: StatusNote }) {
       title={mine ? "نوتك" : note.author.name}
       subtitle={relative(new Date(note.createdAt))}
       onClose={close}
-      // ما تفاعل به الناسُ وما كتبوه يطير فوق النافذة (القاعدة ٣٤٤).
-      overlay={DEV_FEATURES ? <FloatLayer target={{ kind: "note", id: note.id }} top={0.06} bottom={0.42} /> : undefined}
     >
       {/* `GlassSheet` بلا حشوةٍ لما فيه: كانت الوجوهُ تلتصق بحافّتها السفلى فتُقصّ،
           وشريطُ الأغنية بحافّتيها. والحشوةُ حشوةُ نافذة التفاعل نفسُها. */}
+      {/* ما تفاعل به الناسُ وما كتبوه يطير داخل النافذة وحدها لا على الصفحة (القاعدة ٣٤٥). */}
+      <View style={{ flexShrink: 1 }}>
       <SheetScrollView
         name="body"
         style={{ flexGrow: 0 }}
@@ -198,6 +198,8 @@ function Body({ note }: { note: StatusNote }) {
           </View>
         ) : null}
       </SheetScrollView>
+      {DEV_FEATURES ? <FloatLayer target={{ kind: "note", id: note.id }} top={0.08} bottom={0.92} /> : null}
+      </View>
     </GlassSheet>
   );
 }
