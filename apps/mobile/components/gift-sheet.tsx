@@ -38,8 +38,8 @@ export function GiftButton({
   friendOwned: string[];
   /** يملأ مكانه في صفّ أزرار الملف بمقاس أزرار «أنا». */
   grow?: boolean;
-  /** قرصُ أيقونةٍ بلا كلمة — بجانب اسم الصديق في ملفّه (القاعدة ٣٢٠). */
-  disc?: boolean;
+  /** قرصُ أيقونةٍ بلا كلمة — بجانب اسم الصديق في ملفّه (القاعدة ٣٢٠)، و`"cover"` داكنٌ على غلافه (القاعدة ٣٤٠). */
+  disc?: boolean | "cover";
 }) {
   const [open, setOpen] = useState(false);
 
@@ -49,9 +49,14 @@ export function GiftButton({
         <Pressable
           accessibilityLabel={`إهداء ${friendName}`}
           onPress={() => setOpen(true)}
-          style={{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
+          hitSlop={disc === "cover" ? 6 : undefined}
+          style={
+            disc === "cover"
+              ? { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(14,26,36,0.6)", borderWidth: 1, borderColor: "rgba(255,255,255,0.15)" }
+              : { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }
+          }
         >
-          <GiftIcon size={18} color={colors.ink2} />
+          <GiftIcon size={disc === "cover" ? 16 : 18} color={disc === "cover" ? "#F6B93B" : colors.ink2} />
         </Pressable>
       ) : (
       <Pressable
