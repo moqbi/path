@@ -385,7 +385,7 @@ export default function Me() {
                 style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, height: 32, borderRadius: 16, backgroundColor: colors.goldSoft }}
               >
                 <BookIcon size={14} color={colors.clayInk} />
-                <Text style={{ color: colors.clayInk, fontSize: 12.5, fontWeight: "700" }}>أرشيفي وكتاب سنتي</Text>
+                <Text style={{ color: colors.clayInk, fontSize: 12.5, fontWeight: "700" }}>{DEV_FEATURES ? "المعرض وكتاب سنتي" : "أرشيفي وكتاب سنتي"}</Text>
               </Pressable>
               </Spot>
             </View>

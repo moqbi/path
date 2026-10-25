@@ -263,7 +263,7 @@ export default async function ProfilePage({
             className="flex items-center gap-1.5 rounded-full px-3 text-[12.5px] font-bold"
             style={{ height: 32, background: "var(--color-gold-soft)", color: "var(--color-clay-ink)" }}
           >
-            <BookIcon size={14} /> أرشيفي وكتاب سنتي
+            <BookIcon size={14} /> {canTryStickers(user) ? "المعرض وكتاب سنتي" : "أرشيفي وكتاب سنتي"}
           </Link>
         </div>
 

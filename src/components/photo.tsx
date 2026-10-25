@@ -158,6 +158,18 @@ export function Photo({
           style={{ background: "rgba(8,14,20,.94)", animation: "athr-veil 160ms ease both" }}
         >
           <ZoomImage key={open} src={`${BASE}/api/media/${open}`} onClose={() => setOpen(null)} onSwipe={ids.length > 1 ? step : undefined} />
+          {/*
+            صورُ اللحظة كلُّها محمّلةٌ خفيّةً ما دامت مفتوحة: التقليبُ يجد التاليةَ في الذاكرة
+            ومفكوكةً، فلا يرمش الإطارُ فارغاً حتى تصل (الصفُّ يحمّل ما بعد الأولى كسولاً).
+          */}
+          {ids.length > 1
+            ? ids.map((id) =>
+                id === open ? null : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={id} src={`${BASE}/api/media/${id}`} alt="" aria-hidden decoding="sync" className="pointer-events-none absolute h-px w-px opacity-0" />
+                ),
+              )
+            : null}
           {ids.length > 1 ? (
             <>
               {(
