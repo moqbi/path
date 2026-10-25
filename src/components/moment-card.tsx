@@ -567,7 +567,7 @@ export function MomentCard({
             <>
               {moment.mediaId ? (
                 <div className="mt-2.5">
-                  <Photo mediaId={moment.mediaId} rounded x={moment.photoX ?? 50} y={moment.photoY ?? 50} />
+                  <Photo mediaId={moment.mediaId} rounded x={moment.photoX ?? 50} y={moment.photoY ?? 50} more={moment.photos?.map((photo) => photo.mediaId)} />
                 </div>
               ) : null}
               <Bubble moment={moment} viewerId={viewerId} moderate={moderate} trial={trial} />
@@ -583,7 +583,7 @@ export function MomentCard({
   const media = moment.mediaId ? (
     // حشوةٌ لا هامش: هامشُ أوّل ابنٍ ينهار عبر أبيه فيُزيح البطاقة كلّها.
     <div className="px-3 pt-3">
-      <Photo mediaId={moment.mediaId} rounded x={moment.photoX ?? 50} y={moment.photoY ?? 50} />
+      <Photo mediaId={moment.mediaId} rounded x={moment.photoX ?? 50} y={moment.photoY ?? 50} more={moment.photos?.map((photo) => photo.mediaId)} />
     </div>
   ) : moment.imageSpec ? (
     <div className="px-3 pt-3">

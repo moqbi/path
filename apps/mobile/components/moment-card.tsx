@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { Avatar, firstColor } from "./avatar";
 import { MediaImage } from "./media-image";
 import { viewPhoto } from "./photo-viewer";
+import { PhotoCarousel } from "./photo-carousel";
 import { AthrMark } from "./brand";
 import { SwipeRow } from "./swipe-row";
 import { openEdit } from "./edit-sheet";
@@ -461,7 +462,13 @@ export function MomentCard({
             head={line}
             extra={
               <>
-                {moment.mediaId ? (
+                {moment.mediaId && moment.morePhotos?.length ? (
+                  <PhotoCarousel
+                    ids={[moment.mediaId, ...moment.morePhotos]}
+                    position={{ x: moment.photoX ?? 50, y: moment.photoY ?? 50 }}
+                    style={{ marginTop: 10 }}
+                  />
+                ) : moment.mediaId ? (
                   <Pressable accessibilityLabel="افتح الصورة" onPress={() => viewPhoto(moment.mediaId)}>
                     <MediaImage
                       mediaId={moment.mediaId}
@@ -485,7 +492,14 @@ export function MomentCard({
     إطارٍ بنسبة المحرّر (`PHOTO_RATIO`) وبالموضع الذي ضبطه صاحبُها، فما رآه
     قبل النشر هو ما تراه دائرته.
   */
-  const media = moment.mediaId ? (
+  const media = moment.mediaId && moment.morePhotos?.length ? (
+    // خمسُ صورٍ تُقلَّب يميناً ويساراً (القاعدة ٣٤٣).
+    <PhotoCarousel
+      ids={[moment.mediaId, ...moment.morePhotos]}
+      position={{ x: moment.photoX ?? 50, y: moment.photoY ?? 50 }}
+      style={{ marginTop: 12, marginHorizontal: 12, width: undefined, alignSelf: "stretch" }}
+    />
+  ) : moment.mediaId ? (
     <Pressable
       accessibilityLabel="افتح الصورة"
       onPress={() => viewPhoto(moment.mediaId)}

@@ -26,6 +26,8 @@ const shape = {
   photoX: true,
   photoY: true,
   mediaId: true,
+  // الصورُ بعد الأولى (القاعدة ٣٤٣) — تُسطَّح `morePhotos`.
+  photos: { select: { mediaId: true }, orderBy: { position: "asc" } },
   commentsLocked: true,
   // ذكرى شاركها صاحبُها، وملخّصُ سنة (القاعدة ٢٣٥).
   memoryOf: true,
@@ -98,9 +100,10 @@ const shape = {
  * شخصاً لا غلافاً حوله. التسطيح هنا مرّةً أوفر من تكراره في كل شاشة.
  */
 function flatten<T extends Row>(row: T, viewerId: string) {
-  const { tags, reactions, ...rest } = row;
+  const { tags, reactions, photos, ...rest } = row;
   return {
     ...rest,
+    morePhotos: (photos ?? []).map((photo) => photo.mediaId),
     tags: tags.map((t) => t.user),
     // `mine` تُحسب هنا: الشاشة لا تعرف من القارئ إلا بسؤالٍ آخر، وزرُّ
     // التفاعل يحتاجها في كل لحظةٍ يرسمها.
@@ -113,6 +116,7 @@ function flatten<T extends Row>(row: T, viewerId: string) {
 }
 
 type Row = {
+  photos?: { mediaId: string }[];
   tags: { user: { id: string; name: string } }[];
   reactions: { userId: string; kind: string; emoji: string | null; user: { name: string; avatarMediaId: string | null } }[];
 };

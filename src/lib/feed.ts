@@ -19,6 +19,8 @@ export const momentShape = {
   photoX: true,
   photoY: true,
   mediaId: true,
+  // الصورُ بعد الأولى (القاعدة ٣٤٣).
+  photos: { select: { mediaId: true }, orderBy: { position: "asc" as const } },
   commentsLocked: true,
   // ذكرى شاركها صاحبُها، وملخّصُ سنة (القاعدة ٢٣٥).
   memoryOf: true,

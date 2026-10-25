@@ -36,13 +36,19 @@ export type Processed = {
  * مقلوبةً بعد نزع البيانات. و`withMetadata` لا تُستدعى: الافتراض في
  * sharp ألّا تُكتب البيانات الوصفية، وهو المطلوب.
  */
-export async function processImage(input: Uint8Array, mime: string): Promise<Processed> {
+export async function processImage(
+  input: Uint8Array,
+  mime: string,
+  /** صورةُ اللحظة تُضغط أكثر (القاعدة ٣٤٣): خمسٌ في لحظةٍ واحدة تُجلب في كلّ تمرير. */
+  options: { side?: number; quality?: number } = {},
+): Promise<Processed> {
+  const side = options.side ?? MAX_SIDE;
   const image = sharp(Buffer.from(input), { failOn: "error" }).rotate();
   const meta = await image.metadata();
   if (!meta.width || !meta.height) throw new Error("تعذّرت قراءة الصورة");
 
-  const big = Math.max(meta.width, meta.height) > MAX_SIDE;
-  const pipeline = big ? image.resize({ width: MAX_SIDE, height: MAX_SIDE, fit: "inside" }) : image;
+  const big = Math.max(meta.width, meta.height) > side;
+  const pipeline = big ? image.resize({ width: side, height: side, fit: "inside" }) : image;
 
   /*
     كلُّ صورةٍ ثابتة تُكتب WebP — **بقرار المالك**، والـPNG معها: كان يبقى PNG لشفافيّته
@@ -50,7 +56,7 @@ export async function processImage(input: Uint8Array, mime: string): Promise<Pro
     (`alphaQuality` عالية فلا تتشرّس الحوافّ) بنحو عُشر الحجم.
   */
   const out = await pipeline
-    .webp(mime === "image/png" ? { quality: 86, alphaQuality: 95 } : { quality: 82 })
+    .webp(mime === "image/png" ? { quality: 86, alphaQuality: 95 } : { quality: options.quality ?? 82, effort: 5 })
     .toBuffer({ resolveWithObject: true });
 
   return {

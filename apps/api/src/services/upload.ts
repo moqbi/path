@@ -39,6 +39,12 @@ import {
 /** ما يُقبل لكل غرض: الصيغ والحدّ. */
 type Rule = { mimes: readonly string[]; max: number };
 
+/**
+ * صورةُ اللحظة ١٢٨٠ على الأطول وWebP بـ٧٢ — **بقرار المالك** (القاعدة ٣٤٣): خمسُ صورٍ في
+ * لحظةٍ واحدة، والإطارُ في البطاقة بعرض الشاشة لا أكثر، والفتحُ الكامل يحتملها.
+ */
+const MOMENT_IMAGE = { side: 1280, quality: 72 };
+
 const RULES: Record<PresignInput["purpose"], Rule> = {
   AVATAR: { mimes: [...MIME.image, ...MIME.animated], max: LIMITS.animated },
   COVER: { mimes: MIME.image, max: LIMITS.image },
@@ -309,7 +315,10 @@ async function shape(
   if (isImage && !moving) {
     try {
       // صورةُ العرض مربّعٌ ٣٢٠ (القاعدة ٢٤٨)، وما سواها يُصغَّر بنسبته.
-      const out = purpose === "AVATAR" ? await squareAvatar(bytes, mime, AVATAR_SIDE) : await processImage(bytes, mime);
+      const out =
+        purpose === "AVATAR"
+          ? await squareAvatar(bytes, mime, AVATAR_SIDE)
+          : await processImage(bytes, mime, purpose === "MOMENT" ? MOMENT_IMAGE : {});
       // المفتاح يحمل امتداد الأصل؛ والنوع يُقدَّم من الصفّ لا من الامتداد.
       await putObject(key, out.bytes, out.mime);
       return { mime: out.mime, width: out.width, height: out.height };

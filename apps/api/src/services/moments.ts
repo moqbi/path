@@ -190,6 +190,18 @@ export async function createMoment(userId: string, input: MomentInput) {
 
   const mediaId = input.mediaId ? await ownMedia(userId, input.mediaId) : null;
   /*
+    الصورُ بعد الأولى (القاعدة ٣٤٣): لصاحبها، معتمدةٌ، صورٌ لا مقاطع، بلا تكرار —
+    وعلى لحظة صورةٍ لها أولى. والأولى تبقى `mediaId` فيقرؤها الجوّالُ القديم.
+  */
+  const extra = input.kind === "PHOTO" && mediaId ? [...new Set(input.photos ?? [])].filter((id) => id !== mediaId) : [];
+  if (extra.length) {
+    const found = await prisma.media.findMany({
+      where: { id: { in: extra }, ownerId: userId, ready: true, mime: { startsWith: "image/" }, moment: null, momentPhoto: null },
+      select: { id: true },
+    });
+    if (found.length !== extra.length) throw notFound("الملف غير موجود");
+  }
+  /*
     لحظةُ صورةٍ بلا صورة خاطرةٌ بنصّها — **بقرار المالك**: كانت تُلبَس تدرّجاً
     عشوائيّاً (`imageSpec`) فتنزل قالباً أصفر فارغاً فوق ما كتبه صاحبُها. وبلا
     صورةٍ ولا نصّ لا شيء يُنشر.
@@ -211,6 +223,7 @@ export async function createMoment(userId: string, input: MomentInput) {
       mediaId,
       photoX: mediaId ? (input.photoX ?? null) : null,
       photoY: mediaId ? (input.photoY ?? null) : null,
+      photos: extra.length ? { create: extra.map((id, index) => ({ mediaId: id, position: index + 1 })) } : undefined,
       lat: where.lat,
       lng: where.lng,
       placeName,
@@ -317,7 +330,7 @@ export async function postMark(userId: string, kind: "SLEEP" | "WAKE") {
 export async function deleteMoment(userId: string, momentId: string) {
   const moment = await prisma.moment.findUnique({
     where: { id: momentId },
-    select: { authorId: true, mediaId: true },
+    select: { authorId: true, mediaId: true, photos: { select: { mediaId: true } } },
   });
   if (!moment) throw notFound("اللحظة غير موجودة");
 
@@ -329,7 +342,8 @@ export async function deleteMoment(userId: string, momentId: string) {
   }
 
   await prisma.moment.delete({ where: { id: momentId } });
-  if (moment.mediaId) await dropMedia([moment.mediaId]);
+  // والصورُ بعد الأولى معها (القاعدة ٣٤٣).
+  await dropMedia([moment.mediaId, ...moment.photos.map((photo) => photo.mediaId)].filter((id): id is string => Boolean(id)));
 
   return { ok: true };
 }
