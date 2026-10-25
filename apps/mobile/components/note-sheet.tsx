@@ -1,4 +1,6 @@
 import { Spinner } from "./spinner";
+import { DEV_FEATURES } from "../lib/dev-features";
+import { CommentField, FloatLayer, OwnerComments } from "./floats";
 import { useEffect } from "react";
 import { Image, Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
@@ -88,7 +90,13 @@ function Body({ note }: { note: StatusNote }) {
   });
 
   return (
-    <GlassSheet title={mine ? "نوتك" : note.author.name} subtitle={relative(new Date(note.createdAt))} onClose={close}>
+    <GlassSheet
+      title={mine ? "نوتك" : note.author.name}
+      subtitle={relative(new Date(note.createdAt))}
+      onClose={close}
+      // ما تفاعل به الناسُ وما كتبوه يطير فوق النافذة (القاعدة ٣٤٤).
+      overlay={DEV_FEATURES ? <FloatLayer target={{ kind: "note", id: note.id }} top={0.06} bottom={0.42} /> : undefined}
+    >
       {/* `GlassSheet` بلا حشوةٍ لما فيه: كانت الوجوهُ تلتصق بحافّتها السفلى فتُقصّ،
           وشريطُ الأغنية بحافّتيها. والحشوةُ حشوةُ نافذة التفاعل نفسُها. */}
       <SheetScrollView
@@ -137,6 +145,7 @@ function Body({ note }: { note: StatusNote }) {
               </Text>
             ) : null}
             <Viewers noteId={note.id} hasTrack={Boolean(note.trackId)} />
+            {DEV_FEATURES ? <OwnerComments target={{ kind: "note", id: note.id }} /> : null}
             <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
               <Pressable
                 onPress={() => {
@@ -182,6 +191,12 @@ function Body({ note }: { note: StatusNote }) {
             })}
           </View>
         )}
+        {/* حقلُ التعليق تحت الوجوه في الصندوق نفسه (القاعدة ٣٤٤). */}
+        {DEV_FEATURES && !mine ? (
+          <View style={{ marginTop: 12 }}>
+            <CommentField target={{ kind: "note", id: note.id }} />
+          </View>
+        ) : null}
       </SheetScrollView>
     </GlassSheet>
   );
