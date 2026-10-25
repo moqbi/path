@@ -258,6 +258,27 @@ function Profile() {
                 <StretchCover y={scrollY} height={COVER_HEIGHT}>
                   <CoverLayer mediaId={who.coverMediaId} themeMediaId={who.background?.coverMediaId} spec={null} height={COVER_HEIGHT} x={who.coverX} y={who.coverY} zoom={who.coverZoom} />
                 </StretchCover>
+                {fresh ? (
+                  // الإهداءُ والمحادثةُ على الغلاف في طرفه الأيسر كأقراص «أنا» (القاعدة ٣٤٠):
+                  // داكنةٌ لا شفّافة (القاعدة ٥٧)، والصورةُ في الطرف الآخر.
+                  <View style={{ position: "absolute", top: COVER_HEIGHT - 48, left: 16, flexDirection: "row", gap: 8, zIndex: 5 }}>
+                    <GiftButton
+                      disc="cover"
+                      friendId={who.id}
+                      friendName={who.name}
+                      friendIsPlus={who.isPlus}
+                      friendOwned={person.data?.owned ?? []}
+                    />
+                    <Pressable
+                      accessibilityLabel="محادثة"
+                      onPress={() => talk.mutate()}
+                      hitSlop={6}
+                      style={{ width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(14,26,36,0.6)", borderWidth: 1, borderColor: "rgba(255,255,255,0.15)" }}
+                    >
+                      <MessageIcon size={16} color="#FFFFFF" />
+                    </Pressable>
+                  </View>
+                ) : null}
               </View>
 
               {/* بهيئة «أنا» نفسها (القاعدة ٢٣٣): الصورةُ في طرف البداية والاسمُ بجانبها. */}
@@ -278,26 +299,6 @@ function Profile() {
                   frameItem={who.frame}
                   charmItem={who.charm}
                   story={ring ? { fresh: ring.fresh, open: () => router.push(`/stories/${who.id}` as never) } : null}
-                  actions={
-                    fresh ? (
-                      <>
-                        <GiftButton
-                          disc
-                          friendId={who.id}
-                          friendName={who.name}
-                          friendIsPlus={who.isPlus}
-                          friendOwned={person.data?.owned ?? []}
-                        />
-                        <Pressable
-                          accessibilityLabel="محادثة"
-                          onPress={() => talk.mutate()}
-                          style={{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
-                        >
-                          <MessageIcon size={17} color={colors.onBrand} />
-                        </Pressable>
-                      </>
-                    ) : null
-                  }
                 />
               </View>
 

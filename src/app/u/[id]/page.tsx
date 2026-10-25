@@ -225,19 +225,19 @@ export default async function FriendProfilePage({
             ) : null}
             </span>
           }
-          actions={
+          coverActions={
             fresh ? (
               <>
                 <GiftButton
-                  disc
+                  disc="cover"
                   friendOwned={theirs.map((row) => row.itemId)}
                   friendId={person.id}
                   friendName={person.name}
                   friendIsPlus={person.isPlus}
                 />
                 <form action={startConversation.bind(null, person.id)}>
-                  <button type="submit" aria-label="محادثة" className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}>
-                    <MessageIcon size={17} />
+                  <button type="submit" aria-label="محادثة" className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-[rgba(14,26,36,0.6)] text-white backdrop-blur-md">
+                    <MessageIcon size={16} />
                   </button>
                 </form>
               </>
@@ -493,8 +493,11 @@ function ProfileHead({
   avatar,
   extra = null,
   actions = null,
+  coverActions = null,
   children,
 }: {
+  /** الإهداءُ والمحادثة على الغلاف في طرفه الأيسر كأقراص «أنا» (القاعدة ٣٤٠). */
+  coverActions?: React.ReactNode;
   /** أقراصُ الأفعال في طرف سطر الاسم — ملفُّ الصديق (القاعدة ٣٢٠). */
   actions?: React.ReactNode;
   person: Person;
@@ -521,6 +524,7 @@ function ProfileHead({
           y={person.coverY}
           zoom={person.coverZoom}
         />
+        {coverActions ? <div className="absolute bottom-3 left-4 z-10 flex items-center gap-2">{coverActions}</div> : null}
       </div>
       <div className="relative px-5" style={{ marginTop: -52 }}>
         <div className="flex items-end gap-3">
