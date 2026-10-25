@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { AthrMark } from "./brand";
+import { scrolled } from "../lib/scrolled";
 import { DEV_FEATURES } from "../lib/dev-features";
 import { colors } from "../theme/tokens";
 
@@ -23,6 +24,7 @@ export function LogoRefresh({
   size = 32,
   color = colors.clay,
   active = true,
+  breathe = true,
 }: {
   size?: number;
   color?: string;
@@ -32,6 +34,11 @@ export function LogoRefresh({
    * توقّفٍ تُسخّن الجوّال.
    */
   active?: boolean;
+  /**
+   * العلامةُ تتنفّس مع الجلب وحده. وهو يسحب **العلامةُ ثابتةٌ والقوسُ وحده يدور** حتى
+   * يُفلت (القاعدة ٣٤٧) — **بقرار المالك**: كان الشعارُ كلُّه يدور مع الإصبع.
+   */
+  breathe?: boolean;
 }) {
   const [still, setStill] = useState(false);
   const turn = useRef(new Animated.Value(0)).current;
@@ -53,12 +60,13 @@ export function LogoRefresh({
       ]),
     );
     spin.start();
-    pulse.start();
+    if (breathe) pulse.start();
+    else breath.setValue(1);
     return () => {
       spin.stop();
       pulse.stop();
     };
-  }, [still, active]);
+  }, [still, active, breathe]);
 
   const mark = Math.round(size * 0.64);
   return (
@@ -121,6 +129,8 @@ export function usePullLogo({
 }) {
   const own = useRef(new Animated.Value(0)).current;
   const value = y ?? own;
+  // الإصبعُ على القائمة: القوسُ يدور ما دام، والعلامةُ ثابتة (القاعدة ٣٤٧).
+  const [dragging, setDragging] = useState(false);
   if (!LOGO_PULL) {
     return {
       props: { refreshControl: <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tint} /> },
@@ -128,13 +138,20 @@ export function usePullLogo({
     };
   }
   const onScrollEndDrag = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    setDragging(false);
     if (!refreshing && event.nativeEvent.contentOffset.y < -TRIGGER) onRefresh();
+  };
+  // يُنادي `scrolled()` بنفسه: الخاصيّةُ تحلّ محلّ ما كتبته الشاشةُ قبلها (القاعدة ٢١٣).
+  const onScrollBeginDrag = () => {
+    scrolled();
+    setDragging(true);
   };
   return {
     props: y
-      ? { onScrollEndDrag }
+      ? { onScrollEndDrag, onScrollBeginDrag }
       : {
           onScrollEndDrag,
+          onScrollBeginDrag,
           onScroll: Animated.event([{ nativeEvent: { contentOffset: { y: own } } }], { useNativeDriver: false }),
           scrollEventThrottle: 16,
         },
@@ -165,16 +182,7 @@ export function usePullLogo({
             backgroundColor: "rgba(14,26,36,.55)",
           }}
         >
-          {/* يدور مع الإصبع وهو يسحب — كان ساكناً حتى يُفلت (القاعدة ٣٤٢). */}
-          <Animated.View
-            style={{
-              transform: [
-                { rotate: refreshing ? "0deg" : value.interpolate({ inputRange: [-160, 0], outputRange: ["320deg", "0deg"], extrapolate: "clamp" }) },
-              ],
-            }}
-          >
-            <LogoRefresh size={34} active={refreshing} />
-          </Animated.View>
+          <LogoRefresh size={34} active={refreshing || dragging} breathe={refreshing} />
         </View>
       </Animated.View>
     ),

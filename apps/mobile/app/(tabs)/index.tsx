@@ -179,6 +179,8 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
   // الضغطةُ على «اللحظات» وهو ظاهرٌ ترجع إلى أعلاه.
   useTabTop(() => list.current?.getScrollResponder()?.scrollTo({ y: 0, animated: true }));
   const [pulling, setPulling] = useState(false);
+  // الإصبعُ يسحب: القوسُ يدور حول علامةٍ ثابتة حتى يُفلت (القاعدة ٣٤٧).
+  const [gripped, setGripped] = useState(false);
 
   const refreshMe = useSession((s) => s.refresh);
   // والتحديث يسأل عن صاحب الشاشة أيضاً: غلافُه وإطارُه وتشارمه منه.
@@ -216,10 +218,12 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
       onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponderCapture: (_event, gesture) =>
         atTop.current && gesture.dy > 8 && Math.abs(gesture.dy) > Math.abs(gesture.dx) * 1.6,
+      onPanResponderGrant: () => setGripped(true),
       onPanResponderMove: (_event, gesture) => {
         pull.setValue(rubber(gesture.dy));
       },
       onPanResponderRelease: (_event, gesture) => {
+        setGripped(false);
         if (rubber(gesture.dy) < PULL_TRIP) return settle();
 
         setPulling(true);
@@ -244,7 +248,10 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
           settle();
         });
       },
-      onPanResponderTerminate: settle,
+      onPanResponderTerminate: () => {
+        setGripped(false);
+        settle();
+      },
     }),
   ).current;
 
@@ -416,16 +423,7 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
               }}
             >
               <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(14,26,36,.55)" }}>
-                {/* يدور مع الإصبع وهو يسحب، ثمّ يدور وحده ما دام الجلب (القاعدة ٣٤٢). */}
-                <Animated.View
-                  style={{
-                    transform: [
-                      { rotate: pulling ? "0deg" : pull.interpolate({ inputRange: [0, PULL_MAX], outputRange: ["0deg", "320deg"], extrapolate: "clamp" }) },
-                    ],
-                  }}
-                >
-                  <LogoRefresh size={34} active={pulling} />
-                </Animated.View>
+                <LogoRefresh size={34} active={pulling || gripped} breathe={pulling} />
               </View>
             </Animated.View>
           ) : null}
