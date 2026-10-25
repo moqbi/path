@@ -16,7 +16,8 @@ import { uploadFile } from "../lib/upload";
 import { maybeAskToRate } from "../lib/rate";
 import { useCircle } from "../lib/queries";
 import { useSession } from "../lib/session";
-import { POLL_DAYS, POLL_DAYS_DEFAULT, POLL_OPTION_MAX } from "@athar/shared";
+import { MOMENT_PHOTOS_MAX, POLL_DAYS, POLL_DAYS_DEFAULT, POLL_OPTION_MAX } from "@athar/shared";
+import { DEV_FEATURES } from "../lib/dev-features";
 import { ar } from "../lib/format";
 import { appleNearby, appleSearch } from "../lib/apple-places";
 import { SourceSheet } from "../components/source-sheet";
@@ -28,6 +29,8 @@ import { colors } from "../theme/tokens";
 type NearbyPlace = { id: string; name: string; kind: string | null; meters: number };
 
 type Kind = "PHOTO" | "THOUGHT" | "PLACE" | "MUSIC";
+
+type Picked = { uri: string; width: number; height: number; mime: string };
 
 /** المسافةُ بين قراءتين بالأمتار — لتُترك القائمة ما لم يبتعد الموقع فعلاً. */
 function metersApart(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
@@ -69,7 +72,10 @@ export default function Compose() {
   const [pollDays, setPollDays] = useState<number>(POLL_DAYS_DEFAULT);
   const pollReady = !poll || poll.filter((option) => option.trim()).length >= 2;
   const [musicUrl, setMusicUrl] = useState("");
-  const [picture, setPicture] = useState<{ uri: string; width: number; height: number; mime: string } | null>(null);
+  const [picture, setPicture] = useState<Picked | null>(null);
+  // الصورُ بعد الأولى (القاعدة ٣٤٣) — في نسخة التطوير وحدها.
+  const [extras, setExtras] = useState<Picked[]>([]);
+  const room = MOMENT_PHOTOS_MAX - (picture ? 1 : 0) - extras.length;
   // موضعُ الصورة في إطار البطاقة — يبدأ من الوسط مع كل صورةٍ جديدة.
   const [photoPos, setPhotoPos] = useState({ x: 50, y: 50 });
   const [framing, setFraming] = useState(false);
@@ -262,7 +268,8 @@ export default function Compose() {
     }
   });
 
-  async function pickImage() {
+  /** `more`: يُضاف إلى ما اختير لا يُستبدل (القاعدة ٣٤٣). */
+  async function pickImage(more = false) {
     setAsking(false);
     const { status } = await Picker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
@@ -274,16 +281,36 @@ export default function Compose() {
       quality: 0.85,
       // يُصغَّر قبل الرفع: ميغاباياتٌ لا تُرسل ليُعاد تصغيرها على الخادم.
       allowsEditing: false,
+      // حتى خمسٍ في لحظةٍ واحدة تُقلَّب يميناً ويساراً (القاعدة ٣٤٣).
+      ...(DEV_FEATURES
+        ? { allowsMultipleSelection: true, selectionLimit: more ? Math.max(1, room) : MOMENT_PHOTOS_MAX, orderedSelection: true }
+        : {}),
     });
     if (result.canceled || !result.assets[0]) return;
-    const asset = result.assets[0];
-    setPicture({
+    const picked = result.assets.map((asset) => ({
       uri: asset.uri,
       width: asset.width,
       height: asset.height,
       mime: asset.mimeType ?? "image/jpeg",
-    });
+    }));
+    if (more && picture) {
+      setExtras((now) => [...now, ...picked].slice(0, MOMENT_PHOTOS_MAX - 1));
+      return;
+    }
+    setPicture(picked[0]);
+    setExtras(picked.slice(1, MOMENT_PHOTOS_MAX));
     setPhotoPos({ x: 50, y: 50 });
+  }
+
+  /** حذفُ صورةٍ من المختارة: الأولى تحلّ محلّها التاليةُ. */
+  function dropPicture(index: number) {
+    if (index === 0) {
+      setPicture(extras[0] ?? null);
+      setExtras((now) => now.slice(1));
+      setPhotoPos({ x: 50, y: 50 });
+    } else {
+      setExtras((now) => now.filter((_, at) => at !== index - 1));
+    }
   }
 
   const ready =
@@ -305,6 +332,11 @@ export default function Compose() {
       const mediaId = picture
         ? await uploadFile(picture.uri, picture.mime, "MOMENT", picture)
         : undefined;
+      // واحدةً بعد أخرى لا معاً: خمسُ رفعاتٍ على شبكة جوّالٍ تتزاحم فتبطؤ كلُّها.
+      const photos: string[] = [];
+      if (mediaId && kind === "PHOTO") {
+        for (const one of extras) photos.push(await uploadFile(one.uri, one.mime, "MOMENT", one));
+      }
 
       // بابٌ واحد لكل الأنواع، والأغنية رابطٌ فيه لا مساراً على حدة.
       await api("/v1/moments", {
@@ -315,6 +347,7 @@ export default function Compose() {
           mediaId,
           photoX: mediaId ? photoPos.x : undefined,
           photoY: mediaId ? photoPos.y : undefined,
+          photos: photos.length ? photos : undefined,
           musicUrl: kind === "MUSIC" ? musicUrl.trim() : undefined,
           poll: poll ? poll.map((option) => option.trim()).filter(Boolean) : undefined,
           pollDays: poll ? pollDays : undefined,
@@ -412,12 +445,43 @@ export default function Compose() {
                   <Text style={{ color: colors.muted, fontSize: 12.5 }}>ما اخترت صورة بعد</Text>
                 </View>
               )}
+              {DEV_FEATURES && picture ? (
+                // المختارةُ صفٌّ صغير: الأولى هي ما يُضبط فوق، والزائدُ يضيف حتى خمس (القاعدة ٣٤٣).
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 10 }}>
+                  {[picture, ...extras].map((one, index) => (
+                    <View key={`${one.uri}-${index}`} style={{ width: 62, height: 62 }}>
+                      <Image
+                        source={{ uri: one.uri }}
+                        style={{ width: 62, height: 62, borderRadius: 12, borderWidth: index === 0 ? 2 : 0, borderColor: colors.clay }}
+                      />
+                      <Pressable
+                        accessibilityLabel="احذف الصورة"
+                        onPress={() => dropPicture(index)}
+                        hitSlop={8}
+                        style={{ position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(14,26,36,.7)" }}
+                      >
+                        <CloseIcon size={11} color="#fff" />
+                      </Pressable>
+                    </View>
+                  ))}
+                  {room > 0 ? (
+                    <Pressable
+                      accessibilityLabel="أضف صورة"
+                      onPress={() => void pickImage(true)}
+                      style={{ width: 62, height: 62, borderRadius: 12, borderWidth: 1, borderStyle: "dashed", borderColor: colors.line, alignItems: "center", justifyContent: "center", backgroundColor: colors.paper }}
+                    >
+                      <PlusIcon size={18} color={colors.ink2} />
+                      <Text style={{ color: colors.muted, fontSize: 10.5, marginTop: 2 }}>{ar(room)} باقية</Text>
+                    </Pressable>
+                  ) : null}
+                </ScrollView>
+              ) : null}
               <Pressable
                 onPress={() => setAsking(true)}
                 style={{ height: 46, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
               >
                 <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600" }}>
-                  {picture ? "غيّر الصورة" : "صورة اللحظة"}
+                  {picture ? (DEV_FEATURES ? "غيّر الصور" : "غيّر الصورة") : DEV_FEATURES ? "صور اللحظة · حتى ٥" : "صورة اللحظة"}
                 </Text>
               </Pressable>
             </View>

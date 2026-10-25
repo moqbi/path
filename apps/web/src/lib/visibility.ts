@@ -122,6 +122,8 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
       avatarOf: { select: { id: true } },
       coverOf: { select: { id: true } },
       moment: { select: { id: true } },
+      // والصورُ بعد الأولى بقواعد لحظتها (القاعدة ٣٤٣).
+      momentPhoto: { select: { momentId: true } },
       storyOf: { select: { authorId: true, expiresAt: true } },
       messageOf: { select: { conversation: { select: { aId: true, bId: true } } } },
     },
@@ -137,6 +139,7 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
   }
 
   if (media.moment) return canSeeMoment(userId, media.moment.id);
+  if (media.momentPhoto) return canSeeMoment(userId, media.momentPhoto.momentId);
 
   if (media.storyOf) {
     if (media.storyOf.expiresAt <= new Date()) return false;

@@ -88,7 +88,7 @@ export default async function MomentPage({
               <>
                 {moment.mediaId ? (
                   <div className="mb-3">
-                    <Photo mediaId={moment.mediaId} rounded x={moment.photoX ?? 50} y={moment.photoY ?? 50} />
+                    <Photo mediaId={moment.mediaId} rounded x={moment.photoX ?? 50} y={moment.photoY ?? 50} more={moment.photos?.map((photo) => photo.mediaId)} />
                   </div>
                 ) : moment.imageSpec ? (
                   <div

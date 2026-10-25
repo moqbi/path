@@ -579,6 +579,8 @@ model Moment {
   photoX  Int?
   photoY  Int?
   media   Media?  @relation("MomentMedia", fields: [mediaId], references: [id], onDelete: SetNull)
+  /// الصورُ بعد الأولى (القاعدة ٣٤٣): الأولى `mediaId` فيقرؤها الجوّالُ القديم.
+  photos  MomentPhoto[]
 
   /// الجمهور: الدائرة كلها، أو تصنيف منها، أو أشخاص بأعيانهم.
   audience        Audience     @default(CIRCLE)
@@ -1157,6 +1159,7 @@ model Media {
   groupMessageOf GroupMessage? @relation("GroupMessageMedia")
   groupPhotoOf   ChatGroup?    @relation("GroupPhoto")
   moment         Moment?       @relation("MomentMedia")
+  momentPhoto    MomentPhoto?  @relation("MomentPhotoMedia")
   storeItem      StoreItem?    @relation("StoreItemMedia")
   storeCover     StoreItem?    @relation("StoreItemCover")
   storePromo     StoreItem?    @relation("StoreItemPromo")
@@ -1607,4 +1610,17 @@ model PlusGift {
 
   @@index([giverId, status, createdAt])
   @@index([recipientId, status, doneAt])
+}
+
+/// صورةٌ ثانيةٌ فما بعدها في لحظة الصور (القاعدة ٣٤٣) — خمسٌ على الأكثر مع الأولى.
+model MomentPhoto {
+  id       String @id @default(cuid())
+  momentId String
+  mediaId  String @unique
+  position Int
+
+  moment Moment @relation(fields: [momentId], references: [id], onDelete: Cascade)
+  media  Media  @relation("MomentPhotoMedia", fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@index([momentId, position])
 }

@@ -55,6 +55,8 @@ export type Moment = {
   photoX?: number | null;
   photoY?: number | null;
   mediaId: string | null;
+  /** الصورُ بعد الأولى (القاعدة ٣٤٣) — خادمٌ قديم لا يرسلها. */
+  morePhotos?: string[];
   /** قفلُ التعليقات بيد صاحبها — اختياريٌّ لخادمٍ أقدم لا يرسله. */
   commentsLocked?: boolean;
   /** عدّلها صاحبُها (القاعدة ٣١٩) — خادمٌ قديم لا يرسله. */

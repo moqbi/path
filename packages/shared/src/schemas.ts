@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  MOMENT_PHOTOS_MAX,
   MOMENT_TEXT_MAX,
   POLL_DAYS,
   POLL_OPTION_MAX,
@@ -45,6 +46,8 @@ export const momentInput = z.object({
   /** موضعُ الصورة في إطار البطاقة، بالمئة — يُضبط بالسحب قبل النشر. */
   photoX: z.number().int().min(0).max(100).optional(),
   photoY: z.number().int().min(0).max(100).optional(),
+  /** الصورُ بعد الأولى (القاعدة ٣٤٣): خمسٌ مع `mediaId` على الأكثر. */
+  photos: z.array(cuid).max(MOMENT_PHOTOS_MAX - 1).optional(),
   with: z.array(cuid).max(20).optional(),
   audience: z.enum(["CIRCLE", "GROUP", "PICKED", "EXCEPT"]).default("CIRCLE"),
   audienceGroupId: cuid.optional(),

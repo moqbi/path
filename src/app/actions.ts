@@ -1,5 +1,6 @@
 "use server";
 
+import { MOMENT_PHOTOS_MAX } from "@/lib/photo";
 import { clear, clientIp, hit, TOO_MANY } from "@/lib/rate-limit";
 import { recordCity } from "@/lib/city";
 import { cityInput } from "@/lib/city-input";
@@ -452,6 +453,22 @@ export async function postSimple(formData: FormData): Promise<void> {
     mediaId = stored.id;
   }
 
+  /*
+    الصورُ بعد الأولى (القاعدة ٣٤٣) — للمالك وممنوحي اللوحة كلّها (`canTryStickers`)
+    مقابلَ نسخة التطوير. خمسٌ مع الأولى على الأكثر، وكلٌّ منها يمرّ بباب الرفع نفسه.
+  */
+  const more: string[] = [];
+  if (mediaId && canTryStickers(user)) {
+    const files = formData.getAll("more").slice(0, MOMENT_PHOTOS_MAX - 1);
+    const widths = formData.getAll("moreWidth").map(Number);
+    const heights = formData.getAll("moreHeight").map(Number);
+    for (const [at, file] of files.entries()) {
+      if (!(file instanceof File) || file.size === 0) continue;
+      const stored = await storeUpload(user.id, file, widths[at] ?? 0, heights[at] ?? 0);
+      more.push(stored.id);
+    }
+  }
+
   // لحظةُ صورةٍ بلا صورة خاطرةٌ بنصّها — لا تدرّجٌ عشوائيّ فارغ فوقه (كالخادم).
   if (kind === "PHOTO" && !mediaId && !text) throw new Error("اختر صورة أو اكتب شيئاً");
   const posted = kind === "PHOTO" && !mediaId ? "THOUGHT" : kind;
@@ -469,6 +486,7 @@ export async function postSimple(formData: FormData): Promise<void> {
       // موضعُ الصورة في إطار البطاقة كما ضبطه صاحبُها بالسحب (٠–١٠٠).
       photoX: mediaId ? percent(formData.get("photoX")) : null,
       photoY: mediaId ? percent(formData.get("photoY")) : null,
+      photos: more.length ? { create: more.map((id, at) => ({ mediaId: id, position: at + 1 })) } : undefined,
       ...where,
       audience: seen.audience,
       audienceGroupId: seen.audienceGroupId,
@@ -1025,7 +1043,7 @@ export async function removeMomentAsAdmin(
 
   const moment = await prisma.moment.findUnique({
     where: { id: momentId },
-    select: { id: true, authorId: true, text: true, mediaId: true },
+    select: { id: true, authorId: true, text: true, mediaId: true, photos: { select: { mediaId: true } } },
   });
   if (!moment) return { error: "اللحظة غير موجودة" };
 
@@ -1040,7 +1058,7 @@ export async function removeMomentAsAdmin(
   });
 
   await prisma.moment.delete({ where: { id: moment.id } });
-  if (moment.mediaId) await dropMedia([moment.mediaId]);
+  await dropMedia([moment.mediaId, ...moment.photos.map((photo) => photo.mediaId)].filter((id): id is string => Boolean(id)));
 
   revalidatePath(`/admin/u/${moment.authorId}`);
   revalidatePath("/admin");
@@ -1618,7 +1636,7 @@ export async function deleteMoment(momentId: string): Promise<void> {
 
   const moment = await prisma.moment.findUnique({
     where: { id: momentId },
-    select: { authorId: true, mediaId: true },
+    select: { authorId: true, mediaId: true, photos: { select: { mediaId: true } } },
   });
   if (!moment) return;
   if (moment.authorId !== user.id) throw new Error("لا تُحذف لحظة غيرك");
@@ -1631,7 +1649,7 @@ export async function deleteMoment(momentId: string): Promise<void> {
     يترك بكسلاتها في القاعدة إلى الأبد. «تُحذف» تعني ألّا يبقى منها شيء
     لا عند الخادم ولا في القاعدة.
   */
-  if (moment.mediaId) await dropMedia([moment.mediaId]);
+  await dropMedia([moment.mediaId, ...moment.photos.map((photo) => photo.mediaId)].filter((id): id is string => Boolean(id)));
 
   revalidatePath("/");
   revalidatePath("/me");

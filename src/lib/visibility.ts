@@ -115,6 +115,8 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
       avatarOf: { select: { id: true } },
       coverOf: { select: { id: true } },
       moment: { select: { id: true } },
+      // والصورُ بعد الأولى بقواعد لحظتها (القاعدة ٣٤٣).
+      momentPhoto: { select: { momentId: true } },
       storyOf: {
         select: {
           authorId: true,
@@ -160,6 +162,7 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
   }
 
   if (media.moment) return canSeeMoment(userId, media.moment.id);
+  if (media.momentPhoto) return canSeeMoment(userId, media.momentPhoto.momentId);
 
   const story = media.storyOf ?? media.storyAudio;
   if (story) {

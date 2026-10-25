@@ -217,7 +217,13 @@ export async function decide(
 
   if (verdict === "REMOVED") {
     if (report.target === "MOMENT") {
+      // وصورُها معها (القاعدتان ١٠٤ و٣٤٣) — كان الحذفُ هنا يترك بكسلاتها.
+      const gone = await prisma.moment.findUnique({
+        where: { id: report.targetId },
+        select: { mediaId: true, photos: { select: { mediaId: true } } },
+      });
       await prisma.moment.deleteMany({ where: { id: report.targetId } });
+      if (gone) await dropMedia([gone.mediaId, ...gone.photos.map((photo) => photo.mediaId)].filter((id): id is string => Boolean(id)));
     } else if (report.target === "STORY") {
       await prisma.story.deleteMany({ where: { id: report.targetId } });
     } else if (report.target === "MESSAGE") {
@@ -276,7 +282,7 @@ export async function dropWord(id: string) {
 export async function removeMoment(adminId: string, momentId: string) {
   const moment = await prisma.moment.findUnique({
     where: { id: momentId },
-    select: { id: true, authorId: true, text: true, mediaId: true },
+    select: { id: true, authorId: true, text: true, mediaId: true, photos: { select: { mediaId: true } } },
   });
   if (!moment) throw notFound("اللحظة غير موجودة");
 
@@ -291,7 +297,7 @@ export async function removeMoment(adminId: string, momentId: string) {
   });
 
   await prisma.moment.delete({ where: { id: moment.id } });
-  if (moment.mediaId) await dropMedia([moment.mediaId]);
+  await dropMedia([moment.mediaId, ...moment.photos.map((photo) => photo.mediaId)].filter((id): id is string => Boolean(id)));
 
   return { ok: "حُذفت اللحظة" };
 }

@@ -40,7 +40,10 @@ export function ComposeForm({
   friends,
   groups,
   defaultGroupId,
+  multi = false,
 }: {
+  /** حتى خمس صورٍ في اللحظة (القاعدة ٣٤٣) — للمالك وممنوحي اللوحة كلّها. */
+  multi?: boolean;
   kind: Kind;
   friends: Friend[];
   groups: Group[];
@@ -58,6 +61,8 @@ export function ComposeForm({
   const [wantPlace, setWantPlace] = useState(kind === "PLACE");
   const [fix, setFix] = useState<Fix | null>(null);
   const [picture, setPicture] = useState<{ file: Blob; url: string; width: number; height: number } | null>(null);
+  // الصورُ بعد الأولى (القاعدة ٣٤٣).
+  const [extras, setExtras] = useState<{ file: Blob; url: string; width: number; height: number }[]>([]);
   // موضعُ الصورة في إطار البطاقة — يبدأ من الوسط مع كل صورةٍ جديدة.
   const [photoPos, setPhotoPos] = useState({ x: 50, y: 50 });
   const [musicUrl, setMusicUrl] = useState("");
@@ -156,6 +161,11 @@ export function ComposeForm({
           data.set("imageHeight", String(picture.height));
           data.set("photoX", String(photoPos.x));
           data.set("photoY", String(photoPos.y));
+          for (const one of extras) {
+            data.append("more", one.file);
+            data.append("moreWidth", String(one.width));
+            data.append("moreHeight", String(one.height));
+          }
         }
         data.set("kind", kind);
         start(() => void postSimple(data));
@@ -187,8 +197,48 @@ export function ComposeForm({
                 <span className="text-[12.5px] text-muted">ما اخترت صورة بعد</span>
               </div>
             )}
+            {multi && picture ? (
+              <div className="mb-2.5 flex gap-2 overflow-x-auto pb-1">
+                {[picture, ...extras].map((one, at) => (
+                  <span key={one.url} className="relative shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={one.url}
+                      alt=""
+                      className="h-[62px] w-[62px] rounded-xl object-cover"
+                      style={at === 0 ? { boxShadow: "0 0 0 2px var(--color-clay)" } : undefined}
+                    />
+                    <button
+                      type="button"
+                      aria-label="احذف الصورة"
+                      onClick={() => {
+                        if (at === 0) {
+                          setPhotoPos({ x: 50, y: 50 });
+                          setPicture(extras[0] ?? null);
+                          setExtras((now) => now.slice(1));
+                        } else setExtras((now) => now.filter((_, i) => i !== at - 1));
+                      }}
+                      className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full text-[11px] text-white"
+                      style={{ background: "rgba(14,26,36,.7)" }}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                {extras.length < 4 ? (
+                  <ImagePicker
+                    label={`أضف صورة · ${4 - extras.length}`}
+                    maxSize={1600}
+                    className="h-[62px] shrink-0 rounded-xl border border-dashed border-line px-3 text-[11.5px] text-muted"
+                    onPicked={(file, width, height) =>
+                      setExtras((now) => [...now, { file, url: URL.createObjectURL(file), width, height }].slice(0, 4))
+                    }
+                  />
+                ) : null}
+              </div>
+            ) : null}
             <ImagePicker
-              label={picture ? "غيّر الصورة" : "اختر صورة"}
+              label={picture ? "غيّر الصورة" : multi ? "اختر صورة · حتى ٥" : "اختر صورة"}
               maxSize={1600}
               onPicked={(file, width, height) =>
                 // الملف يُرسل، والرابط المؤقّت للمعاينة وحدها.

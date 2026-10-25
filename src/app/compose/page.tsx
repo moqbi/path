@@ -3,6 +3,7 @@ import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { circleIds } from "@/lib/circle";
 import { ComposeForm } from "./form";
+import { canTryStickers } from "@/lib/stickers";
 
 const KINDS = ["PHOTO", "THOUGHT", "PLACE", "MUSIC"] as const;
 type Kind = (typeof KINDS)[number];
@@ -40,6 +41,7 @@ export default async function ComposePage({
       friends={friends}
       groups={groups.map((group) => ({ id: group.id, name: group.name, count: group._count.members }))}
       defaultGroupId={settings?.viewGroupId ?? null}
+      multi={canTryStickers(user)}
     />
   );
 }
