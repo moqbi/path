@@ -36,10 +36,22 @@ export function Photo({
   const ids = [mediaId, ...more];
   const strip = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
+  /** صورةٌ بعد المفتوحة أو قبلها — والصورُ تُقلَّب وهي مفتوحة (القاعدة ٣٤٥). */
+  const step = (by: 1 | -1) =>
+    setOpen((now) => {
+      if (!now) return now;
+      const at = ids.indexOf(now) + by;
+      return at >= 0 && at < ids.length ? ids[at] : now;
+    });
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (event: KeyboardEvent) => event.key === "Escape" && setOpen(null);
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(null);
+      // الأسهمُ بين صور اللحظة: اليسرى التاليةُ في RTL.
+      if (event.key === "ArrowLeft") step(1);
+      if (event.key === "ArrowRight") step(-1);
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
@@ -145,7 +157,37 @@ export function Photo({
           className="fixed inset-0 z-40 flex items-center justify-center p-4"
           style={{ background: "rgba(8,14,20,.94)", animation: "athr-veil 160ms ease both" }}
         >
-          <ZoomImage src={`${BASE}/api/media/${open}`} onClose={() => setOpen(null)} />
+          <ZoomImage key={open} src={`${BASE}/api/media/${open}`} onClose={() => setOpen(null)} onSwipe={ids.length > 1 ? step : undefined} />
+          {ids.length > 1 ? (
+            <>
+              {(
+                [
+                  [-1, "right-3", "السابقة", "›"],
+                  [1, "left-3", "التالية", "‹"],
+                ] as const
+              ).map(([by, side, label, glyph]) => {
+                const at = ids.indexOf(open) + by;
+                return at >= 0 && at < ids.length ? (
+                  <button
+                    key={by}
+                    type="button"
+                    aria-label={label}
+                    onClick={(event) => {
+                      stop(event);
+                      step(by);
+                    }}
+                    className={`absolute ${side} top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-[26px] leading-none text-white`}
+                    style={{ background: "rgba(255,255,255,.16)" }}
+                  >
+                    {glyph}
+                  </button>
+                ) : null;
+              })}
+              <span className="pointer-events-none absolute inset-x-0 bottom-6 z-10 text-center text-[12.5px] font-bold text-white">
+                {ar(ids.indexOf(open) + 1)}/{ar(ids.length)}
+              </span>
+            </>
+          ) : null}
           <button
             type="button"
             aria-label="إغلاق"

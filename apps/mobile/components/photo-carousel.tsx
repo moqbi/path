@@ -81,7 +81,7 @@ export function PhotoCarousel({
                 transform: [{ translateX: Animated.multiply(Animated.add(pos, -at), width) }],
               }}
             >
-              <Pressable accessibilityLabel={`افتح الصورة ${ar(at + 1)}`} onPress={() => viewPhoto(id)} style={{ flex: 1 }}>
+              <Pressable accessibilityLabel={`افتح الصورة ${ar(at + 1)}`} onPress={() => viewPhoto(id, ids)} style={{ flex: 1 }}>
                 <MediaImage
                   mediaId={id}
                   position={at === 0 ? position : undefined}

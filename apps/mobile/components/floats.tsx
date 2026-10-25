@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, Animated, Dimensions, Easing, Pressable, TextInput as RNTextInput, View } from "react-native";
+import { AccessibilityInfo, Animated, Easing, Pressable, TextInput as RNTextInput, View } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { STATUS_COMMENT_MAX } from "@athar/shared";
 import { Text, TextInput } from "./type";
@@ -41,6 +41,8 @@ export function FloatLayer({ target, top = 0.22, bottom = 0.78 }: { target: Targ
   const seen = useRef(new Set<string>());
   const queue = useRef<Flyer[]>([]);
   const [still, setStill] = useState(false);
+  // يطير داخل ما فيه وحده — القصّةُ أو نافذةُ النوت — لا على الشاشة كلّها (القاعدة ٣٤٥).
+  const [box, setBox] = useState({ w: 0, h: 0 });
 
   useEffect(() => {
     void AccessibilityInfo.isReduceMotionEnabled().then(setStill).catch(() => undefined);
@@ -84,17 +86,35 @@ export function FloatLayer({ target, top = 0.22, bottom = 0.78 }: { target: Targ
 
   if (!target || still) return null;
   return (
-    <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 3 }}>
-      {flyers.map((one) => (
-        <Flyer key={one.key} item={one} top={top} bottom={bottom} done={() => setFlyers((now) => now.filter((x) => x.key !== one.key))} />
-      ))}
+    <View
+      pointerEvents="none"
+      onLayout={(event) => setBox({ w: event.nativeEvent.layout.width, h: event.nativeEvent.layout.height })}
+      style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 3, overflow: "hidden" }}
+    >
+      {box.h
+        ? flyers.map((one) => (
+            <Flyer key={one.key} item={one} box={box} top={top} bottom={bottom} done={() => setFlyers((now) => now.filter((x) => x.key !== one.key))} />
+          ))
+        : null}
     </View>
   );
 }
 
 /** ما يطفو: يصعد ويتمايل ويذوب في أربع ثوانٍ ونصف — على الخيط الأصليّ. */
-function Flyer({ item, top, bottom, done }: { item: Flyer; top: number; bottom: number; done: () => void }) {
-  const screen = Dimensions.get("window");
+function Flyer({
+  item,
+  box,
+  top,
+  bottom,
+  done,
+}: {
+  item: Flyer;
+  box: { w: number; h: number };
+  top: number;
+  bottom: number;
+  done: () => void;
+}) {
+  const screen = { width: box.w, height: box.h };
   const t = useRef(new Animated.Value(0)).current;
   const lane = useRef({
     // التعليقاتُ في وسطٍ يتّسع لها، والوجوهُ على طرفٍ ما.
@@ -134,7 +154,7 @@ function Flyer({ item, top, bottom, done }: { item: Flyer; top: number; bottom: 
       ) : (
         <View
           style={{
-            maxWidth: screen.width * 0.6,
+            maxWidth: screen.width * 0.7,
             paddingHorizontal: 12,
             paddingVertical: 7,
             borderRadius: 16,

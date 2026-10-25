@@ -617,7 +617,7 @@ export default function StoryViewer() {
         </View>
       )}
 
-      {DEV_FEATURES ? <FloatLayer key={story.id} target={{ kind: "story", id: story.id }} /> : null}
+      {DEV_FEATURES && !dragging ? <FloatLayer key={story.id} target={{ kind: "story", id: story.id }} /> : null}
 
       {burst ? (
         <Animated.View

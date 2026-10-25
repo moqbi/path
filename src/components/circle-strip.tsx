@@ -456,7 +456,7 @@ function NoteSheet({
       subtitle={`${relative(note.createdAt)}${mine && note.groupName ? ` · لتصنيف ${note.groupName}` : mine ? " · للدائرة كلها" : ""}`}
       onClose={onClose}
     >
-      <div className="flex flex-col items-center gap-4 px-[18px] pb-5">
+      <div className="relative flex flex-col items-center gap-4 px-[18px] pb-5">
         <div className="flex flex-col items-center">
           <Bubble note={note} large />
           <Avatar name={note.author.name} size={64} mediaId={note.author.avatarMediaId} />
