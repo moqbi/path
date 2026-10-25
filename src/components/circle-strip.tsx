@@ -15,6 +15,7 @@ import {
   songPreview,
 } from "@/app/actions";
 import { GlassSheet } from "@/components/glass-sheet";
+import { NoteFloats } from "@/components/floats";
 import { StoryComposer } from "@/components/story-composer";
 import { REACTION_SRC } from "@/components/reactions";
 import { Avatar } from "@/components/ui";
@@ -553,6 +554,8 @@ function NoteSheet({
             </div>
           </>
         )}
+        {/* ما يطفو، وحقلُ التعليق تحت الوجوه في الصندوق نفسه (القاعدة ٣٤٤). */}
+        <NoteFloats noteId={note.id} mine={mine} />
         {error ? (
           <p role="alert" className="text-[12px]" style={{ color: "#ff9c85" }}>
             {error}

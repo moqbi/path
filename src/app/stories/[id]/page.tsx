@@ -22,6 +22,7 @@ export default async function StoriesPage({ params }: { params: Promise<{ id: st
     <StoryViewer
       mine={mine}
       canSave={mine && canTryStickers(user)}
+      floats={canTryStickers(user)}
       author={{
         id: stories[0].author.id,
         name: stories[0].author.name,

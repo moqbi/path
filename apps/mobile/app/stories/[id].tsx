@@ -18,6 +18,8 @@ import { Filtered } from "../../components/filtered";
 import { FramedMedia, type StoryFrame } from "../../components/story-frame";
 import { MediaImage } from "../../components/media-image";
 import { DEV_FEATURES } from "../../lib/dev-features";
+import { useKeyboardInset } from "../../lib/keyboard";
+import { CommentField, FloatLayer, OwnerComments } from "../../components/floats";
 import { StoryVideo } from "../../components/story-video";
 import { CloseIcon, DownloadIcon, EyeIcon, LockIcon, ScreenshotIcon } from "../../components/icons";
 import { canSaveMedia, saveMedia } from "../../lib/save-media";
@@ -110,7 +112,10 @@ export default function StoryViewer() {
   */
   const [waiting, setWaiting] = useState(false);
   const [saving, setSaving] = useState(false);
-  const paused = held || watching || dragging || waiting || saving;
+  // يقف ما دام صاحبُه يكتب تعليقاً (القاعدة ٣٤٤).
+  const [typing, setTyping] = useState(false);
+  const keyboard = useKeyboardInset();
+  const paused = held || watching || dragging || waiting || saving || typing;
   const started = useRef(Date.now());
   // الوقفةُ لا تبدأ الشريحة من أوّلها: ما مضى منها يُحفظ ويُستأنف منه.
   const elapsed = useRef(0);
@@ -578,8 +583,10 @@ export default function StoryViewer() {
           </View>
         </View>
       ) : (
-        <View pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, bottom: 0, paddingBottom: insets.bottom + 8 }}>
-          <View style={{ flexDirection: "row", alignSelf: "center", gap: 6, padding: 6, borderRadius: 999, backgroundColor: "rgba(14,26,36,.55)" }}>
+        <View pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, bottom: 0, paddingBottom: Math.max(insets.bottom + 8, keyboard + 8) }}>
+          {/* حقلُ التعليق داخل صندوق التفاعل نفسه (القاعدة ٣٤٤). */}
+          <View style={DEV_FEATURES ? { alignSelf: "center", gap: 6, padding: 6, borderRadius: 26, backgroundColor: "rgba(14,26,36,.55)" } : undefined}>
+          <View style={DEV_FEATURES ? { flexDirection: "row", gap: 6 } : { flexDirection: "row", alignSelf: "center", gap: 6, padding: 6, borderRadius: 999, backgroundColor: "rgba(14,26,36,.55)" }}>
             {FACES.map((face) => {
               const on = story.myReaction === face;
               return (
@@ -603,8 +610,14 @@ export default function StoryViewer() {
               );
             })}
           </View>
+          {DEV_FEATURES ? (
+            <CommentField target={{ kind: "story", id: story.id }} onFocus={() => setTyping(true)} onBlur={() => setTyping(false)} />
+          ) : null}
+          </View>
         </View>
       )}
+
+      {DEV_FEATURES ? <FloatLayer key={story.id} target={{ kind: "story", id: story.id }} /> : null}
 
       {burst ? (
         <Animated.View
@@ -631,6 +644,7 @@ export default function StoryViewer() {
 
       {watching && mine ? (
         <Sheet title="من شاهد قصّتك" onClose={() => setWatching(false)}>
+          {DEV_FEATURES && story ? <OwnerComments target={{ kind: "story", id: story.id }} light /> : null}
           {viewers.isLoading ? (
             <Spinner color={colors.clay} style={{ marginVertical: 24 }} />
           ) : (viewers.data?.viewers.length ?? 0) === 0 ? (

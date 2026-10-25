@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   MOMENT_PHOTOS_MAX,
+  STATUS_COMMENT_MAX,
   MOMENT_TEXT_MAX,
   POLL_DAYS,
   POLL_OPTION_MAX,
@@ -162,6 +163,9 @@ export const storyInput = z.object({
 });
 
 /** تفاعلُ مشاهد القصة: أحدُ الوجوه الخمسة، أو `null` يرفعه. */
+/** تعليقٌ يطفو على قصّةٍ أو نوت بلا اسم (القاعدة ٣٤٤). */
+export const statusCommentInput = z.object({ body: z.string().trim().min(1).max(STATUS_COMMENT_MAX) });
+
 export const storyReactInput = z.object({
   kind: z.enum(["SMILE", "LAUGH", "GASP", "SAD", "LOVE"]).nullable(),
 });

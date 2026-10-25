@@ -316,11 +316,12 @@ model User {
 
   /// من دعاه (القاعدة ٢٤٣): رقمُ عضويّةٍ يكتبه عند التسجيل أو في أيّامه
   /// الأولى — مرّةً واحدة لا تتغيّر بعدها.
-  invitedById   String?
-  invitedBy     User?   @relation("Invites", fields: [invitedById], references: [id], onDelete: SetNull)
-  invitees      User[]  @relation("Invites")
+  invitedById    String?
+  invitedBy      User?           @relation("Invites", fields: [invitedById], references: [id], onDelete: SetNull)
+  invitees       User[]          @relation("Invites")
   /// كم مكافأةَ دعوةٍ استحقّ ونالها — دفعةٌ لكل `InviteProgram.every` مدعوّاً.
-  inviteRewards Int     @default(0)
+  inviteRewards  Int             @default(0)
+  statusComments StatusComment[]
 
   @@index([invitedById])
 }
@@ -366,6 +367,8 @@ model Story {
   audio    Media?          @relation("StoryAudio", fields: [audioMediaId], references: [id], onDelete: SetNull)
   views    StoryView[]
   audience StoryAudience[]
+  /// تعليقاتٌ بلا اسمٍ تطفو مع التفاعلات (القاعدة ٣٤٤).
+  floats   StatusComment[]
 
   @@index([authorId, expiresAt])
   @@index([expiresAt])
@@ -425,9 +428,11 @@ model StatusNote {
   createdAt    DateTime @default(now())
   expiresAt    DateTime
 
-  author User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  group  FriendGroup? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  author User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  group  FriendGroup?    @relation(fields: [groupId], references: [id], onDelete: Cascade)
   views  NoteView[]
+  /// تعليقاتٌ بلا اسمٍ تطفو مع التفاعلات (القاعدة ٣٤٤).
+  floats StatusComment[]
 
   @@index([authorId])
   @@index([expiresAt])
@@ -574,11 +579,11 @@ model Moment {
   /// تدرّج CSS يُرسم حين لا توجد صورة مرفوعة.
   imageSpec String?
 
-  mediaId String? @unique
+  mediaId String?       @unique
   /// موضعُ الصورة في إطار البطاقة (٠–١٠٠ أفقياً ورأسياً) — يُضبط بالسحب قبل النشر.
   photoX  Int?
   photoY  Int?
-  media   Media?  @relation("MomentMedia", fields: [mediaId], references: [id], onDelete: SetNull)
+  media   Media?        @relation("MomentMedia", fields: [mediaId], references: [id], onDelete: SetNull)
   /// الصورُ بعد الأولى (القاعدة ٣٤٣): الأولى `mediaId` فيقرؤها الجوّالُ القديم.
   photos  MomentPhoto[]
 
@@ -1623,4 +1628,23 @@ model MomentPhoto {
   media  Media  @relation("MomentPhotoMedia", fields: [mediaId], references: [id], onDelete: Cascade)
 
   @@index([momentId, position])
+}
+
+/// تعليقٌ على قصّةٍ أو نوت يطفو بلا اسم صاحبه (القاعدة ٣٤٤). الكاتبُ محفوظٌ للحذف
+/// والبلاغ ولا يُرسل لأحد — حتى صاحبِ القصّة. ويذهب مع ما عُلّق عليه.
+model StatusComment {
+  id        String   @id @default(cuid())
+  userId    String
+  storyId   String?
+  noteId    String?
+  body      String
+  createdAt DateTime @default(now())
+
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  story Story?      @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  note  StatusNote? @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@index([storyId, createdAt])
+  @@index([noteId, createdAt])
+  @@index([userId, createdAt])
 }

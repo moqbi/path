@@ -1,10 +1,11 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { cuid, storyReactInput } from "@athar/shared";
+import { cuid, statusCommentInput, storyReactInput } from "@athar/shared";
 import { zValidator } from "../../lib/validate";
 import { requireActive, requireAuth, me } from "../../middleware/auth";
 import { rateLimitUser } from "../../middleware/rate-limit";
 import * as notes from "../../services/notes";
+import * as floats from "../../services/floats";
 import { previewUrl, searchTracks, topTracks } from "../../services/music";
 import * as giphy from "../../services/giphy";
 
@@ -45,6 +46,13 @@ export const noteRoutes = new Hono()
   )
   .post("/:id/react", requireActive, rateLimitUser(120, 3600), zValidator("param", byId), zValidator("json", storyReactInput), async (c) =>
     c.json(await notes.react(me(c), c.req.valid("param").id, c.req.valid("json").kind)),
+  )
+  /** ما يطفو على النوت (القاعدة ٣٤٤). */
+  .get("/:id/floats", zValidator("param", byId), async (c) =>
+    c.json(await floats.floats(me(c), { kind: "note", id: c.req.valid("param").id })),
+  )
+  .post("/:id/comments", requireActive, rateLimitUser(60, 3600), zValidator("param", byId), zValidator("json", statusCommentInput), async (c) =>
+    c.json(await floats.comment(me(c), { kind: "note", id: c.req.valid("param").id }, c.req.valid("json").body), 201),
   );
 
 /**

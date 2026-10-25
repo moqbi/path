@@ -914,6 +914,24 @@ h3 {
 }
 
 /* الوجهُ يطير حين يُضغط في القصّة (القاعدة ٢٣٨). */
+/* ما يطفو على القصّة والنوت (القاعدة ٣٤٤): يصعد ويتمايل ويذوب. */
+.float-up {
+  animation: float-up 4.6s cubic-bezier(.25, .7, .4, 1) forwards;
+  will-change: transform, opacity;
+}
+@keyframes float-up {
+  0% { opacity: 0; transform: translate(0, 0) scale(.5); }
+  8% { opacity: 1; transform: translate(0, calc(var(--rise) * -.08)) scale(1); }
+  25% { transform: translate(var(--sway), calc(var(--rise) * -.25)) scale(1); }
+  50% { transform: translate(0, calc(var(--rise) * -.5)) scale(.98); }
+  70% { opacity: 1; }
+  75% { transform: translate(calc(var(--sway) * -1), calc(var(--rise) * -.75)) scale(.95); }
+  100% { opacity: 0; transform: translate(0, calc(var(--rise) * -1)) scale(.92); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .float-up { display: none; }
+}
+
 .story-burst {
   animation: story-burst 0.9s ease-out forwards;
 }

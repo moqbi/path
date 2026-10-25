@@ -14,6 +14,9 @@ export const MOMENT_TEXT_MAX = 250;
 /** صورُ لحظة الصور: خمسٌ على الأكثر تُقلَّب يميناً ويساراً (القاعدة ٣٤٣). */
 export const MOMENT_PHOTOS_MAX = 5;
 
+/** تعليقُ القصّة والنوت سطرٌ يطفو لا فقرة (القاعدة ٣٤٤). */
+export const STATUS_COMMENT_MAX = 80;
+
 /** حدُّ خيار الاستطلاع: سطرٌ يُقرأ على شريطه لا جملة (القاعدة ٢٨٩). */
 export const POLL_OPTION_MAX = 40;
 

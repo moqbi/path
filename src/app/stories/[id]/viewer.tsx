@@ -1,5 +1,6 @@
 "use client";
 
+import { CommentField, FloatLayer, OwnerComments } from "@/components/floats";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -54,7 +55,10 @@ export function StoryViewer({
   stories,
   mine,
   canSave = false,
+  floats = false,
 }: {
+  /** التفاعلاتُ والتعليقاتُ تطفو (القاعدة ٣٤٤) — للمالك وممنوحي اللوحة كلّها. */
+  floats?: boolean;
   author: { id: string; name: string; avatarMediaId: string | null };
   stories: Story[];
   mine: boolean;
@@ -67,7 +71,9 @@ export function StoryViewer({
   const [held, setHeld] = useState(false);
   // قائمةُ من شاهدها فوق القصة، والعدُّ يقف ما دامت مفتوحة.
   const [watching, setWatching] = useState(false);
-  const paused = held || watching;
+  // ويقف ما دام يكتب تعليقاً (القاعدة ٣٤٤).
+  const [typing, setTyping] = useState(false);
+  const paused = held || watching || typing;
   const started = useRef(Date.now());
   // الوقفةُ لا تبدأ الشريحة من أوّلها: ما مضى منها يُستأنف منه.
   const elapsed = useRef(0);
@@ -344,8 +350,9 @@ export function StoryViewer({
         ) : null}
 
         {mine ? null : (
-          <div className="absolute inset-x-0 bottom-0 z-10 flex justify-center pb-5">
-            <div className="flex gap-1.5 rounded-full p-1.5" style={{ background: "rgba(14,26,36,.55)" }}>
+          <div className="absolute inset-x-0 bottom-0 z-[16] flex justify-center pb-5">
+            <div className={floats ? "flex flex-col gap-1.5 rounded-[26px] p-1.5" : "contents"} style={floats ? { background: "rgba(14,26,36,.55)" } : undefined}>
+            <div className="flex gap-1.5 rounded-full p-1.5" style={{ background: floats ? undefined : "rgba(14,26,36,.55)" }}>
               {FACES.map((face) => {
                 const on = (story.id in picked ? picked[story.id] : story.myReaction) === face;
                 return (
@@ -364,8 +371,15 @@ export function StoryViewer({
                 );
               })}
             </div>
+            {/* حقلُ التعليق داخل صندوق التفاعل نفسه (القاعدة ٣٤٤). */}
+            {floats ? (
+              <CommentField target={{ kind: "story", id: story.id }} onFocus={() => setTyping(true)} onBlur={() => setTyping(false)} />
+            ) : null}
+            </div>
           </div>
         )}
+
+        {floats ? <FloatLayer key={story.id} target={{ kind: "story", id: story.id }} /> : null}
 
         {burst ? (
           <span
@@ -389,6 +403,7 @@ export function StoryViewer({
               onClick={(event) => event.stopPropagation()}
             >
               <p className="mb-3 text-center text-[15px] font-bold">من شاهد قصّتك</p>
+              {floats ? <OwnerComments target={{ kind: "story", id: story.id }} light /> : null}
               {story.viewers.length === 0 ? (
                 <p className="py-6 text-center text-[13px] text-muted">لم يشاهدها أحدٌ من أصدقائك بعد.</p>
               ) : (
