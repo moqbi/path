@@ -5,7 +5,15 @@ import { AthrMark } from "@/components/brand";
  * وقوسٌ باللمسة يدور حولها. نسخةُ `components/logo-refresh.tsx` في الجوّال.
  * ومن طلب «قلّل الحركة» يراهما ساكنين (`globals.css`).
  */
-export function LogoRefresh({ size = 32 }: { size?: number }) {
+export function LogoRefresh({
+  size = 32,
+  turn,
+}: {
+  size?: number;
+  /** زاويةٌ يتبعها القوسُ مع الإصبع وهو يسحب، بلا دورانٍ وحده (القاعدة ٣٤٢). */
+  turn?: number;
+}) {
+  const held = turn !== undefined;
   return (
     <span
       role="progressbar"
@@ -14,8 +22,9 @@ export function LogoRefresh({ size = 32 }: { size?: number }) {
       style={{ width: size, height: size }}
     >
       <span
-        className="logo-arc absolute inset-0 rounded-full"
+        className={`${held ? "" : "logo-arc "}absolute inset-0 rounded-full`}
         style={{
+          transform: held ? `rotate(${turn}deg)` : undefined,
           borderWidth: Math.max(1.5, size / 16),
           borderStyle: "solid",
           borderColor: "transparent",
@@ -23,7 +32,7 @@ export function LogoRefresh({ size = 32 }: { size?: number }) {
           borderRightColor: "var(--color-clay)",
         }}
       />
-      <span className="logo-breath">
+      <span className={held ? "inline-flex" : "logo-breath"} style={held ? { transform: `scale(${0.8 + Math.min(1, turn / 300) * 0.2})` } : undefined}>
         <AthrMark size={Math.round(size * 0.64)} />
       </span>
     </span>

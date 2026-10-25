@@ -37,6 +37,11 @@ const COVER = COVER_HEIGHT;
 /** أقصى ما ينزل به الغلاف، والمسافة التي يُحسب بعدها التحديث. */
 const PULL_MAX = 96;
 const PULL_TRIP = 62;
+/**
+ * السحبُ يُقاوَم كالمطّاط (القاعدة ٣٤٢): أوّلُه يتبع الإصبع وآخرُه يثقل نحو `PULL_MAX`
+ * ولا يقف عنده فجأة — الخطُّ المستقيم ثمّ الحدُّ كان يُحسّ صدمةً تحت الإصبع.
+ */
+const rubber = (dy: number) => (dy <= 0 ? 0 : PULL_MAX * (1 - Math.exp(-dy / 119)));
 
 /**
  * الخط الزمني.
@@ -193,7 +198,7 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
   latest.current = reload;
 
   const settle = () =>
-    Animated.spring(pull, { toValue: 0, useNativeDriver: false, bounciness: 6, speed: 14 }).start();
+    Animated.spring(pull, { toValue: 0, useNativeDriver: true, bounciness: 6, speed: 14 }).start();
 
   const grip = useRef(
     PanResponder.create({
@@ -212,11 +217,10 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
       onMoveShouldSetPanResponderCapture: (_event, gesture) =>
         atTop.current && gesture.dy > 8 && Math.abs(gesture.dy) > Math.abs(gesture.dx) * 1.6,
       onPanResponderMove: (_event, gesture) => {
-        if (gesture.dy <= 0) return pull.setValue(0);
-        pull.setValue(Math.min(gesture.dy * 0.5, PULL_MAX));
+        pull.setValue(rubber(gesture.dy));
       },
       onPanResponderRelease: (_event, gesture) => {
-        if (gesture.dy * 0.5 < PULL_TRIP) return settle();
+        if (rubber(gesture.dy) < PULL_TRIP) return settle();
 
         setPulling(true);
         playRefresh();
@@ -227,15 +231,11 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
             toValue: 1,
             duration: 750,
             easing: Easing.linear,
-            useNativeDriver: false,
+            useNativeDriver: true,
           }),
         );
         turn.start();
-        Animated.timing(pull, {
-          toValue: PULL_TRIP,
-          duration: 140,
-          useNativeDriver: false,
-        }).start();
+        Animated.spring(pull, { toValue: PULL_TRIP, useNativeDriver: true, bounciness: 0, speed: 18 }).start();
 
         void Promise.resolve(latest.current()).finally(() => {
           turn.stop();
@@ -361,7 +361,12 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
       <Animated.View style={{ flex: 1 }} {...grip.panHandlers}>
 
         {/* الغلاف: صورتك على محور الخيط، والمدّة تحت الاسم، والتحديث مقابله. */}
-        <Animated.View style={{ height: Animated.add(COVER, pull), overflow: "hidden" }}>
+        {/*
+          الإطارُ بارتفاعه الثابت، والصورةُ تكبر منه إلى أسفل واللحظاتُ تنزل بالتحويل وحده
+          (القاعدة ٣٤٢): كان الإطارُ يطول بـ`height` فيُعاد تخطيطُ القائمة كلِّها مع كلّ
+          حركة إصبع على خيط جافاسكربت — فتقطّع السحبُ. والتحويلُ على الخيط الأصليّ.
+        */}
+        <View style={{ height: COVER, zIndex: 2 }}>
           {/*
             السحبُ يمدّ الغلاف ولا يُنزله: كان الغلافُ واللحظات ينزلان معاً
             فيبقى فوقهما فراغٌ بلون الورق. الآن يطول الإطارُ بمقدار السحب
@@ -411,16 +416,26 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
               }}
             >
               <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(14,26,36,.55)" }}>
-                <LogoRefresh size={34} active={pulling} />
+                {/* يدور مع الإصبع وهو يسحب، ثمّ يدور وحده ما دام الجلب (القاعدة ٣٤٢). */}
+                <Animated.View
+                  style={{
+                    transform: [
+                      { rotate: pulling ? "0deg" : pull.interpolate({ inputRange: [0, PULL_MAX], outputRange: ["0deg", "320deg"], extrapolate: "clamp" }) },
+                    ],
+                  }}
+                >
+                  <LogoRefresh size={34} active={pulling} />
+                </Animated.View>
               </View>
             </Animated.View>
           ) : null}
 
-          <View
+          <Animated.View
             style={{
               position: "absolute",
               insetInline: 0,
               bottom: 0,
+              transform: [{ translateY: pull }],
               flexDirection: "row",
               alignItems: "flex-end",
               gap: 12,
@@ -481,7 +496,7 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
                   toValue: 1,
                   duration: 750,
                   easing: Easing.linear,
-                  useNativeDriver: false,
+                  useNativeDriver: true,
                 }),
               );
               turn.start();
@@ -569,11 +584,11 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
               </Text>
             </View>
 
-          </View>
+          </Animated.View>
 
-        </Animated.View>
+        </View>
 
-        <View style={{ flex: 1 }}>
+        <Animated.View style={{ flex: 1, transform: [{ translateY: pull }] }}>
         <SectionList
           ref={list}
           // حقلُ التعليق داخل القائمة: آبل تُزيح المحتوى بقدر الكيبورد وتُظهر
@@ -707,7 +722,7 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
             <Text style={{ color: colors.chromeInk, fontSize: 11.5, fontWeight: "700" }}>{clock.text}</Text>
           </Animated.View>
         )}
-        </View>
+        </Animated.View>
 
       </Animated.View>
 
