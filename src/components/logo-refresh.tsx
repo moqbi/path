@@ -7,13 +7,15 @@ import { AthrMark } from "@/components/brand";
  */
 export function LogoRefresh({
   size = 32,
-  turn,
+  held = false,
 }: {
   size?: number;
-  /** زاويةٌ يتبعها القوسُ مع الإصبع وهو يسحب، بلا دورانٍ وحده (القاعدة ٣٤٢). */
-  turn?: number;
+  /**
+   * الإصبعُ يسحب ولم يُفلت: **العلامةُ ثابتةٌ والقوسُ وحده يدور** (القاعدة ٣٤٧) —
+   * **بقرار المالك**: كان الشعارُ كلُّه يدور مع الإصبع. وتتنفّس العلامةُ مع الجلب وحده.
+   */
+  held?: boolean;
 }) {
-  const held = turn !== undefined;
   return (
     <span
       role="progressbar"
@@ -22,9 +24,8 @@ export function LogoRefresh({
       style={{ width: size, height: size }}
     >
       <span
-        className={`${held ? "" : "logo-arc "}absolute inset-0 rounded-full`}
+        className="logo-arc absolute inset-0 rounded-full"
         style={{
-          transform: held ? `rotate(${turn}deg)` : undefined,
           borderWidth: Math.max(1.5, size / 16),
           borderStyle: "solid",
           borderColor: "transparent",
@@ -32,7 +33,7 @@ export function LogoRefresh({
           borderRightColor: "var(--color-clay)",
         }}
       />
-      <span className={held ? "inline-flex" : "logo-breath"} style={held ? { transform: `scale(${0.8 + Math.min(1, turn / 300) * 0.2})` } : undefined}>
+      <span className={held ? "inline-flex" : "logo-breath"}>
         <AthrMark size={Math.round(size * 0.64)} />
       </span>
     </span>
