@@ -2213,3 +2213,40 @@ export async function deleteNationalDay(id: string): Promise<void> {
   await prisma.nationalDay.deleteMany({ where: { id } });
   revalidatePath("/admin");
 }
+
+// ───────────────────────────── تنبيهاتُ المشرف ─────────────────────────────
+
+/**
+ * تنبيهٌ لكلّ مستخدم (القاعدة ٣٦٣): عنوانٌ ونصٌّ في التنبيه، وبطاقةٌ تُفتح بضغطه
+ * بصورةٍ وعبارةٍ ونصّ. يُكتب صفّاً هنا ويرسله كنسُ الخادم خلال دقيقة — اللوحةُ
+ * مشروعٌ بلا خدمة تنبيهات. ويردّ رسالةً لا استثناء (القاعدة ٣١).
+ */
+export async function sendBroadcast(formData: FormData): Promise<{ ok?: string; error?: string }> {
+  const admin = await requireAdmin();
+  const text = (key: string, max: number) => String(formData.get(key) ?? "").trim().slice(0, max);
+  const title = text("title", 60);
+  const body = text("body", 180);
+  const cardTitle = text("cardTitle", 80);
+  const cardBody = text("cardBody", 600);
+  if (!title || !body) return { error: "اكتب عنوان التنبيه ونصّه" };
+  if (!cardTitle || !cardBody) return { error: "اكتب عبارة النافذة ونصّها" };
+
+  // وتنبيهان في دقيقةٍ زلّةُ إصبع لا قرار: كلُّ إرسالٍ يصل إلى كلّ جوّال.
+  const last = await prisma.broadcast.findFirst({ orderBy: { createdAt: "desc" }, select: { createdAt: true } });
+  if (last && Date.now() - last.createdAt.getTime() < 60_000) return { error: "أُرسل تنبيهٌ قبل أقلّ من دقيقة — انتظر قليلاً" };
+
+  let mediaId: string | null = null;
+  const file = formData.get("image");
+  if (file instanceof File && file.size > 0) {
+    try {
+      const { width, height } = picture(formData);
+      mediaId = (await storeUpload(admin.id, file, width, height)).id;
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : "تعذّر رفع الصورة" };
+    }
+  }
+
+  await prisma.broadcast.create({ data: { title, body, cardTitle, cardBody, mediaId, createdById: admin.id } });
+  revalidatePath("/admin");
+  return { ok: "سيُرسل خلال دقيقة" };
+}

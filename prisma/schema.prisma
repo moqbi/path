@@ -1131,6 +1131,25 @@ model StickerPurchase {
 }
 
 /// ملصقٌ واحد: صورةٌ للجميع كصورة الصنف، ولا يُرسله إلا مشتركُ آثار+.
+/// تنبيهٌ يرسله المشرفُ لكلّ مستخدم (القاعدة ٣٦٣): عنوانٌ ونصٌّ في التنبيه، وبطاقةٌ تُفتح بضغطه
+/// بصورةٍ وعبارةٍ ونصّ. يرسله كنسُ الخادم ويختمه قبل الإرسال بشرط «لم يُختم».
+model Broadcast {
+  id          String    @id @default(cuid())
+  title       String
+  body        String
+  cardTitle   String
+  cardBody    String
+  mediaId     String?   @unique
+  createdById String?
+  createdAt   DateTime  @default(now())
+  pushedAt    DateTime?
+  /// كم جهازاً خرج إليه — يُكتب بعد الإرسال ليُقرأ في اللوحة.
+  sentCount   Int?
+  media       Media?    @relation("BroadcastMedia", fields: [mediaId], references: [id], onDelete: SetNull)
+
+  @@index([pushedAt])
+}
+
 model Sticker {
   id        String      @id @default(cuid())
   packId    String
@@ -1188,6 +1207,7 @@ model Media {
   storeHallFloor StoreItem?    @relation("StoreItemHallFloor")
   storeHallFrame StoreItem?    @relation("StoreItemHallFrame")
   sticker        Sticker?      @relation("StickerMedia")
+  broadcast      Broadcast?    @relation("BroadcastMedia")
 
   /// صورةُ موقعٍ عامّة إن كانت — الرأس مثلاً.
   siteImage SiteImage? @relation("SiteImage")

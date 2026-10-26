@@ -41,6 +41,7 @@ import { dismissOpen } from "../lib/swipe-open";
 import { Launch, UpdateWait, useLaunch } from "../components/launch";
 import { useFreshUpdate, useResumeUpdate } from "../lib/fresh-update";
 import { StorePromo } from "../components/store-promo";
+import { BroadcastCard, openBroadcast } from "../components/broadcast-card";
 
 /*
   شريطُ آبل داكن — **بقرار المالك** (القاعدة ٢٦١): زجاجُه يتبع مظهرَ التطبيق، و`app.json`
@@ -204,7 +205,13 @@ function Gate() {
   */
   useEffect(() => {
     const open = (response: Notifications.NotificationResponse) => {
-      const path = response.notification.request.content.data?.path;
+      const data = response.notification.request.content.data;
+      const path = data?.path;
+      // تنبيهُ المشرف (القاعدة ٣٦٣): بطاقتُه في الجذر، ومسارُه «/» لجوّالٍ لا يعرفها.
+      if (typeof data?.broadcast === "string") {
+        openBroadcast(data.broadcast);
+        return;
+      }
       // «من حولك» نافذةٌ في الجذر لا شاشة (القاعدة ٢٨٢): تُفتح على الرادار مباشرةً.
       if (path === "/nearby") openAddSheet("near");
       // جرسُ النوت (القاعدة ٣١٩): النوتُ نافذةٌ في الجذر لا شاشة.
@@ -361,6 +368,8 @@ function Gate() {
     {me ? <Tour key={me.id} /> : null}
     {/* بطاقةُ إعلان الصنف — بعد الجولة لا معها (القاعدة ٢٦٧). */}
     {me ? <StorePromo key={`promo-${me.id}`} /> : null}
+    {/* وبطاقةُ تنبيه المشرف فوقهما: فُتحت بضغطةٍ قصدها صاحبُها (القاعدة ٣٦٣). */}
+    {me ? <BroadcastCard /> : null}
     </>
   );
 }
