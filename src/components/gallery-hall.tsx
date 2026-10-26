@@ -332,8 +332,9 @@ export function GalleryHall({
           </div>
 
           {/* أعلى الجدار: الرجوعُ و«عرض اللحظات» يميناً، والعلامةُ و«آثار» يساراً. */}
-          <div className="absolute inset-x-4 top-2 z-20 flex items-center justify-between" onPointerDown={(event) => event.stopPropagation()}>
-            <div className="flex items-center gap-2">
+          <div className="absolute inset-x-4 top-2 z-20 flex items-start justify-between" onPointerDown={(event) => event.stopPropagation()}>
+            {/* الرجوعُ و«عرض اللحظات» على خطّ «آثار» والعلامة. */}
+            <div className="mt-[9px] flex items-center gap-2">
               <Link
                 href="/archive"
                 aria-label="رجوع"
@@ -866,13 +867,17 @@ function SheetChip({ on, accent, onClick, children }: { on: boolean; accent: { b
 }
 
 /**
- * صورُ اللحظة متعدّدة الصور كومةً في الإطار الكبير: الضغطُ يرفع العليا جانباً حتى لا يبقى شيء،
- * ثمّ ضغطةٌ تُعيدها كلَّها بالحركة نفسها معكوسةً، الأخيرةُ أوّلاً (القاعدة ٣٥٣).
+ * صورُ اللحظة متعدّدة الصور كومةً في الإطار الكبير، **بحركةٍ واحدة: السحب** (القاعدة ٣٥٤): العليا
+ * تتبع المؤشّر وتميل، وما تجاوز ربعَ عرضها يطير في جهته وإلّا عاد. وبعد آخرها إطارٌ فارغ،
+ * وسحبةٌ أخرى تُعيدها معكوسةً، الأخيرةُ أوّلاً.
  */
 function DetailPiece({ skin, piece }: { skin: HallSkin; piece: HallPiece }) {
+  const W = 280;
   const [gone, setGone] = useState(0);
-  // «رحيل» العليا، أو «وقفة» خارج الإطار بلا انتقال قبل أن تعود.
-  const [phase, setPhase] = useState<"rest" | "leave" | "snap">("rest");
+  const [dx, setDx] = useState(0);
+  // «حرّ» يتبع المؤشّر بلا انتقال، و«يطير» أو «يعود» بانتقال.
+  const [glide, setGlide] = useState(false);
+  const start = useRef<{ x: number; y: number; on: boolean } | null>(null);
   const busy = useRef(false);
   const photos =
     piece.kind === "PHOTO" && piece.mediaId
@@ -881,84 +886,121 @@ function DetailPiece({ skin, piece }: { skin: HallSkin; piece: HallPiece }) {
           ...piece.morePhotos.map((mediaId, at) => ({ mediaId, x: piece.morePhotoPos[at]?.x ?? 50, y: piece.morePhotoPos[at]?.y ?? 50 })),
         ]
       : [];
-  if (photos.length < 2) {
+  const count = photos.length;
+  if (count < 2) {
     return (
-      <div style={{ width: 280, height: 358 }}>
+      <div style={{ width: W, height: 358 }}>
         <Piece skin={skin} piece={piece} spin />
       </div>
     );
   }
-  const tap = () => {
-    if (busy.current) return;
-    busy.current = true;
-    if (gone < photos.length) {
-      setPhase("leave");
-      setTimeout(() => {
-        setGone((now) => now + 1);
-        setPhase("rest");
-        busy.current = false;
-      }, 260);
+  const release = (moved: number) => {
+    const far = Math.abs(moved) > W * 0.25;
+    if (gone >= count) {
+      if (!far) return;
+      busy.current = true;
+      const side = moved >= 0 ? 1 : -1;
+      const back = (at: number) => {
+        if (at < 0) {
+          busy.current = false;
+          return;
+        }
+        setGlide(false);
+        setDx(side * W * 1.3);
+        setGone(at);
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            setGlide(true);
+            setDx(0);
+            setTimeout(() => back(at - 1), 190);
+          }),
+        );
+      };
+      back(count - 1);
       return;
     }
-    const back = (at: number) => {
-      if (at < 0) {
-        busy.current = false;
-        return;
-      }
-      setGone(at);
-      setPhase("snap");
-      requestAnimationFrame(() =>
-        requestAnimationFrame(() => {
-          setPhase("rest");
-          setTimeout(() => back(at - 1), 200);
-        }),
-      );
-    };
-    back(photos.length - 1);
+    setGlide(true);
+    if (!far) return setDx(0);
+    busy.current = true;
+    const side = Math.sign(moved) || 1;
+    setDx(side * W * 1.3);
+    setTimeout(() => {
+      setGlide(false);
+      setGone((now) => now + 1);
+      setDx(0);
+      busy.current = false;
+    }, 200);
   };
   const left = photos.slice(gone).slice(0, 3);
   return (
-    <button
-      type="button"
-      aria-label={left.length ? "الصورة التالية" : "أرجع الصور"}
-      onClick={(event) => {
-        event.stopPropagation();
-        tap();
-      }}
-      className="relative block"
-      style={{ width: 280, height: 358 }}
-    >
-      {left.length === 0 ? (
-        <span className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-md border-2 border-dashed" style={{ borderColor: skin.placard.muted, color: skin.placard.muted }}>
-          <span className="text-[13px] font-bold">انتهت الصور</span>
-          <span className="text-[12px]">اضغط لإرجاعها</span>
+    <div className="flex flex-col items-center gap-2.5">
+      <div
+        onPointerDown={(event) => {
+          event.stopPropagation();
+          if (busy.current) return;
+          start.current = { x: event.clientX, y: event.clientY, on: false };
+        }}
+        onPointerMove={(event) => {
+          const s = start.current;
+          if (!s) return;
+          const x = event.clientX - s.x;
+          if (!s.on) {
+            if (Math.abs(x) < 8 || Math.abs(x) < Math.abs(event.clientY - s.y)) return;
+            s.on = true;
+            (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+          }
+          if (gone < count) {
+            setGlide(false);
+            setDx(x);
+          }
+        }}
+        onPointerUp={(event) => {
+          const s = start.current;
+          start.current = null;
+          if (s?.on) release(event.clientX - s.x);
+        }}
+        onPointerCancel={() => {
+          start.current = null;
+          setGlide(true);
+          setDx(0);
+        }}
+        className="relative select-none"
+        style={{ width: W, height: 358, touchAction: "pan-y" }}
+      >
+        {left.length === 0 ? (
+          <span className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-md border-2 border-dashed" style={{ borderColor: skin.placard.muted, color: skin.placard.muted }}>
+            <span className="text-[13px] font-bold">انتهت الصور</span>
+            <span className="text-[12px]">اسحب لإرجاعها</span>
+          </span>
+        ) : null}
+        {left
+          .slice()
+          .reverse()
+          .map((photo, back, list) => {
+            const depth = list.length - 1 - back;
+            const lift = depth === 0;
+            return (
+              <span
+                key={photo.mediaId}
+                className="absolute inset-0 block"
+                style={{
+                  transform: lift ? `translateX(${dx}px) rotate(${(dx / W) * 14}deg)` : `translate(${depth * 10}px, ${depth * -8}px) rotate(${depth % 2 ? -4 : 3}deg)`,
+                  opacity: lift ? Math.max(0, Math.min(1, 1 - (Math.abs(dx) - W * 0.6) / (W * 0.7))) : 1,
+                  transition: lift && glide ? "transform 200ms ease-out, opacity 200ms ease-out" : "none",
+                }}
+              >
+                <PhotoFrame skin={skin} mediaId={photo.mediaId} x={photo.x} y={photo.y} />
+              </span>
+            );
+          })}
+        <span className="pointer-events-none absolute right-3 top-3 rounded-full px-2 text-[11px] font-bold leading-[22px] text-white" style={{ background: "rgba(14,26,36,.6)" }}>
+          {ar(Math.min(gone + 1, count))}/{ar(count)}
         </span>
-      ) : null}
-      {left
-        .slice()
-        .reverse()
-        .map((photo, back, list) => {
-          const depth = list.length - 1 - back;
-          const lift = depth === 0;
-          const away = lift && phase !== "rest";
-          return (
-            <span
-              key={photo.mediaId}
-              className="absolute inset-0 block"
-              style={{
-                transform: away ? "translateX(-90%) rotate(-12deg)" : `translate(${depth * 10}px, ${depth * -8}px) rotate(${depth ? (depth % 2 ? -4 : 3) : 0}deg)`,
-                opacity: away ? 0 : 1,
-                transition: lift && phase === "snap" ? "none" : "transform 240ms ease, opacity 240ms ease",
-              }}
-            >
-              <PhotoFrame skin={skin} mediaId={photo.mediaId} x={photo.x} y={photo.y} />
-            </span>
-          );
-        })}
-      <span className="absolute right-3 top-3 rounded-full px-2 text-[11px] font-bold leading-[22px] text-white" style={{ background: "rgba(14,26,36,.6)" }}>
-        {ar(Math.min(gone + 1, photos.length))}/{ar(photos.length)}
-      </span>
-    </button>
+      </div>
+      <p className="text-[12px]" style={{ color: "rgba(255,255,255,.6)" }}>
+        اسحب يميناً أو يساراً للصورة التالية
+      </p>
+    </div>
   );
 }
 

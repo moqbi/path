@@ -60,6 +60,12 @@ async function loadHall(year: number): Promise<Hall> {
 /** كم تُقلَّب بسحبةٍ واحدة، وكم لوحةً تُرسم حول الحاليّة. */
 const FLING_MAX = 3;
 const WINDOW = 2;
+/**
+ * ما يُركَّب من اللوحات حول «المستقرّ» لا حول الحاليّة: تركيبُ لوحةٍ أو نزعُها والنابضُ يجري
+ * على الخيط الأصليّ يُعيد بناءَ رسم الحركة فيرمش الجدارُ كلُّه (القاعدة ٣٥٤). فالمركّبُ يتّسع
+ * لأبعد سحبةٍ ولجارتها، ويُبدَّل مركزُه بعد أن تقف الحركة.
+ */
+const MOUNTED = FLING_MAX + WINDOW;
 /** دورةُ نقش الجدار والأرضيّة المرسومَين — وبصورةٍ مرفوعة مقاسُ البلاطة. */
 const WALL_TILE = 220;
 const FLOOR_TILE = 160;
@@ -110,6 +116,7 @@ export default function HallScreen() {
 
   const pos = useRef(new Animated.Value(0)).current;
   const [index, setIndex] = useState(0);
+  const [settled, setSettled] = useState(0);
   const [detail, setDetail] = useState<{ moment: ArchiveMoment; tab: Tab } | null>(null);
   const [grid, setGrid] = useState(false);
   const nav = useRef({ index: 0, count: 0, step: STEP, base: 0, vertical: false, months: [] as { first: number }[] }).current;
@@ -124,6 +131,7 @@ export default function HallScreen() {
     const month = last.type === "piece" ? riyadh(last.moment.createdAt).month : -1;
     const start = Math.max(0, slots.findIndex((slot) => slot.type === "piece" && riyadh(slot.moment.createdAt).month === month));
     setIndex(start);
+    setSettled(start);
     pos.setValue(start * STEP);
   }, [slots.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -131,8 +139,14 @@ export default function HallScreen() {
     (to: number) => {
       const target = Math.max(0, Math.min(nav.count - 1, to));
       // قفزةٌ بعيدة من شريط الشهور لا تمرّ بجدارٍ فارغ: اللوحاتُ تُرسم حول الحاليّة وحدها.
-      if (Math.abs(target - nav.index) > WINDOW + 1) pos.setValue(target * nav.step);
-      else Animated.spring(pos, { toValue: target * nav.step, useNativeDriver: true, speed: 14, bounciness: 2 }).start();
+      if (Math.abs(target - nav.index) > FLING_MAX) {
+        pos.setValue(target * nav.step);
+        setSettled(target);
+      } else {
+        Animated.spring(pos, { toValue: target * nav.step, useNativeDriver: true, speed: 14, bounciness: 2 }).start(({ finished }) => {
+          if (finished) setSettled(target);
+        });
+      }
       setIndex(target);
     },
     [pos, nav],
@@ -264,7 +278,7 @@ export default function HallScreen() {
         <Wall skin={skin} image={images?.wall ?? null} width={width} height={wallH} shift={wallShift} top={insets.top} wainscot={wainscot} />
 
         {slots.map((slot, at) =>
-          Math.abs(at - index) > WINDOW ? null : (
+          Math.abs(at - settled) > MOUNTED ? null : (
             <Hung
               key={slot.key}
               pos={pos}
@@ -309,7 +323,7 @@ export default function HallScreen() {
         ) : null}
 
         {/* صدى الحاليّة: وجوهُ من تفاعل تصعد فوق إطارها وتذوب — طبقةٌ أخيرةٌ فوق كلّ شيء. */}
-        {piece?.echo?.faces.length && focused && !detail ? (
+        {!!piece?.echo?.faces.length && focused && !detail ? (
           <EchoRise key={piece.id} echo={piece.echo} width={width} w={W} top={frameTop + H * 0.78} rise={H * 0.9} />
         ) : null}
 
@@ -318,8 +332,9 @@ export default function HallScreen() {
         </View>
 
         {/* أعلى الجدار: العلامةُ يساراً، والرجوعُ و«عرض اللحظات» يميناً. */}
-        <View style={{ position: "absolute", top: insets.top + 8, left: 16, right: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <View style={{ position: "absolute", top: insets.top + 8, left: 16, right: 16, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
+          {/* الرجوعُ و«عرض اللحظات» على خطّ «آثار» والعلامة: مركزُ سطرها ١٢ + ١٦. */}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 9 }}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="رجوع"
@@ -1202,9 +1217,10 @@ function Entering({ delay, children }: { delay: number; children: React.ReactNod
 }
 
 /**
- * صورُ اللحظة متعدّدة الصور مكدّسةً في الإطار الكبير: الضغطُ يرفع العليا جانباً حتى لا يبقى
- * شيء — إطارٌ فارغ — ثمّ ضغطةٌ تُعيدها كلَّها بالحركة نفسها معكوسةً، الأخيرةُ أوّلاً. لا دورانَ
- * بلا نهاية: يُعرف متى انتهت الكومة (القاعدة ٣٥٣).
+ * صورُ اللحظة متعدّدة الصور كومةً في الإطار الكبير، **بحركةٍ واحدة: السحب** (القاعدة ٣٥٤) —
+ * كانت نقراً يرفع العليا وسحباً يُغلق النافذة معاً فيتنازعان الإصبع. العليا تتبع الإصبع يميناً
+ * ويساراً وتميل معه، وما تجاوز ربعَ عرضها أو أُفلت بسرعةٍ يطير في جهته، وإلّا عاد. وبعد آخرها
+ * إطارٌ فارغ، وسحبةٌ أخرى تُعيدها كلَّها معكوسةً، الأخيرةُ أوّلاً.
  */
 function DetailPiece({ skin, frameImage, moment, w }: { skin: HallSkin; frameImage: string | null; moment: ArchiveMoment; w: number }) {
   const h = w * 1.28;
@@ -1214,88 +1230,116 @@ function DetailPiece({ skin, frameImage, moment, w }: { skin: HallSkin; frameIma
         ...(moment.morePhotos ?? []).map((mediaId, at) => ({ mediaId, pos: moment.morePhotoPos?.[at] })),
       ]
     : [];
-  // كم رُفع منها: صفرٌ والكومةُ كاملة، وعددُها والإطارُ فارغ.
+  const count = photos.length;
+  // كم طار منها: صفرٌ والكومةُ كاملة، وعددُها والإطارُ فارغ.
   const [gone, setGone] = useState(0);
-  const busy = useRef(false);
-  const flip = useRef(new Animated.Value(0)).current;
+  const state = useRef({ gone: 0, busy: false, count }).current;
+  state.gone = gone;
+  state.count = count;
+  const drag = useRef(new Animated.Value(0)).current;
   const motion = useMemo(
     () => ({
-      x: flip.interpolate({ inputRange: [0, 1], outputRange: [0, -w * 0.9] }),
-      r: flip.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "-12deg"] }),
-      o: flip.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+      r: drag.interpolate({ inputRange: [-w, 0, w], outputRange: ["-14deg", "0deg", "14deg"] }),
+      o: drag.interpolate({ inputRange: [-w * 1.3, -w * 0.6, 0, w * 0.6, w * 1.3], outputRange: [0, 1, 1, 1, 0] }),
     }),
-    [flip, w],
+    [drag, w],
   );
-  if (moment.kind !== "PHOTO" || photos.length < 2) {
+  const pan = useRef(
+    PanResponder.create({
+      // أفقيّةٌ وحدها: العموديّةُ لنافذة اللوحة تُسحب بها إلى أسفل.
+      onMoveShouldSetPanResponderCapture: (_, g) => Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy) * 1.2,
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy) * 1.2,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: () => drag.stopAnimation(),
+      onPanResponderMove: (_, g) => {
+        if (state.busy) return;
+        // الإطارُ الفارغ لا يتبع الإصبع: السحبةُ فيه تُعيد الكومة.
+        if (state.gone >= state.count) return;
+        drag.setValue(g.dx);
+      },
+      onPanResponderRelease: (_, g) => {
+        if (state.busy) return;
+        const far = Math.abs(g.dx) > w * 0.25 || Math.abs(g.vx) > 0.5;
+        if (state.gone >= state.count) {
+          if (!far) return;
+          state.busy = true;
+          const side = g.dx >= 0 ? 1 : -1;
+          const back = (at: number) => {
+            if (at < 0) {
+              state.busy = false;
+              return;
+            }
+            drag.setValue(side * w * 1.3);
+            setGone(at);
+            Animated.timing(drag, { toValue: 0, duration: 190, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start(() => back(at - 1));
+          };
+          back(state.count - 1);
+          return;
+        }
+        if (!far) {
+          Animated.spring(drag, { toValue: 0, useNativeDriver: true, bounciness: 6 }).start();
+          return;
+        }
+        state.busy = true;
+        const side = g.dx === 0 ? Math.sign(g.vx) || 1 : Math.sign(g.dx);
+        Animated.timing(drag, { toValue: side * w * 1.3, duration: 200, easing: Easing.out(Easing.quad), useNativeDriver: true }).start(() => {
+          setGone((now) => now + 1);
+          drag.setValue(0);
+          state.busy = false;
+        });
+      },
+      onPanResponderTerminate: () => Animated.spring(drag, { toValue: 0, useNativeDriver: true }).start(),
+    }),
+  ).current;
+
+  if (moment.kind !== "PHOTO" || count < 2) {
     return (
       <View style={{ width: w, height: h }}>
         <Piece skin={skin} frameImage={frameImage} moment={moment} w={w} h={h} />
       </View>
     );
   }
-  const tap = () => {
-    if (busy.current) return;
-    busy.current = true;
-    if (gone < photos.length) {
-      Animated.timing(flip, { toValue: 1, duration: 260, easing: Easing.in(Easing.quad), useNativeDriver: true }).start(() => {
-        setGone((now) => now + 1);
-        flip.setValue(0);
-        busy.current = false;
-      });
-      return;
-    }
-    // الرجوع: كلُّ صورةٍ تعود من حيث ذهبت، الأخيرةُ أوّلاً.
-    const back = (at: number) => {
-      if (at < 0) {
-        busy.current = false;
-        return;
-      }
-      flip.setValue(1);
-      setGone(at);
-      Animated.timing(flip, { toValue: 0, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start(() => back(at - 1));
-    };
-    back(photos.length - 1);
-  };
   const left = photos.slice(gone).slice(0, 3);
   return (
-    <Pressable onPress={tap} style={{ width: w, height: h }}>
-      {left.length === 0 ? (
-        <View style={{ flex: 1, borderWidth: 2, borderStyle: "dashed", borderColor: skin.placard.muted, borderRadius: 6, alignItems: "center", justifyContent: "center", gap: 6 }}>
-          <Text style={{ color: skin.placard.muted, fontSize: 13, fontWeight: "700" }}>انتهت الصور</Text>
-          <Text style={{ color: skin.placard.muted, fontSize: 12 }}>اضغط لإرجاعها</Text>
+    <View style={{ alignItems: "center", gap: 10 }}>
+      <View {...pan.panHandlers} style={{ width: w, height: h }}>
+        {left.length === 0 ? (
+          <View style={{ flex: 1, borderWidth: 2, borderStyle: "dashed", borderColor: skin.placard.muted, borderRadius: 6, alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <Text style={{ color: skin.placard.muted, fontSize: 13, fontWeight: "700" }}>انتهت الصور</Text>
+            <Text style={{ color: skin.placard.muted, fontSize: 12 }}>اسحب لإرجاعها</Text>
+          </View>
+        ) : null}
+        {left
+          .slice()
+          .reverse()
+          .map((photo, back, list) => {
+            const depth = list.length - 1 - back; // ٠ للعليا
+            const lift = depth === 0;
+            return (
+              <Animated.View
+                key={photo.mediaId}
+                style={{
+                  position: "absolute",
+                  width: w,
+                  height: h,
+                  opacity: lift ? motion.o : 1,
+                  transform: lift
+                    ? [{ translateX: drag }, { rotate: motion.r }]
+                    : [{ translateX: depth * 10 }, { translateY: depth * -8 }, { rotate: `${depth % 2 ? -4 : 3}deg` }],
+                }}
+              >
+                <PhotoFrame skin={skin} frameImage={frameImage} mediaId={photo.mediaId} pos={photo.pos} />
+              </Animated.View>
+            );
+          })}
+        <View pointerEvents="none" style={{ position: "absolute", top: 12, right: 12, paddingHorizontal: 8, height: 22, borderRadius: 11, justifyContent: "center", backgroundColor: "rgba(14,26,36,.6)" }}>
+          <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>
+            {ar(Math.min(gone + 1, count))}/{ar(count)}
+          </Text>
         </View>
-      ) : null}
-      {left
-        .slice()
-        .reverse()
-        .map((photo, back, list) => {
-          const depth = list.length - 1 - back; // ٠ للعليا
-          const lift = depth === 0;
-          return (
-            <Animated.View
-              key={photo.mediaId}
-              style={{
-                position: "absolute",
-                width: w,
-                height: h,
-                transform: [
-                  { translateX: lift ? motion.x : depth * 10 },
-                  { translateY: depth * -8 },
-                  { rotate: lift ? motion.r : `${depth % 2 ? -4 : 3}deg` },
-                ],
-                opacity: lift ? motion.o : 1,
-              }}
-            >
-              <PhotoFrame skin={skin} frameImage={frameImage} mediaId={photo.mediaId} pos={photo.pos} />
-            </Animated.View>
-          );
-        })}
-      <View style={{ position: "absolute", top: 12, right: 12, paddingHorizontal: 8, height: 22, borderRadius: 11, justifyContent: "center", backgroundColor: "rgba(14,26,36,.6)" }}>
-        <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>
-          {ar(Math.min(gone + 1, photos.length))}/{ar(photos.length)}
-        </Text>
       </View>
-    </Pressable>
+      <Text style={{ color: "rgba(255,255,255,.6)", fontSize: 12 }}>اسحب يميناً أو يساراً للصورة التالية</Text>
+    </View>
   );
 }
 
