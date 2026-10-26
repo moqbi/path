@@ -258,11 +258,6 @@ export function GalleryHall({
                     style={{ top: 30, left: 0, width: W, height: H }}
                   >
                     {slot.type === "rope" ? <Rope skin={skin} hidden={hidden} w={W} h={H} /> : <Piece skin={skin} piece={slot.piece} spin={at === index} />}
-                    {/* البعيدةُ عن الوسط تخفت بحجابٍ لا بشفافيّة — الشفافيّةُ تُري الجدارَ من خلالها. */}
-                    <span
-                      className="pointer-events-none absolute inset-0"
-                      style={{ background: "#0B1117", opacity: near * 0.42, transition: dragging ? "none" : "opacity 320ms" }}
-                    />
                   </button>
                 </div>
               );
@@ -369,18 +364,19 @@ function Placard({ skin, piece, onEcho }: { skin: HallSkin; piece: HallPiece; on
   );
 }
 
-/** وجوهُ من تفاعل تصعد على جانبي الحاليّة وتذوب — طبقةٌ فوق كلّ شيء (`z-30`). */
+/** وجوهُ من تفاعل تصعد فوق الحاليّة من أسفلها إلى أعلاها وتذوب — طبقةٌ فوق كلّ شيء (`z-30`). */
 function EchoRise({ echo, w, top, rise }: { echo: NonNullable<HallPiece["echo"]>; w: number; top: number; rise: number }) {
   return (
     <div className="pointer-events-none absolute inset-0 z-30">
       {echo.faces.slice(0, 8).map((face, at) => {
+        // فوق اللوحة نفسها، يمينٌ ثمّ يسار في عرضها — أمامها لا على جانبيها.
         const side = at % 2 ? 1 : -1;
         return (
           <span
             key={at}
             className="hall-rise absolute"
             style={{
-              left: `calc(50% + ${side * (w / 2 + 22 + ((at * 13) % 16)) - 15}px)`,
+              left: `calc(50% + ${side * (w * 0.12 + ((at * 23) % Math.round(w * 0.28))) - 15}px)`,
               top,
               animationDelay: `${300 + at * 380}ms`,
               ["--rise" as string]: `${-rise}px`,

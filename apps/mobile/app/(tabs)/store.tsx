@@ -147,7 +147,7 @@ export default function Store() {
     { slug: "kind:FRAME", name: "الإطارات", kinds: ["FRAME"], other: "الإطارات الأخرى" },
     { slug: "kind:THEME", name: "الثيمات", kinds: ["THEME", "BACKGROUND"], other: "الثيمات الأخرى" },
     // أثوابُ قاعة المعرض (القاعدة ٣٤٨) — الخادمُ لا يرسلها إلا لنسخة التطوير، والشريحةُ تظهر حين يكون فيها شيء.
-    { slug: "kind:GALLERY", name: "المعرض", kinds: ["GALLERY"], other: "أثواب المعرض" },
+    { slug: "kind:GALLERY", name: "المعرض", kinds: ["GALLERY"], other: "المعرض" },
   ] as const;
   const STICKERS = { slug: "kind:STICKER", name: "الملصقات" };
   const stickerTab = slug === STICKERS.slug;
