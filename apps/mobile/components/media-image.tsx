@@ -29,6 +29,7 @@ export function MediaImage({
   position,
   onSize,
   blurRadius,
+  fade = true,
 }: {
   mediaId: string | null | undefined;
   style?: StyleProp<ImageStyle>;
@@ -40,6 +41,8 @@ export function MediaImage({
   onSize?: (width: number, height: number) => void;
   /** تغبيشٌ — لنسخةٍ تملأ ما حول الصورة الكاملة (`FilledImage`). */
   blurRadius?: number;
+  /** تلاشي الظهور — يُطفأ في قاعة المعرض: لوحةٌ تُركَّب وهي تمرّ تومض بتلاشيها (القاعدة ٣٥٥). */
+  fade?: boolean;
 }) {
   const [token, setToken] = useState(currentAccess);
   const [tries, setTries] = useState(0);
@@ -82,7 +85,7 @@ export function MediaImage({
       style={style}
       contentFit={resizeMode}
       contentPosition={contentPosition}
-      transition={120}
+      transition={fade ? 120 : 0}
       blurRadius={blurRadius}
       onLoad={(event) => {
         const size = event.source;

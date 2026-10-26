@@ -241,11 +241,10 @@ export default function HallScreen() {
   );
   useEffect(() => {
     if (!spinning || !focused) return;
-    spin.setValue(0);
     const loop = Animated.loop(Animated.timing(spin, { toValue: 1, duration: 6000, easing: Easing.linear, useNativeDriver: true }));
     loop.start();
     return () => loop.stop();
-  }, [spinning, focused, index]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [spinning, focused]); // eslint-disable-line react-hooks/exhaustive-deps
   const rotate = useMemo(() => spin.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] }), [spin]);
 
   const wallMonth = current?.type === "piece" ? riyadh(current.moment.createdAt).month : null;
@@ -293,7 +292,7 @@ export default function HallScreen() {
               slot={slot}
               hidden={hall.data?.hidden ?? 0}
               frameImage={images?.frame ?? null}
-              rotate={at === index ? rotate : undefined}
+              rotate={rotate}
               onTap={onTap}
             />
           ),
@@ -586,6 +585,7 @@ const Wall = memo(function Wall({
         {image
           ? Array.from({ length: cols * rows }, (_, at) => (
               <MediaImage
+                fade={false}
                 key={at}
                 mediaId={image}
                 style={{ position: "absolute", left: (at % cols) * WALL_TILE, top: Math.floor(at / cols) * WALL_TILE, width: WALL_TILE, height: WALL_TILE }}
@@ -689,6 +689,7 @@ function Floor({
         {image
           ? Array.from({ length: cols * Math.ceil(height / FLOOR_TILE) }, (_, at) => (
               <MediaImage
+                fade={false}
                 key={at}
                 mediaId={image}
                 style={{ position: "absolute", top: Math.floor(at / cols) * FLOOR_TILE, left: (at % cols) * FLOOR_TILE, width: FLOOR_TILE, height: FLOOR_TILE }}
@@ -874,7 +875,7 @@ function MonthGrid({
               }}
             >
               {moment.kind === "PHOTO" && moment.mediaId ? (
-                <MediaImage mediaId={moment.mediaId} style={{ width: "100%", height: "100%" }} />
+                <MediaImage fade={false} mediaId={moment.mediaId} style={{ width: "100%", height: "100%" }} />
               ) : (
                 <Text numberOfLines={4} style={{ color: skin.placard.ink, fontSize: 11.5, textAlign: "center", lineHeight: 17 }}>
                   {momentLine(moment)}
@@ -961,6 +962,7 @@ function HallSheet({
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const [tab, setTab] = useState<Tab>(first);
+  const [hold, setHold] = useState(false);
   const full = useMoment(moment.id);
   const reactions = full.data?.moment.reactions ?? null;
   const comments = full.data?.moment.comments ?? null;
@@ -1077,6 +1079,7 @@ function HallSheet({
 
         <ScrollView
           key={tab}
+          scrollEnabled={!hold}
           onScroll={(event) => {
             atTop.current = event.nativeEvent.contentOffset.y <= 2;
           }}
@@ -1086,7 +1089,7 @@ function HallSheet({
           {tab === "art" ? (
             <View style={{ alignItems: "center", gap: 18 }}>
               <View style={{ padding: 18, borderRadius: 18, backgroundColor: skin.wall, alignItems: "center" }}>
-                <DetailPiece skin={skin} frameImage={frameImage} moment={moment} w={Math.min(270, width * 0.66)} />
+                <DetailPiece skin={skin} frameImage={frameImage} moment={moment} w={Math.min(270, width * 0.66)} onHold={setHold} />
               </View>
               <Placard skin={skin} moment={moment} onEcho={() => pick("echo")} />
               <Pressable
@@ -1222,7 +1225,20 @@ function Entering({ delay, children }: { delay: number; children: React.ReactNod
  * ويساراً وتميل معه، وما تجاوز ربعَ عرضها أو أُفلت بسرعةٍ يطير في جهته، وإلّا عاد. وبعد آخرها
  * إطارٌ فارغ، وسحبةٌ أخرى تُعيدها كلَّها معكوسةً، الأخيرةُ أوّلاً.
  */
-function DetailPiece({ skin, frameImage, moment, w }: { skin: HallSkin; frameImage: string | null; moment: ArchiveMoment; w: number }) {
+const DetailPiece = memo(function DetailPiece({
+  skin,
+  frameImage,
+  moment,
+  w,
+  onHold,
+}: {
+  skin: HallSkin;
+  frameImage: string | null;
+  moment: ArchiveMoment;
+  w: number;
+  /** الإصبعُ على الكومة: تمريرُ النافذة يقف — `UIScrollView` يأخذ السحبةَ الأفقيّة أيضاً فيُلغي الكومة. */
+  onHold?: (on: boolean) => void;
+}) {
   const h = w * 1.28;
   const photos = moment.mediaId
     ? [
@@ -1302,7 +1318,13 @@ function DetailPiece({ skin, frameImage, moment, w }: { skin: HallSkin; frameIma
   const left = photos.slice(gone).slice(0, 3);
   return (
     <View style={{ alignItems: "center", gap: 10 }}>
-      <View {...pan.panHandlers} style={{ width: w, height: h }}>
+      <View
+        {...pan.panHandlers}
+        onTouchStart={() => onHold?.(true)}
+        onTouchEnd={() => onHold?.(false)}
+        onTouchCancel={() => onHold?.(false)}
+        style={{ width: w, height: h }}
+      >
         {left.length === 0 ? (
           <View style={{ flex: 1, borderWidth: 2, borderStyle: "dashed", borderColor: skin.placard.muted, borderRadius: 6, alignItems: "center", justifyContent: "center", gap: 6 }}>
             <Text style={{ color: skin.placard.muted, fontSize: 13, fontWeight: "700" }}>انتهت الصور</Text>
@@ -1341,7 +1363,7 @@ function DetailPiece({ skin, frameImage, moment, w }: { skin: HallSkin; frameIma
       <Text style={{ color: "rgba(255,255,255,.6)", fontSize: 12 }}>اسحب يميناً أو يساراً للصورة التالية</Text>
     </View>
   );
-}
+});
 
 /**
  * إطارُ الصورة: لونُ الثوب وعرضُه وبطانتُه — وإن رُفع للثوب إطارٌ مرسوم (القاعدة ٣٥٠) مُدّ فوق
@@ -1351,10 +1373,10 @@ function PhotoFrame({ skin, frameImage, mediaId, pos }: { skin: HallSkin; frameI
   return (
     <View style={{ flex: 1, backgroundColor: frameImage ? skin.photo.mat : skin.photo.frame, padding: skin.photo.width, ...SHADOW }}>
       <View style={{ flex: 1, backgroundColor: skin.photo.mat, padding: skin.photo.matWidth }}>
-        <MediaImage mediaId={mediaId} style={{ flex: 1 }} position={pos} />
+        <MediaImage fade={false} mediaId={mediaId} style={{ flex: 1 }} position={pos} />
       </View>
       {frameImage ? (
-        <MediaImage mediaId={frameImage} resizeMode="fill" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
+        <MediaImage fade={false} mediaId={frameImage} resizeMode="fill" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
       ) : null}
     </View>
   );
@@ -1468,7 +1490,7 @@ function Piece({
           </Text>
         </View>
       </View>
-      {frameImage ? <MediaImage mediaId={frameImage} resizeMode="fill" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} /> : null}
+      {frameImage ? <MediaImage fade={false} mediaId={frameImage} resizeMode="fill" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} /> : null}
     </View>
   );
 }
