@@ -27,6 +27,7 @@ import { useSession } from "../../lib/session";
 import { ar, dayLabel } from "../../lib/format";
 import { useStatusNotes } from "../../lib/status-notes";
 import { colors } from "../../theme/tokens";
+import { useScrollLock } from "../../lib/scroll-lock";
 
 const COVER = COVER_HEIGHT;
 
@@ -185,6 +186,8 @@ export default function Me() {
   */
   const { y: scrollY, onScroll } = useStretch();
   const list = useRef<SectionList<Moment>>(null);
+  // صورُ اللحظة تُسحب أفقياً: القائمةُ تقف ما دامت (`lib/scroll-lock.ts`).
+  const scrollLocked = useScrollLock((state) => state.locked);
   const [refreshing, setRefreshing] = useState(false);
   const refreshMe = useSession((state) => state.refresh);
   const reload = () => {
@@ -263,6 +266,7 @@ export default function Me() {
       <View style={{ flex: 1 }}>
       <Animated.SectionList
         ref={list as never}
+        scrollEnabled={!scrollLocked}
         // حقلُ التعليق داخل القائمة: آبل تُزيح المحتوى بقدر الكيبورد وتُظهر
         // الحقلَ المركَّز فوقه، فيرى الكاتبُ ما يكتب.
         automaticallyAdjustKeyboardInsets

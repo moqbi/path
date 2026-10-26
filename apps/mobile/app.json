@@ -62,7 +62,7 @@
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0E1A24"
+        "backgroundColor": "#0d1c25"
       },
       "blockedPermissions": [
         "android.permission.READ_MEDIA_IMAGES"
@@ -117,7 +117,7 @@
     "splash": {
       "image": "./assets/adaptive-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0E1A24"
+      "backgroundColor": "#0d1c25"
     },
     "owner": "i.moh57",
     "locales": {

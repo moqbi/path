@@ -93,7 +93,7 @@ export default function HallScreen() {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const floorH = 104 + Math.max(insets.bottom, 12);
-  const headTop = insets.top + 64;
+  const headTop = insets.top + 74;
   const frameTop = headTop + 96;
   // اللوحةُ بما يتّسع له الجدار: شاشةٌ قصيرة تصغّرها ولا تدفع البطاقةَ تحت الأرض.
   const room = height - frameTop - floorH - 124;
@@ -342,7 +342,7 @@ export default function HallScreen() {
           صفٌّ واحد يتوسّطه الطرفان (القاعدة ٣٥٨): كان الزرّان كتلةً والعلامةُ كتلةً تُحاذيان بهوامش
           محسوبة، فيُزيحهما مكانُ الحرف في سطره. و«ATHAR» تحت «آثار» خارج الحساب.
         */}
-        <View style={{ position: "absolute", top: insets.top + 20, left: 16, right: 16, height: 32, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+        <View style={{ position: "absolute", top: insets.top + 30, left: 16, right: 16, height: 32, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <Pressable
               accessibilityRole="button"
@@ -373,7 +373,7 @@ export default function HallScreen() {
             <AthrMark size={28} />
             <Text
               face="latin"
-              style={{ position: "absolute", top: 29, left: 0, right: 0, textAlign: "center", color: skin.sign.muted, fontSize: 8.5, fontWeight: "700", letterSpacing: 4.5 }}
+              style={{ position: "absolute", top: 29, left: 0, right: 0, textAlign: "center", color: skin.sign.ink, fontSize: 8.5, fontWeight: "700", letterSpacing: 4.5 }}
             >
               ATHAR
             </Text>
