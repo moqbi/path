@@ -349,20 +349,20 @@ export default function HallScreen() {
               accessibilityLabel="رجوع"
               onPress={() => (router.canGoBack() ? router.back() : router.replace("/me/archive" as never))}
               hitSlop={8}
-              style={{ width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: skin.placard.bg, ...SOFT }}
+              style={{ width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: skin.sign.bg, ...SOFT }}
             >
               <View style={{ transform: [{ scaleX: -1 }] }}>
-                <BackIcon size={14} color={skin.placard.ink} />
+                <BackIcon size={14} color={skin.sign.ink} />
               </View>
             </Pressable>
             {months.length ? (
               <Pressable
                 accessibilityRole="button"
                 onPress={() => setGrid(true)}
-                style={{ flexDirection: "row", alignItems: "center", gap: 4, height: 30, paddingHorizontal: 10, borderRadius: 15, backgroundColor: skin.placard.bg, ...SOFT }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 4, height: 30, paddingHorizontal: 10, borderRadius: 15, backgroundColor: skin.sign.bg, ...SOFT }}
               >
-                <GridGlyph size={12} color={skin.placard.ink} />
-                <Text style={{ color: skin.placard.ink, fontSize: 11.5, fontWeight: "800" }}>عرض اللحظات</Text>
+                <GridGlyph size={12} color={skin.sign.ink} />
+                <Text style={{ color: skin.sign.ink, fontSize: 11.5, fontWeight: "800" }}>عرض اللحظات</Text>
               </Pressable>
             ) : null}
           </View>
@@ -613,9 +613,9 @@ const Wall = memo(function Wall({
             ))}
         {/* اللوحُ الخشبيّ: حاجزٌ بارزٌ في أعلاه، ثمّ ألواحٌ محفورة بدورة البلاطة نفسها فيتّصل. */}
         <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: wainscot, backgroundColor: skin.wall }}>
-          <View style={{ height: 2, backgroundColor: "rgba(255,255,255,.55)" }} />
+          <View style={{ height: 2, backgroundColor: skin.bevel.light }} />
           <View style={{ height: 7, backgroundColor: skin.wallShade }} />
-          <View style={{ height: 2, backgroundColor: "rgba(0,0,0,.14)" }} />
+          <View style={{ height: 2, backgroundColor: skin.bevel.dark }} />
           <View style={{ height: 6, backgroundColor: "rgba(0,0,0,.05)" }} />
           {Array.from({ length: cols * 2 }, (_, at) => (
             <View
@@ -627,14 +627,14 @@ const Wall = memo(function Wall({
                 left: at * panel + 9,
                 width: panel - 18,
                 borderWidth: 2,
-                borderTopColor: "rgba(0,0,0,.13)",
-                borderLeftColor: "rgba(0,0,0,.13)",
-                borderBottomColor: "rgba(255,255,255,.5)",
-                borderRightColor: "rgba(255,255,255,.5)",
+                borderTopColor: skin.bevel.dark,
+                borderLeftColor: skin.bevel.dark,
+                borderBottomColor: skin.bevel.light,
+                borderRightColor: skin.bevel.light,
                 borderRadius: 3,
               }}
             >
-              <View style={{ flex: 1, margin: 6, borderWidth: 1, borderColor: "rgba(0,0,0,.07)", borderRadius: 2 }} />
+              <View style={{ flex: 1, margin: 6, borderWidth: 1, borderColor: skin.bevel.dark, borderRadius: 2, opacity: 0.45 }} />
             </View>
           ))}
         </View>
@@ -659,15 +659,15 @@ const Wall = memo(function Wall({
       {/* السقفُ تحت شريط الحالة، ثمّ إفريزٌ مدرّج: ضوءٌ فوق ظلٍّ فوق ضوء، كما يلتقي الجصُّ بالجدار. */}
       <View style={{ position: "absolute", top: 0, left: 0, right: 0, height: crown - 8, backgroundColor: skin.ceiling }} />
       <View style={{ position: "absolute", top: crown - 8, left: 0, right: 0 }}>
-        <View style={{ height: 2, backgroundColor: "rgba(255,255,255,.4)" }} />
+        <View style={{ height: 2, backgroundColor: skin.bevel.light }} />
         <View style={{ height: 3, backgroundColor: skin.wallShade }} />
-        <View style={{ height: 2, backgroundColor: "rgba(255,255,255,.55)" }} />
-        <View style={{ height: 1, backgroundColor: "rgba(0,0,0,.18)" }} />
+        <View style={{ height: 2, backgroundColor: skin.bevel.light }} />
+        <View style={{ height: 1, backgroundColor: skin.bevel.dark }} />
         <View style={{ height: 5, backgroundColor: "rgba(0,0,0,.05)" }} />
       </View>
       {/* القاعدة: شريطٌ داكنٌ يلتقي بالأرض. */}
       <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 9, backgroundColor: skin.floorEdge }} />
-      <View style={{ position: "absolute", left: 0, right: 0, bottom: 9, height: 2, backgroundColor: "rgba(255,255,255,.4)" }} />
+      <View style={{ position: "absolute", left: 0, right: 0, bottom: 9, height: 2, backgroundColor: skin.bevel.light }} />
     </View>
   );
 });
