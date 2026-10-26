@@ -90,6 +90,33 @@ export async function squareAvatar(input: Uint8Array, mime: string, side: number
 }
 
 /**
+ * صورةُ اللحظة مربّعٌ مقصوصٌ بموضعها (القاعدة ٣٦٤) — **بقرار المالك**: كانت تُحفظ
+ * كاملةً ويُقصّ إطارُها عند العرض، فمن فتحها رأى الصورةَ كلَّها لا ما ضبطه.
+ * الضلعُ أقصرُ ضلعَي الصورة، والموضعُ نسبةُ ما يزيد منها كـ`object-position`،
+ * ثمّ ١٠٨٠ على الأكثر — ٣٢٠ تُمطّ ثلاثاً في البطاقة فتُقرأ مغبّشة.
+ */
+export const MOMENT_SQUARE = 1080;
+
+export async function squareCrop(input: Uint8Array, x: number, y: number): Promise<Processed> {
+  const image = sharp(Buffer.from(input), { failOn: "error" }).rotate();
+  const meta = await image.metadata();
+  if (!meta.width || !meta.height) throw new Error("تعذّرت قراءة الصورة");
+  // الدورانُ يبدّل الضلعين: الاتجاهاتُ ٥–٨ صورةٌ قائمةٌ مكتوبةٌ عرضاً.
+  const turned = (meta.orientation ?? 1) >= 5;
+  const width = turned ? meta.height : meta.width;
+  const height = turned ? meta.width : meta.height;
+  const side = Math.min(width, height);
+  const left = Math.round(((width - side) * Math.min(100, Math.max(0, x))) / 100);
+  const top = Math.round(((height - side) * Math.min(100, Math.max(0, y))) / 100);
+  const out = await image
+    .extract({ left, top, width: side, height: side })
+    .resize({ width: Math.min(side, MOMENT_SQUARE), height: Math.min(side, MOMENT_SQUARE) })
+    .webp({ quality: 80, effort: 5 })
+    .toBuffer({ resolveWithObject: true });
+  return { bytes: new Uint8Array(out.data), mime: "image/webp", width: out.info.width, height: out.info.height };
+}
+
+/**
  * مقاس الصورة المتحركة بلا إعادة ترميز.
  *
  * المتحركة تُترك كما هي: إعادة كتابتها تكسر حلقتها أو تضاعف حجمها،

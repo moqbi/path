@@ -362,6 +362,8 @@ export default function Compose() {
           photoY: mediaId ? photoPos.y : undefined,
           photos: photos.length ? photos : undefined,
           photoPositions: photos.length ? extras.map((one) => posOf(one.uri)) : undefined,
+          // مربّعٌ مقصوصٌ بموضعه في الملفّ (القاعدة ٣٦٤).
+          square: mediaId && DEV_FEATURES ? true : undefined,
           musicUrl: kind === "MUSIC" ? musicUrl.trim() : undefined,
           poll: poll ? poll.map((option) => option.trim()).filter(Boolean) : undefined,
           pollDays: poll ? pollDays : undefined,

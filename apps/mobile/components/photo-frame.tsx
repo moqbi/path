@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { View, Image, PanResponder } from "react-native";
 import { Text } from "./type";
 import { colors } from "../theme/tokens";
+import { DEV_FEATURES } from "../lib/dev-features";
 
 /**
  * إطارُ صورة اللحظة — **بقرار المالك**: نسبةٌ واحدة في البطاقة والمحرّر
@@ -10,7 +11,11 @@ import { colors } from "../theme/tokens";
  * وأعلى وأسفل، ويُحفظ نسبةً (٠–١٠٠) لا بكسلات: البطاقةُ أعرضُ على جهازٍ
  * وأضيق على آخر.
  */
-export const PHOTO_RATIO = 5 / 4;
+/*
+ * ومربّعٌ في نسخة التطوير (القاعدة ٣٦٤) — **بقرار المالك**: الصورةُ تُقصّ مربّعاً بموضعها
+ * في الملفّ على الخادم، فالمحرّرُ والبطاقةُ بنسبتها. والإنتاجُ على ٥:٤ حتى يُبنى.
+ */
+export const PHOTO_RATIO = DEV_FEATURES ? 1 : 5 / 4;
 
 type Pos = { x: number; y: number };
 

@@ -47,6 +47,11 @@ export const momentInput = z.object({
   /** موضعُ الصورة في إطار البطاقة، بالمئة — يُضبط بالسحب قبل النشر. */
   photoX: z.number().int().min(0).max(100).optional(),
   photoY: z.number().int().min(0).max(100).optional(),
+  /**
+   * تُقصّ الصورُ مربّعاً بموضعها في الملفّ نفسه (القاعدة ٣٦٤) — ونسخةٌ لا ترسله
+   * تبقى على إطار ٥:٤ بموضعٍ يُقصّ عند العرض.
+   */
+  square: z.boolean().optional(),
   /** الصورُ بعد الأولى (القاعدة ٣٤٣): خمسٌ مع `mediaId` على الأكثر. */
   photos: z.array(cuid).max(MOMENT_PHOTOS_MAX - 1).optional(),
   /** موضعُ كلّ صورةٍ بعد الأولى بترتيبها (القاعدة ٣٤٨) — ونسخةٌ لا ترسله تأخذ الوسط. */
