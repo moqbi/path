@@ -125,7 +125,7 @@ export default function Accessories() {
         />
         {owned.some((item) => item.kind === "GALLERY") ? (
           <Group
-            title="أثواب المعرض"
+            title="المعرض"
             empty=""
             items={owned.filter((item) => item.kind === "GALLERY")}
             worn={halls}

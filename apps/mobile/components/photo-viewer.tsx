@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import { Modal, Pressable, View, Dimensions, Animated, PanResponder, Platform } from "react-native";
 import { initialWindowMetrics, useSafeAreaInsets } from "react-native-safe-area-context";
 import { create } from "zustand";
@@ -17,11 +17,12 @@ import { ar } from "../lib/format";
  * بدل أن تُغلق. فالنافذة تُركَّب مرّةً في الجذر (`_layout.tsx`)، ولا
  * جدَّ لها يلتقط شيئاً، والبطاقة تطلبها بـ`viewPhoto`.
  */
-const useViewer = create<{ mediaId: string | null; list: string[]; last: string | null; lastList: string[] }>(() => ({
+const useViewer = create<{ mediaId: string | null; list: string[]; last: string | null; lastList: string[]; session: number }>(() => ({
   mediaId: null,
   list: [],
   last: null,
   lastList: [],
+  session: 0,
 }));
 
 /**
@@ -31,7 +32,12 @@ const useViewer = create<{ mediaId: string | null; list: string[]; last: string 
 export const viewPhoto = (mediaId: string | null, list: string[] = []) =>
   useViewer.setState((state) =>
     mediaId
-      ? { mediaId, list: list.includes(mediaId) ? list : [] }
+      ? {
+          mediaId,
+          list: list.includes(mediaId) ? list : [],
+          // فتحٌ جديد نافذةٌ جديدة بقيمٍ جديدة (القاعدة ٣٥١) — والتقليبُ وهي مفتوحة لا يبدّلها.
+          session: state.mediaId ? state.session : state.session + 1,
+        }
       : // الإغلاقُ يُبقي ما كان معروضاً حتى تذوب النافذة: كانت الصورةُ تُمحى قبل أن يكتمل
         // ذوبانُها فيرمش التطبيقُ لحظةَ الإغلاق.
         { mediaId: null, list: [], last: state.mediaId ?? state.last, lastList: state.mediaId ? state.list : state.lastList },
@@ -42,12 +48,24 @@ const DISMISS = 90;
 /** أقصى التقريب، وما بين نقرتين تُعدّان نقرةً مزدوجة. */
 const MAX_ZOOM = 4;
 const DOUBLE_MS = 260;
+/** صورةٌ فُتحت وحدها بلا قائمة — رقمٌ لا يكون موضعاً في قائمة. */
+const SOLO = -999;
 
 type Point = { x: number; y: number };
 const spread = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
 const middle = (a: Point, b: Point) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
 
+/**
+ * النافذةُ تُبنى من جديد مع كلّ فتح (`key={session}`): قيمُ السحب والتقريب والتقليب كانت تبقى من
+ * الفتح السابق — سحبٌ إلى أسفل لم يُصفَّر، أو شريطٌ على صفحةٍ أخرى — فتُفتح الصورةُ شفّافةً أو خارج
+ * الشاشة ولا يُرى منها إلا «×». والإغلاقُ يُبقيها كما هي حتى تذوب.
+ */
 export function PhotoViewer() {
+  const session = useViewer((state) => state.session);
+  return <ViewerBody key={session} />;
+}
+
+function ViewerBody() {
   const open = useViewer((state) => state.mediaId !== null);
   const mediaId = useViewer((state) => state.mediaId ?? state.last);
   const list = useViewer((state) => (state.mediaId ? state.list : state.lastList));
@@ -293,14 +311,13 @@ export function PhotoViewer() {
     }),
   ).current;
 
-  const fade = drag.interpolate({ inputRange: [0, 300], outputRange: [0.96, 0.3], extrapolate: "clamp" });
+  const fade = useMemo(() => drag.interpolate({ inputRange: [0, 300], outputRange: [1, 0.3], extrapolate: "clamp" }), [drag]);
 
   return (
     <Modal visible={open} transparent animationType="fade" onRequestClose={close}>
-      <Animated.View
-        {...pan.panHandlers}
-        style={{ flex: 1, backgroundColor: "rgb(6,12,18)", opacity: fade }}
-      >
+      {/* الأرضيّةُ وحدها تبهت مع السحب، والصورةُ فوقها مصمتة: كانت الصورةُ تحت الشفافيّة نفسها. */}
+      <Animated.View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgb(6,12,18)", opacity: fade }} />
+      <Animated.View {...pan.panHandlers} style={{ flex: 1 }}>
         <Pressable
           accessibilityLabel="أغلق الصورة"
           onPress={(e) => onTap({ x: e.nativeEvent.pageX, y: e.nativeEvent.pageY })}
@@ -311,10 +328,14 @@ export function PhotoViewer() {
             تحت الإصبع مركّبةً كما هي ويغيّر ما حولها — لا تحميلَ ثانٍ ولا وميض.
             والتقريبُ للحاليّة وحدها، وللجارتين قيمٌ ساكنة بالشكل نفسه.
           */}
-          {(mediaId ? (index >= 0 ? [index - 1, index, index + 1] : [-1]) : []).map((at) => {
-            const id = at === -1 ? mediaId : list[at];
-            if (!id || (at !== -1 && (at < 0 || at >= list.length))) return null;
-            const here = at === index || at === -1;
+          {/*
+            وصورةٌ خارج قائمةٍ بـ`SOLO` لا بـ-١: كان -١ يعني «لا قائمة» ويعني «جارةَ الأولى» معاً، فإذا
+            فُتحت الأولى رُسمت مرّتين — واحدةٌ ساكنة تحت التي تُسحب.
+          */}
+          {(mediaId ? (index >= 0 ? [index - 1, index, index + 1] : [SOLO]) : []).map((at) => {
+            const id = at === SOLO ? mediaId : list[at];
+            if (!id || (at !== SOLO && (at < 0 || at >= list.length))) return null;
+            const here = at === index || at === SOLO;
             return (
               <Animated.View
                 key={id}
@@ -325,7 +346,7 @@ export function PhotoViewer() {
                   top: (screen.height - area.height) / 2,
                   transform: [
                     { translateY: drag },
-                    { translateX: at === -1 ? zero : shiftOf(at) },
+                    { translateX: at === SOLO ? zero : shiftOf(at) },
                     { translateX: here ? panX : zero },
                     { translateY: here ? panY : zero },
                     { scale: here ? scale : one },

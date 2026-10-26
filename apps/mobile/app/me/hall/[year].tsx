@@ -264,7 +264,7 @@ export default function HallScreen() {
           يُشابكها على آبل) — فتظهر خلفها وترمش.
         */}
         {piece?.echo?.faces.length && focused && !detail ? (
-          <EchoRise key={piece.id} echo={piece.echo} width={width} w={W} top={frameTop + H * 0.85} rise={H * 0.9} />
+          <EchoRise key={piece.id} echo={piece.echo} width={width} w={W} top={frameTop + H * 0.82} rise={H * 0.95} />
         ) : null}
 
         <View style={{ position: "absolute", top: frameTop + H + 20, left: 24, right: 24, alignItems: "center" }}>
@@ -340,7 +340,6 @@ const Hung = memo(function Hung({
     const rel = Animated.subtract(pos, at * step);
     return {
       rel,
-      dim: rel.interpolate({ inputRange: [-step, 0, step], outputRange: [0.42, 0, 0.42], extrapolate: "clamp" }),
       glow: rel.interpolate({ inputRange: [-step, 0, step], outputRange: [0.35, 1, 0.35], extrapolate: "clamp" }),
     };
   }, [pos, at, step]);
@@ -368,7 +367,6 @@ const Hung = memo(function Hung({
       </Animated.View>
       <View style={{ position: "absolute", top: 30, left: 0, width: w, height: h }}>
         {children}
-        <Animated.View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#0B1117", opacity: motion.dim }} />
       </View>
     </Animated.View>
   );
@@ -535,9 +533,9 @@ function Placard({ skin, moment, onEcho }: { skin: HallSkin; moment: ArchiveMome
       ) : null}
       {echo && (echo.reactions || echo.comments) ? (
         <Pressable onPress={onEcho} hitSlop={10} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
-          <View style={{ flexDirection: "row" }}>
+          <View style={{ flexDirection: "row", paddingVertical: 1 }}>
             {echo.faces.slice(0, 3).map((face, at) => (
-              <View key={at} style={{ marginLeft: at ? -7 : 0, borderRadius: 12, borderWidth: 1.5, borderColor: skin.placard.bg }}>
+              <View key={at} style={{ marginStart: at ? -6 : 0, width: 23, height: 23, borderRadius: 12, borderWidth: 1.5, borderColor: skin.placard.bg, backgroundColor: skin.placard.bg, alignItems: "center", justifyContent: "center" }}>
                 <ReactionGlyph kind={face.kind} emoji={face.emoji} size={20} />
               </View>
             ))}
@@ -555,15 +553,15 @@ function Placard({ skin, moment, onEcho }: { skin: HallSkin; moment: ArchiveMome
   );
 }
 
-/** وجوهُ من تفاعل تصعد على جانبي الحاليّة واحداً بعد آخر وتذوب — مرّةً لكلّ وقوفٍ عندها. */
+/** وجوهُ من تفاعل تصعد من أسفل الحاليّة فوقها إلى أعلاها واحداً بعد آخر وتذوب — مرّةً لكلّ وقوفٍ عندها. */
 function EchoRise({ echo, width, w, top, rise }: { echo: HallEcho; width: number; w: number; top: number; rise: number }) {
   const faces = echo.faces.slice(0, 8);
   return (
     <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 40, elevation: 40 }}>
       {faces.map((face, at) => {
-        // يمينٌ ثمّ يسار، في الجدار بين اللوحة وجارتها لا فوق الصورة.
+        // فوق اللوحة نفسها، يمينٌ ثمّ يسار في عرضها — أمامها لا خلفها ولا على جانبيها.
         const side = at % 2 ? 1 : -1;
-        const x = width / 2 + side * (w / 2 + 22 + ((at * 13) % 16));
+        const x = width / 2 + side * (w * 0.12 + ((at * 23) % Math.round(w * 0.28)));
         return <RisingFace key={at} kind={face.kind} emoji={face.emoji} delay={300 + at * 380} x={x} from={top} rise={rise} sway={side * 8} />;
       })}
     </View>

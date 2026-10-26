@@ -108,7 +108,7 @@ const STORE_KINDS = [
   { key: "THEME", label: "الثيمات", other: "الثيمات الأخرى", kinds: ["THEME", "BACKGROUND"] },
   { key: "BUNDLE", label: "الحزم", other: "الحزم", kinds: ["BUNDLE"] },
   // ثوبُ قاعة المعرض (القاعدة ٣٤٨): ألوانٌ ومقاساتٌ تُلبَس القاعةَ كلَّها.
-  { key: "GALLERY", label: "المعرض", other: "أثواب المعرض", kinds: ["GALLERY"] },
+  { key: "GALLERY", label: "المعرض", other: "المعرض", kinds: ["GALLERY"] },
 ] as const;
 
 const STORE_VIEWS = [
