@@ -26,18 +26,18 @@ export type HallSkin = {
 
 /** الحقولُ المسطّحة كما تُحفظ وتُضبط في اللوحة: لونٌ أو رقم، وافتراضُها القاعةُ الكلاسيكية. */
 export const HALL_FIELDS = [
-  { key: "wall", label: "الجدار", type: "color", fallback: "#D9CFBC" },
-  { key: "wallShade", label: "ظلّ الجدار", type: "color", fallback: "#CBBFA8" },
-  { key: "ceiling", label: "السقف", type: "color", fallback: "#1E2B36" },
-  { key: "floor", label: "الأرضية", type: "color", fallback: "#7A6248" },
+  { key: "wall", label: "الجدار", type: "color", fallback: "#ECE3D2" },
+  { key: "wallShade", label: "ظلّ الجدار", type: "color", fallback: "#D8CAB0" },
+  { key: "ceiling", label: "السقف", type: "color", fallback: "#F4EEE2" },
+  { key: "floor", label: "الأرضية", type: "color", fallback: "#8A6A4C" },
   { key: "floorEdge", label: "حافّة الأرضية", type: "color", fallback: "#5E4A35" },
   { key: "light", label: "الضوء", type: "color", fallback: "#FFECC4" },
   { key: "signBg", label: "اللافتة", type: "color", fallback: "#F4EEE2" },
-  { key: "signInk", label: "حبر اللافتة", type: "color", fallback: "#0E1A24" },
+  { key: "signInk", label: "حبر اللافتة", type: "color", fallback: "#2A2218" },
   { key: "placardBg", label: "بطاقة الشرح", type: "color", fallback: "#FBF8F1" },
   { key: "placardInk", label: "حبر البطاقة", type: "color", fallback: "#0E1A24" },
-  { key: "frame", label: "إطار الصورة", type: "color", fallback: "#B8892F" },
-  { key: "mat", label: "البطانة", type: "color", fallback: "#F4EEE2" },
+  { key: "frame", label: "إطار الصورة", type: "color", fallback: "#B8913E" },
+  { key: "mat", label: "البطانة", type: "color", fallback: "#F8F2E6" },
   { key: "plaqueBg", label: "لوحة الخاطرة", type: "color", fallback: "#FBF8F1" },
   { key: "plaqueInk", label: "حبر الخاطرة", type: "color", fallback: "#0E1A24" },
   { key: "brassBg", label: "لوحة المكان", type: "color", fallback: "#C99B3E" },
@@ -46,8 +46,8 @@ export const HALL_FIELDS = [
   { key: "cord", label: "الحبل", type: "color", fallback: "#9E2B33" },
   { key: "accentBg", label: "اللمسة", type: "color", fallback: "#F6B93B" },
   { key: "accentInk", label: "حبر اللمسة", type: "color", fallback: "#0E1A24" },
-  { key: "frameWidth", label: "عرض الإطار", type: "number", fallback: "10", min: 4, max: 18 },
-  { key: "matWidth", label: "عرض البطانة", type: "number", fallback: "9", min: 0, max: 16 },
+  { key: "frameWidth", label: "عرض الإطار", type: "number", fallback: "5", min: 2, max: 18 },
+  { key: "matWidth", label: "عرض البطانة", type: "number", fallback: "18", min: 0, max: 28 },
 ] as const;
 
 export type HallFlat = Partial<Record<(typeof HALL_FIELDS)[number]["key"], string>>;

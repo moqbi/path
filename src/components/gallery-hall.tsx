@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BookIcon, CloseIcon, LockIcon, MoonIcon, PinIcon, PlaneIcon, SparkIcon, SunIcon } from "@/components/icons";
+import { BackIcon, BookIcon, CalendarIcon, ClockIcon, CloseIcon, LockIcon, MoonIcon, PinIcon, PlaneIcon, SparkIcon, SunIcon } from "@/components/icons";
+import { AthrMark } from "@/components/brand";
 import { BASE } from "@/lib/base";
 import { ar, MONTHS, relative } from "@/lib/format";
 import { hallEcho, type HallComment, type HallReaction } from "@/app/hall-actions";
@@ -30,6 +31,9 @@ export type HallPiece = {
   echo: { reactions: number; comments: number; faces: { kind: string; emoji: string | null; name: string; avatarMediaId: string | null }[] } | null;
   month: number;
   when: string;
+  /** الساعةُ والتاريخُ لبطاقة الشرح — منفصلين بخطّ. */
+  time: string;
+  date: string;
 };
 type Slot = { type: "rope" } | { type: "piece"; piece: HallPiece };
 
@@ -39,6 +43,10 @@ const WALL_TILE = 220;
 const FLOOR_TILE = 160;
 const FLOOR_SPEED = 1.45;
 const EASE = "cubic-bezier(.2,.8,.2,1)";
+/** ارتفاعُ السقف وإفريزه، ومنه تتدلّى المصابيح؛ ثمّ لافتةُ الشهر، والأرضيّة. */
+const CROWN = 16;
+const HEAD_TOP = 64;
+const FLOOR_H = 116;
 
 /** إطارُ الثوب المرسوم إن رُفع — يقرؤه كلُّ `PhotoFrame` بلا تمريرٍ في كلّ طبقة. */
 const FrameImage = createContext<string | null>(null);
@@ -73,13 +81,23 @@ export function GalleryHall({
   const [detail, setDetail] = useState<{ piece: HallPiece; tab: Tab } | null>(null);
   const drag = useRef<{ x: number; y: number; t: number; on: boolean; id: number } | null>(null);
   const moved = useRef(false);
-  const [W, setW] = useState(210);
-  const H = Math.round(W * 1.28);
-  // بين لوحتين جدارٌ يُرى: ما يجعل الصفَّ معرضاً لا شريطَ صور.
-  const STEP = W + 76;
+  const [grid, setGrid] = useState(false);
+  const [W, setW] = useState(220);
+  const H = Math.round(W * 1.25);
+  // الجارتان تُطلّان من الحافّتين: يُرى أنّ الجدارَ يمتدّ.
+  const STEP = W + 44;
+  const frameTop = HEAD_TOP + 96;
+  const [wallH, setWallH] = useState(0);
+  // اللوحُ الخشبيّ يبدأ تحت البطاقة، ولا يقلّ ولا يأكل الجدار.
+  const wainscot = wallH ? Math.round(Math.max(64, Math.min(wallH * 0.24, wallH - (frameTop + H + 104)))) : 80;
 
   useEffect(() => {
-    const fit = () => setW(Math.min(230, Math.round(Math.min(window.innerWidth, 640) * 0.58)));
+    // اللوحةُ بما يتّسع له الجدار: نافذةٌ قصيرة تصغّرها ولا تدفع البطاقةَ تحت الأرض.
+    const fit = () => {
+      const room = window.innerHeight - frameTop - FLOOR_H - 124;
+      setW(Math.round(Math.max(150, Math.min(250, Math.min(window.innerWidth, 640) * 0.62, room / 1.25))));
+      setWallH(Math.max(0, window.innerHeight - FLOOR_H));
+    };
     fit();
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
@@ -96,6 +114,17 @@ export function GalleryHall({
     if (row && row.month === slot.piece.month) row.count += 1;
     else months.push({ month: slot.piece.month, first: at, count: 1 });
   });
+
+  /** شهرٌ قبل أو بعد: إلى أوّل لوحةٍ فيه. */
+  const shiftMonth = (by: number) => {
+    if (!months.length) return;
+    let now = 0;
+    months.forEach((row, at) => {
+      if (row.first <= index) now = at;
+    });
+    const next = months[Math.max(0, Math.min(months.length - 1, now + by))];
+    if (next) go(next.first);
+  };
 
   // لا يُلتقط المؤشّرُ قبل أن يثبت السحبُ أفقياً (القاعدة ٧٩): وإلّا لم تصل النقرةُ إلى اللوحة.
   const onDown = (event: React.PointerEvent) => {
@@ -121,7 +150,16 @@ export function GalleryHall({
   const onUp = (event: React.PointerEvent) => {
     const start = drag.current;
     drag.current = null;
-    if (!start?.on) return;
+    if (!start) return;
+    if (!start.on) {
+      // سحبةٌ عموديّة: إلى أعلى شهرٌ أحدث، وإلى أسفل أقدم — كما يصعد السهمُ في التلميح.
+      const y = event.clientY - start.y;
+      if (Math.abs(y) > 40 && Math.abs(y) > Math.abs(event.clientX - start.x) * 1.4) {
+        moved.current = true;
+        shiftMonth(y < 0 ? 1 : -1);
+      }
+      return;
+    }
     const x = event.clientX - start.x;
     const speed = x / Math.max(1, Date.now() - start.t);
     // التاليةُ في اليسار: السحبُ يميناً يأتي بها، والسحبةُ السريعة تعبر أكثر من لوحة.
@@ -136,6 +174,8 @@ export function GalleryHall({
       if (detail) return;
       if (event.key === "ArrowLeft") setIndex((at) => Math.min(slots.length - 1, at + 1));
       if (event.key === "ArrowRight") setIndex((at) => Math.max(0, at - 1));
+      if (event.key === "ArrowUp") shiftMonth(1);
+      if (event.key === "ArrowDown") shiftMonth(-1);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -143,188 +183,394 @@ export function GalleryHall({
 
   const shift = index * STEP + dx;
   const glide = dragging ? "none" : `background-position 320ms ${EASE}, transform 320ms ${EASE}`;
-  const frameTop = 100;
   const piece = current?.type === "piece" ? current.piece : null;
+  const monthPieces = slots.flatMap((slot, at) => (slot.type === "piece" && slot.piece.month === wallMonth ? [{ at, piece: slot.piece }] : []));
 
   return (
     <FrameImage.Provider value={images?.frame ?? null}>
-      <div className="flex min-h-0 grow flex-col" style={{ background: skin.ceiling }}>
-        {/* السقف وإفريزُه: خطٌّ مضيءٌ فوق خطٍّ مظلم، كما يلتقي الجصُّ بالجدار. */}
-        <div style={{ height: 14 }} />
-        <div style={{ height: 5, background: skin.placard.bg, opacity: 0.55 }} />
-        <div style={{ height: 3, background: skin.wallShade }} />
+      <div className="flex min-h-0 grow flex-col" style={{ background: skin.wall }}>
         <div
           onPointerDown={onDown}
           onPointerMove={onMove}
           onPointerUp={onUp}
           onPointerCancel={onUp}
-          className="relative min-h-[460px] grow select-none overflow-hidden"
-          style={{ backgroundColor: skin.wall, touchAction: "pan-y", cursor: dragging ? "grabbing" : "grab" }}
+          className="relative min-h-[520px] grow select-none overflow-hidden"
+          style={{ backgroundColor: skin.wall, touchAction: "none", cursor: dragging ? "grabbing" : "grab" }}
         >
           {/* الجدار: نقشٌ مرفوع يتكرّر، وبلاه ورقُ جدارٍ بخطوطٍ خافتة — يمرّ مع اللوحات بسرعتها. */}
           <div
             className="pointer-events-none absolute inset-0"
             style={{
+              top: CROWN,
               backgroundImage: images?.wall
                 ? `url(${BASE}/api/media/${images.wall})`
                 : `repeating-linear-gradient(90deg, transparent 0 54px, ${skin.wallShade} 54px 55px, transparent 55px 61px, ${skin.wallShade} 61px 62px)`,
               backgroundSize: images?.wall ? `${WALL_TILE}px ${WALL_TILE}px` : undefined,
               backgroundPositionX: `${shift}px`,
-              opacity: images?.wall ? 1 : 0.5,
+              opacity: images?.wall ? 1 : 0.32,
               transition: glide,
             }}
           />
-          {/* اللوحُ الخشبيّ: إفريزٌ ثمّ ألواحٌ محفورة. */}
+          {/* اللوحُ الخشبيّ: حاجزٌ بارزٌ في أعلاه، ثمّ ألواحٌ محفورة بإطارٍ داخليّ. */}
           <div
             className="pointer-events-none absolute inset-x-0 bottom-0"
             style={{
-              height: "20%",
-              backgroundColor: skin.wallShade,
-              borderTop: `3px solid color-mix(in srgb, ${skin.placard.bg} 50%, transparent)`,
-              boxShadow: "inset 0 4px 0 rgba(0,0,0,.12)",
-              backgroundImage: `linear-gradient(90deg, transparent 10px, rgba(0,0,0,.16) 10px 11.5px, transparent 11.5px ${WALL_TILE / 2 - 11.5}px, rgba(255,255,255,.2) ${WALL_TILE / 2 - 11.5}px ${WALL_TILE / 2 - 10}px, transparent ${WALL_TILE / 2 - 10}px)`,
-              backgroundSize: `${WALL_TILE / 2}px 100%`,
-              backgroundPositionX: `${shift}px`,
-              transition: glide,
+              height: wainscot,
+              backgroundColor: skin.wall,
+              borderTop: `2px solid rgba(255,255,255,.55)`,
+              boxShadow: `inset 0 7px 0 ${skin.wallShade}, inset 0 9px 0 rgba(0,0,0,.14), inset 0 15px 0 rgba(0,0,0,.05)`,
             }}
-          />
-          {/* الضوءُ والعمق: يسقط من السقف ويبهت، والحافّتان أعتم كما في قاعةٍ حقيقيّة. */}
+          >
+            <div
+              className="absolute inset-x-0"
+              style={{
+                top: 26,
+                bottom: 24,
+                backgroundImage: `linear-gradient(90deg, transparent 9px, rgba(0,0,0,.13) 9px 11px, transparent 11px 17px, rgba(0,0,0,.07) 17px 18px, transparent 18px ${WALL_TILE / 2 - 18}px, rgba(0,0,0,.07) ${WALL_TILE / 2 - 18}px ${WALL_TILE / 2 - 17}px, transparent ${WALL_TILE / 2 - 17}px ${WALL_TILE / 2 - 11}px, rgba(255,255,255,.5) ${WALL_TILE / 2 - 11}px ${WALL_TILE / 2 - 9}px, transparent ${WALL_TILE / 2 - 9}px)`,
+                backgroundSize: `${WALL_TILE / 2}px 100%`,
+                backgroundPositionX: `${shift}px`,
+                borderTop: "2px solid rgba(0,0,0,.1)",
+                borderBottom: "2px solid rgba(255,255,255,.45)",
+                transition: glide,
+              }}
+            />
+          </div>
+          {/* الضوءُ والعمق: سقفٌ يُظلّ أعلاه، وضوءٌ يبهت إلى أسفل، والحافّتان أعتم. */}
           <div
             className="pointer-events-none absolute inset-0"
             style={{
               background:
-                "linear-gradient(180deg, rgba(0,0,0,.22), transparent 18%, transparent 70%, rgba(0,0,0,.2)), radial-gradient(ellipse 62% 70% at 50% 42%, transparent 55%, rgba(0,0,0,.38))",
+                "linear-gradient(180deg, rgba(0,0,0,.16), transparent 14%, transparent 70%, rgba(0,0,0,.14)), radial-gradient(ellipse 70% 72% at 50% 45%, transparent 60%, rgba(0,0,0,.26))",
             }}
           />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0" style={{ height: 10, background: skin.floorEdge }} />
+          {/* السقف ثمّ إفريزٌ مدرّج: ضوءٌ فوق ظلٍّ فوق ضوء. */}
+          <div className="pointer-events-none absolute inset-x-0 top-0" style={{ height: CROWN - 8, background: skin.ceiling }} />
+          <div
+            className="pointer-events-none absolute inset-x-0"
+            style={{
+              top: CROWN - 8,
+              height: 13,
+              background: `linear-gradient(180deg, rgba(255,255,255,.4) 0 2px, ${skin.wallShade} 2px 5px, rgba(255,255,255,.55) 5px 7px, rgba(0,0,0,.18) 7px 8px, rgba(0,0,0,.05) 8px 13px)`,
+            }}
+          />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0" style={{ height: 9, background: skin.floorEdge, boxShadow: "0 -2px 0 rgba(255,255,255,.4)" }} />
 
-          <div className="absolute inset-x-0 top-4 flex flex-col items-center gap-0.5">
+          {slots.length === 0 ? (
+            <p className="absolute inset-x-0 text-center text-[13px]" style={{ top: frameTop + H / 2 - 10, color: skin.sign.muted }}>
+              ما في هالسنة لحظات بعد.
+            </p>
+          ) : null}
+          {slots.map((slot, at) => {
+            if (Math.abs(at - index) > WINDOW) return null;
+            const offset = (index - at) * STEP + dx;
+            const near = Math.min(1, Math.abs(offset) / STEP);
+            const badge = at !== index && slot.type === "piece" ? slot.piece.echo?.faces[0] ?? null : null;
+            const coneH = frameTop + H * 0.75 - CROWN;
+            return (
+              <div
+                key={slot.type === "rope" ? "rope" : slot.piece.id}
+                className="pointer-events-none absolute top-0"
+                style={{ width: W, height: frameTop + H + 12, left: `calc(50% - ${W / 2}px)`, transform: `translateX(${offset}px)`, transition: dragging ? "none" : `transform 320ms ${EASE}` }}
+              >
+                {/* المخروط: ضوءٌ دافئ يبدأ ضيّقاً عند المصباح ويتّسع على اللوحة ويذوب تحتها. */}
+                <span
+                  className="absolute"
+                  style={{
+                    top: CROWN + 10,
+                    left: -W * 0.25,
+                    width: W * 1.5,
+                    height: coneH,
+                    clipPath: "polygon(47% 0, 53% 0, 92% 100%, 8% 100%)",
+                    background: `linear-gradient(180deg, ${skin.light}, color-mix(in srgb, ${skin.light} 38%, transparent) 55%, transparent)`,
+                    opacity: (1 - near * 0.55) * 0.85,
+                    transition: dragging ? "none" : "opacity 320ms",
+                  }}
+                />
+                {/* المصباحُ في السقف: ساقٌ ورأسٌ داكنٌ بحافّةٍ نحاسيّة، ووهجٌ عند فوهته. */}
+                <span className="absolute flex flex-col items-center" style={{ top: CROWN - 4, left: W / 2 - 8, width: 16 }}>
+                  <span className="block h-[5px] w-[3px]" style={{ background: skin.brass.edge }} />
+                  <span className="block h-[11px] w-4" style={{ background: skin.sign.ink, border: `1px solid ${skin.brass.edge}`, borderRadius: "4px 4px 7px 7px" }} />
+                  <span className="-mt-px block h-[3px] w-2.5 rounded" style={{ background: skin.light }} />
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (moved.current) return;
+                    if (at !== index) return go(at);
+                    if (slot.type === "rope") router.push("/subscribe");
+                    else setDetail({ piece: slot.piece, tab: "art" });
+                  }}
+                  className="pointer-events-auto absolute block"
+                  style={{ top: frameTop, left: 0, width: W, height: H }}
+                >
+                  {slot.type === "rope" ? <Rope skin={skin} hidden={hidden} w={W} h={H} /> : <Piece skin={skin} piece={slot.piece} spin={at === index} />}
+                  {badge ? (
+                    <span className="absolute flex h-[30px] w-[30px] items-center justify-center rounded-full" style={{ left: -6, bottom: -8, background: skin.placard.bg, boxShadow: SOFT }}>
+                      <ReactionGlyph kind={badge.kind} emoji={badge.emoji} size={22} />
+                    </span>
+                  ) : null}
+                </button>
+              </div>
+            );
+          })}
+
+          {/* لافتةُ الشهر: اسمُ الجدار، ثمّ لمن هو، ثمّ كم فيه. */}
+          <div className="pointer-events-none absolute inset-x-0 flex flex-col items-center gap-1" style={{ top: HEAD_TOP }}>
             {wallMonth !== null ? (
               <>
-                <p className="font-display text-[19px] font-extrabold tracking-wide" style={{ color: skin.sign.ink }}>
+                <p className="font-display text-[30px] font-extrabold leading-[40px]" style={{ color: skin.sign.ink }}>
                   جدار {MONTHS[wallMonth]}
                 </p>
-                <span className="block h-0.5 w-[34px] rounded-full" style={{ background: skin.accent.bg }} />
-                <p className="mt-0.5 text-[10.5px]" style={{ color: skin.sign.muted }}>
+                <p className="flex items-center gap-1.5 text-[12.5px] font-bold" style={{ color: skin.sign.muted }}>
+                  <LockIcon size={12} /> خاص بك
+                </p>
+                <p className="text-[12px] opacity-85" style={{ color: skin.sign.muted }}>
                   {ar(months.find((row) => row.month === wallMonth)?.count ?? 0)} لحظة
                 </p>
               </>
             ) : null}
           </div>
 
-          <div className="absolute inset-x-0" style={{ top: frameTop - 30, height: H + 60 }}>
-            {slots.length === 0 ? (
-              <p className="pt-20 text-center text-[13px]" style={{ color: skin.sign.muted }}>
-                ما في هالسنة لحظات بعد.
-              </p>
-            ) : null}
-            {slots.map((slot, at) => {
-              if (Math.abs(at - index) > WINDOW) return null;
-              const offset = (index - at) * STEP + dx;
-              const near = Math.min(1, Math.abs(offset) / STEP);
-              return (
-                <div
-                  key={slot.type === "rope" ? "rope" : slot.piece.id}
-                  className="absolute top-0"
-                  style={{ width: W, height: H + 60, left: `calc(50% - ${W / 2}px)`, transform: `translateX(${offset}px)`, transition: dragging ? "none" : `transform 320ms ${EASE}` }}
-                >
-                  {/* مصباحُ اللوحة: ذراعٌ نحاسيّ وقضيبُه، وضوءٌ ينسكب على الإطار. */}
-                  <span className="absolute top-0 flex flex-col items-center" style={{ left: W * 0.27, width: W * 0.46 }}>
-                    <span className="block h-3 w-[3px]" style={{ background: skin.brass.edge }} />
-                    <span className="block h-[7px] w-full rounded" style={{ background: skin.brass.bg, borderBottom: `2px solid ${skin.brass.edge}` }} />
-                  </span>
-                  <span
-                    className="pointer-events-none absolute"
-                    style={{
-                      top: 19,
-                      left: -W * 0.2,
-                      width: W * 1.4,
-                      height: H * 0.9,
-                      clipPath: "polygon(38.5% 0, 61.5% 0, 100% 100%, 0 100%)",
-                      background: `linear-gradient(180deg, ${skin.light}, transparent)`,
-                      opacity: (1 - near * 0.65) * 0.75,
-                      transition: dragging ? "none" : "opacity 320ms",
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (moved.current) return;
-                      if (at !== index) return go(at);
-                      if (slot.type === "rope") router.push("/subscribe");
-                      else setDetail({ piece: slot.piece, tab: "art" });
-                    }}
-                    className="absolute block"
-                    style={{ top: 30, left: 0, width: W, height: H }}
-                  >
-                    {slot.type === "rope" ? <Rope skin={skin} hidden={hidden} w={W} h={H} /> : <Piece skin={skin} piece={slot.piece} spin={at === index} />}
-                  </button>
-                </div>
-              );
-            })}
+          {/* صدى الحاليّة فوق كلّ طبقة، فوق إطارها. */}
+          {piece?.echo?.faces.length && !detail ? <EchoRise key={piece.id} echo={piece.echo} w={W} top={frameTop + H * 0.78} rise={H * 0.9} /> : null}
+
+          <div className="absolute inset-x-6 flex justify-center" style={{ top: frameTop + H + 22 }}>
+            {piece ? <Placard skin={skin} piece={piece} onEcho={() => setDetail({ piece, tab: "echo" })} /> : null}
           </div>
 
-          {/* صدى الحاليّة فوق كلّ طبقة، بجانب الإطار لا فوق الصورة. */}
-          {piece?.echo?.faces.length && !detail ? <EchoRise key={piece.id} echo={piece.echo} w={W} top={frameTop + H * 0.85} rise={H * 0.9} /> : null}
+          {/* زرٌّ عائم على اللوح الخشبيّ: يفتح اللوحةَ الحاليّة بنافذتها. */}
+          {piece ? (
+            <button
+              type="button"
+              aria-label="عرض اللحظة"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={() => setDetail({ piece, tab: "art" })}
+              className="absolute bottom-3.5 right-4 z-20 h-[66px] w-[66px] rounded-full p-[3px]"
+              style={{ background: skin.placard.bg, border: `1px solid ${skin.photo.frame}`, boxShadow: SHADOW }}
+            >
+              <span className="flex h-full w-full flex-col items-center justify-center gap-px rounded-full" style={{ border: `1px solid ${skin.photo.frame}`, color: skin.placard.ink }}>
+                <ImageGlyph />
+                <span className="text-[8.5px] font-extrabold">عرض اللحظة</span>
+              </span>
+            </button>
+          ) : null}
 
-          <div className="absolute inset-x-6 flex justify-center" style={{ top: frameTop + H + 20 }}>
-            {piece ? <Placard skin={skin} piece={piece} onEcho={() => setDetail({ piece, tab: "echo" })} /> : null}
+          {/* أعلى الجدار: الرجوعُ و«عرض اللحظات» يميناً، والعلامةُ و«آثار» يساراً. */}
+          <div className="absolute inset-x-4 top-2 z-20 flex items-center justify-between" onPointerDown={(event) => event.stopPropagation()}>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/archive"
+                aria-label="رجوع"
+                className="flex h-[38px] w-[38px] items-center justify-center rounded-full"
+                style={{ background: skin.placard.bg, color: skin.placard.ink, boxShadow: SOFT }}
+              >
+                <span className="block -scale-x-100">
+                  <BackIcon size={18} />
+                </span>
+              </Link>
+              {months.length ? (
+                <button
+                  type="button"
+                  onClick={() => setGrid(true)}
+                  className="flex h-[38px] items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-extrabold"
+                  style={{ background: skin.placard.bg, color: skin.placard.ink, boxShadow: SOFT }}
+                >
+                  <GridGlyph /> عرض اللحظات
+                </button>
+              ) : null}
+            </div>
+            <div className="flex flex-col items-center">
+              <span className="flex items-center gap-1.5">
+                <span className="font-display text-[24px] font-extrabold leading-8" style={{ color: skin.sign.ink }}>
+                  آثار
+                </span>
+                <AthrMark size={28} />
+              </span>
+              <span className="latin -mt-1 text-[8.5px] font-bold tracking-[4.5px]" style={{ color: skin.sign.muted }}>
+                ATHAR
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* الأرضيّة: نقشُها يمرّ أسرع من الجدار، وشريطُ الشهور يقفز إلى أوّل لوحةٍ في كلّ شهر. */}
+        {/* الأرضيّة: ألواحُ خشبٍ بدرجاتٍ وفواصلَ متخالفة تمرّ أسرع من الجدار، والشهورُ عليها. */}
         <div
-          className="relative pb-6 pt-3.5"
+          className="relative pb-5 pt-3.5"
           style={{
+            height: FLOOR_H,
             backgroundColor: skin.floor,
             backgroundImage: images?.floor
-              ? `linear-gradient(180deg, rgba(0,0,0,.4), transparent 34px), url(${BASE}/api/media/${images.floor})`
-              : `linear-gradient(180deg, rgba(0,0,0,.4), transparent 34px), repeating-linear-gradient(90deg, transparent 0 ${FLOOR_TILE / 2 - 1}px, ${skin.floorEdge} ${FLOOR_TILE / 2 - 1}px ${FLOOR_TILE / 2}px), repeating-linear-gradient(180deg, transparent 0 25px, ${skin.floorEdge} 25px 26px)`,
-            backgroundSize: images?.floor ? `100% 34px, ${FLOOR_TILE}px ${FLOOR_TILE}px` : undefined,
-            backgroundPositionX: `0, ${shift * FLOOR_SPEED}px${images?.floor ? "" : ", 0"}`,
+              ? `linear-gradient(180deg, rgba(0,0,0,.42), rgba(0,0,0,.05) 30%, rgba(0,0,0,.3)), url(${BASE}/api/media/${images.floor})`
+              : `linear-gradient(180deg, rgba(0,0,0,.42), rgba(0,0,0,.05) 30%, rgba(0,0,0,.3)), radial-gradient(ellipse 55% 60% at 50% 20%, rgba(255,233,194,.22), transparent), repeating-linear-gradient(90deg, transparent 0 ${FLOOR_TILE / 2 - 1}px, ${skin.floorEdge} ${FLOOR_TILE / 2 - 1}px ${FLOOR_TILE / 2}px), repeating-linear-gradient(180deg, rgba(255,236,200,.06) 0 21px, ${skin.floorEdge} 21px 22px, rgba(0,0,0,.07) 22px 43px, ${skin.floorEdge} 43px 44px)`,
+            backgroundSize: images?.floor ? `100% 100%, ${FLOOR_TILE}px ${FLOOR_TILE}px` : undefined,
+            backgroundPositionX: images?.floor ? `0, ${shift * FLOOR_SPEED}px` : `0, 0, ${shift * FLOOR_SPEED}px, 0`,
             transition: glide,
           }}
         >
-          <div className="flex gap-2 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
-            {months.map((row) => {
-              const on = row.month === wallMonth;
-              return (
-                <button
-                  key={row.month}
-                  type="button"
-                  onClick={() => go(row.first)}
-                  className="h-8 shrink-0 rounded-full px-3.5 text-[12.5px] font-bold"
-                  style={{ background: on ? skin.accent.bg : "rgba(14,20,26,.38)", color: on ? skin.accent.ink : "#FBF8F1" }}
-                >
-                  {MONTHS[row.month]}
-                </button>
-              );
-            })}
+          <div className="flex items-center">
+            <div className="flex min-w-0 grow gap-2 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
+              {months.map((row) => {
+                const on = row.month === wallMonth;
+                return (
+                  <button key={row.month} type="button" onClick={() => go(row.first)} className="flex shrink-0 flex-col items-center gap-1">
+                    <span
+                      className="flex h-[34px] items-center rounded-full px-4 text-[13px] font-extrabold"
+                      style={{
+                        background: on ? skin.accent.bg : "rgba(251,248,241,.16)",
+                        border: `1px solid ${on ? skin.accent.bg : "rgba(251,248,241,.22)"}`,
+                        color: on ? skin.accent.ink : "#FBF8F1",
+                      }}
+                    >
+                      {MONTHS[row.month]}
+                    </span>
+                    <span className="block h-[5px] w-[5px] rounded-full" style={{ background: on ? skin.accent.bg : "transparent" }} />
+                  </button>
+                );
+              })}
+            </div>
+            {months.length > 1 ? (
+              <button type="button" aria-label="الشهر التالي" onClick={() => shiftMonth(1)} className="shrink-0 px-3 pb-2 text-[#FBF8F1]">
+                <BackIcon size={18} />
+              </button>
+            ) : null}
           </div>
-          {slots.length > 1 ? (
-            <p className="mt-2.5 text-center text-[11.5px]" style={{ color: "rgba(251,248,241,.85)" }}>
-              {ar(index + 1)} / {ar(slots.length)} · اسحب لتمشي
+          {months.length > 1 ? (
+            <p className="mt-1.5 flex flex-col items-center text-[11.5px] font-semibold" style={{ color: "rgba(251,248,241,.85)" }}>
+              <span className="block rotate-90">
+                <BackIcon size={13} />
+              </span>
+              اسحب للتنقل بين الشهور
             </p>
           ) : null}
         </div>
 
+        {grid ? (
+          <MonthGrid
+            skin={skin}
+            title={wallMonth !== null ? `جدار ${MONTHS[wallMonth]}` : ""}
+            items={monthPieces}
+            current={index}
+            onPick={(at) => {
+              setGrid(false);
+              go(at);
+            }}
+            onClose={() => setGrid(false)}
+          />
+        ) : null}
         {detail ? <HallSheet skin={skin} piece={detail.piece} tab={detail.tab} onClose={() => setDetail(null)} /> : null}
       </div>
     </FrameImage.Provider>
   );
 }
 
-/** بطاقةُ الشرح تحت اللوحة، كبطاقة متحف: التاريخُ، ثمّ ما لا تقوله اللوحةُ وحدها مرّةً واحدة، ثمّ صداها. */
+const SOFT = "0 3px 8px rgba(58,42,20,.16)";
+
+function GridGlyph() {
+  return (
+    <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
+      <rect x={3} y={3} width={8} height={8} rx={2} />
+      <rect x={13} y={3} width={8} height={8} rx={2} />
+      <rect x={3} y={13} width={8} height={8} rx={2} />
+      <rect x={13} y={13} width={8} height={8} rx={2} />
+    </svg>
+  );
+}
+
+function ImageGlyph() {
+  return (
+    <svg width={19} height={19} viewBox="0 0 24 24" aria-hidden>
+      <rect x={3} y={4} width={18} height={16} rx={3} fill="none" stroke="currentColor" strokeWidth={2} />
+      <polygon points="5,18 10,12 13,15 15,13 19,18" fill="currentColor" />
+      <rect x={14.5} y={7.5} width={3} height={3} rx={1.5} fill="currentColor" />
+    </svg>
+  );
+}
+
+/** «عرض اللحظات»: لحظاتُ الشهر بلاطاتٍ في نافذة، والضغطُ يمشي بك إلى لوحتها على الجدار. */
+function MonthGrid({
+  skin,
+  title,
+  items,
+  current,
+  onPick,
+  onClose,
+}: {
+  skin: HallSkin;
+  title: string;
+  items: { at: number; piece: HallPiece }[];
+  current: number;
+  onPick: (at: number) => void;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => event.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div className="shell-fixed fixed inset-0 z-50 flex flex-col justify-end" style={{ background: "rgba(20,14,6,.45)" }} onClick={onClose}>
+      <div className="hall-enter max-h-[78%] overflow-y-auto rounded-t-[26px] px-[18px] pb-6" style={{ background: skin.placard.bg }} onClick={(event) => event.stopPropagation()}>
+        <span className="mx-auto mt-2.5 block h-[5px] w-[42px] rounded-full" style={{ background: skin.placard.muted, opacity: 0.35 }} />
+        <div className="flex items-center gap-2.5 pb-2.5 pt-3">
+          <p className="font-display min-w-0 grow text-[19px] font-extrabold" style={{ color: skin.placard.ink }}>
+            {title}
+          </p>
+          <button type="button" aria-label="إغلاق" onClick={onClose} className="flex h-[34px] w-[34px] items-center justify-center rounded-full" style={{ background: "rgba(0,0,0,.06)", color: skin.placard.ink }}>
+            <CloseIcon size={15} />
+          </button>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {items.map(({ at, piece }) => (
+            <button
+              key={piece.id}
+              type="button"
+              onClick={() => onPick(at)}
+              className="flex aspect-[5/6] items-center justify-center overflow-hidden rounded-[10px]"
+              style={{
+                background: skin.photo.mat,
+                border: at === current ? `2.5px solid ${skin.accent.bg}` : "1px solid rgba(0,0,0,.08)",
+                padding: piece.kind === "PHOTO" && piece.mediaId ? 0 : 8,
+              }}
+            >
+              {piece.kind === "PHOTO" && piece.mediaId ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={`${BASE}/api/media/${piece.mediaId}`} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <span className="line-clamp-4 text-center text-[11.5px] leading-[17px]" style={{ color: skin.placard.ink }}>
+                  {piece.line}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** بطاقةُ الشرح تحت اللوحة، كبطاقة متحف: الساعةُ | التاريخ، ثمّ ما لا تقوله اللوحةُ وحدها، ثمّ خطٌّ، ثمّ صداها. */
 function Placard({ skin, piece, onEcho }: { skin: HallSkin; piece: HallPiece; onEcho?: () => void }) {
   const line = piece.kind === "PHOTO" ? piece.text : piece.kind === "MUSIC" ? piece.line : null;
   const echo = piece.echo;
   return (
     <div
-      className="flex max-w-[280px] flex-col items-center gap-1 rounded-[3px] px-3.5 py-2 text-center"
-      style={{ background: skin.placard.bg, boxShadow: "1px 3px 6px rgba(0,0,0,.22)" }}
+      className="flex min-w-[220px] max-w-[290px] flex-col items-center gap-[7px] rounded-xl px-4 py-2.5 text-center"
+      style={{ background: skin.placard.bg, border: "1px solid rgba(0,0,0,.05)", boxShadow: SOFT }}
     >
-      <p className="text-[10.5px] font-bold" style={{ color: skin.placard.muted }}>
-        {piece.when}
+      <p className="flex items-center gap-2.5 text-[12.5px] font-bold" style={{ color: skin.placard.ink }}>
+        <span className="flex items-center gap-1.5">
+          <span style={{ color: skin.placard.muted }}>
+            <ClockIcon size={14} />
+          </span>
+          {piece.time}
+        </span>
+        <span className="block h-3.5 w-px" style={{ background: skin.placard.muted, opacity: 0.4 }} />
+        <span className="flex items-center gap-1.5">
+          <span style={{ color: skin.placard.muted }}>
+            <CalendarIcon size={14} />
+          </span>
+          {piece.date}
+        </span>
       </p>
       {line ? (
         <p className="line-clamp-2 text-[12.5px] leading-[19px]" style={{ color: skin.placard.ink }}>
@@ -332,33 +578,36 @@ function Placard({ skin, piece, onEcho }: { skin: HallSkin; piece: HallPiece; on
         </p>
       ) : null}
       {echo && (echo.reactions || echo.comments) ? (
-        <button
-          type="button"
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={(event) => {
-            event.stopPropagation();
-            onEcho?.();
-          }}
-          className="mt-0.5 flex items-center gap-2"
-        >
-          <span className="flex">
-            {echo.faces.slice(0, 3).map((face, at) => (
-              <span key={at} className="rounded-full" style={{ marginInlineStart: at ? -7 : 0, boxShadow: `0 0 0 1.5px ${skin.placard.bg}` }}>
-                <ReactionGlyph kind={face.kind} emoji={face.emoji} size={20} />
+        <>
+          <span className="block h-px self-stretch" style={{ background: skin.placard.muted, opacity: 0.22 }} />
+          <button
+            type="button"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              onEcho?.();
+            }}
+            className="flex items-center gap-2"
+          >
+            <span className="flex">
+              {echo.faces.slice(0, 3).map((face, at) => (
+                <span key={at} className="rounded-full" style={{ marginInlineStart: at ? -7 : 0, background: skin.placard.bg, boxShadow: `0 0 0 1.5px ${skin.placard.bg}` }}>
+                  <ReactionGlyph kind={face.kind} emoji={face.emoji} size={21} />
+                </span>
+              ))}
+            </span>
+            {echo.reactions ? (
+              <span className="text-[13px] font-extrabold" style={{ color: skin.placard.ink }}>
+                {ar(echo.reactions)}
               </span>
-            ))}
-          </span>
-          {echo.reactions ? (
-            <span className="text-[11.5px] font-extrabold" style={{ color: skin.placard.ink }}>
-              {ar(echo.reactions)}
-            </span>
-          ) : null}
-          {echo.comments ? (
-            <span className="text-[11.5px] font-bold" style={{ color: skin.placard.muted }}>
-              {ar(echo.comments)} تعليق
-            </span>
-          ) : null}
-        </button>
+            ) : null}
+            {echo.comments ? (
+              <span className="text-[12px] font-bold" style={{ color: skin.placard.muted }}>
+                {ar(echo.comments)} تعليق
+              </span>
+            ) : null}
+          </button>
+        </>
       ) : null}
     </div>
   );
@@ -731,7 +980,7 @@ function PhotoFrame({ skin, mediaId, x, y }: { skin: HallSkin; mediaId: string; 
   );
 }
 
-const SHADOW = "4px 12px 22px rgba(0,0,0,.34)";
+const SHADOW = "0 12px 26px rgba(58,42,20,.3)";
 
 function Piece({ skin, piece, spin }: { skin: HallSkin; piece: HallPiece; spin: boolean }) {
   if (piece.kind === "PHOTO" && piece.mediaId) {
@@ -789,14 +1038,30 @@ function Piece({ skin, piece, spin }: { skin: HallSkin; piece: HallPiece; spin: 
       </div>
     );
   }
+  // الخاطرةُ والسفرُ والنومُ والصحو: نصٌّ في الإطار نفسه على بطانةٍ كريميّة — لوحةٌ كالصورة.
+  return <TextFrame skin={skin} piece={piece} />;
+}
+
+function TextFrame({ skin, piece }: { skin: HallSkin; piece: HallPiece }) {
+  const frame = useContext(FrameImage);
   const Icon = piece.kind === "CITY" ? PlaneIcon : piece.kind === "SLEEP" ? MoonIcon : piece.kind === "WAKE" ? SunIcon : BookIcon;
   return (
-    <div
-      className="flex h-full w-full flex-col items-center justify-center gap-3 rounded p-[18px] text-center"
-      style={{ background: skin.plaque.bg, border: `1px solid ${skin.plaque.edge}`, color: skin.plaque.ink, boxShadow: SHADOW }}
-    >
-      <Icon size={22} />
-      <p className={`font-display line-clamp-7 font-bold ${piece.line.length > 90 ? "text-[14.5px] leading-[22px]" : "text-[17px] leading-[26px]"}`}>{piece.line}</p>
+    <div className="relative h-full w-full" style={{ background: frame ? skin.photo.mat : skin.photo.frame, padding: skin.photo.width, boxShadow: SHADOW }}>
+      <div className="h-full w-full" style={{ background: skin.photo.mat, padding: skin.photo.matWidth }}>
+        <div
+          className="flex h-full w-full flex-col items-center justify-center gap-3 p-3.5 text-center"
+          style={{ background: skin.plaque.bg, border: `1px solid ${skin.plaque.edge}`, color: skin.plaque.ink }}
+        >
+          <span style={{ color: skin.photo.frame }}>
+            <Icon size={30} />
+          </span>
+          <p className={`font-display line-clamp-7 font-bold ${piece.line.length > 90 ? "text-[14px] leading-[22px]" : "text-[18px] leading-[28px]"}`}>{piece.line}</p>
+        </div>
+      </div>
+      {frame ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={`${BASE}/api/media/${frame}`} alt="" draggable={false} className="pointer-events-none absolute inset-0 h-full w-full" style={{ objectFit: "fill" }} />
+      ) : null}
     </div>
   );
 }

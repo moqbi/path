@@ -3,7 +3,6 @@ import { currentUser } from "@/lib/auth";
 import { FREE_ARCHIVE_DAYS } from "@/lib/archive";
 import { apiAs } from "@/lib/api-bridge";
 import { canTryStickers } from "@/lib/stickers";
-import { ScreenHeader } from "@/components/ui";
 import { GalleryHall, type HallImages, type HallPiece } from "@/components/gallery-hall";
 import { ar, MONTHS } from "@/lib/format";
 
@@ -16,6 +15,8 @@ function riyadh(date: Date) {
     year: shifted.getUTCFullYear(),
     month: shifted.getUTCMonth(),
     when: `${ar(shifted.getUTCDate())} ${MONTHS[shifted.getUTCMonth()]} · ${ar(hour12)}:${ar(String(shifted.getUTCMinutes()).padStart(2, "0"))} ${hours < 12 ? "ص" : "م"}`,
+    time: `${ar(hour12)}:${ar(String(shifted.getUTCMinutes()).padStart(2, "0"))} ${hours < 12 ? "ص" : "م"}`,
+    date: `${ar(shifted.getUTCDate())} ${MONTHS[shifted.getUTCMonth()]} ${ar(shifted.getUTCFullYear())}`,
   };
 }
 
@@ -108,6 +109,8 @@ export default async function HallPage({ params }: { params: Promise<{ year: str
         echo: moment.echo ?? null,
         month: at.month,
         when: at.when,
+        time: at.time,
+        date: at.date,
       };
     });
   // الحبلُ في أوّل القاعة التي يقع فيها الحدّ.
@@ -116,7 +119,6 @@ export default async function HallPage({ params }: { params: Promise<{ year: str
 
   return (
     <div className="screen">
-      <ScreenHeader title={`قاعة ${ar(year)}`} back="/archive" mark />
       <GalleryHall pieces={pieces} hidden={hidden} skin={page.skin} images={page.images} />
     </div>
   );
