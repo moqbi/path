@@ -10,6 +10,8 @@ export type HallSkin = {
   ceiling: string;
   floor: string;
   floorEdge: string;
+  /** حوافُّ اللوح الخشبيّ والإفريز والقاعدة: ضوءٌ وظلٌّ من لون الجدار نفسه، لا أبيضُ وأسودُ ثابتان. */
+  bevel: { light: string; dark: string };
   /** ضوءٌ يسقط على اللوحة الحاليّة — لونُه في مركزه، ويذوب إلى الشفافيّة. */
   light: string;
   sign: { bg: string; ink: string; muted: string };
@@ -88,6 +90,7 @@ export function hallSkinOf(raw: string | HallFlat | null | undefined): HallSkin 
     ceiling: get("ceiling"),
     floor: get("floor"),
     floorEdge: get("floorEdge"),
+    bevel: { light: mix(get("wall"), "#ffffff", 0.22), dark: mix(get("wall"), "#000000", 0.2) },
     light: `rgba(${rgb},0.95)`,
     sign: { bg: get("signBg"), ink: get("signInk"), muted: mix(get("signInk"), get("signBg"), 0.45) },
     placard: { bg: get("placardBg"), ink: get("placardInk"), muted: mix(get("placardInk"), get("placardBg"), 0.45) },

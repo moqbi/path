@@ -216,8 +216,8 @@ export function GalleryHall({
             style={{
               height: wainscot,
               backgroundColor: skin.wall,
-              borderTop: `2px solid rgba(255,255,255,.55)`,
-              boxShadow: `inset 0 7px 0 ${skin.wallShade}, inset 0 9px 0 rgba(0,0,0,.14), inset 0 15px 0 rgba(0,0,0,.05)`,
+              borderTop: `2px solid ${skin.bevel.light}`,
+              boxShadow: `inset 0 7px 0 ${skin.wallShade}, inset 0 9px 0 ${skin.bevel.dark}, inset 0 15px 0 rgba(0,0,0,.05)`,
             }}
           >
             <div
@@ -225,11 +225,11 @@ export function GalleryHall({
               style={{
                 top: 26,
                 bottom: 24,
-                backgroundImage: `linear-gradient(90deg, transparent 9px, rgba(0,0,0,.13) 9px 11px, transparent 11px 17px, rgba(0,0,0,.07) 17px 18px, transparent 18px ${WALL_TILE / 2 - 18}px, rgba(0,0,0,.07) ${WALL_TILE / 2 - 18}px ${WALL_TILE / 2 - 17}px, transparent ${WALL_TILE / 2 - 17}px ${WALL_TILE / 2 - 11}px, rgba(255,255,255,.5) ${WALL_TILE / 2 - 11}px ${WALL_TILE / 2 - 9}px, transparent ${WALL_TILE / 2 - 9}px)`,
+                backgroundImage: `linear-gradient(90deg, transparent 9px, ${skin.bevel.dark} 9px 11px, transparent 11px 17px, rgba(0,0,0,.07) 17px 18px, transparent 18px ${WALL_TILE / 2 - 18}px, rgba(0,0,0,.07) ${WALL_TILE / 2 - 18}px ${WALL_TILE / 2 - 17}px, transparent ${WALL_TILE / 2 - 17}px ${WALL_TILE / 2 - 11}px, ${skin.bevel.light} ${WALL_TILE / 2 - 11}px ${WALL_TILE / 2 - 9}px, transparent ${WALL_TILE / 2 - 9}px)`,
                 backgroundSize: `${WALL_TILE / 2}px 100%`,
                 backgroundPositionX: `${shift}px`,
-                borderTop: "2px solid rgba(0,0,0,.1)",
-                borderBottom: "2px solid rgba(255,255,255,.45)",
+                borderTop: `2px solid ${skin.bevel.dark}`,
+                borderBottom: `2px solid ${skin.bevel.light}`,
                 transition: glide,
               }}
             />
@@ -249,10 +249,10 @@ export function GalleryHall({
             style={{
               top: CROWN - 8,
               height: 13,
-              background: `linear-gradient(180deg, rgba(255,255,255,.4) 0 2px, ${skin.wallShade} 2px 5px, rgba(255,255,255,.55) 5px 7px, rgba(0,0,0,.18) 7px 8px, rgba(0,0,0,.05) 8px 13px)`,
+              background: `linear-gradient(180deg, ${skin.bevel.light} 0 2px, ${skin.wallShade} 2px 5px, ${skin.bevel.light} 5px 7px, ${skin.bevel.dark} 7px 8px, rgba(0,0,0,.05) 8px 13px)`,
             }}
           />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0" style={{ height: 9, background: skin.floorEdge, boxShadow: "0 -2px 0 rgba(255,255,255,.4)" }} />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0" style={{ height: 9, background: skin.floorEdge, boxShadow: `0 -2px 0 ${skin.bevel.light}` }} />
 
           {slots.length === 0 ? (
             <p className="absolute inset-x-0 text-center text-[13px]" style={{ top: frameTop + H / 2 - 10, color: skin.sign.muted }}>
@@ -339,7 +339,7 @@ export function GalleryHall({
                 href="/archive"
                 aria-label="رجوع"
                 className="flex h-[38px] w-[38px] items-center justify-center rounded-full"
-                style={{ background: skin.placard.bg, color: skin.placard.ink, boxShadow: SOFT }}
+                style={{ background: skin.sign.bg, color: skin.sign.ink, boxShadow: SOFT }}
               >
                 <span className="block -scale-x-100">
                   <BackIcon size={18} />
@@ -350,7 +350,7 @@ export function GalleryHall({
                   type="button"
                   onClick={() => setGrid(true)}
                   className="flex h-[38px] items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-extrabold"
-                  style={{ background: skin.placard.bg, color: skin.placard.ink, boxShadow: SOFT }}
+                  style={{ background: skin.sign.bg, color: skin.sign.ink, boxShadow: SOFT }}
                 >
                   <GridGlyph /> عرض اللحظات
                 </button>
