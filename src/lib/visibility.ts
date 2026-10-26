@@ -111,6 +111,9 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
       storePromo: { select: { id: true } },
       // وغلافُ الثيم كذلك: يُرسم خلف غلاف لابسه لكلّ من يرى ملفّه (القاعدة ٢٨٨).
       storeCover: { select: { id: true } },
+      storeHallWall: { select: { id: true } },
+      storeHallFloor: { select: { id: true } },
+      storeHallFrame: { select: { id: true } },
       sticker: { select: { id: true } },
       avatarOf: { select: { id: true } },
       coverOf: { select: { id: true } },
@@ -142,7 +145,7 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
   if (!media) return false;
   if (media.ownerId === userId) return true;
   // والملصقُ للجميع كصورة الصنف (القاعدة ٢٩١).
-  if (media.storeItem || media.storePromo || media.storeCover || media.sticker) return true;
+  if (media.storeItem || media.storePromo || media.storeCover || media.storeHallWall || media.storeHallFloor || media.storeHallFrame || media.sticker) return true;
 
   if (media.messageOf) {
     const { aId, bId } = media.messageOf.conversation;

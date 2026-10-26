@@ -1011,6 +1011,37 @@ export async function clearItemPromo(itemId: string): Promise<void> {
   revalidatePath("/admin");
 }
 
+/**
+ * صورُ قاعة المعرض (القاعدة ٣٥٠): نقشُ الجدار، ونقشُ الأرضيّة، وإطارُ الصورة. الخانةُ من
+ * قائمةٍ مغلقة — اسمُ عمودٍ يأتي من النموذج لا يُكتب كما هو — والسابقةُ تذهب ببكسلاتها.
+ */
+const HALL_IMAGE = { wall: "hallWallMediaId", floor: "hallFloorMediaId", frame: "hallFrameMediaId" } as const;
+type HallSlot = keyof typeof HALL_IMAGE;
+
+export async function setHallImage(itemId: string, slot: HallSlot, formData: FormData): Promise<void> {
+  const admin = await requireAdmin("store");
+  const column = HALL_IMAGE[slot];
+  if (!column) throw new Error("خانة غير معروفة");
+  const { file, width, height } = picture(formData);
+  const media = await storeUpload(admin.id, file, width, height);
+  const before = await prisma.storeItem.findUnique({ where: { id: itemId }, select: { [column]: true } });
+  await prisma.storeItem.update({ where: { id: itemId }, data: { [column]: media.id } });
+  const old = (before as Record<string, string | null> | null)?.[column];
+  if (old) await dropMedia([old]);
+  revalidatePath("/admin");
+}
+
+export async function clearHallImage(itemId: string, slot: HallSlot): Promise<void> {
+  await requireAdmin("store");
+  const column = HALL_IMAGE[slot];
+  if (!column) return;
+  const before = await prisma.storeItem.findUnique({ where: { id: itemId }, select: { [column]: true } });
+  await prisma.storeItem.update({ where: { id: itemId }, data: { [column]: null } });
+  const old = (before as Record<string, string | null> | null)?.[column];
+  if (old) await dropMedia([old]);
+  revalidatePath("/admin");
+}
+
 export async function clearItemImage(itemId: string): Promise<void> {
   await requireAdmin("store");
   await prisma.storeItem.update({

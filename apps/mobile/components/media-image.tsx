@@ -32,7 +32,8 @@ export function MediaImage({
 }: {
   mediaId: string | null | undefined;
   style?: StyleProp<ImageStyle>;
-  resizeMode?: "cover" | "contain";
+  /** `fill` يمدّ الصورةَ على صندوقها — إطارُ قاعة المعرض المرسوم (القاعدة ٣٥٠). */
+  resizeMode?: "cover" | "contain" | "fill";
   /** موضعُ القصّ بالمئة — صورةُ اللحظة كما ضبطها صاحبُها في إطار البطاقة. */
   position?: { x: number; y: number };
   /** أبعاد الملف كما وصلت — يحتاجها من يحسب موضع الغلاف بنفسه. */

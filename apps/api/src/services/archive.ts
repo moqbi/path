@@ -101,19 +101,30 @@ export async function archive(userId: string, options: { cursor?: string; limit:
             hall: {
               select: {
                 hallSkin: true,
+                hallWallMediaId: true,
+                hallFloorMediaId: true,
+                hallFrameMediaId: true,
                 purchases: { where: { userId, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, select: { id: true } },
               },
             },
           },
         })
-        .then((row) => (row?.hall?.purchases.length ? row.hall.hallSkin : null));
+        .then((row) => (row?.hall?.purchases.length ? row.hall : null));
 
   return {
     moments: items,
     nextCursor: more ? items.at(-1)?.id : undefined,
     limited: Boolean(from),
     hidden,
-    ...(hall !== undefined ? { hallSkin: hall } : {}),
+    ...(hall !== undefined
+      ? {
+          hallSkin: hall?.hallSkin ?? null,
+          // صورُ الثوب (القاعدة ٣٥٠): نقشا الجدار والأرضيّة وإطارُ الصورة.
+          hallImages: hall
+            ? { wall: hall.hallWallMediaId, floor: hall.hallFloorMediaId, frame: hall.hallFrameMediaId }
+            : null,
+        }
+      : {}),
   };
 }
 

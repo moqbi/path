@@ -812,6 +812,14 @@ model StoreItem {
   palette         String?
   /// ثوبُ قاعة المعرض (JSON مسطّح — `HALL_FIELDS` في `packages/shared`) لصنف `GALLERY`.
   hallSkin        String?
+  /// صورُ قاعة المعرض (القاعدة ٣٥٠): نقشُ الجدار ونقشُ الأرضيّة يتكرّران، وإطارُ الصورة
+  /// PNG شفّافُ الوسط يُمدّ فوق كلّ صورة. وبلاها تُرسم القاعةُ من ألوان `hallSkin` وحدها.
+  hallWallMediaId  String?    @unique
+  hallWallMedia    Media?     @relation("StoreItemHallWall", fields: [hallWallMediaId], references: [id], onDelete: SetNull)
+  hallFloorMediaId String?    @unique
+  hallFloorMedia   Media?     @relation("StoreItemHallFloor", fields: [hallFloorMediaId], references: [id], onDelete: SetNull)
+  hallFrameMediaId String?    @unique
+  hallFrameMedia   Media?     @relation("StoreItemHallFrame", fields: [hallFrameMediaId], references: [id], onDelete: SetNull)
   /// أصناف حصرية لمشتركي آثار+.
   plusOnly        Boolean       @default(false)
   /// أصناف تُكتسب بالبقاء لا بالدفع (مثل إطار «سنة كاملة»).
@@ -1176,6 +1184,9 @@ model Media {
   storeItem      StoreItem?    @relation("StoreItemMedia")
   storeCover     StoreItem?    @relation("StoreItemCover")
   storePromo     StoreItem?    @relation("StoreItemPromo")
+  storeHallWall  StoreItem?    @relation("StoreItemHallWall")
+  storeHallFloor StoreItem?    @relation("StoreItemHallFloor")
+  storeHallFrame StoreItem?    @relation("StoreItemHallFrame")
   sticker        Sticker?      @relation("StickerMedia")
 
   /// صورةُ موقعٍ عامّة إن كانت — الرأس مثلاً.

@@ -41,7 +41,7 @@ import { PlusGrant } from "./plus";
 import { CoinsGrant } from "./coins";
 import { SITE_TEXT, siteText, siteImage, type SiteKey } from "@/lib/site";
 import { ItemImage } from "./item-image";
-import { ItemCover, ItemPromo } from "./item-cover";
+import { HallImages, ItemCover, ItemPromo } from "./item-cover";
 import { BundleItems } from "./bundle";
 import { CollectionsView, ItemHideAt, ItemPlans } from "./store-extras";
 import { InvitesView } from "./invites";
@@ -1598,6 +1598,15 @@ export default async function AdminPage({
                               <ItemCover itemId={item.id} mediaId={item.coverMediaId} />
                               <ItemPromo itemId={item.id} mediaId={item.promoMediaId} />
                             </>
+                          ) : null}
+                          {/* ولثوب المعرض صورُ قاعته: نقشُ الجدار والأرضيّة وإطارُ الصورة (القاعدة ٣٥٠). */}
+                          {item.kind === "GALLERY" ? (
+                            <HallImages
+                              itemId={item.id}
+                              wall={item.hallWallMediaId}
+                              floor={item.hallFloorMediaId}
+                              frame={item.hallFrameMediaId}
+                            />
                           ) : null}
                           {/* وللحزمة صورةُ إعلان: بطاقتُها في المتجر وبطاقةُ الإعلان عند الفتح. */}
                           {item.kind === "BUNDLE" ? (

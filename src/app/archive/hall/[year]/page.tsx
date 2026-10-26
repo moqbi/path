@@ -4,7 +4,7 @@ import { FREE_ARCHIVE_DAYS } from "@/lib/archive";
 import { apiAs } from "@/lib/api-bridge";
 import { canTryStickers } from "@/lib/stickers";
 import { ScreenHeader } from "@/components/ui";
-import { GalleryHall, type HallPiece } from "@/components/gallery-hall";
+import { GalleryHall, type HallImages, type HallPiece } from "@/components/gallery-hall";
 import { ar, MONTHS } from "@/lib/format";
 
 /** التاريخُ بتوقيت الرياض (+٣) — كالكتاب (القاعدة ٢٣٥)، ويُكتب هنا لا في المتصفّح. */
@@ -37,7 +37,7 @@ type Row = {
   morePhotoPos?: { x: number; y: number }[];
   echo?: HallPiece["echo"];
 };
-type Page = { moments: (Omit<Row, "createdAt"> & { createdAt: string })[]; nextCursor?: string; limited: boolean; hidden: number; hallSkin?: string | null };
+type Page = { moments: (Omit<Row, "createdAt"> & { createdAt: string })[]; nextCursor?: string; limited: boolean; hidden: number; hallSkin?: string | null; hallImages?: HallImages | null };
 
 /** لحظاتُ السنة صفحةً صفحةً من الخادم نفسه — كالجوّال، فلا تختلف لوحةٌ بين الوجهين. */
 async function loadYear(userId: string, year: number) {
@@ -57,7 +57,7 @@ async function loadYear(userId: string, year: number) {
     cursor = page.nextCursor;
     if (!cursor || older) break;
   }
-  return { rows, limited: first?.limited ?? false, hidden: first?.hidden ?? 0, skin: first?.hallSkin ?? null };
+  return { rows, limited: first?.limited ?? false, hidden: first?.hidden ?? 0, skin: first?.hallSkin ?? null, images: first?.hallImages ?? null };
 }
 
 function line(moment: Row): string {
@@ -117,7 +117,7 @@ export default async function HallPage({ params }: { params: Promise<{ year: str
   return (
     <div className="screen">
       <ScreenHeader title={`قاعة ${ar(year)}`} back="/archive" mark />
-      <GalleryHall pieces={pieces} hidden={hidden} skin={page.skin} />
+      <GalleryHall pieces={pieces} hidden={hidden} skin={page.skin} images={page.images} />
     </div>
   );
 }

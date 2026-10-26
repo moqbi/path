@@ -76,6 +76,20 @@ export function PhotoViewer() {
   const page = useRef(new Animated.Value(0)).current;
   const zero = useRef(new Animated.Value(0)).current;
   const one = useRef(new Animated.Value(1)).current;
+  /*
+    عقدةُ إزاحة كلّ صورةٍ تُحفظ بمعرّفها (القاعدة ٣٥٠): كانت تُبنى مع كلّ رسمة، والتقليبُ
+    يرسم (معرّفٌ جديد) فتُستبدل عقدةُ الصورة الظاهرة تحت الإصبع — فترمش.
+  */
+  const shiftCache = useRef(new Map<string, Animated.AnimatedInterpolation<number> | Animated.AnimatedAddition<number>>()).current;
+  const shiftOf = (at: number) => {
+    const key = `${at}:${screen.width}`;
+    let node = shiftCache.get(key);
+    if (!node) {
+      node = Animated.add(page, -at * screen.width);
+      shiftCache.set(key, node);
+    }
+    return node;
+  };
   const nav = useRef({ list, index, width: screen.width }).current;
   nav.list = list;
   nav.index = index;
@@ -311,7 +325,7 @@ export function PhotoViewer() {
                   top: (screen.height - area.height) / 2,
                   transform: [
                     { translateY: drag },
-                    { translateX: at === -1 ? zero : Animated.add(page, -at * screen.width) },
+                    { translateX: at === -1 ? zero : shiftOf(at) },
                     { translateX: here ? panX : zero },
                     { translateY: here ? panY : zero },
                     { scale: here ? scale : one },

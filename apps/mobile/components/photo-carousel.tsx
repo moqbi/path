@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Animated, PanResponder, Pressable, View, type StyleProp, type ViewStyle } from "react-native";
 import { MediaImage } from "./media-image";
 import { viewPhoto } from "./photo-viewer";
@@ -43,11 +43,31 @@ export function PhotoCarousel({
     Animated.spring(pos, { toValue: next, useNativeDriver: true, bounciness: 0, speed: 16 }).start();
   };
 
+  /*
+    إزاحةُ كلّ صفحةٍ عقدةٌ تُبنى مرّةً لعرضها: كانت تُبنى مع كلّ رسمة، و`setIndex` يرسم
+    والنابضُ يجري على الخيط الأصليّ — فتُفصل العقدةُ القديمة وتُوصل الجديدة في منتصف
+    الحركة، فترمش الصورةُ أو تقفز إطاراً (القاعدة ٣٥٠).
+  */
+  const shifts = useMemo(
+    () => ids.map((_, at) => Animated.multiply(Animated.add(pos, -at), width)),
+    [ids.length, width, pos], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  // عددٌ تغيّر (لحظةٌ عُدّلت) والموضعُ خلف آخرها: يرجع إلى ما بقي.
+  const shown = Math.min(index, ids.length - 1);
+  if (now.index > ids.length - 1) {
+    now.index = Math.max(0, ids.length - 1);
+    pos.setValue(now.index);
+  }
+
   const pan = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy) * 1.4,
       onMoveShouldSetPanResponderCapture: (_, g) => Math.abs(g.dx) > 10 && Math.abs(g.dx) > Math.abs(g.dy) * 1.6,
       onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: () => {
+        // سحبةٌ تبدأ والنابضُ ما زال يجري: تبدأ من حيث هو لا تقفز إلى آخره.
+        pos.stopAnimation();
+      },
       onPanResponderMove: (_, g) => {
         if (!now.width) return;
         const raw = now.index + g.dx / now.width;
@@ -81,7 +101,7 @@ export function PhotoCarousel({
                 bottom: 0,
                 left: 0,
                 width,
-                transform: [{ translateX: Animated.multiply(Animated.add(pos, -at), width) }],
+                transform: [{ translateX: shifts[at] ?? 0 }],
               }}
             >
               <MediaImage
@@ -97,14 +117,14 @@ export function PhotoCarousel({
         زرَّها والصفحاتُ مكدّسةٌ في مكانٍ واحد، فتأخذ الضغطةَ غيرُ التي تُرى.
       */}
       <Pressable
-        accessibilityLabel={`افتح الصورة ${ar(index + 1)}`}
+        accessibilityLabel={`افتح الصورة ${ar(shown + 1)}`}
         onPress={() => viewPhoto(ids[now.index] ?? ids[0], ids)}
         style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
       />
 
       <View pointerEvents="none" style={{ position: "absolute", top: 10, right: 10, paddingHorizontal: 8, height: 22, borderRadius: 11, justifyContent: "center", backgroundColor: "rgba(14,26,36,.55)" }}>
         <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>
-          {ar(index + 1)}/{ar(ids.length)}
+          {ar(shown + 1)}/{ar(ids.length)}
         </Text>
       </View>
       <View pointerEvents="none" style={{ position: "absolute", bottom: 10, left: 0, right: 0, flexDirection: "row", justifyContent: "center", gap: 5 }}>
@@ -112,10 +132,10 @@ export function PhotoCarousel({
           <View
             key={id}
             style={{
-              width: at === index ? 16 : 6,
+              width: at === shown ? 16 : 6,
               height: 6,
               borderRadius: 3,
-              backgroundColor: at === index ? "#fff" : "rgba(255,255,255,.55)",
+              backgroundColor: at === shown ? "#fff" : "rgba(255,255,255,.55)",
             }}
           />
         ))}
