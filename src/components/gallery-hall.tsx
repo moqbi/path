@@ -41,7 +41,6 @@ const WINDOW = 2;
 /** دورةُ نقش الجدار والأرضيّة — والأرضيّةُ أقربُ إلى العين فتمرّ أسرع (القاعدة ٣٥٠). */
 const WALL_TILE = 220;
 const FLOOR_TILE = 160;
-const FLOOR_SPEED = 1.45;
 const EASE = "cubic-bezier(.2,.8,.2,1)";
 /** ارتفاعُ السقف وإفريزه، ومنه تتدلّى المصابيح؛ ثمّ لافتةُ الشهر، والأرضيّة. */
 const CROWN = 16;
@@ -264,7 +263,6 @@ export function GalleryHall({
             if (Math.abs(at - index) > WINDOW) return null;
             const offset = (index - at) * STEP + dx;
             const near = Math.min(1, Math.abs(offset) / STEP);
-            const badge = at !== index && slot.type === "piece" ? slot.piece.echo?.faces[0] ?? null : null;
             const coneH = frameTop + H * 0.75 - CROWN;
             return (
               <div
@@ -304,11 +302,6 @@ export function GalleryHall({
                   style={{ top: frameTop, left: 0, width: W, height: H }}
                 >
                   {slot.type === "rope" ? <Rope skin={skin} hidden={hidden} w={W} h={H} /> : <Piece skin={skin} piece={slot.piece} spin={at === index} />}
-                  {badge ? (
-                    <span className="absolute flex h-[30px] w-[30px] items-center justify-center rounded-full" style={{ left: -6, bottom: -8, background: skin.placard.bg, boxShadow: SOFT }}>
-                      <ReactionGlyph kind={badge.kind} emoji={badge.emoji} size={22} />
-                    </span>
-                  ) : null}
                 </button>
               </div>
             );
@@ -338,23 +331,6 @@ export function GalleryHall({
             {piece ? <Placard skin={skin} piece={piece} onEcho={() => setDetail({ piece, tab: "echo" })} /> : null}
           </div>
 
-          {/* زرٌّ عائم على اللوح الخشبيّ: يفتح اللوحةَ الحاليّة بنافذتها. */}
-          {piece ? (
-            <button
-              type="button"
-              aria-label="عرض اللحظة"
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={() => setDetail({ piece, tab: "art" })}
-              className="absolute bottom-3.5 right-4 z-20 h-[66px] w-[66px] rounded-full p-[3px]"
-              style={{ background: skin.placard.bg, border: `1px solid ${skin.photo.frame}`, boxShadow: SHADOW }}
-            >
-              <span className="flex h-full w-full flex-col items-center justify-center gap-px rounded-full" style={{ border: `1px solid ${skin.photo.frame}`, color: skin.placard.ink }}>
-                <ImageGlyph />
-                <span className="text-[8.5px] font-extrabold">عرض اللحظة</span>
-              </span>
-            </button>
-          ) : null}
-
           {/* أعلى الجدار: الرجوعُ و«عرض اللحظات» يميناً، والعلامةُ و«آثار» يساراً. */}
           <div className="absolute inset-x-4 top-2 z-20 flex items-center justify-between" onPointerDown={(event) => event.stopPropagation()}>
             <div className="flex items-center gap-2">
@@ -379,7 +355,7 @@ export function GalleryHall({
                 </button>
               ) : null}
             </div>
-            <div className="flex flex-col items-center">
+            <div className="mt-3 flex flex-col items-center">
               <span className="flex items-center gap-1.5">
                 <span className="font-display text-[24px] font-extrabold leading-8" style={{ color: skin.sign.ink }}>
                   آثار
@@ -403,8 +379,6 @@ export function GalleryHall({
               ? `linear-gradient(180deg, rgba(0,0,0,.42), rgba(0,0,0,.05) 30%, rgba(0,0,0,.3)), url(${BASE}/api/media/${images.floor})`
               : `linear-gradient(180deg, rgba(0,0,0,.42), rgba(0,0,0,.05) 30%, rgba(0,0,0,.3)), radial-gradient(ellipse 55% 60% at 50% 20%, rgba(255,233,194,.22), transparent), repeating-linear-gradient(90deg, transparent 0 ${FLOOR_TILE / 2 - 1}px, ${skin.floorEdge} ${FLOOR_TILE / 2 - 1}px ${FLOOR_TILE / 2}px), repeating-linear-gradient(180deg, rgba(255,236,200,.06) 0 21px, ${skin.floorEdge} 21px 22px, rgba(0,0,0,.07) 22px 43px, ${skin.floorEdge} 43px 44px)`,
             backgroundSize: images?.floor ? `100% 100%, ${FLOOR_TILE}px ${FLOOR_TILE}px` : undefined,
-            backgroundPositionX: images?.floor ? `0, ${shift * FLOOR_SPEED}px` : `0, 0, ${shift * FLOOR_SPEED}px, 0`,
-            transition: glide,
           }}
         >
           <div className="flex items-center">
@@ -472,16 +446,6 @@ function GridGlyph() {
       <rect x={13} y={3} width={8} height={8} rx={2} />
       <rect x={3} y={13} width={8} height={8} rx={2} />
       <rect x={13} y={13} width={8} height={8} rx={2} />
-    </svg>
-  );
-}
-
-function ImageGlyph() {
-  return (
-    <svg width={19} height={19} viewBox="0 0 24 24" aria-hidden>
-      <rect x={3} y={4} width={18} height={16} rx={3} fill="none" stroke="currentColor" strokeWidth={2} />
-      <polygon points="5,18 10,12 13,15 15,13 19,18" fill="currentColor" />
-      <rect x={14.5} y={7.5} width={3} height={3} rx={1.5} fill="currentColor" />
     </svg>
   );
 }
@@ -825,7 +789,7 @@ function ReactionList({ skin, rows, failed }: { skin: HallSkin; rows: HallReacti
     .sort((a, b) => (rank.get(keyOf(a)) ?? 0) - (rank.get(keyOf(b)) ?? 0) || a.name.localeCompare(b.name, "ar"));
   return (
     <div className="flex flex-col gap-3.5">
-      <div className="flex gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+      <div className="flex flex-wrap gap-2">
         <SheetChip on={!only} accent={skin.accent} onClick={() => setOnly(null)}>
           الكل {ar(rows.length)}
         </SheetChip>
@@ -901,10 +865,15 @@ function SheetChip({ on, accent, onClick, children }: { on: boolean; accent: { b
   );
 }
 
-/** صورُ اللحظة متعدّدة الصور كومةً في الإطار الكبير: الضغطُ يُقلّب العليا إلى آخرها. */
+/**
+ * صورُ اللحظة متعدّدة الصور كومةً في الإطار الكبير: الضغطُ يرفع العليا جانباً حتى لا يبقى شيء،
+ * ثمّ ضغطةٌ تُعيدها كلَّها بالحركة نفسها معكوسةً، الأخيرةُ أوّلاً (القاعدة ٣٥٣).
+ */
 function DetailPiece({ skin, piece }: { skin: HallSkin; piece: HallPiece }) {
-  const [top, setTop] = useState(0);
-  const [leaving, setLeaving] = useState(false);
+  const [gone, setGone] = useState(0);
+  // «رحيل» العليا، أو «وقفة» خارج الإطار بلا انتقال قبل أن تعود.
+  const [phase, setPhase] = useState<"rest" | "leave" | "snap">("rest");
+  const busy = useRef(false);
   const photos =
     piece.kind === "PHOTO" && piece.mediaId
       ? [
@@ -919,37 +888,67 @@ function DetailPiece({ skin, piece }: { skin: HallSkin; piece: HallPiece }) {
       </div>
     );
   }
-  const order = photos.map((_, at) => photos[(top + at) % photos.length]);
+  const tap = () => {
+    if (busy.current) return;
+    busy.current = true;
+    if (gone < photos.length) {
+      setPhase("leave");
+      setTimeout(() => {
+        setGone((now) => now + 1);
+        setPhase("rest");
+        busy.current = false;
+      }, 260);
+      return;
+    }
+    const back = (at: number) => {
+      if (at < 0) {
+        busy.current = false;
+        return;
+      }
+      setGone(at);
+      setPhase("snap");
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          setPhase("rest");
+          setTimeout(() => back(at - 1), 200);
+        }),
+      );
+    };
+    back(photos.length - 1);
+  };
+  const left = photos.slice(gone).slice(0, 3);
   return (
     <button
       type="button"
-      aria-label="الصورة التالية"
+      aria-label={left.length ? "الصورة التالية" : "أرجع الصور"}
       onClick={(event) => {
         event.stopPropagation();
-        if (leaving) return;
-        setLeaving(true);
-        setTimeout(() => {
-          setTop((now) => (now + 1) % photos.length);
-          setLeaving(false);
-        }, 260);
+        tap();
       }}
       className="relative block"
       style={{ width: 280, height: 358 }}
     >
-      {order
-        .slice(0, 3)
+      {left.length === 0 ? (
+        <span className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-md border-2 border-dashed" style={{ borderColor: skin.placard.muted, color: skin.placard.muted }}>
+          <span className="text-[13px] font-bold">انتهت الصور</span>
+          <span className="text-[12px]">اضغط لإرجاعها</span>
+        </span>
+      ) : null}
+      {left
+        .slice()
         .reverse()
         .map((photo, back, list) => {
           const depth = list.length - 1 - back;
           const lift = depth === 0;
+          const away = lift && phase !== "rest";
           return (
             <span
               key={photo.mediaId}
               className="absolute inset-0 block"
               style={{
-                transform: lift && leaving ? "translateX(-90%) rotate(-12deg)" : `translate(${depth * 10}px, ${depth * -8}px) rotate(${depth ? (depth % 2 ? -4 : 3) : 0}deg)`,
-                opacity: lift && leaving ? 0 : 1,
-                transition: "transform 260ms ease-in, opacity 260ms ease-in",
+                transform: away ? "translateX(-90%) rotate(-12deg)" : `translate(${depth * 10}px, ${depth * -8}px) rotate(${depth ? (depth % 2 ? -4 : 3) : 0}deg)`,
+                opacity: away ? 0 : 1,
+                transition: lift && phase === "snap" ? "none" : "transform 240ms ease, opacity 240ms ease",
               }}
             >
               <PhotoFrame skin={skin} mediaId={photo.mediaId} x={photo.x} y={photo.y} />
@@ -957,7 +956,7 @@ function DetailPiece({ skin, piece }: { skin: HallSkin; piece: HallPiece }) {
           );
         })}
       <span className="absolute right-3 top-3 rounded-full px-2 text-[11px] font-bold leading-[22px] text-white" style={{ background: "rgba(14,26,36,.6)" }}>
-        {ar(top + 1)}/{ar(photos.length)}
+        {ar(Math.min(gone + 1, photos.length))}/{ar(photos.length)}
       </span>
     </button>
   );
