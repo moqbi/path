@@ -3,6 +3,7 @@ import { Animated, Easing, Image, Modal, PanResponder, Pressable, ScrollView, Vi
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Reanimated, { cancelAnimation, Extrapolation, interpolate, runOnJS, runOnUI, useAnimatedStyle, useSharedValue, withSpring, withTiming, Easing as REasing, type SharedValue } from "react-native-reanimated";
 import Svg, { Defs, LinearGradient, Polygon, RadialGradient, Rect, Stop } from "react-native-svg";
 import { Spinner } from "../../../components/spinner";
 import { Text } from "../../../components/type";
@@ -66,6 +67,8 @@ const WINDOW = 2;
  * لأبعد سحبةٍ ولجارتها، ويُبدَّل مركزُه بعد أن تقف الحركة.
  */
 const MOUNTED = FLING_MAX + WINDOW;
+/** نابضُ الانتقال: يصل ويستقرّ بلا ارتدادٍ يُرى — كـ`speed 14، bounciness 2` في `Animated`. */
+const SPRING = { damping: 24, stiffness: 190, mass: 1 };
 /** دورةُ نقش الجدار والأرضيّة المرسومَين — وبصورةٍ مرفوعة مقاسُ البلاطة. */
 const WALL_TILE = 220;
 const FLOOR_TILE = 160;
@@ -114,7 +117,12 @@ export default function HallScreen() {
     return out;
   }, [hall.data, year]);
 
-  const pos = useRef(new Animated.Value(0)).current;
+  /*
+    الموضعُ قيمةٌ مشتركة من Reanimated لا `Animated.Value` (القاعدة ٣٥٦): القيمةُ التي يحرّكها
+    `Animated` على الخيط الأصليّ لا تُكتب في شجرة التخطيط، فكلُّ رسمةٍ من React والنابضُ يجري —
+    تركيبُ لوحةٍ أو تبدّلُ الحاليّة — تُعيد كلَّ لوحةٍ إلى آخر موضعٍ عرفته الشجرة فتقفز وتتراكب.
+  */
+  const pos = useSharedValue(0);
   const [index, setIndex] = useState(0);
   const [settled, setSettled] = useState(0);
   const [detail, setDetail] = useState<{ moment: ArchiveMoment; tab: Tab } | null>(null);
@@ -132,7 +140,7 @@ export default function HallScreen() {
     const start = Math.max(0, slots.findIndex((slot) => slot.type === "piece" && riyadh(slot.moment.createdAt).month === month));
     setIndex(start);
     setSettled(start);
-    pos.setValue(start * STEP);
+    pos.value = start * STEP;
   }, [slots.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const go = useCallback(
@@ -140,11 +148,12 @@ export default function HallScreen() {
       const target = Math.max(0, Math.min(nav.count - 1, to));
       // قفزةٌ بعيدة من شريط الشهور لا تمرّ بجدارٍ فارغ: اللوحاتُ تُرسم حول الحاليّة وحدها.
       if (Math.abs(target - nav.index) > FLING_MAX) {
-        pos.setValue(target * nav.step);
+        cancelAnimation(pos);
+        pos.value = target * nav.step;
         setSettled(target);
       } else {
-        Animated.spring(pos, { toValue: target * nav.step, useNativeDriver: true, speed: 14, bounciness: 2 }).start(({ finished }) => {
-          if (finished) setSettled(target);
+        pos.value = withSpring(target * nav.step, SPRING, (finished) => {
+          if (finished) runOnJS(setSettled)(target);
         });
       }
       setIndex(target);
@@ -200,9 +209,8 @@ export default function HallScreen() {
         (Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy)) || (Math.abs(g.dy) > 14 && Math.abs(g.dy) > Math.abs(g.dx) * 1.4),
       onPanResponderGrant: (_, g) => {
         nav.vertical = Math.abs(g.dy) > Math.abs(g.dx);
-        pos.stopAnimation((value) => {
-          nav.base = value;
-        });
+        cancelAnimation(pos);
+        nav.base = pos.value;
       },
       onPanResponderMove: (_, g) => {
         if (nav.vertical) return;
@@ -211,7 +219,7 @@ export default function HallScreen() {
         let value = nav.base + g.dx;
         if (value < 0) value *= 0.3;
         else if (value > max) value = max + (value - max) * 0.3;
-        pos.setValue(value);
+        pos.value = value;
       },
       onPanResponderRelease: (_, g) => {
         if (nav.vertical) {
@@ -255,7 +263,6 @@ export default function HallScreen() {
     الدورة (`modulo` — على الخيط الأصليّ)، فيبدو جداراً بلا نهاية بعدد لوحاتٍ لا يُحصى.
     والعُقدُ تُبنى مرّةً: عقدةٌ جديدةٌ مع كلّ رسمةٍ تُفصل في منتصف الحركة فترمش (القاعدة ٣٥٠).
   */
-  const wallShift = useMemo(() => Animated.modulo(pos, WALL_TILE), [pos]);
 
   const [wallH, setWallH] = useState(0);
   const piece = current?.type === "piece" ? current.moment : null;
@@ -274,7 +281,7 @@ export default function HallScreen() {
         onLayout={(event) => setWallH(event.nativeEvent.layout.height)}
         style={{ flex: 1, backgroundColor: skin.wall, overflow: "hidden" }}
       >
-        <Wall skin={skin} image={images?.wall ?? null} width={width} height={wallH} shift={wallShift} top={insets.top} wainscot={wainscot} />
+        <Wall skin={skin} image={images?.wall ?? null} width={width} height={wallH} pos={pos} top={insets.top} wainscot={wainscot} />
 
         {slots.map((slot, at) =>
           Math.abs(at - settled) > MOUNTED ? null : (
@@ -482,7 +489,7 @@ const Hung = memo(function Hung({
   rotate,
   onTap,
 }: {
-  pos: Animated.Value;
+  pos: SharedValue<number>;
   at: number;
   step: number;
   left: number;
@@ -497,23 +504,20 @@ const Hung = memo(function Hung({
   rotate?: Animated.AnimatedInterpolation<string>;
   onTap: (at: number) => void;
 }) {
-  const motion = useMemo(() => {
-    const rel = Animated.subtract(pos, at * step);
-    return {
-      rel,
-      glow: rel.interpolate({ inputRange: [-step, 0, step], outputRange: [0.45, 1, 0.45], extrapolate: "clamp" }),
-    };
-  }, [pos, at, step]);
+  const slide = useAnimatedStyle(() => ({ transform: [{ translateX: pos.value - at * step }] }));
+  const glow = useAnimatedStyle(() => ({
+    opacity: interpolate(pos.value - at * step, [-step, 0, step], [0.45, 1, 0.45], Extrapolation.CLAMP),
+  }));
   const coneW = w * 1.5;
   const coneH = frameTop + h * 0.75 - spotY;
   const fixture = 16;
   return (
-    <Animated.View
+    <Reanimated.View
       pointerEvents="box-none"
-      style={{ position: "absolute", top: 0, left, width: w, height: frameTop + h + 12, transform: [{ translateX: motion.rel }] }}
+      style={[{ position: "absolute", top: 0, left, width: w, height: frameTop + h + 12 }, slide]}
     >
       {/* المخروط: ضوءٌ دافئ يبدأ ضيّقاً عند المصباح ويتّسع على اللوحة ويذوب تحتها. */}
-      <Animated.View pointerEvents="none" style={{ position: "absolute", top: spotY + 10, left: (w - coneW) / 2, opacity: motion.glow }}>
+      <Reanimated.View pointerEvents="none" style={[{ position: "absolute", top: spotY + 10, left: (w - coneW) / 2 }, glow]}>
         <Svg width={coneW} height={coneH}>
           <Defs>
             <LinearGradient id={`cone${at}`} x1="0" y1="0" x2="0" y2="1">
@@ -532,7 +536,7 @@ const Hung = memo(function Hung({
           />
           <Rect x={coneW * 0.06} y={coneH - h * 0.95} width={coneW * 0.88} height={h * 0.7} fill={`url(#pool${at})`} />
         </Svg>
-      </Animated.View>
+      </Reanimated.View>
       {/* المصباحُ في السقف: ساقٌ قصيرة ورأسٌ نحاسيّ مائلٌ إلى أسفل، ووهجٌ عند فوهته. */}
       <View pointerEvents="none" style={{ position: "absolute", top: spotY - 4, left: (w - fixture) / 2, width: fixture, alignItems: "center" }}>
         <View style={{ width: 3, height: 5, backgroundColor: skin.brass.edge }} />
@@ -548,7 +552,7 @@ const Hung = memo(function Hung({
           )}
         </Pressable>
       </View>
-    </Animated.View>
+    </Reanimated.View>
   );
 });
 
@@ -562,7 +566,7 @@ const Wall = memo(function Wall({
   image,
   width,
   height,
-  shift,
+  pos,
   top,
   wainscot,
 }: {
@@ -570,10 +574,15 @@ const Wall = memo(function Wall({
   image: string | null;
   width: number;
   height: number;
-  shift: Animated.AnimatedNode;
+  pos: SharedValue<number>;
   top: number;
   wainscot: number;
 }) {
+  // باقي القسمة على دورة النقش موجباً: جدارٌ بلا نهاية بعدد لوحاتٍ لا يُحصى.
+  const shift = useAnimatedStyle(() => {
+    const m = pos.value % WALL_TILE;
+    return { transform: [{ translateX: m < 0 ? m + WALL_TILE : m }] };
+  });
   if (!height) return null;
   const cols = Math.ceil(width / WALL_TILE) + 2;
   const rows = Math.ceil(height / WALL_TILE);
@@ -581,7 +590,7 @@ const Wall = memo(function Wall({
   const crown = top + CROWN;
   return (
     <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
-      <Animated.View style={{ position: "absolute", top: 0, bottom: 0, left: -WALL_TILE, width: cols * WALL_TILE, transform: [{ translateX: shift as never }] }}>
+      <Reanimated.View style={[{ position: "absolute", top: 0, bottom: 0, left: -WALL_TILE, width: cols * WALL_TILE }, shift]}>
         {image
           ? Array.from({ length: cols * rows }, (_, at) => (
               <MediaImage
@@ -625,7 +634,7 @@ const Wall = memo(function Wall({
             </View>
           ))}
         </View>
-      </Animated.View>
+      </Reanimated.View>
       {/* الضوءُ والعمق: سقفٌ يُظلّ أعلاه، وضوءٌ دافئ يبهت إلى أسفل، والحافّتان أعتم. */}
       <Svg width={width} height={height} style={{ position: "absolute", top: 0, left: 0 }}>
         <Defs>
@@ -963,6 +972,12 @@ function HallSheet({
   const { width, height } = useWindowDimensions();
   const [tab, setTab] = useState<Tab>(first);
   const [hold, setHold] = useState(false);
+  /*
+    تمريرُ آبل الأصليّ يلتقط السحبةَ الأفقيّة أيضاً ويُلغي ما تحتها، فيُطفأ في شريحة اللوحة ما دام
+    ما فيها يتّسع للنافذة — والكومةُ لا تنازعها سحبةٌ أبداً. وفي شاشةٍ أقصر يبقى ويقف بلمسها (`hold`).
+  */
+  const [fit, setFit] = useState({ view: 0, content: 0 });
+  const overflows = fit.content > fit.view + 1;
   const full = useMoment(moment.id);
   const reactions = full.data?.moment.reactions ?? null;
   const comments = full.data?.moment.comments ?? null;
@@ -1079,7 +1094,12 @@ function HallSheet({
 
         <ScrollView
           key={tab}
-          scrollEnabled={!hold}
+          scrollEnabled={!hold && (tab !== "art" || overflows)}
+          onLayout={(event) => {
+            const view = event.nativeEvent.layout.height;
+            setFit((now) => (now.view === view ? now : { ...now, view }));
+          }}
+          onContentSizeChange={(_, content) => setFit((now) => (now.content === content ? now : { ...now, content }))}
           onScroll={(event) => {
             atTop.current = event.nativeEvent.contentOffset.y <= 2;
           }}
@@ -1247,66 +1267,75 @@ const DetailPiece = memo(function DetailPiece({
       ]
     : [];
   const count = photos.length;
-  // كم طار منها: صفرٌ والكومةُ كاملة، وعددُها والإطارُ فارغ.
-  const [gone, setGone] = useState(0);
-  const state = useRef({ gone: 0, busy: false, count }).current;
-  state.gone = gone;
-  state.count = count;
-  const drag = useRef(new Animated.Value(0)).current;
-  const motion = useMemo(
-    () => ({
-      r: drag.interpolate({ inputRange: [-w, 0, w], outputRange: ["-14deg", "0deg", "14deg"] }),
-      o: drag.interpolate({ inputRange: [-w * 1.3, -w * 0.6, 0, w * 0.6, w * 1.3], outputRange: [0, 1, 1, 1, 0] }),
-    }),
-    [drag, w],
-  );
+  /*
+    الكومةُ كلُّها على الخيط الأصليّ (القاعدة ٣٥٦): كم طار منها (`gone`) والسحبُ (`drag`) قيمتان
+    مشتركتان، وكلُّ إطارٍ يقرأ منهما مكانَه — العليا تتبع الإصبع، وما طار مخفيّ، وما تحتها مائل.
+    فالطيرانُ ثمّ صعودُ التالية يقعان في إطارٍ واحد بلا رسمةٍ من React بينهما: كانت `setGone`
+    ترسم الكومةَ والنابضُ يجري فتعود العليا إلى وسطها لحظةً.
+  */
+  const gone = useSharedValue(0);
+  const drag = useSharedValue(0);
+  const busy = useRef(false);
+  // للعدّاد ونصِّ «انتهت الصور» وحدهما: نسخةٌ في React تتبع القيمة بعد أن تستقرّ.
+  const [shown, setShown] = useState(0);
+  const settle = useCallback((n: number) => {
+    busy.current = false;
+    setShown(n);
+  }, []);
   const pan = useRef(
     PanResponder.create({
       // أفقيّةٌ وحدها: العموديّةُ لنافذة اللوحة تُسحب بها إلى أسفل.
       onMoveShouldSetPanResponderCapture: (_, g) => Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy) * 1.2,
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy) * 1.2,
       onPanResponderTerminationRequest: () => false,
-      onPanResponderGrant: () => drag.stopAnimation(),
       onPanResponderMove: (_, g) => {
-        if (state.busy) return;
         // الإطارُ الفارغ لا يتبع الإصبع: السحبةُ فيه تُعيد الكومة.
-        if (state.gone >= state.count) return;
-        drag.setValue(g.dx);
+        if (busy.current || gone.value >= count) return;
+        drag.value = g.dx;
       },
       onPanResponderRelease: (_, g) => {
-        if (state.busy) return;
+        if (busy.current) return;
         const far = Math.abs(g.dx) > w * 0.25 || Math.abs(g.vx) > 0.5;
-        if (state.gone >= state.count) {
+        const side = g.dx === 0 ? Math.sign(g.vx) || 1 : Math.sign(g.dx);
+        if (gone.value >= count) {
           if (!far) return;
-          state.busy = true;
-          const side = g.dx >= 0 ? 1 : -1;
-          const back = (at: number) => {
-            if (at < 0) {
-              state.busy = false;
-              return;
-            }
-            drag.setValue(side * w * 1.3);
-            setGone(at);
-            Animated.timing(drag, { toValue: 0, duration: 190, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start(() => back(at - 1));
-          };
-          back(state.count - 1);
+          busy.current = true;
+          // تعود واحدةً واحدة من الجهة التي سُحبت إليها، والأخيرةُ أوّلاً.
+          const off = side * w * 1.3;
+          runOnUI((total: number) => {
+            "worklet";
+            const back = (at: number) => {
+              "worklet";
+              if (at < 0) {
+                runOnJS(settle)(0);
+                return;
+              }
+              gone.value = at;
+              drag.value = off;
+              drag.value = withTiming(0, { duration: 190, easing: REasing.out(REasing.cubic) }, () => back(at - 1));
+            };
+            back(total - 1);
+          })(count);
           return;
         }
         if (!far) {
-          Animated.spring(drag, { toValue: 0, useNativeDriver: true, bounciness: 6 }).start();
+          drag.value = withSpring(0, { damping: 18, stiffness: 220 });
           return;
         }
-        state.busy = true;
-        const side = g.dx === 0 ? Math.sign(g.vx) || 1 : Math.sign(g.dx);
-        Animated.timing(drag, { toValue: side * w * 1.3, duration: 200, easing: Easing.out(Easing.quad), useNativeDriver: true }).start(() => {
-          setGone((now) => now + 1);
-          drag.setValue(0);
-          state.busy = false;
+        busy.current = true;
+        drag.value = withTiming(side * w * 1.3, { duration: 200, easing: REasing.out(REasing.quad) }, (finished) => {
+          if (!finished) return;
+          gone.value = gone.value + 1;
+          drag.value = 0;
+          runOnJS(settle)(gone.value);
         });
       },
-      onPanResponderTerminate: () => Animated.spring(drag, { toValue: 0, useNativeDriver: true }).start(),
+      onPanResponderTerminate: () => {
+        if (!busy.current) drag.value = withSpring(0, { damping: 18, stiffness: 220 });
+      },
     }),
   ).current;
+  const empty = useAnimatedStyle(() => ({ opacity: gone.value >= count ? 1 : 0 }));
 
   if (moment.kind !== "PHOTO" || count < 2) {
     return (
@@ -1315,7 +1344,6 @@ const DetailPiece = memo(function DetailPiece({
       </View>
     );
   }
-  const left = photos.slice(gone).slice(0, 3);
   return (
     <View style={{ alignItems: "center", gap: 10 }}>
       <View
@@ -1325,38 +1353,24 @@ const DetailPiece = memo(function DetailPiece({
         onTouchCancel={() => onHold?.(false)}
         style={{ width: w, height: h }}
       >
-        {left.length === 0 ? (
-          <View style={{ flex: 1, borderWidth: 2, borderStyle: "dashed", borderColor: skin.placard.muted, borderRadius: 6, alignItems: "center", justifyContent: "center", gap: 6 }}>
-            <Text style={{ color: skin.placard.muted, fontSize: 13, fontWeight: "700" }}>انتهت الصور</Text>
-            <Text style={{ color: skin.placard.muted, fontSize: 12 }}>اسحب لإرجاعها</Text>
-          </View>
-        ) : null}
-        {left
-          .slice()
-          .reverse()
-          .map((photo, back, list) => {
-            const depth = list.length - 1 - back; // ٠ للعليا
-            const lift = depth === 0;
-            return (
-              <Animated.View
-                key={photo.mediaId}
-                style={{
-                  position: "absolute",
-                  width: w,
-                  height: h,
-                  opacity: lift ? motion.o : 1,
-                  transform: lift
-                    ? [{ translateX: drag }, { rotate: motion.r }]
-                    : [{ translateX: depth * 10 }, { translateY: depth * -8 }, { rotate: `${depth % 2 ? -4 : 3}deg` }],
-                }}
-              >
-                <PhotoFrame skin={skin} frameImage={frameImage} mediaId={photo.mediaId} pos={photo.pos} />
-              </Animated.View>
-            );
-          })}
+        <Reanimated.View
+          pointerEvents="none"
+          style={[{ position: "absolute", top: 0, left: 0, width: w, height: h, borderWidth: 2, borderStyle: "dashed", borderColor: skin.placard.muted, borderRadius: 6, alignItems: "center", justifyContent: "center", gap: 6 }, empty]}
+        >
+          <Text style={{ color: skin.placard.muted, fontSize: 13, fontWeight: "700" }}>انتهت الصور</Text>
+          <Text style={{ color: skin.placard.muted, fontSize: 12 }}>اسحب لإرجاعها</Text>
+        </Reanimated.View>
+        {/* الأخيرةُ أوّلاً في الشجرة فالأولى فوقها. */}
+        {photos
+          .map((photo, at) => (
+            <StackCard key={photo.mediaId} at={at} gone={gone} drag={drag} w={w} h={h}>
+              <PhotoFrame skin={skin} frameImage={frameImage} mediaId={photo.mediaId} pos={photo.pos} />
+            </StackCard>
+          ))
+          .reverse()}
         <View pointerEvents="none" style={{ position: "absolute", top: 12, right: 12, paddingHorizontal: 8, height: 22, borderRadius: 11, justifyContent: "center", backgroundColor: "rgba(14,26,36,.6)" }}>
           <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>
-            {ar(Math.min(gone + 1, count))}/{ar(count)}
+            {ar(Math.min(shown + 1, count))}/{ar(count)}
           </Text>
         </View>
       </View>
@@ -1364,6 +1378,37 @@ const DetailPiece = memo(function DetailPiece({
     </View>
   );
 });
+
+/** إطارٌ في الكومة: مكانُه من موضعه بالنسبة إلى ما طار — العليا تتبع الإصبع، وما تحتها مائلٌ، وما طار مخفيّ. */
+function StackCard({
+  at,
+  gone,
+  drag,
+  w,
+  h,
+  children,
+}: {
+  at: number;
+  gone: SharedValue<number>;
+  drag: SharedValue<number>;
+  w: number;
+  h: number;
+  children: React.ReactNode;
+}) {
+  const style = useAnimatedStyle(() => {
+    const depth = at - gone.value;
+    if (depth < 0 || depth > 2) return { opacity: 0, transform: [{ translateX: 0 }, { translateY: 0 }, { rotate: "0deg" }] };
+    if (depth === 0) {
+      const x = drag.value;
+      return {
+        opacity: interpolate(Math.abs(x), [0, w * 0.6, w * 1.3], [1, 1, 0], Extrapolation.CLAMP),
+        transform: [{ translateX: x }, { translateY: 0 }, { rotate: `${interpolate(x, [-w, 0, w], [-14, 0, 14], Extrapolation.CLAMP)}deg` }],
+      };
+    }
+    return { opacity: 1, transform: [{ translateX: depth * 10 }, { translateY: depth * -8 }, { rotate: depth % 2 ? "-4deg" : "3deg" }] };
+  });
+  return <Reanimated.View style={[{ position: "absolute", top: 0, left: 0, width: w, height: h }, style]}>{children}</Reanimated.View>;
+}
 
 /**
  * إطارُ الصورة: لونُ الثوب وعرضُه وبطانتُه — وإن رُفع للثوب إطارٌ مرسوم (القاعدة ٣٥٠) مُدّ فوق
