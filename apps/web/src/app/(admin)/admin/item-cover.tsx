@@ -147,8 +147,10 @@ const HALL_SLOTS = [
   {
     slot: "frame",
     label: "إطار الصورة",
-    hint: "PNG وسطُه شفّاف، طوليٌّ بنسبة ١ : ١٫٢٨ — يُمدّ فوق كلّ صورة، والصورةُ تحته بحشوة «عرض الإطار».",
+    hint: "PNG وسطُه شفّاف، طوليٌّ بنسبة ١ : ١٫٢٨ — يُمدّ فوق كلّ صورة، والصورةُ تحته بحشوة «عرض الإطار» ثمّ «عرض البطانة».",
     size: 1200,
+    // الشفافيّةُ تُحفظ: JPEG يملأ الوسطَ أسودَ فيغطّي اللحظة (القاعدة ٣٦٢).
+    alpha: true,
   },
 ] as const;
 
@@ -172,7 +174,7 @@ export function HallImages({
     <div className="mt-3 border-t border-line pt-3">
       <p className="mb-2 text-[12px] font-semibold text-muted">صور القاعة</p>
       <div className="grid gap-3">
-        {HALL_SLOTS.map(({ slot, label, hint, size }) => {
+        {HALL_SLOTS.map(({ slot, label, hint, size, ...rest }) => {
           const mediaId = now[slot];
           return (
             <div key={slot}>
@@ -181,6 +183,7 @@ export function HallImages({
                 <ImagePicker
                   label={label}
                   maxSize={size}
+                  keepAlpha={"alpha" in rest}
                   accept="image/jpeg,image/png,image/webp"
                   onPicked={(file, width, height) => {
                     const data = new FormData();
