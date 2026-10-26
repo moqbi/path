@@ -76,6 +76,7 @@ const SECTIONS = [
   { key: "CHARM", label: "مجموعات التشارمز" },
   { key: "FRAME", label: "مجموعات الإطارات" },
   { key: "THEME", label: "مجموعات الثيمات" },
+  { key: "GALLERY", label: "مجموعات المعرض" },
   { key: "MIXED", label: "المجموعات المختلطة" },
 ] as const;
 
@@ -100,10 +101,11 @@ export async function CollectionsView() {
         <label className="text-[11.5px] text-muted">
           النوع
           <select name="kind" className={`${INPUT} mt-1`} style={{ height: 42 }}>
-            <option value="MIXED">مختلطة (تشارمز وإطارات وثيمات)</option>
+            <option value="MIXED">مختلطة (تشارمز وإطارات وثيمات وأثواب معرض)</option>
             <option value="CHARM">تشارمز</option>
             <option value="FRAME">إطارات</option>
             <option value="THEME">ثيمات</option>
+            <option value="GALLERY">معرض</option>
           </select>
         </label>
         <label className="w-20 text-[11.5px] text-muted">
@@ -154,6 +156,7 @@ export async function CollectionsView() {
                           <option value="CHARM">تشارمز</option>
                           <option value="FRAME">إطارات</option>
                           <option value="THEME">ثيمات</option>
+                          <option value="GALLERY">معرض</option>
                         </select>
                       </label>
                       <label className="w-20 text-[11.5px] text-muted">

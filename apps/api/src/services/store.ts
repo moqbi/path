@@ -203,13 +203,16 @@ export async function storefront(userId: string, gallery = false) {
     بمعرّفها، فتظهر المختلطةُ قسماً في كل شريحةٍ بأصنافها — بلا بناءٍ جديد
     للجوّال.
   */
-  const SHELF: Record<string, "CHARM" | "FRAME" | "THEME"> = {
+  const SHELF: Record<string, "CHARM" | "FRAME" | "THEME" | "GALLERY"> = {
     CHARM: "CHARM",
     FRAME: "FRAME",
     THEME: "THEME",
     BACKGROUND: "THEME",
+    GALLERY: "GALLERY",
   };
   const shelves = collections.flatMap((one) => {
+    // مجموعةُ المعرض لا تصل إلى جوّالٍ لا يعرف النوع (القاعدة ٣٤٨) — والمختلطةُ تُشتقّ من أصنافٍ مصفّاةٍ أصلاً.
+    if (one.kind === "GALLERY" && !gallery) return [];
     if (one.kind) return [one];
     const kinds = new Set(
       items.filter((item) => item.collectionId === one.id && SHELF[item.kind]).map((item) => SHELF[item.kind]),
