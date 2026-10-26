@@ -19,6 +19,7 @@ const KIND_LABEL: Record<string, string> = {
   CHARM: "تشارم",
   BACKGROUND: "ثيم",
   BUNDLE: "حزمة",
+  GALLERY: "معرض",
 };
 
 /**
@@ -234,7 +235,7 @@ export function StoreGrid({
   isPlus: boolean;
   coins: number;
   daysHere: number;
-  equipped: { frame: string | null; theme: string | null; charm: string | null };
+  equipped: { frame: string | null; theme: string | null; charm: string | null; hall?: string | null };
 }) {
   const client = useQueryClient();
   // بطاقةُ الصفّ بعرض بطاقة الشبكة تقريباً، ويظهر طرفُ الرابعة فيُعرف أنّه يُمرَّر.
@@ -306,7 +307,13 @@ export function StoreGrid({
     isPlus ? Math.round(item.priceCoins * 0.8) : item.priceCoins;
 
   const wornId = (item: StoreItem) =>
-    item.kind === "FRAME" ? equipped.frame : item.kind === "CHARM" ? equipped.charm : equipped.theme;
+    item.kind === "FRAME"
+      ? equipped.frame
+      : item.kind === "CHARM"
+        ? equipped.charm
+        : item.kind === "GALLERY"
+          ? (equipped.hall ?? null)
+          : equipped.theme;
 
   const pending = buy.isPending || wear.isPending || strip.isPending;
 
@@ -456,7 +463,13 @@ export function StoreGrid({
                   onPress={() => {
                     if (wornId(chosen) === chosen.id) {
                       strip.mutate(
-                        chosen.kind === "FRAME" ? "FRAME" : chosen.kind === "CHARM" ? "CHARM" : "BACKGROUND",
+                        chosen.kind === "FRAME"
+                          ? "FRAME"
+                          : chosen.kind === "CHARM"
+                            ? "CHARM"
+                            : chosen.kind === "GALLERY"
+                              ? "GALLERY"
+                              : "BACKGROUND",
                       );
                     } else {
                       wear.mutate(chosen.id);

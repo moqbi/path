@@ -64,8 +64,9 @@ export function FloatLayer({
     if (!data) return;
     const faces: Flyer[] = [];
     const texts: Flyer[] = [];
-    data.reactions.forEach((row, at) => {
-      const key = `r-${row.kind}-${row.at}-${at}`;
+    data.reactions.forEach((row) => {
+      // بالنوع والوقت لا بالترتيب: جلبٌ جديد يزيح الترتيبَ فيُعاد ما طار.
+      const key = `r-${row.kind}-${row.at}`;
       if (!seen.current.has(key)) faces.push({ key, face: row.kind, x: 8 + Math.random() * 74, ms: 4200 + Math.random() * 800 });
     });
     for (const row of data.comments) {
@@ -171,7 +172,7 @@ export function CommentField({ target, onFocus, onBlur }: { target: Target; onFo
           onFocus={onFocus}
           onBlur={onBlur}
           maxLength={80}
-          placeholder="علّق بدون اسم…"
+          placeholder="اكتب تعليق…"
           className="min-w-0 flex-1 bg-transparent text-[14px] text-white outline-none placeholder:text-white/50"
         />
         <button
@@ -231,7 +232,7 @@ export function NoteFloats({ noteId, mine }: { noteId: string; mine: boolean }) 
   return (
     <>
       {/* داخل النافذة وحدها: أبوها `relative` (القاعدة ٣٤٥). */}
-      <FloatLayer target={target} data={data} top={8} bottom={92} />
+      <FloatLayer target={target} data={data} top={0} bottom={42} />
       <div className="relative z-[16] w-full">{mine ? <OwnerComments target={target} /> : <CommentField target={target} />}</div>
     </>
   );

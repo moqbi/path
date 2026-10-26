@@ -326,6 +326,17 @@ h3 {
 }
 
 /* مؤشّرُ التحديث بالشعار (القاعدة ٣٢١): قوسٌ يدور وعلامةٌ تتنفّس. */
+/* وجوهُ صدى اللوحة تصعد من إطارها وتذوب (القاعدة ٣٤٩). */
+.hall-rise {
+  opacity: 0;
+  animation: hall-rise 2600ms ease-out both;
+}
+@keyframes hall-rise {
+  0% { opacity: 0; transform: translateY(0) scale(0.4); }
+  15% { opacity: 1; transform: translateY(calc(var(--rise) * 0.15)) scale(1.1); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(var(--rise)) scale(0.9); }
+}
 .logo-arc {
   animation: athr-spin 900ms linear infinite;
 }

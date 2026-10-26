@@ -346,7 +346,10 @@ export default function Circle() {
                 <NameTag isPlus={friend.isPlus} tag={friend.tag} size={10} />
               </View>
               <Text style={{ color: colors.faint, fontSize: 11.5 }}>
-                {[friend.city, presence(friend.lastSeenAt)].filter(Boolean).join("  |  ")}
+                {/* والتصنيفُ معهما — تصنيفُك أنت له، لا يراه غيرُك (القاعدة ٢٢). */}
+                {[friend.city, presence(friend.lastSeenAt), groups.find((group) => group.id === friend.groupId)?.name]
+                  .filter(Boolean)
+                  .join("  |  ")}
               </Text>
             </View>
           </Pressable>

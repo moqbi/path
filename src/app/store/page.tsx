@@ -45,7 +45,8 @@ export default async function StorePage({
     // والمخفيّ لا يُعرض: بابُ الموسميّ — يُرفع ويُنزل بلا حذفٍ يُضيع
     // ما اشتراه أحد (`hidden`).
     prisma.storeItem.findMany({
-      where: { hidden: false },
+      // وثوبُ القاعة يُباع في التطبيق وحده (القاعدة ٣٤٨) — الويبُ لا يرسم القاعةَ بثوبٍ يُشترى منه.
+      where: { hidden: false, kind: { not: "GALLERY" } },
       orderBy: { sortOrder: "asc" },
       include: {
         // ما تحمله الحزمة: بطاقتُها ترسمه وتعدّه، فلا تُشترى على غير علم.

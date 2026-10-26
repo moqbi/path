@@ -48,6 +48,7 @@ import { InvitesView } from "./invites";
 import { coinText, ar, relative, riyals } from "@/lib/format";
 import { groundInkOf, parsePalette } from "@/lib/theme";
 import { ReportContext } from "./report-context";
+import { HALL_FIELDS } from "@athar/shared";
 import { linkedMany, type LinkedResult } from "@/lib/linked";
 import { StickersSection } from "./stickers";
 import { OccasionsSection } from "./occasions";
@@ -84,6 +85,7 @@ const KINDS = [
   { value: "CHARM", label: "تشارم" },
   { value: "BACKGROUND", label: "خلفية" },
   { value: "BUNDLE", label: "حزمة" },
+  { value: "GALLERY", label: "معرض" },
 ] as const;
 
 const KIND_LABEL: Record<string, string> = {
@@ -92,6 +94,7 @@ const KIND_LABEL: Record<string, string> = {
   CHARM: "تشارم",
   BACKGROUND: "خلفية",
   BUNDLE: "حزمة",
+  GALLERY: "معرض",
 };
 
 /**
@@ -104,6 +107,8 @@ const STORE_KINDS = [
   { key: "FRAME", label: "الإطارات", other: "الإطارات الأخرى", kinds: ["FRAME"] },
   { key: "THEME", label: "الثيمات", other: "الثيمات الأخرى", kinds: ["THEME", "BACKGROUND"] },
   { key: "BUNDLE", label: "الحزم", other: "الحزم", kinds: ["BUNDLE"] },
+  // ثوبُ قاعة المعرض (القاعدة ٣٤٨): ألوانٌ ومقاساتٌ تُلبَس القاعةَ كلَّها.
+  { key: "GALLERY", label: "المعرض", other: "أثواب المعرض", kinds: ["GALLERY"] },
 ] as const;
 
 const STORE_VIEWS = [
@@ -230,7 +235,8 @@ function KindField({ kinds, value }: { kinds: readonly string[]; value: string }
  * بألوانٍ من ألوانه — فيبقى الحقلُ مخفيّاً لهما بقيمته: الإجراءُ يشترطه.
  */
 function SpecField({ kind, value }: { kind: string; value: string }) {
-  if (kind === "BUNDLE") return <input type="hidden" name="spec" value={value} />;
+  // والمعرضُ يُرسم من ثوبه (`specFor` في الإجراء) فلا يُكتب له تدرّج.
+  if (kind === "BUNDLE" || kind === "GALLERY") return <input type="hidden" name="spec" value={value} />;
   return (
     <Field
       label="تدرّج CSS"
@@ -238,6 +244,54 @@ function SpecField({ kind, value }: { kind: string; value: string }) {
     >
       <input name="spec" required dir="ltr" defaultValue={value} className={FIELD} style={{ height: 46 }} />
     </Field>
+  );
+}
+
+/**
+ * ثوبُ القاعة (القاعدة ٣٤٨) — ألوانُ الجدار والأرضيّة والإطار ولوحاتِ كلّ نوع، وعرضُ الإطار
+ * والبطانة. وما لا يُسأل عنه (الحوافّ والدرجاتُ الباهتة) يُشتقّ في `hallSkinOf`. والمعاينةُ
+ * في التطبيق: يُلبَس فيُرى في القاعة.
+ */
+function HallFields({ hall }: { hall: string | null }) {
+  let flat: Record<string, string> = {};
+  try {
+    flat = hall ? (JSON.parse(hall) as Record<string, string>) : {};
+  } catch {
+    flat = {};
+  }
+  return (
+    <details className="rounded-xl border border-line" open>
+      <summary className="flex cursor-pointer list-none items-center justify-between p-3">
+        <span className="text-[12.5px] font-semibold">ثوب القاعة</span>
+        <span className="text-[11px] text-muted">ألوانٌ ومقاسات</span>
+      </summary>
+      <div className="flex flex-col gap-2 border-t border-line p-3">
+        <div className="flex flex-wrap gap-2">
+          {HALL_FIELDS.filter((field) => field.type === "color").map((field) => (
+            <Color key={field.key} name={`hall.${field.key}`} label={field.label} value={flat[field.key] ?? field.fallback} />
+          ))}
+        </div>
+        <div className="flex gap-2.5">
+          {HALL_FIELDS.filter((field) => field.type === "number").map((field) => (
+            <Field key={field.key} label={`${field.label} (${field.min}–${field.max})`}>
+              <input
+                name={`hall.${field.key}`}
+                type="number"
+                min={field.type === "number" ? field.min : undefined}
+                max={field.type === "number" ? field.max : undefined}
+                defaultValue={flat[field.key] ?? field.fallback}
+                className={FIELD}
+                style={{ height: 46 }}
+              />
+            </Field>
+          ))}
+        </div>
+        <p className="text-[10.5px] leading-relaxed text-faint">
+          يُلبَس من «إكسسواراتي» في التطبيق ويغيّر القاعة كلّها: الجدار وألواحه، والسقف، والأرضيّة،
+          وإطار الصور وبطانتها، ولوحات الخاطرة والمكان، والأسطوانة، والحبل، ولون الشهر المختار.
+        </p>
+      </div>
+    </details>
   );
 }
 
@@ -1457,6 +1511,7 @@ export default async function AdminPage({
                 </Field>
 
                 {kindTab.key === "THEME" ? <PaletteFields palette={null} /> : null}
+                {kindTab.key === "GALLERY" ? <HallFields hall={null} /> : null}
 
                 <button
                   type="submit"
@@ -1683,6 +1738,7 @@ export default async function AdminPage({
                           {item.kind === "THEME" || item.kind === "BACKGROUND" ? (
                             <PaletteFields palette={parsePalette(item.palette)} />
                           ) : null}
+                          {item.kind === "GALLERY" ? <HallFields hall={item.hallSkin} /> : null}
 
                           <button
                             type="submit"

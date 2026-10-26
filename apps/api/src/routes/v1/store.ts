@@ -8,6 +8,10 @@ import * as store from "../../services/store";
 
 const byId = z.object({ id: cuid });
 
+/** الجوّالُ الذي يعرف صنفَ «المعرض» يقوله (القاعدة ٣٤٨) — وما سواه لا يراه. */
+const knowsGallery = (c: { req: { header: (name: string) => string | undefined } }) =>
+  (c.req.header("x-store-kinds") ?? "").split(",").includes("gallery");
+
 /**
  * المتجر.
  *
@@ -17,11 +21,11 @@ const byId = z.object({ id: cuid });
 export const storeRoutes = new Hono()
   .use("*", requireAuth)
 
-  .get("/", async (c) => c.json(await store.storefront(me(c))))
-  .get("/mine", async (c) => c.json({ items: await store.myItems(me(c)) }))
+  .get("/", async (c) => c.json(await store.storefront(me(c), knowsGallery(c))))
+  .get("/mine", async (c) => c.json({ items: await store.myItems(me(c), knowsGallery(c)) }))
   // بطاقةُ الإعلان عند فتح التطبيق (القاعدة ٢٦٧): الأحدثُ ممّا لم يُرَ، ثمّ «رأيتُه».
   // ومجموعةُ الملصقات لمن يسأل عنها (`?packs=1` — القاعدة ٣٣٥): نسخةُ المتجر لا تراها.
-  .get("/promo", async (c) => c.json(await store.promoFor(me(c), c.req.query("packs") === "1")))
+  .get("/promo", async (c) => c.json(await store.promoFor(me(c), c.req.query("packs") === "1", knowsGallery(c))))
   .post("/promo/seen", async (c) => c.json(await store.promoSeen(me(c))))
 
   // والمدّةُ اختياريّةٌ في الطلب: صنفٌ بلا مُددٍ يُشترى بلا `plan`.
@@ -51,7 +55,7 @@ export const storeRoutes = new Hono()
 
   .post(
     "/unequip",
-    zValidator("json", z.object({ kind: z.enum(["FRAME", "BACKGROUND", "CHARM"]) })),
+    zValidator("json", z.object({ kind: z.enum(["FRAME", "BACKGROUND", "CHARM", "GALLERY"]) })),
     async (c) => c.json(await store.unequip(me(c), c.req.valid("json").kind)),
   );
 

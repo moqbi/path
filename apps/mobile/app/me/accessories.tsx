@@ -10,11 +10,11 @@ import { FilledImage } from "../../components/store-grid";
 import { firstColor, frameInset } from "../../components/avatar";
 import { CheckIcon } from "../../components/icons";
 import { api } from "../../lib/api";
-import { keys } from "../../lib/queries";
+import { keys, useStore } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { colors } from "../../theme/tokens";
 
-type Kind = "FRAME" | "BACKGROUND" | "THEME" | "CHARM";
+type Kind = "FRAME" | "BACKGROUND" | "THEME" | "CHARM" | "GALLERY";
 
 type Owned = {
   id: string;
@@ -69,11 +69,13 @@ export default function Accessories() {
     onSuccess: after,
   });
   const strip = useMutation({
-    mutationFn: (kind: "FRAME" | "BACKGROUND" | "CHARM") =>
+    mutationFn: (kind: "FRAME" | "BACKGROUND" | "CHARM" | "GALLERY") =>
       api("/v1/store/unequip", { method: "POST", body: JSON.stringify({ kind }) }),
     onSuccess: after,
   });
 
+  // ثوبُ القاعة الملبوس من المتجر نفسه (القاعدة ٣٤٨): الجلسةُ لا تحمله، فلا تُثقَل لأجل شاشةٍ واحدة.
+  const halls = useStore().data?.equipped.hall ?? null;
   const owned: Owned[] = (mine.data?.items ?? []).map((row) => ({
     ...row.item,
     giftedBy: row.giftedBy?.name ?? null,
@@ -81,7 +83,9 @@ export default function Accessories() {
 
   const act = (item: Owned, on: boolean) => {
     if (on) {
-      strip.mutate(item.kind === "FRAME" ? "FRAME" : item.kind === "CHARM" ? "CHARM" : "BACKGROUND");
+      strip.mutate(
+        item.kind === "FRAME" ? "FRAME" : item.kind === "CHARM" ? "CHARM" : item.kind === "GALLERY" ? "GALLERY" : "BACKGROUND",
+      );
       return;
     }
     wear.mutate(item.id);
@@ -119,6 +123,15 @@ export default function Accessories() {
           worn={me?.charm?.id ?? null}
           onPress={act}
         />
+        {owned.some((item) => item.kind === "GALLERY") ? (
+          <Group
+            title="أثواب المعرض"
+            empty=""
+            items={owned.filter((item) => item.kind === "GALLERY")}
+            worn={halls}
+            onPress={act}
+          />
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );

@@ -50,6 +50,12 @@ export function LogoRefresh({
 
   useEffect(() => {
     if (still || !active) return;
+    /*
+      من الصفر في كلّ بدء: `Animated.loop` يُعيد القيمةَ في كلّ دورةٍ إلى ما كانت عليه ساعةَ
+      بدأ، فحلقةٌ بدأت من منتصفٍ تركته سابقتُها كانت تدور نصفاً ثمّ تقفز إلى منتصفها.
+    */
+    turn.setValue(0);
+    breath.setValue(0);
     const spin = Animated.loop(
       Animated.timing(turn, { toValue: 1, duration: 900, easing: Easing.linear, useNativeDriver: true }),
     );

@@ -76,8 +76,20 @@ export default function Compose() {
   // الصورُ بعد الأولى (القاعدة ٣٤٣) — في نسخة التطوير وحدها.
   const [extras, setExtras] = useState<Picked[]>([]);
   const room = MOMENT_PHOTOS_MAX - (picture ? 1 : 0) - extras.length;
-  // موضعُ الصورة في إطار البطاقة — يبدأ من الوسط مع كل صورةٍ جديدة.
-  const [photoPos, setPhotoPos] = useState({ x: 50, y: 50 });
+  /*
+    موضعُ كلّ صورةٍ في إطار البطاقة — يبدأ من الوسط، ويُضبط لأيّها اختير من الصفّ لا
+    للأولى وحدها (القاعدة ٣٤٨). بالمسار لا بالترتيب: حذفُ صورةٍ يُزيح ما بعدها.
+  */
+  const [positions, setPositions] = useState<Record<string, { x: number; y: number }>>({});
+  const [selected, setSelected] = useState(0);
+  const all = picture ? [picture, ...extras] : [];
+  const editing = all[Math.min(selected, Math.max(0, all.length - 1))] ?? null;
+  const posOf = (uri: string) => positions[uri] ?? { x: 50, y: 50 };
+  const photoPos = picture ? posOf(picture.uri) : { x: 50, y: 50 };
+  const resetFraming = () => {
+    setPositions({});
+    setSelected(0);
+  };
   const [framing, setFraming] = useState(false);
   const screenWidth = useWindowDimensions().width;
   const [asking, setAsking] = useState(false);
@@ -252,7 +264,7 @@ export default function Compose() {
     const shared = takeShared();
     if (shared?.kind === "PHOTO") {
       setPicture(shared.picture);
-      setPhotoPos({ x: 50, y: 50 });
+      resetFraming();
       // أندرويد قد لا يقول الأبعاد، والإطارُ يُحسب منها.
       if (!shared.picture.width) {
         Image.getSize(shared.picture.uri, (width, height) =>
@@ -264,7 +276,7 @@ export default function Compose() {
     const shot = takeShot();
     if (shot && !shot.video) {
       setPicture({ uri: shot.uri, width: shot.width, height: shot.height, mime: shot.mime });
-      setPhotoPos({ x: 50, y: 50 });
+      resetFraming();
     }
   });
 
@@ -299,7 +311,7 @@ export default function Compose() {
     }
     setPicture(picked[0]);
     setExtras(picked.slice(1, MOMENT_PHOTOS_MAX));
-    setPhotoPos({ x: 50, y: 50 });
+    resetFraming();
   }
 
   /** حذفُ صورةٍ من المختارة: الأولى تحلّ محلّها التاليةُ. */
@@ -307,10 +319,11 @@ export default function Compose() {
     if (index === 0) {
       setPicture(extras[0] ?? null);
       setExtras((now) => now.slice(1));
-      setPhotoPos({ x: 50, y: 50 });
     } else {
       setExtras((now) => now.filter((_, at) => at !== index - 1));
     }
+    // ما ضُبط من الباقيات يبقى بمسارها، والمحرّرُ يعود إلى الأولى.
+    setSelected(0);
   }
 
   const ready =
@@ -348,6 +361,7 @@ export default function Compose() {
           photoX: mediaId ? photoPos.x : undefined,
           photoY: mediaId ? photoPos.y : undefined,
           photos: photos.length ? photos : undefined,
+          photoPositions: photos.length ? extras.map((one) => posOf(one.uri)) : undefined,
           musicUrl: kind === "MUSIC" ? musicUrl.trim() : undefined,
           poll: poll ? poll.map((option) => option.trim()).filter(Boolean) : undefined,
           pollDays: poll ? pollDays : undefined,
@@ -420,11 +434,15 @@ export default function Compose() {
               {picture ? (
                 <View style={{ marginBottom: 10 }}>
                   <PhotoFrameEditor
-                    uri={picture.uri}
-                    width={picture.width}
-                    height={picture.height}
-                    value={photoPos}
-                    onChange={setPhotoPos}
+                    key={editing?.uri ?? picture.uri}
+                    uri={(editing ?? picture).uri}
+                    width={(editing ?? picture).width}
+                    height={(editing ?? picture).height}
+                    value={posOf((editing ?? picture).uri)}
+                    onChange={(value) => {
+                      const uri = (editing ?? picture).uri;
+                      setPositions((now) => ({ ...now, [uri]: value }));
+                    }}
                     frameWidth={screenWidth - 40}
                     onActive={setFraming}
                   />
@@ -446,14 +464,23 @@ export default function Compose() {
                 </View>
               )}
               {DEV_FEATURES && picture ? (
-                // المختارةُ صفٌّ صغير: الأولى هي ما يُضبط فوق، والزائدُ يضيف حتى خمس (القاعدة ٣٤٣).
+                // المختارةُ صفٌّ صغير: الضغطُ على أيّها يضعها فوق لتُضبط (القاعدة ٣٤٨)،
+                // والزائدُ يضيف حتى خمس (القاعدة ٣٤٣).
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 10 }}>
                   {[picture, ...extras].map((one, index) => (
                     <View key={`${one.uri}-${index}`} style={{ width: 62, height: 62 }}>
-                      <Image
-                        source={{ uri: one.uri }}
-                        style={{ width: 62, height: 62, borderRadius: 12, borderWidth: index === 0 ? 2 : 0, borderColor: colors.clay }}
-                      />
+                      <Pressable accessibilityLabel={`اضبط الصورة ${ar(index + 1)}`} onPress={() => setSelected(index)}>
+                        <Image
+                          source={{ uri: one.uri }}
+                          style={{
+                            width: 62,
+                            height: 62,
+                            borderRadius: 12,
+                            borderWidth: one.uri === editing?.uri ? 2.5 : 0,
+                            borderColor: colors.clay,
+                          }}
+                        />
+                      </Pressable>
                       <Pressable
                         accessibilityLabel="احذف الصورة"
                         onPress={() => dropPicture(index)}

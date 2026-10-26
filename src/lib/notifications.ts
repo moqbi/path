@@ -148,6 +148,8 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
       where: {
         hidden: false,
         earnedAfterDays: null,
+        // ثوبُ القاعة لا يُخبَر عنه بعد: يُباع في نسخة التطوير وحدها (القاعدة ٣٤٨).
+        kind: { not: "GALLERY" },
         /*
           ولا ما سبق الحساب: من سجّل اليوم لم يفُته شيء، وخبرُ صنفٍ رُفع قبل
           وجوده لا يُقرأ «جديداً» عنده.

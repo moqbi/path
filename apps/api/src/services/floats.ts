@@ -65,9 +65,9 @@ export async function floats(userId: string, target: Target) {
     }),
   ]);
   return {
-    reactions: reactions
-      .filter((row) => row.userId !== userId)
-      .map((row) => ({ kind: row.reaction!, at: row.reactedAt })),
+    // وتفاعلُ القارئ نفسه يطير له أيضاً — **بقرار المالك**: كان يُحذف فلا يرى صديقٌ تفاعل
+    // شيئاً يطير، فقُرئ أنّ الطيرانَ لصاحبها وحده.
+    reactions: reactions.map((row) => ({ kind: row.reaction!, at: row.reactedAt })),
     comments: comments.reverse().map((row) => ({
       id: row.id,
       body: row.body,

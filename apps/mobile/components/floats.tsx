@@ -52,8 +52,9 @@ export function FloatLayer({ target, top = 0.22, bottom = 0.78 }: { target: Targ
   useEffect(() => {
     if (!data) return;
     const fresh: Flyer[] = [];
-    for (const [at, row] of data.reactions.entries()) {
-      const key = `r-${row.kind}-${row.at}-${at}`;
+    for (const row of data.reactions) {
+      // بالنوع والوقت لا بالترتيب: جلبٌ جديد يزيح الترتيبَ فيُعاد ما طار.
+      const key = `r-${row.kind}-${row.at}`;
       if (!seen.current.has(key)) fresh.push({ key, kind: "face", face: row.kind });
     }
     for (const row of data.comments) {
@@ -233,7 +234,7 @@ export function CommentField({
           onFocus={onFocus}
           onBlur={onBlur}
           maxLength={STATUS_COMMENT_MAX}
-          placeholder="علّق بدون اسم…"
+          placeholder="اكتب تعليق…"
           placeholderTextColor="rgba(255,255,255,.5)"
           returnKeyType="send"
           onSubmitEditing={() => void send()}

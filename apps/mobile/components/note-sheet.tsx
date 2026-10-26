@@ -78,7 +78,11 @@ function Body({ note }: { note: StatusNote }) {
   const react = useMutation({
     mutationFn: (kind: string | null) =>
       api(`/v1/notes/${note.id}/react`, { method: "POST", body: JSON.stringify({ kind }) }),
-    onSettled: () => void client.invalidateQueries({ queryKey: noteKeys.all }),
+    onSettled: () => {
+      void client.invalidateQueries({ queryKey: noteKeys.all });
+      // وجهُك يطير لحظتَها لا بعد ربع دقيقة (القاعدة ٣٤٩).
+      void client.invalidateQueries({ queryKey: ["floats", "note", note.id] });
+    },
   });
 
   const drop = useMutation({
@@ -198,7 +202,7 @@ function Body({ note }: { note: StatusNote }) {
           </View>
         ) : null}
       </SheetScrollView>
-      {DEV_FEATURES ? <FloatLayer target={{ kind: "note", id: note.id }} top={0.08} bottom={0.92} /> : null}
+      {DEV_FEATURES ? <FloatLayer target={{ kind: "note", id: note.id }} top={0} bottom={0.42} /> : null}
       </View>
     </GlassSheet>
   );

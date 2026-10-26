@@ -19,7 +19,8 @@ import { broadcast } from "./push";
  */
 export async function announceStore(): Promise<number> {
   const fresh = await prisma.storeItem.findMany({
-    where: { hidden: false, announcedAt: null },
+    // وثوبُ القاعة يُعلَن يومَ يُتاح للجميع (القاعدة ٣٤٨) — لا جرسَ لما لا يراه أكثرُ الناس.
+    where: { hidden: false, announcedAt: null, kind: { not: "GALLERY" } },
     select: { id: true, name: true, limited: true },
     orderBy: { createdAt: "asc" },
     take: 20,
