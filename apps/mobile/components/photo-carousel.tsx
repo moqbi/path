@@ -5,6 +5,7 @@ import { viewPhoto } from "./photo-viewer";
 import { PHOTO_RATIO } from "./photo-frame";
 import { Text } from "./type";
 import { ar } from "../lib/format";
+import { lockScroll } from "../lib/scroll-lock";
 
 /**
  * صورُ اللحظة تُقلَّب يميناً ويساراً (القاعدة ٣٤٣) — **بقرار المالك**، خمسٌ على الأكثر.
@@ -67,6 +68,8 @@ export function PhotoCarousel({
       onPanResponderGrant: () => {
         // سحبةٌ تبدأ والنابضُ ما زال يجري: تبدأ من حيث هو لا تقفز إلى آخره.
         pos.stopAnimation();
+        // والقائمةُ تقف ما دامت الصورُ تُسحب: الصورُ وحدها تتحرّك لا الصفحة.
+        lockScroll(true);
       },
       onPanResponderMove: (_, g) => {
         if (!now.width) return;
@@ -76,12 +79,16 @@ export function PhotoCarousel({
         pos.setValue(edge);
       },
       onPanResponderRelease: (_, g) => {
+        lockScroll(false);
         const step = g.dx / Math.max(1, now.width);
         const flick = Math.abs(g.vx) > 0.35 ? Math.sign(g.vx) : 0;
         const moved = Math.abs(step) > 0.25 ? Math.sign(step) : flick;
         go(now.index + moved);
       },
-      onPanResponderTerminate: () => go(now.index),
+      onPanResponderTerminate: () => {
+        lockScroll(false);
+        go(now.index);
+      },
     }),
   ).current;
 

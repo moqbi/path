@@ -27,6 +27,7 @@ import { tourSignal } from "../../components/tour";
 import { useSession } from "../../lib/session";
 import { useStatusNotes } from "../../lib/status-notes";
 import { colors } from "../../theme/tokens";
+import { useScrollLock } from "../../lib/scroll-lock";
 
 type Person = {
   id: string;
@@ -180,6 +181,8 @@ function Profile() {
 
   // السحبُ من أعلى يمدّ الغلاف ويُعيد جلب الملف ولحظاته — كاللحظات و«أنا».
   const { y: scrollY, onScroll } = useStretch();
+  // صورُ اللحظة تُسحب أفقياً: القائمةُ تقف ما دامت (`lib/scroll-lock.ts`).
+  const scrollLocked = useScrollLock((state) => state.locked);
   const [refreshing, setRefreshing] = useState(false);
   const reload = () => {
     playRefresh();
@@ -214,6 +217,7 @@ function Profile() {
         <View style={{ flex: 1 }}>
         <Animated.FlatList
           onScroll={onScroll}
+          scrollEnabled={!scrollLocked}
           onScrollBeginDrag={scrolled}
           // حقلُ التعليق داخل القائمة: آبل تُزيح المحتوى بقدر الكيبورد وتُظهر
           // الحقلَ المركَّز فوقه، فيرى الكاتبُ ما يكتب.

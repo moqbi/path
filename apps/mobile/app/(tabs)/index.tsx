@@ -31,6 +31,7 @@ import { NameTag } from "../../components/name-tag";
 import { colors } from "../../theme/tokens";
 import { DEV_FEATURES } from "../../lib/dev-features";
 import { SCROLL_CLOCK_H, ScrollClock, clockMinutes } from "../../components/scroll-clock";
+import { useScrollLock } from "../../lib/scroll-lock";
 
 const COVER = COVER_HEIGHT;
 
@@ -151,6 +152,8 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
     نزل في يومٍ طويل يعرف أين هو منه بلا أن يقرأ بطاقةً بطاقة.
   */
   const list = useRef<SectionList<Moment>>(null);
+  // صورُ اللحظة تُسحب أفقياً: القائمةُ تقف ما دامت (`lib/scroll-lock.ts`).
+  const scrollLocked = useScrollLock((state) => state.locked);
   const [clock, setClock] = useState<{ text: string; minutes: number } | null>(null);
   const clockFade = useRef(new Animated.Value(0)).current;
   // ساعةٌ تناظريّة تنزلق مع موضع التمرير (القاعدة ٣١٢) — في نسخة التطوير وحدها.
@@ -589,6 +592,7 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
         <Animated.View style={{ flex: 1, transform: [{ translateY: pull }] }}>
         <SectionList
           ref={list}
+          scrollEnabled={!scrollLocked}
           // حقلُ التعليق داخل القائمة: آبل تُزيح المحتوى بقدر الكيبورد وتُظهر
           // الحقلَ المركَّز فوقه، فيرى الكاتبُ ما يكتب.
           automaticallyAdjustKeyboardInsets

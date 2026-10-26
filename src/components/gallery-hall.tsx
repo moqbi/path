@@ -44,7 +44,7 @@ const FLOOR_TILE = 160;
 const EASE = "cubic-bezier(.2,.8,.2,1)";
 /** ارتفاعُ السقف وإفريزه، ومنه تتدلّى المصابيح؛ ثمّ لافتةُ الشهر، والأرضيّة. */
 const CROWN = 16;
-const HEAD_TOP = 64;
+const HEAD_TOP = 76;
 const FLOOR_H = 116;
 
 /** إطارُ الثوب المرسوم إن رُفع — يقرؤه كلُّ `PhotoFrame` بلا تمريرٍ في كلّ طبقة. */
@@ -332,7 +332,7 @@ export function GalleryHall({
           </div>
 
           {/* أعلى الجدار: الرجوعُ و«عرض اللحظات» يميناً، والعلامةُ و«آثار» يساراً. */}
-          <div className="absolute inset-x-4 top-2 z-20 flex items-start justify-between" onPointerDown={(event) => event.stopPropagation()}>
+          <div className="absolute inset-x-4 top-5 z-20 flex items-start justify-between" onPointerDown={(event) => event.stopPropagation()}>
             {/* الرجوعُ و«عرض اللحظات» على خطّ «آثار» والعلامة. */}
             <div className="mt-[9px] flex items-center gap-2">
               <Link
@@ -363,7 +363,7 @@ export function GalleryHall({
                 </span>
                 <AthrMark size={28} />
               </span>
-              <span className="latin -mt-1 text-[8.5px] font-bold tracking-[4.5px]" style={{ color: skin.sign.muted }}>
+              <span className="latin -mt-1 text-[8.5px] font-bold tracking-[4.5px]" style={{ color: skin.sign.ink }}>
                 ATHAR
               </span>
             </div>
