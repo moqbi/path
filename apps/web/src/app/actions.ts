@@ -415,7 +415,7 @@ export async function deleteCategory(categoryId: string): Promise<void> {
 const digits = (raw: FormDataEntryValue | null) =>
   Number(String(raw ?? "").replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))).trim());
 
-const COLLECTION_KINDS = ["CHARM", "FRAME", "THEME"] as const;
+const COLLECTION_KINDS = ["CHARM", "FRAME", "THEME", "GALLERY"] as const;
 
 /**
  * مجموعةٌ داخل نوعٍ واحد — **بقرار المالك**: «مجموعة الورود» تشارمز تُعرض
