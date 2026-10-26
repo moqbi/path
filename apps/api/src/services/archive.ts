@@ -37,19 +37,49 @@ async function since(userId: string): Promise<Date | null> {
   return me.isPlus ? null : new Date(Date.now() - FREE_ARCHIVE_DAYS * 86_400_000);
 }
 
+/**
+ * ما تحمله لوحةُ المعرض فوق سطر الأرشيف (القاعدة ٣٤٩): الصورُ بعد الأولى بمواضعها لتُرسم
+ * مكدّسةً، وصدى اللحظة — عددُ التفاعلات والتعليقات وأحدثُ من تفاعل بوجهه ونوع تفاعله.
+ */
+const HALL = {
+  ...select,
+  photos: { select: { mediaId: true, x: true, y: true }, orderBy: { position: "asc" } },
+  reactions: {
+    select: { kind: true, emoji: true, userId: true, user: { select: { name: true, avatarMediaId: true } } },
+    orderBy: { createdAt: "desc" },
+    take: 12,
+  },
+  _count: { select: { reactions: true, comments: true } },
+} as const;
+
 /** صفحةٌ من الأرشيف، الأحدثُ أوّلاً، بمؤشّرٍ كالخطّ الزمنيّ. */
 export async function archive(userId: string, options: { cursor?: string; limit: number }) {
   const from = await since(userId);
-  const rows = await prisma.moment.findMany({
+  const [found, blocked] = await Promise.all([prisma.moment.findMany({
     where: {
       authorId: userId,
       kind: { in: [...KINDS] },
       ...(from ? { createdAt: { gte: from } } : {}),
     },
-    select,
+    select: HALL,
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: options.limit + 1,
     ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
+  }), blockedWith(userId)]);
+  // المحجوبُ لا يُعدّ ولا يُرى وجهُه (القاعدة ٢٥٩)، والحقولُ مسطّحةٌ فيقرؤها الجوّالُ القديم كما كانت.
+  const hidden_ = new Set(blocked);
+  const rows = found.map(({ photos, reactions, _count, ...rest }) => {
+    const faces = reactions.filter((one) => !hidden_.has(one.userId));
+    return {
+      ...rest,
+      morePhotos: photos.map((photo) => photo.mediaId),
+      morePhotoPos: photos.map((photo) => ({ x: photo.x, y: photo.y })),
+      echo: {
+        reactions: Math.max(0, _count.reactions - (reactions.length - faces.length)),
+        comments: _count.comments,
+        faces: faces.map((one) => ({ kind: one.kind, emoji: one.emoji, name: one.user.name, avatarMediaId: one.user.avatarMediaId })),
+      },
+    };
   });
   const more = rows.length > options.limit;
   const items = more ? rows.slice(0, options.limit) : rows;
@@ -61,11 +91,29 @@ export async function archive(userId: string, options: { cursor?: string; limit:
       })
     : 0;
 
+  // ثوبُ القاعة الملبوس (القاعدة ٣٤٨) — مع الصفحة الأولى وحدها، ومنتهي المدّة لا يُلبَس.
+  const hall = options.cursor
+    ? undefined
+    : await prisma.user
+        .findUnique({
+          where: { id: userId },
+          select: {
+            hall: {
+              select: {
+                hallSkin: true,
+                purchases: { where: { userId, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, select: { id: true } },
+              },
+            },
+          },
+        })
+        .then((row) => (row?.hall?.purchases.length ? row.hall.hallSkin : null));
+
   return {
     moments: items,
     nextCursor: more ? items.at(-1)?.id : undefined,
     limited: Boolean(from),
     hidden,
+    ...(hall !== undefined ? { hallSkin: hall } : {}),
   };
 }
 

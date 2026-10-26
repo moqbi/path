@@ -21,9 +21,12 @@ export function Photo({
   x = 50,
   y = 50,
   more = [],
+  morePos = [],
 }: {
   /** الصورُ بعد الأولى — تُقلَّب يميناً ويساراً (القاعدة ٣٤٣). */
   more?: string[];
+  /** موضعُ كلٍّ منها كما ضبطه صاحبُها (القاعدة ٣٤٨). */
+  morePos?: { x: number; y: number }[];
   mediaId: string;
   /** ارتفاعٌ ثابت؛ وبدونه يأخذ الإطارُ نسبةَ البطاقة (`PHOTO_RATIO`). */
   height?: number;
@@ -100,7 +103,7 @@ export function Photo({
                     ...(height ? { height } : { aspectRatio: PHOTO_RATIO }),
                     display: "block",
                     objectFit: "cover",
-                    objectPosition: at === 0 ? `${x}% ${y}%` : "50% 50%",
+                    objectPosition: at === 0 ? `${x}% ${y}%` : `${morePos[at - 1]?.x ?? 50}% ${morePos[at - 1]?.y ?? 50}%`,
                   }}
                 />
               </button>

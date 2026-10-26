@@ -27,6 +27,8 @@ const ITEM = {
   categoryId: true,
   collectionId: true,
   palette: true,
+  /** ثوبُ القاعة لصنف «المعرض» (القاعدة ٣٤٨). */
+  hallSkin: true,
   /** صورةُ الإعلان: بطاقةُ الحزمة في المتجر تعرضها بدل رسوم ما فيها، وبطاقةُ الإعلان كذلك. */
   promoMediaId: true,
   /** موعدُ إخفائه: الحزمةُ بمدّة عرضٍ تُعدّ محدودة (القاعدة ٢٨٤). */
@@ -63,7 +65,14 @@ const PROMO_DAYS = 14;
  * بطاقةُ الإعلان (القاعدة ٢٦٧): أحدثُ صنفٍ ظاهرٍ فعّل له المشرفُ بطاقةً بعد
  * آخر بطاقةٍ رآها صاحبُ الحساب — مرّةً لكلّ إعلان، لا مع كلّ فتح.
  */
-export async function promo(userId: string) {
+/**
+ * صنفُ «المعرض» لا يصل إلى جوّالٍ لا يعرفه (القاعدة ٣٤٨): النسخةُ المنشورة كانت سترسمه
+ * بطاقةً بتدرّجٍ في «وصل حديثاً» ولبسُه يكتبه ثيماً. فالجوّالُ الذي يعرفه يقول
+ * `x-store-kinds: gallery`، وما سواه لا يرى `GALLERY` في متجرٍ ولا إكسسوارات ولا إعلان.
+ */
+const NO_GALLERY = { kind: { not: "GALLERY" as const } };
+
+export async function promo(userId: string, gallery = false) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { promoSeenAt: true, createdAt: true },
@@ -79,7 +88,7 @@ export async function promo(userId: string) {
     floor,
   );
   const item = await prisma.storeItem.findFirst({
-    where: { hidden: false, promoAt: { gt: after } },
+    where: { hidden: false, promoAt: { gt: after }, ...(gallery ? {} : NO_GALLERY) },
     orderBy: { promoAt: "desc" },
     select: { ...ITEM, promoText: true, promoAt: true },
   });
@@ -93,8 +102,8 @@ export async function promo(userId: string) {
  * عند الفتح. والجوّالُ القديم لا يسأل عن المجموعات (`packs`) فيبقى على الصنف كما كان.
  * والمجموعةُ بلا ملصقٍ أو مخفيّة لا تُعلَن، ومن يملكها يُقال له «عندك».
  */
-export async function promoFor(userId: string, withPacks: boolean) {
-  const item = await promo(userId);
+export async function promoFor(userId: string, withPacks: boolean, gallery = false) {
+  const item = await promo(userId, gallery);
   if (!withPacks) return { item, pack: null };
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -130,7 +139,7 @@ export async function promoSeen(userId: string) {
   return { ok: true };
 }
 
-export async function storefront(userId: string) {
+export async function storefront(userId: string, gallery = false) {
   const [categories, collections, every, purchases, user, bundled] = await Promise.all([
     prisma.storeCategory.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),
     prisma.storeCollection.findMany({
@@ -138,7 +147,11 @@ export async function storefront(userId: string) {
       select: { id: true, name: true, kind: true },
     }),
     // والمخفيّ لا يُعرض: يُرفع ويُنزل بلا حذفٍ يُضيع ما اشتراه أحد.
-    prisma.storeItem.findMany({ where: { hidden: false }, orderBy: { sortOrder: "asc" }, select: ITEM }),
+    prisma.storeItem.findMany({
+      where: { hidden: false, ...(gallery ? {} : NO_GALLERY) },
+      orderBy: { sortOrder: "asc" },
+      select: ITEM,
+    }),
     prisma.purchase.findMany({ where: { userId, ...ACTIVE() }, select: { itemId: true, expiresAt: true } }),
     prisma.user.findUnique({
       where: { id: userId },
@@ -149,6 +162,7 @@ export async function storefront(userId: string) {
         frameId: true,
         backgroundId: true,
         charmId: true,
+        hallId: true,
       },
     }),
     prisma.bundleItem.findMany({ select: { itemId: true }, distinct: ["itemId"] }),
@@ -168,7 +182,7 @@ export async function storefront(userId: string) {
     purchases.filter((row) => row.expiresAt).map((row) => [row.itemId, row.expiresAt!.toISOString()]),
   );
   // والحزمُ لها صفّاها («الحزم» و«حزم محدودة»)، فلا تُعاد في «وصل حديثاً» — **بقرار المالك**.
-  const fresh = items.filter((item) => item.kind !== "BUNDLE").sort((a, b) => +b.createdAt - +a.createdAt).slice(0, FRESH);
+  const fresh = items.filter((item) => item.kind !== "BUNDLE" && item.kind !== "GALLERY").sort((a, b) => +b.createdAt - +a.createdAt).slice(0, FRESH);
   const themes = items.filter(
     (item) => (item.kind === "THEME" || item.kind === "BACKGROUND") && !item.limited,
   );
@@ -180,6 +194,8 @@ export async function storefront(userId: string) {
   // والتشارمز والإطاراتُ صفّان في «المميز» — **بقرار المالك**.
   const charms = items.filter((item) => item.kind === "CHARM" && !item.limited);
   const frames = items.filter((item) => item.kind === "FRAME" && !item.limited);
+  // وأثوابُ القاعة شريحةٌ وحدها «المعرض» (القاعدة ٣٤٨) — لا تدخل «وصل حديثاً»: تُرى في شريحتها.
+  const halls = items.filter((item) => item.kind === "GALLERY");
 
   /*
     المجموعةُ المختلطة (القاعدة ١٩٧) تُرسَل مرّةً لكل نوعٍ فيها، بالمعرّف نفسه
@@ -207,18 +223,18 @@ export async function storefront(userId: string) {
     items,
     owned,
     expires,
-    rows: { fresh, charms, frames, themes, bundles, limited },
+    rows: { fresh, charms, frames, themes, bundles, limited, ...(gallery ? { halls } : {}) },
     coins: user?.coins ?? 0,
     isPlus: user?.isPlus ?? false,
     daysHere: user ? Math.floor((Date.now() - +user.createdAt) / 86_400_000) : 0,
-    equipped: { frame: user?.frameId, theme: user?.backgroundId, charm: user?.charmId },
+    equipped: { frame: user?.frameId, theme: user?.backgroundId, charm: user?.charmId, hall: user?.hallId },
   };
 }
 
 /** ما يملكه صاحب الحساب — منه تُلبَس الإكسسوارات. */
-export async function myItems(userId: string) {
+export async function myItems(userId: string, gallery = false) {
   const rows = await prisma.purchase.findMany({
-    where: { userId, ...ACTIVE() },
+    where: { userId, ...ACTIVE(), ...(gallery ? {} : { item: NO_GALLERY }) },
     orderBy: { createdAt: "desc" },
     select: {
       createdAt: true,
@@ -447,7 +463,9 @@ export async function equip(userId: string, itemId: string) {
       ? { frameId: itemId }
       : purchase.item.kind === "CHARM"
         ? { charmId: itemId }
-        : { backgroundId: itemId };
+        : purchase.item.kind === "GALLERY"
+          ? { hallId: itemId }
+          : { backgroundId: itemId };
 
   /*
     وغلافُ الثيم لا يُنسخ فوق غلاف لابسه — **بقرار المالك** (القاعدة ٢٨٨): يُرسم
@@ -458,7 +476,7 @@ export async function equip(userId: string, itemId: string) {
   return { ok: true };
 }
 
-export async function unequip(userId: string, kind: "FRAME" | "BACKGROUND" | "CHARM") {
+export async function unequip(userId: string, kind: "FRAME" | "BACKGROUND" | "CHARM" | "GALLERY") {
   await prisma.user.update({
     where: { id: userId },
     data:
@@ -466,7 +484,9 @@ export async function unequip(userId: string, kind: "FRAME" | "BACKGROUND" | "CH
         ? { frameId: null }
         : kind === "CHARM"
           ? { charmId: null }
-          : { backgroundId: null },
+          : kind === "GALLERY"
+            ? { hallId: null }
+            : { backgroundId: null },
   });
   return { ok: true };
 }
@@ -549,12 +569,13 @@ export async function expireRentals(): Promise<number> {
   });
   let stripped = 0;
   for (const row of rows) {
-    const [a, b, c] = await prisma.$transaction([
+    const [a, b, c, d] = await prisma.$transaction([
       prisma.user.updateMany({ where: { id: row.userId, frameId: row.itemId }, data: { frameId: null } }),
       prisma.user.updateMany({ where: { id: row.userId, charmId: row.itemId }, data: { charmId: null } }),
       prisma.user.updateMany({ where: { id: row.userId, backgroundId: row.itemId }, data: { backgroundId: null } }),
+      prisma.user.updateMany({ where: { id: row.userId, hallId: row.itemId }, data: { hallId: null } }),
     ]);
-    stripped += a.count + b.count + c.count;
+    stripped += a.count + b.count + c.count + d.count;
 
     /*
       وغلافُ الثيم يذهب مع مدّته — **بقرار المالك** (القاعدة ١٩٣): ما جاء من

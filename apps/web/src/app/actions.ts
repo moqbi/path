@@ -16,7 +16,7 @@ import { clear, clientIp, hit, TOO_MANY } from "@/lib/rate-limit";
 import { SUSPEND_HOURS } from "@/lib/suspend";
 import { isPlusDays, PLUS_COINS, PLUS_LABEL } from "@/lib/plus";
 import { SITE_TEXT, type SiteKey } from "@/lib/site";
-import { ALL_COUNTRIES, COUNTRIES } from "@athar/shared";
+import { ALL_COUNTRIES, COUNTRIES, hallFlatFrom, hallSkinOf } from "@athar/shared";
 
 /*
   إجراءات اللوحة، منقولةٌ كما هي من `src/app/actions.ts` في الويب الحالي:
@@ -148,8 +148,18 @@ function readPalette(formData: FormData): string | null {
   return JSON.stringify(out);
 }
 
+/** ثوبُ القاعة من نموذجه (القاعدة ٣٤٨) — لصنف «المعرض» وحده، وما سواه بلا ثوب. */
+function readHall(formData: FormData, kind: string): string | null {
+  return kind === "GALLERY" ? hallFlatFrom((key) => (formData.get(key) as string | null) ?? null) : null;
+}
+
 /** الثيمُ بألوانٍ يُرسم من ألوانه، فلا يُضبط التدرّجُ بيدٍ ثانيةً (`paletteSpec`). */
-function specFor(kind: string, palette: string | null, spec: string): string {
+function specFor(kind: string, palette: string | null, spec: string, hall?: string | null): string {
+  // وثوبُ القاعة يُرسم في المتجر من جداره وأرضيّته وإطاره: الصورةُ المصغّرةُ تُشبهه.
+  if (kind === "GALLERY" && hall) {
+    const skin = hallSkinOf(hall);
+    return `linear-gradient(180deg, ${skin.ceiling} 0 14%, ${skin.wall} 14% 70%, ${skin.photo.frame} 70% 74%, ${skin.floor} 74%)`;
+  }
   const colors = kind === "THEME" ? parsePalette(palette) : null;
   return colors ? paletteSpec(colors) : spec;
 }
@@ -158,7 +168,7 @@ function specFor(kind: string, palette: string | null, spec: string): string {
 export type AdminResult = { ok?: string; error?: string } | null;
 
 const storeItemInput = z.object({
-  kind: z.enum(["FRAME", "BACKGROUND", "THEME", "CHARM", "BUNDLE"]),
+  kind: z.enum(["FRAME", "BACKGROUND", "THEME", "CHARM", "BUNDLE", "GALLERY"]),
   name: z.string().trim().min(1, "اكتب الاسم").max(40),
   priceCoins: z.coerce.number().int().min(0).max(1_000_000),
   spec: z.string().trim().min(1, "اكتب تدرّج CSS").max(1000),
@@ -229,6 +239,7 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
   const { kind, name, priceCoins, spec, plusOnly, earnedAfterDays, categoryId, limited, hidden } =
     parsed.data;
   const palette = readPalette(formData);
+  const hallSkin = readHall(formData, kind);
   const collection = await readCollection(formData, kind);
   if (collection.error) return { error: collection.error };
 
@@ -244,13 +255,14 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
       name,
       // الأسعار تُدخَل بالريال وتُخزَّن بالهللات، فلا تدخل كسور عشرية القاعدة.
       priceCoins,
-      spec: specFor(kind, palette, spec),
+      spec: specFor(kind, palette, spec, hallSkin),
       plusOnly,
       earnedAfterDays: earnedAfterDays && earnedAfterDays > 0 ? earnedAfterDays : null,
       categoryId: categoryId || null,
       limited,
       hidden,
       palette,
+      hallSkin,
       ...readPromo(formData, null),
       collectionId: collection.id ?? null,
       sortOrder: 0,
@@ -297,6 +309,7 @@ export async function updateStoreItem(
     sortOrder,
   } = parsed.data;
   const palette = readPalette(formData);
+  const hallSkin = readHall(formData, kind);
   const collection = await readCollection(formData, kind);
   if (collection.error) return { error: collection.error };
   const was = await prisma.storeItem.findUnique({ where: { id: itemId }, select: { promoAt: true } });
@@ -307,13 +320,14 @@ export async function updateStoreItem(
       kind,
       name,
       priceCoins,
-      spec: specFor(kind, palette, spec),
+      spec: specFor(kind, palette, spec, hallSkin),
       plusOnly,
       earnedAfterDays: earnedAfterDays && earnedAfterDays > 0 ? earnedAfterDays : null,
       categoryId: categoryId || null,
       limited,
       hidden,
       palette,
+      hallSkin,
       collectionId: collection.id,
       sortOrder: sortOrder ?? undefined,
     },

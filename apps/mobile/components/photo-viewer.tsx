@@ -17,14 +17,25 @@ import { ar } from "../lib/format";
  * بدل أن تُغلق. فالنافذة تُركَّب مرّةً في الجذر (`_layout.tsx`)، ولا
  * جدَّ لها يلتقط شيئاً، والبطاقة تطلبها بـ`viewPhoto`.
  */
-const useViewer = create<{ mediaId: string | null; list: string[] }>(() => ({ mediaId: null, list: [] }));
+const useViewer = create<{ mediaId: string | null; list: string[]; last: string | null; lastList: string[] }>(() => ({
+  mediaId: null,
+  list: [],
+  last: null,
+  lastList: [],
+}));
 
 /**
  * يفتح صورةً — ومعها `list` صورُ لحظتها كلُّها فتُقلَّب يميناً ويساراً وهي مفتوحة
  * (القاعدة ٣٤٥): من فتح الثانية لا يُغلق ليفتح الثالثة.
  */
 export const viewPhoto = (mediaId: string | null, list: string[] = []) =>
-  useViewer.setState({ mediaId, list: mediaId && list.includes(mediaId) ? list : [] });
+  useViewer.setState((state) =>
+    mediaId
+      ? { mediaId, list: list.includes(mediaId) ? list : [] }
+      : // الإغلاقُ يُبقي ما كان معروضاً حتى تذوب النافذة: كانت الصورةُ تُمحى قبل أن يكتمل
+        // ذوبانُها فيرمش التطبيقُ لحظةَ الإغلاق.
+        { mediaId: null, list: [], last: state.mediaId ?? state.last, lastList: state.mediaId ? state.list : state.lastList },
+  );
 
 /** المسافة التي تُغلق بعدها السحبةُ الصورة. */
 const DISMISS = 90;
@@ -37,8 +48,9 @@ const spread = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
 const middle = (a: Point, b: Point) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
 
 export function PhotoViewer() {
-  const mediaId = useViewer((state) => state.mediaId);
-  const list = useViewer((state) => state.list);
+  const open = useViewer((state) => state.mediaId !== null);
+  const mediaId = useViewer((state) => state.mediaId ?? state.last);
+  const list = useViewer((state) => (state.mediaId ? state.list : state.lastList));
   const index = mediaId ? list.indexOf(mediaId) : -1;
   /*
     الحافّةُ العليا من مقاييس الجهاز حين يغيب السياق: النافذةُ تُركَّب في
@@ -72,6 +84,17 @@ export function PhotoViewer() {
   useLayoutEffect(() => {
     if (index >= 0) page.setValue(index * screen.width);
   }, [mediaId]); // eslint-disable-line react-hooks/exhaustive-deps
+  /*
+    وكلُّ فتحٍ يبدأ من الصفر: السحبُ والتقريبُ وموضعُ الشريط. كانت قيمُ الإغلاق السابق
+    — صورةٌ سُحبت إلى أسفل الشاشة، أو شريطٌ على صورةٍ أخرى — تبقى للفتح التالي فتُفتح
+    الصورةُ خارج الشاشة سوداء. والإغلاقُ لا يمسّها: تذوب النافذةُ على ما هي عليه.
+  */
+  useLayoutEffect(() => {
+    if (!open) return;
+    drag.setValue(0);
+    apply(1, 0, 0);
+    page.setValue(Math.max(0, index) * screen.width);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const area = { width: screen.width, height: screen.height - insets.top - insets.bottom };
 
   /*
@@ -118,8 +141,6 @@ export function PhotoViewer() {
   const close = () => {
     if (tapTimer.current) clearTimeout(tapTimer.current);
     viewPhoto(null);
-    drag.setValue(0);
-    apply(1, 0, 0);
   };
 
   /** نقرةٌ تُغلق، ونقرتان تقرّبان حيث نُقر أو تُعيدان الصورة. */
@@ -261,7 +282,7 @@ export function PhotoViewer() {
   const fade = drag.interpolate({ inputRange: [0, 300], outputRange: [0.96, 0.3], extrapolate: "clamp" });
 
   return (
-    <Modal visible={Boolean(mediaId)} transparent animationType="fade" onRequestClose={close}>
+    <Modal visible={open} transparent animationType="fade" onRequestClose={close}>
       <Animated.View
         {...pan.panHandlers}
         style={{ flex: 1, backgroundColor: "rgb(6,12,18)", opacity: fade }}

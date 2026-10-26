@@ -232,7 +232,9 @@ export default function StoryViewer() {
     client.setQueryData<{ stories: Story[] }>(storiesQuery(id).queryKey, (old) =>
       old ? { stories: old.stories.map((item) => (item.id === story.id ? { ...item, myReaction: next } : item)) } : old,
     );
-    void api(`/v1/stories/${story.id}/react`, { method: "POST", body: JSON.stringify({ kind: next }) }).catch(() => {});
+    void api(`/v1/stories/${story.id}/react`, { method: "POST", body: JSON.stringify({ kind: next }) })
+      .then(() => client.invalidateQueries({ queryKey: ["floats", "story", story.id] }))
+      .catch(() => {});
     if (!next) return;
     setBurst({ face: next, key: Date.now() });
     fly.setValue(0);

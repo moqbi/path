@@ -223,7 +223,15 @@ export async function createMoment(userId: string, input: MomentInput) {
       mediaId,
       photoX: mediaId ? (input.photoX ?? null) : null,
       photoY: mediaId ? (input.photoY ?? null) : null,
-      photos: extra.length ? { create: extra.map((id, index) => ({ mediaId: id, position: index + 1 })) } : undefined,
+      photos: extra.length
+        ? {
+            create: extra.map((id, index) => {
+              // الموضعُ بترتيب ما أُرسل لا بعد طرح المكرّر (القاعدة ٣٤٨).
+              const pos = input.photoPositions?.[(input.photos ?? []).indexOf(id)];
+              return { mediaId: id, position: index + 1, x: pos?.x ?? 50, y: pos?.y ?? 50 };
+            }),
+          }
+        : undefined,
       lat: where.lat,
       lng: where.lng,
       placeName,

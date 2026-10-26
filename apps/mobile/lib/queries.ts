@@ -57,6 +57,8 @@ export type Moment = {
   mediaId: string | null;
   /** الصورُ بعد الأولى (القاعدة ٣٤٣) — خادمٌ قديم لا يرسلها. */
   morePhotos?: string[];
+  /** موضعُ كلٍّ منها (القاعدة ٣٤٨) — خادمٌ قديم لا يرسله فالوسط. */
+  morePhotoPos?: { x: number; y: number }[];
   /** قفلُ التعليقات بيد صاحبها — اختياريٌّ لخادمٍ أقدم لا يرسله. */
   commentsLocked?: boolean;
   /** عدّلها صاحبُها (القاعدة ٣١٩) — خادمٌ قديم لا يرسله. */
@@ -202,7 +204,7 @@ export const useUnreadDm = () =>
 
 export type StoreItem = {
   id: string;
-  kind: "FRAME" | "BACKGROUND" | "THEME" | "CHARM" | "BUNDLE";
+  kind: "FRAME" | "BACKGROUND" | "THEME" | "CHARM" | "BUNDLE" | "GALLERY";
   name: string;
   priceCoins: number;
   spec: string;
@@ -239,6 +241,8 @@ export const useStore = () =>
           fresh: StoreItem[];
           charms?: StoreItem[];
           frames?: StoreItem[];
+          /** أثوابُ قاعة المعرض (القاعدة ٣٤٨) — لمن يقول `x-store-kinds: gallery` وحده. */
+          halls?: StoreItem[];
           themes: StoreItem[];
           bundles: StoreItem[];
           limited: StoreItem[];
@@ -246,7 +250,7 @@ export const useStore = () =>
         coins: number;
         isPlus: boolean;
         daysHere: number;
-        equipped: { frame: string | null; theme: string | null; charm: string | null };
+        equipped: { frame: string | null; theme: string | null; charm: string | null; hall?: string | null };
       }>("/v1/store"),
   });
 

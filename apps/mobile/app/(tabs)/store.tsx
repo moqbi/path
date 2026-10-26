@@ -146,6 +146,8 @@ export default function Store() {
     { slug: "kind:CHARM", name: "التشارمز", kinds: ["CHARM"], other: "التشارمز الأخرى" },
     { slug: "kind:FRAME", name: "الإطارات", kinds: ["FRAME"], other: "الإطارات الأخرى" },
     { slug: "kind:THEME", name: "الثيمات", kinds: ["THEME", "BACKGROUND"], other: "الثيمات الأخرى" },
+    // أثوابُ قاعة المعرض (القاعدة ٣٤٨) — الخادمُ لا يرسلها إلا لنسخة التطوير، والشريحةُ تظهر حين يكون فيها شيء.
+    { slug: "kind:GALLERY", name: "المعرض", kinds: ["GALLERY"], other: "أثواب المعرض" },
   ] as const;
   const STICKERS = { slug: "kind:STICKER", name: "الملصقات" };
   const stickerTab = slug === STICKERS.slug;
@@ -210,7 +212,7 @@ export default function Store() {
           */}
           {[
             { slug: "", name: "المميز" },
-            ...KINDS,
+            ...KINDS.filter((kind) => kind.slug !== "kind:GALLERY" || (data?.rows.halls?.length ?? 0) > 0),
             ...(DEV_FEATURES && packs.length > 0 ? [STICKERS] : []),
             ...(data?.categories ?? []).filter(
               // «التمائم» اسمُها القديم: خادمٌ لم تمرّ عليه هجرةُ الاسم بعدُ (القاعدة ٢٧١).

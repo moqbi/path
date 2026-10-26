@@ -106,20 +106,13 @@ export default async function CirclePage() {
           <span className="mb-0.5 flex items-center gap-1.5 text-[15px] font-bold text-ink">
             <span dir="auto" className="truncate">{member.name}</span>
             <NameTag isPlus={member.isPlus} tag={member.tag} size={10} />
-            {groupOf.get(member.id) ? (
-              <span
-                className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                style={{ background: "var(--color-chip)", color: "var(--color-muted)" }}
-              >
-                {groupOf.get(member.id)!.name}
-              </span>
-            ) : null}
           </span>
           <span
             className="block truncate text-[12px]"
             style={{ color: online(member) ? "#2f9e58" : "var(--color-faint)" }}
           >
-            {member.city ? `${member.city}  |  ${seen}` : seen}
+            {/* «المدينة | آخر ظهور | التصنيف» كالجوّال — والتصنيفُ لصاحبه وحده (القاعدة ٢٢). */}
+            {[member.city, seen, groupOf.get(member.id)?.name].filter(Boolean).join("  |  ")}
           </span>
         </span>
       </FriendRow>

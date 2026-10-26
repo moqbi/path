@@ -41,7 +41,7 @@ export default async function ProfilePage({
     }),
     // ما تملكه من المتجر — يُلبَس من هنا لا من صفحة الشراء.
     prisma.purchase.findMany({
-      where: { userId: user.id, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+      where: { userId: user.id, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }], item: { kind: { not: "GALLERY" } } },
       select: {
         item: {
           select: {

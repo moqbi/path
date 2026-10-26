@@ -83,6 +83,8 @@ enum StoreItemKind {
   CHARM
   /// حزمة: صنفٌ لا يُلبَس، شراؤه يملّك ما بداخله من أصناف.
   BUNDLE
+  /// ثوبُ قاعة المعرض (القاعدة ٣٤٨): ألوانُ الجدار والأرضيّة والإطار — يُلبَس في القاعة وحدها.
+  GALLERY
 }
 
 enum FriendshipStatus {
@@ -214,6 +216,9 @@ model User {
   frame        StoreItem? @relation("UserFrame", fields: [frameId], references: [id], onDelete: SetNull)
   background   StoreItem? @relation("UserBackground", fields: [backgroundId], references: [id], onDelete: SetNull)
   charm        StoreItem? @relation("UserCharm", fields: [charmId], references: [id], onDelete: SetNull)
+  /// ثوبُ قاعة المعرض الملبوس (القاعدة ٣٤٨) — وبلاه القاعةُ الكلاسيكية.
+  hallId       String?
+  hall         StoreItem? @relation("UserHall", fields: [hallId], references: [id], onDelete: SetNull)
 
   /// الخصوصية.
   /// تصنيفٌ يحدّ من يرى لحظاتي الجديدة افتراضياً، وآخر يحدّ من يتفاعل معي.
@@ -805,6 +810,8 @@ model StoreItem {
   /// ألوان الثيم كاملةً (JSON): الأرضية والبطاقة والحبر واللمسة والشريط.
   /// الثيم ليس خلفيةً فقط — التطبيق كلّه يلبس ألوانه.
   palette         String?
+  /// ثوبُ قاعة المعرض (JSON مسطّح — `HALL_FIELDS` في `packages/shared`) لصنف `GALLERY`.
+  hallSkin        String?
   /// أصناف حصرية لمشتركي آثار+.
   plusOnly        Boolean       @default(false)
   /// أصناف تُكتسب بالبقاء لا بالدفع (مثل إطار «سنة كاملة»).
@@ -851,6 +858,7 @@ model StoreItem {
   usersWithFrame User[]       @relation("UserFrame")
   usersWithBg    User[]       @relation("UserBackground")
   usersWithCharm User[]       @relation("UserCharm")
+  usersWithHall  User[]       @relation("UserHall")
 
   /// يُرتَّب بـ`sortOrder` ويُفلتر بـ`hidden` في كل فتحةِ متجر.
   @@index([hidden, sortOrder])
@@ -1623,6 +1631,9 @@ model MomentPhoto {
   momentId String
   mediaId  String @unique
   position Int
+  /// موضعُها في إطار البطاقة بالمئة كالأولى (`Moment.photoX/Y`) — تُضبط كلٌّ منها قبل النشر (القاعدة ٣٤٨).
+  x        Int    @default(50)
+  y        Int    @default(50)
 
   moment Moment @relation(fields: [momentId], references: [id], onDelete: Cascade)
   media  Media  @relation("MomentPhotoMedia", fields: [mediaId], references: [id], onDelete: Cascade)

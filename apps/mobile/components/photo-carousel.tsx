@@ -18,11 +18,14 @@ import { ar } from "../lib/format";
 export function PhotoCarousel({
   ids,
   position,
+  positions,
   style,
   radius = 14,
 }: {
   ids: string[];
   position?: { x: number; y: number };
+  /** موضعُ كلّ صورةٍ كما ضبطه صاحبُها (القاعدة ٣٤٨) — وبلاه الأولى بـ`position` وما بعدها الوسط. */
+  positions?: ({ x: number; y: number } | undefined)[];
   style?: StyleProp<ViewStyle>;
   radius?: number;
 }) {
@@ -81,16 +84,23 @@ export function PhotoCarousel({
                 transform: [{ translateX: Animated.multiply(Animated.add(pos, -at), width) }],
               }}
             >
-              <Pressable accessibilityLabel={`افتح الصورة ${ar(at + 1)}`} onPress={() => viewPhoto(id, ids)} style={{ flex: 1 }}>
-                <MediaImage
-                  mediaId={id}
-                  position={at === 0 ? position : undefined}
-                  style={{ width: "100%", height: "100%" }}
-                />
-              </Pressable>
+              <MediaImage
+                mediaId={id}
+                position={positions?.[at] ?? (at === 0 ? position : undefined)}
+                style={{ width: "100%", height: "100%" }}
+              />
             </Animated.View>
           ))
         : null}
+      {/*
+        ضغطةٌ واحدةٌ فوق الصفحات كلّها تفتح المعروضةَ الآن (`now.index`): كانت كلُّ صفحةٍ تحمل
+        زرَّها والصفحاتُ مكدّسةٌ في مكانٍ واحد، فتأخذ الضغطةَ غيرُ التي تُرى.
+      */}
+      <Pressable
+        accessibilityLabel={`افتح الصورة ${ar(index + 1)}`}
+        onPress={() => viewPhoto(ids[now.index] ?? ids[0], ids)}
+        style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
+      />
 
       <View pointerEvents="none" style={{ position: "absolute", top: 10, right: 10, paddingHorizontal: 8, height: 22, borderRadius: 11, justifyContent: "center", backgroundColor: "rgba(14,26,36,.55)" }}>
         <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>

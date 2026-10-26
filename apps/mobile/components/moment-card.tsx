@@ -466,6 +466,7 @@ export function MomentCard({
                   <PhotoCarousel
                     ids={[moment.mediaId, ...moment.morePhotos]}
                     position={{ x: moment.photoX ?? 50, y: moment.photoY ?? 50 }}
+                    positions={[{ x: moment.photoX ?? 50, y: moment.photoY ?? 50 }, ...(moment.morePhotoPos ?? [])]}
                     style={{ marginTop: 10 }}
                   />
                 ) : moment.mediaId ? (
@@ -497,6 +498,7 @@ export function MomentCard({
     <PhotoCarousel
       ids={[moment.mediaId, ...moment.morePhotos]}
       position={{ x: moment.photoX ?? 50, y: moment.photoY ?? 50 }}
+      positions={[{ x: moment.photoX ?? 50, y: moment.photoY ?? 50 }, ...(moment.morePhotoPos ?? [])]}
       style={{ marginTop: 12, marginHorizontal: 12, width: undefined, alignSelf: "stretch" }}
     />
   ) : moment.mediaId ? (

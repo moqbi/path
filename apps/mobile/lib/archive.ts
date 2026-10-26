@@ -12,6 +12,17 @@ export type ArchiveMoment = {
   photoX: number | null;
   photoY: number | null;
   createdAt: string;
+  /** للمعرض (القاعدة ٣٤٩) — خادمٌ قديم لا يرسلها. */
+  morePhotos?: string[];
+  morePhotoPos?: { x: number; y: number }[];
+  echo?: HallEcho;
+};
+
+/** صدى اللحظة في القاعة: كم تفاعلاً وتعليقاً، وأحدثُ من تفاعل بوجهه. */
+export type HallEcho = {
+  reactions: number;
+  comments: number;
+  faces: { kind: string; emoji: string | null; name: string; avatarMediaId: string | null }[];
 };
 
 export type ArchivePage = {
@@ -19,6 +30,8 @@ export type ArchivePage = {
   nextCursor?: string;
   limited: boolean;
   hidden: number;
+  /** ثوبُ القاعة الملبوس — مع الصفحة الأولى (القاعدة ٣٤٨). */
+  hallSkin?: string | null;
 };
 
 /** لمن كانت اللحظة الخاصّة — يُكتب في الكتاب (القاعدة ٢٥٦). */

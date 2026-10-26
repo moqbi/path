@@ -190,6 +190,8 @@ async function derive(userId: string, limit: number): Promise<Note[]> {
       where: {
         hidden: false,
         earnedAfterDays: null,
+        // ثوبُ القاعة لا يُخبَر عنه بعد: يُباع في نسخة التطوير وحدها (القاعدة ٣٤٨).
+        kind: { not: "GALLERY" },
         /*
           ولا ما سبق الحساب: من سجّل اليوم لم يفُته شيء، وخبرُ صنفٍ رُفع قبل
           وجوده لا يُقرأ «جديداً» عنده.

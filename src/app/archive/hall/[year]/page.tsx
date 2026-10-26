@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
-import { archive, FREE_ARCHIVE_DAYS } from "@/lib/archive";
+import { FREE_ARCHIVE_DAYS } from "@/lib/archive";
+import { apiAs } from "@/lib/api-bridge";
 import { canTryStickers } from "@/lib/stickers";
 import { ScreenHeader } from "@/components/ui";
 import { GalleryHall, type HallPiece } from "@/components/gallery-hall";
@@ -18,7 +19,46 @@ function riyadh(date: Date) {
   };
 }
 
-type Row = Awaited<ReturnType<typeof archive>>["moments"][number];
+/** صفحةُ `/v1/archive` كما يردّها الخادم (القاعدة ٣٤٩) — الصدى والصورُ المكدّسة وثوبُ القاعة منه. */
+type Row = {
+  id: string;
+  kind: string;
+  text: string | null;
+  placeName: string | null;
+  placeCity: string | null;
+  musicTitle: string | null;
+  musicArtist: string | null;
+  musicThumb: string | null;
+  mediaId: string | null;
+  photoX: number | null;
+  photoY: number | null;
+  createdAt: Date;
+  morePhotos?: string[];
+  morePhotoPos?: { x: number; y: number }[];
+  echo?: HallPiece["echo"];
+};
+type Page = { moments: (Omit<Row, "createdAt"> & { createdAt: string })[]; nextCursor?: string; limited: boolean; hidden: number; hallSkin?: string | null };
+
+/** لحظاتُ السنة صفحةً صفحةً من الخادم نفسه — كالجوّال، فلا تختلف لوحةٌ بين الوجهين. */
+async function loadYear(userId: string, year: number) {
+  const rows: Row[] = [];
+  let cursor: string | undefined;
+  let first: Page | null = null;
+  for (let round = 0; round < 40; round++) {
+    const page = await apiAs<Page>(userId, `/v1/archive?limit=90${cursor ? `&cursor=${cursor}` : ""}`);
+    first ??= page;
+    let older = false;
+    for (const moment of page.moments) {
+      const row = { ...moment, createdAt: new Date(moment.createdAt) };
+      const at = riyadh(row.createdAt).year;
+      if (at === year) rows.push(row);
+      else if (at < year) older = true;
+    }
+    cursor = page.nextCursor;
+    if (!cursor || older) break;
+  }
+  return { rows, limited: first?.limited ?? false, hidden: first?.hidden ?? 0, skin: first?.hallSkin ?? null };
+}
 
 function line(moment: Row): string {
   switch (moment.kind) {
@@ -47,9 +87,8 @@ export default async function HallPage({ params }: { params: Promise<{ year: str
   if (!Number.isInteger(year) || year < 2024 || year > 2100) notFound();
 
   // الأرشيفُ نفسُه بحدّه (القاعدة ٢٤٤)، ثمّ لحظاتُ السنة بتوقيت الرياض من أقدمها.
-  const page = await archive(user.id, { limit: 3000 });
-  const pieces: HallPiece[] = page.moments
-    .filter((moment) => riyadh(moment.createdAt).year === year)
+  const page = await loadYear(user.id, year);
+  const pieces: HallPiece[] = page.rows
     .reverse()
     .map((moment) => {
       const at = riyadh(moment.createdAt);
@@ -64,6 +103,9 @@ export default async function HallPage({ params }: { params: Promise<{ year: str
         placeName: moment.placeName,
         placeCity: moment.placeCity,
         musicThumb: moment.musicThumb,
+        morePhotos: moment.morePhotos ?? [],
+        morePhotoPos: moment.morePhotoPos ?? [],
+        echo: moment.echo ?? null,
         month: at.month,
         when: at.when,
       };
@@ -75,7 +117,7 @@ export default async function HallPage({ params }: { params: Promise<{ year: str
   return (
     <div className="screen">
       <ScreenHeader title={`قاعة ${ar(year)}`} back="/archive" mark />
-      <GalleryHall pieces={pieces} hidden={hidden} />
+      <GalleryHall pieces={pieces} hidden={hidden} skin={page.skin} />
     </div>
   );
 }
