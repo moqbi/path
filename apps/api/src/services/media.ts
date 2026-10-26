@@ -1,6 +1,8 @@
 import { prisma } from "@athar/db";
 import { cloudReady, deleteObjects, getObject, putObject } from "@athar/storage";
 import { randomUUID } from "node:crypto";
+import sharp from "sharp";
+import { squareCrop } from "../lib/process";
 
 /**
  * حذفٌ لا يُبقي أثراً.
@@ -81,3 +83,45 @@ export async function copyMedia(
   });
 }
 
+
+/**
+ * يقصّ صورةَ اللحظة مربّعاً بموضعها ويكتبها فوق الأصل (القاعدة ٣٦٤): الملفُّ
+ * المنشور هو ما ضبطه صاحبُه، ولا يبقى في الدلو غيرُه. المتحرّكةُ تُترك كما هي
+ * (القاعدة ٨٢)، والفشلُ يردّ `false` فتبقى الصورةُ كاملةً بموضعها ولا يسقط النشر.
+ */
+export async function squareMomentPhoto(id: string, x: number, y: number): Promise<boolean> {
+  const media = await prisma.media.findUnique({
+    where: { id },
+    select: { mime: true, key: true, bytes: true },
+  });
+  if (!media || media.mime === "image/gif" || !media.mime.startsWith("image/")) return false;
+  try {
+    let input: Uint8Array;
+    if (media.key) {
+      if (!cloudReady()) return false;
+      const answer = await getObject(media.key);
+      if (!answer.ok) return false;
+      input = new Uint8Array(await answer.arrayBuffer());
+    } else if (media.bytes) {
+      input = media.bytes;
+    } else return false;
+
+    const meta = await sharp(Buffer.from(input), { animated: true }).metadata();
+    if ((meta.pages ?? 1) > 1) return false;
+
+    const out = await squareCrop(input, x, y);
+    if (media.key) {
+      await putObject(media.key, out.bytes, out.mime);
+      await prisma.media.update({ where: { id }, data: { mime: out.mime, width: out.width, height: out.height } });
+    } else {
+      await prisma.media.update({
+        where: { id },
+        data: { mime: out.mime, bytes: Buffer.from(out.bytes), width: out.width, height: out.height },
+      });
+    }
+    return true;
+  } catch (problem) {
+    console.error("[moments] تعذّر قصّ الصورة مربّعاً", id, problem);
+    return false;
+  }
+}

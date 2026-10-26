@@ -6,7 +6,7 @@ import { reverseGeocode } from "../lib/places";
 import { isSupportedMusicUrl, resolveTrack } from "../lib/music-link";
 import { guard } from "../lib/moderation";
 import { canInteract, canSeeMoment, circleIds } from "./visibility";
-import { dropMedia } from "./media";
+import { dropMedia, squareMomentPhoto } from "./media";
 import { push } from "./push";
 import { canRunGroups } from "./groups";
 import { assertSticker, STICKER_TEXT } from "./stickers";
@@ -215,19 +215,37 @@ export async function createMoment(userId: string, input: MomentInput) {
   const placeName =
     input.kind === "PLACE" ? (where.placeName ?? where.placeCity ?? "مكان") : where.placeName;
 
+  /*
+    الصورُ مربّعةٌ مقصوصةٌ بموضعها في الملفّ (القاعدة ٣٦٤) لمن يرسل `square`،
+    فيصير الموضعُ الوسطَ. وما لم يُقصّ يبقى بموضعه يُقصّ عند العرض.
+  */
+  const squared = new Set<string>();
+  if (input.square && kind === "PHOTO" && mediaId) {
+    const jobs = [
+      { id: mediaId, x: input.photoX ?? 50, y: input.photoY ?? 50 },
+      ...extra.map((id) => {
+        const pos = input.photoPositions?.[(input.photos ?? []).indexOf(id)];
+        return { id, x: pos?.x ?? 50, y: pos?.y ?? 50 };
+      }),
+    ];
+    const done = await Promise.all(jobs.map((job) => squareMomentPhoto(job.id, job.x, job.y)));
+    jobs.forEach((job, index) => done[index] && squared.add(job.id));
+  }
+
   const moment = await prisma.moment.create({
     data: {
       authorId: userId,
       kind,
       text,
       mediaId,
-      photoX: mediaId ? (input.photoX ?? null) : null,
-      photoY: mediaId ? (input.photoY ?? null) : null,
+      photoX: mediaId ? (squared.has(mediaId) ? 50 : (input.photoX ?? null)) : null,
+      photoY: mediaId ? (squared.has(mediaId) ? 50 : (input.photoY ?? null)) : null,
       photos: extra.length
         ? {
             create: extra.map((id, index) => {
               // الموضعُ بترتيب ما أُرسل لا بعد طرح المكرّر (القاعدة ٣٤٨).
               const pos = input.photoPositions?.[(input.photos ?? []).indexOf(id)];
+              if (squared.has(id)) return { mediaId: id, position: index + 1, x: 50, y: 50 };
               return { mediaId: id, position: index + 1, x: pos?.x ?? 50, y: pos?.y ?? 50 };
             }),
           }
