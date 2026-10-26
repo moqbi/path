@@ -60,11 +60,11 @@ async function loadHall(year: number): Promise<Hall> {
 
 /** كم تُقلَّب بسحبةٍ واحدة، وكم لوحةً تُرسم حول الحاليّة. */
 const FLING_MAX = 3;
-const WINDOW = 2;
+const WINDOW = 4;
 /**
- * ما يُركَّب من اللوحات حول «المستقرّ» لا حول الحاليّة: تركيبُ لوحةٍ أو نزعُها والنابضُ يجري
- * على الخيط الأصليّ يُعيد بناءَ رسم الحركة فيرمش الجدارُ كلُّه (القاعدة ٣٥٤). فالمركّبُ يتّسع
- * لأبعد سحبةٍ ولجارتها، ويُبدَّل مركزُه بعد أن تقف الحركة.
+ * ما يُركَّب من اللوحات حول الحاليّة وحول المستقرّ معاً (القاعدة ٣٥٧): الموضعُ في Reanimated فتركيبُ
+ * لوحةٍ والحركةُ جارية لا يُرمش شيئاً، وكان المركزُ المستقرَّ وحده — وسحبةٌ تقطع الحركةَ لا تُبدّله —
+ * فيُرى الجدارُ فارغاً حتى تقف. ويتّسع لأبعد سحبةٍ وأربعٍ بعدها فتُحمَّل صورُها قبل أن تصلها العين.
  */
 const MOUNTED = FLING_MAX + WINDOW;
 /** نابضُ الانتقال: يصل ويستقرّ بلا ارتدادٍ يُرى — كـ`speed 14، bounciness 2` في `Animated`. */
@@ -284,7 +284,7 @@ export default function HallScreen() {
         <Wall skin={skin} image={images?.wall ?? null} width={width} height={wallH} pos={pos} top={insets.top} wainscot={wainscot} />
 
         {slots.map((slot, at) =>
-          Math.abs(at - settled) > MOUNTED ? null : (
+          Math.abs(at - index) > MOUNTED && Math.abs(at - settled) > MOUNTED ? null : (
             <Hung
               key={slot.key}
               pos={pos}
@@ -340,26 +340,26 @@ export default function HallScreen() {
         {/* أعلى الجدار: العلامةُ يساراً، والرجوعُ و«عرض اللحظات» يميناً. */}
         <View style={{ position: "absolute", top: insets.top + 8, left: 16, right: 16, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
           {/* الرجوعُ و«عرض اللحظات» على خطّ «آثار» والعلامة: مركزُ سطرها ١٢ + ١٦. */}
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 9 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 11 }}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="رجوع"
               onPress={() => (router.canGoBack() ? router.back() : router.replace("/me/archive" as never))}
               hitSlop={8}
-              style={{ width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: skin.placard.bg, ...SOFT }}
+              style={{ width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: skin.placard.bg, ...SOFT }}
             >
               <View style={{ transform: [{ scaleX: -1 }] }}>
-                <BackIcon size={18} color={skin.placard.ink} />
+                <BackIcon size={16} color={skin.placard.ink} />
               </View>
             </Pressable>
             {months.length ? (
               <Pressable
                 accessibilityRole="button"
                 onPress={() => setGrid(true)}
-                style={{ flexDirection: "row", alignItems: "center", gap: 6, height: 38, paddingHorizontal: 14, borderRadius: 19, backgroundColor: skin.placard.bg, ...SOFT }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 5, height: 34, paddingHorizontal: 12, borderRadius: 17, backgroundColor: skin.placard.bg, ...SOFT }}
               >
-                <GridGlyph size={15} color={skin.placard.ink} />
-                <Text style={{ color: skin.placard.ink, fontSize: 12.5, fontWeight: "800" }}>عرض اللحظات</Text>
+                <GridGlyph size={13} color={skin.placard.ink} />
+                <Text style={{ color: skin.placard.ink, fontSize: 12, fontWeight: "800" }}>عرض اللحظات</Text>
               </Pressable>
             ) : null}
           </View>
@@ -797,14 +797,10 @@ function Placard({ skin, moment, onEcho }: { skin: HallSkin; moment: ArchiveMome
         <>
           <View style={{ alignSelf: "stretch", height: 1, backgroundColor: skin.placard.muted, opacity: 0.22 }} />
           <Pressable onPress={onEcho} hitSlop={10} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <View style={{ flexDirection: "row", paddingVertical: 1 }}>
+            {/* متجاورةً لا متراكبة: كانت كلُّ واحدةٍ تغطّي حافّةَ ما قبلها فيُقرأ الوجهُ مقصوصاً. */}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
               {echo.faces.slice(0, 3).map((face, at) => (
-                <View
-                  key={at}
-                  style={{ marginStart: at ? -7 : 0, width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, borderColor: skin.placard.bg, backgroundColor: skin.placard.bg, alignItems: "center", justifyContent: "center" }}
-                >
-                  <ReactionGlyph kind={face.kind} emoji={face.emoji} size={21} />
-                </View>
+                <ReactionGlyph key={at} kind={face.kind} emoji={face.emoji} size={22} />
               ))}
             </View>
             {echo.reactions ? <Text style={{ color: skin.placard.ink, fontSize: 13, fontWeight: "800" }}>{ar(echo.reactions)}</Text> : null}
@@ -1276,6 +1272,7 @@ const DetailPiece = memo(function DetailPiece({
   const gone = useSharedValue(0);
   const drag = useSharedValue(0);
   const busy = useRef(false);
+  const sideways = useRef(false);
   // للعدّاد ونصِّ «انتهت الصور» وحدهما: نسخةٌ في React تتبع القيمة بعد أن تستقرّ.
   const [shown, setShown] = useState(0);
   const settle = useCallback((n: number) => {
@@ -1284,17 +1281,30 @@ const DetailPiece = memo(function DetailPiece({
   }, []);
   const pan = useRef(
     PanResponder.create({
-      // أفقيّةٌ وحدها: العموديّةُ لنافذة اللوحة تُسحب بها إلى أسفل.
-      onMoveShouldSetPanResponderCapture: (_, g) => Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy) * 1.2,
+      /*
+        تأخذ اللمسةَ من أوّلها (القاعدة ٣٥٧): النافذةُ تأخذها عند النزول، وما دامت لها لا يُسأل
+        أحدٌ تحتها عن الحركة بعدها — React Native يسأل آباءَ صاحب اللمسة وحدهم — فلم تكن السحبةُ
+        تصل إلى الكومة أصلاً. والعموديّةُ تُسلَّم للنافذة لتُغلق.
+      */
+      onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy) * 1.2,
-      onPanResponderTerminationRequest: () => false,
+      onPanResponderTerminationRequest: () => !sideways.current,
+      onPanResponderGrant: () => {
+        sideways.current = false;
+      },
       onPanResponderMove: (_, g) => {
+        if (!sideways.current) {
+          if (Math.abs(g.dx) < 8 || Math.abs(g.dx) < Math.abs(g.dy) * 1.2) return;
+          sideways.current = true;
+        }
         // الإطارُ الفارغ لا يتبع الإصبع: السحبةُ فيه تُعيد الكومة.
         if (busy.current || gone.value >= count) return;
         drag.value = g.dx;
       },
       onPanResponderRelease: (_, g) => {
-        if (busy.current) return;
+        const was = sideways.current;
+        sideways.current = false;
+        if (busy.current || !was) return;
         const far = Math.abs(g.dx) > w * 0.25 || Math.abs(g.vx) > 0.5;
         const side = g.dx === 0 ? Math.sign(g.vx) || 1 : Math.sign(g.dx);
         if (gone.value >= count) {
@@ -1331,6 +1341,7 @@ const DetailPiece = memo(function DetailPiece({
         });
       },
       onPanResponderTerminate: () => {
+        sideways.current = false;
         if (!busy.current) drag.value = withSpring(0, { damping: 18, stiffness: 220 });
       },
     }),
