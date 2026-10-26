@@ -6,9 +6,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Defs, LinearGradient, Polygon, RadialGradient, Rect, Stop } from "react-native-svg";
 import { Spinner } from "../../../components/spinner";
 import { Text } from "../../../components/type";
-import { ScreenHeader } from "../../../components/screen-header";
+import { AthrMark } from "../../../components/brand";
 import { MediaImage } from "../../../components/media-image";
-import { BookIcon, CloseIcon, LockIcon, MessageIcon as CommentIcon, MoonIcon, PinIcon, PlaneIcon, QuoteIcon, SparkIcon, SunIcon } from "../../../components/icons";
+import { BackIcon, BookIcon, CalendarIcon, ClockIcon, CloseIcon, LockIcon, MessageIcon as CommentIcon, MoonIcon, PinIcon, PlaneIcon, QuoteIcon, SparkIcon, SunIcon } from "../../../components/icons";
 import { api } from "../../../lib/api";
 import { useMoment } from "../../../lib/queries";
 import { ar, MONTHS, relative, timeOfDay } from "../../../lib/format";
@@ -65,27 +65,35 @@ const WALL_TILE = 220;
 const FLOOR_TILE = 160;
 /** الأرضيّةُ أقربُ إلى العين فتمرّ أسرع من الجدار: العمقُ من الفرق لا من دورانٍ ثلاثيّ. */
 const FLOOR_SPEED = 1.45;
+/** ارتفاعُ الإفريز تحت السقف بعد حافّة الشاشة، ومنه تتدلّى المصابيح. */
+const CROWN = 16;
 
-const SHADOW = { shadowColor: "#000", shadowOpacity: 0.34, shadowRadius: 12, shadowOffset: { width: 4, height: 12 }, elevation: 10 } as const;
+const SHADOW = { shadowColor: "#3A2A14", shadowOpacity: 0.3, shadowRadius: 14, shadowOffset: { width: 0, height: 12 }, elevation: 10 } as const;
 
 /**
- * قاعةُ السنة (القاعدتان ٣٤٦ و٣٥٠): لحظاتُ صاحبها لوحاتٍ **معلّقةً على جدارٍ حقيقيّ** —
- * نقشٌ يتّصل، وإفريزٌ تحت السقف، ولوحٌ خشبيّ في أسفله، وقاعدةٌ على الأرض، وفوق كلّ لوحةٍ
- * مصباحُها يسقط ضوؤه عليها. والجدارُ يمرّ مع اللوحات بسرعتها (هي عليه)، والأرضيّةُ أسرع
- * (أقربُ إلى العين) — عمقٌ بلا دورانٍ ثلاثيّ: الدورانُ كان يُقرأ دوّاراً لا جداراً، وطبقاتُه
- * تتشابك مع ما فوقها على آبل فترمش.
- * والتاليةُ في اليسار كقراءة العربية — بالإصبع: سحبةٌ تمشي بك، والضغطُ على الحاليّة يفتح
- * نافذتَها، وعلى جارتها يأتي بها. والشهرُ لافتةُ الجدار، وشريطُ الشهور في الأرضيّة يقفز.
+ * قاعةُ السنة (القاعدتان ٣٤٦ و٣٥٢): الشاشةُ كلُّها جدار — يصعد تحت شريط الحالة إلى إفريزه
+ * — وفي أعلاه العلامةُ و«آثار» يساراً، والرجوعُ و«عرض اللحظات» يميناً. ثمّ لافتةُ الشهر،
+ * ثمّ اللوحاتُ وفوق كلّ واحدةٍ مصباحٌ في السقف يسكب ضوءَه عليها، ثمّ بطاقتُها، ثمّ لوحٌ خشبيّ
+ * بحاجزه، ثمّ أرضٌ من ألواح خشب وعليها الشهور. والجدارُ يمرّ مع اللوحات بسرعتها (هي عليه)،
+ * والأرضيّةُ أسرع (أقربُ إلى العين).
+ * والتاليةُ في اليسار كقراءة العربية — بالإصبع: سحبةٌ أفقيّة تمشي بك، وعموديّةٌ تنقل شهراً،
+ * والضغطُ على الحاليّة يفتح نافذتَها، وعلى جارتها يأتي بها.
  */
 export default function HallScreen() {
   const { year: raw } = useLocalSearchParams<{ year: string }>();
   const year = Number(raw);
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const W = Math.min(230, Math.round(width * 0.58));
-  const H = Math.round(W * 1.28);
-  // بين لوحتين جدارٌ يُرى: ما يجعل الصفَّ معرضاً لا شريطَ صور.
-  const STEP = W + 76;
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  const floorH = 104 + Math.max(insets.bottom, 12);
+  const headTop = insets.top + 64;
+  const frameTop = headTop + 96;
+  // اللوحةُ بما يتّسع له الجدار: شاشةٌ قصيرة تصغّرها ولا تدفع البطاقةَ تحت الأرض.
+  const room = height - frameTop - floorH - 124;
+  const W = Math.round(Math.max(150, Math.min(250, width * 0.62, room / 1.25)));
+  const H = Math.round(W * 1.25);
+  // الجارتان تُطلّان من الحافّتين: يُرى أنّ الجدارَ يمتدّ.
+  const STEP = W + 44;
 
   const hall = useQuery({ queryKey: ["hall", year], queryFn: () => loadHall(year), enabled: Number.isInteger(year) });
   // ثوبُ القاعة الملبوس من المتجر (القاعدة ٣٤٨)، وبلاه الكلاسيكيّة.
@@ -105,7 +113,8 @@ export default function HallScreen() {
   const pos = useRef(new Animated.Value(0)).current;
   const [index, setIndex] = useState(0);
   const [detail, setDetail] = useState<{ moment: ArchiveMoment; tab: Tab } | null>(null);
-  const nav = useRef({ index: 0, count: 0, step: STEP, base: 0 }).current;
+  const [grid, setGrid] = useState(false);
+  const nav = useRef({ index: 0, count: 0, step: STEP, base: 0, vertical: false, months: [] as { first: number }[] }).current;
   nav.index = index;
   nav.count = slots.length;
   nav.step = STEP;
@@ -131,15 +140,46 @@ export default function HallScreen() {
     [pos, nav],
   );
 
+  const months = useMemo(() => {
+    const out: { month: number; first: number; count: number }[] = [];
+    slots.forEach((slot, at) => {
+      if (slot.type !== "piece") return;
+      const month = riyadh(slot.moment.createdAt).month;
+      const row = out.at(-1);
+      if (row && row.month === month) row.count += 1;
+      else out.push({ month, first: at, count: 1 });
+    });
+    return out;
+  }, [slots]);
+  nav.months = months;
+
+  /** شهرٌ قبل أو بعد: إلى أوّل لوحةٍ فيه. */
+  const shiftMonth = useCallback(
+    (by: number) => {
+      const list = nav.months;
+      if (!list.length) return;
+      let now = 0;
+      list.forEach((row, at) => {
+        if (row.first <= nav.index) now = at;
+      });
+      const next = list[Math.max(0, Math.min(list.length - 1, now + by))];
+      if (next) go(next.first);
+    },
+    [go, nav],
+  );
+
   const pan = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy),
-      onPanResponderGrant: () => {
+      onMoveShouldSetPanResponder: (_, g) =>
+        (Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy)) || (Math.abs(g.dy) > 14 && Math.abs(g.dy) > Math.abs(g.dx) * 1.4),
+      onPanResponderGrant: (_, g) => {
+        nav.vertical = Math.abs(g.dy) > Math.abs(g.dx);
         pos.stopAnimation((value) => {
           nav.base = value;
         });
       },
       onPanResponderMove: (_, g) => {
+        if (nav.vertical) return;
         // التاليةُ في اليسار: السحبُ يميناً يأتي بها. وخلف الطرفين مقاومة.
         const max = (nav.count - 1) * nav.step;
         let value = nav.base + g.dx;
@@ -148,6 +188,12 @@ export default function HallScreen() {
         pos.setValue(value);
       },
       onPanResponderRelease: (_, g) => {
+        if (nav.vertical) {
+          // إلى أعلى شهرٌ أحدث، وإلى أسفل أقدم — كما يصعد السهمُ في التلميح.
+          if (Math.abs(g.dy) > 40 || Math.abs(g.vy) > 0.5) shiftMonth(g.dy < 0 ? 1 : -1);
+          else go(nav.index);
+          return;
+        }
         const from = Math.round(nav.base / nav.step);
         const want = Math.round((nav.base + g.dx + g.vx * 160) / nav.step);
         go(Math.max(from - FLING_MAX, Math.min(from + FLING_MAX, want)));
@@ -176,17 +222,6 @@ export default function HallScreen() {
   }, [spinning, focused, index]); // eslint-disable-line react-hooks/exhaustive-deps
   const rotate = useMemo(() => spin.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] }), [spin]);
 
-  const months = useMemo(() => {
-    const out: { month: number; first: number; count: number }[] = [];
-    slots.forEach((slot, at) => {
-      if (slot.type !== "piece") return;
-      const month = riyadh(slot.moment.createdAt).month;
-      const row = out.at(-1);
-      if (row && row.month === month) row.count += 1;
-      else out.push({ month, first: at, count: 1 });
-    });
-    return out;
-  }, [slots]);
   const wallMonth = current?.type === "piece" ? riyadh(current.moment.createdAt).month : null;
   const wallCount = months.find((row) => row.month === wallMonth)?.count ?? 0;
 
@@ -200,100 +235,209 @@ export default function HallScreen() {
 
   const [wallH, setWallH] = useState(0);
   const piece = current?.type === "piece" ? current.moment : null;
-  // اللافتةُ فوق، ثمّ المصباح، ثمّ اللوحة.
-  const frameTop = 100;
+  const spotY = insets.top + CROWN;
+  // اللوحُ الخشبيّ يبدأ تحت البطاقة، ولا يقلّ ولا يأكل الجدار.
+  const wainscot = wallH ? Math.round(Math.max(64, Math.min(wallH * 0.24, wallH - (frameTop + H + 104)))) : 0;
+  const monthPieces = useMemo(
+    () => slots.flatMap((slot, at) => (slot.type === "piece" && riyadh(slot.moment.createdAt).month === wallMonth ? [{ at, moment: slot.moment }] : [])),
+    [slots, wallMonth],
+  );
 
   return (
-    <View style={{ flex: 1, backgroundColor: skin.ceiling }}>
-      <ScreenHeader title={`قاعة ${ar(year)}`} back="/me/archive" />
-      {/* السقف وإفريزُه: خطٌّ مضيءٌ فوق خطٍّ مظلم، كما يلتقي الجصُّ بالجدار. */}
-      <View style={{ height: 14, backgroundColor: skin.ceiling }} />
-      <View style={{ height: 5, backgroundColor: skin.placard.bg, opacity: 0.55 }} />
-      <View style={{ height: 3, backgroundColor: skin.wallShade }} />
-
+    <View style={{ flex: 1, backgroundColor: skin.wall }}>
       <View
         {...pan.panHandlers}
         onLayout={(event) => setWallH(event.nativeEvent.layout.height)}
         style={{ flex: 1, backgroundColor: skin.wall, overflow: "hidden" }}
       >
-        <Wall skin={skin} image={images?.wall ?? null} width={width} height={wallH} shift={wallShift} />
+        <Wall skin={skin} image={images?.wall ?? null} width={width} height={wallH} shift={wallShift} top={insets.top} wainscot={wainscot} />
 
-        <View style={{ position: "absolute", top: 16, left: 0, right: 0, alignItems: "center" }}>
+        {slots.map((slot, at) =>
+          Math.abs(at - index) > WINDOW ? null : (
+            <Hung
+              key={slot.key}
+              pos={pos}
+              at={at}
+              step={STEP}
+              left={(width - W) / 2}
+              w={W}
+              h={H}
+              spotY={spotY}
+              frameTop={frameTop}
+              skin={skin}
+              badge={at !== index && slot.type === "piece" ? slot.moment.echo?.faces[0] ?? null : null}
+            >
+              <Pressable
+                onPress={() => {
+                  if (at !== index) return go(at);
+                  if (slot.type === "rope") router.push("/subscribe" as never);
+                  else setDetail({ moment: slot.moment, tab: "art" });
+                }}
+                style={{ flex: 1 }}
+              >
+                {slot.type === "rope" ? (
+                  <Rope skin={skin} hidden={hall.data?.hidden ?? 0} w={W} h={H} />
+                ) : (
+                  <Piece skin={skin} frameImage={images?.frame ?? null} moment={slot.moment} w={W} h={H} rotate={at === index ? rotate : undefined} />
+                )}
+              </Pressable>
+            </Hung>
+          ),
+        )}
+
+        {/* لافتةُ الشهر: اسمُ الجدار، ثمّ لمن هو، ثمّ كم فيه. */}
+        <View pointerEvents="none" style={{ position: "absolute", top: headTop, left: 0, right: 0, alignItems: "center", gap: 4 }}>
           {wallMonth !== null ? (
-            <View style={{ alignItems: "center", gap: 2 }}>
-              <Text face="display" style={{ color: skin.sign.ink, fontSize: 19, fontWeight: "800", letterSpacing: 1 }}>
+            <>
+              <Text face="display" style={{ color: skin.sign.ink, fontSize: 30, fontWeight: "800", lineHeight: 40 }}>
                 جدار {MONTHS[wallMonth]}
               </Text>
-              <View style={{ width: 34, height: 2, borderRadius: 1, backgroundColor: skin.accent.bg }} />
-              <Text style={{ color: skin.sign.muted, fontSize: 10.5, marginTop: 2 }}>{ar(wallCount)} لحظة</Text>
-            </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                <LockIcon size={12} color={skin.sign.muted} />
+                <Text style={{ color: skin.sign.muted, fontSize: 12.5, fontWeight: "700" }}>خاص بك</Text>
+              </View>
+              <Text style={{ color: skin.sign.muted, fontSize: 12, opacity: 0.85 }}>{ar(wallCount)} لحظة</Text>
+            </>
           ) : null}
         </View>
 
-        <View style={{ position: "absolute", top: frameTop - 30, left: 0, right: 0, height: H + 60 }}>
-          {hall.isLoading ? <Spinner style={{ marginTop: H / 2 }} /> : null}
-          {hall.data && slots.length === 0 ? (
-            <Text style={{ color: skin.sign.muted, textAlign: "center", marginTop: H / 2 - 10 }}>ما في هالسنة لحظات بعد.</Text>
-          ) : null}
-          {slots.map((slot, at) =>
-            Math.abs(at - index) > WINDOW ? null : (
-              <Hung key={slot.key} pos={pos} at={at} step={STEP} left={(width - W) / 2} w={W} h={H} skin={skin}>
-                <Pressable
-                  onPress={() => {
-                    if (at !== index) return go(at);
-                    if (slot.type === "rope") router.push("/subscribe" as never);
-                    else setDetail({ moment: slot.moment, tab: "art" });
-                  }}
-                  style={{ flex: 1 }}
-                >
-                  {slot.type === "rope" ? (
-                    <Rope skin={skin} hidden={hall.data?.hidden ?? 0} w={W} h={H} />
-                  ) : (
-                    <Piece skin={skin} frameImage={images?.frame ?? null} moment={slot.moment} w={W} h={H} rotate={at === index ? rotate : undefined} />
-                  )}
-                </Pressable>
-              </Hung>
-            ),
-          )}
-        </View>
-
-        {/*
-          صدى الحاليّة: وجوهُ من تفاعل تصعد **بجانب** إطارها في الجدار بينها وبين جارتها
-          وتذوب. طبقةٌ أخيرةٌ فوق كلّ شيء بـ`zIndex` و`elevation`: كانت داخل صفّ اللوحات
-          تحت ظلالها (`elevation` يرفع اللوحةَ فوق ما بعدها في أندرويد، والدورانُ الثلاثيّ
-          يُشابكها على آبل) — فتظهر خلفها وترمش.
-        */}
-        {piece?.echo?.faces.length && focused && !detail ? (
-          <EchoRise key={piece.id} echo={piece.echo} width={width} w={W} top={frameTop + H * 0.82} rise={H * 0.95} />
+        {hall.isLoading ? <Spinner style={{ position: "absolute", top: frameTop + H / 2 - 10, alignSelf: "center" }} /> : null}
+        {hall.data && slots.length === 0 ? (
+          <Text style={{ position: "absolute", top: frameTop + H / 2 - 10, left: 0, right: 0, color: skin.sign.muted, textAlign: "center" }}>
+            ما في هالسنة لحظات بعد.
+          </Text>
         ) : null}
 
-        <View style={{ position: "absolute", top: frameTop + H + 20, left: 24, right: 24, alignItems: "center" }}>
+        {/* صدى الحاليّة: وجوهُ من تفاعل تصعد فوق إطارها وتذوب — طبقةٌ أخيرةٌ فوق كلّ شيء. */}
+        {piece?.echo?.faces.length && focused && !detail ? (
+          <EchoRise key={piece.id} echo={piece.echo} width={width} w={W} top={frameTop + H * 0.78} rise={H * 0.9} />
+        ) : null}
+
+        <View style={{ position: "absolute", top: frameTop + H + 22, left: 24, right: 24, alignItems: "center" }}>
           {piece ? <Placard skin={skin} moment={piece} onEcho={() => setDetail({ moment: piece, tab: "echo" })} /> : null}
+        </View>
+
+        {/* زرٌّ عائم على اللوح الخشبيّ: يفتح اللوحةَ الحاليّة بنافذتها. */}
+        {piece ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="عرض اللحظة"
+            onPress={() => setDetail({ moment: piece, tab: "art" })}
+            style={{
+              position: "absolute",
+              right: 16,
+              bottom: 14,
+              width: 66,
+              height: 66,
+              borderRadius: 33,
+              padding: 3,
+              backgroundColor: skin.placard.bg,
+              borderWidth: 1,
+              borderColor: skin.photo.frame,
+              ...SHADOW,
+            }}
+          >
+            <View style={{ flex: 1, borderRadius: 30, borderWidth: 1, borderColor: skin.photo.frame, alignItems: "center", justifyContent: "center", gap: 1 }}>
+              <ImageGlyph size={19} color={skin.placard.ink} />
+              <Text style={{ color: skin.placard.ink, fontSize: 8.5, fontWeight: "800" }}>عرض اللحظة</Text>
+            </View>
+          </Pressable>
+        ) : null}
+
+        {/* أعلى الجدار: العلامةُ يساراً، والرجوعُ و«عرض اللحظات» يميناً. */}
+        <View style={{ position: "absolute", top: insets.top + 8, left: 16, right: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="رجوع"
+              onPress={() => (router.canGoBack() ? router.back() : router.replace("/me/archive" as never))}
+              hitSlop={8}
+              style={{ width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: skin.placard.bg, ...SOFT }}
+            >
+              <View style={{ transform: [{ scaleX: -1 }] }}>
+                <BackIcon size={18} color={skin.placard.ink} />
+              </View>
+            </Pressable>
+            {months.length ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setGrid(true)}
+                style={{ flexDirection: "row", alignItems: "center", gap: 6, height: 38, paddingHorizontal: 14, borderRadius: 19, backgroundColor: skin.placard.bg, ...SOFT }}
+              >
+                <GridGlyph size={15} color={skin.placard.ink} />
+                <Text style={{ color: skin.placard.ink, fontSize: 12.5, fontWeight: "800" }}>عرض اللحظات</Text>
+              </Pressable>
+            ) : null}
+          </View>
+          <View style={{ alignItems: "center" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Text face="display" style={{ color: skin.sign.ink, fontSize: 24, fontWeight: "800", lineHeight: 32 }}>
+                آثار
+              </Text>
+              <AthrMark size={28} />
+            </View>
+            <Text face="latin" style={{ color: skin.sign.muted, fontSize: 8.5, fontWeight: "700", letterSpacing: 4.5, marginTop: -3 }}>
+              ATHAR
+            </Text>
+          </View>
         </View>
       </View>
 
-      {/* الأرضيّة: نقشُها يمرّ أسرع من الجدار، وشريطُ الشهور يقفز إلى أوّل لوحةٍ في كلّ شهر. */}
-      <Floor skin={skin} image={images?.floor ?? null} width={width} shift={floorShift}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
-          {months.map((row) => {
-            const on = row.month === wallMonth;
-            return (
-              <Pressable
-                key={row.month}
-                onPress={() => go(row.first)}
-                style={{ height: 32, paddingHorizontal: 14, borderRadius: 16, justifyContent: "center", backgroundColor: on ? skin.accent.bg : "rgba(14,20,26,.38)" }}
-              >
-                <Text style={{ color: on ? skin.accent.ink : "#FBF8F1", fontSize: 12.5, fontWeight: "700" }}>{MONTHS[row.month]}</Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-        {slots.length > 1 ? (
-          <Text style={{ color: "rgba(251,248,241,.85)", fontSize: 11.5, textAlign: "center", marginTop: 10 }}>
-            {ar(index + 1)} / {ar(slots.length)} · اسحب لتمشي
-          </Text>
+      {/* الأرضيّة: ألواحُها تمرّ أسرع من الجدار، والشهورُ عليها تقفز إلى أوّل لوحةٍ في كلّ شهر. */}
+      <Floor skin={skin} image={images?.floor ?? null} width={width} height={floorH} shift={floorShift}>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+            {months.map((row) => {
+              const on = row.month === wallMonth;
+              return (
+                <Pressable key={row.month} onPress={() => go(row.first)} style={{ alignItems: "center", gap: 4 }}>
+                  <View
+                    style={{
+                      height: 34,
+                      paddingHorizontal: 16,
+                      borderRadius: 17,
+                      justifyContent: "center",
+                      backgroundColor: on ? skin.accent.bg : "rgba(251,248,241,.16)",
+                      borderWidth: 1,
+                      borderColor: on ? skin.accent.bg : "rgba(251,248,241,.22)",
+                    }}
+                  >
+                    <Text style={{ color: on ? skin.accent.ink : "#FBF8F1", fontSize: 13, fontWeight: "800" }}>{MONTHS[row.month]}</Text>
+                  </View>
+                  <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: on ? skin.accent.bg : "transparent" }} />
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+          {months.length > 1 ? (
+            <Pressable accessibilityLabel="الشهر التالي" onPress={() => shiftMonth(1)} hitSlop={8} style={{ paddingHorizontal: 12, paddingBottom: 9 }}>
+              <BackIcon size={18} color="#FBF8F1" />
+            </Pressable>
+          ) : null}
+        </View>
+        {months.length > 1 ? (
+          <View style={{ alignItems: "center", marginTop: 6, gap: 1 }}>
+            <View style={{ transform: [{ rotate: "90deg" }] }}>
+              <BackIcon size={13} color="rgba(251,248,241,.8)" />
+            </View>
+            <Text style={{ color: "rgba(251,248,241,.85)", fontSize: 11.5, fontWeight: "600" }}>اسحب للتنقل بين الشهور</Text>
+          </View>
         ) : null}
       </Floor>
+
+      {grid ? (
+        <MonthGrid
+          skin={skin}
+          title={wallMonth !== null ? `جدار ${MONTHS[wallMonth]}` : ""}
+          items={monthPieces}
+          current={index}
+          onPick={(at) => {
+            setGrid(false);
+            go(at);
+          }}
+          onClose={() => setGrid(false)}
+        />
+      ) : null}
 
       {detail ? (
         <HallSheet
@@ -312,10 +456,39 @@ export default function HallScreen() {
   );
 }
 
+const SOFT = { shadowColor: "#3A2A14", shadowOpacity: 0.16, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3 } as const;
+
+/** شبكةٌ صغيرة بأيقونة «عرض اللحظات». */
+function GridGlyph({ size, color }: { size: number; color: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      {[
+        [3, 3],
+        [13, 3],
+        [3, 13],
+        [13, 13],
+      ].map(([x, y]) => (
+        <Rect key={`${x}${y}`} x={x} y={y} width={8} height={8} rx={2} fill="none" stroke={color} strokeWidth={2} />
+      ))}
+    </Svg>
+  );
+}
+
+/** إطارٌ فيه جبلٌ وشمس — زرُّ «عرض اللحظة». */
+function ImageGlyph({ size, color }: { size: number; color: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Rect x={3} y={4} width={18} height={16} rx={3} fill="none" stroke={color} strokeWidth={2} />
+      <Polygon points="5,18 10,12 13,15 15,13 19,18" fill={color} />
+      <Rect x={14.5} y={7.5} width={3} height={3} rx={1.5} fill={color} />
+    </Svg>
+  );
+}
+
 /**
- * لوحةٌ معلّقة: موضعُها من موضع الجدار، ومصباحُها فوقها يسقط ضوؤه عليها، وظلُّها على
- * الجدار. والبعيدةُ عن الوسط تخفت بحجابٍ داكن لا بشفافيّة — الشفافيّةُ تُري الجدارَ من
- * خلال اللوحة. والعُقدُ تُبنى مرّةً لكلّ لوحة (`useMemo`) لا مع كلّ رسمة.
+ * لوحةٌ معلّقة: موضعُها من موضع الجدار، ومصباحُها في السقف فوقها يسكب ضوءَه مخروطاً عليها،
+ * وظلُّها على الجدار. والعُقدُ تُبنى مرّةً لكلّ لوحة (`useMemo`) لا مع كلّ رسمة (القاعدة ٣٥٠).
+ * والجارةُ تحمل شارةَ أوّل تفاعلٍ في ركنها: يُرى أنّ عليها صدى قبل أن تُقصد.
  */
 const Hung = memo(function Hung({
   pos,
@@ -324,7 +497,10 @@ const Hung = memo(function Hung({
   left,
   w,
   h,
+  spotY,
+  frameTop,
   skin,
+  badge,
   children,
 }: {
   pos: Animated.Value;
@@ -333,56 +509,96 @@ const Hung = memo(function Hung({
   left: number;
   w: number;
   h: number;
+  spotY: number;
+  frameTop: number;
   skin: HallSkin;
+  badge: { kind: string; emoji: string | null } | null;
   children: React.ReactNode;
 }) {
   const motion = useMemo(() => {
     const rel = Animated.subtract(pos, at * step);
     return {
       rel,
-      glow: rel.interpolate({ inputRange: [-step, 0, step], outputRange: [0.35, 1, 0.35], extrapolate: "clamp" }),
+      glow: rel.interpolate({ inputRange: [-step, 0, step], outputRange: [0.45, 1, 0.45], extrapolate: "clamp" }),
     };
   }, [pos, at, step]);
-  const lamp = w * 0.46;
+  const coneW = w * 1.5;
+  const coneH = frameTop + h * 0.75 - spotY;
+  const fixture = 16;
   return (
-    <Animated.View style={{ position: "absolute", top: 0, left, width: w, height: h + 60, transform: [{ translateX: motion.rel }] }}>
-      {/* مصباحُ اللوحة: ذراعٌ نحاسيّ وقضيبُه، وضوءٌ ينسكب على الإطار. */}
-      <View style={{ position: "absolute", top: 0, left: (w - lamp) / 2, width: lamp, alignItems: "center" }}>
-        <View style={{ width: 3, height: 12, backgroundColor: skin.brass.edge }} />
-        <View style={{ width: lamp, height: 7, borderRadius: 4, backgroundColor: skin.brass.bg, borderBottomWidth: 2, borderBottomColor: skin.brass.edge }} />
-      </View>
-      <Animated.View pointerEvents="none" style={{ position: "absolute", top: 19, left: -w * 0.2, opacity: motion.glow }}>
-        <Svg width={w * 1.4} height={h * 0.9}>
+    <Animated.View
+      pointerEvents="box-none"
+      style={{ position: "absolute", top: 0, left, width: w, height: frameTop + h + 12, transform: [{ translateX: motion.rel }] }}
+    >
+      {/* المخروط: ضوءٌ دافئ يبدأ ضيّقاً عند المصباح ويتّسع على اللوحة ويذوب تحتها. */}
+      <Animated.View pointerEvents="none" style={{ position: "absolute", top: spotY + 10, left: (w - coneW) / 2, opacity: motion.glow }}>
+        <Svg width={coneW} height={coneH}>
           <Defs>
             <LinearGradient id={`cone${at}`} x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={skin.light} stopOpacity={0.75} />
+              <Stop offset="0" stopColor={skin.light} stopOpacity={0.85} />
+              <Stop offset="0.55" stopColor={skin.light} stopOpacity={0.32} />
               <Stop offset="1" stopColor={skin.light} stopOpacity={0} />
             </LinearGradient>
+            <RadialGradient id={`pool${at}`} cx="50%" cy="50%" rx="50%" ry="50%">
+              <Stop offset="0" stopColor={skin.light} stopOpacity={0.45} />
+              <Stop offset="1" stopColor={skin.light} stopOpacity={0} />
+            </RadialGradient>
           </Defs>
           <Polygon
-            points={`${w * 0.7 - lamp / 2},0 ${w * 0.7 + lamp / 2},0 ${w * 1.4},${h * 0.9} 0,${h * 0.9}`}
+            points={`${coneW / 2 - fixture / 2},0 ${coneW / 2 + fixture / 2},0 ${coneW * 0.92},${coneH} ${coneW * 0.08},${coneH}`}
             fill={`url(#cone${at})`}
           />
+          <Rect x={coneW * 0.06} y={coneH - h * 0.95} width={coneW * 0.88} height={h * 0.7} fill={`url(#pool${at})`} />
         </Svg>
       </Animated.View>
-      <View style={{ position: "absolute", top: 30, left: 0, width: w, height: h }}>
+      {/* المصباحُ في السقف: ساقٌ قصيرة ورأسٌ نحاسيّ مائلٌ إلى أسفل، ووهجٌ عند فوهته. */}
+      <View pointerEvents="none" style={{ position: "absolute", top: spotY - 4, left: (w - fixture) / 2, width: fixture, alignItems: "center" }}>
+        <View style={{ width: 3, height: 5, backgroundColor: skin.brass.edge }} />
+        <View style={{ width: fixture, height: 11, borderTopLeftRadius: 4, borderTopRightRadius: 4, borderBottomLeftRadius: 7, borderBottomRightRadius: 7, backgroundColor: skin.sign.ink, borderWidth: 1, borderColor: skin.brass.edge }} />
+        <View style={{ width: fixture - 6, height: 3, borderRadius: 2, backgroundColor: skin.light, marginTop: -1 }} />
+      </View>
+      <View style={{ position: "absolute", top: frameTop, left: 0, width: w, height: h }}>
         {children}
+        {badge ? (
+          <View
+            pointerEvents="none"
+            style={{ position: "absolute", left: -6, bottom: -8, width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: skin.placard.bg, ...SOFT }}
+          >
+            <ReactionGlyph kind={badge.kind} emoji={badge.emoji} size={22} />
+          </View>
+        ) : null}
       </View>
     </Animated.View>
   );
 });
 
 /**
- * الجدار: نقشٌ مرفوع (القاعدة ٣٥٠) يتكرّر بلاطاتٍ، وبلاه جصٌّ بخطوط ورقِ جدارٍ خافتة. ثمّ ضوءٌ
- * من السقف يبهت إلى أسفل، وحوافٌّ أعتم، ولوحٌ خشبيّ في ثلثه الأسفل بإفريزه وألواحه المحفورة،
- * وقاعدةٌ تلتقي بالأرض. والنقشُ والألواحُ يمرّان مع اللوحات — هي معلّقةٌ عليه.
+ * الجدار: نقشٌ مرفوع (القاعدة ٣٥٠) يتكرّر بلاطاتٍ، وبلاه جصٌّ بخطوط ورقِ جدارٍ خافتة. وفي أعلاه
+ * السقفُ تحت شريط الحالة ثمّ إفريزٌ مدرّج، وضوءٌ يبهت إلى أسفل، وحوافٌّ أعتم، ولوحٌ خشبيّ في
+ * أسفله بحاجزه وألواحه المحفورة، وقاعدةٌ تلتقي بالأرض. والنقشُ والألواحُ يمرّان مع اللوحات.
  */
-function Wall({ skin, image, width, height, shift }: { skin: HallSkin; image: string | null; width: number; height: number; shift: Animated.AnimatedNode }) {
+function Wall({
+  skin,
+  image,
+  width,
+  height,
+  shift,
+  top,
+  wainscot,
+}: {
+  skin: HallSkin;
+  image: string | null;
+  width: number;
+  height: number;
+  shift: Animated.AnimatedNode;
+  top: number;
+  wainscot: number;
+}) {
   if (!height) return null;
   const cols = Math.ceil(width / WALL_TILE) + 2;
   const rows = Math.ceil(height / WALL_TILE);
-  const wainscot = Math.round(height * 0.2);
   const panel = WALL_TILE / 2;
+  const crown = top + CROWN;
   return (
     <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
       <Animated.View style={{ position: "absolute", top: 0, bottom: 0, left: -WALL_TILE, width: cols * WALL_TILE, transform: [{ translateX: shift as never }] }}>
@@ -398,99 +614,147 @@ function Wall({ skin, image, width, height, shift }: { skin: HallSkin; image: st
               // ورقُ جدار: خطوطٌ عموديّة رفيعة بظلّ الجدار، كلُّ اثنين متقاربين.
               <View
                 key={at}
-                style={{ position: "absolute", top: 0, bottom: 0, left: at * (WALL_TILE / 4) + (at % 2 ? 6 : 0), width: 1, backgroundColor: skin.wallShade, opacity: 0.45 }}
+                style={{ position: "absolute", top: crown, bottom: 0, left: at * (WALL_TILE / 4) + (at % 2 ? 6 : 0), width: 1, backgroundColor: skin.wallShade, opacity: 0.32 }}
               />
             ))}
-        {/* اللوحُ الخشبيّ: إفريزٌ ثمّ ألواحٌ محفورة بدورة البلاطة نفسها فيتّصل. */}
-        <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: wainscot, backgroundColor: skin.wallShade }}>
-          <View style={{ height: 3, backgroundColor: skin.placard.bg, opacity: 0.5 }} />
-          <View style={{ height: 4, backgroundColor: "#000", opacity: 0.12 }} />
+        {/* اللوحُ الخشبيّ: حاجزٌ بارزٌ في أعلاه، ثمّ ألواحٌ محفورة بدورة البلاطة نفسها فيتّصل. */}
+        <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: wainscot, backgroundColor: skin.wall }}>
+          <View style={{ height: 2, backgroundColor: "rgba(255,255,255,.55)" }} />
+          <View style={{ height: 7, backgroundColor: skin.wallShade }} />
+          <View style={{ height: 2, backgroundColor: "rgba(0,0,0,.14)" }} />
+          <View style={{ height: 6, backgroundColor: "rgba(0,0,0,.05)" }} />
           {Array.from({ length: cols * 2 }, (_, at) => (
             <View
               key={at}
               style={{
                 position: "absolute",
-                top: 16,
-                bottom: 22,
-                left: at * panel + 10,
-                width: panel - 20,
-                borderWidth: 1.5,
-                borderTopColor: "rgba(0,0,0,.18)",
-                borderLeftColor: "rgba(0,0,0,.18)",
-                borderBottomColor: "rgba(255,255,255,.22)",
-                borderRightColor: "rgba(255,255,255,.22)",
-                borderRadius: 2,
+                top: 26,
+                bottom: 24,
+                left: at * panel + 9,
+                width: panel - 18,
+                borderWidth: 2,
+                borderTopColor: "rgba(0,0,0,.13)",
+                borderLeftColor: "rgba(0,0,0,.13)",
+                borderBottomColor: "rgba(255,255,255,.5)",
+                borderRightColor: "rgba(255,255,255,.5)",
+                borderRadius: 3,
               }}
-            />
+            >
+              <View style={{ flex: 1, margin: 6, borderWidth: 1, borderColor: "rgba(0,0,0,.07)", borderRadius: 2 }} />
+            </View>
           ))}
         </View>
       </Animated.View>
-      {/* الضوءُ والعمق: يسقط من السقف ويبهت، والحافّتان أعتم كما في قاعةٍ حقيقيّة. */}
+      {/* الضوءُ والعمق: سقفٌ يُظلّ أعلاه، وضوءٌ دافئ يبهت إلى أسفل، والحافّتان أعتم. */}
       <Svg width={width} height={height} style={{ position: "absolute", top: 0, left: 0 }}>
         <Defs>
           <LinearGradient id="wallLight" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor="#000" stopOpacity={0.22} />
-            <Stop offset="0.18" stopColor="#000" stopOpacity={0} />
-            <Stop offset="0.75" stopColor="#000" stopOpacity={0.04} />
-            <Stop offset="1" stopColor="#000" stopOpacity={0.2} />
+            <Stop offset="0" stopColor="#000" stopOpacity={0.16} />
+            <Stop offset="0.14" stopColor="#000" stopOpacity={0} />
+            <Stop offset="0.7" stopColor="#000" stopOpacity={0.02} />
+            <Stop offset="1" stopColor="#000" stopOpacity={0.14} />
           </LinearGradient>
-          <RadialGradient id="wallEdge" cx="50%" cy="42%" rx="62%" ry="70%">
-            <Stop offset="0.55" stopColor="#000" stopOpacity={0} />
-            <Stop offset="1" stopColor="#000" stopOpacity={0.38} />
+          <RadialGradient id="wallEdge" cx="50%" cy="45%" rx="70%" ry="72%">
+            <Stop offset="0.6" stopColor="#000" stopOpacity={0} />
+            <Stop offset="1" stopColor="#000" stopOpacity={0.26} />
           </RadialGradient>
         </Defs>
         <Rect x={0} y={0} width={width} height={height} fill="url(#wallLight)" />
         <Rect x={0} y={0} width={width} height={height} fill="url(#wallEdge)" />
       </Svg>
+      {/* السقفُ تحت شريط الحالة، ثمّ إفريزٌ مدرّج: ضوءٌ فوق ظلٍّ فوق ضوء، كما يلتقي الجصُّ بالجدار. */}
+      <View style={{ position: "absolute", top: 0, left: 0, right: 0, height: crown - 8, backgroundColor: skin.ceiling }} />
+      <View style={{ position: "absolute", top: crown - 8, left: 0, right: 0 }}>
+        <View style={{ height: 2, backgroundColor: "rgba(255,255,255,.4)" }} />
+        <View style={{ height: 3, backgroundColor: skin.wallShade }} />
+        <View style={{ height: 2, backgroundColor: "rgba(255,255,255,.55)" }} />
+        <View style={{ height: 1, backgroundColor: "rgba(0,0,0,.18)" }} />
+        <View style={{ height: 5, backgroundColor: "rgba(0,0,0,.05)" }} />
+      </View>
       {/* القاعدة: شريطٌ داكنٌ يلتقي بالأرض. */}
-      <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 10, backgroundColor: skin.floorEdge }} />
-      <View style={{ position: "absolute", left: 0, right: 0, bottom: 10, height: 2, backgroundColor: skin.placard.bg, opacity: 0.35 }} />
+      <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 9, backgroundColor: skin.floorEdge }} />
+      <View style={{ position: "absolute", left: 0, right: 0, bottom: 9, height: 2, backgroundColor: "rgba(255,255,255,.4)" }} />
     </View>
   );
 }
 
-/** الأرضيّة: نقشٌ مرفوع، وبلاه ألواحُ باركيه متقاطعة الفواصل — ويمرّ أسرع من الجدار. */
-function Floor({ skin, image, width, shift, children }: { skin: HallSkin; image: string | null; width: number; shift: Animated.AnimatedNode; children: React.ReactNode }) {
+/**
+ * الأرضيّة: نقشٌ مرفوع، وبلاه ألواحُ خشبٍ بدرجاتٍ متفاوتة وفواصلَ متخالفة ولمعةٍ من الضوء —
+ * وتمرّ أسرع من الجدار.
+ */
+function Floor({
+  skin,
+  image,
+  width,
+  height,
+  shift,
+  children,
+}: {
+  skin: HallSkin;
+  image: string | null;
+  width: number;
+  height: number;
+  shift: Animated.AnimatedNode;
+  children: React.ReactNode;
+}) {
   const insets = useSafeAreaInsets();
   const cols = Math.ceil(width / FLOOR_TILE) + 2;
+  const plank = 22;
+  const rows = Math.ceil(height / plank);
   return (
-    <View style={{ backgroundColor: skin.floor, overflow: "hidden", paddingTop: 14, paddingBottom: Math.max(insets.bottom, 12) + 10 }}>
+    <View style={{ height, backgroundColor: skin.floor, overflow: "hidden", paddingTop: 14, paddingBottom: Math.max(insets.bottom, 12) }}>
       <Animated.View
         pointerEvents="none"
         style={{ position: "absolute", top: 0, bottom: 0, left: -FLOOR_TILE, width: cols * FLOOR_TILE, transform: [{ translateX: shift as never }] }}
       >
         {image
-          ? Array.from({ length: cols }, (_, at) => (
-              <MediaImage key={at} mediaId={image} style={{ position: "absolute", top: 0, left: at * FLOOR_TILE, width: FLOOR_TILE, height: FLOOR_TILE }} />
+          ? Array.from({ length: cols * Math.ceil(height / FLOOR_TILE) }, (_, at) => (
+              <MediaImage
+                key={at}
+                mediaId={image}
+                style={{ position: "absolute", top: Math.floor(at / cols) * FLOOR_TILE, left: (at % cols) * FLOOR_TILE, width: FLOOR_TILE, height: FLOOR_TILE }}
+              />
             ))
-          : Array.from({ length: 5 }, (_, row) =>
-              Array.from({ length: cols * 2 }, (_, at) => (
-                <View
-                  key={`${row}-${at}`}
-                  style={{
-                    position: "absolute",
-                    top: row * 26,
-                    height: 26,
-                    left: at * (FLOOR_TILE / 2) + (row % 2 ? FLOOR_TILE / 4 : 0),
-                    width: FLOOR_TILE / 2,
-                    borderRightWidth: 1,
-                    borderBottomWidth: 1,
-                    borderColor: skin.floorEdge,
-                    opacity: 0.6,
-                  }}
-                />
-              )),
+          : Array.from({ length: rows }, (_, row) =>
+              Array.from({ length: cols * 2 + 1 }, (_, at) => {
+                // درجةُ كلّ لوحٍ من موضعه لا عشوائيّة: ترسم الرسمةُ نفسها في كلّ مرّة.
+                const tone = ((row * 7 + at * 13) % 5) - 2;
+                return (
+                  <View
+                    key={`${row}-${at}`}
+                    style={{
+                      position: "absolute",
+                      top: row * plank,
+                      height: plank,
+                      left: at * (FLOOR_TILE / 2) - (row % 3) * (FLOOR_TILE / 6),
+                      width: FLOOR_TILE / 2,
+                      backgroundColor: tone > 0 ? `rgba(255,236,200,${tone * 0.05})` : `rgba(0,0,0,${-tone * 0.06})`,
+                      borderRightWidth: 1,
+                      borderBottomWidth: 1,
+                      borderColor: skin.floorEdge,
+                    }}
+                  >
+                    <View style={{ position: "absolute", top: plank * 0.35, left: 10, right: 18, height: 1, backgroundColor: "rgba(0,0,0,.08)" }} />
+                  </View>
+                );
+              }),
             )}
       </Animated.View>
-      {/* ظلُّ الجدار على أوّل الأرض. */}
-      <Svg pointerEvents="none" width={width} height={34} style={{ position: "absolute", top: 0, left: 0 }}>
+      {/* ظلُّ الجدار على أوّل الأرض، ولمعةُ الضوء عليها. */}
+      <Svg pointerEvents="none" width={width} height={height} style={{ position: "absolute", top: 0, left: 0 }}>
         <Defs>
           <LinearGradient id="floorShade" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor="#000" stopOpacity={0.4} />
-            <Stop offset="1" stopColor="#000" stopOpacity={0} />
+            <Stop offset="0" stopColor="#000" stopOpacity={0.42} />
+            <Stop offset="0.3" stopColor="#000" stopOpacity={0.05} />
+            <Stop offset="1" stopColor="#000" stopOpacity={0.3} />
           </LinearGradient>
+          <RadialGradient id="floorSheen" cx="50%" cy="20%" rx="55%" ry="60%">
+            <Stop offset="0" stopColor="#FFE9C2" stopOpacity={0.22} />
+            <Stop offset="1" stopColor="#FFE9C2" stopOpacity={0} />
+          </RadialGradient>
         </Defs>
-        <Rect x={0} y={0} width={width} height={34} fill="url(#floorShade)" />
+        <Rect x={0} y={0} width={width} height={height} fill="url(#floorShade)" />
+        <Rect x={0} y={0} width={width} height={height} fill="url(#floorSheen)" />
       </Svg>
       {children}
     </View>
@@ -498,9 +762,9 @@ function Floor({ skin, image, width, shift, children }: { skin: HallSkin; image:
 }
 
 /**
- * بطاقةُ الشرح تحت اللوحة، كبطاقة متحف: التاريخُ والساعة، ثمّ ما لا تقوله اللوحةُ وحدها —
- * نصُّ الصورة وعنوانُ الأغنية — مرّةً واحدة، ثمّ صداها: وجوهُ من تفاعل وعددُ التفاعلات
- * والتعليقات، والضغطُ عليه يفتح النافذة على التفاعلات.
+ * بطاقةُ الشرح تحت اللوحة، كبطاقة متحف: الساعةُ | التاريخ، ثمّ ما لا تقوله اللوحةُ وحدها —
+ * نصُّ الصورة وعنوانُ الأغنية — مرّةً واحدة، ثمّ خطٌّ، ثمّ صداها: وجوهُ من تفاعل متراكبة
+ * وعددُها والتعليقات، والضغطُ عليه يفتح النافذة على التفاعلات.
  */
 function Placard({ skin, moment, onEcho }: { skin: HallSkin; moment: ArchiveMoment; onEcho?: () => void }) {
   const when = riyadh(moment.createdAt);
@@ -510,46 +774,138 @@ function Placard({ skin, moment, onEcho }: { skin: HallSkin; moment: ArchiveMome
     <View
       style={{
         backgroundColor: skin.placard.bg,
-        borderRadius: 3,
-        paddingHorizontal: 14,
-        paddingVertical: 9,
-        maxWidth: 280,
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        minWidth: 220,
+        maxWidth: 290,
         alignItems: "center",
-        gap: 4,
-        shadowColor: "#000",
-        shadowOpacity: 0.22,
-        shadowRadius: 5,
-        shadowOffset: { width: 1, height: 3 },
-        elevation: 3,
+        gap: 7,
+        borderWidth: 1,
+        borderColor: "rgba(0,0,0,.05)",
+        ...SOFT,
       }}
     >
-      <Text style={{ color: skin.placard.muted, fontSize: 10.5, fontWeight: "700" }}>
-        {ar(when.day)} {MONTHS[when.month]} · {timeOfDay(new Date(moment.createdAt))}
-      </Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+          <ClockIcon size={14} color={skin.placard.muted} />
+          <Text style={{ color: skin.placard.ink, fontSize: 12.5, fontWeight: "700" }}>{timeOfDay(new Date(moment.createdAt))}</Text>
+        </View>
+        <View style={{ width: 1, height: 14, backgroundColor: skin.placard.muted, opacity: 0.4 }} />
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+          <CalendarIcon size={14} color={skin.placard.muted} />
+          <Text style={{ color: skin.placard.ink, fontSize: 12.5, fontWeight: "700" }}>
+            {ar(when.day)} {MONTHS[when.month]} {ar(when.year)}
+          </Text>
+        </View>
+      </View>
       {line ? (
         <Text numberOfLines={2} style={{ color: skin.placard.ink, fontSize: 12.5, textAlign: "center", lineHeight: 19 }}>
           {line}
         </Text>
       ) : null}
       {echo && (echo.reactions || echo.comments) ? (
-        <Pressable onPress={onEcho} hitSlop={10} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
-          <View style={{ flexDirection: "row", paddingVertical: 1 }}>
-            {echo.faces.slice(0, 3).map((face, at) => (
-              <View key={at} style={{ marginStart: at ? -6 : 0, width: 23, height: 23, borderRadius: 12, borderWidth: 1.5, borderColor: skin.placard.bg, backgroundColor: skin.placard.bg, alignItems: "center", justifyContent: "center" }}>
-                <ReactionGlyph kind={face.kind} emoji={face.emoji} size={20} />
-              </View>
-            ))}
-          </View>
-          {echo.reactions ? <Text style={{ color: skin.placard.ink, fontSize: 11.5, fontWeight: "800" }}>{ar(echo.reactions)}</Text> : null}
-          {echo.comments ? (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-              <CommentIcon size={13} color={skin.placard.muted} />
-              <Text style={{ color: skin.placard.muted, fontSize: 11.5, fontWeight: "700" }}>{ar(echo.comments)}</Text>
+        <>
+          <View style={{ alignSelf: "stretch", height: 1, backgroundColor: skin.placard.muted, opacity: 0.22 }} />
+          <Pressable onPress={onEcho} hitSlop={10} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View style={{ flexDirection: "row", paddingVertical: 1 }}>
+              {echo.faces.slice(0, 3).map((face, at) => (
+                <View
+                  key={at}
+                  style={{ marginStart: at ? -7 : 0, width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, borderColor: skin.placard.bg, backgroundColor: skin.placard.bg, alignItems: "center", justifyContent: "center" }}
+                >
+                  <ReactionGlyph kind={face.kind} emoji={face.emoji} size={21} />
+                </View>
+              ))}
             </View>
-          ) : null}
-        </Pressable>
+            {echo.reactions ? <Text style={{ color: skin.placard.ink, fontSize: 13, fontWeight: "800" }}>{ar(echo.reactions)}</Text> : null}
+            {echo.comments ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                <CommentIcon size={13} color={skin.placard.muted} />
+                <Text style={{ color: skin.placard.muted, fontSize: 12, fontWeight: "700" }}>{ar(echo.comments)}</Text>
+              </View>
+            ) : null}
+          </Pressable>
+        </>
       ) : null}
     </View>
+  );
+}
+
+/** «عرض اللحظات»: لحظاتُ الشهر بلاطاتٍ في نافذة، والضغطُ يمشي بك إلى لوحتها على الجدار. */
+function MonthGrid({
+  skin,
+  title,
+  items,
+  current,
+  onPick,
+  onClose,
+}: {
+  skin: HallSkin;
+  title: string;
+  items: { at: number; moment: ArchiveMoment }[];
+  current: number;
+  onPick: (at: number) => void;
+  onClose: () => void;
+}) {
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  const tile = (width - 36 - 16) / 3;
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+      <Pressable accessibilityLabel="إغلاق" onPress={onClose} style={{ flex: 1, backgroundColor: "rgba(20,14,6,.45)" }} />
+      <View
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          maxHeight: height * 0.78,
+          backgroundColor: skin.placard.bg,
+          borderTopLeftRadius: 26,
+          borderTopRightRadius: 26,
+          paddingBottom: insets.bottom + 16,
+        }}
+      >
+        <View style={{ width: 42, height: 5, borderRadius: 3, backgroundColor: skin.placard.muted, opacity: 0.35, alignSelf: "center", marginTop: 10 }} />
+        <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 18, paddingTop: 12, paddingBottom: 10, gap: 10 }}>
+          <Text face="display" style={{ flex: 1, color: skin.placard.ink, fontSize: 19, fontWeight: "800" }}>
+            {title}
+          </Text>
+          <Pressable accessibilityLabel="إغلاق" onPress={onClose} hitSlop={10} style={{ width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,.06)" }}>
+            <CloseIcon size={15} color={skin.placard.ink} />
+          </Pressable>
+        </View>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 18, flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          {items.map(({ at, moment }) => (
+            <Pressable
+              key={moment.id}
+              onPress={() => onPick(at)}
+              style={{
+                width: tile,
+                height: tile * 1.2,
+                borderRadius: 10,
+                overflow: "hidden",
+                backgroundColor: skin.photo.mat,
+                borderWidth: at === current ? 2.5 : 1,
+                borderColor: at === current ? skin.accent.bg : "rgba(0,0,0,.08)",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: moment.kind === "PHOTO" && moment.mediaId ? 0 : 8,
+              }}
+            >
+              {moment.kind === "PHOTO" && moment.mediaId ? (
+                <MediaImage mediaId={moment.mediaId} style={{ width: "100%", height: "100%" }} />
+              ) : (
+                <Text numberOfLines={4} style={{ color: skin.placard.ink, fontSize: 11.5, textAlign: "center", lineHeight: 17 }}>
+                  {momentLine(moment)}
+                </Text>
+              )}
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
+    </Modal>
   );
 }
 
@@ -1053,23 +1409,28 @@ function Piece({
     );
   }
 
-  // الخاطرةُ والسفرُ والنومُ والصحو: لوحةُ نصٍّ على ورقٍ كريميّ.
+  // الخاطرةُ والسفرُ والنومُ والصحو: نصٌّ في الإطار نفسه على بطانةٍ كريميّة — لوحةٌ كالصورة.
   const icon =
-    moment.kind === "CITY" ? <PlaneIcon size={22} color={skin.plaque.ink} /> :
-    moment.kind === "SLEEP" ? <MoonIcon size={22} color={skin.plaque.ink} /> :
-    moment.kind === "WAKE" ? <SunIcon size={22} color={skin.plaque.ink} /> :
-    moment.kind === "THOUGHT" ? <QuoteIcon size={22} color={skin.plaque.ink} /> :
-    <BookIcon size={22} color={skin.plaque.ink} />;
+    moment.kind === "CITY" ? <PlaneIcon size={30} color={skin.photo.frame} /> :
+    moment.kind === "SLEEP" ? <MoonIcon size={30} color={skin.photo.frame} /> :
+    moment.kind === "WAKE" ? <SunIcon size={30} color={skin.photo.frame} /> :
+    moment.kind === "THOUGHT" ? <QuoteIcon size={28} color={skin.photo.frame} /> :
+    <BookIcon size={28} color={skin.photo.frame} />;
   const body =
     moment.kind === "SLEEP" || moment.kind === "WAKE"
       ? `${momentLine(moment)} ${timeOfDay(new Date(moment.createdAt))}`
       : momentLine(moment);
   return (
-    <View style={{ flex: 1, backgroundColor: skin.plaque.bg, borderWidth: 1, borderColor: skin.plaque.edge, borderRadius: 4, padding: 18, alignItems: "center", justifyContent: "center", gap: 12, ...SHADOW }}>
-      {icon}
-      <Text face="display" numberOfLines={7} style={{ color: skin.plaque.ink, fontSize: body.length > 90 ? 14.5 : 17, fontWeight: "700", textAlign: "center", lineHeight: body.length > 90 ? 22 : 26 }}>
-        {body}
-      </Text>
+    <View style={{ flex: 1, backgroundColor: frameImage ? skin.photo.mat : skin.photo.frame, padding: skin.photo.width, ...SHADOW }}>
+      <View style={{ flex: 1, backgroundColor: skin.photo.mat, padding: skin.photo.matWidth }}>
+        <View style={{ flex: 1, backgroundColor: skin.plaque.bg, borderWidth: 1, borderColor: skin.plaque.edge, padding: 14, alignItems: "center", justifyContent: "center", gap: 12 }}>
+          {icon}
+          <Text face="display" numberOfLines={7} style={{ color: skin.plaque.ink, fontSize: body.length > 90 ? 14 : 18, fontWeight: "700", textAlign: "center", lineHeight: body.length > 90 ? 22 : 28 }}>
+            {body}
+          </Text>
+        </View>
+      </View>
+      {frameImage ? <MediaImage mediaId={frameImage} resizeMode="fill" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} /> : null}
     </View>
   );
 }
