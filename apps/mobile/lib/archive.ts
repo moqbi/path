@@ -25,6 +25,8 @@ export type HallEcho = {
   faces: { kind: string; emoji: string | null; name: string; avatarMediaId: string | null }[];
 };
 
+export type HallImages = { wall: string | null; floor: string | null; frame: string | null };
+
 export type ArchivePage = {
   moments: ArchiveMoment[];
   nextCursor?: string;
@@ -32,6 +34,8 @@ export type ArchivePage = {
   hidden: number;
   /** ثوبُ القاعة الملبوس — مع الصفحة الأولى (القاعدة ٣٤٨). */
   hallSkin?: string | null;
+  /** صورُ الثوب (القاعدة ٣٥٠): نقشا الجدار والأرضيّة وإطارُ الصورة — كلٌّ اختياريّ. */
+  hallImages?: HallImages | null;
 };
 
 /** لمن كانت اللحظة الخاصّة — يُكتب في الكتاب (القاعدة ٢٥٦). */

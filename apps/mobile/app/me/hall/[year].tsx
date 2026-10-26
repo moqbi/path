@@ -1,21 +1,23 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, Image, Modal, PanResponder, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import Svg, { Defs, Ellipse, RadialGradient, Stop } from "react-native-svg";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Defs, LinearGradient, Polygon, RadialGradient, Rect, Stop } from "react-native-svg";
 import { Spinner } from "../../../components/spinner";
 import { Text } from "../../../components/type";
 import { ScreenHeader } from "../../../components/screen-header";
 import { MediaImage } from "../../../components/media-image";
-import { BookIcon, LockIcon, MessageIcon as CommentIcon, MoonIcon, PinIcon, PlaneIcon, QuoteIcon, SparkIcon, SunIcon } from "../../../components/icons";
+import { BookIcon, CloseIcon, LockIcon, MessageIcon as CommentIcon, MoonIcon, PinIcon, PlaneIcon, QuoteIcon, SparkIcon, SunIcon } from "../../../components/icons";
 import { api } from "../../../lib/api";
-import { ar, MONTHS, timeOfDay } from "../../../lib/format";
-import { FREE_DAYS, momentLine, type ArchiveMoment, type ArchivePage, type HallEcho } from "../../../lib/archive";
+import { useMoment } from "../../../lib/queries";
+import { ar, MONTHS, relative, timeOfDay } from "../../../lib/format";
+import { FREE_DAYS, momentLine, type ArchiveMoment, type ArchivePage, type HallEcho, type HallImages } from "../../../lib/archive";
 import { HALL_SKIN, hallSkinOf, type HallSkin } from "../../../lib/gallery-skin";
 import { ReactionGlyph } from "../../../components/reactions";
 import { Avatar } from "../../../components/avatar";
 
-type Hall = { moments: ArchiveMoment[]; limited: boolean; hidden: number; skin: string | null };
+type Hall = { moments: ArchiveMoment[]; limited: boolean; hidden: number; skin: string | null; images: HallImages | null };
 type Slot = { type: "rope"; key: string } | { type: "piece"; key: string; moment: ArchiveMoment };
 
 /** اليومُ والشهرُ والسنةُ بتوقيت الرياض (+٣) — كالكتاب (القاعدة ٢٣٥). */
@@ -34,12 +36,14 @@ async function loadHall(year: number): Promise<Hall> {
   let limited = false;
   let hidden = 0;
   let skin: string | null = null;
+  let images: HallImages | null = null;
   for (let round = 0; round < 40; round++) {
     const page = await api<ArchivePage>(`/v1/archive?limit=90${cursor ? `&cursor=${cursor}` : ""}`);
     if (round === 0) {
       limited = page.limited;
       hidden = page.hidden;
       skin = page.hallSkin ?? null;
+      images = page.hallImages ?? null;
     }
     let older = false;
     for (const moment of page.moments) {
@@ -50,31 +54,43 @@ async function loadHall(year: number): Promise<Hall> {
     cursor = page.nextCursor;
     if (!cursor || older) break;
   }
-  return { moments: moments.reverse(), limited, hidden, skin };
+  return { moments: moments.reverse(), limited, hidden, skin, images };
 }
 
 /** كم تُقلَّب بسحبةٍ واحدة، وكم لوحةً تُرسم حول الحاليّة. */
 const FLING_MAX = 3;
-const WINDOW = 3;
+const WINDOW = 2;
+/** دورةُ نقش الجدار والأرضيّة المرسومَين — وبصورةٍ مرفوعة مقاسُ البلاطة. */
+const WALL_TILE = 220;
+const FLOOR_TILE = 160;
+/** الأرضيّةُ أقربُ إلى العين فتمرّ أسرع من الجدار: العمقُ من الفرق لا من دورانٍ ثلاثيّ. */
+const FLOOR_SPEED = 1.45;
+
+const SHADOW = { shadowColor: "#000", shadowOpacity: 0.34, shadowRadius: 12, shadowOffset: { width: 4, height: 12 }, elevation: 10 } as const;
 
 /**
- * قاعةُ السنة (القاعدة ٣٤٦): لحظاتُ صاحبها لوحاتٍ على جدارٍ واحد بترتيبها،
- * والتاليةُ في اليسار كقراءة العربية — **بالإصبع لا بالأسهم**: سحبةٌ تمشي بك،
- * والضغطُ على الحاليّة يفتح شرحَها، وعلى جارتها يأتي بها. والشهرُ لافتةُ الجدار،
- * وشريطُ الشهور في الأرضيّة يقفز. وكلُّ لونٍ من `HALL_SKIN` — ثوبُ المتجر القادم.
+ * قاعةُ السنة (القاعدتان ٣٤٦ و٣٥٠): لحظاتُ صاحبها لوحاتٍ **معلّقةً على جدارٍ حقيقيّ** —
+ * نقشٌ يتّصل، وإفريزٌ تحت السقف، ولوحٌ خشبيّ في أسفله، وقاعدةٌ على الأرض، وفوق كلّ لوحةٍ
+ * مصباحُها يسقط ضوؤه عليها. والجدارُ يمرّ مع اللوحات بسرعتها (هي عليه)، والأرضيّةُ أسرع
+ * (أقربُ إلى العين) — عمقٌ بلا دورانٍ ثلاثيّ: الدورانُ كان يُقرأ دوّاراً لا جداراً، وطبقاتُه
+ * تتشابك مع ما فوقها على آبل فترمش.
+ * والتاليةُ في اليسار كقراءة العربية — بالإصبع: سحبةٌ تمشي بك، والضغطُ على الحاليّة يفتح
+ * نافذتَها، وعلى جارتها يأتي بها. والشهرُ لافتةُ الجدار، وشريطُ الشهور في الأرضيّة يقفز.
  */
 export default function HallScreen() {
   const { year: raw } = useLocalSearchParams<{ year: string }>();
   const year = Number(raw);
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const W = Math.min(220, Math.round(width * 0.56));
+  const W = Math.min(230, Math.round(width * 0.58));
   const H = Math.round(W * 1.28);
-  const STEP = W + 34;
+  // بين لوحتين جدارٌ يُرى: ما يجعل الصفَّ معرضاً لا شريطَ صور.
+  const STEP = W + 76;
 
   const hall = useQuery({ queryKey: ["hall", year], queryFn: () => loadHall(year), enabled: Number.isInteger(year) });
   // ثوبُ القاعة الملبوس من المتجر (القاعدة ٣٤٨)، وبلاه الكلاسيكيّة.
   const skin = useMemo(() => (hall.data?.skin ? hallSkinOf(hall.data.skin) : HALL_SKIN), [hall.data?.skin]);
+  const images = hall.data?.images ?? null;
 
   const slots = useMemo<Slot[]>(() => {
     const data = hall.data;
@@ -88,7 +104,7 @@ export default function HallScreen() {
 
   const pos = useRef(new Animated.Value(0)).current;
   const [index, setIndex] = useState(0);
-  const [detail, setDetail] = useState<ArchiveMoment | null>(null);
+  const [detail, setDetail] = useState<{ moment: ArchiveMoment; tab: Tab } | null>(null);
   const nav = useRef({ index: 0, count: 0, step: STEP, base: 0 }).current;
   nav.index = index;
   nav.count = slots.length;
@@ -108,8 +124,8 @@ export default function HallScreen() {
     (to: number) => {
       const target = Math.max(0, Math.min(nav.count - 1, to));
       // قفزةٌ بعيدة من شريط الشهور لا تمرّ بجدارٍ فارغ: اللوحاتُ تُرسم حول الحاليّة وحدها.
-      if (Math.abs(target - nav.index) > WINDOW) pos.setValue(target * nav.step);
-      else Animated.spring(pos, { toValue: target * nav.step, useNativeDriver: true, speed: 16, bounciness: 3 }).start();
+      if (Math.abs(target - nav.index) > WINDOW + 1) pos.setValue(target * nav.step);
+      else Animated.spring(pos, { toValue: target * nav.step, useNativeDriver: true, speed: 14, bounciness: 2 }).start();
       setIndex(target);
     },
     [pos, nav],
@@ -158,7 +174,7 @@ export default function HallScreen() {
     loop.start();
     return () => loop.stop();
   }, [spinning, focused, index]); // eslint-disable-line react-hooks/exhaustive-deps
-  const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] });
+  const rotate = useMemo(() => spin.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] }), [spin]);
 
   const months = useMemo(() => {
     const out: { month: number; first: number; count: number }[] = [];
@@ -175,109 +191,89 @@ export default function HallScreen() {
   const wallCount = months.find((row) => row.month === wallMonth)?.count ?? 0;
 
   /*
-    ألواحُ الجدار تمرّ أبطأ من اللوحات (ثلثُ سرعتها): عمقٌ يُحسّ بلا ثلاثة أبعاد —
-    الجدارُ بعيدٌ والإطاراتُ عليه. خطوطٌ رفيعة بظلّ الجدار نفسه، لا زخرفة.
+    النقشُ يتكرّر بدورته، فشريطٌ بعرض الشاشة وبلاطتين يكفي: يُزاح بباقي قسمة الموضع على
+    الدورة (`modulo` — على الخيط الأصليّ)، فيبدو جداراً بلا نهاية بعدد لوحاتٍ لا يُحصى.
+    والعُقدُ تُبنى مرّةً: عقدةٌ جديدةٌ مع كلّ رسمةٍ تُفصل في منتصف الحركة فترمش (القاعدة ٣٥٠).
   */
-  const PANEL = 132;
-  const panels = Math.ceil((slots.length * STEP * 0.35 + width * 2) / PANEL) + 2;
-  const wallShift = Animated.multiply(pos, 0.35);
+  const wallShift = useMemo(() => Animated.modulo(pos, WALL_TILE), [pos]);
+  const floorShift = useMemo(() => Animated.modulo(Animated.multiply(pos, FLOOR_SPEED), FLOOR_TILE), [pos]);
 
+  const [wallH, setWallH] = useState(0);
   const piece = current?.type === "piece" ? current.moment : null;
+  // اللافتةُ فوق، ثمّ المصباح، ثمّ اللوحة.
+  const frameTop = 100;
 
   return (
     <View style={{ flex: 1, backgroundColor: skin.ceiling }}>
       <ScreenHeader title={`قاعة ${ar(year)}`} back="/me/archive" />
-      <View style={{ height: 18, backgroundColor: skin.ceiling }} />
-      <View {...pan.panHandlers} style={{ flex: 1, backgroundColor: skin.wall, overflow: "hidden" }}>
-        <Animated.View
-          pointerEvents="none"
-          style={{ position: "absolute", top: 0, bottom: 0, left: -width, flexDirection: "row", transform: [{ translateX: wallShift }] }}
-        >
-          {Array.from({ length: panels }, (_, at) => (
-            <View key={at} style={{ width: PANEL, borderLeftWidth: 1, borderLeftColor: skin.wallShade, opacity: 0.55 }} />
-          ))}
-        </Animated.View>
-        <View pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 40, backgroundColor: skin.wallShade }} />
-        {/* الضوءُ يسقط على الحاليّة وحدها: ثابتٌ في الوسط واللوحاتُ تمرّ تحته. */}
-        <Svg pointerEvents="none" width={W * 2} height={H * 1.5} style={{ position: "absolute", top: 0, left: (width - W * 2) / 2 }}>
-          <Defs>
-            <RadialGradient id="spot" cx="50%" cy="0%" rx="50%" ry="100%">
-              <Stop offset="0" stopColor={skin.light} stopOpacity={0.9} />
-              <Stop offset="1" stopColor={skin.light} stopOpacity={0} />
-            </RadialGradient>
-          </Defs>
-          <Ellipse cx={W} cy={0} rx={W} ry={H * 1.5} fill="url(#spot)" />
-        </Svg>
+      {/* السقف وإفريزُه: خطٌّ مضيءٌ فوق خطٍّ مظلم، كما يلتقي الجصُّ بالجدار. */}
+      <View style={{ height: 14, backgroundColor: skin.ceiling }} />
+      <View style={{ height: 5, backgroundColor: skin.placard.bg, opacity: 0.55 }} />
+      <View style={{ height: 3, backgroundColor: skin.wallShade }} />
 
-        <View style={{ flex: 1, justifyContent: "space-evenly" }}>
-          <View style={{ alignItems: "center" }}>
-            {wallMonth !== null ? (
-              <View style={{ backgroundColor: skin.sign.bg, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 5, alignItems: "center" }}>
-                <Text face="display" style={{ color: skin.sign.ink, fontSize: 15, fontWeight: "800" }}>
-                  جدار {MONTHS[wallMonth]}
-                </Text>
-                <Text style={{ color: skin.sign.muted, fontSize: 10.5 }}>{ar(wallCount)} لحظة</Text>
-              </View>
-            ) : null}
-          </View>
+      <View
+        {...pan.panHandlers}
+        onLayout={(event) => setWallH(event.nativeEvent.layout.height)}
+        style={{ flex: 1, backgroundColor: skin.wall, overflow: "hidden" }}
+      >
+        <Wall skin={skin} image={images?.wall ?? null} width={width} height={wallH} shift={wallShift} />
 
-          <View style={{ height: H + 24 }}>
-            {hall.isLoading ? <Spinner style={{ marginTop: H / 2 }} /> : null}
-            {hall.data && slots.length === 0 ? (
-              <Text style={{ color: skin.sign.muted, textAlign: "center", marginTop: H / 2 - 10 }}>ما في هالسنة لحظات بعد.</Text>
-            ) : null}
-            {slots.map((slot, at) => {
-              if (Math.abs(at - index) > WINDOW) return null;
-              const rel = Animated.subtract(pos, at * STEP);
-              return (
-                <Animated.View
-                  key={slot.key}
-                  style={{
-                    position: "absolute",
-                    top: 12,
-                    left: (width - W) / 2,
-                    width: W,
-                    height: H,
-                    opacity: rel.interpolate({ inputRange: [-STEP, 0, STEP], outputRange: [0.5, 1, 0.5], extrapolate: "clamp" }),
-                    transform: [
-                      // المنظورُ أوّلاً — React Native يطبّقه على ما بعده وحده.
-                      { perspective: 900 },
-                      { translateX: rel },
-                      { scale: rel.interpolate({ inputRange: [-STEP, 0, STEP], outputRange: [0.8, 1, 0.8], extrapolate: "clamp" }) },
-                      // الجارتان تميلان نحو الحاليّة قليلاً: جدارٌ يُرى من أمامه لا من صفحة.
-                      { rotateY: rel.interpolate({ inputRange: [-STEP, 0, STEP], outputRange: ["-14deg", "0deg", "14deg"], extrapolate: "clamp" }) },
-                    ],
+        <View style={{ position: "absolute", top: 16, left: 0, right: 0, alignItems: "center" }}>
+          {wallMonth !== null ? (
+            <View style={{ alignItems: "center", gap: 2 }}>
+              <Text face="display" style={{ color: skin.sign.ink, fontSize: 19, fontWeight: "800", letterSpacing: 1 }}>
+                جدار {MONTHS[wallMonth]}
+              </Text>
+              <View style={{ width: 34, height: 2, borderRadius: 1, backgroundColor: skin.accent.bg }} />
+              <Text style={{ color: skin.sign.muted, fontSize: 10.5, marginTop: 2 }}>{ar(wallCount)} لحظة</Text>
+            </View>
+          ) : null}
+        </View>
+
+        <View style={{ position: "absolute", top: frameTop - 30, left: 0, right: 0, height: H + 60 }}>
+          {hall.isLoading ? <Spinner style={{ marginTop: H / 2 }} /> : null}
+          {hall.data && slots.length === 0 ? (
+            <Text style={{ color: skin.sign.muted, textAlign: "center", marginTop: H / 2 - 10 }}>ما في هالسنة لحظات بعد.</Text>
+          ) : null}
+          {slots.map((slot, at) =>
+            Math.abs(at - index) > WINDOW ? null : (
+              <Hung key={slot.key} pos={pos} at={at} step={STEP} left={(width - W) / 2} w={W} h={H} skin={skin}>
+                <Pressable
+                  onPress={() => {
+                    if (at !== index) return go(at);
+                    if (slot.type === "rope") router.push("/subscribe" as never);
+                    else setDetail({ moment: slot.moment, tab: "art" });
                   }}
+                  style={{ flex: 1 }}
                 >
-                  <Pressable
-                    onPress={() => {
-                      if (at !== index) return go(at);
-                      if (slot.type === "rope") router.push("/subscribe" as never);
-                      else setDetail(slot.moment);
-                    }}
-                    style={{ flex: 1 }}
-                  >
-                    {slot.type === "rope" ? (
-                      <Rope skin={skin} hidden={hall.data?.hidden ?? 0} w={W} h={H} />
-                    ) : (
-                      <Piece skin={skin} moment={slot.moment} w={W} h={H} rotate={at === index ? rotate : undefined} />
-                    )}
-                  </Pressable>
-                </Animated.View>
-              );
-            })}
-            {/* صدى الحاليّة يطفو منها: وجوهُ من تفاعل تصعد من إطارها وتذوب (القاعدة ٣٤٩). */}
-            {piece?.echo?.faces.length && focused ? <EchoRise key={piece.id} echo={piece.echo} width={width} top={12} h={H} /> : null}
-          </View>
+                  {slot.type === "rope" ? (
+                    <Rope skin={skin} hidden={hall.data?.hidden ?? 0} w={W} h={H} />
+                  ) : (
+                    <Piece skin={skin} frameImage={images?.frame ?? null} moment={slot.moment} w={W} h={H} rotate={at === index ? rotate : undefined} />
+                  )}
+                </Pressable>
+              </Hung>
+            ),
+          )}
+        </View>
 
-          <View style={{ alignItems: "center", paddingHorizontal: 28, minHeight: 92 }}>
-            {piece ? <Placard skin={skin} moment={piece} onEcho={() => setDetail(piece)} /> : null}
-          </View>
+        {/*
+          صدى الحاليّة: وجوهُ من تفاعل تصعد **بجانب** إطارها في الجدار بينها وبين جارتها
+          وتذوب. طبقةٌ أخيرةٌ فوق كلّ شيء بـ`zIndex` و`elevation`: كانت داخل صفّ اللوحات
+          تحت ظلالها (`elevation` يرفع اللوحةَ فوق ما بعدها في أندرويد، والدورانُ الثلاثيّ
+          يُشابكها على آبل) — فتظهر خلفها وترمش.
+        */}
+        {piece?.echo?.faces.length && focused && !detail ? (
+          <EchoRise key={piece.id} echo={piece.echo} width={width} w={W} top={frameTop + H * 0.85} rise={H * 0.9} />
+        ) : null}
+
+        <View style={{ position: "absolute", top: frameTop + H + 20, left: 24, right: 24, alignItems: "center" }}>
+          {piece ? <Placard skin={skin} moment={piece} onEcho={() => setDetail({ moment: piece, tab: "echo" })} /> : null}
         </View>
       </View>
 
-      {/* الأرضيّة: شريطُ الشهور يقفز إلى أوّل لوحةٍ في كلّ شهر. */}
-      <View style={{ backgroundColor: skin.floor, borderTopWidth: 3, borderTopColor: skin.floorEdge, paddingTop: 12, paddingBottom: 30 }}>
+      {/* الأرضيّة: نقشُها يمرّ أسرع من الجدار، وشريطُ الشهور يقفز إلى أوّل لوحةٍ في كلّ شهر. */}
+      <Floor skin={skin} image={images?.floor ?? null} width={width} shift={floorShift}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
           {months.map((row) => {
             const on = row.month === wallMonth;
@@ -285,7 +281,7 @@ export default function HallScreen() {
               <Pressable
                 key={row.month}
                 onPress={() => go(row.first)}
-                style={{ height: 32, paddingHorizontal: 14, borderRadius: 16, justifyContent: "center", backgroundColor: on ? skin.accent.bg : "rgba(255,255,255,.14)" }}
+                style={{ height: 32, paddingHorizontal: 14, borderRadius: 16, justifyContent: "center", backgroundColor: on ? skin.accent.bg : "rgba(14,20,26,.38)" }}
               >
                 <Text style={{ color: on ? skin.accent.ink : "#FBF8F1", fontSize: 12.5, fontWeight: "700" }}>{MONTHS[row.month]}</Text>
               </Pressable>
@@ -293,59 +289,252 @@ export default function HallScreen() {
           })}
         </ScrollView>
         {slots.length > 1 ? (
-          <Text style={{ color: "rgba(251,248,241,.75)", fontSize: 11.5, textAlign: "center", marginTop: 10 }}>
+          <Text style={{ color: "rgba(251,248,241,.85)", fontSize: 11.5, textAlign: "center", marginTop: 10 }}>
             {ar(index + 1)} / {ar(slots.length)} · اسحب لتمشي
           </Text>
         ) : null}
-      </View>
+      </Floor>
 
-      <Modal visible={Boolean(detail)} transparent animationType="fade" onRequestClose={() => setDetail(null)}>
-        <View style={{ flex: 1, backgroundColor: "rgba(8,14,20,.92)" }}>
-          <Pressable onPress={() => setDetail(null)} style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }} />
-          {detail ? (
-            <ScrollView contentContainerStyle={{ flexGrow: 1, alignItems: "center", justifyContent: "center", gap: 18, padding: 24, paddingTop: 70 }}>
-              <DetailPiece skin={skin} moment={detail} w={Math.min(290, width * 0.72)} />
-              <Placard skin={skin} moment={detail} wide />
-              {detail.echo && (detail.echo.faces.length || detail.echo.comments) ? <EchoWall echo={detail.echo} /> : null}
-              <Pressable
-                onPress={() => {
-                  const id = detail.id;
-                  setDetail(null);
-                  router.push(`/m/${id}` as never);
-                }}
-                style={{ height: 42, paddingHorizontal: 22, borderRadius: 21, justifyContent: "center", backgroundColor: skin.accent.bg }}
-              >
-                <Text style={{ color: skin.accent.ink, fontSize: 14, fontWeight: "800" }}>افتح اللحظة</Text>
-              </Pressable>
-            </ScrollView>
-          ) : null}
-        </View>
-      </Modal>
+      {detail ? (
+        <HallSheet
+          skin={skin}
+          frameImage={images?.frame ?? null}
+          moment={detail.moment}
+          tab={detail.tab}
+          onClose={() => setDetail(null)}
+          onOpen={(id) => {
+            setDetail(null);
+            router.push(`/m/${id}` as never);
+          }}
+        />
+      ) : null}
     </View>
   );
 }
 
 /**
- * بطاقةُ الشرح تحت اللوحة: التاريخُ والساعة، ثمّ ما لا تقوله اللوحةُ وحدها — نصُّ الصورة
- * وعنوانُ الأغنية — **مرّةً واحدة** (كان سطرُ الصورة يُكتب مرّتين)، ثمّ صداها: وجوهُ من تفاعل
- * متراكبةً وعددُ التفاعلات والتعليقات، والضغطُ عليه يفتح اللوحة.
+ * لوحةٌ معلّقة: موضعُها من موضع الجدار، ومصباحُها فوقها يسقط ضوؤه عليها، وظلُّها على
+ * الجدار. والبعيدةُ عن الوسط تخفت بحجابٍ داكن لا بشفافيّة — الشفافيّةُ تُري الجدارَ من
+ * خلال اللوحة. والعُقدُ تُبنى مرّةً لكلّ لوحة (`useMemo`) لا مع كلّ رسمة.
  */
-function Placard({ skin, moment, wide = false, onEcho }: { skin: HallSkin; moment: ArchiveMoment; wide?: boolean; onEcho?: () => void }) {
+const Hung = memo(function Hung({
+  pos,
+  at,
+  step,
+  left,
+  w,
+  h,
+  skin,
+  children,
+}: {
+  pos: Animated.Value;
+  at: number;
+  step: number;
+  left: number;
+  w: number;
+  h: number;
+  skin: HallSkin;
+  children: React.ReactNode;
+}) {
+  const motion = useMemo(() => {
+    const rel = Animated.subtract(pos, at * step);
+    return {
+      rel,
+      dim: rel.interpolate({ inputRange: [-step, 0, step], outputRange: [0.42, 0, 0.42], extrapolate: "clamp" }),
+      glow: rel.interpolate({ inputRange: [-step, 0, step], outputRange: [0.35, 1, 0.35], extrapolate: "clamp" }),
+    };
+  }, [pos, at, step]);
+  const lamp = w * 0.46;
+  return (
+    <Animated.View style={{ position: "absolute", top: 0, left, width: w, height: h + 60, transform: [{ translateX: motion.rel }] }}>
+      {/* مصباحُ اللوحة: ذراعٌ نحاسيّ وقضيبُه، وضوءٌ ينسكب على الإطار. */}
+      <View style={{ position: "absolute", top: 0, left: (w - lamp) / 2, width: lamp, alignItems: "center" }}>
+        <View style={{ width: 3, height: 12, backgroundColor: skin.brass.edge }} />
+        <View style={{ width: lamp, height: 7, borderRadius: 4, backgroundColor: skin.brass.bg, borderBottomWidth: 2, borderBottomColor: skin.brass.edge }} />
+      </View>
+      <Animated.View pointerEvents="none" style={{ position: "absolute", top: 19, left: -w * 0.2, opacity: motion.glow }}>
+        <Svg width={w * 1.4} height={h * 0.9}>
+          <Defs>
+            <LinearGradient id={`cone${at}`} x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor={skin.light} stopOpacity={0.75} />
+              <Stop offset="1" stopColor={skin.light} stopOpacity={0} />
+            </LinearGradient>
+          </Defs>
+          <Polygon
+            points={`${w * 0.7 - lamp / 2},0 ${w * 0.7 + lamp / 2},0 ${w * 1.4},${h * 0.9} 0,${h * 0.9}`}
+            fill={`url(#cone${at})`}
+          />
+        </Svg>
+      </Animated.View>
+      <View style={{ position: "absolute", top: 30, left: 0, width: w, height: h }}>
+        {children}
+        <Animated.View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#0B1117", opacity: motion.dim }} />
+      </View>
+    </Animated.View>
+  );
+});
+
+/**
+ * الجدار: نقشٌ مرفوع (القاعدة ٣٥٠) يتكرّر بلاطاتٍ، وبلاه جصٌّ بخطوط ورقِ جدارٍ خافتة. ثمّ ضوءٌ
+ * من السقف يبهت إلى أسفل، وحوافٌّ أعتم، ولوحٌ خشبيّ في ثلثه الأسفل بإفريزه وألواحه المحفورة،
+ * وقاعدةٌ تلتقي بالأرض. والنقشُ والألواحُ يمرّان مع اللوحات — هي معلّقةٌ عليه.
+ */
+function Wall({ skin, image, width, height, shift }: { skin: HallSkin; image: string | null; width: number; height: number; shift: Animated.AnimatedNode }) {
+  if (!height) return null;
+  const cols = Math.ceil(width / WALL_TILE) + 2;
+  const rows = Math.ceil(height / WALL_TILE);
+  const wainscot = Math.round(height * 0.2);
+  const panel = WALL_TILE / 2;
+  return (
+    <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
+      <Animated.View style={{ position: "absolute", top: 0, bottom: 0, left: -WALL_TILE, width: cols * WALL_TILE, transform: [{ translateX: shift as never }] }}>
+        {image
+          ? Array.from({ length: cols * rows }, (_, at) => (
+              <MediaImage
+                key={at}
+                mediaId={image}
+                style={{ position: "absolute", left: (at % cols) * WALL_TILE, top: Math.floor(at / cols) * WALL_TILE, width: WALL_TILE, height: WALL_TILE }}
+              />
+            ))
+          : Array.from({ length: cols * 4 }, (_, at) => (
+              // ورقُ جدار: خطوطٌ عموديّة رفيعة بظلّ الجدار، كلُّ اثنين متقاربين.
+              <View
+                key={at}
+                style={{ position: "absolute", top: 0, bottom: 0, left: at * (WALL_TILE / 4) + (at % 2 ? 6 : 0), width: 1, backgroundColor: skin.wallShade, opacity: 0.45 }}
+              />
+            ))}
+        {/* اللوحُ الخشبيّ: إفريزٌ ثمّ ألواحٌ محفورة بدورة البلاطة نفسها فيتّصل. */}
+        <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: wainscot, backgroundColor: skin.wallShade }}>
+          <View style={{ height: 3, backgroundColor: skin.placard.bg, opacity: 0.5 }} />
+          <View style={{ height: 4, backgroundColor: "#000", opacity: 0.12 }} />
+          {Array.from({ length: cols * 2 }, (_, at) => (
+            <View
+              key={at}
+              style={{
+                position: "absolute",
+                top: 16,
+                bottom: 22,
+                left: at * panel + 10,
+                width: panel - 20,
+                borderWidth: 1.5,
+                borderTopColor: "rgba(0,0,0,.18)",
+                borderLeftColor: "rgba(0,0,0,.18)",
+                borderBottomColor: "rgba(255,255,255,.22)",
+                borderRightColor: "rgba(255,255,255,.22)",
+                borderRadius: 2,
+              }}
+            />
+          ))}
+        </View>
+      </Animated.View>
+      {/* الضوءُ والعمق: يسقط من السقف ويبهت، والحافّتان أعتم كما في قاعةٍ حقيقيّة. */}
+      <Svg width={width} height={height} style={{ position: "absolute", top: 0, left: 0 }}>
+        <Defs>
+          <LinearGradient id="wallLight" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor="#000" stopOpacity={0.22} />
+            <Stop offset="0.18" stopColor="#000" stopOpacity={0} />
+            <Stop offset="0.75" stopColor="#000" stopOpacity={0.04} />
+            <Stop offset="1" stopColor="#000" stopOpacity={0.2} />
+          </LinearGradient>
+          <RadialGradient id="wallEdge" cx="50%" cy="42%" rx="62%" ry="70%">
+            <Stop offset="0.55" stopColor="#000" stopOpacity={0} />
+            <Stop offset="1" stopColor="#000" stopOpacity={0.38} />
+          </RadialGradient>
+        </Defs>
+        <Rect x={0} y={0} width={width} height={height} fill="url(#wallLight)" />
+        <Rect x={0} y={0} width={width} height={height} fill="url(#wallEdge)" />
+      </Svg>
+      {/* القاعدة: شريطٌ داكنٌ يلتقي بالأرض. */}
+      <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 10, backgroundColor: skin.floorEdge }} />
+      <View style={{ position: "absolute", left: 0, right: 0, bottom: 10, height: 2, backgroundColor: skin.placard.bg, opacity: 0.35 }} />
+    </View>
+  );
+}
+
+/** الأرضيّة: نقشٌ مرفوع، وبلاه ألواحُ باركيه متقاطعة الفواصل — ويمرّ أسرع من الجدار. */
+function Floor({ skin, image, width, shift, children }: { skin: HallSkin; image: string | null; width: number; shift: Animated.AnimatedNode; children: React.ReactNode }) {
+  const insets = useSafeAreaInsets();
+  const cols = Math.ceil(width / FLOOR_TILE) + 2;
+  return (
+    <View style={{ backgroundColor: skin.floor, overflow: "hidden", paddingTop: 14, paddingBottom: Math.max(insets.bottom, 12) + 10 }}>
+      <Animated.View
+        pointerEvents="none"
+        style={{ position: "absolute", top: 0, bottom: 0, left: -FLOOR_TILE, width: cols * FLOOR_TILE, transform: [{ translateX: shift as never }] }}
+      >
+        {image
+          ? Array.from({ length: cols }, (_, at) => (
+              <MediaImage key={at} mediaId={image} style={{ position: "absolute", top: 0, left: at * FLOOR_TILE, width: FLOOR_TILE, height: FLOOR_TILE }} />
+            ))
+          : Array.from({ length: 5 }, (_, row) =>
+              Array.from({ length: cols * 2 }, (_, at) => (
+                <View
+                  key={`${row}-${at}`}
+                  style={{
+                    position: "absolute",
+                    top: row * 26,
+                    height: 26,
+                    left: at * (FLOOR_TILE / 2) + (row % 2 ? FLOOR_TILE / 4 : 0),
+                    width: FLOOR_TILE / 2,
+                    borderRightWidth: 1,
+                    borderBottomWidth: 1,
+                    borderColor: skin.floorEdge,
+                    opacity: 0.6,
+                  }}
+                />
+              )),
+            )}
+      </Animated.View>
+      {/* ظلُّ الجدار على أوّل الأرض. */}
+      <Svg pointerEvents="none" width={width} height={34} style={{ position: "absolute", top: 0, left: 0 }}>
+        <Defs>
+          <LinearGradient id="floorShade" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor="#000" stopOpacity={0.4} />
+            <Stop offset="1" stopColor="#000" stopOpacity={0} />
+          </LinearGradient>
+        </Defs>
+        <Rect x={0} y={0} width={width} height={34} fill="url(#floorShade)" />
+      </Svg>
+      {children}
+    </View>
+  );
+}
+
+/**
+ * بطاقةُ الشرح تحت اللوحة، كبطاقة متحف: التاريخُ والساعة، ثمّ ما لا تقوله اللوحةُ وحدها —
+ * نصُّ الصورة وعنوانُ الأغنية — مرّةً واحدة، ثمّ صداها: وجوهُ من تفاعل وعددُ التفاعلات
+ * والتعليقات، والضغطُ عليه يفتح النافذة على التفاعلات.
+ */
+function Placard({ skin, moment, onEcho }: { skin: HallSkin; moment: ArchiveMoment; onEcho?: () => void }) {
   const when = riyadh(moment.createdAt);
   const line = moment.kind === "PHOTO" ? moment.text : moment.kind === "MUSIC" ? momentLine(moment) : null;
   const echo = moment.echo;
   return (
-    <View style={{ backgroundColor: skin.placard.bg, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8, maxWidth: wide ? 320 : 270, alignItems: "center", gap: 4 }}>
+    <View
+      style={{
+        backgroundColor: skin.placard.bg,
+        borderRadius: 3,
+        paddingHorizontal: 14,
+        paddingVertical: 9,
+        maxWidth: 280,
+        alignItems: "center",
+        gap: 4,
+        shadowColor: "#000",
+        shadowOpacity: 0.22,
+        shadowRadius: 5,
+        shadowOffset: { width: 1, height: 3 },
+        elevation: 3,
+      }}
+    >
       <Text style={{ color: skin.placard.muted, fontSize: 10.5, fontWeight: "700" }}>
         {ar(when.day)} {MONTHS[when.month]} · {timeOfDay(new Date(moment.createdAt))}
       </Text>
       {line ? (
-        <Text numberOfLines={wide ? 4 : 2} style={{ color: skin.placard.ink, fontSize: 12.5, textAlign: "center", lineHeight: 19 }}>
+        <Text numberOfLines={2} style={{ color: skin.placard.ink, fontSize: 12.5, textAlign: "center", lineHeight: 19 }}>
           {line}
         </Text>
       ) : null}
-      {echo && (echo.reactions || echo.comments) && !wide ? (
-        <Pressable onPress={onEcho} hitSlop={8} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
+      {echo && (echo.reactions || echo.comments) ? (
+        <Pressable onPress={onEcho} hitSlop={10} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
           <View style={{ flexDirection: "row" }}>
             {echo.faces.slice(0, 3).map((face, at) => (
               <View key={at} style={{ marginLeft: at ? -7 : 0, borderRadius: 12, borderWidth: 1.5, borderColor: skin.placard.bg }}>
@@ -366,22 +555,34 @@ function Placard({ skin, moment, wide = false, onEcho }: { skin: HallSkin; momen
   );
 }
 
-/** وجوهُ من تفاعل تصعد من إطار الحاليّة واحداً بعد آخر وتذوب — مرّةً لكلّ وقوفٍ عندها. */
-function EchoRise({ echo, width, top, h }: { echo: HallEcho; width: number; top: number; h: number }) {
-  const faces = echo.faces.slice(0, 6);
+/** وجوهُ من تفاعل تصعد على جانبي الحاليّة واحداً بعد آخر وتذوب — مرّةً لكلّ وقوفٍ عندها. */
+function EchoRise({ echo, width, w, top, rise }: { echo: HallEcho; width: number; w: number; top: number; rise: number }) {
+  const faces = echo.faces.slice(0, 8);
   return (
-    <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, height: top + h }}>
-      {faces.map((face, at) => (
-        <RisingFace key={at} kind={face.kind} emoji={face.emoji} delay={350 + at * 420} x={width / 2 + (at % 2 ? 1 : -1) * (30 + ((at * 37) % 70))} from={top + h * 0.75} />
-      ))}
+    <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 40, elevation: 40 }}>
+      {faces.map((face, at) => {
+        // يمينٌ ثمّ يسار، في الجدار بين اللوحة وجارتها لا فوق الصورة.
+        const side = at % 2 ? 1 : -1;
+        const x = width / 2 + side * (w / 2 + 22 + ((at * 13) % 16));
+        return <RisingFace key={at} kind={face.kind} emoji={face.emoji} delay={300 + at * 380} x={x} from={top} rise={rise} sway={side * 8} />;
+      })}
     </View>
   );
 }
 
-function RisingFace({ kind, emoji, delay, x, from }: { kind: string; emoji: string | null; delay: number; x: number; from: number }) {
+function RisingFace({ kind, emoji, delay, x, from, rise, sway }: { kind: string; emoji: string | null; delay: number; x: number; from: number; rise: number; sway: number }) {
   const t = useRef(new Animated.Value(0)).current;
+  const motion = useMemo(
+    () => ({
+      opacity: t.interpolate({ inputRange: [0, 0.1, 0.72, 1], outputRange: [0, 1, 1, 0] }),
+      y: t.interpolate({ inputRange: [0, 1], outputRange: [0, -rise] }),
+      x: t.interpolate({ inputRange: [0, 0.33, 0.66, 1], outputRange: [0, sway, -sway, 0] }),
+      scale: t.interpolate({ inputRange: [0, 0.14, 1], outputRange: [0.4, 1.12, 0.85] }),
+    }),
+    [t, rise, sway],
+  );
   useEffect(() => {
-    const run = Animated.timing(t, { toValue: 1, duration: 2600, delay, easing: Easing.out(Easing.quad), useNativeDriver: true });
+    const run = Animated.timing(t, { toValue: 1, duration: 2800, delay, easing: Easing.out(Easing.quad), useNativeDriver: true });
     run.start();
     return () => run.stop();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -389,48 +590,300 @@ function RisingFace({ kind, emoji, delay, x, from }: { kind: string; emoji: stri
     <Animated.View
       style={{
         position: "absolute",
-        left: x - 16,
+        left: x - 15,
         top: from,
-        opacity: t.interpolate({ inputRange: [0, 0.12, 0.7, 1], outputRange: [0, 1, 1, 0] }),
-        transform: [
-          { translateY: t.interpolate({ inputRange: [0, 1], outputRange: [0, -from * 0.9] }) },
-          { scale: t.interpolate({ inputRange: [0, 0.15, 1], outputRange: [0.4, 1.1, 0.9] }) },
-        ],
+        opacity: motion.opacity,
+        transform: [{ translateY: motion.y }, { translateX: motion.x }, { scale: motion.scale }],
       }}
     >
-      <ReactionGlyph kind={kind} emoji={emoji} size={32} />
+      <ReactionGlyph kind={kind} emoji={emoji} size={30} />
     </Animated.View>
   );
 }
 
-/** صدى اللحظة في لوحتها الكبيرة: من تفاعل بوجهه وشارةِ تفاعله، وكم علّق. */
-function EchoWall({ echo }: { echo: HallEcho }) {
+type Tab = "art" | "echo" | "comments";
+
+/**
+ * نافذةُ اللوحة — **بقرار المالك**: تصعد من أسفل بمقبضها، وتُغلق بـ«×» وبزرّ الرجوع وبسحبها
+ * إلى أسفل من أيّ موضعٍ فيها ما دامت قائمتُها في أعلاها (القاعدة ٧٨). وفيها ثلاثُ شرائح:
+ * **اللوحة** كبيرةً وبطاقتُها و«افتح اللحظة»، و**التفاعلات** قائمةً مرتّبة تُمرَّر — شرائحُ
+ * لكلّ تفاعلٍ بعدده تُصفّي، والصفوفُ تدخل متتابعة — و**التعليقات** بوجوه أصحابها. والقائمتان
+ * من اللحظة نفسها (`/v1/moments/:id`) — الصدى في الأرشيف اثنا عشر وجهاً لا أكثر.
+ */
+function HallSheet({
+  skin,
+  frameImage,
+  moment,
+  tab: first,
+  onClose,
+  onOpen,
+}: {
+  skin: HallSkin;
+  frameImage: string | null;
+  moment: ArchiveMoment;
+  tab: Tab;
+  onClose: () => void;
+  onOpen: (id: string) => void;
+}) {
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  const [tab, setTab] = useState<Tab>(first);
+  const full = useMoment(moment.id);
+  const reactions = full.data?.moment.reactions ?? null;
+  const comments = full.data?.moment.comments ?? null;
+  const reactionCount = reactions?.length ?? moment.echo?.reactions ?? 0;
+  const commentCount = comments?.length ?? moment.echo?.comments ?? 0;
+
+  const drag = useRef(new Animated.Value(height)).current;
+  useEffect(() => {
+    Animated.spring(drag, { toValue: 0, useNativeDriver: true, speed: 16, bounciness: 3 }).start();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const close = useCallback(() => {
+    Animated.timing(drag, { toValue: height, duration: 220, easing: Easing.in(Easing.cubic), useNativeDriver: true }).start(() => onClose());
+  }, [drag, height, onClose]);
+
+  const atTop = useRef(true);
+  // شريحةٌ جديدة قائمةٌ جديدة في أعلاها: السحبُ إلى أسفل يُغلق من أوّل لمسة.
+  const pick = (next: Tab) => {
+    atTop.current = true;
+    setTab(next);
+  };
+  const pulling = useRef(false);
+  const downward = (g: { dx: number; dy: number }) => g.dy > 8 && g.dy > Math.abs(g.dx) * 1.3;
+  const pan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponderCapture: (_, g) => downward(g) && atTop.current,
+      onMoveShouldSetPanResponder: (_, g) => downward(g),
+      onPanResponderGrant: (_, g) => {
+        pulling.current = downward(g);
+      },
+      onPanResponderTerminationRequest: () => !pulling.current,
+      onPanResponderMove: (_, g) => {
+        if (!pulling.current && downward(g)) pulling.current = true;
+        if (pulling.current) drag.setValue(Math.max(0, g.dy));
+      },
+      onPanResponderRelease: (_, g) => {
+        if (!pulling.current) return;
+        pulling.current = false;
+        if (g.dy > 110 || g.vy > 1.1) close();
+        else Animated.spring(drag, { toValue: 0, useNativeDriver: true, bounciness: 5 }).start();
+      },
+      onPanResponderTerminate: () => {
+        pulling.current = false;
+        Animated.spring(drag, { toValue: 0, useNativeDriver: true }).start();
+      },
+    }),
+  ).current;
+  const backdrop = useMemo(() => drag.interpolate({ inputRange: [0, height], outputRange: [1, 0], extrapolate: "clamp" }), [drag, height]);
+
+  const when = riyadh(moment.createdAt);
+  const tabs: { key: Tab; label: string }[] = [
+    { key: "art", label: "اللوحة" },
+    { key: "echo", label: reactionCount ? `التفاعلات ${ar(reactionCount)}` : "التفاعلات" },
+    { key: "comments", label: commentCount ? `التعليقات ${ar(commentCount)}` : "التعليقات" },
+  ];
+
   return (
-    <View style={{ alignItems: "center", gap: 10, maxWidth: 320 }}>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 10 }}>
-        {echo.faces.map((face, at) => (
-          <View key={at} style={{ alignItems: "center", width: 54 }}>
-            <View>
-              <Avatar name={face.name} size={42} mediaId={face.avatarMediaId} />
-              <View style={{ position: "absolute", bottom: -4, left: -4 }}>
-                <ReactionGlyph kind={face.kind} emoji={face.emoji} size={20} />
-              </View>
-            </View>
-            <Text numberOfLines={1} style={{ color: "rgba(251,248,241,.85)", fontSize: 10.5, marginTop: 5 }}>
-              {face.name.split(" ")[0]}
+    <Modal visible transparent animationType="none" onRequestClose={close} statusBarTranslucent>
+      <Animated.View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(6,10,14,.6)", opacity: backdrop }}>
+        <Pressable accessibilityLabel="إغلاق" onPress={close} style={{ flex: 1 }} />
+      </Animated.View>
+      <Animated.View
+        {...pan.panHandlers}
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: height * 0.9,
+          backgroundColor: "#141A20",
+          borderTopLeftRadius: 26,
+          borderTopRightRadius: 26,
+          transform: [{ translateY: drag }],
+          shadowColor: "#000",
+          shadowOpacity: 0.4,
+          shadowRadius: 20,
+          shadowOffset: { width: 0, height: -6 },
+          elevation: 24,
+        }}
+      >
+        <View style={{ width: 42, height: 5, borderRadius: 3, backgroundColor: "rgba(255,255,255,.28)", alignSelf: "center", marginTop: 10 }} />
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 18, paddingTop: 12 }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="رجوع إلى القاعة"
+            onPress={close}
+            hitSlop={10}
+            style={{ width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.1)" }}
+          >
+            <CloseIcon size={16} color="#fff" />
+          </Pressable>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text face="display" numberOfLines={1} style={{ color: "#fff", fontSize: 17, fontWeight: "800" }}>
+              {ar(when.day)} {MONTHS[when.month]} {ar(when.year)}
+            </Text>
+            <Text numberOfLines={1} style={{ color: "rgba(255,255,255,.6)", fontSize: 12, marginTop: 1 }}>
+              {timeOfDay(new Date(moment.createdAt))}
+              {moment.placeName ? ` · ${moment.placeName}` : ""}
             </Text>
           </View>
+        </View>
+
+        <View style={{ flexDirection: "row", paddingHorizontal: 18, marginTop: 14, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,.1)" }}>
+          {tabs.map((one) => {
+            const on = one.key === tab;
+            return (
+              <Pressable key={one.key} onPress={() => pick(one.key)} style={{ flex: 1, alignItems: "center", paddingVertical: 11 }}>
+                <Text style={{ color: on ? "#fff" : "rgba(255,255,255,.55)", fontSize: 13.5, fontWeight: on ? "800" : "600" }}>{one.label}</Text>
+                <View style={{ position: "absolute", bottom: -1, height: 2.5, width: "70%", borderRadius: 2, backgroundColor: on ? skin.accent.bg : "transparent" }} />
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <ScrollView
+          key={tab}
+          onScroll={(event) => {
+            atTop.current = event.nativeEvent.contentOffset.y <= 2;
+          }}
+          scrollEventThrottle={16}
+          contentContainerStyle={{ padding: 18, paddingBottom: insets.bottom + 30, gap: 14 }}
+        >
+          {tab === "art" ? (
+            <View style={{ alignItems: "center", gap: 18 }}>
+              <View style={{ padding: 18, borderRadius: 18, backgroundColor: skin.wall, alignItems: "center" }}>
+                <DetailPiece skin={skin} frameImage={frameImage} moment={moment} w={Math.min(270, width * 0.66)} />
+              </View>
+              <Placard skin={skin} moment={moment} onEcho={() => pick("echo")} />
+              <Pressable
+                onPress={() => onOpen(moment.id)}
+                style={{ height: 46, paddingHorizontal: 26, borderRadius: 23, justifyContent: "center", backgroundColor: skin.accent.bg }}
+              >
+                <Text style={{ color: skin.accent.ink, fontSize: 14.5, fontWeight: "800" }}>افتح اللحظة</Text>
+              </Pressable>
+            </View>
+          ) : tab === "echo" ? (
+            <ReactionList skin={skin} rows={reactions} loading={full.isLoading} />
+          ) : (
+            <CommentList rows={comments} loading={full.isLoading} />
+          )}
+        </ScrollView>
+      </Animated.View>
+    </Modal>
+  );
+}
+
+type ReactionRow = { userId: string; kind: string; emoji: string | null; name: string; avatarMediaId: string | null; mine: boolean };
+
+/** التفاعلاتُ مرتّبة: الأكثرُ أوّلاً، وداخلَ كلّ تفاعلٍ بالاسم — وشرائحُ بعددها تُصفّي. */
+function ReactionList({ skin, rows, loading }: { skin: HallSkin; rows: ReactionRow[] | null; loading: boolean }) {
+  const [only, setOnly] = useState<string | null>(null);
+  const groups = useMemo(() => {
+    const count = new Map<string, { kind: string; emoji: string | null; count: number }>();
+    for (const row of rows ?? []) {
+      const key = row.kind === "CUSTOM" ? `CUSTOM:${row.emoji}` : row.kind;
+      const now = count.get(key);
+      if (now) now.count += 1;
+      else count.set(key, { kind: row.kind, emoji: row.emoji, count: 1 });
+    }
+    return [...count.entries()].sort((a, b) => b[1].count - a[1].count);
+  }, [rows]);
+  const sorted = useMemo(() => {
+    const rank = new Map(groups.map(([key], at) => [key, at]));
+    const keyOf = (row: ReactionRow) => (row.kind === "CUSTOM" ? `CUSTOM:${row.emoji}` : row.kind);
+    return [...(rows ?? [])]
+      .filter((row) => !only || keyOf(row) === only)
+      .sort((a, b) => (rank.get(keyOf(a)) ?? 0) - (rank.get(keyOf(b)) ?? 0) || a.name.localeCompare(b.name, "ar"));
+  }, [rows, groups, only]);
+
+  if (loading && !rows) return <Spinner style={{ marginTop: 30 }} />;
+  if (!rows?.length) return <Text style={{ color: "rgba(255,255,255,.6)", textAlign: "center", marginTop: 30 }}>ما تفاعل أحد مع هذه اللحظة بعد.</Text>;
+  return (
+    <View style={{ gap: 14 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+        <Chip on={!only} onPress={() => setOnly(null)} accent={skin.accent}>
+          <Text style={{ color: !only ? skin.accent.ink : "#fff", fontSize: 13, fontWeight: "800" }}>الكل {ar(rows.length)}</Text>
+        </Chip>
+        {groups.map(([key, group]) => (
+          <Chip key={key} on={only === key} onPress={() => setOnly(only === key ? null : key)} accent={skin.accent}>
+            <ReactionGlyph kind={group.kind} emoji={group.emoji} size={20} />
+            <Text style={{ color: only === key ? skin.accent.ink : "#fff", fontSize: 13, fontWeight: "800" }}>{ar(group.count)}</Text>
+          </Chip>
         ))}
-      </View>
-      <Text style={{ color: "rgba(251,248,241,.7)", fontSize: 12 }}>
-        {[echo.reactions ? `${ar(echo.reactions)} تفاعل` : null, echo.comments ? `${ar(echo.comments)} تعليق` : null].filter(Boolean).join("، ")}
-      </Text>
+      </ScrollView>
+      {sorted.map((row, at) => (
+        <Entering key={`${row.userId}:${row.kind}:${row.emoji ?? ""}`} delay={Math.min(at, 12) * 45}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 4 }}>
+            <Avatar name={row.name} size={44} mediaId={row.avatarMediaId} />
+            <Text numberOfLines={1} style={{ flex: 1, minWidth: 0, color: "#fff", fontSize: 14.5, fontWeight: "700" }}>
+              {row.mine ? "أنت" : row.name}
+            </Text>
+            <ReactionGlyph kind={row.kind} emoji={row.emoji} size={28} />
+          </View>
+          <View style={{ height: 1, backgroundColor: "rgba(255,255,255,.07)", marginTop: 10, marginStart: 56 }} />
+        </Entering>
+      ))}
     </View>
   );
 }
 
+type CommentRow = { id: string; body: string; createdAt: string; sticker?: { mediaId: string } | null; user: { id: string; name: string; avatarMediaId: string | null } };
+
+function CommentList({ rows, loading }: { rows: CommentRow[] | null; loading: boolean }) {
+  if (loading && !rows) return <Spinner style={{ marginTop: 30 }} />;
+  if (!rows?.length) return <Text style={{ color: "rgba(255,255,255,.6)", textAlign: "center", marginTop: 30 }}>ما علّق أحد على هذه اللحظة بعد.</Text>;
+  return (
+    <View style={{ gap: 6 }}>
+      {rows.map((row, at) => (
+        <Entering key={row.id} delay={Math.min(at, 12) * 45}>
+          <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 6 }}>
+            <Avatar name={row.user.name} size={40} mediaId={row.user.avatarMediaId} />
+            <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Text numberOfLines={1} style={{ flexShrink: 1, color: "#fff", fontSize: 13.5, fontWeight: "800" }}>
+                  {row.user.name}
+                </Text>
+                <Text style={{ color: "rgba(255,255,255,.5)", fontSize: 11 }}>{relative(new Date(row.createdAt))}</Text>
+              </View>
+              {row.sticker ? (
+                <MediaImage mediaId={row.sticker.mediaId} resizeMode="contain" style={{ width: 96, height: 96 }} />
+              ) : (
+                <Text style={{ color: "rgba(255,255,255,.88)", fontSize: 14, lineHeight: 22 }}>{row.body}</Text>
+              )}
+            </View>
+          </View>
+        </Entering>
+      ))}
+    </View>
+  );
+}
+
+function Chip({ on, onPress, accent, children }: { on: boolean; onPress: () => void; accent: { bg: string; ink: string }; children: React.ReactNode }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={{ flexDirection: "row", alignItems: "center", gap: 6, height: 36, paddingHorizontal: 13, borderRadius: 18, backgroundColor: on ? accent.bg : "rgba(255,255,255,.1)" }}
+    >
+      {children}
+    </Pressable>
+  );
+}
+
+/** صفٌّ يدخل صاعداً ويظهر — متتابعةً، فتُقرأ القائمةُ حيّةً لا جدولاً جامداً. */
+function Entering({ delay, children }: { delay: number; children: React.ReactNode }) {
+  const t = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const run = Animated.timing(t, { toValue: 1, duration: 320, delay, easing: Easing.out(Easing.cubic), useNativeDriver: true });
+    run.start();
+    return () => run.stop();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const y = useMemo(() => t.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }), [t]);
+  return <Animated.View style={{ opacity: t, transform: [{ translateY: y }] }}>{children}</Animated.View>;
+}
+
 /** صورُ اللحظة متعدّدة الصور مكدّسةً في الإطار الكبير: الضغطُ يُقلّب العليا إلى آخر الكومة. */
-function DetailPiece({ skin, moment, w }: { skin: HallSkin; moment: ArchiveMoment; w: number }) {
+function DetailPiece({ skin, frameImage, moment, w }: { skin: HallSkin; frameImage: string | null; moment: ArchiveMoment; w: number }) {
   const h = w * 1.28;
   const photos = moment.mediaId
     ? [
@@ -440,10 +893,18 @@ function DetailPiece({ skin, moment, w }: { skin: HallSkin; moment: ArchiveMomen
     : [];
   const [top, setTop] = useState(0);
   const flip = useRef(new Animated.Value(0)).current;
+  const motion = useMemo(
+    () => ({
+      x: flip.interpolate({ inputRange: [0, 1], outputRange: [0, -w * 0.9] }),
+      r: flip.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "-12deg"] }),
+      o: flip.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+    }),
+    [flip, w],
+  );
   if (moment.kind !== "PHOTO" || photos.length < 2) {
     return (
       <View style={{ width: w, height: h }}>
-        <Piece skin={skin} moment={moment} w={w} h={h} />
+        <Piece skin={skin} frameImage={frameImage} moment={moment} w={w} h={h} />
       </View>
     );
   }
@@ -470,14 +931,14 @@ function DetailPiece({ skin, moment, w }: { skin: HallSkin; moment: ArchiveMomen
                 width: w,
                 height: h,
                 transform: [
-                  { translateX: lift ? flip.interpolate({ inputRange: [0, 1], outputRange: [0, -w * 0.9] }) : depth * 10 },
+                  { translateX: lift ? motion.x : depth * 10 },
                   { translateY: depth * -8 },
-                  { rotate: lift ? flip.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "-12deg"] }) : `${depth % 2 ? -4 : 3}deg` },
+                  { rotate: lift ? motion.r : `${depth % 2 ? -4 : 3}deg` },
                 ],
-                opacity: lift ? flip.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) : 1,
+                opacity: lift ? motion.o : 1,
               }}
             >
-              <PhotoFrame skin={skin} mediaId={photo.mediaId} pos={photo.pos} />
+              <PhotoFrame skin={skin} frameImage={frameImage} mediaId={photo.mediaId} pos={photo.pos} />
             </Animated.View>
           );
         })}
@@ -490,20 +951,39 @@ function DetailPiece({ skin, moment, w }: { skin: HallSkin; moment: ArchiveMomen
   );
 }
 
-const SHADOW = { shadowColor: "#000", shadowOpacity: 0.28, shadowRadius: 10, shadowOffset: { width: 0, height: 8 }, elevation: 8 } as const;
-
-function PhotoFrame({ skin, mediaId, pos }: { skin: HallSkin; mediaId: string; pos?: { x: number; y: number } }) {
+/**
+ * إطارُ الصورة: لونُ الثوب وعرضُه وبطانتُه — وإن رُفع للثوب إطارٌ مرسوم (القاعدة ٣٥٠) مُدّ فوق
+ * الصورة كلّها، والصورةُ تحته بحشوة عرض الإطار فلا يُغطّي منها إلا حافّتها.
+ */
+function PhotoFrame({ skin, frameImage, mediaId, pos }: { skin: HallSkin; frameImage: string | null; mediaId: string; pos?: { x: number; y: number } }) {
   return (
-    <View style={{ flex: 1, backgroundColor: skin.photo.frame, padding: skin.photo.width, ...SHADOW }}>
+    <View style={{ flex: 1, backgroundColor: frameImage ? skin.photo.mat : skin.photo.frame, padding: skin.photo.width, ...SHADOW }}>
       <View style={{ flex: 1, backgroundColor: skin.photo.mat, padding: skin.photo.matWidth }}>
         <MediaImage mediaId={mediaId} style={{ flex: 1 }} position={pos} />
       </View>
+      {frameImage ? (
+        <MediaImage mediaId={frameImage} resizeMode="fill" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
+      ) : null}
     </View>
   );
 }
 
 /** اللوحةُ بحسب نوع اللحظة: صورةٌ في إطار (ومتعدّدةُ الصور كومةٌ مائلة)، وخاطرةٌ لوحةُ نصّ، ومكانٌ لوحةٌ نحاسيّة، وأغنيةٌ أسطوانة. */
-function Piece({ skin, moment, w, h, rotate }: { skin: HallSkin; moment: ArchiveMoment; w: number; h: number; rotate?: Animated.AnimatedInterpolation<string> }) {
+function Piece({
+  skin,
+  frameImage,
+  moment,
+  w,
+  h,
+  rotate,
+}: {
+  skin: HallSkin;
+  frameImage: string | null;
+  moment: ArchiveMoment;
+  w: number;
+  h: number;
+  rotate?: Animated.AnimatedInterpolation<string>;
+}) {
   if (moment.kind === "PHOTO" && moment.mediaId) {
     const more = moment.morePhotos ?? [];
     return (
@@ -514,11 +994,12 @@ function Piece({ skin, moment, w, h, rotate }: { skin: HallSkin; moment: Archive
             key={mediaId}
             style={{ position: "absolute", top: 0, left: 0, width: w, height: h, transform: [{ rotate: at ? "-5deg" : "4deg" }, { translateX: at ? -8 : 8 }] }}
           >
-            <PhotoFrame skin={skin} mediaId={mediaId} pos={moment.morePhotoPos?.[at]} />
+            <PhotoFrame skin={skin} frameImage={frameImage} mediaId={mediaId} pos={moment.morePhotoPos?.[at]} />
           </View>
         ))}
         <PhotoFrame
           skin={skin}
+          frameImage={frameImage}
           mediaId={moment.mediaId}
           pos={moment.photoX != null ? { x: moment.photoX, y: moment.photoY ?? 50 } : undefined}
         />

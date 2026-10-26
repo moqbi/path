@@ -1010,3 +1010,13 @@ h3 {
     display: none;
   }
 }
+/* صفوفُ نافذة القاعة تدخل صاعدةً متتابعة (القاعدة ٣٥٠). */
+.hall-enter {
+  animation: hall-enter 320ms cubic-bezier(.2,.8,.2,1) backwards;
+}
+@keyframes hall-enter {
+  from { opacity: 0; transform: translateY(14px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hall-enter { animation: none; }
+}
