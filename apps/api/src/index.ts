@@ -41,6 +41,8 @@ import { gifRoutes, musicRoutes, noteRoutes } from "./routes/v1/notes";
 import { stickerRoutes } from "./routes/v1/stickers";
 import { calendarRoutes } from "./routes/v1/calendar";
 import { searchRoutes } from "./routes/v1/search";
+import { broadcastRoutes } from "./routes/v1/broadcasts";
+import { sendBroadcasts } from "./services/broadcasts";
 import { sweep as sweepNotes } from "./services/notes";
 import { sweepPendingSignups } from "./services/auth";
 import { UNVERIFIED_MINUTES } from "@athar/shared";
@@ -120,6 +122,12 @@ setInterval(
 ).unref();
 
 /*
+   وتنبيهاتُ المشرف كلَّ دقيقة لا مع كنس الخمس (القاعدة ٣٦٣): من ضغط «أرسل»
+   ينتظر أن يرى التنبيه على جواله، وخمسُ دقائق تُقرأ «ما وصل».
+*/
+setInterval(() => void sendBroadcasts().catch((error) => console.error("✗ تنبيه المشرف", error)), 60_000).unref();
+
+/*
    وانتهاءُ آثار+ كل خمس دقائق: منحُ اللوحة ونزعُها لا يصلهما حدثٌ من
    RevenueCat، فالكنسُ هو من يُنهيهما — وربعُ ساعةٍ يتحرّك فيها وجهٌ
    بعد انتهاء اشتراك صاحبه طويلة. والاستعلامُ سطرٌ واحد.
@@ -193,6 +201,7 @@ app.route("/v1/gifs", gifRoutes);
 app.route("/v1/stickers", stickerRoutes);
 app.route("/v1/calendar", calendarRoutes);
 app.route("/v1/search", searchRoutes);
+app.route("/v1/broadcasts", broadcastRoutes);
 app.route("/v1/recap", recapRoutes);
 app.route("/v1/webhooks", webhookRoutes);
 /** بابُ اللوحة — الدور يُفحص فيه لا في العرض. */

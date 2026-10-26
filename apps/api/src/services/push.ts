@@ -28,7 +28,9 @@ export type PushKind =
   /** أحدٌ قريبٌ فتح «من حولك» (القاعدة ٢٨٢) — مطفأٌ حتى يفعّله صاحبُه. */
   | "NEARBY"
   /** صديقٌ اختاره صاحبُه نزّل قصّةً أو نوتاً (القاعدة ٣١٩) — الاختيارُ هو المفتاح. */
-  | "STORY";
+  | "STORY"
+  /** تنبيهُ المشرف لكلّ مستخدم (القاعدة ٣٦٣) — خبرٌ من التطبيق نفسه، والوضعُ الهادئ يسري عليه. */
+  | "NEWS";
 
 /**
  * صوتُ كلّ نوعٍ وقناتُه على أندرويد (القاعدة ٢٥٣): عامٌّ لما يفعله الأصدقاء،
@@ -51,6 +53,7 @@ const SOUND_OF: Record<PushKind, keyof typeof SOUNDS> = {
   MEMORY: "athar",
   NEARBY: "general",
   STORY: "general",
+  NEWS: "athar",
 };
 
 /** أيُّ حقلٍ في `User` يحرس هذا النوع. */
@@ -65,6 +68,7 @@ const GATE: Record<PushKind, string | null> = {
   MEMORY: "notifyMemories",
   NEARBY: "notifyNearby",
   STORY: null,
+  NEWS: null,
 };
 
 /**
@@ -193,6 +197,8 @@ export async function broadcast(
   path?: string,
   /** حصرٌ إضافيّ — جرسٌ لميزةٍ في نسخة التطوير وحدها يُقرع لطاقمها (القاعدة ٣٣٥). */
   only?: Record<string, unknown>,
+  /** ما يُحمل مع المسار — معرّفُ تنبيه المشرف (القاعدة ٣٦٣). */
+  extra?: Record<string, unknown>,
 ): Promise<number> {
   // التبويبُ يُشتقّ من القاعدة، وخبيئتُه لا تعرف بالخبر حتى تُنسى.
   forgetAllNotifications();
@@ -218,7 +224,7 @@ export async function broadcast(
           title,
           body,
           ...SOUNDS[SOUND_OF[kind]],
-          data: path ? { path } : {},
+          data: { ...(path ? { path } : {}), ...extra },
         })),
       );
     for (let index = 0; index < messages.length; index += 100) {

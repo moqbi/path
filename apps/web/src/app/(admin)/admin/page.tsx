@@ -51,6 +51,7 @@ import { ReportContext } from "./report-context";
 import { HALL_FIELDS } from "@athar/shared";
 import { linkedMany, type LinkedResult } from "@/lib/linked";
 import { StickersSection } from "./stickers";
+import { BroadcastsSection } from "./broadcasts";
 import { OccasionsSection } from "./occasions";
 import { AnalyticsSection } from "./analytics";
 
@@ -546,6 +547,7 @@ const SECTIONS = [
   { key: "users", label: "الحسابات", store: false },
   { key: "store", label: "المتجر", store: true },
   { key: "stickers", label: "الملصقات", store: true },
+  { key: "broadcasts", label: "التنبيهات", store: false },
   { key: "occasions", label: "المناسبات", store: false },
   { key: "site", label: "الموقع", store: false },
   { key: "team", label: "الصلاحيات", store: false, owner: true },
@@ -2268,6 +2270,7 @@ export default async function AdminPage({
 
         {section === "analytics" ? <AnalyticsSection /> : null}
         {section === "stickers" ? <StickersSection /> : null}
+        {section === "broadcasts" ? <BroadcastsSection /> : null}
         {section === "occasions" ? <OccasionsSection /> : null}
 
         {section === "words" ? (
