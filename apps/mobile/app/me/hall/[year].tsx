@@ -63,8 +63,6 @@ const WINDOW = 2;
 /** دورةُ نقش الجدار والأرضيّة المرسومَين — وبصورةٍ مرفوعة مقاسُ البلاطة. */
 const WALL_TILE = 220;
 const FLOOR_TILE = 160;
-/** الأرضيّةُ أقربُ إلى العين فتمرّ أسرع من الجدار: العمقُ من الفرق لا من دورانٍ ثلاثيّ. */
-const FLOOR_SPEED = 1.45;
 /** ارتفاعُ الإفريز تحت السقف بعد حافّة الشاشة، ومنه تتدلّى المصابيح. */
 const CROWN = 16;
 
@@ -75,7 +73,7 @@ const SHADOW = { shadowColor: "#3A2A14", shadowOpacity: 0.3, shadowRadius: 14, s
  * — وفي أعلاه العلامةُ و«آثار» يساراً، والرجوعُ و«عرض اللحظات» يميناً. ثمّ لافتةُ الشهر،
  * ثمّ اللوحاتُ وفوق كلّ واحدةٍ مصباحٌ في السقف يسكب ضوءَه عليها، ثمّ بطاقتُها، ثمّ لوحٌ خشبيّ
  * بحاجزه، ثمّ أرضٌ من ألواح خشب وعليها الشهور. والجدارُ يمرّ مع اللوحات بسرعتها (هي عليه)،
- * والأرضيّةُ أسرع (أقربُ إلى العين).
+ * والأرضيّةُ ثابتة تحت القدم (القاعدة ٣٥٣).
  * والتاليةُ في اليسار كقراءة العربية — بالإصبع: سحبةٌ أفقيّة تمشي بك، وعموديّةٌ تنقل شهراً،
  * والضغطُ على الحاليّة يفتح نافذتَها، وعلى جارتها يأتي بها.
  */
@@ -168,6 +166,20 @@ export default function HallScreen() {
     [go, nav],
   );
 
+  /*
+    الضغطُ على لوحةٍ بدالّةٍ ثابتة تقرأ آخرَ حال: لوحاتٌ لا تتبدّل خصائصُها مع كلّ انتقال
+    لا يُعاد رسمُها، فلا ترمش صورُها والجدارُ يمرّ (القاعدة ٣٥٣).
+  */
+  const tap = useRef<(at: number) => void>(() => {});
+  tap.current = (at: number) => {
+    const slot = slots[at];
+    if (!slot) return;
+    if (at !== index) return go(at);
+    if (slot.type === "rope") router.push("/subscribe" as never);
+    else setDetail({ moment: slot.moment, tab: "art" });
+  };
+  const onTap = useCallback((at: number) => tap.current(at), []);
+
   const pan = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) =>
@@ -231,7 +243,6 @@ export default function HallScreen() {
     والعُقدُ تُبنى مرّةً: عقدةٌ جديدةٌ مع كلّ رسمةٍ تُفصل في منتصف الحركة فترمش (القاعدة ٣٥٠).
   */
   const wallShift = useMemo(() => Animated.modulo(pos, WALL_TILE), [pos]);
-  const floorShift = useMemo(() => Animated.modulo(Animated.multiply(pos, FLOOR_SPEED), FLOOR_TILE), [pos]);
 
   const [wallH, setWallH] = useState(0);
   const piece = current?.type === "piece" ? current.moment : null;
@@ -265,23 +276,12 @@ export default function HallScreen() {
               spotY={spotY}
               frameTop={frameTop}
               skin={skin}
-              badge={at !== index && slot.type === "piece" ? slot.moment.echo?.faces[0] ?? null : null}
-            >
-              <Pressable
-                onPress={() => {
-                  if (at !== index) return go(at);
-                  if (slot.type === "rope") router.push("/subscribe" as never);
-                  else setDetail({ moment: slot.moment, tab: "art" });
-                }}
-                style={{ flex: 1 }}
-              >
-                {slot.type === "rope" ? (
-                  <Rope skin={skin} hidden={hall.data?.hidden ?? 0} w={W} h={H} />
-                ) : (
-                  <Piece skin={skin} frameImage={images?.frame ?? null} moment={slot.moment} w={W} h={H} rotate={at === index ? rotate : undefined} />
-                )}
-              </Pressable>
-            </Hung>
+              slot={slot}
+              hidden={hall.data?.hidden ?? 0}
+              frameImage={images?.frame ?? null}
+              rotate={at === index ? rotate : undefined}
+              onTap={onTap}
+            />
           ),
         )}
 
@@ -317,33 +317,6 @@ export default function HallScreen() {
           {piece ? <Placard skin={skin} moment={piece} onEcho={() => setDetail({ moment: piece, tab: "echo" })} /> : null}
         </View>
 
-        {/* زرٌّ عائم على اللوح الخشبيّ: يفتح اللوحةَ الحاليّة بنافذتها. */}
-        {piece ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="عرض اللحظة"
-            onPress={() => setDetail({ moment: piece, tab: "art" })}
-            style={{
-              position: "absolute",
-              right: 16,
-              bottom: 14,
-              width: 66,
-              height: 66,
-              borderRadius: 33,
-              padding: 3,
-              backgroundColor: skin.placard.bg,
-              borderWidth: 1,
-              borderColor: skin.photo.frame,
-              ...SHADOW,
-            }}
-          >
-            <View style={{ flex: 1, borderRadius: 30, borderWidth: 1, borderColor: skin.photo.frame, alignItems: "center", justifyContent: "center", gap: 1 }}>
-              <ImageGlyph size={19} color={skin.placard.ink} />
-              <Text style={{ color: skin.placard.ink, fontSize: 8.5, fontWeight: "800" }}>عرض اللحظة</Text>
-            </View>
-          </Pressable>
-        ) : null}
-
         {/* أعلى الجدار: العلامةُ يساراً، والرجوعُ و«عرض اللحظات» يميناً. */}
         <View style={{ position: "absolute", top: insets.top + 8, left: 16, right: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -369,7 +342,7 @@ export default function HallScreen() {
               </Pressable>
             ) : null}
           </View>
-          <View style={{ alignItems: "center" }}>
+          <View style={{ alignItems: "center", marginTop: 12 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <Text face="display" style={{ color: skin.sign.ink, fontSize: 24, fontWeight: "800", lineHeight: 32 }}>
                 آثار
@@ -383,8 +356,8 @@ export default function HallScreen() {
         </View>
       </View>
 
-      {/* الأرضيّة: ألواحُها تمرّ أسرع من الجدار، والشهورُ عليها تقفز إلى أوّل لوحةٍ في كلّ شهر. */}
-      <Floor skin={skin} image={images?.floor ?? null} width={width} height={floorH} shift={floorShift}>
+      {/* الأرضيّة ثابتة، والشهورُ عليها تقفز إلى أوّل لوحةٍ في كلّ شهر. */}
+      <Floor skin={skin} image={images?.floor ?? null} width={width} height={floorH}>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
             {months.map((row) => {
@@ -474,21 +447,10 @@ function GridGlyph({ size, color }: { size: number; color: string }) {
   );
 }
 
-/** إطارٌ فيه جبلٌ وشمس — زرُّ «عرض اللحظة». */
-function ImageGlyph({ size, color }: { size: number; color: string }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Rect x={3} y={4} width={18} height={16} rx={3} fill="none" stroke={color} strokeWidth={2} />
-      <Polygon points="5,18 10,12 13,15 15,13 19,18" fill={color} />
-      <Rect x={14.5} y={7.5} width={3} height={3} rx={1.5} fill={color} />
-    </Svg>
-  );
-}
-
 /**
  * لوحةٌ معلّقة: موضعُها من موضع الجدار، ومصباحُها في السقف فوقها يسكب ضوءَه مخروطاً عليها،
- * وظلُّها على الجدار. والعُقدُ تُبنى مرّةً لكلّ لوحة (`useMemo`) لا مع كلّ رسمة (القاعدة ٣٥٠).
- * والجارةُ تحمل شارةَ أوّل تفاعلٍ في ركنها: يُرى أنّ عليها صدى قبل أن تُقصد.
+ * وظلُّها على الجدار. والعُقدُ تُبنى مرّةً لكلّ لوحة (`useMemo`) لا مع كلّ رسمة (القاعدة ٣٥٠)،
+ * وخصائصُها ثابتةٌ فلا يُعاد رسمُها مع كلّ انتقال إلا الحاليّةُ وما تركته (القاعدة ٣٥٣).
  */
 const Hung = memo(function Hung({
   pos,
@@ -500,8 +462,11 @@ const Hung = memo(function Hung({
   spotY,
   frameTop,
   skin,
-  badge,
-  children,
+  slot,
+  hidden,
+  frameImage,
+  rotate,
+  onTap,
 }: {
   pos: Animated.Value;
   at: number;
@@ -512,8 +477,11 @@ const Hung = memo(function Hung({
   spotY: number;
   frameTop: number;
   skin: HallSkin;
-  badge: { kind: string; emoji: string | null } | null;
-  children: React.ReactNode;
+  slot: Slot;
+  hidden: number;
+  frameImage: string | null;
+  rotate?: Animated.AnimatedInterpolation<string>;
+  onTap: (at: number) => void;
 }) {
   const motion = useMemo(() => {
     const rel = Animated.subtract(pos, at * step);
@@ -558,15 +526,13 @@ const Hung = memo(function Hung({
         <View style={{ width: fixture - 6, height: 3, borderRadius: 2, backgroundColor: skin.light, marginTop: -1 }} />
       </View>
       <View style={{ position: "absolute", top: frameTop, left: 0, width: w, height: h }}>
-        {children}
-        {badge ? (
-          <View
-            pointerEvents="none"
-            style={{ position: "absolute", left: -6, bottom: -8, width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: skin.placard.bg, ...SOFT }}
-          >
-            <ReactionGlyph kind={badge.kind} emoji={badge.emoji} size={22} />
-          </View>
-        ) : null}
+        <Pressable onPress={() => onTap(at)} style={{ flex: 1 }}>
+          {slot.type === "rope" ? (
+            <Rope skin={skin} hidden={hidden} w={w} h={h} />
+          ) : (
+            <Piece skin={skin} frameImage={frameImage} moment={slot.moment} w={w} h={h} rotate={rotate} />
+          )}
+        </Pressable>
       </View>
     </Animated.View>
   );
@@ -577,7 +543,7 @@ const Hung = memo(function Hung({
  * السقفُ تحت شريط الحالة ثمّ إفريزٌ مدرّج، وضوءٌ يبهت إلى أسفل، وحوافٌّ أعتم، ولوحٌ خشبيّ في
  * أسفله بحاجزه وألواحه المحفورة، وقاعدةٌ تلتقي بالأرض. والنقشُ والألواحُ يمرّان مع اللوحات.
  */
-function Wall({
+const Wall = memo(function Wall({
   skin,
   image,
   width,
@@ -676,25 +642,23 @@ function Wall({
       <View style={{ position: "absolute", left: 0, right: 0, bottom: 9, height: 2, backgroundColor: "rgba(255,255,255,.4)" }} />
     </View>
   );
-}
+});
 
 /**
  * الأرضيّة: نقشٌ مرفوع، وبلاه ألواحُ خشبٍ بدرجاتٍ متفاوتة وفواصلَ متخالفة ولمعةٍ من الضوء —
- * وتمرّ أسرع من الجدار.
+ * ثابتةٌ لا تمرّ مع اللوحات: أرضٌ تتحرّك تحت القدم تُقرأ رمشة (القاعدة ٣٥٣).
  */
 function Floor({
   skin,
   image,
   width,
   height,
-  shift,
   children,
 }: {
   skin: HallSkin;
   image: string | null;
   width: number;
   height: number;
-  shift: Animated.AnimatedNode;
   children: React.ReactNode;
 }) {
   const insets = useSafeAreaInsets();
@@ -705,7 +669,7 @@ function Floor({
     <View style={{ height, backgroundColor: skin.floor, overflow: "hidden", paddingTop: 14, paddingBottom: Math.max(insets.bottom, 12) }}>
       <Animated.View
         pointerEvents="none"
-        style={{ position: "absolute", top: 0, bottom: 0, left: -FLOOR_TILE, width: cols * FLOOR_TILE, transform: [{ translateX: shift as never }] }}
+        style={{ position: "absolute", top: 0, bottom: 0, left: -FLOOR_TILE, width: cols * FLOOR_TILE }}
       >
         {image
           ? Array.from({ length: cols * Math.ceil(height / FLOOR_TILE) }, (_, at) => (
@@ -1155,7 +1119,8 @@ function ReactionList({ skin, rows, loading }: { skin: HallSkin; rows: ReactionR
   if (!rows?.length) return <Text style={{ color: "rgba(255,255,255,.6)", textAlign: "center", marginTop: 30 }}>ما تفاعل أحد مع هذه اللحظة بعد.</Text>;
   return (
     <View style={{ gap: 14 }}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+      {/* تلتفّ من اليمين ولا تُمرَّر: صفٌّ أفقيٌّ في جذرٍ من اليمين كان يتوسّط ويُقصّ ولا يتحرّك. */}
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
         <Chip on={!only} onPress={() => setOnly(null)} accent={skin.accent}>
           <Text style={{ color: !only ? skin.accent.ink : "#fff", fontSize: 13, fontWeight: "800" }}>الكل {ar(rows.length)}</Text>
         </Chip>
@@ -1165,7 +1130,7 @@ function ReactionList({ skin, rows, loading }: { skin: HallSkin; rows: ReactionR
             <Text style={{ color: only === key ? skin.accent.ink : "#fff", fontSize: 13, fontWeight: "800" }}>{ar(group.count)}</Text>
           </Chip>
         ))}
-      </ScrollView>
+      </View>
       {sorted.map((row, at) => (
         <Entering key={`${row.userId}:${row.kind}:${row.emoji ?? ""}`} delay={Math.min(at, 12) * 45}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 4 }}>
@@ -1236,7 +1201,11 @@ function Entering({ delay, children }: { delay: number; children: React.ReactNod
   return <Animated.View style={{ opacity: t, transform: [{ translateY: y }] }}>{children}</Animated.View>;
 }
 
-/** صورُ اللحظة متعدّدة الصور مكدّسةً في الإطار الكبير: الضغطُ يُقلّب العليا إلى آخر الكومة. */
+/**
+ * صورُ اللحظة متعدّدة الصور مكدّسةً في الإطار الكبير: الضغطُ يرفع العليا جانباً حتى لا يبقى
+ * شيء — إطارٌ فارغ — ثمّ ضغطةٌ تُعيدها كلَّها بالحركة نفسها معكوسةً، الأخيرةُ أوّلاً. لا دورانَ
+ * بلا نهاية: يُعرف متى انتهت الكومة (القاعدة ٣٥٣).
+ */
 function DetailPiece({ skin, frameImage, moment, w }: { skin: HallSkin; frameImage: string | null; moment: ArchiveMoment; w: number }) {
   const h = w * 1.28;
   const photos = moment.mediaId
@@ -1245,7 +1214,9 @@ function DetailPiece({ skin, frameImage, moment, w }: { skin: HallSkin; frameIma
         ...(moment.morePhotos ?? []).map((mediaId, at) => ({ mediaId, pos: moment.morePhotoPos?.[at] })),
       ]
     : [];
-  const [top, setTop] = useState(0);
+  // كم رُفع منها: صفرٌ والكومةُ كاملة، وعددُها والإطارُ فارغ.
+  const [gone, setGone] = useState(0);
+  const busy = useRef(false);
   const flip = useRef(new Animated.Value(0)).current;
   const motion = useMemo(
     () => ({
@@ -1262,20 +1233,43 @@ function DetailPiece({ skin, frameImage, moment, w }: { skin: HallSkin; frameIma
       </View>
     );
   }
-  const shuffle = () => {
-    Animated.timing(flip, { toValue: 1, duration: 260, easing: Easing.in(Easing.quad), useNativeDriver: true }).start(() => {
-      setTop((now) => (now + 1) % photos.length);
-      flip.setValue(0);
-    });
+  const tap = () => {
+    if (busy.current) return;
+    busy.current = true;
+    if (gone < photos.length) {
+      Animated.timing(flip, { toValue: 1, duration: 260, easing: Easing.in(Easing.quad), useNativeDriver: true }).start(() => {
+        setGone((now) => now + 1);
+        flip.setValue(0);
+        busy.current = false;
+      });
+      return;
+    }
+    // الرجوع: كلُّ صورةٍ تعود من حيث ذهبت، الأخيرةُ أوّلاً.
+    const back = (at: number) => {
+      if (at < 0) {
+        busy.current = false;
+        return;
+      }
+      flip.setValue(1);
+      setGone(at);
+      Animated.timing(flip, { toValue: 0, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start(() => back(at - 1));
+    };
+    back(photos.length - 1);
   };
-  const order = photos.map((_, at) => photos[(top + at) % photos.length]);
+  const left = photos.slice(gone).slice(0, 3);
   return (
-    <Pressable onPress={shuffle} style={{ width: w, height: h }}>
-      {order
-        .slice(0, 3)
+    <Pressable onPress={tap} style={{ width: w, height: h }}>
+      {left.length === 0 ? (
+        <View style={{ flex: 1, borderWidth: 2, borderStyle: "dashed", borderColor: skin.placard.muted, borderRadius: 6, alignItems: "center", justifyContent: "center", gap: 6 }}>
+          <Text style={{ color: skin.placard.muted, fontSize: 13, fontWeight: "700" }}>انتهت الصور</Text>
+          <Text style={{ color: skin.placard.muted, fontSize: 12 }}>اضغط لإرجاعها</Text>
+        </View>
+      ) : null}
+      {left
+        .slice()
         .reverse()
-        .map((photo, back) => {
-          const depth = Math.min(2, order.length - 1) - back; // ٠ للعليا
+        .map((photo, back, list) => {
+          const depth = list.length - 1 - back; // ٠ للعليا
           const lift = depth === 0;
           return (
             <Animated.View
@@ -1298,7 +1292,7 @@ function DetailPiece({ skin, frameImage, moment, w }: { skin: HallSkin; frameIma
         })}
       <View style={{ position: "absolute", top: 12, right: 12, paddingHorizontal: 8, height: 22, borderRadius: 11, justifyContent: "center", backgroundColor: "rgba(14,26,36,.6)" }}>
         <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>
-          {ar(top + 1)}/{ar(photos.length)}
+          {ar(Math.min(gone + 1, photos.length))}/{ar(photos.length)}
         </Text>
       </View>
     </Pressable>

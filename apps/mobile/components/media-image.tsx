@@ -64,6 +64,14 @@ export function MediaImage({
     [mediaId, token],
   );
 
+  // موضعُ القصّ كائنٌ ثابتٌ ما لم تتغيّر أرقامُه: كائنٌ جديدٌ مع كلّ رسمةٍ يُعيد ضبطَ الصورة فترمش.
+  const px = position?.x;
+  const py = position?.y;
+  const contentPosition = useMemo(
+    () => (px != null && py != null ? { left: `${px}%`, top: `${py}%` } : ("center" as const)),
+    [px, py],
+  );
+
   if (!source) return null;
 
   return (
@@ -73,7 +81,7 @@ export function MediaImage({
       source={source}
       style={style}
       contentFit={resizeMode}
-      contentPosition={position ? { left: `${position.x}%`, top: `${position.y}%` } : "center"}
+      contentPosition={contentPosition}
       transition={120}
       blurRadius={blurRadius}
       onLoad={(event) => {
