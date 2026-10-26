@@ -338,39 +338,43 @@ export default function HallScreen() {
         </View>
 
         {/* أعلى الجدار: العلامةُ يساراً، والرجوعُ و«عرض اللحظات» يميناً. */}
-        <View style={{ position: "absolute", top: insets.top + 8, left: 16, right: 16, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
-          {/* الرجوعُ و«عرض اللحظات» على خطّ «آثار» والعلامة: مركزُ سطرها ١٢ + ١٦. */}
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 11 }}>
+        {/*
+          صفٌّ واحد يتوسّطه الطرفان (القاعدة ٣٥٨): كان الزرّان كتلةً والعلامةُ كتلةً تُحاذيان بهوامش
+          محسوبة، فيُزيحهما مكانُ الحرف في سطره. و«ATHAR» تحت «آثار» خارج الحساب.
+        */}
+        <View style={{ position: "absolute", top: insets.top + 20, left: 16, right: 16, height: 32, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="رجوع"
               onPress={() => (router.canGoBack() ? router.back() : router.replace("/me/archive" as never))}
               hitSlop={8}
-              style={{ width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: skin.placard.bg, ...SOFT }}
+              style={{ width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: skin.placard.bg, ...SOFT }}
             >
               <View style={{ transform: [{ scaleX: -1 }] }}>
-                <BackIcon size={16} color={skin.placard.ink} />
+                <BackIcon size={14} color={skin.placard.ink} />
               </View>
             </Pressable>
             {months.length ? (
               <Pressable
                 accessibilityRole="button"
                 onPress={() => setGrid(true)}
-                style={{ flexDirection: "row", alignItems: "center", gap: 5, height: 34, paddingHorizontal: 12, borderRadius: 17, backgroundColor: skin.placard.bg, ...SOFT }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 4, height: 30, paddingHorizontal: 10, borderRadius: 15, backgroundColor: skin.placard.bg, ...SOFT }}
               >
-                <GridGlyph size={13} color={skin.placard.ink} />
-                <Text style={{ color: skin.placard.ink, fontSize: 12, fontWeight: "800" }}>عرض اللحظات</Text>
+                <GridGlyph size={12} color={skin.placard.ink} />
+                <Text style={{ color: skin.placard.ink, fontSize: 11.5, fontWeight: "800" }}>عرض اللحظات</Text>
               </Pressable>
             ) : null}
           </View>
-          <View style={{ alignItems: "center", marginTop: 12 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <Text face="display" style={{ color: skin.sign.ink, fontSize: 24, fontWeight: "800", lineHeight: 32 }}>
-                آثار
-              </Text>
-              <AthrMark size={28} />
-            </View>
-            <Text face="latin" style={{ color: skin.sign.muted, fontSize: 8.5, fontWeight: "700", letterSpacing: 4.5, marginTop: -3 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, height: 32 }}>
+            <Text face="display" style={{ color: skin.sign.ink, fontSize: 24, fontWeight: "800", lineHeight: 32 }}>
+              آثار
+            </Text>
+            <AthrMark size={28} />
+            <Text
+              face="latin"
+              style={{ position: "absolute", top: 29, left: 0, right: 0, textAlign: "center", color: skin.sign.muted, fontSize: 8.5, fontWeight: "700", letterSpacing: 4.5 }}
+            >
               ATHAR
             </Text>
           </View>
@@ -1297,8 +1301,9 @@ const DetailPiece = memo(function DetailPiece({
           if (Math.abs(g.dx) < 8 || Math.abs(g.dx) < Math.abs(g.dy) * 1.2) return;
           sideways.current = true;
         }
-        // الإطارُ الفارغ لا يتبع الإصبع: السحبةُ فيه تُعيد الكومة.
-        if (busy.current || gone.value >= count) return;
+        if (busy.current) return;
+        // يميناً التالية ما بقي شيء، ويساراً السابقة ما طار شيء — وإلّا فلا شيء يتحرّك.
+        if (g.dx > 0 && gone.value >= count) return;
         drag.value = g.dx;
       },
       onPanResponderRelease: (_, g) => {
@@ -1306,39 +1311,36 @@ const DetailPiece = memo(function DetailPiece({
         sideways.current = false;
         if (busy.current || !was) return;
         const far = Math.abs(g.dx) > w * 0.25 || Math.abs(g.vx) > 0.5;
-        const side = g.dx === 0 ? Math.sign(g.vx) || 1 : Math.sign(g.dx);
-        if (gone.value >= count) {
-          if (!far) return;
-          busy.current = true;
-          // تعود واحدةً واحدة من الجهة التي سُحبت إليها، والأخيرةُ أوّلاً.
-          const off = side * w * 1.3;
-          runOnUI((total: number) => {
-            "worklet";
-            const back = (at: number) => {
-              "worklet";
-              if (at < 0) {
-                runOnJS(settle)(0);
-                return;
-              }
-              gone.value = at;
-              drag.value = off;
-              drag.value = withTiming(0, { duration: 190, easing: REasing.out(REasing.cubic) }, () => back(at - 1));
-            };
-            back(total - 1);
-          })(count);
-          return;
-        }
-        if (!far) {
+        const next = g.dx > 0 && gone.value < count;
+        const back = g.dx < 0 && gone.value > 0;
+        if (!far || (!next && !back)) {
           drag.value = withSpring(0, { damping: 18, stiffness: 220 });
           return;
         }
         busy.current = true;
-        drag.value = withTiming(side * w * 1.3, { duration: 200, easing: REasing.out(REasing.quad) }, (finished) => {
-          if (!finished) return;
-          gone.value = gone.value + 1;
-          drag.value = 0;
-          runOnJS(settle)(gone.value);
-        });
+        if (next) {
+          // العليا تطير يميناً وتصعد التي تحتها.
+          drag.value = withTiming(w * 1.3, { duration: 200, easing: REasing.out(REasing.quad) }, () => {
+            gone.value = gone.value + 1;
+            drag.value = 0;
+            runOnJS(settle)(gone.value);
+          });
+          return;
+        }
+        /*
+          السابقةُ تعود من اليمين حيث طارت وتعلو الكومة: تصير هي العليا في موضعها الذي جرّها الإصبعُ
+          إليه، ثمّ تستقرّ — في دالّةٍ واحدة على الخيط الأصليّ فلا يُرى إطارٌ بينهما. ولا دالّةَ تنادي
+          نفسها هنا: إرجاعُ الكومة كلّها بدالّةٍ تكرّر نفسها كان يُسقط التطبيق.
+        */
+        runOnUI((width: number) => {
+          "worklet";
+          const x = width * 1.3 + drag.value;
+          gone.value = gone.value - 1;
+          drag.value = x;
+          drag.value = withTiming(0, { duration: 200, easing: REasing.out(REasing.quad) }, () => {
+            runOnJS(settle)(gone.value);
+          });
+        })(w);
       },
       onPanResponderTerminate: () => {
         sideways.current = false;
@@ -1369,7 +1371,7 @@ const DetailPiece = memo(function DetailPiece({
           style={[{ position: "absolute", top: 0, left: 0, width: w, height: h, borderWidth: 2, borderStyle: "dashed", borderColor: skin.placard.muted, borderRadius: 6, alignItems: "center", justifyContent: "center", gap: 6 }, empty]}
         >
           <Text style={{ color: skin.placard.muted, fontSize: 13, fontWeight: "700" }}>انتهت الصور</Text>
-          <Text style={{ color: skin.placard.muted, fontSize: 12 }}>اسحب لإرجاعها</Text>
+          <Text style={{ color: skin.placard.muted, fontSize: 12 }}>اسحب يساراً للسابقة</Text>
         </Reanimated.View>
         {/* الأخيرةُ أوّلاً في الشجرة فالأولى فوقها. */}
         {photos
@@ -1385,7 +1387,7 @@ const DetailPiece = memo(function DetailPiece({
           </Text>
         </View>
       </View>
-      <Text style={{ color: "rgba(255,255,255,.6)", fontSize: 12 }}>اسحب يميناً أو يساراً للصورة التالية</Text>
+      <Text style={{ color: "rgba(255,255,255,.6)", fontSize: 12 }}>اسحب يميناً للتالية، ويساراً للسابقة</Text>
     </View>
   );
 });
@@ -1408,9 +1410,19 @@ function StackCard({
 }) {
   const style = useAnimatedStyle(() => {
     const depth = at - gone.value;
+    const d = drag.value;
+    // السابقةُ — آخرُ ما طار — تعود من اليمين مع الإصبع حين يُسحب يساراً.
+    if (depth === -1 && d < 0) {
+      const x = w * 1.3 + d;
+      return {
+        opacity: interpolate(x, [0, w * 0.6, w * 1.3], [1, 1, 0], Extrapolation.CLAMP),
+        transform: [{ translateX: x }, { translateY: 0 }, { rotate: `${interpolate(x, [-w, 0, w], [-14, 0, 14], Extrapolation.CLAMP)}deg` }],
+      };
+    }
     if (depth < 0 || depth > 2) return { opacity: 0, transform: [{ translateX: 0 }, { translateY: 0 }, { rotate: "0deg" }] };
     if (depth === 0) {
-      const x = drag.value;
+      // يميناً تتبع الإصبع، ويساراً تبقى مكانها والسابقةُ تعلوها — إلّا الأولى: تقاوم قليلاً.
+      const x = d > 0 ? d : gone.value === 0 ? d * 0.15 : 0;
       return {
         opacity: interpolate(Math.abs(x), [0, w * 0.6, w * 1.3], [1, 1, 0], Extrapolation.CLAMP),
         transform: [{ translateX: x }, { translateY: 0 }, { rotate: `${interpolate(x, [-w, 0, w], [-14, 0, 14], Extrapolation.CLAMP)}deg` }],
