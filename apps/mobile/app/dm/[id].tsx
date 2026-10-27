@@ -1,6 +1,8 @@
 import { Spinner } from "../../components/spinner";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ReportButton } from "../../components/report-sheet";
+import { ReportButton, ReportSheet } from "../../components/report-sheet";
+import { SwipeRow } from "../../components/swipe-row";
+import { scrolled } from "../../lib/scrolled";
 import { View, FlatList, Pressable } from "react-native";
 import { Text, TextInput } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -13,7 +15,7 @@ import { viewPhoto } from "../../components/photo-viewer";
 import { MediaImage } from "../../components/media-image";
 import { ScreenHeader } from "../../components/screen-header";
 import { Ticks, receiptOf } from "../../components/receipt";
-import { CameraIcon, CloseIcon, MicIcon, PauseIcon, PlayIcon, PlusIcon, SendIcon, StickerIcon } from "../../components/icons";
+import { CameraIcon, CloseIcon, FlagIcon, PencilIcon, TrashIcon, MicIcon, PauseIcon, PlayIcon, PlusIcon, SendIcon, StickerIcon } from "../../components/icons";
 import { SourceSheet } from "../../components/source-sheet";
 import { takeShot } from "../../lib/capture";
 import { StickerImage, StickerPanel } from "../../components/sticker-panel";
@@ -199,6 +201,8 @@ export default function Conversation() {
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [shown, setShown] = useState<string | null>(null);
+  const [swiping, setSwiping] = useState(false);
+  const [reporting, setReporting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [taping, setTaping] = useState(false);
@@ -255,6 +259,12 @@ export default function Conversation() {
       setShown(null);
       refresh();
     },
+  });
+
+  const drop = useMutation({
+    mutationFn: (messageId: string) => api(`/v1/messages/${messageId}`, { method: "DELETE" }),
+    onSuccess: () => refresh(),
+    onError: (e) => setError(e instanceof Error ? e.message : "تعذّر الحذف"),
   });
 
   async function beginTape() {
@@ -408,6 +418,8 @@ export default function Conversation() {
       <View style={{ flex: 1, paddingBottom: keyboard }}>
         <FlatList
           ref={list}
+          scrollEnabled={!swiping}
+          onScrollBeginDrag={scrolled}
           data={lines}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
@@ -433,8 +445,10 @@ export default function Conversation() {
             const open = editing === item.id;
             // صورةُ المرسل واسمُه ووسمُه فوق أوّل رسالةٍ من سلسلته (القاعدة ٢١٦).
             const person = mine ? me : other;
+            // بالسحب لا بالضغطة في نسخة التطوير (القاعدة ٣٦٧)، فالضغطةُ لا تكشف شيئاً.
+            const toggle = DEV_FEATURES ? undefined : () => setShown((v) => (v === item.id ? null : item.id));
 
-            return (
+            const line = (
               <ChatLine
                 person={person ?? { name: "", avatarMediaId: null }}
                 mine={mine}
@@ -485,13 +499,13 @@ export default function Conversation() {
                 ) : item.kind === "PHOTO" && item.mediaId ? (
                   <Pressable
                     onPress={() => viewPhoto(item.mediaId)}
-                    onLongPress={() => setShown((v) => (v === item.id ? null : item.id))}
+                    onLongPress={toggle}
                   >
                     <MediaImage mediaId={item.mediaId} style={{ width: 220, height: 220, borderRadius: 16 }} />
                   </Pressable>
                 ) : item.sticker ? (
                   // الملصقُ رسمُه وحده بلا فقاعة، والضغطةُ تكشف البلاغ كالنصّ.
-                  <Pressable onPress={() => setShown((v) => (v === item.id ? null : item.id))}>
+                  <Pressable onPress={toggle}>
                     <StickerImage mediaId={item.sticker.mediaId} />
                   </Pressable>
                 ) : item.kind === "VOICE" && item.mediaId ? (
@@ -499,18 +513,59 @@ export default function Conversation() {
                 ) : (
                   <Pressable
                     // ضغطةٌ على رسالتي تكشف «تعديل»، وعلى رسالته «إبلاغ».
-                    onPress={() => setShown((v) => (v === item.id ? null : item.id))}
+                    onPress={toggle}
                     style={bubbleStyle(mine)}
                   >
                     <SelectableText
                       text={item.body}
-                      onTap={() => setShown((v) => (v === item.id ? null : item.id))}
+                      onTap={toggle}
                       style={{ color: colors.ink, fontSize: 14.5, lineHeight: 24 }}
                     />
                     <LinkPreview text={item.body} style={{ marginTop: 10, marginBottom: 0 }} />
                   </Pressable>
                 )}
               </ChatLine>
+            );
+
+            if (!DEV_FEATURES || open) return line;
+            /*
+              السحبُ يكشف أفعالَ الرسالة (القاعدة ٣٦٧): على رسالة غيري رايةُ البلاغ، وعلى رسالتي
+              قلمُ التعديل (للنصّ وحده) وسلّةُ الحذف. والسحبةُ ثمّ الضغطةُ خطوتان — وهما السؤال.
+            */
+            return mine ? (
+              <SwipeRow
+                width={64}
+                confirmLabel="حذف الرسالة"
+                onSwiping={setSwiping}
+                lead={
+                  item.kind === "TEXT" && !item.sticker
+                    ? {
+                        label: "تعديل الرسالة",
+                        run: () => {
+                          setDraft(item.body);
+                          setEditing(item.id);
+                        },
+                      }
+                    : undefined
+                }
+                icons={{
+                  delete: <TrashIcon size={21} color="#fff" />,
+                  lead: <PencilIcon size={21} color={colors.onBrand} />,
+                }}
+                onDelete={() => drop.mutateAsync(item.id).then(() => undefined)}
+              >
+                {line}
+              </SwipeRow>
+            ) : (
+              <SwipeRow
+                width={64}
+                confirmLabel="بلاغ عن الرسالة"
+                onSwiping={setSwiping}
+                icons={{ delete: <FlagIcon size={21} color="#fff" /> }}
+                onDelete={() => setReporting(item.id)}
+              >
+                {line}
+              </SwipeRow>
             );
           }}
         />
@@ -713,6 +768,7 @@ export default function Conversation() {
           ) : null}
         </View>
       </View>
+      {reporting ? <ReportSheet target="MESSAGE" targetId={reporting} onClose={() => setReporting(null)} /> : null}
     </SafeAreaView>
   );
 }

@@ -1,5 +1,6 @@
 import { prisma } from "@athar/db";
 import { push } from "./push";
+import { dropMedia } from "./media";
 import { guard } from "../lib/moderation";
 import { MESSAGE_KEEP_DAYS, VOICE_SECONDS } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
@@ -314,6 +315,24 @@ export async function edit(userId: string, messageId: string, body: string) {
     select: MESSAGE,
   });
   return { message: updated, to: otherSide(conversation, userId), conversationId: conversation.id };
+}
+
+/**
+ * حذفُ رسالة (القاعدة ٣٦٧): لمرسلها وحده، ومن الطرفين — كحذف المحادثة، لا نصفُ حذفٍ
+ * يُبقي نسخةً عند الآخر. وملفُّها (صورة أو صوت) يذهب ببكسلاته (القاعدة ١٠٤). وبلاغٌ
+ * سبق عليها يبقى بنسخته (`Report.context` — القاعدة ١٩٥)، فالحذفُ لا يمحو الدليل.
+ */
+export async function removeMessage(userId: string, messageId: string) {
+  const message = await prisma.message.findUnique({
+    where: { id: messageId },
+    select: { senderId: true, conversationId: true, mediaId: true },
+  });
+  if (!message) throw notFound("الرسالة غير موجودة");
+  if (message.senderId !== userId) throw forbidden("لا تُحذف رسالة غيرك");
+  const conversation = await mine(userId, message.conversationId);
+  await prisma.message.delete({ where: { id: messageId } });
+  if (message.mediaId) await dropMedia([message.mediaId]).catch(() => {});
+  return { to: otherSide(conversation, userId), conversationId: conversation.id };
 }
 
 /** حذف محادثة: للطرفين — لا نصف حذفٍ يبقي نسخةً عند الآخر بلا علمه. */

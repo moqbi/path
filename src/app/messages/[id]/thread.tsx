@@ -46,15 +46,12 @@ export function Thread({
   meId,
   people,
   receipts = true,
-  previews = false,
 }: {
   lines: Line[];
   meId: string;
   people: Record<string, ChatPerson>;
   /** الإيصالُ والتعديلُ للخاصّة وحدها — المجموعةُ ختمُ قراءةٍ لكل عضو. */
   receipts?: boolean;
-  /** معاينةُ الروابط (القاعدة ٣٦٦) — للمالك وممنوحي اللوحة أوّلاً. */
-  previews?: boolean;
 }) {
   // الفقاعة المفتوحة للتعديل، والفقاعة التي كُشف زرّها بلمسة.
   const [editing, setEditing] = useState<string | null>(null);
@@ -164,7 +161,7 @@ export function Thread({
                   </p>
                 </button>
               )}
-              {editing === line.id ? null : <LinkPreview text={line.body} enabled={previews} className="mt-1.5" />}
+              {editing === line.id ? null : <LinkPreview text={line.body} className="mt-1.5" />}
             </ChatLine>
           </div>
         );

@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Text } from "./type";
 import { api } from "../lib/api";
 import { openIn } from "../lib/browse";
-import { DEV_FEATURES } from "../lib/dev-features";
 import { firstUrl } from "../lib/links";
 import { colors } from "../theme/tokens";
 
@@ -20,10 +19,10 @@ type Preview = {
  * وعنوانُه وسطرٌ من وصفه، والضغطةُ تفتحه في المتصفّح المدمج (القاعدة ٦٢).
  * الخادمُ يجلبها (`/v1/links/preview`) فلا يخرج عنوانُ الجهاز إلى الموقع،
  * والصورةُ تصل `data:` في الردّ نفسه. وما لا معاينةَ له لا يُرسم شيئاً —
- * الرابطُ في النصّ كما هو. في نسخة التطوير وحدها (القاعدة ٢٩١).
+ * الرابطُ في النصّ كما هو. للجميع.
  */
 export function LinkPreview({ text, style }: { text: string | null | undefined; style?: ViewStyle }) {
-  const url = DEV_FEATURES ? firstUrl(text) : null;
+  const url = firstUrl(text);
   const state = useQuery({
     queryKey: ["link-preview", url],
     queryFn: () => api<{ preview: Preview | null }>(`/v1/links/preview?url=${encodeURIComponent(url ?? "")}`),
