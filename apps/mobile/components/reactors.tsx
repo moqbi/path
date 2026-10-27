@@ -13,6 +13,8 @@ import { NameTag } from "./name-tag";
 import { SwipeRow } from "./swipe-row";
 import { ReportSheet } from "./report-sheet";
 import { StickerImage } from "./sticker-panel";
+import { SelectableText } from "./selectable-text";
+import { LinkPreview } from "./link-preview";
 import { colors } from "../theme/tokens";
 import { ar, relative } from "../lib/format";
 import { useAudience, type Moment } from "../lib/queries";
@@ -228,7 +230,12 @@ export function CommentList({
                 <StickerImage mediaId={comment.sticker.mediaId} size={88} />
               </View>
             ) : (
-              <Text style={{ color: colors.ink2, fontSize: 12.5, lineHeight: 21 }}>{comment.body}</Text>
+              // يُحدَّد ويُنسخ بقائمة النظام، ومعه معاينةُ رابطه (القاعدة ٣٦٦). الضغطُ المطوّلُ
+              // على النصّ للتحديد، والبلاغُ باقٍ على الاسم والصورة وفي السحبة.
+              <>
+                <SelectableText text={comment.body} style={{ color: colors.ink2, fontSize: 12.5, lineHeight: 21 }} />
+                <LinkPreview text={comment.body} style={{ marginTop: 6, marginBottom: 2 }} />
+              </>
             )}
           </View>
         </Pressable>

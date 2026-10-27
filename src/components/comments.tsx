@@ -3,6 +3,7 @@ import { Avatar, NameTag } from "@/components/ui";
 import { relative } from "@/lib/format";
 import { BASE } from "@/lib/base";
 import { CommentSwipe } from "@/components/comment-swipe";
+import { LinkPreview } from "@/components/link-preview";
 
 /**
  * التعليقات: كلّ تعليق في فقاعته — صورة صاحبه، ثم اسمه ووقته، ثم نصّه.
@@ -91,9 +92,12 @@ export function CommentList({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={`${BASE}/api/media/${comment.sticker.mediaId}`} alt="ملصق" width={88} height={88} className="mt-0.5 object-contain" />
               ) : (
-                <p className="break-words text-[12.5px] leading-relaxed text-ink-2">
-                  {comment.body}
-                </p>
+                <>
+                  <p dir="auto" className="select-text break-words text-[12.5px] leading-relaxed text-ink-2">
+                    {comment.body}
+                  </p>
+                  <LinkPreview text={comment.body} enabled={trial} className="mt-1.5" />
+                </>
               )}
             </div>
            </div>
