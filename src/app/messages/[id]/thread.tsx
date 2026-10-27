@@ -1,5 +1,6 @@
 "use client";
 
+import { LinkPreview } from "@/components/link-preview";
 import { ZoomImage } from "@/components/zoom-image";
 import { useEffect, useRef, useState } from "react";
 import { editMessage } from "@/app/actions";
@@ -45,12 +46,15 @@ export function Thread({
   meId,
   people,
   receipts = true,
+  previews = false,
 }: {
   lines: Line[];
   meId: string;
   people: Record<string, ChatPerson>;
   /** الإيصالُ والتعديلُ للخاصّة وحدها — المجموعةُ ختمُ قراءةٍ لكل عضو. */
   receipts?: boolean;
+  /** معاينةُ الروابط (القاعدة ٣٦٦) — للمالك وممنوحي اللوحة أوّلاً. */
+  previews?: boolean;
 }) {
   // الفقاعة المفتوحة للتعديل، والفقاعة التي كُشف زرّها بلمسة.
   const [editing, setEditing] = useState<string | null>(null);
@@ -155,11 +159,12 @@ export function Thread({
                     border: `1px solid ${mine ? "var(--color-clay-soft)" : "var(--color-line)"}`,
                   }}
                 >
-                  <p dir="auto" className="whitespace-pre-wrap break-words text-[14px] leading-relaxed">
+                  <p dir="auto" className="select-text whitespace-pre-wrap break-words text-[14px] leading-relaxed">
                     {line.body}
                   </p>
                 </button>
               )}
+              {editing === line.id ? null : <LinkPreview text={line.body} enabled={previews} className="mt-1.5" />}
             </ChatLine>
           </div>
         );

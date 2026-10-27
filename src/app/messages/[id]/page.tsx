@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { canTryStickers } from "@/lib/stickers";
 import { currentUser } from "@/lib/auth";
 import { conversationFor, VOICE_SECONDS } from "@/lib/dm";
 import { markConversationRead } from "@/app/actions";
@@ -35,6 +36,7 @@ export default async function ThreadPage({
           lines={conversation.messages}
           meId={user.id}
           people={{ [conversation.me.id]: conversation.me, [conversation.other.id]: conversation.other }}
+          previews={canTryStickers(user)}
         />
       </ChatScroll>
 

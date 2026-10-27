@@ -42,6 +42,7 @@ import { stickerRoutes } from "./routes/v1/stickers";
 import { calendarRoutes } from "./routes/v1/calendar";
 import { searchRoutes } from "./routes/v1/search";
 import { broadcastRoutes } from "./routes/v1/broadcasts";
+import { linkRoutes } from "./routes/v1/links";
 import { sendBroadcasts } from "./services/broadcasts";
 import { sweep as sweepNotes } from "./services/notes";
 import { sweepPendingSignups } from "./services/auth";
@@ -202,6 +203,7 @@ app.route("/v1/stickers", stickerRoutes);
 app.route("/v1/calendar", calendarRoutes);
 app.route("/v1/search", searchRoutes);
 app.route("/v1/broadcasts", broadcastRoutes);
+app.route("/v1/links", linkRoutes);
 app.route("/v1/recap", recapRoutes);
 app.route("/v1/webhooks", webhookRoutes);
 /** بابُ اللوحة — الدور يُفحص فيه لا في العرض. */
