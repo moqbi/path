@@ -18,8 +18,8 @@ const seen = new Map<string, LinkPreviewData | null>();
  * وسطرٌ من وصفه. **زرٌّ لا `<a>`** يوقف الصعود: قد يجلس داخل رابط اللحظة
  * (القاعدة ٢٨). وما لا معاينةَ له لا يُرسم.
  */
-export function LinkPreview({ text, enabled, className = "" }: { text: string | null | undefined; enabled: boolean; className?: string }) {
-  const url = enabled ? firstUrl(text) : null;
+export function LinkPreview({ text, className = "" }: { text: string | null | undefined; className?: string }) {
+  const url = firstUrl(text);
   const [data, setData] = useState<LinkPreviewData | null>(url ? (seen.get(url) ?? null) : null);
 
   useEffect(() => {

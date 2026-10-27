@@ -96,7 +96,7 @@ export function CommentList({
                   <p dir="auto" className="select-text break-words text-[12.5px] leading-relaxed text-ink-2">
                     {comment.body}
                   </p>
-                  <LinkPreview text={comment.body} enabled={trial} className="mt-1.5" />
+                  <LinkPreview text={comment.body} className="mt-1.5" />
                 </>
               )}
             </div>

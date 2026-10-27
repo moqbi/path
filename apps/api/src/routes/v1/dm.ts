@@ -92,4 +92,11 @@ export const messageRoutes = new Hono()
       message: edited.message,
     });
     return c.json({ message: edited.message });
+  })
+
+  .delete("/:id", zValidator("param", byId), async (c) => {
+    const id = c.req.valid("param").id;
+    const gone = await dm.removeMessage(me(c), id);
+    pushBoth(me(c), gone.to, "message:gone", { conversationId: gone.conversationId, messageId: id });
+    return c.json({ ok: true });
   });

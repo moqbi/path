@@ -2,12 +2,11 @@
 
 import { currentUser } from "@/lib/auth";
 import { apiAs } from "@/lib/api-bridge";
-import { canTryStickers } from "@/lib/stickers";
 
 /**
  * معاينةُ الرابط في الويب (القاعدة ٣٦٦) — من الخادم نفسه (`apiAs` ← `/v1/links/preview`)
- * لا نسخةٌ هنا: حارسُ العناوين الخاصّة واحدٌ يُصان في مكانٍ واحد. وللمالك وممنوحي
- * اللوحة كلّها مقابلَ نسخة التطوير. والفشلُ `null`: الرابطُ في النصّ كما هو.
+ * لا نسخةٌ هنا: حارسُ العناوين الخاصّة واحدٌ يُصان في مكانٍ واحد، ولكلّ حساب.
+ * والفشلُ `null`: الرابطُ في النصّ كما هو.
  */
 export type LinkPreviewData = {
   url: string;
@@ -19,7 +18,7 @@ export type LinkPreviewData = {
 
 export async function linkPreviewOf(url: string): Promise<LinkPreviewData | null> {
   const user = await currentUser();
-  if (!user || !canTryStickers(user)) return null;
+  if (!user) return null;
   try {
     const res = await apiAs<{ preview: LinkPreviewData | null }>(
       user.id,
