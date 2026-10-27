@@ -13,6 +13,8 @@ import { DEV_FEATURES } from "../lib/dev-features";
 import { PencilIcon, CameraIcon, TagIcon, PinIcon, PlayIcon, WithIcon, SunIcon, MoonIcon, PlaneIcon, GiftIcon, SparkIcon, PrivateIcon, ClockIcon } from "./icons";
 import { MomentBar } from "./moment-bar";
 import { Poll } from "./poll";
+import { SelectableText } from "./selectable-text";
+import { LinkPreview } from "./link-preview";
 import { PHOTO_RATIO } from "./photo-frame";
 import { AuthorFaces, Bubble, CommentList, Reactors } from "./reactors";
 import { colors } from "../theme/tokens";
@@ -554,11 +556,24 @@ export function MomentCard({
         {moment.recapYear && moment.text ? (
           <RecapBlock text={moment.text} />
         ) : moment.text ? (
-          <Text style={{ color: colors.ink, fontSize: 13.5, lineHeight: 23, marginBottom: 8 }}>
-            {moment.text}
-            {moment.editedAt ? <Text style={{ color: colors.faint, fontSize: 11 }}> · عُدّلت</Text> : null}
-          </Text>
+          DEV_FEATURES ? (
+            // يُحدَّد ويُنسخ بقائمة النظام، والنقرةُ تفتح اللحظة كما كانت (القاعدة ٣٦٦).
+            <View style={{ marginBottom: 8 }}>
+              <SelectableText
+                text={moment.text}
+                onTap={open}
+                style={{ color: colors.ink, fontSize: 13.5, lineHeight: 23 }}
+              />
+              {moment.editedAt ? <Text style={{ color: colors.faint, fontSize: 11 }}>عُدّلت</Text> : null}
+            </View>
+          ) : (
+            <Text style={{ color: colors.ink, fontSize: 13.5, lineHeight: 23, marginBottom: 8 }}>
+              {moment.text}
+              {moment.editedAt ? <Text style={{ color: colors.faint, fontSize: 11 }}> · عُدّلت</Text> : null}
+            </Text>
+          )
         ) : null}
+        {moment.recapYear ? null : <LinkPreview text={moment.text} />}
         {moment.pollOptions?.length ? (
           <Poll momentId={moment.id} options={moment.pollOptions} endsAt={moment.pollEndsAt} author={moment.author.id === viewerId} />
         ) : null}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LinkPreview } from "@/components/link-preview";
 import { WithNames } from "@/components/with-names";
 import { Avatar, type Frame } from "@/components/ui";
 import {
@@ -604,6 +605,7 @@ export function MomentCard({
             {moment.editedAt ? <span className="text-[11px] text-faint"> · عُدّلت</span> : null}
           </p>
         ) : null}
+        {moment.recapYear ? null : <LinkPreview text={moment.text} enabled={trial} className="mb-2" />}
         {moment.pollOptions.length ? (
           <Poll momentId={moment.id} options={moment.pollOptions} endsAt={moment.pollEndsAt} author={moment.author.id === viewerId} />
         ) : null}

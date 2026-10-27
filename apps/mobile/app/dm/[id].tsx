@@ -18,6 +18,8 @@ import { SourceSheet } from "../../components/source-sheet";
 import { takeShot } from "../../lib/capture";
 import { StickerImage, StickerPanel } from "../../components/sticker-panel";
 import { DEV_FEATURES } from "../../lib/dev-features";
+import { SelectableText } from "../../components/selectable-text";
+import { LinkPreview } from "../../components/link-preview";
 import { api, baseUrl, currentAccess } from "../../lib/api";
 import { uploadFile } from "../../lib/upload";
 import { useKeyboardInset } from "../../lib/keyboard";
@@ -500,7 +502,12 @@ export default function Conversation() {
                     onPress={() => setShown((v) => (v === item.id ? null : item.id))}
                     style={bubbleStyle(mine)}
                   >
-                    <Text style={{ color: colors.ink, fontSize: 14.5, lineHeight: 24 }}>{item.body}</Text>
+                    <SelectableText
+                      text={item.body}
+                      onTap={() => setShown((v) => (v === item.id ? null : item.id))}
+                      style={{ color: colors.ink, fontSize: 14.5, lineHeight: 24 }}
+                    />
+                    <LinkPreview text={item.body} style={{ marginTop: 10, marginBottom: 0 }} />
                   </Pressable>
                 )}
               </ChatLine>
