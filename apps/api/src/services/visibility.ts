@@ -86,6 +86,34 @@ export async function canSeeMoment(userId: string, momentId: string): Promise<bo
   return Boolean(found);
 }
 
+/**
+ * بابُ المشرف إلى لحظةٍ لا يراها بالصداقة (القاعدة ٣٦٩) — **بقرار المالك**:
+ * من يقرأ ملفَّ أيّ حسابٍ بصلاحية الإشراف (القاعدة ١٠٩) يتفاعل ويعلّق ويصوّت
+ * على لحظاته كأيّ صديق. **ما وُجّه إلى الدائرة كلّها أو «الكل ما عدا»
+ * وحدَه**: ما خُصّ به تصنيفٌ أو أشخاصٌ لم يُكتب له، وتفاعلُه عليه يقول
+ * لصاحبها إنّه قرأ ما لم يُرسَل إليه. والحظرُ فوقه في الاتجاهين.
+ * بابٌ ثانٍ ظاهر لا توسعةٌ لـ`visibleWhere()` (القاعدة ٢٣).
+ */
+export async function moderatorReach(userId: string, momentId: string): Promise<boolean> {
+  const viewer = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, canModerate: true },
+  });
+  if (viewer?.role !== "ADMIN" && viewer?.canModerate !== true) return false;
+  const moment = await prisma.moment.findUnique({
+    where: { id: momentId },
+    select: { authorId: true, audience: true },
+  });
+  if (!moment || (moment.audience !== "CIRCLE" && moment.audience !== "EXCEPT")) return false;
+  const blocked = await blockedWith(userId);
+  return !blocked.includes(moment.authorId);
+}
+
+/** يرى اللحظةَ بشرطها، أو يبلغها من باب المشرف — للتفاعل والتعليق والتصويت. */
+export async function canReachMoment(userId: string, momentId: string): Promise<boolean> {
+  return (await canSeeMoment(userId, momentId)) || (await moderatorReach(userId, momentId));
+}
+
 /** التفاعل قد يُحصر في تصنيفٍ من الدائرة — «من يمكنه التفاعل معك». */
 export async function canInteract(userId: string, authorId: string): Promise<boolean> {
   if (userId === authorId) return true;

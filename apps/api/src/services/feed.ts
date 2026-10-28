@@ -1,6 +1,6 @@
 import { prisma, type MomentKind } from "@athar/db";
 import { forbidden, notFound } from "../lib/errors";
-import { blockedWith, visibleWhere } from "./visibility";
+import { blockedWith, moderatorReach, visibleWhere } from "./visibility";
 
 /**
  * شكل اللحظة كما يقرؤها الموبايل.
@@ -250,7 +250,8 @@ export async function togetherTimeline(userId: string, friendId: string) {
  * التفريق بينهما يقول للفضولي إنّ الشيء موجود.
  */
 export async function momentById(userId: string, momentId: string) {
-  const where = await visibleWhere(userId);
+  // المشرفُ يفتح لحظةَ من لم يُضفه من ملفّه ليتفاعل ويعلّق (القاعدة ٣٦٩).
+  const where = (await moderatorReach(userId, momentId)) ? {} : await visibleWhere(userId);
 
   const moment = await prisma.moment.findFirst({
     where: { id: momentId, ...where },
