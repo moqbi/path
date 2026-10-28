@@ -17,6 +17,8 @@ export const archiveRoutes = new Hono()
   .use("*", requireAuth)
   .get("/", zValidator("query", pageQuery), async (c) => c.json(await archive.archive(me(c), c.req.valid("query"))))
   .get("/years", async (c) => c.json(await archive.years(me(c))))
+  // «خريطتي» (القاعدة ٣٦٨).
+  .get("/map", async (c) => c.json(await archive.map(me(c))))
   .get("/book/:year", zValidator("param", byYear), async (c) =>
     c.json(await archive.book(me(c), c.req.valid("param").year)),
   )

@@ -447,3 +447,11 @@ export const DownloadIcon = ({ size = 20, color = "currentColor" }: Props) => (
     <Path d="M4.5 16.5v2a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-2" />
   </Svg>
 );
+
+/** خريطةٌ مطويّة — «خريطتي» (القاعدة ٣٦٨). */
+export const MapIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M9 4.5 3.5 6.6v13l5.5-2.1 6 2.1 5.5-2.1v-13L15 6.6l-6-2.1Z" />
+    <Path d="M9 4.5v13M15 6.6v13" />
+  </Svg>
+);

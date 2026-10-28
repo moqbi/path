@@ -19,7 +19,7 @@ import { MomentCard, SPINE_W, SpineThread } from "../../components/moment-card";
 import { AthrMark } from "../../components/brand";
 import { DEV_FEATURES } from "../../lib/dev-features";
 import {
-  BookIcon, CalendarIcon, ExitIcon, GearIcon, GiftIcon, PencilIcon, SparkIcon, StarIcon, WithIcon,
+  BookIcon, CalendarIcon, ExitIcon, GearIcon, MapIcon, GiftIcon, PencilIcon, SparkIcon, StarIcon, WithIcon,
 } from "../../components/icons";
 import { api } from "../../lib/api";
 import { keys, type Moment } from "../../lib/queries";
@@ -248,6 +248,15 @@ export default function Me() {
               style={HEAD_DISC}
             >
               <CalendarIcon size={20} color={colors.chromeInk} />
+            </Pressable>
+            {/* «خريطتي» بين التقويم والإعدادات (القاعدة ٣٦٨). */}
+            <Pressable
+              onPress={() => router.push("/map" as never)}
+              hitSlop={6}
+              accessibilityLabel="خريطتي"
+              style={HEAD_DISC}
+            >
+              <MapIcon size={20} color={colors.chromeInk} />
             </Pressable>
             <Spot id="me.settings">
               <Pressable
