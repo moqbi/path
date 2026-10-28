@@ -320,3 +320,95 @@ function headline(moment: {
       return moment.text ? short(moment.text) : "خاطرة";
   }
 }
+
+/**
+ * «خريطتي» (القاعدة ٣٦٨): لحظاتُ صاحبها التي حُفظت معها نقطةٌ — لا يُرى فيها أحدٌ غيرُه،
+ * فلا جمهورَ يُفحص. والنقطةُ لا تُحفظ إلا و«إظهار موقعي» مفتوح (القاعدة ٢١١)، فما قبلها
+ * اسمُ مكانٍ بلا موضع: يُعدّ في الأرقام ولا يُرسم على الخريطة — والشاشةُ تقول كم.
+ * وبحدّ الأرشيف نفسه (`since`): آثار+ «أرشيفٌ بلا نهاية».
+ */
+const MAP_KINDS = ["PHOTO", "PLACE", "THOUGHT", "MUSIC", "CITY"] as const;
+
+type MapStats = {
+  places: number;
+  cities: number;
+  countries: number;
+  top: { name: string; count: number } | null;
+  unplaced: number;
+};
+
+export async function map(userId: string) {
+  const from = await since(userId);
+  const rows = await prisma.moment.findMany({
+    where: {
+      authorId: userId,
+      kind: { in: [...MAP_KINDS] },
+      memoryOf: null,
+      ...(from ? { createdAt: { gte: from } } : {}),
+    },
+    select: {
+      id: true,
+      kind: true,
+      text: true,
+      placeName: true,
+      placeCity: true,
+      lat: true,
+      lng: true,
+      mediaId: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 4000,
+  });
+
+  const yearOf = (at: Date) => riyadhDay(at).y;
+  const points = rows
+    .filter((row) => row.kind !== "CITY" && row.lat != null && row.lng != null)
+    .map((row) => ({
+      id: row.id,
+      kind: row.kind,
+      text: row.text,
+      placeName: row.placeName,
+      placeCity: row.placeCity,
+      lat: row.lat as number,
+      lng: row.lng as number,
+      mediaId: row.mediaId,
+      at: row.createdAt.toISOString(),
+      year: yearOf(row.createdAt),
+    }));
+
+  // الأرقامُ لكلّ سنةٍ وللكلّ — من كلّ لحظةٍ فيها مكانٌ أو مدينة، بنقطةٍ أو بلا نقطة.
+  const statsOf = (year: number | null): MapStats => {
+    const mine = year == null ? rows : rows.filter((row) => yearOf(row.createdAt) === year);
+    const places = new Map<string, number>();
+    const cities = new Set<string>();
+    const countries = new Set<string>();
+    let unplaced = 0;
+    for (const row of mine) {
+      if (row.kind === "CITY") {
+        const [city, country] = (row.text ?? "").split("،").map((part) => part.trim());
+        if (city) cities.add(city);
+        countries.add(country || "السعودية");
+        continue;
+      }
+      if (row.placeName) places.set(row.placeName, (places.get(row.placeName) ?? 0) + 1);
+      if (row.placeCity) cities.add(row.placeCity);
+      if (row.placeName && (row.lat == null || row.lng == null)) unplaced += 1;
+    }
+    if (cities.size && !countries.size) countries.add("السعودية");
+    const best = [...places].sort((a, b) => b[1] - a[1])[0];
+    return {
+      places: places.size,
+      cities: cities.size,
+      countries: countries.size,
+      top: best && best[1] > 1 ? { name: best[0], count: best[1] } : null,
+      unplaced,
+    };
+  };
+
+  const years = [...new Set(rows.map((row) => yearOf(row.createdAt)))].sort((a, b) => b - a);
+  const stats: Record<string, MapStats> = { all: statsOf(null) };
+  for (const year of years) stats[String(year)] = statsOf(year);
+
+  return { points, years, stats, limited: from != null };
+}

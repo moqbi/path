@@ -19,7 +19,10 @@ function hasDevLauncher(): boolean {
   }
 }
 
-export const DEV_FEATURES: boolean = (() => {
+/**
+ * بناءُ التطوير — لما يُبنى بعد ٠٫١٫٤ ويُختبر قبل أن يُرفع حارسُه (القاعدة ٢٩١).
+ */
+export const DEV_BUILD: boolean = (() => {
   if (__DEV__) return true;
   if (hasDevLauncher()) return true;
   try {
@@ -28,3 +31,10 @@ export const DEV_FEATURES: boolean = (() => {
     return false;
   }
 })();
+
+/**
+ * **ما اختُبر في نسخة التطوير حتى ٠٫١٫٤ صار للجميع** — **بقرار المالك** (القاعدة ٣٦٨): بناءُ
+ * ٠٫١٫٤ يحمله ظاهراً، و`runtimeVersion` من رقم الإصدار فلا يصل هذا إلى ٠٫١٫٣ بتحديث. والاسمُ
+ * باقٍ لأنّ أربعةً وتسعين موضعاً تقرؤه؛ وما يُبنى بعده يُحرس بـ`DEV_BUILD`.
+ */
+export const DEV_FEATURES = true;
