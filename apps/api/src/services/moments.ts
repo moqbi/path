@@ -5,7 +5,7 @@ import { badRequest, forbidden, notFound } from "../lib/errors";
 import { reverseGeocode } from "../lib/places";
 import { isSupportedMusicUrl, resolveTrack } from "../lib/music-link";
 import { guard } from "../lib/moderation";
-import { canInteract, canSeeMoment, circleIds } from "./visibility";
+import { canInteract, canReachMoment, canSeeMoment, circleIds, moderatorReach } from "./visibility";
 import { dropMedia, squareMomentPhoto } from "./media";
 import { push } from "./push";
 import { canRunGroups } from "./groups";
@@ -409,14 +409,17 @@ export async function editMoment(userId: string, momentId: string, text: string)
 
 /** التفاعل والتعليق يمرّان بحدّ صاحب اللحظة: «من يمكنه التفاعل معك». */
 async function assertCanInteract(userId: string, momentId: string) {
-  if (!(await canSeeMoment(userId, momentId))) throw notFound("اللحظة غير موجودة");
+  const seen = await canSeeMoment(userId, momentId);
+  // بابُ المشرف (القاعدة ٣٦٩): يبلغ اللحظة ولا يقف عند حدّ «من يتفاعل معك».
+  const reach = !seen && (await moderatorReach(userId, momentId));
+  if (!seen && !reach) throw notFound("اللحظة غير موجودة");
 
   const moment = await prisma.moment.findUnique({
     where: { id: momentId },
     select: { authorId: true, kind: true, commentsLocked: true },
   });
   if (!moment) throw notFound("اللحظة غير موجودة");
-  if (!(await canInteract(userId, moment.authorId))) {
+  if (!reach && !(await canInteract(userId, moment.authorId))) {
     throw forbidden("صاحب اللحظة حصر التفاعل في تصنيف من أصدقائه");
   }
   return moment;
@@ -487,7 +490,7 @@ export async function react(
  * الأغلبيّة. والرؤيةُ شرطُها شرطُ اللحظة — «غير موجودة» لمن لا يراها.
  */
 export async function pollState(userId: string, momentId: string) {
-  if (!(await canSeeMoment(userId, momentId))) throw notFound("اللحظة غير موجودة");
+  if (!(await canReachMoment(userId, momentId))) throw notFound("اللحظة غير موجودة");
   const moment = await prisma.moment.findUnique({
     where: { id: momentId },
     select: { authorId: true, pollOptions: true, pollEndsAt: true },

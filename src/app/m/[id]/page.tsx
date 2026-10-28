@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { WithNames } from "@/components/with-names";
 import { currentUser } from "@/lib/auth";
-import { circleIds } from "@/lib/circle";
+import { canReachMoment } from "@/lib/visibility";
 import { momentById } from "@/lib/feed";
 import { CommentBar } from "./comment-bar";
 import { Avatar, NameTag, ScreenHeader } from "@/components/ui";
@@ -31,9 +31,9 @@ export default async function MomentPage({
   const moment = await momentById(id);
   if (!moment) notFound();
 
-  // لا استكشاف عام: اللحظة لصاحبها ولدائرته فقط.
-  const ids = await circleIds(user.id);
-  if (moment.author.id !== user.id && !ids.includes(moment.author.id)) notFound();
+  // شرطُ الرؤية نفسه (القاعدة ٢٣) لا الصداقةُ وحدها — كانت لحظةٌ خاصّة تُفتح
+  // برابطها لكلّ صديق — ومعه بابُ المشرف (القاعدة ٣٦٩).
+  if (!(await canReachMoment(user.id, moment.id))) notFound();
 
   const mine = moment.reactions.find((r) => r.userId === user.id) ?? null;
   const withNames = moment.tags.map((t) => t.user.name);

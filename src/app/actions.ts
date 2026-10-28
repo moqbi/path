@@ -21,7 +21,7 @@ import {
 } from "@/lib/auth";
 import { assertRoomForBoth, canChat, circleIds } from "@/lib/circle";
 import { STORY_HOURS, STORY_SECONDS, storyVisibleTo } from "@/lib/stories";
-import { blockedWith, canInteract, canSeeMoment, visibleAuthors } from "@/lib/visibility";
+import { blockedWith, canInteract, canReachMoment, canSeeMoment, moderatorReach, visibleAuthors } from "@/lib/visibility";
 import { placeVisitors, type VisitorsView } from "@/lib/place-visitors";
 import { reverseGeocode } from "@/lib/places";
 import { HEX_COLOR, PALETTE_KEYS } from "@/lib/theme";
@@ -1583,7 +1583,7 @@ export async function saveProfile(
 
 export async function react(momentId: string, kind: string, emoji?: string): Promise<void> {
   const user = await requireUser();
-  if (!(await canSee(user.id, momentId))) throw new Error("غير مصرح");
+  if (!(await canReachMoment(user.id, momentId))) throw new Error("غير مصرح");
   await assertCanInteract(user.id, momentId);
 
   // الإيموجي الحر ميزة اشتراك؛ الوجوه الخمسة مفتوحة للجميع دائماً.
@@ -1757,7 +1757,7 @@ export async function setCommentsLock(momentId: string, locked: boolean): Promis
 
 export async function addComment(momentId: string, formData: FormData): Promise<void> {
   const user = await requireUser();
-  if (!(await canSee(user.id, momentId))) throw new Error("غير مصرح");
+  if (!(await canReachMoment(user.id, momentId))) throw new Error("غير مصرح");
   const moment = await assertCanInteract(user.id, momentId);
   if (moment.commentsLocked && moment.authorId !== user.id) throw new Error("أقفل صاحبُ اللحظة التعليقات");
 
@@ -1784,7 +1784,7 @@ export type PollState = {
 };
 
 async function readPoll(userId: string, momentId: string): Promise<PollState | null> {
-  if (!(await canSee(userId, momentId))) return null;
+  if (!(await canReachMoment(userId, momentId))) return null;
   const moment = await prisma.moment.findUnique({
     where: { id: momentId },
     select: { authorId: true, pollOptions: true, pollEndsAt: true },
@@ -1845,12 +1845,14 @@ async function canSee(userId: string, momentId: string): Promise<boolean> {
 
 /** التفاعل والتعليق يمرّان بحدّ صاحب اللحظة: «من يمكنه التفاعل معك». */
 async function assertCanInteract(userId: string, momentId: string) {
+  // بابُ المشرف (القاعدة ٣٦٩) لا يقف عند حدّ «من يتفاعل معك».
+  const reach = !(await canSeeMoment(userId, momentId)) && (await moderatorReach(userId, momentId));
   const moment = await prisma.moment.findUnique({
     where: { id: momentId },
     select: { authorId: true, commentsLocked: true },
   });
   if (!moment) throw new Error("اللحظة غير موجودة");
-  if (!(await canInteract(userId, moment.authorId))) {
+  if (!reach && !(await canInteract(userId, moment.authorId))) {
     throw new Error("صاحب اللحظة حصر التفاعل في تصنيف من أصدقائه");
   }
   return moment;
