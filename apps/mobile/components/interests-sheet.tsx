@@ -1,5 +1,6 @@
 import { Pressable, View } from "react-native";
 import { create } from "zustand";
+import Svg, { Circle } from "react-native-svg";
 import { interestOf } from "@athar/shared";
 import { Text } from "./type";
 import { GlassSheet, SheetScrollView } from "./glass-sheet";
@@ -38,61 +39,41 @@ function Chip({ id, strong }: { id: string; strong?: boolean }) {
   );
 }
 
+/** دائرتان متداخلتان — ما يجمع اثنين. */
+function Venn({ color }: { color: string }) {
+  return (
+    <Svg width={28} height={20} viewBox="0 0 28 20">
+      <Circle cx={10} cy={10} r={8} stroke={color} strokeWidth={1.6} fill="none" />
+      <Circle cx={18} cy={10} r={8} stroke={color} strokeWidth={1.6} fill="none" />
+    </Svg>
+  );
+}
+
 /**
- * الاهتمامات في ملفّ الصديق (القاعدة ٣٧٤): صفٌّ بأوّل ما يجمعكما وعددِه، والضغطُ يفتح
- * النافذةَ الزجاجيّة. ولا يُرسم شيءٌ لصديقٍ لم يختر اهتماماته.
+ * الاهتمامات في ملفّ الصديق (القاعدة ٣٧٤) — **برسم المالك**: سطرٌ على الأرضيّة بين سطر العضويّة
+ * والشريحتين، في طرف البداية دائرتان متداخلتان و«اهتماماتكم المشتركة»، وفي الآخر قرصٌ بعددها.
+ * والضغطُ يفتح النافذةَ الزجاجيّة. ولا يُرسم شيءٌ لصديقٍ لم يختر اهتماماته.
  */
 export function SharedInterests({ name, data }: { name: string; data: FriendInterests | undefined }) {
   if (!data || data.shared.length + data.theirs.length === 0) return null;
   const shared = data.shared.length;
-  const first = (shared ? data.shared : data.theirs).slice(0, 3);
+  const count = shared || data.theirs.length;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={shared ? `${shared} اهتمامات مشتركة` : `اهتمامات ${name}`}
       onPress={() => openInterests(name, data)}
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 10,
-        marginBottom: 12,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: colors.line,
-        backgroundColor: colors.card,
-      }}
+      style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14, paddingHorizontal: 4 }}
     >
-      <View style={{ flexDirection: "row" }}>
-        {first.map((id, index) => (
-          <View
-            key={id}
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: 15,
-              marginStart: index ? -8 : 0,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: colors.paper,
-              borderWidth: 2,
-              borderColor: colors.card,
-            }}
-          >
-            <Text style={{ fontSize: 14 }}>{interestOf(id)?.emoji}</Text>
-          </View>
-        ))}
-      </View>
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "700" }}>
-          {shared ? `${ar(shared)} ${shared === 1 ? "اهتمام مشترك" : shared === 2 ? "اهتمامان مشتركان" : "اهتمامات مشتركة"}` : "اهتماماته"}
-        </Text>
-        <Text numberOfLines={1} style={{ color: colors.muted, fontSize: 12 }}>
-          {first.map((id) => interestOf(id)?.label).filter(Boolean).join("، ")}
+      <Venn color={colors.groundInk} />
+      <Text style={{ flex: 1, color: colors.groundInk, fontSize: 14, fontWeight: "600" }}>
+        {shared ? "اهتماماتكم المشتركة" : `اهتمامات ${name}`}
+      </Text>
+      <View style={{ height: 32, paddingHorizontal: 16, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: colors.chip }}>
+        <Text style={{ color: colors.ink, fontSize: 13, fontWeight: "700" }}>
+          {ar(count)} {count === 1 ? "اهتمام" : count === 2 ? "اهتمامان" : count <= 10 ? "اهتمامات" : "اهتماماً"}
         </Text>
       </View>
-      <Text style={{ color: colors.muted, fontSize: 18 }}>‹</Text>
     </Pressable>
   );
 }
