@@ -9,7 +9,7 @@ import { closeAddSheet, useAddMode } from "./add-sheet";
 import { CheckIcon } from "./icons";
 import { api } from "../lib/api";
 import { useFan } from "./composer-fan";
-import { getItem, setItem } from "../lib/store";
+import { setItem } from "../lib/store";
 import { colors } from "../theme/tokens";
 
 /**
@@ -213,23 +213,7 @@ export function Tour() {
   const fade = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    void getItem(KEY)
-      .catch(() => null)
-      .then((seen) => {
-      /*
-        مهلةٌ تسبق الجولة: نافذةُ إذن التنبيهات تُطلب مع الدخول، والشريطُ
-        السفليّ يُرسم بعد الشاشة — ولا دائرة بلا هدف.
-      */
-      if (seen !== "1") {
-        timer = setTimeout(() => {
-          startTour();
-        }, 1800);
-      }
-    });
-    return () => clearTimeout(timer);
-  }, []);
+  // لا تبدأ وحدها (القاعدة ٣٧٤): الاهتماماتُ بعد الدخول مكانُها، والجولةُ من الإعدادات لمن أرادها.
 
   // زرُّ الرجوع في أندرويد يُغلقها كما كانت النافذة تُغلق.
   useEffect(() => {

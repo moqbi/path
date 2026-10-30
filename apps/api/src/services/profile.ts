@@ -1,5 +1,5 @@
 import { prisma } from "@athar/db";
-import { BIO_MAX, type NotifyInput } from "@athar/shared";
+import { BIO_MAX, INTERESTS_MAX, INTERESTS_MIN, cleanInterests, type NotifyInput } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { dropMedia } from "./media";
 import { announceAvatar } from "./avatar-moment";
@@ -58,6 +58,8 @@ export async function me(userId: string) {
       notifyStoreDeals: true,
       notifyMemories: true,
       notifyNearby: true,
+      interests: true,
+      interestsAt: true,
       quietFrom: true,
       quietTo: true,
       viewGroupId: true,
@@ -589,4 +591,25 @@ export async function joinBeta(
     replyTo: input.email,
   });
   return { ok: "وصلنا طلبك — تصلك الدعوة على بريدك" };
+}
+
+/**
+ * الاهتمامات (القاعدة ٣٧٤): من ثلاثةٍ إلى عشرة من القائمة المغلقة، أو صفرٌ لمن
+ * محاها. و`skip` يختم القرار بلا اختيار — فلا تُعرض الشاشةُ بعد الدخول ثانيةً،
+ * ويبقى له أن يختار من «تعديل الملف».
+ */
+export async function saveInterests(userId: string, input: { ids: string[]; skip?: boolean }) {
+  if (input.skip) {
+    await prisma.user.update({ where: { id: userId }, data: { interestsAt: new Date() } });
+    return { interests: (await prisma.user.findUnique({ where: { id: userId }, select: { interests: true } }))?.interests ?? [] };
+  }
+  const ids = cleanInterests(input.ids);
+  if (ids.length > INTERESTS_MAX) throw badRequest(`اختر ${INTERESTS_MAX} اهتمامات على الأكثر`);
+  if (ids.length > 0 && ids.length < INTERESTS_MIN) throw badRequest(`اختر ${INTERESTS_MIN} اهتمامات على الأقل`);
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: { interests: ids, interestsAt: new Date() },
+    select: { interests: true },
+  });
+  return { interests: user.interests };
 }

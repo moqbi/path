@@ -30,6 +30,7 @@ import { ReactSheet } from "../components/react-sheet";
 import { EditSheet } from "../components/edit-sheet";
 import { AddSheet, openAddSheet } from "../components/add-sheet";
 import { SearchSheet } from "../components/search-sheet";
+import { InterestsSheet } from "../components/interests-sheet";
 import { AccountsSheet, SwitchToast } from "../components/accounts-sheet";
 import { DEV_FEATURES } from "../lib/dev-features";
 import { OfflineBanner } from "../components/offline-banner";
@@ -143,7 +144,14 @@ function Gate() {
     if (!ready) return;
     const inApp = segments[0] === "(tabs)" || segments[0] === "m" || segments[0] === "u";
     if (!me && inApp) router.replace("/login");
-    if (me && segments[0] === "login") router.replace("/");
+    /*
+      الاهتماماتُ بعد الدخول (القاعدة ٣٧٤): من لم يخترها ولم يتخطّها يُؤخذ إليها —
+      و«تم تسجيل الدخول بـ…» لمن جاء من شاشة الدخول وحده. وخادمٌ قديمٌ لا يرسل
+      الحقل (`undefined`) فلا يُؤخذ أحدٌ إلى شاشةٍ لا تُحفظ.
+    */
+    const pickInterests = Boolean(me) && me?.interestsAt === null;
+    if (me && segments[0] === "login") router.replace(pickInterests ? "/interests?welcome=1" : "/");
+    else if (pickInterests && inApp) router.replace("/interests");
   }, [me, ready, segments, router]);
 
   /*
@@ -348,6 +356,8 @@ function Gate() {
         }}
       />
       {/* النوتُ الجديدة تصعد من الأسفل فوق ما قبلها (القاعدة ٢٦٩). */}
+      {/* الاهتماماتُ تظهر بذوبانٍ بعد الدخول (القاعدة ٣٧٤). */}
+      <Stack.Screen name="interests" options={{ animation: "fade" }} />
       <Stack.Screen name="note/new" options={{ presentation: "fullScreenModal", animation: "slide_from_bottom" }} />
       {/* والقصّةُ الجديدة كاميرا بملء الشاشة تصعد كذلك (القاعدة ٢٧٠). */}
       <Stack.Screen name="stories/new" options={{ presentation: "fullScreenModal", animation: "slide_from_bottom", gestureEnabled: false }} />
@@ -361,6 +371,7 @@ function Gate() {
     <EditSheet />
     <AddSheet />
     <SearchSheet />
+    <InterestsSheet />
     <AccountsSheet />
     <SwitchToast />
     {/* «ما فيه اتصال» زجاجٌ في أعلى الشاشة (القاعدة ٣٢١). */}

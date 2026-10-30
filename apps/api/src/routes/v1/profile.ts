@@ -44,6 +44,13 @@ export const profileRoutes = new Hono()
     c.json({ user: await profile.saveProfile(me(c), c.req.valid("json")) }),
   )
 
+  /** الاهتمامات (القاعدة ٣٧٤): اختيارُها أو تخطّيها. */
+  .put(
+    "/interests",
+    zValidator("json", z.object({ ids: z.array(z.string().max(40)).max(40).default([]), skip: z.boolean().optional() })),
+    async (c) => c.json(await profile.saveInterests(me(c), c.req.valid("json"))),
+  )
+
   /** البريد وحده خلف كلمة المرور: تغييرُه نقلٌ للحساب. */
   .put("/email", zValidator("json", emailChangeInput), async (c) =>
     c.json({ user: await profile.changeEmail(me(c), c.req.valid("json")) }),
