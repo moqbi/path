@@ -4,8 +4,8 @@ import { useRouter } from "expo-router";
 import * as QuickActions from "expo-quick-actions";
 
 /**
- * اختصاراتُ الضغط المطوّل على أيقونة التطبيق (القاعدة ٣٧٠): لحظة جديدة، صورة
- * جديدة، أغنية، موقع — كلٌّ يفتح شاشةَ النشر بنوعه كقوس الزائد.
+ * اختصاراتُ الضغط المطوّل على أيقونة التطبيق (القاعدة ٣٧٠): لحظة جديدة، أغنية،
+ * قصة، نوت — كلٌّ يفتح شاشةَ إنشائه. وآبل تعرض أربعةً لا أكثر.
  *
  * على آبل ثابتةٌ في البناء (`iosActions` في `app.json`) فتظهر من أوّل تثبيت
  * قبل أن يُفتح التطبيق، وعلى أندرويد تُكتب هنا. والوحدةُ اختياريّة في الحزمة
@@ -17,15 +17,17 @@ import * as QuickActions from "expo-quick-actions";
  */
 const ANDROID_ITEMS: QuickActions.Action[] = [
   { id: "thought", title: "لحظة جديدة", params: { href: "/compose?kind=THOUGHT" } },
-  { id: "photo", title: "صورة جديدة", params: { href: "/compose?kind=PHOTO" } },
   { id: "music", title: "أغنية", params: { href: "/compose?kind=MUSIC" } },
-  { id: "place", title: "موقع", params: { href: "/compose?kind=PLACE" } },
+  { id: "story", title: "قصة", params: { href: "/stories/new" } },
+  { id: "note", title: "نوت", params: { href: "/note/new" } },
 ];
+
+const ALLOWED = ANDROID_ITEMS.map((item) => String(item.params?.href));
 
 function hrefOf(action: QuickActions.Action | null | undefined): string | null {
   const href = action?.params?.href;
-  // ما يُفتح شاشةُ النشر وحدها: اختصارٌ لا يصير باباً إلى أيّ مسار.
-  return typeof href === "string" && href.startsWith("/compose?kind=") ? href : null;
+  // ما يُفتح شاشاتُ الإنشاء وحدها: اختصارٌ لا يصير باباً إلى أيّ مسار.
+  return typeof href === "string" && ALLOWED.includes(href) ? href : null;
 }
 
 export function useQuickActions(signedIn: boolean): void {

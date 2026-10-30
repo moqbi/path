@@ -119,14 +119,6 @@
               }
             },
             {
-              "id": "photo",
-              "title": "صورة جديدة",
-              "icon": "symbol:camera",
-              "params": {
-                "href": "/compose?kind=PHOTO"
-              }
-            },
-            {
               "id": "music",
               "title": "أغنية",
               "icon": "symbol:music.note",
@@ -135,11 +127,19 @@
               }
             },
             {
-              "id": "place",
-              "title": "موقع",
-              "icon": "symbol:mappin.and.ellipse",
+              "id": "story",
+              "title": "قصة",
+              "icon": "symbol:camera.circle",
               "params": {
-                "href": "/compose?kind=PLACE"
+                "href": "/stories/new"
+              }
+            },
+            {
+              "id": "note",
+              "title": "نوت",
+              "icon": "symbol:text.bubble",
+              "params": {
+                "href": "/note/new"
               }
             }
           ]
