@@ -17,12 +17,15 @@ type Group = { id: string; name: string };
 export function FriendRow({
   id,
   name,
+  staff = false,
   group,
   groups,
   children,
 }: {
   id: string;
   name: string;
+  /** حسابُ الإدارة أو من له اللوحة كلّها: لا يُحظر (القاعدة ٣١٨)، فلا «حظر» في صفّه. */
+  staff?: boolean;
   group: Group | null;
   groups: Group[];
   children: React.ReactNode;
@@ -36,8 +39,8 @@ export function FriendRow({
         surface="var(--color-card)"
         confirmLabel="إزالة"
         onDelete={removeFriend.bind(null, id)}
-        secondLabel="حظر"
-        onSecond={blockUser.bind(null, id)}
+        secondLabel={staff ? undefined : "حظر"}
+        onSecond={staff ? undefined : blockUser.bind(null, id)}
         extra={[
           { label: `محادثة ${name}`, icon: <MessageIcon size={22} />, run: startConversation.bind(null, id) },
           { label: "تصنيف", icon: <TagIcon size={22} />, run: () => setTagging(true), color: "var(--color-gold)" },

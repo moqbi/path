@@ -31,7 +31,11 @@ export async function circle(userId: string) {
   const ids = await circleIds(userId);
 
   const [members, requests, groups, placed] = await Promise.all([
-    prisma.user.findMany({ where: { id: { in: ids } }, select: PERSON, orderBy: { name: "asc" } }),
+    prisma.user.findMany({
+      where: { id: { in: ids } },
+      select: { ...PERSON, role: true, adminScope: true },
+      orderBy: { name: "asc" },
+    }),
     prisma.friendship.findMany({
       where: { addresseeId: userId, status: "PENDING" },
       orderBy: { createdAt: "desc" },
@@ -57,7 +61,15 @@ export async function circle(userId: string) {
   const groupOf = new Map(placed.map((row) => [row.userId, row.groupId]));
 
   return {
-    members: members.map((member) => ({ ...member, groupId: groupOf.get(member.id) ?? null })),
+    /*
+      `staff`: حسابُ الإدارة ومن له اللوحة كلّها لا يُحظر (القاعدة ٣١٨)، فلا يُعرض
+      عليه «حظر» في صفّه — والدورُ نفسُه لا يخرج في الردّ. والإزالةُ تبقى.
+    */
+    members: members.map(({ role, adminScope, ...member }) => ({
+      ...member,
+      staff: role === "ADMIN" || adminScope === "ALL",
+      groupId: groupOf.get(member.id) ?? null,
+    })),
     requests,
     groups: groups.map((g) => ({ id: g.id, name: g.name, count: g._count.members })),
     cap: CIRCLE_CAP,

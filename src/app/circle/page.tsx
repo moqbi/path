@@ -61,6 +61,8 @@ export default async function CirclePage() {
       lastSeenAt: true,
       hideOnline: true,
       avatarMediaId: true,
+      role: true,
+      adminScope: true,
       frame: { select: { spec: true, mediaId: true, frameHole: true } },
       charm: { select: { spec: true, mediaId: true } },
       tag: { select: { name: true, bg: true, fg: true } },
@@ -86,7 +88,7 @@ export default async function CirclePage() {
   const row = (member: (typeof members)[number]) => {
     const seen = presence(member.lastSeenAt) || "ما فتح التطبيق بعد";
     return (
-      <FriendRow key={member.id} id={member.id} name={member.name} group={groupOf.get(member.id) ?? null} groups={options}>
+      <FriendRow key={member.id} id={member.id} name={member.name} staff={member.role === "ADMIN" || member.adminScope === "ALL"} group={groupOf.get(member.id) ?? null} groups={options}>
         <span className="relative shrink-0">
           <Avatar
             name={member.name}
