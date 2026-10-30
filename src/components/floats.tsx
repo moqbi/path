@@ -45,6 +45,7 @@ export function FloatLayer({
   bottom = 78,
   data: given,
   fixed = false,
+  replay = 0,
 }: {
   target: Target;
   top?: number;
@@ -53,12 +54,24 @@ export function FloatLayer({
   data?: Floats | null;
   /** بملء الشاشة فوق نافذةٍ لا داخل أبيه — النوت. */
   fixed?: boolean;
+  /** يزيد كلّما أُعيدت القصّةُ من أوّلها: ما طار يُنسى ويطير الكلُّ من جديد. */
+  replay?: number;
 }) {
   const [own] = useFloats(given === undefined ? target : null);
   const data = given === undefined ? own : given;
   const [flyers, setFlyers] = useState<Flyer[]>([]);
   const seen = useRef(new Set<string>());
   const queue = useRef<Flyer[]>([]);
+  // الإعادةُ جولةٌ جديدة (القاعدة ٣٧٣): يُفرغ ما طار وما ينتظر.
+  const round = useRef(replay);
+  if (round.current !== replay) {
+    round.current = replay;
+    seen.current = new Set();
+    queue.current = [];
+  }
+  useEffect(() => {
+    if (replay) setFlyers([]);
+  }, [replay]);
 
   useEffect(() => {
     if (!data) return;
@@ -66,11 +79,11 @@ export function FloatLayer({
     const texts: Flyer[] = [];
     data.reactions.forEach((row) => {
       // بالنوع والوقت لا بالترتيب: جلبٌ جديد يزيح الترتيبَ فيُعاد ما طار.
-      const key = `r-${row.kind}-${row.at}`;
+      const key = `${replay}-r-${row.kind}-${row.at}`;
       if (!seen.current.has(key)) faces.push({ key, face: row.kind, x: 8 + Math.random() * 74, ms: 4200 + Math.random() * 800 });
     });
     for (const row of data.comments) {
-      const key = `c-${row.id}`;
+      const key = `${replay}-c-${row.id}`;
       if (!seen.current.has(key)) texts.push({ key, body: row.body, mine: row.mine, x: 12 + Math.random() * 26, ms: 5200 });
     }
     const mixed: Flyer[] = [];
@@ -81,7 +94,7 @@ export function FloatLayer({
     }
     for (const one of mixed) seen.current.add(one.key);
     queue.current.push(...mixed);
-  }, [data]);
+  }, [data, replay]);
 
   useEffect(() => {
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;

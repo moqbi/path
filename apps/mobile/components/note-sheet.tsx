@@ -1,7 +1,7 @@
 import { Spinner } from "./spinner";
 import { DEV_FEATURES } from "../lib/dev-features";
 import { CommentField, FloatLayer, OwnerComments } from "./floats";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Image, Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -48,6 +48,13 @@ function Body({ note }: { note: StatusNote }) {
   const client = useQueryClient();
   const router = useRouter();
   const clip = useClip(`note:${note.id}`);
+  /* كلُّ تشغيلٍ للأغنية من جديد يُعيد ما يطفو عليها (القاعدة ٣٤٤). */
+  const [replay, setReplay] = useState(0);
+  const played = useRef(false);
+  useEffect(() => {
+    if (clip.playing && !played.current) setReplay((n) => n + 1);
+    played.current = clip.playing;
+  }, [clip.playing]);
 
   const close = () => {
     void stopClip();
@@ -202,7 +209,7 @@ function Body({ note }: { note: StatusNote }) {
           </View>
         ) : null}
       </SheetScrollView>
-      {DEV_FEATURES ? <FloatLayer target={{ kind: "note", id: note.id }} top={0} bottom={0.42} /> : null}
+      {DEV_FEATURES ? <FloatLayer target={{ kind: "note", id: note.id }} top={0} bottom={0.42} replay={Math.max(0, replay - 1)} /> : null}
       </View>
     </GlassSheet>
   );

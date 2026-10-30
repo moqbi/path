@@ -13,6 +13,7 @@ import { colors } from "../theme/tokens";
  * التفاعلاتُ والتعليقاتُ تطفو على القصّة والنوت (القاعدة ٣٤٤) — **بقرار المالك**، كساوندكلاود:
  * من يفتحها يرى وجوهَ من تفاعل وما كتبوه تصعد من أسفل الشاشة وتتمايل وتذوب، **بلا أسماء**.
  * تُعرض مرّةً لكلّ فتح، وما يُكتب بعدها — منك أو من غيرك — يطير لحظةَ يصل.
+ * **وإعادةُ القصّة أو النوت من أوّلها تُعيدها** (`replay`) — **بقرار المالك**.
  */
 
 export type FloatComment = { id: string; body: string; at: string; mine: boolean; canDelete: boolean };
@@ -35,7 +36,18 @@ export function useFloats(target: Target | null) {
 type Flyer = { key: string; kind: "face"; face: string } | { key: string; kind: "text"; body: string; mine: boolean };
 
 /** طبقةٌ فوق القصّة أو النوت تُطيّر ما فيها — لا تأخذ لمسةً من أحد. */
-export function FloatLayer({ target, top = 0.22, bottom = 0.78 }: { target: Target | null; top?: number; bottom?: number }) {
+export function FloatLayer({
+  target,
+  top = 0.22,
+  bottom = 0.78,
+  replay = 0,
+}: {
+  target: Target | null;
+  top?: number;
+  bottom?: number;
+  /** رقمٌ يزيد كلّما أُعيدت من أوّلها: يُفرغ ما طار ويُطيّر الكلَّ من جديد. */
+  replay?: number;
+}) {
   const data = useFloats(target).data;
   const [flyers, setFlyers] = useState<Flyer[]>([]);
   const seen = useRef(new Set<string>());
@@ -48,17 +60,31 @@ export function FloatLayer({ target, top = 0.22, bottom = 0.78 }: { target: Targ
     void AccessibilityInfo.isReduceMotionEnabled().then(setStill).catch(() => undefined);
   }, []);
 
-  // شيءٌ جديد يُضاف إلى الطابور — ما طار مرّةً لا يُعاد في هذا الفتح.
+  /*
+    الإعادةُ تبدأ جولةً جديدة: ما طار يُنسى، والطابورُ وما على الشاشة يُفرغان، فيطير
+    الكلُّ من أوّله. والمفتاحُ يحمل رقمَ الجولة فلا يتصادم وجهٌ يذوب بنسخته الجديدة.
+  */
+  const round = useRef(replay);
+  if (round.current !== replay) {
+    round.current = replay;
+    seen.current = new Set();
+    queue.current = [];
+  }
+  useEffect(() => {
+    if (replay) setFlyers([]);
+  }, [replay]);
+
+  // شيءٌ جديد يُضاف إلى الطابور — ما طار مرّةً لا يُعاد في هذه الجولة.
   useEffect(() => {
     if (!data) return;
     const fresh: Flyer[] = [];
     for (const row of data.reactions) {
       // بالنوع والوقت لا بالترتيب: جلبٌ جديد يزيح الترتيبَ فيُعاد ما طار.
-      const key = `r-${row.kind}-${row.at}`;
+      const key = `${replay}-r-${row.kind}-${row.at}`;
       if (!seen.current.has(key)) fresh.push({ key, kind: "face", face: row.kind });
     }
     for (const row of data.comments) {
-      const key = `c-${row.id}`;
+      const key = `${replay}-c-${row.id}`;
       if (!seen.current.has(key)) fresh.push({ key, kind: "text", body: row.body, mine: row.mine });
     }
     // تتناوب الوجوهُ والتعليقات فلا يمرّ هذا كلُّه ثمّ ذاك.
@@ -72,7 +98,7 @@ export function FloatLayer({ target, top = 0.22, bottom = 0.78 }: { target: Targ
     }
     for (const one of mixed) seen.current.add(one.key);
     queue.current.push(...mixed);
-  }, [data]);
+  }, [data, replay]);
 
   // واحدٌ كلّ ٦٥٠ مللي، وعلى الشاشة عشرةٌ على الأكثر.
   useEffect(() => {
