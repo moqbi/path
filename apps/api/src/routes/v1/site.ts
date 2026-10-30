@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { prisma } from "@athar/db";
 import { requireAuth } from "../../middleware/auth";
 import { supportAccount } from "../../services/support-account";
+import { interestCatalog } from "../../services/interests";
 
 /**
  * محتوى الموقع كما يقرؤه التطبيق.
@@ -29,4 +30,10 @@ export const siteRoutes = new Hono()
   .get("/support", async (c) => {
     const account = await supportAccount();
     return c.json({ account });
+  })
+
+  /** قائمةُ الاهتمامات كما ضُبطت في اللوحة (القاعدة ٣٧٥). */
+  .get("/interests", async (c) => {
+    const { groups } = await interestCatalog();
+    return c.json({ groups });
   });

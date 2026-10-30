@@ -3,7 +3,8 @@
  * من ثلاثة إلى عشرة، وتُرى المشتركةُ بينه وبين صديقه في ملفّه.
  *
  * يُحفظ **المعرّف** لا الاسم (`music.pop`): الاسمُ يُصحَّح ويُترجَم والمعرّفُ
- * لا يتغيّر. ومعرّفٌ حُذف من هنا يُتجاهل عند القراءة ولا يُكسر به شيء — فلا
+ * لا يتغيّر. والقائمةُ الحيّة في القاعدة تُدار من اللوحة (القاعدة ٣٧٥)، وهذه
+ * بذرتُها واحتياطُ من لم يجلبها بعد. ومعرّفٌ حُذف يُتجاهل عند القراءة ولا يُكسر به شيء — فلا
  * يُعاد استعمالُ معرّفٍ قديمٍ لمعنىً آخر.
  */
 export type InterestGroup = {
@@ -119,14 +120,21 @@ export const INTERESTS: InterestGroup[] = [
 export const INTERESTS_MIN = 3;
 export const INTERESTS_MAX = 10;
 
-const BY_ID = new Map(INTERESTS.flatMap((g) => g.items.map((item) => [item.id, { ...item, emoji: g.emoji, group: g.id }])));
+export type InterestInfo = { id: string; label: string; emoji: string; group: string };
+
+/** فهرسٌ بالمعرّف لقائمةٍ ما — القائمةُ من اللوحة (القاعدة ٣٧٥) أو هذه احتياطاً. */
+export function interestIndex(groups: readonly InterestGroup[]): Map<string, InterestInfo> {
+  return new Map(groups.flatMap((g) => g.items.map((item) => [item.id, { ...item, emoji: g.emoji, group: g.id }] as const)));
+}
+
+const BY_ID = interestIndex(INTERESTS);
 
 /** الاهتمامُ بمعرّفه، وما ليس في القائمة `undefined`. */
-export function interestOf(id: string) {
-  return BY_ID.get(id);
+export function interestOf(id: string, index: Map<string, InterestInfo> = BY_ID) {
+  return index.get(id);
 }
 
 /** ما في القائمة وحده، بلا تكرار، بترتيبه. */
-export function cleanInterests(ids: readonly string[]): string[] {
-  return [...new Set(ids)].filter((id) => BY_ID.has(id));
+export function cleanInterests(ids: readonly string[], index: Map<string, InterestInfo> = BY_ID): string[] {
+  return [...new Set(ids)].filter((id) => index.has(id));
 }

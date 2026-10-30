@@ -1,5 +1,6 @@
 import { prisma } from "@athar/db";
 import { BIO_MAX, INTERESTS_MAX, INTERESTS_MIN, cleanInterests, type NotifyInput } from "@athar/shared";
+import { interestCatalog } from "./interests";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { dropMedia } from "./media";
 import { announceAvatar } from "./avatar-moment";
@@ -603,7 +604,7 @@ export async function saveInterests(userId: string, input: { ids: string[]; skip
     await prisma.user.update({ where: { id: userId }, data: { interestsAt: new Date() } });
     return { interests: (await prisma.user.findUnique({ where: { id: userId }, select: { interests: true } }))?.interests ?? [] };
   }
-  const ids = cleanInterests(input.ids);
+  const ids = cleanInterests(input.ids, (await interestCatalog()).index);
   if (ids.length > INTERESTS_MAX) throw badRequest(`اختر ${INTERESTS_MAX} اهتمامات على الأكثر`);
   if (ids.length > 0 && ids.length < INTERESTS_MIN) throw badRequest(`اختر ${INTERESTS_MIN} اهتمامات على الأقل`);
   const user = await prisma.user.update({

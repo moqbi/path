@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, LayoutAnimation, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { INTERESTS, INTERESTS_MAX, INTERESTS_MIN, cleanInterests, interestOf } from "@athar/shared";
+import { INTERESTS_MAX, INTERESTS_MIN, interestOf } from "@athar/shared";
 import { Text } from "../components/type";
 import { AthrMark } from "../components/brand";
 import { SceneGround } from "../components/login-scene";
@@ -12,6 +12,7 @@ import { BackIcon, CheckIcon } from "../components/icons";
 import { api } from "../lib/api";
 import { ar } from "../lib/format";
 import { useSession } from "../lib/session";
+import { useInterestCatalog } from "../lib/interests";
 import { colors } from "../theme/tokens";
 
 const AMBER = "#F6B93B";
@@ -32,7 +33,10 @@ export default function Interests() {
   const insets = useSafeAreaInsets();
   const me = useSession((s) => s.me);
   const refresh = useSession((s) => s.refresh);
-  const [picked, setPicked] = useState<string[]>(() => cleanInterests(me?.interests ?? []));
+  const { groups, index } = useInterestCatalog();
+  // ما حُذف من القائمة في اللوحة (القاعدة ٣٧٥) لا يُعدّ ولا يُرسم ولا يُرسل.
+  const [raw, setPicked] = useState<string[]>(() => me?.interests ?? []);
+  const picked = raw.filter((id) => index.has(id));
   const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -47,7 +51,8 @@ export default function Interests() {
 
   const toggle = (id: string) => {
     setProblem(null);
-    setPicked((now) => {
+    setPicked((all) => {
+      const now = all.filter((one) => index.has(one));
       if (now.includes(id)) return now.filter((one) => one !== id);
       if (now.length >= INTERESTS_MAX) {
         setProblem(`اختر ${ar(INTERESTS_MAX)} اهتمامات على الأكثر`);
@@ -139,7 +144,7 @@ export default function Interests() {
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24, gap: 10 }}
           showsVerticalScrollIndicator={false}
         >
-          {INTERESTS.map((group) => {
+          {groups.map((group) => {
             const isOpen = open === group.id;
             const count = group.items.filter((item) => picked.includes(item.id)).length;
             return (
@@ -225,7 +230,7 @@ export default function Interests() {
               <Text style={{ color: "rgba(255,255,255,.5)", fontSize: 12.5, alignSelf: "center" }}>اضغط تصنيفاً واختر منه</Text>
             ) : (
               picked.map((id) => {
-                const one = interestOf(id);
+                const one = interestOf(id, index);
                 if (!one) return null;
                 return (
                   <Pressable

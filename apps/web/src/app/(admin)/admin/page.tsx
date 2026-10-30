@@ -53,6 +53,7 @@ import { linkedMany, type LinkedResult } from "@/lib/linked";
 import { StickersSection } from "./stickers";
 import { BroadcastsSection } from "./broadcasts";
 import { OccasionsSection } from "./occasions";
+import { InterestsSection } from "./interests";
 import { AnalyticsSection } from "./analytics";
 
 const FIELD =
@@ -549,6 +550,7 @@ const SECTIONS = [
   { key: "stickers", label: "الملصقات", store: true },
   { key: "broadcasts", label: "التنبيهات", store: false },
   { key: "occasions", label: "المناسبات", store: false },
+  { key: "interests", label: "الاهتمامات", store: false },
   { key: "site", label: "الموقع", store: false },
   { key: "team", label: "الصلاحيات", store: false, owner: true },
   { key: "files", label: "الملفات", store: false, owner: true },
@@ -2272,6 +2274,7 @@ export default async function AdminPage({
         {section === "stickers" ? <StickersSection /> : null}
         {section === "broadcasts" ? <BroadcastsSection /> : null}
         {section === "occasions" ? <OccasionsSection /> : null}
+        {section === "interests" ? <InterestsSection /> : null}
 
         {section === "words" ? (
           <>
