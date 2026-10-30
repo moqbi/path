@@ -18,6 +18,7 @@ import { keys } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { brandGradient, colors } from "../../theme/tokens";
 import { BIO_MAX, interestOf } from "@athar/shared";
+import { useInterestCatalog } from "../../lib/interests";
 import { ar } from "../../lib/format";
 import { tourSignal } from "../../components/tour";
 
@@ -38,6 +39,7 @@ export default function EditProfile() {
   const router = useRouter();
   const client = useQueryClient();
   const me = useSession((state) => state.me);
+  const { index: interestIndexMap } = useInterestCatalog();
   const refresh = useSession((state) => state.refresh);
 
   const [name, setName] = useState(me?.name ?? "");
@@ -228,7 +230,7 @@ export default function EditProfile() {
               >
                 <Text numberOfLines={2} style={{ flex: 1, color: me?.interests?.length ? colors.ink : colors.muted, fontSize: 13.5 }}>
                   {me?.interests?.length
-                    ? me.interests.map((id) => interestOf(id)).filter(Boolean).map((one) => `${one!.emoji} ${one!.label}`).join("  ")
+                    ? me.interests.map((id) => interestOf(id, interestIndexMap)).filter(Boolean).map((one) => `${one!.emoji} ${one!.label}`).join("  ")
                     : "اختر من ٣ إلى ١٠ اهتمامات تعبّر عنك"}
                 </Text>
                 <Text style={{ color: colors.clay, fontSize: 13, fontWeight: "700" }}>{me?.interests?.length ? "تعديل" : "اختر"}</Text>

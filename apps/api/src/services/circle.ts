@@ -2,6 +2,7 @@ import { prisma } from "@athar/db";
 import { forgetNotifications } from "./notifications";
 import { push } from "./push";
 import { CIRCLE_CAP, cleanInterests } from "@athar/shared";
+import { interestCatalog } from "./interests";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { blockedWith, circleIds } from "./visibility";
 
@@ -184,12 +185,13 @@ export async function userProfile(viewerId: string, id: string) {
       الاهتمامات (القاعدة ٣٧٤) للصديق وحده: المشتركةُ بينكما أوّلاً ثمّ ما يحبّه هو
       ولا تحبّه أنت. لا تُرسل لغير صديق — الاهتمامُ ليس باباً إلى غريب (القاعدة ٢).
     */
-    const [mine, theirs] = await Promise.all([
+    const [mine, theirs, { index }] = await Promise.all([
       prisma.user.findUnique({ where: { id: viewerId }, select: { interests: true } }),
       prisma.user.findUnique({ where: { id }, select: { interests: true } }),
+      interestCatalog(),
     ]);
-    const myInterests = new Set(cleanInterests(mine?.interests ?? []));
-    const theirInterests = cleanInterests(theirs?.interests ?? []);
+    const myInterests = new Set(cleanInterests(mine?.interests ?? [], index));
+    const theirInterests = cleanInterests(theirs?.interests ?? [], index);
     const interests = {
       shared: theirInterests.filter((one) => myInterests.has(one)),
       theirs: theirInterests.filter((one) => !myInterests.has(one)),

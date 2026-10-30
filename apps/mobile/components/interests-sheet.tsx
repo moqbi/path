@@ -6,6 +6,7 @@ import { Text } from "./type";
 import { GlassSheet, SheetScrollView } from "./glass-sheet";
 import { ar } from "../lib/format";
 import { colors } from "../theme/tokens";
+import { useInterestCatalog } from "../lib/interests";
 
 export type FriendInterests = { shared: string[]; theirs: string[]; mineCount: number };
 
@@ -18,7 +19,8 @@ export const openInterests = (name: string, data: FriendInterests) =>
 const glassChip = { backgroundColor: "rgba(255,255,255,.1)", borderColor: "rgba(255,255,255,.16)" } as const;
 
 function Chip({ id, strong }: { id: string; strong?: boolean }) {
-  const one = interestOf(id);
+  const { index } = useInterestCatalog();
+  const one = interestOf(id, index);
   if (!one) return null;
   return (
     <View

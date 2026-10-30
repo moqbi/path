@@ -2214,6 +2214,100 @@ export async function deleteNationalDay(id: string): Promise<void> {
   revalidatePath("/admin");
 }
 
+// ───────────────────────────── الاهتمامات ─────────────────────────────
+
+/**
+ * تصنيفاتُ الاهتمامات وبنودُها (القاعدة ٣٧٥) — بدرجة اللوحة كاملةً. المعرّفُ يُولَّد
+ * مرّةً ولا يتغيّر: يُحفظ في `User.interests`، فالاسمُ وحده يُعدَّل. وحذفُ بندٍ يُبقي
+ * معرّفَه في مصفوفات أصحابه ويُتجاهل عند القراءة. والخادمُ يقرأ القائمةَ كلَّ دقيقة.
+ */
+const interestId = () => Math.random().toString(36).slice(2, 8);
+const orderOf = (formData: FormData) => {
+  const n = Number(String(formData.get("sortOrder") ?? "").replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))));
+  return Number.isInteger(n) && n >= 0 && n < 10000 ? n : null;
+};
+function readGroup(formData: FormData): { error: string } | { emoji: string; label: string } {
+  const emoji = String(formData.get("emoji") ?? "").trim();
+  const label = String(formData.get("label") ?? "").trim();
+  if (!label || label.length > 40) return { error: "اسم التصنيف من ١ إلى ٤٠ حرفاً" };
+  if (!emoji || [...emoji].length > 4) return { error: "اكتب إيموجي واحداً للتصنيف" };
+  return { emoji, label };
+}
+function readInterestLabel(formData: FormData): { error: string } | { label: string } {
+  const label = String(formData.get("label") ?? "").trim();
+  if (!label || label.length > 40) return { error: "اسم الاهتمام من ١ إلى ٤٠ حرفاً" };
+  return { label };
+}
+
+export async function createInterestGroup(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  await requireAdmin();
+  const input = readGroup(formData);
+  if ("error" in input) return input;
+  const last = await prisma.interestGroup.aggregate({ _max: { sortOrder: true } });
+  await prisma.interestGroup.create({ data: { id: `g${interestId()}`, ...input, sortOrder: (last._max.sortOrder ?? -1) + 1 } });
+  revalidatePath("/admin");
+  return { ok: "أُضيف التصنيف — أضف إليه اهتماماته، فالتصنيفُ الفارغ لا يظهر في التطبيق" };
+}
+
+export async function updateInterestGroup(id: string, _prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  await requireAdmin();
+  const input = readGroup(formData);
+  if ("error" in input) return input;
+  const sortOrder = orderOf(formData);
+  const saved = await prisma.interestGroup.updateMany({ where: { id }, data: { ...input, ...(sortOrder === null ? {} : { sortOrder }) } });
+  if (saved.count === 0) return { error: "التصنيف غير موجود" };
+  revalidatePath("/admin");
+  return { ok: "تمّ الحفظ" };
+}
+
+/** حذفُ التصنيف يحذف اهتماماته معه. ولا يُحذف الأخير: قائمةٌ فارغة تعيد التطبيقَ إلى المكتوبة في الكود. */
+export async function deleteInterestGroup(id: string, _prev: AdminResult, _formData: FormData): Promise<AdminResult> {
+  await requireAdmin();
+  if ((await prisma.interestGroup.count()) <= 1) return { error: "لا يُحذف آخر تصنيف" };
+  const gone = await prisma.interestGroup.deleteMany({ where: { id } });
+  if (gone.count === 0) return { error: "التصنيف غير موجود" };
+  revalidatePath("/admin");
+  return { ok: "حُذف التصنيف واهتماماته" };
+}
+
+export async function createInterest(groupId: string, _prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  await requireAdmin();
+  const input = readInterestLabel(formData);
+  if ("error" in input) return input;
+  const group = await prisma.interestGroup.findUnique({ where: { id: groupId }, select: { id: true } });
+  if (!group) return { error: "التصنيف غير موجود" };
+  const last = await prisma.interest.aggregate({ where: { groupId }, _max: { sortOrder: true } });
+  await prisma.interest.create({ data: { id: `${groupId}.${interestId()}`, groupId, ...input, sortOrder: (last._max.sortOrder ?? -1) + 1 } });
+  revalidatePath("/admin");
+  return { ok: "أُضيف الاهتمام" };
+}
+
+export async function updateInterest(id: string, _prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  await requireAdmin();
+  const input = readInterestLabel(formData);
+  if ("error" in input) return input;
+  const sortOrder = orderOf(formData);
+  const groupId = String(formData.get("groupId") ?? "");
+  if (groupId && !(await prisma.interestGroup.findUnique({ where: { id: groupId }, select: { id: true } }))) {
+    return { error: "التصنيف غير موجود" };
+  }
+  const saved = await prisma.interest.updateMany({
+    where: { id },
+    data: { ...input, ...(sortOrder === null ? {} : { sortOrder }), ...(groupId ? { groupId } : {}) },
+  });
+  if (saved.count === 0) return { error: "الاهتمام غير موجود" };
+  revalidatePath("/admin");
+  return { ok: "تمّ الحفظ" };
+}
+
+export async function deleteInterest(id: string, _prev: AdminResult, _formData: FormData): Promise<AdminResult> {
+  await requireAdmin();
+  const gone = await prisma.interest.deleteMany({ where: { id } });
+  if (gone.count === 0) return { error: "الاهتمام غير موجود" };
+  revalidatePath("/admin");
+  return { ok: "حُذف الاهتمام" };
+}
+
 // ───────────────────────────── تنبيهاتُ المشرف ─────────────────────────────
 
 /**

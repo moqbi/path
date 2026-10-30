@@ -1082,6 +1082,27 @@ enum CalendarKind {
 
 /// مناسبةٌ وطنيّة أو دينيّة تُضاف من اللوحة (القاعدة ٢٩٢): يومُها وشهرُها بتقويمها،
 /// ودولتُها رمزٌ (`SA`، `AE` …) أو `ALL` — وتُعرض لمن موقعُه فيها.
+/// تصنيفُ اهتمامات (القاعدة ٣٧٥) — يُدار من اللوحة، والمعرّفُ لا يتغيّر بعد إنشائه.
+model InterestGroup {
+  id        String     @id
+  emoji     String
+  label     String
+  sortOrder Int        @default(0)
+  items     Interest[]
+}
+
+/// اهتمامٌ داخل تصنيفه. يُحفظ معرّفُه في `User.interests`، فحذفُه يُبقي المعرّفَ
+/// في مصفوفات أصحابه ويُتجاهل عند القراءة — ولا يُعاد استعمالُه لمعنىً آخر.
+model Interest {
+  id        String        @id
+  groupId   String
+  group     InterestGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  label     String
+  sortOrder Int           @default(0)
+
+  @@index([groupId])
+}
+
 model NationalDay {
   id        String       @id @default(cuid())
   name      String
