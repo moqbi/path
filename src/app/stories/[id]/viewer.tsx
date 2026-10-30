@@ -91,6 +91,8 @@ export function StoryViewer({
 
   // صوتُ القصّة: يقف بوقوفها، ويُكتم بضغط ملصقه — والكتمُ يبقى على ما بعدها.
   const audio = useRef<HTMLAudioElement | null>(null);
+  const clipRef = useRef<HTMLVideoElement | null>(null);
+  const [replay, setReplay] = useState(0);
   const [muted, setMuted] = useState(false);
   /*
     الصوتُ مقطعٌ مرفوع أو أغنيةٌ من دِيزر (القاعدة ٢٧٧)، على الصورة والمقطع سواء.
@@ -162,6 +164,20 @@ export function StoryViewer({
 
   if (!story) return null;
 
+  /*
+    اليمينُ يُعيد القصّةَ من أوّلها كالجوّال (القاعدة ٢٤٠)، وضغطةٌ في أوّل ثانيةٍ منها
+    ترجع إلى التي قبلها. ومعها يطير ما عليها من جديد (القاعدة ٣٧٣).
+  */
+  function restart() {
+    if (elapsed.current < 1000 && index > 0) return step(index - 1);
+    elapsed.current = 0;
+    started.current = Date.now();
+    setProgress(0);
+    setReplay((n) => n + 1);
+    if (audio.current) audio.current.currentTime = song && song.id === story?.id ? song.start : 0;
+    if (clipRef.current) clipRef.current.currentTime = 0;
+  }
+
   function step(next: number) {
     if (next < 0) return;
     if (next >= stories.length) {
@@ -192,6 +208,7 @@ export function StoryViewer({
         >
         {story.video ? (
           <video
+            ref={clipRef}
             key={story.id}
             src={`${BASE}/api/media/${story.mediaId}`}
             autoPlay
@@ -238,7 +255,7 @@ export function StoryViewer({
           className="absolute inset-y-0 right-0 w-1/2"
           onPointerDown={() => setHeld(true)}
           onPointerUp={() => setHeld(false)}
-          onClick={() => step(index - 1)}
+          onClick={restart}
         />
         <button
           type="button"
@@ -379,7 +396,7 @@ export function StoryViewer({
           </div>
         )}
 
-        {floats ? <FloatLayer key={story.id} target={{ kind: "story", id: story.id }} /> : null}
+        {floats ? <FloatLayer key={story.id} target={{ kind: "story", id: story.id }} replay={replay} /> : null}
 
         {burst ? (
           <span
