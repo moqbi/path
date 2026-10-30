@@ -14,10 +14,15 @@ const DAYS = 14;
 // الأبعد بين التسجيل وهذا اليوم، فمن سجّل قبله يراها الآن وتنتهي عنده كما تنتهي عند غيره.
 const SHOWN_FROM = new Date("2026-10-07T00:00:00+03:00");
 
-export async function welcome(userId: string) {
+/**
+ * `cover` — الجوّالُ من ٠٫١٫٤ (القاعدة ٣٧٢): «اختر غلافك» مكانَ «أضف حساب آثار» — الحسابُ
+ * الجديد يتابعه من أوّل يوم. ونسخةٌ قبلها لا تعرف الخطوة، فتبقى على خطواتها الأربع: خطوةٌ
+ * لا ترسمها كانت ستُبقي البطاقةَ ظاهرةً بلا ما يُفعل.
+ */
+export async function welcome(userId: string, cover = false) {
   const me = await prisma.user.findUnique({
     where: { id: userId },
-    select: { createdAt: true, avatarMediaId: true, memberNo: true },
+    select: { createdAt: true, avatarMediaId: true, coverMediaId: true, memberNo: true },
   });
   const start = Math.max(me?.createdAt.getTime() ?? 0, SHOWN_FROM.getTime());
   if (!me || Date.now() - start > DAYS * 86_400_000) return { show: false as const };
@@ -32,13 +37,20 @@ export async function welcome(userId: string) {
   const own = support && support.id !== userId ? support : null;
   const friends = circle.filter((id) => id !== own?.id).length;
 
-  const steps = {
-    avatar: Boolean(me.avatarMediaId),
-    friend: friends > 0,
-    moment: posted > 0,
-    // حسابُ الإدارة (القاعدة ٢٢١): أخبارُ التطبيق تملأ الخطّ قبل أن يأتي الأصدقاء.
-    support: own ? circle.includes(own.id) : true,
-  };
+  const steps = cover
+    ? {
+        avatar: Boolean(me.avatarMediaId),
+        cover: Boolean(me.coverMediaId),
+        moment: posted > 0,
+        friend: friends > 0,
+      }
+    : {
+        avatar: Boolean(me.avatarMediaId),
+        friend: friends > 0,
+        moment: posted > 0,
+        // حسابُ الإدارة (القاعدة ٢٢١): أخبارُ التطبيق تملأ الخطّ قبل أن يأتي الأصدقاء.
+        support: own ? circle.includes(own.id) : true,
+      };
   // وتختفي بإكمالها — **بقرار المالك**، ونقضاً لما كان من أنّ «٤ من ٤» ترحيبٌ يبقى.
   if (Object.values(steps).every(Boolean)) return { show: false as const };
 

@@ -5,6 +5,7 @@ import { appUrl } from "@/lib/site-url";
 import { letterHtml, sendMail } from "@/lib/mail";
 import { hashPassword } from "@/lib/auth";
 import { UNVERIFIED_MINUTES } from "@/lib/verify";
+import { followSupport } from "@/lib/support-account";
 
 /**
  * التسجيلُ بالبريد: **طلبٌ ينتظر، لا حسابٌ يُنشأ**.
@@ -127,6 +128,8 @@ export async function activateSignup(
 
   // من دعاه (القاعدة ٢٤٣) — من رابط الدعوة، ولا يُسقط حساباً قام.
   await linkInviter(user.id, row.inviterNo);
+  // وحسابُ الإدارة في خطّه من أوّل يوم (القاعدة ٣٧٢).
+  await followSupport(user.id);
 
   return { userId: user.id };
 }

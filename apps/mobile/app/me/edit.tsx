@@ -114,6 +114,7 @@ export default function EditProfile() {
             initial={{ x: me.coverX ?? 50, y: me.coverY, zoom: me.coverZoom ?? 100 }}
             onAdjusting={setFramingCover}
             onChanged={async () => {
+              tourSignal("cover");
               await refresh();
               await client.invalidateQueries({ queryKey: keys.me });
             }}

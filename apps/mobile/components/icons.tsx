@@ -206,6 +206,15 @@ export const CameraIcon = ({ size = 20, color = "currentColor" }: Props) => (
   </Svg>
 );
 
+/** الغلاف: إطارُ صورةٍ فيه جبلٌ وشمس — خطوةُ «اختر غلافك» في بطاقة الترحيب. */
+export const ImageIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h13A2.5 2.5 0 0 1 21 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5Z" />
+    <Path d="m3.5 16 5-5 4 4 2.5-2.5 5.5 5" />
+    <Circle cx={16} cy={9} r={1.5} />
+  </Svg>
+);
+
 /** إرسالُ الرسالة: طائرةٌ ورقيّة تتّجه إلى اليسار — جهةُ ما يمضي في RTL. */
 export const SendIcon = ({ size = 20, color = "currentColor" }: Props) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>

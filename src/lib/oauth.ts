@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { cookieInviter, linkInviter } from "@/lib/invite-ref";
 
 import { sendVerify } from "@/lib/email-tokens";
+import { followSupport } from "@/lib/support-account";
 
 /**
  * الدخول بمزوّد على الويب — نسخةُ `apps/api/src/services/oauth.ts`.
@@ -310,6 +311,8 @@ export async function upsertIdentity(identity: Identity) {
 
   // ومن دعاه برابط الدعوة (القاعدة ٢٤٣).
   await linkInviter(user.id, await cookieInviter());
+  // وحسابُ الإدارة في خطّه من أوّل يوم (القاعدة ٣٧٢).
+  await followSupport(user.id);
 
   // وبريدٌ لم يؤكّده مزوّدُه يُؤكَّد برسالةٍ كما يفعل التسجيل بالبريد.
   if (!identity.emailVerified && user.email) {

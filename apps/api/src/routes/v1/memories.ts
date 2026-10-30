@@ -34,7 +34,7 @@ export const memoryRoutes = new Hono()
   )
 
   /** بطاقةُ الترحيب للحساب الجديد (القاعدة ٢٤٦). */
-  .get("/welcome", async (c) => c.json(await welcome(me(c))))
+  .get("/welcome", async (c) => c.json(await welcome(me(c), c.req.query("cover") === "1")))
 
   /** «×»: تُطوى لليوم وتعود غداً بما يقع فيه. */
   .post("/today/dismiss", async (c) => c.json(await memories.dismiss(me(c))))

@@ -59,6 +59,15 @@ export const CameraIcon = ({ size = 20, className }: IconProps) => (
   </svg>
 );
 
+/** الغلاف: إطارُ صورةٍ فيه جبلٌ وشمس — نسخةُ الجوّال. */
+export const ImageIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <rect x="3" y="5" width="18" height="14" rx="2.5" />
+    <path d="m3.5 16 5-5 4 4 2.5-2.5 5.5 5" />
+    <circle cx="16" cy="9" r="1.5" />
+  </svg>
+);
+
 export const TextIcon = ({ size = 20, className }: IconProps) => (
   <svg {...base(size)} className={className}>
     <path d="M4.5 6.5h15M4.5 11.5h15M4.5 16.5h9" />

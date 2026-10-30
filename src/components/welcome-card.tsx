@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ShareProfile } from "@/app/me/share";
-import { CameraIcon, CheckIcon, CloseIcon, PlusIcon, ShareIcon, SparkIcon } from "@/components/icons";
+import { CameraIcon, CheckIcon, CloseIcon, ImageIcon, PlusIcon, ShareIcon } from "@/components/icons";
 import { ar } from "@/lib/format";
 import type { welcome } from "@/lib/welcome";
 
@@ -40,14 +40,6 @@ export function WelcomeCard({ data, name, memberNo }: { data: Shown; name: strin
 
   const steps: { key: string; done: boolean; icon: React.ReactNode; title: string; hint: string; go: (child: React.ReactNode) => React.ReactNode }[] = [
     {
-      key: "support",
-      done: data.steps.support,
-      icon: <SparkIcon size={16} />,
-      title: `أضف ${data.supportName ?? "حساب آثار"}`,
-      hint: "يمكنك إضافة أصدقاء جدد من التفاعلات والتعليقات.. تفاعل وعلّق ليضيفك المستخدمون الآخرون",
-      go: (child) => (data.supportId ? <Link href={`/u/${data.supportId}`}>{child}</Link> : child),
-    },
-    {
       key: "avatar",
       done: data.steps.avatar,
       icon: <CameraIcon size={16} />,
@@ -56,22 +48,12 @@ export function WelcomeCard({ data, name, memberNo }: { data: Shown; name: strin
       go: (child) => <Link href="/me?edit=1">{child}</Link>,
     },
     {
-      key: "friend",
-      done: data.steps.friend,
-      icon: <ShareIcon size={16} />,
-      title: "ادعُ أوّل صديق",
-      hint: "شارك رابط ملفك أو رمزه — دائرتك أنت تبنيها",
-      go: (child) => (
-        <ShareProfile
-          name={name}
-          memberNo={memberNo}
-          trigger={(open) => (
-            <button type="button" onClick={open} className="block w-full text-right">
-              {child}
-            </button>
-          )}
-        />
-      ),
+      key: "cover",
+      done: data.steps.cover,
+      icon: <ImageIcon size={16} />,
+      title: "اختر غلافك",
+      hint: "الصورة العريضة فوق ملفك — أوّل ما يراه من يفتحه",
+      go: (child) => <Link href="/me?edit=1">{child}</Link>,
     },
     {
       key: "moment",
@@ -83,6 +65,24 @@ export function WelcomeCard({ data, name, memberNo }: { data: Shown; name: strin
         <button type="button" onClick={() => window.dispatchEvent(new Event("athr:fan"))} className="block w-full text-right">
           {child}
         </button>
+      ),
+    },
+    {
+      key: "friend",
+      done: data.steps.friend,
+      icon: <ShareIcon size={16} />,
+      title: "أضف أوّل صديق",
+      hint: "تفاعل وعلّق ليضيفك الناس، أو شارك رابط ملفك ورمزه",
+      go: (child) => (
+        <ShareProfile
+          name={name}
+          memberNo={memberNo}
+          trigger={(open) => (
+            <button type="button" onClick={open} className="block w-full text-right">
+              {child}
+            </button>
+          )}
+        />
       ),
     },
   ];

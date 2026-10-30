@@ -16,3 +16,27 @@ export const supportAccount = cache(async () => {
     select: { id: true, memberNo: true, name: true, isOpen: true },
   });
 });
+
+/**
+ * كلُّ حسابٍ جديد يتابع حسابَ الإدارة من أوّل يوم (القاعدة ٣٧٢) — **بقرار المالك**:
+ * الخطُّ الزمنيّ لا يبدأ فارغاً، وأخبارُ التطبيق فيه قبل أن يأتي الأصدقاء.
+ * متابعةٌ لا صداقة (القاعدة ٢٦٣): لا خانةَ من السقف ولا سطرَ «أصبح صديق».
+ * ولا يُسقط حساباً قام: فشلُها يُبلع، ومن أراد يضيفه بيده من ملفّه.
+ */
+export async function followSupport(userId: string): Promise<void> {
+  try {
+    const support = await supportAccount();
+    if (!support || support.id === userId || !support.isOpen) return;
+    await prisma.friendship.create({
+      data: {
+        requesterId: userId,
+        addresseeId: support.id,
+        status: "ACCEPTED",
+        follow: true,
+        acceptedAt: new Date(),
+      },
+    });
+  } catch {
+    // قيدُ الفرادة (صفٌّ قائم) أو قاعدةٌ متأخّرة — الحسابُ قائمٌ على كلّ حال.
+  }
+}
