@@ -157,6 +157,8 @@ export const useCircle = () =>
           lastSeenAt: string | null;
           /** تصنيفُ هذا الصديق عندك — يراه صاحبه وحده. */
           groupId: string | null;
+          /** حسابُ الإدارة أو من له اللوحة كلّها — لا يُحظر (القاعدة ٣١٨). خادمٌ قديم لا يرسله. */
+          staff?: boolean;
         })[];
         requests: { id: string; createdAt: string; requester: Person & { memberNo: number } }[];
         groups: { id: string; name: string; count: number }[];

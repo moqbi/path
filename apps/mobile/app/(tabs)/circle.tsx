@@ -310,8 +310,8 @@ export default function Circle() {
           <SwipeRow
             onDelete={() => void cut.mutate(friend.id)}
             confirmLabel="إزالة"
-            onSecond={() => void ban.mutate(friend.id)}
-            secondLabel="حظر"
+            onSecond={friend.staff ? undefined : () => void ban.mutate(friend.id)}
+            secondLabel={friend.staff ? undefined : "حظر"}
             lead={{ label: "محادثة", run: () => void talk.mutate(friend.id) }}
             extra={{ label: "تصنيف", run: () => setPicking(friend) }}
             onSwiping={setSwiping}
