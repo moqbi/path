@@ -10,6 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ProfileHead } from "../../components/profile-head";
+import { SharedInterests, type FriendInterests } from "../../components/interests-sheet";
 import { COVER_HEIGHT, CoverLayer, StretchCover, useStretch } from "../../components/cover";
 import { playRefresh } from "../../lib/sound";
 import { MediaImage } from "../../components/media-image";
@@ -121,7 +122,8 @@ function Profile() {
 
   const person = useQuery({
     queryKey: keys.user(id),
-    queryFn: () => api<{ person: Person; friend: boolean; follower?: boolean; owned: string[] }>(`/v1/users/${id}`),
+    queryFn: () =>
+      api<{ person: Person; friend: boolean; follower?: boolean; owned: string[]; interests?: FriendInterests }>(`/v1/users/${id}`),
   });
 
   /** إضافةُ حسابٍ مفتوح: طلبُ الإضافة نفسه. */
@@ -307,6 +309,8 @@ function Profile() {
               </View>
 
               <View style={{ alignItems: "stretch", marginTop: 14, marginBottom: 18 }}>
+                {/* الاهتماماتُ المشتركة (القاعدة ٣٧٤) — للصديق وحده، والخادمُ لا يرسلها لغيره. */}
+                {person.data?.friend && who.id !== me?.id ? <SharedInterests name={who.name} data={person.data.interests} /> : null}
                 {/*
                   ويُقال للمشرف إنّه يقرأ بصلاحية: من يرى لحظات من ليس في
                   دائرته بلا خبرٍ يظنّ الحدّ قد سقط عن الجميع.

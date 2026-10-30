@@ -80,6 +80,9 @@ export type Me = {
   notifyStoreDeals?: boolean;
   notifyMemories?: boolean;
   notifyNearby?: boolean;
+  /** الاهتمامات (القاعدة ٣٧٤) — خادمٌ قديم لا يرسلها. */
+  interests?: string[];
+  interestsAt?: string | null;
   quietFrom?: number | null;
   quietTo?: number | null;
   viewGroupId: string | null;

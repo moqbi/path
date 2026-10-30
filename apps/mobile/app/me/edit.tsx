@@ -17,7 +17,7 @@ import { uploadFile } from "../../lib/upload";
 import { keys } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { brandGradient, colors } from "../../theme/tokens";
-import { BIO_MAX } from "@athar/shared";
+import { BIO_MAX, interestOf } from "@athar/shared";
 import { ar } from "../../lib/format";
 import { tourSignal } from "../../components/tour";
 
@@ -217,6 +217,22 @@ export default function EditProfile() {
                 placeholderTextColor={colors.faint}
                 style={INPUT}
               />
+            </Field>
+
+            {/* الاهتمامات (القاعدة ٣٧٤): تُحفظ من شاشتها لا مع زرّ «احفظ» هنا. */}
+            <Field label="اهتماماتي">
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push("/interests?edit=1" as never)}
+                style={{ flexDirection: "row", alignItems: "center", gap: 10, minHeight: 48, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.paper }}
+              >
+                <Text numberOfLines={2} style={{ flex: 1, color: me?.interests?.length ? colors.ink : colors.muted, fontSize: 13.5 }}>
+                  {me?.interests?.length
+                    ? me.interests.map((id) => interestOf(id)).filter(Boolean).map((one) => `${one!.emoji} ${one!.label}`).join("  ")
+                    : "اختر من ٣ إلى ١٠ اهتمامات تعبّر عنك"}
+                </Text>
+                <Text style={{ color: colors.clay, fontSize: 13, fontWeight: "700" }}>{me?.interests?.length ? "تعديل" : "اختر"}</Text>
+              </Pressable>
             </Field>
 
             <Field label="كيف يخاطبك كتاب سنتك؟">
