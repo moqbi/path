@@ -22,8 +22,6 @@ import { colors } from "../theme/tokens";
  * أن تُغلق — فـ«تخطَّ» و«ابدأ» لا يفعلان شيئاً.
  */
 const KEY = "athr.tour.v5";
-/** الجولاتُ السابقة: من رأى إحداها رأى التطبيقَ من قبل (القاعدة ٢٤٣). */
-const OLD_KEYS = ["athr.tour.v4", "athr.tour.v3"];
 
 /** ما تقرؤه الخطوةُ لتعرف أنّ صاحبها فعل ما طُلب منه. */
 type Ctx = { path: string; signals: Set<string>; addMode: string | null };
@@ -79,6 +77,7 @@ const STEPS: Step[] = [
     at: "/me/edit",
     coach: [
       { key: "avatar", label: "غيّر صورتك — اضغط الكاميرا على حافّتها", done: (ctx) => ctx.signals.has("avatar") },
+      { key: "cover", label: "اختر غلافك — اضغط الغلاف في الأعلى", done: (ctx) => ctx.signals.has("cover") },
       { key: "name", label: "اكتب اسمك كما يعرفك ناسك", done: (ctx) => ctx.signals.has("name") },
       { key: "handle", label: "اختر معرّفاً يبحثون عنك به", done: (ctx) => ctx.signals.has("handle") },
     ],
@@ -87,37 +86,21 @@ const STEPS: Step[] = [
     body: "وإذا خلصت اضغط «احفظ» في الأسفل.",
   },
   {
-    spot: "welcome.support",
-    route: "/",
-    tap: true,
-    skipMissing: 2,
-    until: (ctx) => ctx.path.startsWith("/u/"),
-    title: "أضف حساب آثار",
-    body: "من بطاقة الترحيب: اضغط هنا لتفتح ملفّ حساب الإدارة — أخبار التطبيق وجديده في خطّك.",
-  },
-  {
-    spot: "profile.add",
-    tap: true,
-    at: "/u/",
-    until: (ctx) => ctx.signals.has("friend.added"),
-    title: "اضغط «أضفه»",
-    body: "هكذا يُضاف أيُّ حساب: من ملفّه.",
-  },
-  {
     /*
-      **يبقى على ملفّ الإدارة** — بقرار المالك: لحظاتُه تحته الآن بوجوه من تفاعل
-      وتعليقاتهم، فالشرحُ يُقرأ فوق ما يشرحه لا في الخطّ الزمنيّ.
+      **حسابُ الإدارة في الخطّ من أوّل يوم** (القاعدة ٣٧٢) — بقرار المالك: لا خطوةَ تضيفه،
+      فالجولةُ تشرح ما تحت لحظاته — وجوهُ من تفاعل وتعليقاتُهم بابُ الإضافة الأوّل.
     */
+    route: "/",
     coach: [],
-    title: "من التعليقات والتفاعلات",
-    body: "تحت لحظات حساب آثار وجوهُ من تفاعل وتعليقاتُهم — اضغط صورة أيّ واحدٍ منهم يفتح ملفّه، ومنه «أضفه».",
+    title: "حساب آثار في خطّك",
+    body: "أخبار التطبيق وجديده تصلك منه من أوّل يوم. وتحت لحظاته وجوهُ من تفاعل وتعليقاتُهم — اضغط صورة أيّ واحدٍ منهم يفتح ملفّه، ومنه «أضفه». تفاعل وعلّق أنت أيضاً ليضيفك الناس.",
   },
   {
     spot: "welcome.card",
     route: "/",
     skipMissing: 1,
-    title: "خطوتان تمّتا",
-    body: "صورتك وحساب آثار — شُطبتا من بطاقة الترحيب. والباقي: ادعُ صديقاً وانشر أوّل لحظة.",
+    title: "بطاقة الترحيب",
+    body: "ما فعلته يُشطب منها وحده. والباقي هنا — كلُّ سطرٍ زرٌّ يفعله.",
   },
   {
     spot: "circle.add",
@@ -166,9 +149,8 @@ const STEPS: Step[] = [
  * خطوةُ الجولة في مخزنٍ لا في حالة المكوّن: «أعد الجولة» في الإعدادات
  * يبدؤها من شاشةٍ أخرى. ومعها ما فعله صاحبُها (`signals`) تقرؤه الخطوات.
  */
-const useTour = create<{ step: number | null; first: boolean; signals: Set<string> }>(() => ({
+const useTour = create<{ step: number | null; signals: Set<string> }>(() => ({
   step: null,
-  first: false,
   signals: new Set(),
 }));
 
@@ -202,18 +184,6 @@ async function measureSoon(id: string): Promise<Rect | null> {
   return null;
 }
 
-/** حسابُ الإدارة إن لم يكن مضافاً بعد — وإلّا `null`. */
-async function adminToAdd(): Promise<string | null> {
-  try {
-    const { account } = await api<{ account: { id: string } | null }>("/v1/site/support");
-    if (!account) return null;
-    const card = await api<{ friend: boolean }>(`/v1/users/${account.id}`);
-    return card.friend ? null : account.id;
-  } catch {
-    return null;
-  }
-}
-
 /** حولَ الهدف فراغٌ يتنفّس فيه — الدائرة لا تلتصق بحوافّه. */
 const PAD = 14;
 
@@ -245,10 +215,9 @@ export function Tour() {
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
-    void Promise.all([
-      getItem(KEY).catch(() => null),
-      ...OLD_KEYS.map((key) => getItem(key).catch(() => null)),
-    ]).then(([seen, ...old]) => {
+    void getItem(KEY)
+      .catch(() => null)
+      .then((seen) => {
       /*
         مهلةٌ تسبق الجولة: نافذةُ إذن التنبيهات تُطلب مع الدخول، والشريطُ
         السفليّ يُرسم بعد الشاشة — ولا دائرة بلا هدف.
@@ -256,8 +225,6 @@ export function Tour() {
       if (seen !== "1") {
         timer = setTimeout(() => {
           startTour();
-          // من رأى جولةً قبلها ليس جديداً: لا يُفتح له ملفُّ الإدارة بعدها.
-          useTour.setState({ first: !old.includes("1") });
         }, 1800);
       }
     });
@@ -268,7 +235,7 @@ export function Tour() {
   useEffect(() => {
     if (step === null) return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      close(false);
+      close();
       return true;
     });
     return () => sub.remove();
@@ -304,18 +271,7 @@ export function Tour() {
           const next = step + (current.skipMissing ?? 1);
           setStep(next < STEPS.length ? next : null);
         };
-        if (id !== "welcome.support") return skip();
-        /*
-          بطاقةُ الترحيب غائبةٌ أو خطوتُها مشطوبة — وقد يكون حذفَ حسابَ الإدارة بعدها،
-          فالبطاقةُ لا تعود لأسبوعين مضيا أو لـ«×». فيُسأل الخادمُ نفسُه: إن لم يكن
-          مضافاً يُفتح ملفُّه، وخطوتُه التاليةُ «أضفه» تمضي كما هي (`until` يرى المسار).
-        */
-        void adminToAdd().then((adminId) => {
-          if (!alive) return;
-          if (adminId) router.push(`/u/${adminId}` as never);
-          else skip();
-        });
-        return;
+        return skip();
       }
       // التبويبُ أيقونةٌ وتحتها اسمُه: الدائرةُ تحتضن الاثنين لا الأيقونة وحدها.
       setHole(rect && id.startsWith("tab.") ? { ...rect, height: rect.height + 16 } : rect);
@@ -366,25 +322,12 @@ export function Tour() {
   }, [step, pulse]);
 
   // الإغلاقُ أوّلاً ثمّ الحفظ: مخزنٌ يفشل لا يحبس الشاشة تحت الجولة.
-  function close(finished: boolean) {
-    const { first, signals: done } = useTour.getState();
-    useTour.setState({ step: null, first: false, signals: new Set() });
+  function close() {
+    useTour.setState({ step: null, signals: new Set() });
     useFan.setState({ open: false });
     closeAddSheet();
     router.navigate("/" as never);
     void setItem(KEY, "1").catch(() => {});
-    /*
-      من تخطّى الجولةَ قبل أن يضيف حسابَ الإدارة يُفتح له ملفُّه (القاعدة ٢٤٣):
-      الحسابُ الجديد خطُّه فارغ، ومن وجد شاشةً ميّتة لا يعود. ومن أكملها
-      أضافه بيده في خطوتها.
-    */
-    if (first && !finished && !done.has("friend.added")) {
-      void api<{ account: { id: string } | null }>("/v1/site/support")
-        .then(({ account }) => {
-          if (account) router.push(`/u/${account.id}` as never);
-        })
-        .catch(() => {});
-    }
   }
 
   /*
@@ -429,13 +372,13 @@ export function Tour() {
     <View style={{ flexDirection: "row", alignItems: "center", marginTop: 14 }}>
       {dots}
       {last ? null : (
-        <Pressable onPress={() => close(false)} hitSlop={10} style={{ paddingHorizontal: 12, height: 38, justifyContent: "center" }}>
+        <Pressable onPress={() => close()} hitSlop={10} style={{ paddingHorizontal: 12, height: 38, justifyContent: "center" }}>
           <Text style={{ color: "rgba(255,255,255,.75)", fontSize: 13 }}>تخطَّ</Text>
         </Pressable>
       )}
       {waiting || current.until ? null : (
         <Pressable
-          onPress={() => (last ? close(true) : setStep(step + 1))}
+          onPress={() => (last ? close() : setStep(step + 1))}
           style={{ height: 38, paddingHorizontal: 18, borderRadius: 999, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: "#fff" }}
         >
           <Text style={{ color: "#fff", fontSize: 13.5, fontWeight: "700" }}>{last ? "ابدأ" : "التالي"}</Text>

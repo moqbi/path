@@ -2,6 +2,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import { prisma } from "@athar/db";
 import { badRequest, unauthorized } from "../lib/errors";
 import { sendVerify } from "./email-tokens";
+import { followSupport } from "./support-account";
 
 /**
  * الدخول بمزوّد: آبل وقوقل (وسناب بعدهما).
@@ -308,6 +309,9 @@ export async function upsertIdentity(identity: Identity) {
     },
     select: { id: true, email: true, name: true },
   });
+
+  // وحسابُ الإدارة في خطّه من أوّل يوم (القاعدة ٣٧٢).
+  await followSupport(user.id);
 
   // وبريدٌ لم يؤكّده مزوّدُه يُؤكَّد برسالةٍ كما يفعل التسجيل بالبريد.
   if (!identity.emailVerified && user.email) {

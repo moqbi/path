@@ -3,7 +3,7 @@ import { LayoutAnimation, Pressable, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Text } from "./type";
-import { CameraIcon, CheckIcon, CloseIcon, ShareIcon, SparkIcon, PlusIcon } from "./icons";
+import { CameraIcon, CheckIcon, CloseIcon, ImageIcon, ShareIcon, PlusIcon } from "./icons";
 import { ShareProfileSheet } from "./share-profile";
 import { InviteProgress } from "./invite-progress";
 import { useFan } from "./composer-fan";
@@ -14,14 +14,8 @@ import { getItem, setItem } from "../lib/store";
 import { ar } from "../lib/format";
 import { colors } from "../theme/tokens";
 
-type Steps = { avatar: boolean; friend: boolean; moment: boolean; support: boolean };
-type Shown = {
-  show: true;
-  memberNo: number;
-  supportId: string | null;
-  supportName: string | null;
-  steps: Steps;
-};
+type Steps = { avatar: boolean; cover: boolean; moment: boolean; friend: boolean };
+type Shown = { show: true; memberNo: number; steps: Steps };
 type Welcome = { show: false } | Shown;
 
 // ما فُعل للتوّ يبقى مشطوباً لحظةً ليُرى ثمّ يُطوى.
@@ -49,7 +43,7 @@ export function WelcomeCard() {
   const [sharing, setSharing] = useState(false);
   const welcome = useQuery({
     queryKey: ["welcome", me?.id],
-    queryFn: () => api<Welcome>("/v1/memories/welcome"),
+    queryFn: () => api<Welcome>("/v1/memories/welcome?cover=1"),
     staleTime: 60_000,
   });
   // الخطواتُ تُشطب من القاعدة، فتُسأل كلّما عاد إلى اللحظات: يضع صورته أو ينشر أو يضيف
@@ -80,7 +74,7 @@ export function WelcomeCard() {
   const data: Shown | null = fresh?.show
     ? fresh
     : completed && last.current
-      ? { ...last.current, steps: { avatar: true, friend: true, moment: true, support: true } }
+      ? { ...last.current, steps: { avatar: true, cover: true, moment: true, friend: true } }
       : null;
 
   useEffect(() => {
@@ -110,15 +104,11 @@ export function WelcomeCard() {
     void setItem(keyOf(me.id), "1").catch(() => {});
   };
 
+  /*
+    صورةٌ وغلافٌ وأوّلُ لحظةٍ وأوّلُ صديق (القاعدة ٣٧٢) — حسابُ الإدارة لا خطوةَ له:
+    كلُّ حسابٍ جديد يتابعه من أوّل يوم، فخطُّه لا يبدأ فارغاً.
+  */
   const steps = [
-    {
-      key: "support",
-      done: data.steps.support,
-      icon: <SparkIcon size={16} color={colors.clayInk} />,
-      title: `أضف ${data.supportName ?? "حساب آثار"}`,
-      hint: "يمكنك إضافة أصدقاء جدد من التفاعلات والتعليقات.. تفاعل وعلّق ليضيفك المستخدمون الآخرون",
-      go: () => data.supportId && router.push(`/u/${data.supportId}` as never),
-    },
     {
       key: "avatar",
       done: data.steps.avatar,
@@ -128,12 +118,12 @@ export function WelcomeCard() {
       go: () => router.push("/me/edit" as never),
     },
     {
-      key: "friend",
-      done: data.steps.friend,
-      icon: <ShareIcon size={16} color={colors.clayInk} />,
-      title: "ادعُ أوّل صديق",
-      hint: "شارك رابط ملفك أو رمزه — دائرتك أنت تبنيها",
-      go: () => setSharing(true),
+      key: "cover",
+      done: data.steps.cover,
+      icon: <ImageIcon size={16} color={colors.clayInk} />,
+      title: "اختر غلافك",
+      hint: "الصورة العريضة فوق ملفك — أوّل ما يراه من يفتحه",
+      go: () => router.push("/me/edit" as never),
     },
     {
       key: "moment",
@@ -142,6 +132,14 @@ export function WelcomeCard() {
       title: "انشر أوّل لحظة",
       hint: "مكانك، أغنيتك، صورة، أو سطر — من زرّ الزائد",
       go: () => useFan.setState({ open: true }),
+    },
+    {
+      key: "friend",
+      done: data.steps.friend,
+      icon: <ShareIcon size={16} color={colors.clayInk} />,
+      title: "أضف أوّل صديق",
+      hint: "تفاعل وعلّق ليضيفك الناس، أو شارك رابط ملفك ورمزه",
+      go: () => setSharing(true),
     },
   ];
   const done = steps.filter((step) => step.done).length;
