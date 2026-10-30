@@ -1,15 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { savedInviter } from "../lib/invite-ref";
 import { View, Pressable, Animated, Easing, Keyboard, Platform, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text, TextInput } from "../components/type";
-import Svg, {
-  Defs,
-  Ellipse,
-  Path,
-  Polygon,
-  RadialGradient,
-  Stop,
-} from "react-native-svg";
+import Svg, { Path } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -25,7 +19,8 @@ import {
   useSnap,
   loadProviders,
 } from "../lib/providers";
-import { AthrMark, AthrWordmark, TAGLINE_AR, TAGLINE_EN } from "../components/brand";
+import { AthrWordmark, TAGLINE_AR } from "../components/brand";
+import { GlassPanel, LiveStrip, Orbit, SCENE_GROUND, SceneGround } from "../components/login-scene";
 import { BackIcon, CheckIcon } from "../components/icons";
 import { api } from "../lib/api";
 import { openIn } from "../lib/browse";
@@ -34,40 +29,14 @@ import { useSession } from "../lib/session";
 import { BackToParked } from "../components/accounts-sheet";
 import { brandGradient, colors } from "../theme/tokens";
 
-type Phase = "intro" | "leaving" | "form";
-
 /**
- * المقدّمة مرةً واحدة لكل تشغيل.
+ * حركةُ الدخول مرةً واحدة لكل تشغيل.
  *
  * الويب يكتبها في `sessionStorage` — «جلسة متصفح». ومكافئها هنا متغيّرٌ
- * في وحدة الملف: يعيش ما دام التطبيق حيّاً ويذهب بإغلاقه. والمخزن الدائم
- * كان سيعرضها مرةً واحدة في العمر، وهذا غير ما في الويب.
+ * في وحدة الملف: يعيش ما دام التطبيق حيّاً ويذهب بإغلاقه. ومن خرج ورجع
+ * في التشغيل نفسه يجد الشاشة قائمةً بلا انتظار.
  */
 let introSeen = false;
-
-function usePhases(): Phase {
-  const [phase, setPhase] = useState<Phase>("intro");
-
-  useEffect(() => {
-    if (introSeen) {
-      setPhase("form");
-      return;
-    }
-
-    const leave = setTimeout(() => setPhase("leaving"), 2000);
-    const done = setTimeout(() => {
-      setPhase("form");
-      introSeen = true;
-    }, 3100);
-
-    return () => {
-      clearTimeout(leave);
-      clearTimeout(done);
-    };
-  }, []);
-
-  return phase;
-}
 
 /**
  * ارتفاع لوحة المفاتيح.
@@ -99,72 +68,7 @@ function useKeyboardHeight(): number {
   return height;
 }
 
-/* منحنيات الويب نفسها: `ease` هو cubic-bezier(.25,.1,.25,1). */
-const EASE = Easing.bezier(0.25, 0.1, 0.25, 1);
-const INTRO_OUT = Easing.bezier(0.3, 0, 0.2, 1);
-const FORM_IN = Easing.bezier(0.2, 0.8, 0.3, 1);
-
-/**
- * الخلفية: لا تتحرّك أبداً — هي التي تربط المراحل الثلاث ببعضها.
- *
- * في الويب تدرّجان فوق بعضهما وتلّان بـ`clipPath`. ولا تدرّجَ شعاعياً
- * ولا `clipPath` في React Native، فيُرسمان بـSVG بنفس الأرقام:
- * - الشعاعيّ `120% 60% at 85% 18%` قطعٌ ناقص نصفاه ١٢٠٪ من العرض و٦٠٪
- *   من الارتفاع، مركزه عند (٨٥٪، ١٨٪)، وتدرّجه إلى الشفافية عند ٦٠٪ من
- *   نصف القطر — وهي نسبةٌ من صندوق القطع نفسه، فتُكتب `offset="0.6"`.
- * - التلّان مضلّعان بنفس نقاط `polygon()` على شبكة ١٠٠×١٠٠
- *   (`preserveAspectRatio="none"`)، فالنسب تبقى نسباً.
- */
-function Sky() {
-  const { width, height } = useWindowDimensions();
-
-  return (
-    <View style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0 }} pointerEvents="none">
-      {/* linear-gradient(180deg,#16293a 0%,#2c4055 30%,#7b6a63 62%,#3d3a3a 78%,#171d24 100%) */}
-      <LinearGradient
-        colors={["#16293a", "#2c4055", "#7b6a63", "#3d3a3a", "#171d24"]}
-        locations={[0, 0.3, 0.62, 0.78, 1]}
-        style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0 }}
-      />
-
-      <Svg width={width} height={height} style={{ position: "absolute", top: 0, left: 0 }}>
-        <Defs>
-          <RadialGradient id="loginGlow" cx="50%" cy="50%" r="50%">
-            <Stop offset="0" stopColor="#ffc478" stopOpacity={0.55} />
-            <Stop offset="0.6" stopColor="#ffc478" stopOpacity={0} />
-          </RadialGradient>
-        </Defs>
-        <Ellipse
-          cx={width * 0.85}
-          cy={height * 0.18}
-          rx={width * 1.2}
-          ry={height * 0.6}
-          fill="url(#loginGlow)"
-        />
-      </Svg>
-
-      {/* التلّ الأعلى: ارتفاعه ١٩٠ وقاعدته عند ٢٢٪ من أسفل الشاشة. */}
-      <View style={{ position: "absolute", left: 0, right: 0, bottom: height * 0.22, height: 190, opacity: 0.55 }}>
-        <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <Polygon
-            points="0,62 18,30 34,55 52,18 72,48 88,26 100,46 100,100 0,100"
-            fill="#2b3a48"
-          />
-        </Svg>
-      </View>
-
-      {/* والتلّ الأقرب: ارتفاعه ٣٠٠ من أسفل الشاشة. */}
-      <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 300 }}>
-        <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <Polygon
-            points="0,55 14,32 30,52 48,22 66,46 84,28 100,50 100,100 0,100"
-            fill="#1a2029"
-          />
-        </Svg>
-      </View>
-    </View>
-  );
-}
+const RISE = Easing.bezier(0.2, 0.8, 0.2, 1);
 
 const PROVIDERS = [
   { key: "apple", label: "Apple", mark: <AppleMark /> },
@@ -186,16 +90,17 @@ const FIELD = {
 } as const;
 
 /**
- * الدخول على ثلاث مراحل فوق خلفية ثابتة: يدخل الشعار والعبارتان، ثم
- * يغادران بارتفاع وتلاشٍ، ثم تدخل خيارات الدخول من الأسفل.
- *
- * والمقدّمة مرفوعةٌ من السياق (`position: absolute`) كما في الويب: هناك
- * تصير كذلك عند ظهور النموذج، فلا تدفع ما تحتها.
+ * المدار والخط الحيّ (القاعدة ٩): الشعار في مداره في الأعلى، وتحته شريطُ
+ * خطٍّ زمنيٍّ يمرّ، وخياراتُ الدخول في لوحٍ زجاجيّ حيث يصل الإبهام.
+ * وعند أوّل فتحٍ في التشغيل تخرج الرسومُ من الشعار، ثمّ يدخل الشريط،
+ * ثمّ يصعد اللوح.
  */
 export default function Login() {
   const router = useRouter();
   const { deleted } = useLocalSearchParams<{ deleted?: string }>();
-  const phase = usePhases();
+  const [enter] = useState(() => !introSeen);
+  const insets = useSafeAreaInsets();
+  const { height: screenHeight } = useWindowDimensions();
   const keyboard = useKeyboardHeight();
   const signIn = useSession((s) => s.signIn);
   const adopt = useSession((s) => s.adopt);
@@ -323,44 +228,30 @@ export default function Login() {
     }
   }
 
-  const introVisible = phase === "intro";
-  const formVisible = phase === "form";
-
-  const introFade = useRef(new Animated.Value(1)).current;
-  const introLift = useRef(new Animated.Value(0)).current;
-  const formFade = useRef(new Animated.Value(0)).current;
-  const formRise = useRef(new Animated.Value(26)).current;
+  const headFade = useRef(new Animated.Value(enter ? 0 : 1)).current;
+  const formFade = useRef(new Animated.Value(enter ? 0 : 1)).current;
+  const formRise = useRef(new Animated.Value(enter ? 40 : 0)).current;
 
   useEffect(() => {
+    introSeen = true;
+    if (!enter) return;
     Animated.parallel([
-      Animated.timing(introFade, {
-        toValue: introVisible ? 1 : 0,
-        duration: 800,
-        easing: EASE,
-        useNativeDriver: true,
-      }),
-      Animated.timing(introLift, {
-        toValue: introVisible ? 0 : phase === "leaving" ? -28 : -40,
-        duration: 900,
-        easing: INTRO_OUT,
-        useNativeDriver: true,
-      }),
-      Animated.timing(formFade, {
-        toValue: formVisible ? 1 : 0,
-        duration: 700,
-        delay: 120,
-        easing: EASE,
-        useNativeDriver: true,
-      }),
-      Animated.timing(formRise, {
-        toValue: formVisible ? 0 : 26,
-        duration: 800,
-        delay: 120,
-        easing: FORM_IN,
-        useNativeDriver: true,
-      }),
+      Animated.timing(headFade, { toValue: 1, duration: 800, delay: 450, easing: RISE, useNativeDriver: true }),
+      Animated.timing(formFade, { toValue: 1, duration: 800, delay: 900, easing: RISE, useNativeDriver: true }),
+      Animated.timing(formRise, { toValue: 0, duration: 900, delay: 900, easing: RISE, useNativeDriver: true }),
     ]).start();
-  }, [phase, introVisible, formVisible, introFade, introLift, formFade, formRise]);
+  }, [enter, headFade, formFade, formRise]);
+
+  const headLift = headFade.interpolate({ inputRange: [0, 1], outputRange: [14, 0] });
+  // الرأسُ والشريطُ يغيبان ما دامت اللوحة مفتوحة: الحقولُ ترتفع إلى مكانهما.
+  const typing = keyboard > 0;
+  /*
+     نموذجُ البريد أطولُ من الأزرار، والمدارُ والشريطُ معاً لا يتّسعان معه
+     على شاشةٍ قصيرة: فيذهب الشريط معه دائماً، والمدارُ على ما دون ٧٦٠ —
+     ويبقى الاسمُ والعبارة.
+  */
+  const longForm = showEmail || sent !== null;
+  const compact = longForm && screenHeight < 760;
 
   async function submit() {
     if (pending) return;
@@ -401,95 +292,40 @@ export default function Login() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#171d24" }}>
-      <Sky />
+    <View style={{ flex: 1, backgroundColor: SCENE_GROUND }}>
+      <SceneGround />
       {/* من ضغط «إضافة حساب» ثمّ تراجع يعود إلى حسابه (القاعدة ٣١٦). */}
       <BackToParked />
 
-      {/*
-        المقدّمة مرفوعةٌ من السياق، والخيارات في الأسفل فوق حشوة ٤٠ —
-        وترتفع باللوحة حين تظهر.
-      */}
       <View
         style={{
           flex: 1,
-          paddingHorizontal: 24,
-          paddingTop: 64,
-          paddingBottom: keyboard > 0 ? keyboard + 16 : 40,
+          paddingTop: insets.top + 8,
+          paddingBottom: typing ? keyboard + 12 : Math.max(insets.bottom, 12) + 8,
           justifyContent: "flex-end",
         }}
       >
-        {/* المقدّمة: تدخل من الأعلى ثم تغادر إلى الأعلى. */}
-        <Animated.View
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            top: 64,
-            left: 24,
-            right: 24,
-            paddingTop: 24,
-            alignItems: "center",
-            opacity: introFade,
-            transform: [{ translateY: introLift }],
-          }}
-        >
-          <AthrMark size={76} />
-          {/*
-            الاسم كاملاً كما هو في المتجرين، بكلمتين لا بكلمة:
-            «ATHAR» بلون الورق و«Moments» أصغرَ بكهرمانِ العلامة على
-            خطّ قاعدتها. وعرضُه أضيق من كلمتين متساويتين، فيتّسع له
-            ٣٢٠ بلا تصغيرٍ ولا كسرِ سطر.
-          */}
-          <View style={{ marginTop: 20 }}>
-            <AthrWordmark size={30} color="#f7f5ef" />
-          </View>
-          <Text style={{ marginTop: 20, fontSize: 15, fontWeight: "500", color: "#f0ece4" }}>
-            {TAGLINE_AR}
-          </Text>
-          <Text
-            style={{
-              marginTop: 6,
-              fontSize: 10.5,
-              lineHeight: 17,
-              textAlign: "center",
-              color: "#b9b2a8",
-              letterSpacing: 1.05,
-              writingDirection: "ltr",
-            }}
-          >
-            {TAGLINE_EN}
-          </Text>
-        </Animated.View>
+        {typing ? null : (
+          <>
+            {/* الشعار أوّل ما يُرى (القاعدة ٧)، والمدارُ حوله. */}
+            <View style={{ alignItems: "center" }}>
+              {compact ? null : <Orbit enter={enter} />}
+              <Animated.View
+                style={{ alignItems: "center", marginTop: compact ? 12 : -6, opacity: headFade, transform: [{ translateY: headLift }] }}
+              >
+                <AthrWordmark size={22} color="#f7f5ef" />
+                <Text style={{ marginTop: 4, fontSize: 13.5, fontWeight: "600", color: "#d6dde2" }}>{TAGLINE_AR}</Text>
+              </Animated.View>
+            </View>
+            {longForm ? <View style={{ flex: 1 }} /> : <LiveStrip enter={enter} />}
+          </>
+        )}
 
-        {/*
-          العلامة في أعلى الشاشة: الشعار أوّل ما يُرى، والخيارات في
-          أسفلها حيث يصل الإبهام. وتظهر مع الخيارات بالحركة نفسها.
-          وتغيب ما دامت اللوحة مفتوحة: هي مرفوعةٌ من السياق فلا تنزاح
-          بارتفاع الحقول، وبقاؤها يعني حقلاً تحت شعار.
-        */}
+        {/* خيارات الدخول: تصعد من الأسفل بعد الشريط. */}
         <Animated.View
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            top: 64,
-            left: 24,
-            right: 24,
-            alignItems: "center",
-            opacity: keyboard > 0 ? 0 : formFade,
-          }}
+          style={{ paddingHorizontal: 12, marginTop: 8, opacity: formFade, transform: [{ translateY: formRise }] }}
         >
-          <AthrMark size={96} />
-          <View style={{ marginTop: 12 }}>
-            <AthrWordmark size={26} color="#f7f5ef" />
-          </View>
-          <Text style={{ marginTop: 8, fontSize: 13, color: "#cbc5bb" }}>{TAGLINE_AR}</Text>
-        </Animated.View>
-
-        {/* خيارات الدخول: تدخل من الأسفل بعد مغادرة المقدّمة. */}
-        <Animated.View
-          pointerEvents={formVisible ? "auto" : "none"}
-          style={{ opacity: formFade, transform: [{ translateY: formRise }] }}
-        >
+          <GlassPanel>
           {sent ? (
             <View style={{ gap: 12 }}>
               <Text
@@ -690,6 +526,7 @@ export default function Login() {
               <Consent agreed={agreed} onToggle={() => { setAgreed((was) => !was); setError(null); }} />
             </View>
           )}
+          </GlassPanel>
         </Animated.View>
       </View>
     </View>
