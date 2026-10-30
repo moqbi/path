@@ -100,7 +100,49 @@
             "NSExtensionActivationSupportsWebURLWithMaxCount": 1,
             "NSExtensionActivationSupportsText": true
           },
-          "androidIntentFilters": ["text/*", "image/*"]
+          "androidIntentFilters": [
+            "text/*",
+            "image/*"
+          ]
+        }
+      ],
+      [
+        "expo-quick-actions",
+        {
+          "iosActions": [
+            {
+              "id": "thought",
+              "title": "لحظة جديدة",
+              "icon": "symbol:square.and.pencil",
+              "params": {
+                "href": "/compose?kind=THOUGHT"
+              }
+            },
+            {
+              "id": "photo",
+              "title": "صورة جديدة",
+              "icon": "symbol:camera",
+              "params": {
+                "href": "/compose?kind=PHOTO"
+              }
+            },
+            {
+              "id": "music",
+              "title": "أغنية",
+              "icon": "symbol:music.note",
+              "params": {
+                "href": "/compose?kind=MUSIC"
+              }
+            },
+            {
+              "id": "place",
+              "title": "موقع",
+              "icon": "symbol:mappin.and.ellipse",
+              "params": {
+                "href": "/compose?kind=PLACE"
+              }
+            }
+          ]
         }
       ]
     ],
