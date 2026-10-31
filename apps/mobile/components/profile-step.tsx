@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text, TextInput } from "./type";
@@ -6,6 +6,7 @@ import { Spinner } from "./spinner";
 import { AvatarEditor } from "../app/me/edit";
 import { api } from "../lib/api";
 import { useSession } from "../lib/session";
+import { useHandleCheck } from "../lib/handle";
 import { colors } from "../theme/tokens";
 
 const AMBER = "#F6B93B";
@@ -38,11 +39,21 @@ export function ProfileStep({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [pictureError, setPictureError] = useState<string | null>(null);
+  const check = useHandleCheck(handle, me?.handle);
+  // اقتراحُ المعرّف (القاعدة ٣٧٧): لمن لا معرّفَ له يُكتب أوّلُ اقتراحٍ في الحقل مرّةً،
+  // ولا يُكتب فوق ما كتبه بيده.
+  const touched = useRef(Boolean(me?.handle));
+  useEffect(() => {
+    if (!touched.current && !handle && check.suggestions[0]) {
+      touched.current = true;
+      setHandle(check.suggestions[0]);
+    }
+  }, [check.suggestions, handle]);
   if (!me) return null;
 
   const clean = handle.trim().replace(/^@/, "").toLowerCase();
   const handleBad = clean.length > 0 && !HANDLE.test(clean);
-  const ready = name.trim().length > 0 && !handleBad;
+  const ready = name.trim().length > 0 && !handleBad && check.status !== "bad";
 
   const save = async () => {
     if (busy || !ready) return;
@@ -105,7 +116,10 @@ export function ProfileStep({ onDone }: { onDone: () => void }) {
               <Text style={{ color: "rgba(255,255,255,.6)", fontSize: 15 }}>@</Text>
               <TextInput
                 value={handle}
-                onChangeText={setHandle}
+                onChangeText={(next) => {
+                  touched.current = true;
+                  setHandle(next);
+                }}
                 maxLength={21}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -114,9 +128,39 @@ export function ProfileStep({ onDone }: { onDone: () => void }) {
                 style={[FIELD, { flex: 1, minWidth: 0, textAlign: "left" }]}
               />
             </View>
-            <Text style={{ color: handleBad ? colors.live : "rgba(255,255,255,.5)", fontSize: 11.5 }}>
-              حروف إنجليزية وأرقام و_ ، من ٣ إلى ٢٠
+            <Text
+              style={{
+                color: handleBad || check.status === "bad" ? colors.live : check.status === "ok" && clean ? "#7DD3A0" : "rgba(255,255,255,.5)",
+                fontSize: 11.5,
+                fontWeight: check.status === "ok" ? "700" : "400",
+              }}
+            >
+              {!clean || check.status === "idle"
+                ? "حروف إنجليزية وأرقام و_ ، من ٣ إلى ٢٠"
+                : check.status === "checking"
+                  ? "نتحقّق…"
+                  : check.status === "ok"
+                    ? "متاح ✓"
+                    : check.error}
             </Text>
+            {check.suggestions.length && check.status !== "ok" ? (
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                {check.suggestions.map((one) => (
+                  <Pressable
+                    key={one}
+                    accessibilityRole="button"
+                    accessibilityLabel={`استعمل ${one}`}
+                    onPress={() => {
+                      touched.current = true;
+                      setHandle(one);
+                    }}
+                    style={{ height: 30, paddingHorizontal: 12, borderRadius: 15, justifyContent: "center", backgroundColor: "rgba(246,185,59,.14)", borderWidth: 1, borderColor: "rgba(246,185,59,.4)" }}
+                  >
+                    <Text style={{ color: "#fff", fontSize: 12.5, fontWeight: "700" }}>@{one}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
           </View>
         </View>
       </ScrollView>
