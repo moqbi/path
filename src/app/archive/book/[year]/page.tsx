@@ -8,6 +8,7 @@ import { BASE } from "@/lib/base";
 import { ar, MONTHS } from "@/lib/format";
 import { ReactionGlyph } from "@/components/reactions";
 import { PrintButton } from "./print-button";
+import { BOOK_SECTION_LABEL, bookBlocks, type BookCover, type BookSection } from "@/lib/book-prefs";
 
 type Moment = Awaited<ReturnType<typeof book>>["moments"][number];
 
@@ -85,66 +86,21 @@ export default async function BookPage({ params }: { params: Promise<{ year: str
           <PrintButton />
         </div>
 
-        <section className="page sheet mb-6 flex flex-col items-center px-6 pb-8 pt-12 text-center" style={{ background: NIGHT, minHeight: 560 }}>
-          <AthrMark size={60} />
-          <p className="mt-7 text-[11px] tracking-[3px]" style={{ color: "rgba(247,245,239,.55)" }}>كتاب السنة</p>
-          <p className="display mt-1 text-[80px] font-extrabold leading-none" style={{ color: "#f7f5ef" }}>{ar(year)}</p>
-          <span className="mt-5 block h-[2px] w-9 rounded" style={{ background: GOLD }} />
-          <div className="mt-auto flex flex-col items-center pt-16">
-            <Avatar name={data.name} mediaId={data.avatarMediaId} size={64} />
-            <p className="display mt-2.5 text-[19px] font-extrabold" style={{ color: "#f7f5ef" }}>{data.name}</p>
-            <p className="text-[11px]" style={{ color: "rgba(247,245,239,.5)" }}>عضوية رقم {ar(data.memberNo)}</p>
-          </div>
-          <p className="mt-7 text-[12.5px] tracking-[1px]" style={{ color: GOLD }}>لحظاتك، مع ناسك.</p>
-        </section>
+        <Cover cover={data.prefs.cover} title={data.prefs.title} year={year} name={data.name} memberNo={data.memberNo} avatarMediaId={data.avatarMediaId} />
+        {data.prefs.dedication ? (
+          <section className="page sheet mb-6 flex flex-col items-center justify-center p-10 text-center" style={{ background: PAPER, minHeight: 340 }}>
+            <span className="block h-[2px] w-9 rounded" style={{ background: GOLD }} />
+            <p className="display mt-4 text-[19px] font-bold leading-[1.8]" style={{ color: "#3c4a52" }}>{data.prefs.dedication}</p>
+          </section>
+        ) : null}
 
-        <section className="page sheet mb-6 p-6" style={{ background: PAPER, color: INK }}>
-          <p className="text-[10.5px] tracking-[3px]" style={{ color: KICKER }}>مقدّمة</p>
-          <h2 className="display text-[26px] font-extrabold">سنتك بالأرقام</h2>
-          <div className="mt-5 grid grid-cols-2 border-t" style={{ borderColor: RULE }}>
-            {[
-              [s.moments, "لحظة"],
-              [data.days.length, "يوماً كتبت فيها"],
-              [s.photos, "صورة"],
-              [s.places, "مكان"],
-              [s.songs, "أغنية"],
-              [s.cities.length, "مدينة"],
-            ]
-              .filter(([n]) => Number(n) > 0)
-              .map(([n, label], i) => (
-                <div key={String(label)} className="border-b py-4" style={{ borderColor: RULE, ...(i % 2 ? { paddingRight: 14 } : { paddingLeft: 14, borderLeft: `1px solid ${RULE}` }) }}>
-                  <p className="display text-[36px] font-extrabold leading-tight">{ar(n)}</p>
-                  <p className="text-[11.5px]" style={{ color: "#6b7880" }}>{label}</p>
-                </div>
-              ))}
-          </div>
-          <div className="mt-4">
-            {(
-              [
-                s.cities.length ? ["مدنك", s.cities.join("، ")] : null,
-                s.topPlace ? ["أكثر مكان رجعت له", `${s.topPlace.name}${s.topPlace.visits > 1 ? ` — ${ar(s.topPlace.visits)} مرّات` : ""}`] : null,
-                s.topSong ? ["أغنيتك", s.topSong] : null,
-              ].filter(Boolean) as string[][]
-            ).map(([k, v]) => (
-              <div key={k} className="flex gap-3 border-b py-2.5 text-[13.5px]" style={{ borderColor: "#EFE8D8" }}>
-                <span className="w-[92px] shrink-0 pt-0.5 text-[11.5px]" style={{ color: "#8a7a55" }}>{k}</span>
-                <span className="min-w-0 flex-1">{v}</span>
-              </div>
-            ))}
-          </div>
-          {s.circleLines.length ? (
-            <div className="mt-5 border-t pt-3.5" style={{ borderColor: RULE }}>
-              <p className="mb-1.5 text-[10.5px] tracking-[3px]" style={{ color: KICKER }}>دائرتك</p>
-              {s.circleLines.map((text) => (
-                <p key={text} className="text-[13px] leading-[1.85]" style={{ color: "#3c4a52" }}>
-                  {text}
-                </p>
-              ))}
-            </div>
-          ) : null}
-          {data.partial ? <p className="mt-4 text-[11px]" style={{ color: MUTED }}>هذا الكتاب من آخر ستة أشهر من سنتك — السنة كاملة مع آثار+.</p> : null}
-        </section>
-
+        {bookBlocks(data.prefs).map((block) =>
+          Array.isArray(block) ? (
+            <Intro key={block.join("-")} ids={block} data={data} />
+          ) : block === "end" ? (
+            <End key="end" moments={s.moments} year={year} />
+          ) : (
+            <div key="months">
         {sections.map((section) => (
           <div key={section.month}>
             <section className="page sheet relative mb-6 flex flex-col justify-end overflow-hidden p-6 pb-8" style={{ background: PAPER, color: INK, minHeight: 340 }}>
@@ -240,17 +196,137 @@ export default async function BookPage({ params }: { params: Promise<{ year: str
           </div>
         ))}
 
+            </div>
+          ),
+        )}
+      </main>
+    </div>
+  );
+}
+
+type Data = Awaited<ReturnType<typeof book>>;
+
+/** الغلافُ بتصميمه (القاعدة ٣٧٨) — كالـPDF: ليليٌّ كما كان، وكلاسيكيٌّ بورقه وإطاره، وبسيطٌ بخطٍّ مرجانيّ. */
+function Cover({ cover, title, year, name, memberNo, avatarMediaId }: { cover: BookCover; title: string | null; year: number; name: string; memberNo: number; avatarMediaId: string | null }) {
+  if (cover === "minimal") {
+    return (
+      <section className="page sheet relative mb-6 flex flex-col px-8 pb-8 pt-12" style={{ background: "#EDE6D8", color: INK, minHeight: 560 }}>
+        <span className="absolute right-6 top-12 block w-[3px] rounded" style={{ background: "#FF7A5A", height: "58%" }} />
+        <div className="mr-3">
+          <p className="text-[10.5px] tracking-[3px]" style={{ color: KICKER }}>كتاب السنة</p>
+          <p className={`display mt-1.5 font-extrabold ${title ? "text-[30px] leading-[1.45]" : "text-[46px] leading-tight"}`}>{title ?? ar(year)}</p>
+          {title ? <p className="mt-1 text-[14px]" style={{ color: "#6b7880" }}>{ar(year)}</p> : null}
+        </div>
+        <div className="mt-auto flex items-end justify-between pt-16">
+          <span className="text-[12px]" style={{ color: "#3c4a52" }}>{name} · عضوية {ar(memberNo)}</span>
+          <AthrMark size={30} />
+        </div>
+      </section>
+    );
+  }
+  const paper = cover === "paper";
+  const ink = paper ? INK : "#f7f5ef";
+  return (
+    <section className="page sheet relative mb-6 flex flex-col items-center px-6 pb-8 pt-12 text-center" style={{ background: paper ? PAPER : NIGHT, minHeight: 560 }}>
+      {paper ? (
+        <span className="pointer-events-none absolute inset-4 border" style={{ borderColor: "#D9C9A3" }}>
+          <span className="absolute inset-1 border" style={{ borderColor: "#EBDFC4" }} />
+        </span>
+      ) : null}
+      <AthrMark size={60} />
+      <p className="mt-7 text-[11px] tracking-[3px]" style={{ color: paper ? KICKER : "rgba(247,245,239,.55)" }}>كتاب السنة</p>
+      <p className="display mt-1 text-[80px] font-extrabold leading-none" style={{ color: paper ? "#B9A27A" : ink }}>{ar(year)}</p>
+      <span className="mt-5 block h-[2px] w-9 rounded" style={{ background: GOLD }} />
+      {title ? <p className={`display mt-4 font-extrabold leading-[1.5] ${paper ? "text-[24px]" : "text-[21px]"}`} style={{ color: ink }}>{title}</p> : null}
+      <div className="relative mt-auto flex flex-col items-center pt-16">
+        <Avatar name={name} mediaId={avatarMediaId} size={64} />
+        <p className="display mt-2.5 text-[19px] font-extrabold" style={{ color: ink }}>{name}</p>
+        <p className="text-[11px]" style={{ color: paper ? MUTED : "rgba(247,245,239,.5)" }}>عضوية رقم {ar(memberNo)}</p>
+      </div>
+      <p className="relative mt-7 text-[12.5px] tracking-[1px]" style={{ color: paper ? KICKER : GOLD }}>لحظاتك، مع ناسك.</p>
+    </section>
+  );
+}
+
+/** صفحةُ المقدّمة بأقسامها المتجاورة (القاعدة ٣٧٨). */
+function Intro({ ids, data }: { ids: BookSection[]; data: Data }) {
+  const s = data.stats;
+  const facts = (rows: (string[] | null)[]) => {
+    const list = rows.filter(Boolean) as string[][];
+    return list.length ? (
+      <div className="mt-4">
+        {list.map(([k, v]) => (
+          <div key={k} className="flex gap-3 border-b py-2.5 text-[13.5px]" style={{ borderColor: "#EFE8D8" }}>
+            <span className="w-[92px] shrink-0 pt-0.5 text-[11.5px]" style={{ color: "#8a7a55" }}>{k}</span>
+            <span className="min-w-0 flex-1">{v}</span>
+          </div>
+        ))}
+      </div>
+    ) : null;
+  };
+  const part = (id: BookSection, first: boolean) => {
+    if (id === "numbers")
+      return (
+        <div className="mt-5 grid grid-cols-2 border-t" style={{ borderColor: RULE }}>
+          {[
+            [s.moments, "لحظة"],
+            [data.days.length, "يوماً كتبت فيها"],
+            [s.photos, "صورة"],
+            [s.places, "مكان"],
+            [s.songs, "أغنية"],
+            [s.cities.length, "مدينة"],
+          ]
+            .filter(([n]) => Number(n) > 0)
+            .map(([n, label], i) => (
+              <div key={String(label)} className="border-b py-4" style={{ borderColor: RULE, ...(i % 2 ? { paddingRight: 14 } : { paddingLeft: 14, borderLeft: `1px solid ${RULE}` }) }}>
+                <p className="display text-[36px] font-extrabold leading-tight">{ar(n)}</p>
+                <p className="text-[11.5px]" style={{ color: "#6b7880" }}>{label}</p>
+              </div>
+            ))}
+        </div>
+      );
+    if (id === "places")
+      return facts([
+        s.cities.length ? ["مدنك", s.cities.join("، ")] : null,
+        s.topPlace ? ["أكثر مكان رجعت له", `${s.topPlace.name}${s.topPlace.visits > 1 ? ` — ${ar(s.topPlace.visits)} مرّات` : ""}`] : null,
+      ]);
+    if (id === "song") return facts([s.topSong ? ["أغنيتك", s.topSong] : null]);
+    if (id === "circle" && s.circleLines.length)
+      return (
+        <div className={first ? "mt-3" : "mt-5 border-t pt-3.5"} style={{ borderColor: RULE }}>
+          {first ? null : <p className="mb-1.5 text-[10.5px] tracking-[3px]" style={{ color: KICKER }}>دائرتك</p>}
+          {s.circleLines.map((text) => (
+            <p key={text} className="text-[13px] leading-[1.85]" style={{ color: "#3c4a52" }}>
+              {text}
+            </p>
+          ))}
+        </div>
+      );
+    return null;
+  };
+  return (
+    <section className="page sheet mb-6 p-6" style={{ background: PAPER, color: INK }}>
+      <p className="text-[10.5px] tracking-[3px]" style={{ color: KICKER }}>مقدّمة</p>
+      <h2 className="display text-[26px] font-extrabold">{BOOK_SECTION_LABEL[ids[0]]}</h2>
+      {ids.map((id, at) => (
+        <div key={id}>{part(id, at === 0)}</div>
+      ))}
+      {data.partial ? <p className="mt-4 text-[11px]" style={{ color: MUTED }}>هذا الكتاب من آخر ستة أشهر من سنتك — السنة كاملة مع آثار+.</p> : null}
+    </section>
+  );
+}
+
+function End({ moments, year }: { moments: number; year: number }) {
+  return (
         <section className="page sheet flex flex-col items-center justify-center p-8 text-center" style={{ background: NIGHT, minHeight: 340 }}>
           <AthrMark size={48} />
           <p className="display mt-5 text-[21px] font-extrabold leading-relaxed" style={{ color: "#f7f5ef" }}>
-            {ar(s.moments)} لحظة تركت أثرها
+            {ar(moments)} لحظة تركت أثرها
             <br />
             في {ar(year)}
           </p>
           <span className="mt-3.5 block h-[2px] w-9 rounded" style={{ background: GOLD }} />
           <p className="mt-3 text-[12.5px]" style={{ color: "rgba(247,245,239,.6)" }}>والصفحة الجاية تكتبها أنت.</p>
         </section>
-      </main>
-    </div>
   );
 }

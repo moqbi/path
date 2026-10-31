@@ -10,6 +10,12 @@ const pageQuery = z.object({
   cursor: cuid.optional(),
   limit: z.coerce.number().int().min(1).max(90).default(60),
 });
+const bookPrefsBody = z.object({
+  cover: z.string().max(20),
+  title: z.string().max(200).nullable().optional(),
+  dedication: z.string().max(400).nullable().optional(),
+  sections: z.array(z.object({ id: z.string().max(20), on: z.boolean() })).max(20),
+});
 const byYear = z.object({ year: z.coerce.number().int().min(2024).max(2100) });
 
 /** «أرشيفي» و«سنتك في كتاب» (القاعدة ٢٤٤) — لصاحبها وحده. */
@@ -21,6 +27,10 @@ export const archiveRoutes = new Hono()
   .get("/map", async (c) => c.json(await archive.map(me(c))))
   .get("/book/:year", zValidator("param", byYear), async (c) =>
     c.json(await archive.book(me(c), c.req.valid("param").year)),
+  )
+  // تجهيزُ الكتاب لآثار+ (القاعدة ٣٧٨).
+  .put("/book/:year/prefs", zValidator("param", byYear), zValidator("json", bookPrefsBody), async (c) =>
+    c.json(await archive.saveBookPrefs(me(c), c.req.valid("param").year, c.req.valid("json"))),
   )
   // الكتابُ صفحةً تُطبع PDF على الجهاز (القاعدة ٢٥٦).
   .get("/book/:year/print", zValidator("param", byYear), async (c) =>

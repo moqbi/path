@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { cancelPlus, subscribe } from "@/app/actions";
-import { BookIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, PrivateIcon, StickerIcon, StoreIcon, VerifiedIcon, WithIcon } from "@/components/icons";
+import { BookIcon, PencilIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, PrivateIcon, StickerIcon, StoreIcon, VerifiedIcon, WithIcon } from "@/components/icons";
 import { canTryStickers } from "@/lib/stickers";
 import { TagPill } from "@/components/ui";
 import { SUPPORTER_TAG } from "@/lib/supporter";
@@ -35,6 +35,12 @@ const PERKS = [
     title: "أرشيف بلا نهاية",
     body: "المجاني يحفظ ٦ أشهر · أنت تحفظ كل شي وتصدّره",
     icon: <BookIcon size={18} />,
+  },
+  {
+    // تجهيزُ الكتاب (القاعدة ٣٧٨) — بقرار المالك.
+    title: "كتاب سنتك كما تريده",
+    body: "ثلاثة أغلفة، وعنوان وإهداء بكلماتك، والأقسام بترتيبك قبل PDF",
+    icon: <PencilIcon size={18} />,
   },
   {
     title: "آثارنا",

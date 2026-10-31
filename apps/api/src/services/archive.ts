@@ -1,5 +1,7 @@
 import { prisma } from "@athar/db";
-import { badRequest, notFound } from "../lib/errors";
+import { cleanBookPrefs, DEFAULT_BOOK_PREFS, type BookPrefs } from "@athar/shared";
+import { badRequest, forbidden, notFound } from "../lib/errors";
+import { guard } from "../lib/moderation";
 import { dayKey, riyadhDay } from "../lib/riyadh-day";
 import { circleLines, circleYear, echoOf, echoText, leadOf } from "../lib/book-story";
 import { blockedWith, circleIds } from "./visibility";
@@ -163,7 +165,7 @@ export async function book(userId: string, year: number) {
   const tail = new Date(Math.min(end.getTime(), Date.now()) - FREE_ARCHIVE_DAYS * 86_400_000);
   const lower = free && tail > start ? tail : start;
 
-  const [me, found, circleList, blockedList] = await Promise.all([
+  const [me, found, circleList, blockedList, stored] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: { name: true, memberNo: true, avatarMediaId: true, gender: true },
@@ -191,6 +193,7 @@ export async function book(userId: string, year: number) {
     }),
     circleIds(userId),
     blockedWith(userId),
+    prisma.bookPrefs.findUnique({ where: { userId_year: { userId, year } } }),
   ]);
   if (!me) throw notFound("الحساب غير موجود");
   const circle = new Set(circleList);
@@ -275,6 +278,12 @@ export async function book(userId: string, year: number) {
     memberNo: me.memberNo,
     avatarMediaId: me.avatarMediaId,
     partial: lower > start,
+    /*
+      تجهيزُ الكتاب (القاعدة ٣٧٨): يُقرأ والاشتراكُ قائم، وإلّا الهيئةُ الأصليّة — وما
+      اختاره باقٍ في القاعدة يعود بعودته. والجوّالُ القديم لا يقرأ الحقلين فيبقى كما كان.
+    */
+    custom: !free,
+    prefs: !free && stored ? cleanBookPrefs(stored) : DEFAULT_BOOK_PREFS,
     stats: {
       moments: rows.length,
       photos: count("PHOTO"),
@@ -292,6 +301,22 @@ export async function book(userId: string, year: number) {
     // النسخُ قبل صفحات الأيّام تقرأ القائمةَ مسطّحة.
     moments: rows,
   };
+}
+
+/** يحفظ تجهيزَ كتاب سنةٍ — لمشتركي آثار+ وحدهم، والخادمُ يفحص لا الشاشة (القاعدة ٣٧٨). */
+export async function saveBookPrefs(userId: string, year: number, raw: unknown): Promise<BookPrefs> {
+  if (!Number.isInteger(year) || year < 2024 || year > 2100) throw badRequest("سنة غير صالحة");
+  if ((await since(userId)) !== null) throw forbidden("تجهيز الكتاب مع آثار+");
+  const prefs = cleanBookPrefs(raw);
+  await guard(prefs.title);
+  await guard(prefs.dedication);
+  const data = { cover: prefs.cover, title: prefs.title, dedication: prefs.dedication, sections: prefs.sections };
+  await prisma.bookPrefs.upsert({
+    where: { userId_year: { userId, year } },
+    create: { userId, year, ...data },
+    update: data,
+  });
+  return prefs;
 }
 
 /** عنوانُ اللحظة في سطرٍ واحد — لـ«أكثرُ لحظةٍ حرّكت دائرتك». */
