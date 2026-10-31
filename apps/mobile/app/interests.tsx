@@ -8,6 +8,7 @@ import { AthrMark } from "../components/brand";
 import { SceneGround } from "../components/login-scene";
 import { showToast } from "../components/accounts-sheet";
 import { Spinner } from "../components/spinner";
+import { ProfileStep } from "../components/profile-step";
 import { BackIcon, CheckIcon } from "../components/icons";
 import { api } from "../lib/api";
 import { ar } from "../lib/format";
@@ -38,6 +39,10 @@ export default function Interests() {
   const [raw, setPicked] = useState<string[]>(() => me?.interests ?? []);
   const picked = raw.filter((id) => index.has(id));
   const [open, setOpen] = useState<string | null>(null);
+  // قبل الاهتمامات: الصورةُ والاسمُ والمعرّف (القاعدة ٣٧٦) — لمن ينقصه أحدُ الاثنين وحده.
+  const [step, setStep] = useState<"profile" | "interests">(() =>
+    !editing && me && (!me.avatarMediaId || !me.handle) ? "profile" : "interests",
+  );
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const enter = useRef(new Animated.Value(0)).current;
@@ -125,12 +130,16 @@ export default function Interests() {
           {editing ? (
             <AthrMark size={28} />
           ) : (
-            <Pressable accessibilityRole="button" onPress={() => void save(true)} disabled={busy} hitSlop={10} style={{ paddingHorizontal: 14, height: 34, borderRadius: 17, justifyContent: "center", backgroundColor: GLASS, borderWidth: 1, borderColor: GLASS_LINE }}>
+            <Pressable accessibilityRole="button" onPress={() => (step === "profile" ? setStep("interests") : void save(true))} disabled={busy} hitSlop={10} style={{ paddingHorizontal: 14, height: 34, borderRadius: 17, justifyContent: "center", backgroundColor: GLASS, borderWidth: 1, borderColor: GLASS_LINE }}>
               <Text style={{ color: "rgba(255,255,255,.85)", fontSize: 13, fontWeight: "700" }}>تخطّي</Text>
             </Pressable>
           )}
         </View>
 
+        {step === "profile" ? (
+          <ProfileStep onDone={() => setStep("interests")} />
+        ) : (
+        <>
         <View style={{ paddingHorizontal: 22, paddingTop: 18, gap: 6 }}>
           <Text style={{ color: AMBER, fontSize: 12.5, fontWeight: "800", letterSpacing: 0.4 }}>اختيار اهتماماتك</Text>
           <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800" }}>ما الأشياء التي تحبها؟</Text>
@@ -273,6 +282,8 @@ export default function Interests() {
             )}
           </Pressable>
         </View>
+        </>
+        )}
       </Animated.View>
     </View>
   );
