@@ -117,13 +117,21 @@ function Profile() {
   // النوتُ فوق الصورة (القاعدة ٢٦٩).
   const statusNotes = useStatusNotes();
   const me = useSession((state) => state.me);
+  const client = useQueryClient();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const person = useQuery({
     queryKey: keys.user(id),
     queryFn: () =>
-      api<{ person: Person; friend: boolean; follower?: boolean; owned: string[]; interests?: FriendInterests }>(`/v1/users/${id}`),
+      api<{
+        person: Person;
+        friend: boolean;
+        follower?: boolean;
+        owned: string[];
+        interests?: FriendInterests;
+        pending?: { id: string; requesterId: string } | null;
+      }>(`/v1/users/${id}`),
   });
 
   /** إضافةُ حسابٍ مفتوح: طلبُ الإضافة نفسه. */
@@ -136,6 +144,13 @@ function Profile() {
       if (row?.status === "ACCEPTED") {
         void person.refetch();
         void moments.refetch();
+      } else if (me) {
+        // الطلبُ في ذاكرة الملفّ نفسه (القاعدة ٣٧٩): من خرج ورجع في اللحظة يُرسم من الذاكرة
+        // قبل أن يصل الجلب — وكانت تقول «أضفه» كأنّه لم يُضغط.
+        client.setQueryData(keys.user(id), (old: typeof person.data) =>
+          old ? { ...old, pending: { id: "local", requesterId: me.id } } : old,
+        );
+        void client.invalidateQueries({ queryKey: keys.user(id) });
       }
     },
   });
@@ -168,6 +183,10 @@ function Profile() {
   });
 
   const who = person.data?.person;
+  // الطلبُ من الخادم لا من الضغطة وحدها (القاعدة ٣٧٩): ملفٌّ يُفتح ثانيةً يقرأ ما أُرسل.
+  const pendingRow = person.data?.pending ?? null;
+  const sent = add.isSuccess || Boolean(pendingRow && pendingRow.requesterId === me?.id);
+  const incoming = Boolean(pendingRow && pendingRow.requesterId !== me?.id);
 
   /*
     ملفُّ الصديق بهيئة «الآن» (القاعدة ٣٢٠) — في نسخة التطوير وحدها (القاعدة ٢٩١):
@@ -393,7 +412,7 @@ function Profile() {
                   <Spot id="profile.add" grow>
                   <Pressable
                     onPress={() => add.mutate()}
-                    disabled={add.isPending || add.isSuccess}
+                    disabled={add.isPending || sent}
                     style={{
                       flexGrow: 1,
                       height: 46,
@@ -401,17 +420,17 @@ function Profile() {
                       borderRadius: 12,
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor: add.isSuccess ? colors.chip : colors.clay,
+                      backgroundColor: sent ? colors.chip : colors.clay,
                     }}
                   >
                     <Text
                       style={{
-                        color: add.isSuccess ? colors.muted : colors.onBrand,
+                        color: sent ? colors.muted : colors.onBrand,
                         fontSize: 13,
                         fontWeight: "700",
                       }}
                     >
-                      {add.isSuccess ? "أُرسل الطلب" : "أضفه"}
+                      {sent ? "أُرسل الطلب" : incoming ? "اقبل طلبه" : "أضفه"}
                     </Text>
                   </Pressable>
                   </Spot>
