@@ -1,3 +1,4 @@
+import { cleanBookPrefs, DEFAULT_BOOK_PREFS } from "./book-prefs";
 import "server-only";
 import { prisma } from "@/lib/db";
 import { dayKey, riyadhDay } from "@/lib/riyadh-day";
@@ -106,7 +107,7 @@ export async function book(userId: string, year: number) {
   const tail = new Date(Math.min(end.getTime(), Date.now()) - FREE_ARCHIVE_DAYS * 86_400_000);
   const lower = free && tail > start ? tail : start;
 
-  const [me, found, circleList, blocks] = await Promise.all([
+  const [me, found, circleList, blocks, stored] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: { name: true, memberNo: true, avatarMediaId: true, gender: true },
@@ -137,6 +138,7 @@ export async function book(userId: string, year: number) {
       where: { OR: [{ blockerId: userId }, { blockedId: userId }] },
       select: { blockerId: true, blockedId: true },
     }),
+    prisma.bookPrefs.findUnique({ where: { userId_year: { userId, year } } }),
   ]);
   if (!me) throw new Error("الحساب غير موجود");
   const circle = new Set(circleList);
@@ -211,6 +213,9 @@ export async function book(userId: string, year: number) {
     memberNo: me.memberNo,
     avatarMediaId: me.avatarMediaId,
     partial: lower > start,
+    // تجهيزُ الكتاب (القاعدة ٣٧٨) — كالخادم حرفاً بحرف: يُقرأ والاشتراكُ قائم.
+    custom: !free,
+    prefs: !free && stored ? cleanBookPrefs(stored) : DEFAULT_BOOK_PREFS,
     stats: {
       moments: rows.length,
       photos: count("PHOTO"),

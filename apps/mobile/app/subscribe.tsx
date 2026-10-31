@@ -7,7 +7,7 @@ import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ScreenHeader } from "../components/screen-header";
 import { Sheet } from "../components/sheet";
-import { BookIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, PrivateIcon, StickerIcon, StoreIcon, VerifiedIcon, WithIcon } from "../components/icons";
+import { BookIcon, PencilIcon, CameraIcon, CircleIcon, MicIcon, SparkIcon, PrivateIcon, StickerIcon, StoreIcon, VerifiedIcon, WithIcon } from "../components/icons";
 import { TagPill } from "../components/name-tag";
 import { SITE_URL, SUPPORTER_TAG, hasSite } from "@athar/shared";
 import { api } from "../lib/api";
@@ -51,6 +51,12 @@ const PERKS = [
     title: "أرشيف بلا نهاية",
     body: "المجاني يحفظ ٦ أشهر · أنت تحفظ كل شي وتصدّره",
     icon: <BookIcon size={18} color={colors.gold} />,
+  },
+  {
+    // تجهيزُ الكتاب (القاعدة ٣٧٨) — بقرار المالك.
+    title: "كتاب سنتك كما تريده",
+    body: "ثلاثة أغلفة، وعنوان وإهداء بكلماتك، والأقسام بترتيبك قبل PDF",
+    icon: <PencilIcon size={18} color={colors.gold} />,
   },
   {
     // **بقرار المالك**: الأثرُ المشترك من مزايا الاشتراك.

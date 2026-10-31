@@ -2,7 +2,7 @@ import { prisma } from "@athar/db";
 import { cloudReady, getObject } from "@athar/storage";
 import sharp from "sharp";
 import { book } from "./archive";
-import { SITE_URL } from "@athar/shared";
+import { BOOK_SECTION_LABEL, bookBlocks, SITE_URL, type BookCover, type BookSection } from "@athar/shared";
 import { ar } from "../lib/riyadh-day";
 
 /**
@@ -215,12 +215,66 @@ h2 { font-size: 26px; font-weight: 800; margin-top: 3mm; }
 .circle p { font-size: 12.5px; line-height: 1.9; color: #3c4a52; }
 .private { display: inline-block; font-size: 10.5px; color: #8a5f10; border: 1px solid #EBD9AE; background: #FBF1DA; border-radius: 6px; padding: 1.5px 7px; margin-top: 2mm; }
 
+/* الأغلفةُ والإهداء — تجهيزُ الكتاب (القاعدة ٣٧٨) */
+.cover .title { font-size: 22px; font-weight: 800; margin-top: 7mm; line-height: 1.45; padding: 0 8mm; }
+.paperc { height: 195mm; overflow: hidden; background: #FBF8F1; color: #182830; }
+.paperc .frame { position: absolute; inset: 9mm; border: 1px solid #D9C9A3; }
+.paperc .frame::after { content: ""; position: absolute; inset: 2mm; border: 1px solid #EBDFC4; }
+.paperc .eyebrow { color: #b07d1c; }
+.paperc .title { font-size: 28px; }
+.paperc .year { color: #B9A27A; font-size: 76px; }
+.paperc .member { color: #8a949a; }
+.paperc .motto { color: #b07d1c; }
+.paperc .avatar { background: #FBF8F1; }
+.minc { height: 195mm; overflow: hidden; background: #EDE6D8; color: #182830; padding: 22mm 18mm; }
+.minc .bar { position: absolute; right: 14mm; top: 22mm; width: 3px; height: 118mm; background: #FF7A5A; border-radius: 2px; }
+.minc .kicker { margin-right: 4mm; }
+.minc .ttl { font-size: 34px; font-weight: 800; line-height: 1.3; margin: 4mm 4mm 0 0; }
+.minc .yr { font-size: 15px; color: #6b7880; margin: 3mm 4mm 0 0; }
+.minc .foot { position: absolute; right: 18mm; left: 18mm; bottom: 18mm; display: flex; justify-content: space-between; align-items: flex-end; font-size: 12px; color: #3c4a52; }
+.minc .logo { width: 44px; }
+.minc .mark { width: 34px; height: 34px; border-radius: 10px; }
+.dedication { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.dedication .line { font-family: "Tajawal", sans-serif; font-size: 20px; font-weight: 700; line-height: 1.8; color: #3c4a52; max-width: 100mm; margin-top: 6mm; }
+
 /* الخاتمة */
 .end { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 .end .big { font-family: "Tajawal", sans-serif; font-size: 22px; font-weight: 800; margin-top: 8mm; line-height: 1.5; }
 .end .gold { margin: 6mm auto 0; }
 .end .sub { font-size: 12px; color: rgba(247,245,239,.6); margin-top: 5mm; }
 `;
+
+/** الغلافُ بتصميمه (القاعدة ٣٧٨): ليليٌّ كما كان، وكلاسيكيٌّ بورقه وإطاره، وبسيطٌ بخطٍّ مرجانيّ. */
+function coverHtml(
+  cover: BookCover,
+  b: { year: number; title: string | null; name: string; memberNo: number; avatar: string | null },
+): string {
+  const title = b.title ? `<div class="title display">${esc(b.title)}</div>` : "";
+  if (cover === "minimal")
+    return `
+    <section class="page minc">
+      <div class="bar"></div>
+      <div class="kicker">كتاب السنة</div>
+      <div class="ttl display">${b.title ? esc(b.title) : ar(b.year)}</div>
+      ${b.title ? `<div class="yr">${ar(b.year)}</div>` : ""}
+      <div class="foot"><span>${esc(b.name)} · عضوية ${ar(b.memberNo)}</span>${MARK}</div>
+    </section>`;
+  return `
+    <section class="page cover ${cover === "paper" ? "paperc" : "night"}">
+      ${cover === "paper" ? `<div class="frame"></div>` : ""}
+      ${MARK}
+      <div class="eyebrow">كتاب السنة</div>
+      <div class="year display">${ar(b.year)}</div>
+      <div class="gold"></div>
+      ${title}
+      <div class="who">
+        ${b.avatar ? `<img class="avatar" src="${b.avatar}">` : ""}
+        <div class="name display">${esc(b.name)}</div>
+        <div class="member">عضوية رقم ${ar(b.memberNo)}</div>
+      </div>
+      <div class="motto">لحظاتك، مع ناسك.</div>
+    </section>`;
+}
 
 /** الكتابُ صفحةَ HTML واحدة، والجوّالُ يطبعها. */
 export async function bookHtml(userId: string, year: number): Promise<{ html: string; name: string }> {
@@ -234,18 +288,13 @@ export async function bookHtml(userId: string, year: number): Promise<{ html: st
 
   const run = `آثار مومنتس · ${ar(year)}`;
   const pages: string[] = [];
-  pages.push(`
-    <section class="page night cover">
-      ${MARK}
-      <div class="eyebrow">كتاب السنة</div>
-      <div class="year display">${ar(year)}</div>
+  const prefs = data.prefs;
+  pages.push(coverHtml(prefs.cover, { year, title: prefs.title, name: data.name, memberNo: data.memberNo, avatar }));
+  if (prefs.dedication)
+    pages.push(`
+    <section class="page dedication">
       <div class="gold"></div>
-      <div class="who">
-        ${avatar ? `<img class="avatar" src="${avatar}">` : ""}
-        <div class="name display">${esc(data.name)}</div>
-        <div class="member">عضوية رقم ${ar(data.memberNo)}</div>
-      </div>
-      <div class="motto">لحظاتك، مع ناسك.</div>
+      <div class="line">${esc(prefs.dedication)}</div>
     </section>`);
 
   const tiles = [
@@ -263,16 +312,38 @@ export async function bookHtml(userId: string, year: number): Promise<{ html: st
       : null,
     s.topSong ? ["أغنيتك", esc(s.topSong)] : null,
   ].filter(Boolean) as string[][];
-  pages.push(`
+  // المقدّمةُ أقسامٌ تُظهر وتُرتَّب، والمتجاورةُ منها صفحةٌ واحدة (القاعدة ٣٧٨).
+  const factRow = ([k, v]: string[]) => `<div class="fact"><span class="k">${k}</span><span>${v}</span></div>`;
+  const part = (id: BookSection, first: boolean): string => {
+    if (id === "numbers")
+      return `<div class="numbers">${tiles.map(([n, label]) => `<div><b>${ar(n)}</b><span>${label}</span></div>`).join("")}</div>`;
+    if (id === "places") {
+      const rows = facts.filter(([k]) => k !== "أغنيتك");
+      return rows.length ? `<div class="facts">${rows.map(factRow).join("")}</div>` : "";
+    }
+    if (id === "song") return s.topSong ? `<div class="facts">${factRow(["أغنيتك", esc(s.topSong)])}</div>` : "";
+    if (id === "circle")
+      return s.circleLines.length
+        ? `<div class="${first ? "" : "circle"}">${first ? "" : `<div class="kicker">دائرتك</div>`}${s.circleLines.map((text) => `<p style="font-size:12.5px;line-height:1.9;color:#3c4a52">${esc(text)}</p>`).join("")}</div>`
+        : "";
+    return "";
+  };
+  let noted = false;
+  const introPage = (ids: BookSection[]) => {
+    const body = ids.map((id, i) => part(id, i === 0)).join("");
+    if (!body) return "";
+    const note = data.partial && !noted ? `<p class="note">هذا الكتاب من آخر ستة أشهر من سنتك — السنة كاملة مع آثار+.</p>` : "";
+    noted = true;
+    return `
     <section class="page folio" data-run="${run}">
       <div class="kicker">مقدّمة</div>
-      <h2>سنتك بالأرقام</h2>
-      <div class="numbers">${tiles.map(([n, label]) => `<div><b>${ar(n)}</b><span>${label}</span></div>`).join("")}</div>
-      ${facts.length ? `<div class="facts">${facts.map(([k, v]) => `<div class="fact"><span class="k">${k}</span><span>${v}</span></div>`).join("")}</div>` : ""}
-      ${s.circleLines.length ? `<div class="circle"><div class="kicker">دائرتك</div>${s.circleLines.map((text) => `<p>${esc(text)}</p>`).join("")}</div>` : ""}
-      ${data.partial ? `<p class="note">هذا الكتاب من آخر ستة أشهر من سنتك — السنة كاملة مع آثار+.</p>` : ""}
-    </section>`);
+      <h2>${BOOK_SECTION_LABEL[ids[0]]}</h2>
+      ${body}
+      ${note}
+    </section>`;
+  };
 
+  const monthPages: string[] = [];
   let month = -1;
   for (const day of data.days) {
     const m = Number(day.day.slice(5, 7)) - 1;
@@ -280,7 +351,7 @@ export async function bookHtml(userId: string, year: number): Promise<{ html: st
       month = m;
       const inMonth = data.days.filter((d) => Number(d.day.slice(5, 7)) - 1 === m);
       const count = inMonth.reduce((sum, d) => sum + d.moments.length, 0);
-      pages.push(`
+      monthPages.push(`
         <section class="page month folio" data-run="${run}">
           <div class="ghost">${ar(m + 1)}</div>
           <div class="y">${ar(year)}</div>
@@ -314,7 +385,7 @@ export async function bookHtml(userId: string, year: number): Promise<{ html: st
           </div>`;
       })
       .join("");
-    pages.push(`
+    monthPages.push(`
       <section class="page folio" data-run="${run}">
         <div class="day-head">
           <span class="d">${ar(dd)}</span>
@@ -325,13 +396,22 @@ export async function bookHtml(userId: string, year: number): Promise<{ html: st
       </section>`);
   }
 
-  pages.push(`
+  const endPage = `
     <section class="page night end">
       ${MARK}
       <div class="big">${ar(s.moments)} لحظة تركت أثرها<br>في ${ar(year)}</div>
       <div class="gold"></div>
       <div class="sub">والصفحة الجاية تكتبها أنت.</div>
-    </section>`);
+    </section>`;
+
+
+  for (const block of bookBlocks(prefs)) {
+    if (Array.isArray(block)) {
+      const page = introPage(block);
+      if (page) pages.push(page);
+    } else if (block === "months") pages.push(...monthPages);
+    else if (block === "end") pages.push(endPage);
+  }
 
   const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">

@@ -1,3 +1,4 @@
+import type { BookPrefs } from "@athar/shared";
 /** «أرشيفي» و«سنتك في كتاب» (القاعدة ٢٤٤) — ما يردّه `/v1/archive`. */
 export type ArchiveMoment = {
   id: string;
@@ -76,6 +77,9 @@ export type Book = {
     circleLines?: string[];
   };
   moments: BookMoment[];
+  /** تجهيزُ الكتاب (القاعدة ٣٧٨): هل يملكه (آثار+)، وما اختاره — وخادمٌ قديم بلاهما فالأصل. */
+  custom?: boolean;
+  prefs?: BookPrefs;
   /** صفحةٌ لكلّ يوم بتوقيت الرياض — خادمٌ قديم بلاها يُجمَّع منه هنا. */
   days?: { day: string; moments: BookMoment[] }[];
 };

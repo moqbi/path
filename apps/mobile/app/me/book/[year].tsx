@@ -7,7 +7,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Text } from "../../../components/type";
 import { ScreenHeader } from "../../../components/screen-header";
 import { MediaImage } from "../../../components/media-image";
-import { Avatar } from "../../../components/avatar";
 import { AthrMark } from "../../../components/brand";
 import { PrivateIcon } from "../../../components/icons";
 import { ReactionGlyph } from "../../../components/reactions";
@@ -16,12 +15,16 @@ import { ar, MONTHS, timeOfDay } from "../../../lib/format";
 import { momentLine, privateNote, withNames, type Book, type BookMoment } from "../../../lib/archive";
 import { canDownloadBook, downloadBook } from "../../../lib/book-pdf";
 import { colors } from "../../../theme/tokens";
+import { SparkIcon } from "../../../components/icons";
+import { BookCoverPage } from "../../../components/book-cover";
+import { BOOK_SECTION_LABEL, bookBlocks, DEFAULT_BOOK_PREFS, type BookSection } from "@athar/shared";
 
 type Day = { day: string; moments: BookMoment[] };
 
 type Page =
   | { type: "cover" }
-  | { type: "intro" }
+  | { type: "dedication"; text: string }
+  | { type: "intro"; ids: BookSection[] }
   | { type: "month"; month: number; count: number }
   | { type: "day"; day: Day }
   | { type: "end" };
@@ -65,7 +68,11 @@ export default function YearBook() {
   const pages: Page[] = [];
   if (data) {
     const days = daysOf(data);
-    pages.push({ type: "cover" }, { type: "intro" });
+    // الأقسامُ بما اختاره صاحبُها (القاعدة ٣٧٨) — والأصلُ لغيره ولخادمٍ قديم.
+    const prefs = data.prefs ?? DEFAULT_BOOK_PREFS;
+    pages.push({ type: "cover" });
+    if (prefs.dedication) pages.push({ type: "dedication", text: prefs.dedication });
+    const months: Page[] = [];
     let last = -1;
     for (const day of days) {
       const month = Number(day.day.slice(5, 7)) - 1;
@@ -73,12 +80,16 @@ export default function YearBook() {
         const count = days
           .filter((d) => Number(d.day.slice(5, 7)) - 1 === month)
           .reduce((sum, d) => sum + d.moments.length, 0);
-        pages.push({ type: "month", month, count });
+        months.push({ type: "month", month, count });
         last = month;
       }
-      pages.push({ type: "day", day });
+      months.push({ type: "day", day });
     }
-    pages.push({ type: "end" });
+    for (const block of bookBlocks(prefs)) {
+      if (Array.isArray(block)) pages.push({ type: "intro", ids: block });
+      else if (block === "months") pages.push(...months);
+      else pages.push({ type: "end" });
+    }
   }
 
   const download = async () => {
@@ -100,6 +111,16 @@ export default function YearBook() {
         back="/me/archive"
         right={
           data ? (
+            <View style={{ flexDirection: "row", gap: 8 }}>
+            {/* تجهيزُ الكتاب (القاعدة ٣٧٨): لغير المشترك يفتح الشاشةَ نفسها مقفلةً بدعوة. */}
+            <Pressable
+              onPress={() => router.push(`/me/book-studio?year=${year}` as never)}
+              accessibilityLabel="تجهيز الكتاب"
+              style={{ height: 34, paddingHorizontal: 12, borderRadius: 17, flexDirection: "row", gap: 5, backgroundColor: "rgba(255,255,255,.12)", alignItems: "center", justifyContent: "center" }}
+            >
+              <SparkIcon size={12} color="#F6B93B" />
+              <Text style={{ color: "#F6B93B", fontSize: 12.5, fontWeight: "700" }}>تجهيز</Text>
+            </Pressable>
             <Pressable
               onPress={download}
               disabled={saving}
@@ -112,6 +133,7 @@ export default function YearBook() {
                 <Text style={{ color: "#F6B93B", fontSize: 12.5, fontWeight: "700" }}>تحميل PDF</Text>
               )}
             </Pressable>
+            </View>
           ) : null
         }
       />
@@ -120,12 +142,12 @@ export default function YearBook() {
       ) : (
         <FlatList
           data={pages}
-          keyExtractor={(page, i) => (page.type === "day" ? page.day.day : `${page.type}-${i}`)}
+          keyExtractor={(page, i) => (page.type === "day" ? page.day.day : page.type === "intro" ? `intro-${page.ids.join("-")}` : `${page.type}-${i}`)}
           contentContainerStyle={{ padding: 20, gap: 22, direction: "rtl" }}
           renderItem={({ item }) => (
             <View
               style={{
-                minHeight: item.type === "day" ? undefined : item.type === "month" ? height * 0.42 : height * 0.62,
+                minHeight: item.type === "day" || item.type === "intro" ? undefined : item.type === "month" || item.type === "dedication" ? height * 0.42 : height * 0.62,
                 borderRadius: 6,
                 backgroundColor: PAPER,
                 overflow: "hidden",
@@ -161,86 +183,25 @@ function Gold({ center }: { center?: boolean }) {
 }
 
 function PageBody({ page, book, onOpen }: { page: Page; book: Book; onOpen: (id: string) => void }) {
-  if (page.type === "cover") {
+  if (page.type === "cover") return <BookCoverPage book={book} />;
+
+  if (page.type === "dedication") {
     return (
-      <View style={{ flex: 1, alignItems: "center", backgroundColor: NIGHT, paddingTop: 44, paddingBottom: 28, paddingHorizontal: 24 }}>
-        <AthrMark size={60} />
-        <Text style={{ color: "rgba(247,245,239,.55)", fontSize: 11, letterSpacing: 3, marginTop: 28 }}>كتاب السنة</Text>
-        <Text face="display" style={{ color: "#f7f5ef", fontSize: 78, fontWeight: "700", lineHeight: 92, marginTop: 4 }}>{ar(book.year)}</Text>
-        <View style={{ marginTop: 14 }}>
-          <Gold center />
-        </View>
-        <View style={{ flex: 1 }} />
-        <Avatar name={book.name} mediaId={book.avatarMediaId} size={64} />
-        <Text face="display" style={{ color: "#f7f5ef", fontSize: 19, fontWeight: "700", marginTop: 10 }}>{book.name}</Text>
-        <Text style={{ color: "rgba(247,245,239,.5)", fontSize: 11, marginTop: 2 }}>عضوية رقم {ar(book.memberNo)}</Text>
-        <Text style={{ color: GOLD, fontSize: 12.5, letterSpacing: 1, marginTop: 26 }}>لحظاتك، مع ناسك.</Text>
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 32 }}>
+        <Gold center />
+        <Text face="display" style={{ color: "#3c4a52", fontSize: 19, fontWeight: "700", lineHeight: 34, textAlign: "center", marginTop: 16 }}>
+          {page.text}
+        </Text>
       </View>
     );
   }
 
   if (page.type === "intro") {
-    const s = book.stats;
-    const days = daysOf(book).length;
-    const tiles = (
-      [
-        [s.moments, "لحظة"],
-        [days, "يوماً كتبت فيها"],
-        [s.photos, "صورة"],
-        [s.places, "مكان"],
-        [s.songs, "أغنية"],
-        [s.cities.length, "مدينة"],
-      ] as [number, string][]
-    ).filter(([n]) => n > 0);
-    const facts = [
-      s.cities.length ? ["مدنك", s.cities.join("، ")] : null,
-      s.topPlace ? ["أكثر مكان رجعت له", `${s.topPlace.name}${s.topPlace.visits > 1 ? ` — ${ar(s.topPlace.visits)} مرّات` : ""}`] : null,
-      s.topSong ? ["أغنيتك", s.topSong] : null,
-    ].filter(Boolean) as [string, string][];
     return (
       <View style={{ padding: 24 }}>
         <Text style={{ color: KICKER, fontSize: 10.5, letterSpacing: 3 }}>مقدّمة</Text>
-        <Text face="display" style={{ color: INK, fontSize: 26, fontWeight: "700", marginTop: 2 }}>سنتك بالأرقام</Text>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 20, borderTopWidth: 1, borderTopColor: RULE }}>
-          {tiles.map(([n, label], i) => (
-            <View
-              key={label}
-              style={{
-                width: "50%",
-                paddingVertical: 16,
-                paddingLeft: i % 2 ? 0 : 14,
-                paddingRight: i % 2 ? 14 : 0,
-                borderBottomWidth: 1,
-                borderBottomColor: RULE,
-                borderLeftWidth: i % 2 ? 0 : 1,
-                borderLeftColor: RULE,
-              }}
-            >
-              <Text face="display" style={{ color: INK, fontSize: 36, fontWeight: "700", lineHeight: 42 }}>{ar(n)}</Text>
-              <Text style={{ color: "#6b7880", fontSize: 11.5 }}>{label}</Text>
-            </View>
-          ))}
-        </View>
-        {facts.length ? (
-          <View style={{ marginTop: 18 }}>
-            {facts.map(([k, v]) => (
-              <View key={k} style={{ flexDirection: "row", gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#EFE8D8" }}>
-                <Text style={{ width: 92, color: "#8a7a55", fontSize: 11.5, paddingTop: 2 }}>{k}</Text>
-                <Text style={{ flex: 1, color: INK, fontSize: 13.5 }}>{v}</Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
-        {s.circleLines?.length ? (
-          <View style={{ marginTop: 20, paddingTop: 14, borderTopWidth: 1, borderTopColor: RULE }}>
-            <Text style={{ color: KICKER, fontSize: 10.5, letterSpacing: 3, marginBottom: 6 }}>دائرتك</Text>
-            {s.circleLines.map((text) => (
-              <Text key={text} style={{ color: "#3c4a52", fontSize: 13, lineHeight: 24 }}>
-                {text}
-              </Text>
-            ))}
-          </View>
-        ) : null}
+        <Text face="display" style={{ color: INK, fontSize: 26, fontWeight: "700", marginTop: 2 }}>{BOOK_SECTION_LABEL[page.ids[0]]}</Text>
+        {page.ids.map((id, at) => <IntroPart key={id} id={id} first={at === 0} book={book} />)}
         {book.partial ? (
           <Text style={{ color: MUTED, fontSize: 11, marginTop: 16 }}>هذا الكتاب من آخر ستة أشهر من سنتك — السنة كاملة مع آثار+.</Text>
         ) : null}
@@ -374,3 +335,79 @@ function DayMoment({ moment, n, last, onOpen }: { moment: BookMoment; n: number;
     </Pressable>
   );
 }
+
+/** قسمٌ من المقدّمة (القاعدة ٣٧٨) — كالـPDF: الأرقام، والمدن والأماكن، والأغنية، والدائرة. */
+function IntroPart({ id, first, book }: { id: BookSection; first: boolean; book: Book }) {
+  const s = book.stats;
+  if (id === "numbers") {
+    const days = daysOf(book).length;
+    const tiles = (
+      [
+        [s.moments, "لحظة"],
+        [days, "يوماً كتبت فيها"],
+        [s.photos, "صورة"],
+        [s.places, "مكان"],
+        [s.songs, "أغنية"],
+        [s.cities.length, "مدينة"],
+      ] as [number, string][]
+    ).filter(([n]) => n > 0);
+    return (
+      <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 20, borderTopWidth: 1, borderTopColor: RULE }}>
+        {tiles.map(([n, label], i) => (
+          <View
+            key={label}
+            style={{
+              width: "50%",
+              paddingVertical: 16,
+              paddingLeft: i % 2 ? 0 : 14,
+              paddingRight: i % 2 ? 14 : 0,
+              borderBottomWidth: 1,
+              borderBottomColor: RULE,
+              borderLeftWidth: i % 2 ? 0 : 1,
+              borderLeftColor: RULE,
+            }}
+          >
+            <Text face="display" style={{ color: INK, fontSize: 36, fontWeight: "700", lineHeight: 42 }}>{ar(n)}</Text>
+            <Text style={{ color: "#6b7880", fontSize: 11.5 }}>{label}</Text>
+          </View>
+        ))}
+      </View>
+    );
+  }
+  if (id === "places" || id === "song") {
+    const facts = (
+      id === "places"
+        ? [
+            s.cities.length ? ["مدنك", s.cities.join("، ")] : null,
+            s.topPlace ? ["أكثر مكان رجعت له", `${s.topPlace.name}${s.topPlace.visits > 1 ? ` — ${ar(s.topPlace.visits)} مرّات` : ""}`] : null,
+          ]
+        : [s.topSong ? ["أغنيتك", s.topSong] : null]
+    ).filter(Boolean) as [string, string][];
+    if (!facts.length) return null;
+    return (
+      <View style={{ marginTop: 18 }}>
+        {facts.map(([k, v]) => (
+          <View key={k} style={{ flexDirection: "row", gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#EFE8D8" }}>
+            <Text style={{ width: 92, color: "#8a7a55", fontSize: 11.5, paddingTop: 2 }}>{k}</Text>
+            <Text style={{ flex: 1, color: INK, fontSize: 13.5 }}>{v}</Text>
+          </View>
+        ))}
+      </View>
+    );
+  }
+  if (id === "circle") {
+    if (!s.circleLines?.length) return null;
+    return (
+      <View style={first ? { marginTop: 14 } : { marginTop: 20, paddingTop: 14, borderTopWidth: 1, borderTopColor: RULE }}>
+        {first ? null : <Text style={{ color: KICKER, fontSize: 10.5, letterSpacing: 3, marginBottom: 6 }}>دائرتك</Text>}
+        {s.circleLines.map((text) => (
+          <Text key={text} style={{ color: "#3c4a52", fontSize: 13, lineHeight: 24 }}>
+            {text}
+          </Text>
+        ))}
+      </View>
+    );
+  }
+  return null;
+}
+
