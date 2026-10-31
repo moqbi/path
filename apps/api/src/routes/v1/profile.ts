@@ -20,6 +20,8 @@ import * as feed from "../../services/feed";
 import * as auth from "../../services/auth";
 import * as push from "../../services/push";
 import * as oauth from "../../services/oauth";
+import { checkHandle } from "../../services/handle";
+import { rateLimitUser } from "../../middleware/rate-limit";
 
 /**
  * حسابي.
@@ -31,6 +33,14 @@ export const profileRoutes = new Hono()
   .use("*", requireAuth)
 
   .get("/", async (c) => c.json({ user: await profile.me(me(c)) }))
+
+  /** فحصُ المعرّف فوراً واقتراحُه (القاعدة ٣٧٧) — يُسأل مع الكتابة، فحدُّه أوسع. */
+  .get(
+    "/handle",
+    rateLimitUser(120, 300),
+    zValidator("query", z.object({ h: z.string().max(40).default("") })),
+    async (c) => c.json(await checkHandle(me(c), c.req.valid("query").h)),
+  )
 
   /** أرقام «أنا» — تُقرأ مرّةً مع الشاشة لا مع كل لحظة. */
   .get("/stats", async (c) => c.json(await profile.stats(me(c))))

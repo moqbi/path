@@ -19,6 +19,7 @@ import { useSession } from "../../lib/session";
 import { brandGradient, colors } from "../../theme/tokens";
 import { BIO_MAX, interestOf } from "@athar/shared";
 import { useInterestCatalog } from "../../lib/interests";
+import { useHandleCheck } from "../../lib/handle";
 import { ar } from "../../lib/format";
 import { tourSignal } from "../../components/tour";
 
@@ -57,6 +58,8 @@ export default function EditProfile() {
     فيُطفآن صراحةً.
   */
   const [framingCover, setFramingCover] = useState(false);
+  // فحصُ المعرّف واقتراحُه وهو يُكتب (القاعدة ٣٧٧).
+  const handleCheck = useHandleCheck(handle, me?.handle);
 
   if (!me) return null;
 
@@ -188,9 +191,41 @@ export default function EditProfile() {
                   style={[INPUT, { flex: 1, minWidth: 0, textAlign: "left" }]}
                 />
               </View>
-              <Text style={{ color: colors.groundInk, fontSize: 11, marginTop: 4, textAlign: "right" }}>
-                حروف إنجليزية وأرقام و_ ، من ٣ إلى ٢٠ حرفاً. يظهر تحت اسمك.
+              <Text
+                style={{
+                  color: handleCheck.status === "bad" ? colors.live : colors.groundInk,
+                  fontSize: 11,
+                  marginTop: 4,
+                  textAlign: "right",
+                  fontWeight: handleCheck.status === "ok" && handle.trim() && handle.trim() !== (me.handle ?? "") ? "700" : "400",
+                }}
+              >
+                {handleCheck.status === "bad"
+                  ? handleCheck.error
+                  : handleCheck.status === "checking"
+                    ? "نتحقّق…"
+                    : handleCheck.status === "ok" && handle.trim() && handle.trim() !== (me.handle ?? "")
+                      ? "متاح ✓"
+                      : "حروف إنجليزية وأرقام و_ ، من ٣ إلى ٢٠ حرفاً. يظهر تحت اسمك."}
               </Text>
+              {handleCheck.suggestions.length && handleCheck.status !== "ok" ? (
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                  {handleCheck.suggestions.map((one) => (
+                    <Pressable
+                      key={one}
+                      accessibilityRole="button"
+                      accessibilityLabel={`استعمل ${one}`}
+                      onPress={() => {
+                        setHandle(one);
+                        tourSignal("handle");
+                      }}
+                      style={{ height: 30, paddingHorizontal: 12, borderRadius: 15, justifyContent: "center", backgroundColor: colors.chip }}
+                    >
+                      <Text style={{ color: colors.ink, fontSize: 12.5, fontWeight: "700" }}>@{one}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
             </Field>
 
             <Field
