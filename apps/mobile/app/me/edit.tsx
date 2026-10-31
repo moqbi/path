@@ -653,7 +653,7 @@ function Chip({
  * الزرّ على يمين الصورة: اليسار مقعد التشارم في كل مكان. والصورة
  * المتحركة من مزايا آثار+ — تُرفع بملفها كما هي، فلا `canvas` يقتل حركتها.
  */
-function AvatarEditor({
+export function AvatarEditor({
   name,
   size,
   mediaId,
