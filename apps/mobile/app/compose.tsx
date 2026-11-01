@@ -12,6 +12,7 @@ import { ScreenHeader } from "../components/screen-header";
 import { PeopleSheet, PickerButton, type Friend } from "../components/people-sheet";
 import { CloseIcon, LockIcon, PinIcon, PlusIcon, WithIcon } from "../components/icons";
 import { api } from "../lib/api";
+import { quietFix } from "../lib/quiet-fix";
 import { uploadFile } from "../lib/upload";
 import { maybeAskToRate } from "../lib/rate";
 import { useCircle } from "../lib/queries";
@@ -352,6 +353,8 @@ export default function Compose() {
       }
 
       // بابٌ واحد لكل الأنواع، والأغنية رابطٌ فيه لا مساراً على حدة.
+      // لـ«خريطتي» وحدها (القاعدة ٣٨١): لحظةٌ بلا موقعٍ مختار تحمل موضعَ الجهاز لصاحبها.
+      const here = fix ? null : await quietFix();
       await api("/v1/moments", {
         method: "POST",
         body: JSON.stringify({
@@ -378,6 +381,7 @@ export default function Compose() {
           viewers: audience === "PICKED" ? viewers : undefined,
           lat: fix?.lat,
           lng: fix?.lng,
+          here: here ?? undefined,
           place: chosen ?? undefined,
         }),
       });

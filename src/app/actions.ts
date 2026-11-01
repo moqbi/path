@@ -397,7 +397,17 @@ const BIO_MAX = 100;
 async function readPlace(
   formData: FormData,
   user: { id: string; city: string | null },
-): Promise<{ lat: number | null; lng: number | null; placeName: string | null; placeCity: string | null } | Record<string, never>> {
+): Promise<
+  | {
+      lat: number | null;
+      lng: number | null;
+      ownLat: number;
+      ownLng: number;
+      placeName: string | null;
+      placeCity: string | null;
+    }
+  | Record<string, never>
+> {
   const parsed = placeInput.safeParse({ lat: formData.get("lat"), lng: formData.get("lng") });
   if (!parsed.success) return {};
 
@@ -417,6 +427,9 @@ async function readPlace(
   return {
     lat: precise ? lat : null,
     lng: precise ? lng : null,
+    // لصاحبها وحده في «خريطتي» (القاعدة ٣٨١).
+    ownLat: lat,
+    ownLng: lng,
     placeName: precise ? (picked || place.name) : null,
     placeCity: city,
   };
@@ -560,6 +573,8 @@ export async function postPlace(formData: FormData): Promise<void> {
       kind: "PLACE",
       lat: precise ? lat : null,
       lng: precise ? lng : null,
+      ownLat: lat,
+      ownLng: lng,
       placeName: precise ? (picked || place.name) : (city ?? "مكان"),
       placeCity: city,
       text: String(formData.get("text") ?? "").trim().slice(0, 200) || null,
