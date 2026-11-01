@@ -9,7 +9,7 @@
  */
 const fs = require("fs");
 const path = require("path");
-const { withDangerousMod, withXcodeProject } = require("@expo/config-plugins");
+const { withDangerousMod, withXcodeProject } = require("expo/config-plugins");
 
 const NAME = "AtharNotificationService";
 const FILES = ["NotificationService.swift", "Info.plist"];
