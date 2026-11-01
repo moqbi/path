@@ -25,6 +25,11 @@ export const archiveRoutes = new Hono()
   .get("/years", async (c) => c.json(await archive.years(me(c))))
   // «خريطتي» (القاعدة ٣٦٨).
   .get("/map", async (c) => c.json(await archive.map(me(c))))
+  // «عرض جميع لحظاتي في …» (القاعدة ٣٨٤): لحظاتُ صاحبها بأعيانها بشكل الخطّ الزمنيّ.
+  .get("/map/moments", async (c) => {
+    const ids = (c.req.query("ids") ?? "").split(",").filter((id) => cuid.safeParse(id).success).slice(0, 200);
+    return c.json({ moments: await archive.mapMoments(me(c), ids) });
+  })
   .get("/book/:year", zValidator("param", byYear), async (c) =>
     c.json(await archive.book(me(c), c.req.valid("param").year)),
   )

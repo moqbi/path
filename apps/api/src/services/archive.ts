@@ -1,3 +1,4 @@
+import { momentsByIds } from "./feed";
 import { prisma } from "@athar/db";
 import { cleanBookPrefs, DEFAULT_BOOK_PREFS, type BookPrefs } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
@@ -471,5 +472,23 @@ export async function map(userId: string) {
   const stats: Record<string, MapStats> = { all: statsOf(null) };
   for (const year of years) stats[String(year)] = statsOf(year);
 
-  return { points, years, stats, limited: from != null };
+  // الوصولُ داخل حدّ الأرشيف — «زيارة» في بطاقة المدينة والدولة.
+  const visits = arrivals
+    .filter((arrival) => !from || arrival.at >= from.getTime())
+    .filter((arrival) => arrival.city)
+    .map((arrival) => ({ city: arrival.city as string, country: arrival.country, at: new Date(arrival.at).toISOString(), year: yearOf(new Date(arrival.at)) }));
+
+  return { points, years, stats, visits, limited: from != null };
+}
+
+/** لحظاتُ «خريطتي» بأعيانها — لصاحبها وحده، وبحدّ الأرشيف نفسه. */
+export async function mapMoments(userId: string, ids: string[]) {
+  if (!ids.length) return [];
+  const from = await since(userId);
+  const own = await prisma.moment.findMany({
+    where: { id: { in: ids }, authorId: userId, ...(from ? { createdAt: { gte: from } } : {}) },
+    select: { id: true },
+  });
+  const allowed = new Set(own.map((row) => row.id));
+  return momentsByIds(userId, ids.filter((id) => allowed.has(id)));
 }
