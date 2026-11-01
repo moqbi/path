@@ -85,7 +85,12 @@ export const pollVoteInput = z.object({ choice: z.number().int().min(0).max(3) }
 
 /** نصٌّ أو ملصق (القاعدة ٢٩١) — نسخةٌ قديمة ترسل النصَّ وحده كما كانت. */
 export const commentInput = z
-  .object({ body: z.string().trim().max(500).default(""), stickerId: cuid.optional() })
+  .object({
+    body: z.string().trim().max(500).default(""),
+    stickerId: cuid.optional(),
+    /** من أُشير إليه بـ@ (القاعدة ٣٨٧) — الخادمُ يُسقط من ليس معلّقاً على اللحظة ولا صاحبَها. */
+    mentions: z.array(cuid).max(10).optional(),
+  })
   .refine((input) => input.body.length > 0 || input.stickerId, { message: "اكتب شيئاً" });
 
 /** تعديلُ نصّ اللحظة والتعليق (القاعدة ٣١٩) — حدّاهما حدّا النشر. */
@@ -230,6 +235,12 @@ export const privacyInput = z.object({
    * ولا يُكتب إلا إن أُرسل.
    */
   hideOnline: z.boolean().optional(),
+  /**
+   * من يراسلني على الخاص (القاعدة ٣٨٥): `dmOpen` مطفأً لا أحد، ومفتوحاً الدائرةُ كلّها أو
+   * `dmGroupId`. اختياريّان لنسخٍ قديمة لا ترسلهما، ولا يُكتبان إلا إن أُرسل `dmOpen`.
+   */
+  dmOpen: z.boolean().optional(),
+  dmGroupId: cuid.nullish(),
 });
 
 /**

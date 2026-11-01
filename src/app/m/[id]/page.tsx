@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { mentionPeople } from "@/lib/mentions";
 import { WithNames } from "@/components/with-names";
 import { currentUser } from "@/lib/auth";
 import { canReachMoment } from "@/lib/visibility";
@@ -163,6 +164,7 @@ export default async function MomentPage({
                 viewerId={user.id}
                 size={30}
                 momentAuthorId={moment.author.id}
+                people={mentionPeople(moment, null)}
                 moderate={user.canModerate}
                 trial={canTryStickers(user)}
               />

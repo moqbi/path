@@ -1,4 +1,5 @@
 import { serve } from "@hono/node-server";
+import { pushMediaRoutes } from "./routes/v1/push-media";
 import { createNodeWebSocket } from "@hono/node-ws";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
@@ -186,6 +187,7 @@ app.route("/v1/plus", plusRoutes);
 app.route("/v1/coins", coinRoutes);
 app.route("/v1/stories", storyRoutes);
 app.route("/v1/media", mediaRoutes);
+app.route("/v1/push-media", pushMediaRoutes);
 app.route("/v1/notifications", notificationRoutes);
 app.route("/v1/dm", dmRoutes);
 app.route("/v1/messages", messageRoutes);

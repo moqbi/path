@@ -5,6 +5,7 @@ import { guard } from "../lib/moderation";
 import { MESSAGE_KEEP_DAYS, VOICE_SECONDS } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { blockedWith, circleIds } from "./visibility";
+import { dmClosedReason } from "./dm-privacy";
 import { canRunGroups } from "./groups";
 import { assertSticker, STICKER_TEXT } from "./stickers";
 
@@ -68,6 +69,10 @@ export async function open(userId: string, otherId: string) {
     ]);
     if ((open === 0 && !staff) || blocked.includes(otherId)) throw forbidden("المحادثة بعد قبول الإضافة");
   }
+
+  // الخاصُّ المقفل (القاعدة ٣٨٥) — والجوابُ يقول اسمَه وسببَه.
+  const closed = await dmClosedReason(userId, otherId);
+  if (closed) throw forbidden(closed);
 
   const { aId, bId } = pairKey(userId, otherId);
   const conversation = await prisma.conversation.upsert({
@@ -224,6 +229,9 @@ export async function send(
   if ((await blockedWith(userId)).includes(otherSide(conversation, userId))) {
     throw notFound("المحادثة غير موجودة");
   }
+  // والمحادثةُ القائمة لا تبقى باباً بعد إقفال الخاصّ (القاعدة ٣٨٥).
+  const closed = await dmClosedReason(userId, otherSide(conversation, userId));
+  if (closed) throw forbidden(closed);
 
   let body = "";
   let mediaId: string | null = null;
@@ -288,6 +296,8 @@ export async function send(
         : input.kind === "VOICE"
           ? "رسالة صوتية"
           : "صورة",
+    // صورةُ الرسالة أو ملصقُها تُرى في التنبيه (القاعدة ٣٨٨).
+    image: input.kind === "PHOTO" ? mediaId : message.sticker?.mediaId,
     path: `/dm/${conversationId}`,
   });
 

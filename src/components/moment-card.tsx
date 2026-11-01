@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { mentionPeople } from "@/lib/mentions";
 import { LinkPreview } from "@/components/link-preview";
 import { WithNames } from "@/components/with-names";
 import { Avatar, type Frame } from "@/components/ui";
@@ -200,6 +201,7 @@ function Comments({
         momentAuthorId={moment.author.id}
         moderate={moderate}
         trial={trial}
+        people={mentionPeople(moment, null)}
       />
       {hidden > 0 ? (
         <Link href={`/m/${moment.id}`} className="text-[11.5px] font-semibold text-clay-ink">
@@ -563,6 +565,7 @@ export function MomentCard({
           author={moment.author.id === viewerId}
           moderate={moderate && moment.author.id !== viewerId}
           locked={moment.commentsLocked}
+          people={mentionPeople(moment, viewerId)}
           head={line}
           extra={
             <>
@@ -658,6 +661,7 @@ export function MomentCard({
           author={moment.author.id === viewerId}
           moderate={moderate && moment.author.id !== viewerId}
           locked={moment.commentsLocked}
+          people={mentionPeople(moment, viewerId)}
           inset
           media={media}
           extra={

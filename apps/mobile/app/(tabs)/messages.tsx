@@ -1,4 +1,5 @@
 import { Spinner } from "../../components/spinner";
+import { chatRefused } from "../../lib/dm-closed";
 import { useRef, useState } from "react";
 import { usePullLogo } from "../../components/logo-refresh";
 import { useTabTop } from "../../lib/tab-top";
@@ -179,6 +180,7 @@ export default function Messages() {
   const start = useMutation({
     mutationFn: (id: string) => api<{ id: string }>(`/v1/dm/with/${id}`, { method: "POST" }),
     onSuccess: (row) => router.push(`/dm/${row.id}` as never),
+    onError: (problem) => chatRefused(problem, null),
   });
 
   return (

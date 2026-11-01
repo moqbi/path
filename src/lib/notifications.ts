@@ -71,13 +71,18 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
       take: limit,
     }),
     prisma.comment.findMany({
-      where: { moment: { authorId: userId }, userId: { not: userId } },
+      // تعليقٌ على لحظتي، أو تعليقٌ أُشير إليّ فيه (القاعدة ٣٨٧).
+      where: {
+        OR: [{ moment: { authorId: userId } }, { mentionIds: { has: userId } }],
+        userId: { not: userId },
+      },
       select: {
         id: true,
         body: true,
         createdAt: true,
         momentId: true,
-        moment: { select: { mediaId: true } },
+        mentionIds: true,
+        moment: { select: { mediaId: true, authorId: true } },
         user: person,
       },
       orderBy: { createdAt: "desc" },
@@ -247,9 +252,12 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
     })),
     ...comments.map((row) => ({
       id: `c-${row.id}`,
-      kind: "COMMENT" as const,
+      // الإشارةُ في تعليقٍ خبرُها «أشار إليك» — وبنوع الإشارة فيرسمه الجوّالُ القائم.
+      kind: row.mentionIds.includes(userId) ? ("TAG" as const) : ("COMMENT" as const),
       at: row.createdAt,
-      text: `${row.user.name} علّق: ${row.body.slice(0, 40)}`,
+      text: row.mentionIds.includes(userId)
+        ? `${row.user.name} أشار إليك في تعليق: ${row.body.slice(0, 40)}`
+        : `${row.user.name} علّق: ${row.body.slice(0, 40)}`,
       href: `/m/${row.momentId}`,
       person: row.user,
       thumb: row.moment.mediaId,

@@ -65,6 +65,8 @@ export async function me(userId: string) {
       quietTo: true,
       viewGroupId: true,
       interactGroupId: true,
+      dmOpen: true,
+      dmGroupId: true,
       frame: { select: { id: true, name: true, kind: true, spec: true, mediaId: true, frameHole: true, priceCoins: true, plusOnly: true } },
       charm: { select: { id: true, name: true, kind: true, spec: true, mediaId: true, priceCoins: true, plusOnly: true } },
       background: { select: { id: true, spec: true, mediaId: true, palette: true, coverMediaId: true } },
@@ -176,6 +178,8 @@ export async function savePrivacy(
     shareLocation: boolean;
     notifyOnTag?: boolean;
     hideOnline?: boolean;
+    dmOpen?: boolean;
+    dmGroupId?: string | null;
   },
 ) {
   // التخفّي لمشتركي آثار+ وحدهم — يُفحص هنا لا في الشاشة: الطلبُ يُرسل بيد.
@@ -201,6 +205,8 @@ export async function savePrivacy(
       // التنبيهات، فكتابتُه افتراضاً تطفئه في كل حفظٍ للخصوصية.
       ...(input.notifyOnTag === undefined ? {} : { notifyOnTag: input.notifyOnTag }),
       ...(input.hideOnline === undefined ? {} : { hideOnline: input.hideOnline }),
+      // من يراسلني (القاعدة ٣٨٥) — لا يُكتب إلا إن أُرسل، فنسخةٌ قديمة لا تفتحه بحفظها.
+      ...(input.dmOpen === undefined ? {} : { dmOpen: input.dmOpen, dmGroupId: input.dmOpen ? pick(input.dmGroupId) : null }),
     },
   });
   return { ok: true };

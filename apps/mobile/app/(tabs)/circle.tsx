@@ -1,4 +1,5 @@
 import { Spinner } from "../../components/spinner";
+import { chatRefused } from "../../lib/dm-closed";
 import { BlockIcon, CheckIcon, MessageIcon, TagIcon, UserMinusIcon, UserPlusIcon } from "../../components/icons";
 import { usePullLogo } from "../../components/logo-refresh";
 import { Sheet } from "../../components/sheet";
@@ -138,6 +139,7 @@ export default function Circle() {
   const talk = useMutation({
     mutationFn: (id: string) => api<{ id: string }>(`/v1/dm/with/${id}`, { method: "POST" }),
     onSuccess: (row) => router.push(`/dm/${row.id}` as never),
+    onError: (problem) => chatRefused(problem, null),
   });
 
 

@@ -20,6 +20,7 @@ import {
   verifyPassword,
 } from "@/lib/auth";
 import { assertRoomForBoth, canChat, circleIds } from "@/lib/circle";
+import { dmClosedReason } from "@/lib/dm-privacy";
 import { STORY_HOURS, STORY_SECONDS, storyVisibleTo } from "@/lib/stories";
 import { blockedWith, canInteract, canReachMoment, canSeeMoment, moderatorReach, visibleAuthors } from "@/lib/visibility";
 import { placeVisitors, type VisitorsView } from "@/lib/place-visitors";
@@ -1395,6 +1396,13 @@ export async function savePrivacy(formData: FormData): Promise<void> {
       shareLocation: formData.get("shareLocation") === "on",
       // وضعُ التخفّي لمشتركي آثار+ وحدهم (القاعدة ٢٥١): يُفحص هنا لا في الشاشة.
       hideOnline: formData.get("hideOnline") === "on" && user.isPlus,
+      // من يراسلني (القاعدة ٣٨٥): «off» لا أحد، ومعرّفُ تصنيفٍ يملكه، وفراغٌ الدائرةُ كلّها.
+      // ونموذجٌ بلا الحقل لا يمسّه.
+      ...(formData.has("dmChoice")
+        ? formData.get("dmChoice") === "off"
+          ? { dmOpen: false, dmGroupId: null }
+          : { dmOpen: true, dmGroupId: pick("dmChoice") }
+        : {}),
       // وإشعارُ الإشارة انتقل إلى «التنبيهات» — فلا يُكتب من هنا بحال:
       // نموذجٌ لا يحمل الحقل كان سيطفئه في كل حفظٍ للخصوصية.
     },
@@ -1770,6 +1778,22 @@ export async function setCommentsLock(momentId: string, locked: boolean): Promis
   return {};
 }
 
+async function mentionTargets(userId: string, momentId: string, authorId: string, body: string, wanted: string[]) {
+  if (!wanted.length) return [];
+  const commenters = await prisma.comment.findMany({
+    where: { momentId, userId: { in: wanted } },
+    select: { userId: true },
+    distinct: ["userId"],
+  });
+  const allowed = new Set([authorId, ...commenters.map((row) => row.userId)]);
+  const ids = [...new Set(wanted)].filter((id) => id !== userId && allowed.has(id));
+  if (!ids.length) return [];
+  const people = await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } });
+  const named = people.filter((person) => body.includes(`@${person.name}`));
+  const seen = await Promise.all(named.map((person) => canSeeMoment(person.id, momentId)));
+  return named.filter((_, index) => seen[index]).map((person) => person.id);
+}
+
 export async function addComment(momentId: string, formData: FormData): Promise<void> {
   const user = await requireUser();
   if (!(await canReachMoment(user.id, momentId))) throw new Error("غير مصرح");
@@ -1783,7 +1807,14 @@ export async function addComment(momentId: string, formData: FormData): Promise<
   if (!body) return;
   await guard(body);
 
-  await prisma.comment.create({ data: { momentId, userId: user.id, body: body.slice(0, 500), stickerId } });
+  // الإشارةُ بـ@ (القاعدة ٣٨٧) بشروط الخادم حرفاً بحرف: معلّقو اللحظة وصاحبُها، واسمُه في
+  // النصّ، ومن يرى اللحظة. ولا جرسَ من الويب — والإشعارُ مشتقٌّ فيصل.
+  const text = body.slice(0, 500);
+  const wantedIds = stickerId
+    ? []
+    : String(formData.get("mentions") ?? "").split(",").filter((id) => /^c[a-z0-9]{20,32}$/.test(id)).slice(0, 10);
+  const mentionIds = await mentionTargets(user.id, momentId, moment.authorId, text, wantedIds);
+  await prisma.comment.create({ data: { momentId, userId: user.id, body: text, stickerId, mentionIds } });
   revalidatePath("/");
   revalidatePath(`/m/${momentId}`);
 }
@@ -1880,6 +1911,8 @@ export async function startConversation(otherId: string): Promise<void> {
 
   // الخاص للدائرة وحدها — إلّا الحسابَ المفتوح (القاعدة ٢٢١) — وإخفاء الزر ليس حماية.
   if (!(await canChat(user.id, otherId))) throw new Error("المحادثة بعد قبول الإضافة");
+  // الخاصُّ المقفل (القاعدة ٣٨٥): يرجع إلى ملفّه ومعه سطرٌ يقول ذلك.
+  if (await dmClosedReason(user.id, otherId)) redirect(`/u/${otherId}?dm=closed`);
 
   const id = await openConversation(user.id, otherId);
   redirect(`/messages/${id}`);
@@ -1893,6 +1926,8 @@ export async function startConversation(otherId: string): Promise<void> {
 export async function deskChat(otherId: string) {
   const user = await requireUser();
   if (!(await canChat(user.id, otherId))) return { error: "المحادثة بعد قبول الإضافة" } as const;
+  const closed = await dmClosedReason(user.id, otherId);
+  if (closed) return { error: closed } as const;
   const id = await openConversation(user.id, otherId);
   return deskThread(id);
 }
@@ -1918,7 +1953,7 @@ export async function deskThread(conversationId: string) {
 }
 
 /** يتحقق أنّ المحادثة لي ثم يردّ معرّفها — كل إرسالٍ يمرّ عليه. */
-async function myConversation(conversationId: string, userId: string): Promise<void> {
+async function myConversation(conversationId: string, userId: string): Promise<{ aId: string; bId: string }> {
   const conversation = await prisma.conversation.findUnique({
     where: { id: conversationId },
     select: { aId: true, bId: true },
@@ -1928,6 +1963,7 @@ async function myConversation(conversationId: string, userId: string): Promise<v
   // الحظرُ يقطع المحادثة القائمة أيضاً (القاعدة ٢٤).
   const other = conversation.aId === userId ? conversation.bId : conversation.aId;
   if ((await blockedWith(userId)).includes(other)) throw new Error("المحادثة غير موجودة");
+  return conversation;
 }
 
 /** يرفع طابع المحادثة فتصعد إلى أعلى القائمة. */
@@ -2020,15 +2056,18 @@ export async function sendPhoto(
   return { ok: "أُرسلت" };
 }
 
-export async function sendMessage(conversationId: string, formData: FormData): Promise<void> {
+export async function sendMessage(conversationId: string, formData: FormData): Promise<{ error?: string }> {
   const user = await requireUser();
 
-  await myConversation(conversationId, user.id);
+  const thread = await myConversation(conversationId, user.id);
+  // والمحادثةُ القائمة لا تبقى باباً بعد إقفال الخاصّ (القاعدة ٣٨٥).
+  const closed = await dmClosedReason(user.id, thread.aId === user.id ? thread.bId : thread.aId);
+  if (closed) return { error: closed };
 
   const wanted = String(formData.get("stickerId") ?? "");
   const stickerId = wanted ? await assertSticker(user.id, wanted) : null;
   const body = stickerId ? STICKER_TEXT : String(formData.get("body") ?? "").trim();
-  if (!body) return;
+  if (!body) return {};
   await guard(body);
 
   await prisma.$transaction([
@@ -2040,6 +2079,7 @@ export async function sendMessage(conversationId: string, formData: FormData): P
 
   revalidatePath(`/messages/${conversationId}`);
   revalidatePath("/messages");
+  return {};
 }
 
 /**

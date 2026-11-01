@@ -87,6 +87,9 @@ export type Me = {
   quietTo?: number | null;
   viewGroupId: string | null;
   interactGroupId: string | null;
+  /** من يراسلني (القاعدة ٣٨٥) — خادمٌ قديم لا يرسلهما. */
+  dmOpen?: boolean;
+  dmGroupId?: string | null;
   frame: Worn;
   charm: Worn;
   background: { id: string; spec: string; mediaId: string | null; palette: string | null; coverMediaId?: string | null } | null;

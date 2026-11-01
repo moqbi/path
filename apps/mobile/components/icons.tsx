@@ -464,3 +464,19 @@ export const MapIcon = ({ size = 20, color = "currentColor" }: Props) => (
     <Path d="M9 4.5v13M15 6.6v13" />
   </Svg>
 );
+
+/**
+ * حذفٌ بصلاحية الإشراف (القاعدة ٣٨٦): سلّةٌ ومعها درعٌ صغير في ركنها — **بقرار المالك**: الدرعُ
+ * وحده لا يقول «حذف»، والسلّةُ وحدها لا تقول إنّه بصلاحيةٍ تُسجَّل.
+ */
+export const ModDeleteIcon = ({ size = 20, color = "currentColor" }: Props) => (
+  <Svg {...stroke(size, color)}>
+    <Path d="M3 6.5h12" />
+    <Path d="M7 6.5V4.5h4v2" />
+    <Path d="M4.8 6.5l.9 12.5h6.6" />
+    <Path d="M13.2 6.5l-.5 5" />
+    <Path d="M8 10.5v5.5" />
+    <Path d="M18 12.5l3.5 1.4v2.8c0 2.3-1.5 3.8-3.5 4.4-2-.6-3.5-2.1-3.5-4.4v-2.8z" />
+    <Path d="M16.6 16.9l1 1 1.9-2" />
+  </Svg>
+);

@@ -91,6 +91,7 @@
       "./plugins/with-rtl",
       "./plugins/with-purpose",
       "./plugins/with-links",
+      "./plugins/with-notification-service",
       [
         "expo-share-intent",
         {

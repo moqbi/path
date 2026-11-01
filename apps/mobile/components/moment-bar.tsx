@@ -1,4 +1,5 @@
 import { View, Pressable } from "react-native";
+import type { MentionPerson } from "../lib/mentions";
 import { ReactionGlyph } from "./reactions";
 import { LockIcon } from "./icons";
 import { openReactSheet } from "./react-sheet";
@@ -41,6 +42,7 @@ export function MomentBar({
   media,
   footer,
   locked = false,
+  people,
 }: {
   momentId: string;
   momentKind?: string;
@@ -64,6 +66,8 @@ export function MomentBar({
   footer?: React.ReactNode;
   /** التعليقاتُ مقفلة بيد صاحبها: يبقى التفاعل، ويذهب الحقل. */
   locked?: boolean;
+  /** من يُشار إليه بـ@ في التعليق (القاعدة ٣٨٧). */
+  people?: MentionPerson[];
 }) {
   const audience = useAudience(momentId, author);
   const isLocked = author ? (audience.data?.commentsLocked ?? locked) : locked;
@@ -72,7 +76,7 @@ export function MomentBar({
     <Pressable
       accessibilityLabel={isLocked ? "تفاعل — التعليقات مقفلة" : "تفاعل"}
       onPress={() =>
-        openReactSheet({ momentId, momentKind, mine, isPlus, author, moderate, locked: isLocked })
+        openReactSheet({ momentId, momentKind, mine, isPlus, author, moderate, locked: isLocked, people })
       }
       style={{
         width: 30,

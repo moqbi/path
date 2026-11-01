@@ -1,4 +1,6 @@
 import { Spinner } from "./spinner";
+import { MentionPicker } from "./mention-picker";
+import { insertMention, mentionIds, mentionQuery, type MentionPerson } from "../lib/mentions";
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
@@ -26,6 +28,8 @@ export type ReactTarget = {
   author: boolean;
   moderate: boolean;
   locked: boolean;
+  /** من يُشار إليه بـ@ (القاعدة ٣٨٧): معلّقو اللحظة وصاحبُها. */
+  people?: MentionPerson[];
 };
 
 const useTarget = create<{ target: ReactTarget | null }>(() => ({ target: null }));
@@ -58,6 +62,10 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
   const [asking, setAsking] = useState(false);
   const [body, setBody] = useState("");
   const [stickers, setStickers] = useState(false);
+  // من اختير من نافذة «@» — ويُرسل منهم من بقي اسمُه في النصّ (القاعدة ٣٨٧).
+  const [picked, setPicked] = useState<MentionPerson[]>([]);
+  const people = target.people ?? [];
+  const query = people.length ? mentionQuery(body) : null;
 
   const react = useReact(momentId);
   const comment = useComment(momentId);
@@ -86,7 +94,8 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
     if (!text) return;
     setBody("");
     close();
-    comment.mutate(text);
+    const mentions = mentionIds(text, picked);
+    comment.mutate(mentions.length ? { body: text, mentions } : text);
   }
 
   function sendSticker(stickerId: string) {
@@ -236,6 +245,18 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
             )}
           </>
         )}
+
+        {/* نافذةُ «@» فوق الحقل (القاعدة ٣٨٧). */}
+        {query !== null && !(locked && !author) ? (
+          <MentionPicker
+            people={people}
+            query={query}
+            onPick={(person) => {
+              setBody((text) => insertMention(text, person));
+              setPicked((list) => (list.some((one) => one.id === person.id) ? list : [...list, person]));
+            }}
+          />
+        ) : null}
 
         {/* التعليق — أو سطرُ القفل لغير صاحبها. */}
         {locked && !author ? (

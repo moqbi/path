@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { mentionPeople, splitMentions, type MentionPerson } from "../lib/mentions";
 import { View, Pressable, ScrollView } from "react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
@@ -6,7 +7,7 @@ import { Text } from "./type";
 import { useRouter } from "expo-router";
 import { Avatar, frameBleed } from "./avatar";
 import { ReactionGlyph } from "./reactions";
-import { FlagIcon, PencilIcon, ShieldIcon, TrashIcon } from "./icons";
+import { FlagIcon, ModDeleteIcon, PencilIcon, TrashIcon } from "./icons";
 import { openEdit } from "./edit-sheet";
 import { DEV_FEATURES } from "../lib/dev-features";
 import { NameTag } from "./name-tag";
@@ -139,9 +140,18 @@ export function CommentList({
   viewerId,
   size = 26,
   moderate = false,
+  ownerId,
+  people = [],
 }: {
   comments: Moment["comments"];
   viewerId: string;
+  /**
+   * صاحبُ اللحظة يحذف تعليقاتِ أصدقائه عليها (القاعدة ٣٨٦) — من بابه هو (`/v1/comments/:id`
+   * يقبله)، والسحبةُ تكشف له سلّةً لا درعاً.
+   */
+  ownerId?: string;
+  /** من قد يُشار إليه — يُرسم «@اسمُه» رابطاً إلى ملفّه (القاعدة ٣٨٧). */
+  people?: MentionPerson[];
   size?: number;
   /**
    * صلاحية الإشراف: سحبُ تعليق غيره يكشف «حذف بصلاحية».
@@ -177,11 +187,13 @@ export function CommentList({
     <View style={{ gap: 8 }}>
       {comments.map((comment) => {
         const mine = comment.user.id === viewerId;
+        // تعليقي، أو تعليقٌ على لحظتي: يُحذف من بابي بسلّة.
+        const own = mine || ownerId === viewerId;
         const row = (
         <Pressable
           key={comment.id}
           // ضغطةٌ مطوّلة على تعليق غيرك تفتح الإبلاغ — والسحبُ يكشفه أيضاً.
-          onLongPress={mine || moderate ? undefined : () => setReporting(comment.id)}
+          onLongPress={mine ? undefined : () => setReporting(comment.id)}
           delayLongPress={350}
           style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}
         >
@@ -233,7 +245,33 @@ export function CommentList({
               // يُحدَّد ويُنسخ بقائمة النظام، ومعه معاينةُ رابطه (القاعدة ٣٦٦). الضغطُ المطوّلُ
               // على النصّ للتحديد، والبلاغُ باقٍ على الاسم والصورة وفي السحبة.
               <>
-                <SelectableText text={comment.body} style={{ color: colors.ink2, fontSize: 12.5, lineHeight: 21 }} />
+                {comment.mentionIds?.length ? (
+                  // فيه إشارة (القاعدة ٣٨٧): «@الاسم» باللمسة رابطاً إلى ملفّه — نصٌّ مقطّعٌ لا حقلُ
+                  // تحديد، فقائمةُ النظام لا تُفتح عليه.
+                  <Text style={{ color: colors.ink2, fontSize: 12.5, lineHeight: 21 }}>
+                    {splitMentions(
+                      comment.body,
+                      people.filter((person) => comment.mentionIds?.includes(person.id)),
+                    ).map((part, index) =>
+                      part.person ? (
+                        <Text
+                          key={index}
+                          suppressHighlighting
+                          onPress={() =>
+                            router.push((part.person!.id === viewerId ? "/me" : `/u/${part.person!.id}`) as never)
+                          }
+                          style={{ color: colors.clayInk, fontWeight: "700" }}
+                        >
+                          {part.text}
+                        </Text>
+                      ) : (
+                        <Text key={index}>{part.text}</Text>
+                      ),
+                    )}
+                  </Text>
+                ) : (
+                  <SelectableText text={comment.body} style={{ color: colors.ink2, fontSize: 12.5, lineHeight: 21 }} />
+                )}
                 <LinkPreview text={comment.body} style={{ marginTop: 6, marginBottom: 2 }} />
               </>
             )}
@@ -247,7 +285,7 @@ export function CommentList({
           صاحبُ التعليق يحذف تعليقه وحده، والمشرفُ تعليقَ غيره. والسحبةُ ثمّ
           الضغطةُ على الزرّ المكشوف خطوتان — وهما السؤالُ قبل الحذف.
         */
-        if (!mine && !moderate) {
+        if (!own && !moderate) {
           return (
             <SwipeRow
               key={comment.id}
@@ -266,7 +304,7 @@ export function CommentList({
             key={comment.id}
             surface={colors.card}
             width={72}
-            confirmLabel={mine ? "حذف التعليق" : "حذف بصلاحية الإشراف"}
+            confirmLabel={own ? "حذف التعليق" : "حذف بصلاحية الإشراف"}
             /* المشرفُ بدرعٍ لا بسلّة: يحذف بصلاحيةٍ تُسجَّل باسمه لا بملكية. */
             /* والقلمُ بجانب السلّة لكاتبه وحده (القاعدة ٣١٩) — والملصقُ لا يُعدَّل. */
             lead={
@@ -275,10 +313,11 @@ export function CommentList({
                 : undefined
             }
             icons={{
-              delete: mine ? <TrashIcon size={22} color="#fff" /> : <ShieldIcon size={22} color="#fff" />,
+              // والمشرفُ بسلّةٍ ودرع (القاعدة ٣٨٦): الدرعُ وحده لا يقول «حذف».
+              delete: own ? <TrashIcon size={22} color="#fff" /> : <ModDeleteIcon size={22} color="#fff" />,
               lead: <PencilIcon size={22} color={colors.onBrand} />,
             }}
-            onDelete={() => drop.mutateAsync({ id: comment.id, mine }).then(() => undefined)}
+            onDelete={() => drop.mutateAsync({ id: comment.id, mine: own }).then(() => undefined)}
           >
             {row}
           </SwipeRow>
@@ -327,7 +366,13 @@ export function Bubble({
       {hasReactions && hasComments ? (
         <View style={{ height: 1, backgroundColor: colors.line, marginVertical: 10 }} />
       ) : null}
-      <CommentList comments={moment.comments} viewerId={viewerId} moderate={moderate} />
+      <CommentList
+        comments={moment.comments}
+        viewerId={viewerId}
+        moderate={moderate}
+        ownerId={moment.author.id}
+        people={mentionPeople(moment, null)}
+      />
       {/*
         الخطُّ الزمنيّ يحمل ثلاثةَ تعليقات، وما زاد بابُه صفحةُ اللحظة —
         كان الباقي يختفي بلا أثرٍ يقول إنّ هناك غيرها.

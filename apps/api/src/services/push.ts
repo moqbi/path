@@ -1,4 +1,5 @@
 import { prisma } from "@athar/db";
+import { pushImageUrl } from "./push-image";
 import { forgetAllNotifications, forgetNotifications, unseenCount } from "./notifications";
 
 /**
@@ -105,6 +106,11 @@ export type PushMessage = {
   body: string;
   /** ما تفتحه الضغطة: مسارٌ في التطبيق. */
   path?: string;
+  /**
+   * صورةٌ تُرى حين يُضغط التنبيهُ مطوّلاً أو يُسحب (القاعدة ٣٨٨) — معرّفُ ملفٍّ يُرسل رابطاً
+   * موقَّعاً. أندرويد يرسمها بنفسه، وآبل بامتداد خدمة التنبيهات في البناء.
+   */
+  image?: string | null;
 };
 
 /**
@@ -113,6 +119,11 @@ export type PushMessage = {
  */
 /** والنتيجةُ تُردّ لمن يكتبها في السجلّ — جرسٌ لم يصل يُعرف لماذا. */
 export type PushOutcome = "sent" | "off" | "quiet" | "no-device" | "error" | "gone";
+
+function richOf(mediaId: string | null | undefined) {
+  const image = pushImageUrl(mediaId);
+  return image ? { richContent: { image }, mutableContent: true } : null;
+}
 
 export async function push(message: PushMessage): Promise<PushOutcome> {
   try {
@@ -157,6 +168,7 @@ export async function push(message: PushMessage): Promise<PushOutcome> {
         ...SOUNDS[SOUND_OF[message.kind]],
         ...(badge === null ? null : { badge }),
         data: message.path ? { path: message.path } : {},
+        ...richOf(message.image),
       })),
     );
     return "sent";
