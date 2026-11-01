@@ -1,4 +1,5 @@
 import "server-only";
+import { appleReverse } from "./apple-maps";
 
 /**
  * تحويل الإحداثيات إلى اسم مكان عربي.
@@ -9,7 +10,7 @@ import "server-only";
  */
 export type ResolvedPlace = { name: string | null; city: string | null };
 
-export async function reverseGeocode(lat: number, lng: number): Promise<ResolvedPlace> {
+async function osmReverse(lat: number, lng: number): Promise<ResolvedPlace> {
   const url = new URL("https://nominatim.openstreetmap.org/reverse");
   url.searchParams.set("format", "jsonv2");
   url.searchParams.set("lat", String(lat));
@@ -45,6 +46,19 @@ export async function reverseGeocode(lat: number, lng: number): Promise<Resolved
   } catch {
     return { name: null, city: null };
   }
+}
+
+/**
+ * خرائطُ آبل والـOSM معاً (القاعدة ٣٨٠): آبل أدقُّ في المدينة والدولة بالعربيّة، والـOSM
+ * يعرف اسمَ المحلّ والمطار. يُسألان معاً فلا ينتظر أحدُهما الآخر، وبلا مفتاح آبل الـOSM وحده.
+ */
+export async function reverseGeocode(lat: number, lng: number): Promise<ResolvedPlace> {
+  const [apple, osm] = await Promise.all([appleReverse(lat, lng).catch(() => null), osmReverse(lat, lng)]);
+  if (!apple) return osm;
+  return {
+    name: osm.name ?? apple.name ?? apple.city,
+    city: apple.city ?? osm.city,
+  };
 }
 
 /** مكانٌ قريب: اسمه ونوعه وبُعده بالأمتار. */
