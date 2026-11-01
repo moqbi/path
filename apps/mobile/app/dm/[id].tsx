@@ -1,4 +1,5 @@
 import { Spinner } from "../../components/spinner";
+import { chatRefused } from "../../lib/dm-closed";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ReportButton, ReportSheet } from "../../components/report-sheet";
 import { SwipeRow } from "../../components/swipe-row";
@@ -248,7 +249,9 @@ export default function Conversation() {
     mutationFn: (input: Record<string, unknown>) =>
       api(`/v1/dm/${id}/messages`, { method: "POST", body: JSON.stringify(input) }),
     onSuccess: refresh,
-    onError: (problem: Error) => setError(problem.message),
+    // «مقفل الخاص» (القاعدة ٣٨٥) سطرٌ زجاجيّ في أعلى الشاشة، وغيرُه تحت الحقل.
+    onError: (problem: Error) =>
+      problem.message.includes("مقفل الخاص") ? chatRefused(problem) : setError(problem.message),
   });
 
   const edit = useMutation({
@@ -448,36 +451,13 @@ export default function Conversation() {
             // بالسحب لا بالضغطة في نسخة التطوير (القاعدة ٣٦٧)، فالضغطةُ لا تكشف شيئاً.
             const toggle = DEV_FEATURES ? undefined : () => setShown((v) => (v === item.id ? null : item.id));
 
-            const line = (
-              <ChatLine
-                person={person ?? { name: "", avatarMediaId: null }}
-                mine={mine}
-                at={item.createdAt}
-                head={needsHead(item, lines[index - 1])}
-                meta={
-                  <>
-                    {item.editedAt ? <Text style={{ color: colors.groundFaint, fontSize: 10 }}>عُدّلت</Text> : null}
-                    {mine ? <Ticks state={receiptOf(item)} size={14} /> : null}
-                    {shown === item.id ? (
-                      mine ? (
-                        item.kind === "TEXT" && !item.sticker ? (
-                          <Pressable
-                            onPress={() => {
-                              setDraft(item.body);
-                              setEditing(item.id);
-                            }}
-                          >
-                            <Text style={{ color: colors.clayInk, fontSize: 11.5, fontWeight: "600" }}>تعديل</Text>
-                          </Pressable>
-                        ) : null
-                      ) : (
-                        <ReportButton target="MESSAGE" targetId={item.id} />
-                      )
-                    ) : null}
-                  </>
-                }
-              >
-                {open ? (
+            // ما يُسحب الفقاعةُ وحدها — **بقرار المالك**: كانت السحبةُ تُزيح السطرَ كلَّه بصورته واسمه،
+            // والأيقوناتُ تنكشف عند حافّة الشاشة خارج الفقاعة. الآن تنكشف داخل حدّها (`radius` ١٨)
+            // وما حولها ساكن (القاعدة ٣٨٦).
+            const swipe = DEV_FEATURES && !open;
+            const text = item.kind === "TEXT" && !item.sticker;
+            const content = (
+              open ? (
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "stretch" }}>
                     <TextInput
                       value={draft}
@@ -523,49 +503,85 @@ export default function Conversation() {
                     />
                     <LinkPreview text={item.body} style={{ marginTop: 10, marginBottom: 0 }} />
                   </Pressable>
+                )
+            );
+            const bubble = !swipe ? (
+              content
+            ) : (
+              <View style={text ? { alignSelf: "stretch" } : undefined}>
+                {mine ? (
+                  <SwipeRow
+                    width={56}
+                    radius={18}
+                    surface={item.sticker ? colors.groundSolid : "transparent"}
+                    confirmLabel="حذف الرسالة"
+                    onSwiping={setSwiping}
+                    lead={
+                      text
+                        ? {
+                            label: "تعديل الرسالة",
+                            run: () => {
+                              setDraft(item.body);
+                              setEditing(item.id);
+                            },
+                          }
+                        : undefined
+                    }
+                    icons={{
+                      delete: <TrashIcon size={20} color="#fff" />,
+                      lead: <PencilIcon size={20} color={colors.onBrand} />,
+                    }}
+                    onDelete={() => drop.mutateAsync(item.id).then(() => undefined)}
+                  >
+                    {content}
+                  </SwipeRow>
+                ) : (
+                  <SwipeRow
+                    width={56}
+                    radius={18}
+                    surface={item.sticker ? colors.groundSolid : "transparent"}
+                    confirmLabel="بلاغ عن الرسالة"
+                    onSwiping={setSwiping}
+                    icons={{ delete: <FlagIcon size={20} color="#fff" /> }}
+                    onDelete={() => setReporting(item.id)}
+                  >
+                    {content}
+                  </SwipeRow>
                 )}
-              </ChatLine>
+              </View>
             );
 
-            if (!DEV_FEATURES || open) return line;
-            /*
-              السحبُ يكشف أفعالَ الرسالة (القاعدة ٣٦٧): على رسالة غيري رايةُ البلاغ، وعلى رسالتي
-              قلمُ التعديل (للنصّ وحده) وسلّةُ الحذف. والسحبةُ ثمّ الضغطةُ خطوتان — وهما السؤال.
-            */
-            return mine ? (
-              <SwipeRow
-                width={64}
-                confirmLabel="حذف الرسالة"
-                onSwiping={setSwiping}
-                lead={
-                  item.kind === "TEXT" && !item.sticker
-                    ? {
-                        label: "تعديل الرسالة",
-                        run: () => {
-                          setDraft(item.body);
-                          setEditing(item.id);
-                        },
-                      }
-                    : undefined
+            return (
+              <ChatLine
+                person={person ?? { name: "", avatarMediaId: null }}
+                mine={mine}
+                at={item.createdAt}
+                head={needsHead(item, lines[index - 1])}
+                meta={
+                  <>
+                    {item.editedAt ? <Text style={{ color: colors.groundFaint, fontSize: 10 }}>عُدّلت</Text> : null}
+                    {mine ? <Ticks state={receiptOf(item)} size={14} /> : null}
+                    {shown === item.id ? (
+                      mine ? (
+                        item.kind === "TEXT" && !item.sticker ? (
+                          <Pressable
+                            onPress={() => {
+                              setDraft(item.body);
+                              setEditing(item.id);
+                            }}
+                          >
+                            <Text style={{ color: colors.clayInk, fontSize: 11.5, fontWeight: "600" }}>تعديل</Text>
+                          </Pressable>
+                        ) : null
+                      ) : (
+                        <ReportButton target="MESSAGE" targetId={item.id} />
+                      )
+                    ) : null}
+                  </>
                 }
-                icons={{
-                  delete: <TrashIcon size={21} color="#fff" />,
-                  lead: <PencilIcon size={21} color={colors.onBrand} />,
-                }}
-                onDelete={() => drop.mutateAsync(item.id).then(() => undefined)}
               >
-                {line}
-              </SwipeRow>
-            ) : (
-              <SwipeRow
-                width={64}
-                confirmLabel="بلاغ عن الرسالة"
-                onSwiping={setSwiping}
-                icons={{ delete: <FlagIcon size={21} color="#fff" /> }}
-                onDelete={() => setReporting(item.id)}
-              >
-                {line}
-              </SwipeRow>
+                {bubble}
+              </ChatLine>
             );
           }}
         />

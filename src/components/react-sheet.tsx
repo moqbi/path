@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { Avatar } from "@/components/ui";
+import { insertMention, matchesName, mentionIds, mentionQuery, type MentionPerson } from "@/lib/mentions";
 import {
   addComment,
   deleteMoment,
@@ -39,7 +41,10 @@ export function ReactSheet({
   onLocked,
   onChoose,
   onClose,
+  people = [],
 }: {
+  /** من يُشار إليه بـ@ (القاعدة ٣٨٧): معلّقو اللحظة وصاحبُها. */
+  people?: MentionPerson[];
   momentId: string;
   momentKind?: string;
   mine: Mine;
@@ -52,6 +57,8 @@ export function ReactSheet({
   onClose: () => void;
 }) {
   const [body, setBody] = useState("");
+  const [picked, setPicked] = useState<MentionPerson[]>([]);
+  const query = people.length ? mentionQuery(body) : null;
   const [board, setBoard] = useState(false);
   const [stickers, setStickers] = useState(false);
   const stickersAllowed = useStickersAllowed();
@@ -80,6 +87,7 @@ export function ReactSheet({
     if (!text) return;
     const data = new FormData();
     data.set("body", text);
+    data.set("mentions", mentionIds(text, picked).join(","));
     setBody("");
     onClose();
     start(() => void addComment(momentId, data));
@@ -229,6 +237,39 @@ export function ReactSheet({
             أقفل صاحبُ اللحظة التعليقات
           </p>
         ) : (
+          <>
+          {query !== null ? (
+            // نافذةُ «@» فوق الحقل (القاعدة ٣٨٧).
+            <div className="mb-2 overflow-hidden rounded-[18px] border border-white/15 bg-[rgba(14,26,36,.6)] backdrop-blur-md">
+              <p className="px-3.5 pb-1 pt-2.5 text-[11.5px] text-white/60">أشِر إلى من علّق هنا</p>
+              {(() => {
+                const found = people.filter((person) => matchesName(person.name, query)).slice(0, 8);
+                return found.length ? (
+                  <ul className="max-h-[220px] list-none overflow-y-auto">
+                    {found.map((person) => (
+                      <li key={person.id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBody((text) => insertMention(text, person));
+                            setPicked((list) => (list.some((one) => one.id === person.id) ? list : [...list, person]));
+                          }}
+                          className="flex w-full items-center gap-2.5 px-3.5 py-2 text-start hover:bg-white/10"
+                        >
+                          <Avatar name={person.name} size={28} mediaId={person.avatarMediaId} />
+                          <span dir="auto" className="truncate text-[14px] font-semibold text-white">
+                            {person.name}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="px-3.5 pb-3 pt-1 text-[12.5px] text-white/50">لا أحد بهذا الاسم بين من علّق</p>
+                );
+              })()}
+            </div>
+          ) : null}
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -276,6 +317,7 @@ export function ReactSheet({
               إرسال
             </button>
           </form>
+          </>
         )}
 
         {stickers && stickersAllowed && !(locked && !author) ? (

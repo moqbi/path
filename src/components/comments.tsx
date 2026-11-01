@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { mentionPeople, splitMentions, type MentionPerson } from "@/lib/mentions";
 import { Avatar, NameTag } from "@/components/ui";
 import { relative } from "@/lib/format";
 import { BASE } from "@/lib/base";
@@ -20,6 +21,8 @@ export type CommentShape = {
   sticker?: { mediaId: string } | null;
   /** عدّله كاتبُه (القاعدة ٣١٩). */
   editedAt?: Date | null;
+  /** من أُشير إليه بـ@ (القاعدة ٣٨٧). */
+  mentionIds?: string[];
   user: {
     id: string;
     name: string;
@@ -38,7 +41,10 @@ export function CommentList({
   momentAuthorId,
   moderate = false,
   trial = false,
+  people,
 }: {
+  /** من قد يُشار إليه — «@اسمُه» رابطٌ إلى ملفّه (القاعدة ٣٨٧). وبلاه معلّقو القائمة. */
+  people?: MentionPerson[];
   /** تعديلُ التعليق بالسحب (القاعدة ٣١٩) — للمشرفين يجرّبونه أوّلاً (`canTryStickers`). */
   trial?: boolean;
   comments: CommentShape[];
@@ -50,6 +56,7 @@ export function CommentList({
   moderate?: boolean;
 }) {
   if (comments.length === 0) return null;
+  const named = people ?? mentionPeople({ author: comments[0].user, comments }, null);
 
   return (
     <ul className="flex list-none flex-col gap-2">
@@ -94,7 +101,24 @@ export function CommentList({
               ) : (
                 <>
                   <p dir="auto" className="select-text break-words text-[12.5px] leading-relaxed text-ink-2">
-                    {comment.body}
+                    {comment.mentionIds?.length
+                      ? splitMentions(
+                          comment.body,
+                          named.filter((person) => comment.mentionIds?.includes(person.id)),
+                        ).map((part, index) =>
+                          part.person ? (
+                            <Link
+                              key={index}
+                              href={part.person.id === viewerId ? "/me" : `/u/${part.person.id}`}
+                              className="font-bold text-clay-ink"
+                            >
+                              {part.text}
+                            </Link>
+                          ) : (
+                            <span key={index}>{part.text}</span>
+                          ),
+                        )
+                      : comment.body}
                   </p>
                   <LinkPreview text={comment.body} className="mt-1.5" />
                 </>

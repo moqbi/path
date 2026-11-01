@@ -177,7 +177,8 @@ export function Composer({
               const said = await sendGroupMessage(groupId, data);
               if (said.error) return setError(said.error);
             } else {
-              await sendMessage(conversationId, data);
+              const said = await sendMessage(conversationId, data);
+              if (said.error) return setError(said.error);
             }
             setBody("");
             if (textRef.current) textRef.current.style.height = "";
@@ -281,7 +282,8 @@ export function Composer({
               setStickers(false);
               start(async () => {
                 try {
-                  await sendMessage(conversationId, data);
+                  const said = await sendMessage(conversationId, data);
+                  if (said.error) return setError(said.error);
                   setError(null);
                   onSent?.();
                 } catch (problem) {

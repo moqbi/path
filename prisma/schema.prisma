@@ -232,6 +232,10 @@ model User {
   /// وضعُ التخفّي لمشتركي آثار+: لا يُرى «متصل» ولا «آخر ظهور».
   /// يسري ما دام الاشتراكُ قائماً — يُقرأ مع `isPlus` لا وحده.
   hideOnline      Boolean @default(false)
+  /// من يراسلني على الخاص (القاعدة ٣٨٥): مطفأٌ = لا أحد، ومفتوحٌ = الدائرة كلّها أو تصنيفٌ
+  /// بعينه (`dmGroupId`). نصٌّ لا علاقة: تصنيفٌ حُذف لا يفتح الخاصّ للجميع بحذفه.
+  dmOpen          Boolean @default(true)
+  dmGroupId       String?
   /// الجنس ليخاطبه «سنتك في كتاب» بصيغته (القاعدة ٢٦٠) — اختياريٌّ يُختار في «تعديل
   /// الملف»، وفارغُه مذكّرٌ كما كان قبله، و`UNSPECIFIED` صيغةٌ محايدة. لا يُعرض لأحد.
   gender          Gender?
@@ -732,6 +736,8 @@ model Comment {
   createdAt DateTime  @default(now())
   /// تعديلُ كاتبه (القاعدة ٣١٩).
   editedAt  DateTime?
+  /// من أُشير إليه بـ@ (القاعدة ٣٨٧): معلّقو اللحظة وصاحبُها وحدهم، ويُفحصون عند الكتابة.
+  mentionIds String[] @default([])
 
   moment Moment @relation(fields: [momentId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)

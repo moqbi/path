@@ -1,4 +1,5 @@
 import { PulseRing } from "./pulse-ring";
+import { mentionPeople } from "../lib/mentions";
 import { View, Pressable, Image } from "react-native";
 import { Text } from "./type";
 import { useRouter } from "expo-router";
@@ -461,6 +462,7 @@ export function MomentCard({
             author={moment.author.id === viewerId}
             moderate={moderate && moment.author.id !== viewerId}
           locked={moment.commentsLocked ?? false}
+          people={mentionPeople(moment, viewerId)}
             head={line}
             extra={
               <>
@@ -647,6 +649,7 @@ export function MomentCard({
           author={moment.author.id === viewerId}
           moderate={moderate && moment.author.id !== viewerId}
           locked={moment.commentsLocked ?? false}
+          people={mentionPeople(moment, viewerId)}
           inset
           media={media}
           extra={head}
@@ -669,7 +672,13 @@ export function MomentCard({
               ) : null}
               {moment.comments.length > 0 ? (
                 <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 10 }}>
-                  <CommentList comments={moment.comments} viewerId={viewerId} moderate={moderate} />
+                  <CommentList
+                    comments={moment.comments}
+                    viewerId={viewerId}
+                    moderate={moderate}
+                    ownerId={moment.author.id}
+                    people={mentionPeople(moment, null)}
+                  />
                   {moment._count.comments > moment.comments.length ? (
                     <Pressable onPress={open} style={{ marginTop: 8 }}>
                       <Text style={{ color: colors.clayInk, fontSize: 12, fontWeight: "600" }}>

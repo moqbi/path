@@ -457,3 +457,17 @@ export const DownloadIcon = ({ size = 20, className }: IconProps) => (
     <path d="M4.5 16.5v2a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-2" />
   </svg>
 );
+
+
+/** حذفٌ بصلاحية الإشراف (القاعدة ٣٨٦): سلّةٌ ودرعٌ صغير في ركنها — نسخةُ الجوّال حرفاً بحرف. */
+export const ModDeleteIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M3 6.5h12" />
+    <path d="M7 6.5V4.5h4v2" />
+    <path d="M4.8 6.5l.9 12.5h6.6" />
+    <path d="M13.2 6.5l-.5 5" />
+    <path d="M8 10.5v5.5" />
+    <path d="M18 12.5l3.5 1.4v2.8c0 2.3-1.5 3.8-3.5 4.4-2-.6-3.5-2.1-3.5-4.4v-2.8z" />
+    <path d="M16.6 16.9l1 1 1.9-2" />
+  </svg>
+);

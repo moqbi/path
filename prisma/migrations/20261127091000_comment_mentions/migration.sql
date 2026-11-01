@@ -1,0 +1,1 @@
+ALTER TABLE "Comment" ADD COLUMN "mentionIds" TEXT[] DEFAULT ARRAY[]::TEXT[];

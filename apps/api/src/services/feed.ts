@@ -74,6 +74,8 @@ const shape = {
       sticker: { select: { mediaId: true } },
       createdAt: true,
       editedAt: true,
+      // من أُشير إليه (القاعدة ٣٨٧) — الشاشةُ ترسم «@الاسم» رابطاً إلى ملفّه.
+      mentionIds: true,
       user: {
         select: {
           id: true,

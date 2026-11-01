@@ -22,6 +22,8 @@ import { togetherMoments } from "@/lib/together";
 import { Avatar, CoverLayer, Empty, ScreenHeader, NameTag } from "@/components/ui";
 import { AvatarMenu } from "@/components/avatar-menu";
 import { TabBar } from "@/components/tab-bar";
+import { DmClosedNotice } from "@/components/dm-closed-notice";
+import { dmClosedReason } from "@/lib/dm-privacy";
 import {
   CheckIcon,
   CloseIcon,
@@ -49,10 +51,10 @@ export default async function FriendProfilePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; dm?: string }>;
 }) {
   const { id } = await params;
-  const { tab: tabParam } = await searchParams;
+  const { tab: tabParam, dm: dmParam } = await searchParams;
 
   const viewer = await currentUser();
   if (!viewer) redirect("/login");
@@ -178,6 +180,8 @@ export default async function FriendProfilePage({
     if (last && last.label === label) last.items.push(moment);
     else days.push({ label, items: [moment] });
   }
+  // «مقفل الخاص» (القاعدة ٣٨٥): رجع إلى هنا من زرّ المحادثة.
+  const dmNotice = dmParam === "closed" ? await dmClosedReason(viewer.id, id) : null;
 
   return (
     <div className="screen">
@@ -327,6 +331,7 @@ export default async function FriendProfilePage({
         </div>
       </div>
 
+      {dmNotice ? <DmClosedNotice text={dmNotice} /> : null}
       {/* الشريط السفلي يبقى: التبويب يؤدّي غرض الرجوع، فلا زرّ رجوع فوقه. */}
       <TabBar active="/circle" />
     </div>

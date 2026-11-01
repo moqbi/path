@@ -7,6 +7,7 @@ import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ScreenHeader } from "../../components/screen-header";
+import Svg, { Path } from "react-native-svg";
 import { BookIcon, CheckIcon, InfoIcon, ShieldIcon, SparkIcon } from "../../components/icons";
 import { Sheet } from "../../components/sheet";
 import { openIn } from "../../lib/browse";
@@ -52,6 +53,9 @@ export default function Settings() {
   const [place, setPlace] = useState(me?.shareLocation !== false);
   // وضعُ التخفّي — مطفأٌ افتراضاً، ولمشتركي آثار+ وحدهم (القاعدة ٢٥١).
   const [hidden, setHidden] = useState(Boolean(me?.hideOnline && me?.isPlus));
+  // من يراسلني (القاعدة ٣٨٥): مطفأً لا أحد، ومفتوحاً الدائرةُ كلّها أو تصنيف.
+  const [dmOpen, setDmOpen] = useState(me?.dmOpen !== false);
+  const [dmGroup, setDmGroup] = useState<string | null>(me?.dmGroupId ?? null);
   const [said, setSaid] = useState<string | null>(null);
   const [name, setName] = useState("");
 
@@ -66,6 +70,8 @@ export default function Settings() {
           interactGroupId: interact,
           shareLocation: place,
           hideOnline: hidden,
+          dmOpen,
+          dmGroupId: dmOpen ? dmGroup : null,
           // وإشعارُ الإشارة يُحفظ من «التنبيهات»، فلا يُرسل من هنا.
         }),
       }),
@@ -138,6 +144,21 @@ export default function Settings() {
             note="التفاعل والتعليق على لحظاتك. الخادم يفحصه، لا إخفاء الأزرار."
           >
             <Choices groups={groups} value={interact} onPick={setInteract} />
+          </Card>
+
+          <Card
+            title="من يمكنه مراسلتي على الخاص؟"
+            note="مطفأً لا يصلك أحدٌ على الخاص، ومن يحاول يُقال له إنّ خاصّك مقفل."
+          >
+            <View style={{ marginHorizontal: -16, marginTop: -8 }}>
+              <Toggle
+                title="استقبال الرسائل الخاصة"
+                note={dmOpen ? "مفتوحٌ لمن تختار تحت" : "لا أحد يراسلك على الخاص"}
+                value={dmOpen}
+                onChange={setDmOpen}
+              />
+            </View>
+            {dmOpen ? <Choices groups={groups} value={dmGroup} onPick={setDmGroup} /> : null}
           </Card>
 
           <View style={{ borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, overflow: "hidden", marginBottom: 12 }}>
@@ -342,10 +363,41 @@ function Choices({
   value: string | null;
   onPick: (id: string | null) => void;
 }) {
+  // مطويّةٌ على ما اختير — **بقرار المالك**: التصنيفاتُ كلُّها تحت كلّ سؤالٍ كانت جداراً،
+  // والضغطةُ تفتحها، والاختيارُ يطويها.
+  const [open, setOpen] = useState(false);
   const rows: { id: string | null; label: string }[] = [
     { id: null, label: "كل أصدقائي" },
     ...groups.map((group) => ({ id: group.id, label: `${group.name} (${ar(group.count)})` })),
   ];
+  const current = rows.find((row) => row.id === value) ?? rows[0];
+
+  if (!open) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${current.label} — غيّر`}
+        onPress={() => setOpen(true)}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 10,
+          height: 44,
+          paddingHorizontal: 14,
+          borderRadius: 12,
+          borderWidth: 1.5,
+          borderColor: colors.clay,
+          backgroundColor: colors.paper,
+        }}
+      >
+        <Text style={{ flex: 1, color: colors.ink, fontSize: 13, fontWeight: "600" }}>{current.label}</Text>
+        <Text style={{ color: colors.clayInk, fontSize: 12, fontWeight: "700" }}>غيّر</Text>
+        <Svg width={12} height={12} viewBox="0 0 24 24">
+          <Path d="M6 9l6 6 6-6" stroke={colors.clayInk} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        </Svg>
+      </Pressable>
+    );
+  }
 
   return (
     <View style={{ gap: 6 }}>
@@ -354,7 +406,10 @@ function Choices({
         return (
           <Pressable
             key={row.id ?? "all"}
-            onPress={() => onPick(row.id)}
+            onPress={() => {
+              onPick(row.id);
+              setOpen(false);
+            }}
             style={{
               flexDirection: "row",
               alignItems: "center",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import type { MentionPerson } from "@/lib/mentions";
 import { markSeenMany, react } from "@/app/actions";
 import { LockIcon } from "@/components/icons";
 import { ReactionGlyph } from "@/components/reactions";
@@ -26,7 +27,10 @@ export function MomentBar({
   media,
   footer,
   locked = false,
+  people,
 }: {
+  /** من يُشار إليه بـ@ في التعليق (القاعدة ٣٨٧). */
+  people?: MentionPerson[];
   momentId: string;
   /** نوع اللحظة: منه يُعرف هل يُعرض وجه النوم. */
   momentKind?: string;
@@ -215,6 +219,7 @@ export function MomentBar({
           author={author}
           moderate={moderate}
           locked={isLocked}
+          people={people}
           onLocked={setLocked}
           onChoose={choose}
           onClose={() => setOpen(false)}

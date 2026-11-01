@@ -1,4 +1,6 @@
 import { Spinner } from "../../components/spinner";
+import { MentionPicker } from "../../components/mention-picker";
+import { insertMention, mentionIds, mentionPeople, mentionQuery, type MentionPerson } from "../../lib/mentions";
 import { useEffect, useState } from "react";
 import { scrolled } from "../../lib/scrolled";
 import { markSeen } from "../../lib/seen";
@@ -33,6 +35,8 @@ export default function MomentPage() {
   const comment = useComment(id);
   const [body, setBody] = useState("");
   const [stickers, setStickers] = useState(false);
+  // الإشارةُ بـ@ (القاعدة ٣٨٧).
+  const [picked, setPicked] = useState<MentionPerson[]>([]);
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboardInset();
 
@@ -48,6 +52,16 @@ export default function MomentPage() {
   }
 
   const data = moment.data?.moment;
+  const people = data && me ? mentionPeople(data, me.id) : [];
+  const query = people.length ? mentionQuery(body) : null;
+  function sendComment() {
+    const text = body.trim();
+    if (!text) return;
+    const mentions = mentionIds(text, picked);
+    comment.mutate(mentions.length ? { body: text, mentions } : text);
+    setBody("");
+    setPicked([]);
+  }
   if (!data) {
     return (
       <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
@@ -124,6 +138,19 @@ export default function MomentPage() {
             backgroundColor: colors.groundSolid,
           }}
         >
+          {query !== null ? (
+            <View style={{ marginBottom: 8 }}>
+              <MentionPicker
+                tone="light"
+                people={people}
+                query={query}
+                onPick={(person) => {
+                  setBody((text) => insertMention(text, person));
+                  setPicked((list) => (list.some((one) => one.id === person.id) ? list : [...list, person]));
+                }}
+              />
+            </View>
+          ) : null}
           {DEV_FEATURES ? (
             /*
               شريطٌ واحد كسطر المحادثة (القاعدة ٢٩٥): الحقلُ والملصقاتُ في طرفه والإرسالُ قرصٌ
@@ -166,8 +193,7 @@ export default function MomentPage() {
                 accessibilityLabel="أرسل"
                 disabled={!body.trim() || comment.isPending}
                 onPress={() => {
-                  comment.mutate(body.trim());
-                  setBody("");
+                  sendComment();
                 }}
                 style={{
                   width: 34,
@@ -229,8 +255,7 @@ export default function MomentPage() {
           <Pressable
             disabled={!body.trim() || comment.isPending}
             onPress={() => {
-              comment.mutate(body.trim());
-              setBody("");
+              sendComment();
             }}
             style={{
               height: 46,

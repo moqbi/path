@@ -79,7 +79,10 @@ async function attachTags(momentId: string, authorId: string, userIds: string[])
 
   // والإشارة تصل صاحبَها تنبيهاً: هي الخبرُ الذي لا يراه في خطّه
   // (اللحظة تبقى في صفحة كاتبها وحده).
-  const who = await prisma.user.findUnique({ where: { id: authorId }, select: { name: true } });
+  const [who, photo] = await Promise.all([
+    prisma.user.findUnique({ where: { id: authorId }, select: { name: true } }),
+    prisma.moment.findUnique({ where: { id: momentId }, select: { mediaId: true } }),
+  ]);
   for (const row of data) {
     void push({
       userId: row.userId,
@@ -87,6 +90,7 @@ async function attachTags(momentId: string, authorId: string, userIds: string[])
       title: "إشارة جديدة",
       body: `${who?.name ?? "صديقك"} أشار إليك في لحظته`,
       path: `/m/${momentId}`,
+      image: photo?.mediaId,
     });
   }
 }
@@ -419,7 +423,7 @@ async function assertCanInteract(userId: string, momentId: string) {
 
   const moment = await prisma.moment.findUnique({
     where: { id: momentId },
-    select: { authorId: true, kind: true, commentsLocked: true },
+    select: { authorId: true, kind: true, commentsLocked: true, mediaId: true },
   });
   if (!moment) throw notFound("اللحظة غير موجودة");
   if (!reach && !(await canInteract(userId, moment.authorId))) {
@@ -480,6 +484,7 @@ export async function react(
       title: "تفاعل جديد على لحظتك",
       body: `${who?.name ?? "صديقك"} تفاعل مع لحظتك`,
       path: `/m/${momentId}`,
+      image: moment.mediaId,
     });
   }
 
@@ -548,7 +553,28 @@ export async function votePoll(userId: string, momentId: string, choice: number)
 }
 
 /** تعليق. */
-export async function addComment(userId: string, momentId: string, body: string, stickerId?: string) {
+/**
+ * من يُشار إليه في تعليق (القاعدة ٣٨٧): معلّقو اللحظة وصاحبُها وحدهم — النافذةُ لا تعرض
+ * غيرهم، والطلبُ يُرسَل بيد — ولا نفسُك، ولمن يرى اللحظة: إشارةٌ إلى من لا يراها تخبره
+ * بما لم يُكتب له. والاسمُ مكتوبٌ في النصّ بعد «@»، فما مُحي منه لا يُشار إليه.
+ */
+async function mentionTargets(userId: string, momentId: string, authorId: string, body: string, wanted: string[]) {
+  if (!wanted.length) return [];
+  const commenters = await prisma.comment.findMany({
+    where: { momentId, userId: { in: wanted } },
+    select: { userId: true },
+    distinct: ["userId"],
+  });
+  const allowed = new Set([authorId, ...commenters.map((row) => row.userId)]);
+  const ids = [...new Set(wanted)].filter((id) => id !== userId && allowed.has(id));
+  if (!ids.length) return [];
+  const people = await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } });
+  const named = people.filter((person) => body.includes(`@${person.name}`));
+  const seen = await Promise.all(named.map((person) => canSeeMoment(person.id, momentId)));
+  return named.filter((_, index) => seen[index]).map((person) => person.id);
+}
+
+export async function addComment(userId: string, momentId: string, body: string, stickerId?: string, mentions: string[] = []) {
   // الملصقُ يحلّ محلّ النصّ، و«ملصق» نصُّه لما لا يرسمه (القاعدة ٢٩١).
   // اللحظةُ أوّلاً: من لا يراها يُقال له «غير موجودة» قبل أيّ سؤالٍ عن الملصق.
   const moment = await assertCanInteract(userId, momentId);
@@ -560,8 +586,10 @@ export async function addComment(userId: string, momentId: string, body: string,
   if (sticker) body = STICKER_TEXT;
   await guard(body);
 
+  const text = body.trim().slice(0, 500);
+  const mentionIds = sticker ? [] : await mentionTargets(userId, momentId, moment.authorId, text, mentions);
   const comment = await prisma.comment.create({
-    data: { momentId, userId, body: body.trim().slice(0, 500), stickerId: sticker },
+    data: { momentId, userId, body: text, stickerId: sticker, mentionIds },
     select: {
       id: true,
       body: true,
@@ -589,10 +617,24 @@ export async function addComment(userId: string, momentId: string, body: string,
       title: `تعليق جديد على لحظتك من ${comment.user.name}`,
       body: comment.body.slice(0, 120),
       path: `/m/${momentId}`,
+      // الملصقُ صورتُه، وإلّا صورةُ اللحظة (القاعدة ٣٨٨).
+      image: comment.sticker?.mediaId ?? moment.mediaId,
+    });
+  }
+  // ومن أُشير إليه يصله تنبيهٌ بالتعليق — وصاحبُ اللحظة وصله تنبيهُ التعليق أعلاه فلا يُقرع مرّتين.
+  for (const id of mentionIds) {
+    if (id === moment.authorId) continue;
+    void push({
+      userId: id,
+      kind: "TAG",
+      title: `${comment.user.name} أشار إليك في تعليق`,
+      body: comment.body.slice(0, 120),
+      path: `/m/${momentId}`,
+      image: comment.sticker?.mediaId ?? moment.mediaId,
     });
   }
 
-  return comment;
+  return { ...comment, mentionIds };
 }
 
 /**

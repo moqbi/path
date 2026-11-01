@@ -141,6 +141,7 @@ export const momentRoutes = new Hono()
             c.req.valid("param").id,
             c.req.valid("json").body,
             c.req.valid("json").stickerId,
+            c.req.valid("json").mentions,
           ),
         },
         201,

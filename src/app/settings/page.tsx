@@ -40,6 +40,8 @@ export default async function SettingsPage() {
         interactGroupId: true,
         shareLocation: true,
         hideOnline: true,
+        dmOpen: true,
+        dmGroupId: true,
         notifyOnTag: true,
         notifyDm: true,
         notifyFriend: true,
@@ -165,6 +167,30 @@ export default async function SettingsPage() {
                     {group.name} ({ar(group._count.members)})
                   </option>
                 ))}
+              </select>
+            </div>
+
+            {/* من يراسلني على الخاص (القاعدة ٣٨٥). */}
+            <div className="rounded-2xl border border-line bg-card p-4">
+              <label className="mb-1.5 block text-[13.5px] font-semibold" htmlFor="dmChoice">
+                من يمكنه مراسلتي على الخاص؟
+              </label>
+              <p className="mb-2.5 text-[11.5px] leading-relaxed text-muted">
+                «لا أحد» يقفل خاصّك، ومن يحاول يُقال له إنّه مقفل.
+              </p>
+              <select
+                id="dmChoice"
+                name="dmChoice"
+                defaultValue={settings?.dmOpen === false ? "off" : settings?.dmGroupId ?? ""}
+                className={select}
+              >
+                <option value="">كل أصدقائي</option>
+                {groups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name} ({ar(group._count.members)})
+                  </option>
+                ))}
+                <option value="off">لا أحد — الخاص مقفل</option>
               </select>
             </div>
 

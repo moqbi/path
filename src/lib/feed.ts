@@ -64,6 +64,8 @@ export const momentShape = {
       // ملصقُ التعليق (القاعدة ٢٩١).
       sticker: { select: { mediaId: true } },
       editedAt: true,
+      // من أُشير إليه (القاعدة ٣٨٧).
+      mentionIds: true,
       createdAt: true,
       user: {
         select: {
