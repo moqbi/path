@@ -66,6 +66,10 @@ export const momentInput = z.object({
   lat: z.coerce.number().min(-90).max(90).optional(),
   lng: z.coerce.number().min(-180).max(180).optional(),
   place: z.string().trim().max(80).optional(),
+  /* موضعُ الجهاز لـ«خريطتي» وحدها (القاعدة ٣٨١): لا مكانَ ولا مدينة، ولا يراه أحد. */
+  here: z
+    .object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) })
+    .optional(),
   /* لحظة الأغنية: رابطٌ يُلصق من يوتيوب أو ساوندكلاود أو سبوتيفاي. */
   musicUrl: z.string().trim().url().max(500).optional(),
   /* استطلاعٌ على خاطرة — للمشرف وحده (القاعدة ٢٨٩): السؤالُ في `text`. */

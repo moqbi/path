@@ -352,7 +352,13 @@ function headline(moment: {
  * اسمُ مكانٍ بلا موضع: يُعدّ في الأرقام ولا يُرسم على الخريطة — والشاشةُ تقول كم.
  * وبحدّ الأرشيف نفسه (`since`): آثار+ «أرشيفٌ بلا نهاية».
  */
-const MAP_KINDS = ["PHOTO", "PLACE", "THOUGHT", "MUSIC", "CITY"] as const;
+const MAP_KINDS = ["PHOTO", "PLACE", "THOUGHT", "MUSIC", "SLEEP", "WAKE", "CITY"] as const;
+
+/** «الرياض، السعودية» ← مدينةٌ ودولة — وما بلا فاصلةٍ داخل المملكة (القاعدة ٢٨٦). */
+function cityCountry(text: string | null): { city: string | null; country: string } {
+  const [city, country] = (text ?? "").split("،").map((part) => part.trim());
+  return { city: city || null, country: country || "السعودية" };
+}
 
 type MapStats = {
   places: number;
@@ -379,28 +385,58 @@ export async function map(userId: string) {
       placeCity: true,
       lat: true,
       lng: true,
+      ownLat: true,
+      ownLng: true,
       mediaId: true,
       createdAt: true,
     },
     orderBy: { createdAt: "desc" },
     take: 4000,
   });
+  /*
+    مدينةُ كلّ نقطةٍ ودولتُها من آخر وصولٍ قبلها (القاعدة ٣٨١): خطوطُ الأثر لكلّ دولةٍ
+    ولكلّ مدينةٍ وحدها، ولحظةٌ بلا مكانٍ لا تحمل مدينة. والوصولُ كلُّه لا ما بعد حدّ
+    الأرشيف — سفرةٌ قبل الحدّ تقول أين كانت أولى لحظاته بعده.
+  */
+  const arrivals = (
+    await prisma.moment.findMany({
+      where: { authorId: userId, kind: "CITY" },
+      select: { text: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+      take: 2000,
+    })
+  ).map((row) => ({ at: row.createdAt.getTime(), ...cityCountry(row.text) }));
+  const whereAt = (at: Date) => {
+    let found: (typeof arrivals)[number] | null = null;
+    for (const arrival of arrivals) {
+      // الوصولُ يُكتب بعد اللحظة التي كشفته بلحظات (`markCity` بعد الإنشاء).
+      if (arrival.at > at.getTime() + 120_000) break;
+      found = arrival;
+    }
+    return found;
+  };
+  const latOf = (row: (typeof rows)[number]) => row.ownLat ?? row.lat;
+  const lngOf = (row: (typeof rows)[number]) => row.ownLng ?? row.lng;
 
   const yearOf = (at: Date) => riyadhDay(at).y;
   const points = rows
-    .filter((row) => row.kind !== "CITY" && row.lat != null && row.lng != null)
-    .map((row) => ({
-      id: row.id,
-      kind: row.kind,
-      text: row.text,
-      placeName: row.placeName,
-      placeCity: row.placeCity,
-      lat: row.lat as number,
-      lng: row.lng as number,
-      mediaId: row.mediaId,
-      at: row.createdAt.toISOString(),
-      year: yearOf(row.createdAt),
-    }));
+    .filter((row) => row.kind !== "CITY" && latOf(row) != null && lngOf(row) != null)
+    .map((row) => {
+      const arrived = whereAt(row.createdAt);
+      return {
+        id: row.id,
+        kind: row.kind,
+        text: row.text,
+        placeName: row.placeName,
+        placeCity: row.placeCity ?? arrived?.city ?? null,
+        country: arrived?.country ?? "السعودية",
+        lat: latOf(row) as number,
+        lng: lngOf(row) as number,
+        mediaId: row.mediaId,
+        at: row.createdAt.toISOString(),
+        year: yearOf(row.createdAt),
+      };
+    });
 
   // الأرقامُ لكلّ سنةٍ وللكلّ — من كلّ لحظةٍ فيها مكانٌ أو مدينة، بنقطةٍ أو بلا نقطة.
   const statsOf = (year: number | null): MapStats => {
@@ -411,14 +447,14 @@ export async function map(userId: string) {
     let unplaced = 0;
     for (const row of mine) {
       if (row.kind === "CITY") {
-        const [city, country] = (row.text ?? "").split("،").map((part) => part.trim());
+        const { city, country } = cityCountry(row.text);
         if (city) cities.add(city);
-        countries.add(country || "السعودية");
+        countries.add(country);
         continue;
       }
       if (row.placeName) places.set(row.placeName, (places.get(row.placeName) ?? 0) + 1);
       if (row.placeCity) cities.add(row.placeCity);
-      if (row.placeName && (row.lat == null || row.lng == null)) unplaced += 1;
+      if (row.placeName && (latOf(row) == null || lngOf(row) == null)) unplaced += 1;
     }
     if (cities.size && !countries.size) countries.add("السعودية");
     const best = [...places].sort((a, b) => b[1] - a[1])[0];

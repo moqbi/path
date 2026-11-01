@@ -24,6 +24,8 @@ type Point = {
   text: string | null;
   placeName: string | null;
   placeCity: string | null;
+  /** دولتُها من آخر وصولٍ قبلها — خادمٌ قبل القاعدة ٣٨١ لا يرسلها. */
+  country?: string;
   lat: number;
   lng: number;
   mediaId: string | null;
@@ -46,6 +48,18 @@ type Pin = { key: string; lat: number; lng: number; label: string; points: Point
 
 /** ما فوق هذا من عرض الخريطة (بالدرجات) يُجمع مدناً، وما دونه أماكن. */
 const CITY_ZOOM = 0.6;
+
+/**
+ * خطوطُ الأثر خاناتٌ ثابتةُ العدد تُركَّب مع الخريطة ولا تُنزع (القاعدة ٣٨١): تركيبُ
+ * `Polyline` ونزعُها في الطبقة القديمة داخل Fabric أسقطا التطبيقَ عند «أثري». فالخانةُ
+ * الفارغة نقطتان متطابقتان بلا لون، وما زاد عن العدد يُترك أقصرُه.
+ */
+const TRAIL_SLOTS = 24;
+type Coord = { latitude: number; longitude: number };
+const NOWHERE: Coord[] = [
+  { latitude: 0, longitude: 0 },
+  { latitude: 0, longitude: 0 },
+];
 
 // ألوانُ الخريطة ثابتةٌ لا تتبع الثيم (القاعدة ٣٧٨): أرضٌ داكنةٌ هادئة وكهرمانُ آثار عليها.
 const AMBER = "#F6B93B";
@@ -106,20 +120,34 @@ export default function MyMap() {
     return [...groups.values()];
   }, [points, far]);
 
-  // الأثرُ بترتيب الزيارة: كلُّ لحظةٍ تُلحق علامتَها إن لم تكن آخرَ ما في الخطّ.
-  const path = useMemo(() => {
+  /*
+    الأثرُ بترتيب الزيارة، **ولكلّ دولةٍ أو مدينةٍ خطوطُها** (القاعدة ٣٨١): من بعيدٍ تصل
+    مدنَ الدولة الواحدة، ومن قريبٍ أماكنَ المدينة الواحدة — لا خطٌّ واحد يعبر من حيٍّ
+    في الرياض إلى دبي.
+  */
+  const lines = useMemo(() => {
     const byPoint = new Map<string, Pin>();
     for (const pin of pins) for (const point of pin.points) byPoint.set(point.id, pin);
-    const line: { latitude: number; longitude: number }[] = [];
-    let last: string | null = null;
+    const groups = new Map<string, { coords: Coord[]; last: string | null }>();
     for (const point of points) {
       const pin = byPoint.get(point.id);
-      if (!pin || pin.key === last) continue;
-      last = pin.key;
-      line.push({ latitude: pin.lat, longitude: pin.lng });
+      if (!pin) continue;
+      const area = far
+        ? point.country ?? "السعودية"
+        : point.placeCity ?? `${point.lat.toFixed(1)},${point.lng.toFixed(1)}`;
+      const group = groups.get(area) ?? { coords: [], last: null };
+      if (group.last !== pin.key) {
+        group.coords.push({ latitude: pin.lat, longitude: pin.lng });
+        group.last = pin.key;
+      }
+      groups.set(area, group);
     }
-    return line;
-  }, [pins, points]);
+    return [...groups.values()]
+      .map((group) => group.coords)
+      .filter((coords) => coords.length > 1)
+      .sort((a, b) => b.length - a.length)
+      .slice(0, TRAIL_SLOTS);
+  }, [pins, points, far]);
 
   const fitAll = (animated = true) => {
     if (!points.length) return;
@@ -178,12 +206,27 @@ export default function MyMap() {
           rotateEnabled={false}
           toolbarEnabled={false}
         >
-          {trail && path.length > 1 ? (
-            <>
-              <Polyline coordinates={path} geodesic strokeWidth={6} strokeColor="rgba(246,185,59,0.18)" />
-              <Polyline coordinates={path} geodesic strokeWidth={2} strokeColor={AMBER} lineDashPattern={[2, 7]} lineCap="round" />
-            </>
-          ) : null}
+          {Array.from({ length: TRAIL_SLOTS }, (_, slot) => {
+            const line = trail ? lines[slot] : undefined;
+            return [
+              <Polyline
+                key={`glow-${slot}`}
+                coordinates={line ?? NOWHERE}
+                geodesic
+                strokeWidth={line ? 6 : 0}
+                strokeColor={line ? "rgba(246,185,59,0.18)" : "transparent"}
+              />,
+              <Polyline
+                key={`dash-${slot}`}
+                coordinates={line ?? NOWHERE}
+                geodesic
+                strokeWidth={line ? 2 : 0}
+                strokeColor={line ? AMBER : "transparent"}
+                lineDashPattern={[2, 7]}
+                lineCap="round"
+              />,
+            ];
+          })}
           {pins.map((pin) => (
             <Marker
               key={pin.key}
@@ -276,7 +319,7 @@ export default function MyMap() {
                 خريطتك تنتظر أوّل أثر
               </Text>
               <Text style={{ color: SOFT, fontSize: 12.5, lineHeight: 20, textAlign: "center" }}>
-                لحظةُ المكان والصورة تظهر هنا حين تنشرها و«إظهار موقعي» مفتوح في الخصوصية.
+                كلُّ لحظةٍ تنشرها تظهر هنا في مكانها ما دام إذنُ الموقع مسموحاً للتطبيق — لك وحدك.
               </Text>
             </View>
           </Glass>

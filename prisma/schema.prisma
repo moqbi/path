@@ -582,6 +582,10 @@ model Moment {
   /// إحداثيات فعلية من إذن الموقع، لا إدخال يدوي.
   lat       Float?
   lng       Float?
+  /// موضعُ اللحظة لصاحبها وحده (القاعدة ٣٨١): لـ«خريطتي» لا يُرسل لأحد —
+  /// يُكتب ولو كان «إظهار موقعي» مطفأً، ولكلّ نوع.
+  ownLat    Float?
+  ownLng    Float?
 
   musicTitle  String?
   musicArtist String?

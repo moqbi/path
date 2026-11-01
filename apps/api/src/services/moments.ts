@@ -252,6 +252,9 @@ export async function createMoment(userId: string, input: MomentInput) {
         : undefined,
       lat: where.lat,
       lng: where.lng,
+      // لصاحبها وحده (القاعدة ٣٨١): ما أرسله الجهاز ولو أطفأ «إظهار موقعي».
+      ownLat: input.lat ?? input.here?.lat ?? null,
+      ownLng: input.lng ?? input.here?.lng ?? null,
       placeName,
       placeCity: where.placeCity,
       audience: seen.audience,
