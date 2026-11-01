@@ -10,6 +10,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { ProfileHead } from "../../components/profile-head";
+import { MyInterests } from "../../components/interests-sheet";
 import { Spot } from "../../components/spot";
 import { COVER_HEIGHT, CoverLayer, StretchCover, useStretch } from "../../components/cover";
 import { useTabTop } from "../../lib/tab-top";
@@ -342,7 +343,13 @@ export default function Me() {
             />
 
             {DEV_FEATURES ? (
-              <StatLine s={s} />
+              <>
+                <StatLine s={s} />
+                {/* «اهتماماتي» في موضع سطر ملفّ الصديق (القاعدة ٣٨٢). */}
+                <View style={{ paddingHorizontal: 16, marginTop: 14 }}>
+                  <MyInterests count={me.interests?.length ?? 0} />
+                </View>
+              </>
             ) : (
             <View style={{ alignItems: "center", paddingHorizontal: 20 }}>
               {/* أربعة أرقام بأيقوناتها. */}
@@ -355,7 +362,7 @@ export default function Me() {
             </View>
             )}
 
-            {DEV_FEATURES ? <View style={{ height: 14 }} /> : (
+            {DEV_FEATURES ? null : (
             <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: 20, marginTop: 10, marginBottom: 18 }}>
               {/* أهدافُ الجولة: كلُّ زرٍّ يُضاء في دوره. */}
               <Spot id="me.edit" grow>

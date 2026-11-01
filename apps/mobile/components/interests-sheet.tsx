@@ -1,6 +1,7 @@
 import { Pressable, View } from "react-native";
 import { create } from "zustand";
-import Svg, { Circle } from "react-native-svg";
+import Svg, { Path } from "react-native-svg";
+import { router } from "expo-router";
 import { interestOf } from "@athar/shared";
 import { Text } from "./type";
 import { GlassSheet, SheetScrollView } from "./glass-sheet";
@@ -41,13 +42,55 @@ function Chip({ id, strong }: { id: string; strong?: boolean }) {
   );
 }
 
-/** دائرتان متداخلتان — ما يجمع اثنين. */
-function Venn({ color }: { color: string }) {
+/**
+ * شارةُ الاهتمامات (القاعدة ٣٨٢): قرصٌ بلون اللمسة فيه ثلاثُ نجماتٍ رباعيّة — بقرار المالك بدل
+ * الدائرتين المتداخلتين، تُقرأ رسمَ مخطّطٍ لا شارة.
+ */
+function Spark() {
   return (
-    <Svg width={28} height={20} viewBox="0 0 28 20">
-      <Circle cx={10} cy={10} r={8} stroke={color} strokeWidth={1.6} fill="none" />
-      <Circle cx={18} cy={10} r={8} stroke={color} strokeWidth={1.6} fill="none" />
-    </Svg>
+    <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}>
+      <Svg width={18} height={18} viewBox="0 0 24 24">
+        <Path d="M10 3.5c.6 3.7 2.3 5.4 6 6-3.7.6-5.4 2.3-6 6-.6-3.7-2.3-5.4-6-6 3.7-.6 5.4-2.3 6-6Z" fill={colors.onBrand} />
+        <Path d="M18 13.5c.3 1.9 1.1 2.7 3 3-1.9.3-2.7 1.1-3 3-.3-1.9-1.1-2.7-3-3 1.9-.3 2.7-1.1 3-3Z" fill={colors.onBrand} opacity={0.9} />
+        <Path d="M18.5 2.5c.2 1.2.8 1.8 2 2-1.2.2-1.8.8-2 2-.2-1.2-.8-1.8-2-2 1.2-.2 1.8-.8 2-2Z" fill={colors.onBrand} opacity={0.75} />
+      </Svg>
+    </View>
+  );
+}
+
+const countLabel = (count: number) =>
+  `${ar(count)} ${count === 1 ? "اهتمام" : count === 2 ? "اهتمامان" : count <= 10 ? "اهتمامات" : "اهتماماً"}`;
+
+/** سطرُ الاهتمامات على الأرضيّة — واحدٌ لملفّ الصديق و«أنا». */
+function InterestsLine({ label, pill, a11y, onPress }: { label: string; pill: string; a11y: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={a11y}
+      onPress={onPress}
+      style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14, paddingHorizontal: 4 }}
+    >
+      <Spark />
+      <Text style={{ flex: 1, color: colors.groundInk, fontSize: 14, fontWeight: "700" }}>{label}</Text>
+      <View style={{ height: 32, paddingHorizontal: 16, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: colors.chip }}>
+        <Text style={{ color: colors.ink, fontSize: 13, fontWeight: "700" }}>{pill}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+/**
+ * «اهتماماتي» في «أنا» (القاعدة ٣٨٢) — **بقرار المالك** في موضع سطر ملفّ الصديق نفسه لا في
+ * «تعديل الملف»، والضغطُ يفتح القائمةَ نفسها (`/interests?edit=1`).
+ */
+export function MyInterests({ count }: { count: number }) {
+  return (
+    <InterestsLine
+      label="اهتماماتي"
+      pill={count ? countLabel(count) : "اختر"}
+      a11y={count ? `اهتماماتي، ${count}` : "اختر اهتماماتك"}
+      onPress={() => router.push("/interests?edit=1" as never)}
+    />
   );
 }
 
@@ -61,22 +104,12 @@ export function SharedInterests({ name, data }: { name: string; data: FriendInte
   const shared = data.shared.length;
   const count = shared || data.theirs.length;
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={shared ? `${shared} اهتمامات مشتركة` : `اهتمامات ${name}`}
+    <InterestsLine
+      label={shared ? "اهتماماتكم المشتركة" : `اهتمامات ${name}`}
+      pill={countLabel(count)}
+      a11y={shared ? `${shared} اهتمامات مشتركة` : `اهتمامات ${name}`}
       onPress={() => openInterests(name, data)}
-      style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14, paddingHorizontal: 4 }}
-    >
-      <Venn color={colors.groundInk} />
-      <Text style={{ flex: 1, color: colors.groundInk, fontSize: 14, fontWeight: "600" }}>
-        {shared ? "اهتماماتكم المشتركة" : `اهتمامات ${name}`}
-      </Text>
-      <View style={{ height: 32, paddingHorizontal: 16, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: colors.chip }}>
-        <Text style={{ color: colors.ink, fontSize: 13, fontWeight: "700" }}>
-          {ar(count)} {count === 1 ? "اهتمام" : count === 2 ? "اهتمامان" : count <= 10 ? "اهتمامات" : "اهتماماً"}
-        </Text>
-      </View>
-    </Pressable>
+    />
   );
 }
 
@@ -94,7 +127,7 @@ export function InterestsSheet() {
           ? `${ar(data.shared.length)} من اهتماماتك تجمعك مع ${name}`
           : data.mineCount
             ? `ما فيه اهتمام يجمعك مع ${name} بعد`
-            : "اختر اهتماماتك من «تعديل الملف» لترى ما يجمعكما"
+            : "اختر اهتماماتك من «أنا» لترى ما يجمعكما"
       }
       onClose={close}
     >
