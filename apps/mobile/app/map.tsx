@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, PanResponder, Platform, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
-import MapView, { Marker, Polyline, type Region } from "react-native-maps";
+import MapView, { Marker, Polygon, Polyline, type Region } from "react-native-maps";
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
+import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { Text } from "../components/type";
 import { Spinner } from "../components/spinner";
@@ -14,6 +16,7 @@ import { BackChevron } from "../components/screen-header";
 import { MapIcon, PinIcon } from "../components/icons";
 import { api } from "../lib/api";
 import { openMaps } from "../lib/maps";
+import { openMapMoments } from "../lib/map-moments";
 import { ar, dayLabel } from "../lib/format";
 import { colors } from "../theme/tokens";
 
@@ -40,7 +43,46 @@ type Stats = {
   unplaced: number;
 };
 
-type MapData = { points: Point[]; years: number[]; stats: Record<string, Stats>; limited: boolean };
+type Visit = { city: string; country: string; at: string; year: number };
+type MapData = {
+  points: Point[];
+  years: number[];
+  stats: Record<string, Stats>;
+  /** الوصولُ إلى المدن — «زيارة» في البطاقة. خادمٌ قبل القاعدة ٣٨٤ لا يرسله. */
+  visits?: Visit[];
+  limited: boolean;
+};
+
+type Landmark = { image: string | null; credit: string | null };
+
+/** صورةُ معلم الدولة أو بانوراما المدينة من خادمنا (القاعدة ٣٨٤) — تُحفظ ما دام التطبيقُ مفتوحاً. */
+function landmarkQuery(kind: "country" | "city", name: string, size: "pin" | "hero", near?: { lat: number; lng: number }) {
+  const at = near ? `&lat=${near.lat.toFixed(3)}&lng=${near.lng.toFixed(3)}` : "";
+  return {
+    queryKey: ["landmark", kind, name, size, near ? `${near.lat.toFixed(0)},${near.lng.toFixed(0)}` : ""],
+    queryFn: () =>
+      api<Landmark>(`/v1/places/landmark?kind=${kind}&size=${size}&name=${encodeURIComponent(name)}${at}`),
+    enabled: name.length > 0,
+    staleTime: Infinity,
+    gcTime: 6 * 3_600_000,
+    retry: false,
+  };
+}
+
+/*
+  حجابٌ داكنٌ على العالم كلّه فوق الخريطة وتحت العلامات (القاعدة ٣٨٤): التضاريسُ والحدودُ تخفت
+  والذكرياتُ تبقى أبرزَ ما فيها. أربعةُ أرباعٍ لا مضلّعٌ واحد — مضلّعٌ يعبر ١٨٠ درجة يلتبس اتجاهُه.
+  ومركّبةٌ دائماً كخانات الأثر.
+*/
+const SHADE = [-180, -90, 0, 90].map((west) => [
+  { latitude: 85, longitude: west },
+  { latitude: 85, longitude: west + 90 },
+  { latitude: -85, longitude: west + 90 },
+  { latitude: -85, longitude: west },
+]);
+
+/** ما فوق نقطة الدولة: صورةُ معلمها بذيلها ثمّ الكبسولة. */
+const COUNTRY_ABOVE = 92;
 
 /** ثلاثُ درجاتٍ للقرب (القاعدة ٣٨٣): دولٌ من بعيد، ثمّ مدن، ثمّ أماكنُ بصورها. */
 type Level = "country" | "city" | "place";
@@ -161,6 +203,14 @@ export default function MyMap() {
       .sort((a, b) => b.length - a.length)
       .slice(0, TRAIL_SLOTS);
   }, [pins, points, level]);
+  // من بعيدٍ لا أثر: خطوطٌ بين الدول تعبر القارّاتِ وتزحم الخريطة (القاعدة ٣٨٤).
+  const showTrail = trail && level !== "country";
+
+  // صورُ معالم الدول على علاماتها.
+  const countryNames = level === "country" ? pins.map((pin) => pin.label) : [];
+  const landmarks = useQueries({ queries: countryNames.map((name) => landmarkQuery("country", name, "pin")) });
+  const landmarkOf = new Map(countryNames.map((name, index) => [name, landmarks[index]?.data?.image ?? null]));
+  const landmarkReady = landmarks.filter((query) => query.data).length;
 
   const fit = (coords: Coord[], bottom: number, animated = true) => {
     if (!coords.length) return;
@@ -184,10 +234,10 @@ export default function MyMap() {
     setTracking(true);
     const timer = setTimeout(() => setTracking(false), 1800);
     return () => clearTimeout(timer);
-  }, [pins, open?.key]);
+  }, [pins, open?.key, landmarkReady]);
 
   const { height: screenH } = useWindowDimensions();
-  const peek = 292 + insets.bottom;
+  const sheetH = Math.round(Math.min(screenH * 0.72, 610));
 
   const select = (pin: Pin) => {
     setOpen(pin);
@@ -204,7 +254,7 @@ export default function MyMap() {
       );
       return;
     }
-    fit(coords, peek + 40);
+    fit(coords, sheetH + 30);
   };
 
   // مدينةٌ من قائمة الدولة: تُختار بعلامتها في درجة المدن ولو كانت الخريطةُ على الدول.
@@ -242,8 +292,18 @@ export default function MyMap() {
           pitchEnabled={false}
           toolbarEnabled={false}
         >
+          {SHADE.map((ring, index) => (
+            <Polygon
+              key={`shade-${index}`}
+              coordinates={ring}
+              fillColor="rgba(8,15,22,0.46)"
+              strokeColor="transparent"
+              strokeWidth={0}
+              tappable={false}
+            />
+          ))}
           {Array.from({ length: TRAIL_SLOTS }, (_, slot) => {
-            const line = trail ? lines[slot] : undefined;
+            const line = showTrail ? lines[slot] : undefined;
             return [
               <Polyline
                 key={`glow-${slot}`}
@@ -269,7 +329,7 @@ export default function MyMap() {
             const core = coreOf(pin.points.length);
             const box = core * 3;
             // الارتكازُ على مركز النقطة: فوقها الكبسولةُ (٢٦) أو الصورةُ المختارة (٦٤).
-            const above = chosen ? 64 : 26;
+            const above = pin.level === "country" ? COUNTRY_ABOVE : chosen ? 64 : 26;
             return (
               <Marker
                 key={pin.key}
@@ -279,7 +339,7 @@ export default function MyMap() {
                 anchor={dotted ? { x: 0.5, y: (above + box / 2) / (above + box) } : { x: 0.5, y: 1 }}
                 zIndex={chosen ? 9999 : pin.points.length}
               >
-                {dotted ? <DotPin pin={pin} chosen={chosen} /> : <PlacePin pin={pin} chosen={chosen} />}
+                {dotted ? <DotPin pin={pin} chosen={chosen} landmark={landmarkOf.get(pin.label) ?? null} /> : <PlacePin pin={pin} chosen={chosen} />}
               </Marker>
             );
           })}
@@ -319,7 +379,7 @@ export default function MyMap() {
       </View>
 
       {/* أدواتُ الخريطة في طرفها: «أثري» يُظهر خطوطَ الرحلة ويُخفيها. */}
-      {points.length && !open ? (
+      {points.length && !open && level !== "country" ? (
         <View pointerEvents="box-none" style={{ position: "absolute", right: 14, bottom: insets.bottom + 86, gap: 10 }}>
           <RoundGlass label="أثري" on={trail} onPress={() => setTrail((on) => !on)}>
             <TrailIcon on={trail} />
@@ -356,12 +416,16 @@ export default function MyMap() {
         <MapSheet
           key={open.key}
           pin={open}
-          height={Math.round(screenH * 0.8)}
-          peek={peek}
+          height={sheetH}
           bottomInset={insets.bottom}
+          visits={state.data?.visits ?? []}
           onClose={() => setOpen(null)}
           onMoment={(id) => router.push(`/m/${id}` as never)}
           onCity={pickCity}
+          onAll={(title, ids) => {
+            openMapMoments(title, ids);
+            router.push("/map-moments" as never);
+          }}
         />
       ) : null}
     </View>
@@ -476,16 +540,71 @@ function YearChip({ label, on, onPress }: { label: string; on: boolean; onPress:
 
 /**
  * الدولةُ والمدينة: نقطةٌ ذهبيّةٌ صغيرة بهالةٍ تتّسع بكثافة الذكريات، وفوقها كبسولةٌ باسمها
- * وعددها. والمختارةُ تكبر: صورةٌ منها في حلقةٍ ذهبيّة مكان الكبسولة.
+ * وعددها. والدولةُ فوق كبسولتها صورةُ معلمها (القاعدة ٣٨٤) — أو صورةٌ من لحظاته فيها.
+ * والمدينةُ المختارة تكبر: صورةٌ منها في حلقةٍ ذهبيّة مكان الكبسولة.
  */
-function DotPin({ pin, chosen }: { pin: Pin; chosen: boolean }) {
+function DotPin({ pin, chosen, landmark }: { pin: Pin; chosen: boolean; landmark: string | null }) {
   const core = coreOf(pin.points.length) + (chosen ? 3 : 0);
   const box = coreOf(pin.points.length) * 3;
   const glow = Math.min(1, 0.35 + Math.log2(pin.points.length + 1) / 10);
-  const photo = chosen ? photoOf(pin.points) : null;
+  const photo = chosen || pin.level === "country" ? photoOf(pin.points) : null;
+  const pill = (
+    <View
+      style={{
+        height: 22,
+        paddingHorizontal: 8,
+        borderRadius: 11,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 5,
+        backgroundColor: "rgba(14,26,36,0.86)",
+        borderWidth: 1,
+        borderColor: chosen ? "rgba(246,185,59,0.55)" : EDGE,
+      }}
+    >
+      {pin.label ? (
+        <Text numberOfLines={1} style={{ color: INK, fontSize: pin.level === "country" ? 11.5 : 10.5, fontWeight: "700", maxWidth: 110 }}>
+          {pin.label}
+        </Text>
+      ) : null}
+      <Text style={{ color: AMBER, fontSize: 10.5, fontWeight: "800" }}>{ar(pin.points.length)}</Text>
+    </View>
+  );
   return (
     <View style={{ alignItems: "center" }}>
-      {chosen ? (
+      {pin.level === "country" ? (
+        <View style={{ height: COUNTRY_ABOVE, alignItems: "center", justifyContent: "flex-end", paddingBottom: 4 }}>
+          {landmark || photo ? (
+            <View style={{ alignItems: "center", marginBottom: 4 }}>
+              <View
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 17,
+                  padding: 2.5,
+                  backgroundColor: AMBER,
+                  shadowColor: AMBER,
+                  shadowOpacity: 0.45,
+                  shadowRadius: 8,
+                  shadowOffset: { width: 0, height: 0 },
+                }}
+              >
+                <View style={{ flex: 1, borderRadius: 14.5, overflow: "hidden", backgroundColor: NIGHT }}>
+                  {landmark ? (
+                    <Image source={{ uri: landmark }} style={{ width: 51, height: 51 }} contentFit="cover" transition={0} />
+                  ) : (
+                    <MediaImage mediaId={photo} style={{ width: 51, height: 51 }} fade={false} />
+                  )}
+                </View>
+              </View>
+              <Svg width={10} height={6} viewBox="0 0 10 6" style={{ marginTop: -1 }}>
+                <Path d="M0 0 L5 6 L10 0 Z" fill={AMBER} />
+              </Svg>
+            </View>
+          ) : null}
+          {pill}
+        </View>
+      ) : chosen ? (
         <View style={{ height: 64, justifyContent: "flex-start" }}>
           <View
             style={{
@@ -512,28 +631,7 @@ function DotPin({ pin, chosen }: { pin: Pin; chosen: boolean }) {
           </View>
         </View>
       ) : (
-        <View style={{ height: 26, justifyContent: "flex-start" }}>
-          <View
-            style={{
-              height: 22,
-              paddingHorizontal: 8,
-              borderRadius: 11,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 5,
-              backgroundColor: "rgba(14,26,36,0.82)",
-              borderWidth: 1,
-              borderColor: EDGE,
-            }}
-          >
-            {pin.label ? (
-              <Text numberOfLines={1} style={{ color: INK, fontSize: pin.level === "country" ? 11.5 : 10.5, fontWeight: "700", maxWidth: 110 }}>
-                {pin.label}
-              </Text>
-            ) : null}
-            <Text style={{ color: AMBER, fontSize: 10.5, fontWeight: "800" }}>{ar(pin.points.length)}</Text>
-          </View>
-        </View>
+        <View style={{ height: 26, justifyContent: "flex-start" }}>{pill}</View>
       )}
       <View style={{ width: box, height: box, alignItems: "center", justifyContent: "center" }}>
         <View style={{ position: "absolute", width: box, height: box, borderRadius: box / 2, backgroundColor: `rgba(246,185,59,${(0.1 * glow).toFixed(3)})` }} />
@@ -589,231 +687,313 @@ function PlacePin({ pin, chosen }: { pin: Pin; chosen: boolean }) {
   );
 }
 
+/** «قبل شهر» لا «قبل ٣١ يوم»: آخرُ زيارةٍ تُقرأ بالمدّة التي يعدّها الناس. */
+function ago(iso: string): string {
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (days <= 0) return "اليوم";
+  if (days === 1) return "أمس";
+  if (days < 7) return `قبل ${ar(days)} أيام`;
+  if (days < 30) {
+    const weeks = Math.round(days / 7);
+    return weeks <= 1 ? "قبل أسبوع" : weeks === 2 ? "قبل أسبوعين" : `قبل ${ar(weeks)} أسابيع`;
+  }
+  if (days < 365) {
+    const months = Math.round(days / 30);
+    return months <= 1 ? "قبل شهر" : months === 2 ? "قبل شهرين" : `قبل ${ar(months)} أشهر`;
+  }
+  const years = Math.round(days / 365);
+  return years <= 1 ? "قبل سنة" : years === 2 ? "قبل سنتين" : `قبل ${ar(years)} سنوات`;
+}
+
+const SHEET = "#111D27";
+
 /**
- * البطاقةُ السفليّة (القاعدة ٣٨٣): تصعد إلى نصفها، وتُسحب إلى أعلى فتعرض كلَّ ما في المكان،
- * وإلى أسفل فتُغلق وتعود الخريطة. السحبُ من رأسها وحده — قائمتُها تُمرَّر حين تُفتح كاملةً.
- * وحركتُها بمحرّك جافاسكربت: قيمةٌ واحدة لا تُقسَم بين محرّكين، ولا رسمةَ من React أثناء السحب.
+ * نافذةُ المكان (القاعدة ٣٨٤): تتصدّرها صورةٌ بانوراميّة — معلمُ الدولة أو صورةُ المدينة من
+ * ويكيبيديا، وإلّا صورةٌ من لحظاته — وعليها الاسمُ والدولة، ثمّ ثلاثةُ أرقام (لحظة، زيارة أو
+ * مدن، آخر زيارة)، ثمّ «ذكرياتك في …» صوراً تُفتح كلٌّ منها لحظتَها بتفاعلاتها وتعليقاتها،
+ * و«عرض جميع لحظاتي في …» يفتحها كاملةً في صفحتها. وتُسحب إلى أسفل من صورتها لتُغلق.
  */
 function MapSheet({
   pin,
   height,
-  peek,
   bottomInset,
+  visits,
   onClose,
   onMoment,
   onCity,
+  onAll,
 }: {
   pin: Pin;
   height: number;
-  peek: number;
   bottomInset: number;
+  visits: Visit[];
   onClose: () => void;
   onMoment: (id: string) => void;
   onCity: (name: string, points: Point[]) => void;
+  onAll: (title: string, ids: string[]) => void;
 }) {
-  const low = height - peek;
-  const y = useRef(new Animated.Value(height)).current;
-  const at = useRef(low);
-  const [full, setFull] = useState(false);
-
-  const go = (to: number, done?: () => void) => {
-    at.current = to;
-    setFull(to === 0);
-    Animated.spring(y, { toValue: to, useNativeDriver: false, damping: 22, stiffness: 220, mass: 0.9 }).start(() => done?.());
-  };
-  const close = () => {
-    at.current = height;
-    Animated.timing(y, { toValue: height, duration: 220, useNativeDriver: false }).start(() => onClose());
-  };
+  const y = useRef(new Animated.Value(height + 40)).current;
 
   useEffect(() => {
-    go(low);
+    Animated.spring(y, { toValue: 0, useNativeDriver: true, damping: 22, stiffness: 210, mass: 0.9 }).start();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const close = () =>
+    Animated.timing(y, { toValue: height + 40, duration: 220, useNativeDriver: true }).start(() => onClose());
 
   const pan = useMemo(
     () =>
       PanResponder.create({
         onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 6 && Math.abs(g.dy) > Math.abs(g.dx),
-        onPanResponderMove: (_, g) => {
-          const next = at.current + g.dy;
-          y.setValue(next < 0 ? next / 4 : next);
-        },
+        onPanResponderMove: (_, g) => y.setValue(g.dy < 0 ? g.dy / 5 : g.dy),
         onPanResponderRelease: (_, g) => {
-          const now = at.current + g.dy;
-          if (g.vy > 0.9 || now > low + 90) return close();
-          if (g.vy < -0.6 || now < low / 2) return go(0);
-          go(low);
+          if (g.dy > 110 || g.vy > 0.9) return close();
+          Animated.spring(y, { toValue: 0, useNativeDriver: true, damping: 20, stiffness: 240 }).start();
         },
         onPanResponderTerminationRequest: () => false,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [low, height],
+    [height],
   );
 
   const sorted = useMemo(() => [...pin.points].sort((a, b) => b.at.localeCompare(a.at)), [pin.points]);
   const photos = sorted.filter((point) => point.mediaId);
   const last = sorted[0];
-  const places = new Set(pin.points.map((point) => point.placeName).filter(Boolean)).size;
   const cities = useMemo(() => {
     if (pin.level !== "country") return [];
     const groups = new Map<string, Point[]>();
     for (const point of pin.points) {
-      const name = point.placeCity;
-      if (!name) continue;
-      groups.set(name, [...(groups.get(name) ?? []), point]);
+      if (!point.placeCity) continue;
+      groups.set(point.placeCity, [...(groups.get(point.placeCity) ?? []), point]);
     }
     return [...groups.entries()].sort((a, b) => b[1].length - a[1].length);
   }, [pin]);
 
+  // «زيارة» من لحظات الوصول، والمكانُ أيّامُه — ومن له لحظةٌ هنا زارها مرّةً على الأقلّ.
+  const visitCount = Math.max(
+    1,
+    pin.level === "city"
+      ? visits.filter((visit) => visit.city === pin.label).length
+      : pin.level === "country"
+        ? visits.filter((visit) => visit.country === pin.label).length
+        : new Set(pin.points.map((point) => point.at.slice(0, 10))).size,
+  );
+
+  const heroKind = pin.level === "country" ? "country" : "city";
+  const heroName = pin.level === "place" ? "" : pin.label;
+  const hero = useQuery(
+    landmarkQuery(heroKind, heroName, "hero", pin.level === "city" ? { lat: pin.lat, lng: pin.lng } : undefined),
+  );
+  const panorama = hero.data?.image ?? null;
+  const fallback = photos[0]?.mediaId ?? null;
+
   const subtitle =
     pin.level === "country"
-      ? `${ar(cities.length)} ${cities.length === 1 ? "مدينة" : "مدن"} فيها لحظاتك`
+      ? `${ar(cities.length)} ${cities.length === 1 ? "مدينة" : "مدن"} فيها ذكرياتك`
       : pin.level === "city"
         ? pin.country
-        : pin.points[0]?.placeCity ?? pin.country;
-  const second =
-    pin.level === "country"
-      ? { value: ar(cities.length), label: "مدينة" }
-      : { value: ar(places), label: places === 1 ? "مكان" : "أماكن" };
-  const where = pin.label || (pin.level === "place" ? "هذا المكان" : "هنا");
-  const thumbs = photos.slice(0, 5);
-  const more = photos.length - thumbs.length;
+        : [pin.points[0]?.placeCity, pin.country].filter(Boolean).join("، ");
+  const where = pin.label || "هنا";
+  const HERO = 196;
 
   return (
     <Animated.View
       style={{
         position: "absolute",
-        left: 0,
-        right: 0,
-        bottom: 0,
+        left: 10,
+        right: 10,
+        bottom: Math.max(bottomInset - 4, 10),
         height,
         transform: [{ translateY: y }],
+        borderRadius: 30,
+        overflow: "hidden",
+        backgroundColor: SHEET,
+        borderWidth: 1,
+        borderColor: EDGE,
       }}
     >
-      <Glass style={{ flex: 1, borderRadius: 28, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }}>
-        <View style={{ height }}>
-          <View {...pan.panHandlers} style={{ paddingHorizontal: 18, paddingBottom: 14 }}>
-            <View style={{ alignItems: "center", paddingTop: 9, paddingBottom: 12 }}>
-              <View style={{ width: 40, height: 4.5, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.28)" }} />
-            </View>
-
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-              <View style={{ width: 76, height: 76, borderRadius: 18, overflow: "hidden", backgroundColor: "rgba(255,255,255,0.06)", alignItems: "center", justifyContent: "center" }}>
-                {photos[0]?.mediaId ? (
-                  <MediaImage mediaId={photos[0].mediaId} style={{ width: 76, height: 76 }} />
-                ) : (
-                  <PinIcon size={24} color={AMBER} />
-                )}
-              </View>
-              <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                  <PinIcon size={15} color={AMBER} />
-                  <Text face="display" numberOfLines={1} style={{ flexShrink: 1, color: INK, fontSize: 21, fontWeight: "800" }}>
-                    {pin.label || "مكان"}
-                  </Text>
-                </View>
-                {subtitle ? (
-                  <Text numberOfLines={1} style={{ color: SOFT, fontSize: 12.5 }}>
-                    {subtitle}
-                  </Text>
-                ) : null}
-              </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={full ? "صغّر" : "إغلاق"}
-                hitSlop={8}
-                onPress={() => (full ? go(low) : close())}
-                style={{ width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.08)", borderWidth: 1, borderColor: EDGE }}
-              >
-                <Svg width={14} height={14} viewBox="0 0 24 24">
-                  {full ? (
-                    <Path d="M6 9l6 6 6-6" stroke={INK} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                  ) : (
-                    <Path d="M6 6l12 12M18 6L6 18" stroke={INK} strokeWidth={2.4} strokeLinecap="round" fill="none" />
-                  )}
-                </Svg>
-              </Pressable>
-            </View>
-
-            {/* الأرقامُ ثلاثةٌ صغيرة بخطٍّ رفيع بينها. */}
-            <View style={{ flexDirection: "row", alignItems: "center", marginTop: 14, paddingVertical: 10, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.05)", borderWidth: 1, borderColor: EDGE }}>
-              <StatCell icon="photo" value={ar(pin.points.length)} label="لحظة" />
-              <View style={{ width: 1, alignSelf: "stretch", backgroundColor: EDGE }} />
-              <StatCell icon={pin.level === "country" ? "city" : "pin"} value={second.value} label={second.label} />
-              <View style={{ width: 1, alignSelf: "stretch", backgroundColor: EDGE }} />
-              <StatCell icon="date" value={last ? dayLabel(new Date(last.at)) : "—"} label="آخر زيارة" small />
-            </View>
-
-            {thumbs.length ? (
-              <View style={{ flexDirection: "row", gap: 7, marginTop: 12 }}>
-                {thumbs.map((point) => (
-                  <Pressable key={point.id} onPress={() => onMoment(point.id)} style={{ flex: 1, aspectRatio: 1, borderRadius: 12, overflow: "hidden", backgroundColor: "rgba(255,255,255,0.06)" }}>
-                    <MediaImage mediaId={point.mediaId!} style={{ width: "100%", height: "100%" }} />
-                  </Pressable>
-                ))}
-                {more > 0 ? (
-                  <View style={{ flex: 1, aspectRatio: 1, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.07)", borderWidth: 1, borderColor: EDGE }}>
-                    <Text style={{ color: INK, fontSize: 14, fontWeight: "800" }}>+{ar(more)}</Text>
-                  </View>
-                ) : null}
-              </View>
-            ) : null}
-
-            {!full ? (
-              <Pressable
-                onPress={() => go(0)}
-                style={{ marginTop: 14, height: 48, borderRadius: 24, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1.4, borderColor: AMBER }}
-              >
-                <Text style={{ color: AMBER, fontSize: 13.5, fontWeight: "800" }}>
-                  {pin.level === "country" ? `مدن ${where} ولحظاتها` : `عرض جميع لحظاتي في ${where}`}
-                </Text>
-              </Pressable>
-            ) : null}
+      {/* الصورةُ الكبيرة — ومنها يُسحب. */}
+      <View {...pan.panHandlers} style={{ height: HERO, backgroundColor: NIGHT }}>
+        {panorama ? (
+          <Image source={{ uri: panorama }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" transition={180} />
+        ) : fallback ? (
+          <MediaImage mediaId={fallback} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%" }} />
+        ) : (
+          <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}>
+            <AthrMark size={54} />
           </View>
-
-          <ScrollView
-            scrollEnabled={full}
-            style={{ flex: 1 }}
-            contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: bottomInset + 24, gap: 8 }}
+        )}
+        <LinearGradient
+          colors={["rgba(17,29,39,0.35)", "rgba(17,29,39,0)", "rgba(17,29,39,0.55)", SHEET]}
+          locations={[0, 0.3, 0.68, 1]}
+          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+        />
+        <View style={{ position: "absolute", top: 9, left: 0, right: 0, alignItems: "center" }}>
+          <View style={{ width: 40, height: 4.5, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.6)" }} />
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="إغلاق"
+          hitSlop={8}
+          onPress={close}
+          style={{ position: "absolute", top: 16, left: 16, width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(14,26,36,0.7)", borderWidth: 1, borderColor: EDGE }}
+        >
+          <Svg width={13} height={13} viewBox="0 0 24 24">
+            <Path d="M6 6l12 12M18 6L6 18" stroke={INK} strokeWidth={2.6} strokeLinecap="round" fill="none" />
+          </Svg>
+        </Pressable>
+        <View style={{ position: "absolute", right: 20, left: 20, bottom: 12, gap: 2 }}>
+          <Text
+            face="display"
+            numberOfLines={1}
+            style={{ color: INK, fontSize: 28, fontWeight: "800", textShadowColor: "rgba(0,0,0,0.55)", textShadowRadius: 8, textShadowOffset: { width: 0, height: 1 } }}
           >
-            {pin.level === "country" && cities.length ? (
-              <>
-                <Text style={{ color: SOFT, fontSize: 12, fontWeight: "700", marginBottom: 2 }}>المدن</Text>
-                {cities.map(([name, cityPoints]) => (
-                  <Row
-                    key={name}
-                    mediaId={photoOf(cityPoints)}
-                    title={name}
-                    note={`${ar(cityPoints.length)} ${cityPoints.length === 1 ? "لحظة" : "لحظات"}`}
-                    onPress={() => onCity(name, cityPoints)}
-                  />
-                ))}
-                <View style={{ height: 8 }} />
-                <Text style={{ color: SOFT, fontSize: 12, fontWeight: "700", marginBottom: 2 }}>اللحظات</Text>
-              </>
-            ) : null}
-            {sorted.map((point) => (
+            {pin.label || "مكان"}
+          </Text>
+          {subtitle ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+              <PinIcon size={13} color={SOFT} />
+              <Text numberOfLines={1} style={{ flexShrink: 1, color: SOFT, fontSize: 13, textShadowColor: "rgba(0,0,0,0.5)", textShadowRadius: 6 }}>
+                {subtitle}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+        {panorama ? (
+          <Text style={{ position: "absolute", left: 14, bottom: 10, color: "rgba(247,245,239,0.45)", fontSize: 9 }}>
+            الصورة: ويكيبيديا
+          </Text>
+        ) : null}
+      </View>
+
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingTop: 6, paddingBottom: 12, gap: 16 }} showsVerticalScrollIndicator={false}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            marginHorizontal: 16,
+            paddingVertical: 12,
+            borderRadius: 20,
+            backgroundColor: "rgba(255,255,255,0.04)",
+            borderWidth: 1,
+            borderColor: EDGE,
+          }}
+        >
+          <StatCell icon="photo" value={ar(pin.points.length)} label="لحظة" />
+          <View style={{ width: 1, alignSelf: "stretch", marginVertical: 6, backgroundColor: EDGE }} />
+          {pin.level === "country" ? (
+            <StatCell icon="city" value={ar(cities.length)} label={cities.length === 1 ? "مدينة" : "مدن"} />
+          ) : (
+            <StatCell icon="pin" value={ar(visitCount)} label={visitCount === 1 ? "زيارة" : "زيارات"} />
+          )}
+          <View style={{ width: 1, alignSelf: "stretch", marginVertical: 6, backgroundColor: EDGE }} />
+          <StatCell icon="date" value={last ? ago(last.at) : "—"} label="آخر زيارة" small />
+        </View>
+
+        {photos.length ? (
+          <View style={{ gap: 10 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 18 }}>
+              <MemoriesIcon />
+              <Text style={{ color: INK, fontSize: 14.5, fontWeight: "800" }}>ذكرياتك في {where}</Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 9, paddingHorizontal: 16, direction: "rtl" }}
+            >
+              {photos.slice(0, 24).map((point) => (
+                <Pressable
+                  key={point.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={point.text || point.placeName || "لحظة"}
+                  onPress={() => onMoment(point.id)}
+                  style={{ width: 124, height: 118, borderRadius: 16, overflow: "hidden", backgroundColor: "rgba(255,255,255,0.06)" }}
+                >
+                  <MediaImage mediaId={point.mediaId!} style={{ width: 124, height: 118 }} />
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        ) : (
+          <View style={{ gap: 8, paddingHorizontal: 16 }}>
+            {sorted.slice(0, 3).map((point) => (
               <Row
                 key={point.id}
-                mediaId={point.mediaId}
+                mediaId={null}
                 title={point.text || point.placeName || "لحظة"}
-                note={[dayLabel(new Date(point.at)), pin.level !== "place" ? point.placeName : null].filter(Boolean).join(" · ")}
+                note={dayLabel(new Date(point.at))}
                 onPress={() => onMoment(point.id)}
               />
             ))}
-            {pin.level === "place" && pin.points[0]?.placeName ? (
-              <Pressable
-                onPress={() => void openMaps(pin.points[0])}
-                style={{ marginTop: 6, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
-              >
-                <Text style={{ color: colors.onBrand, fontSize: 13.5, fontWeight: "700" }}>افتح في الخرائط</Text>
-              </Pressable>
-            ) : null}
-          </ScrollView>
-        </View>
-      </Glass>
+          </View>
+        )}
+
+        {cities.length ? (
+          <View style={{ gap: 10 }}>
+            <Text style={{ color: SOFT, fontSize: 12.5, fontWeight: "700", paddingHorizontal: 18 }}>مدنها</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, direction: "rtl" }}>
+              {cities.map(([name, cityPoints]) => {
+                const thumb = photoOf(cityPoints);
+                return (
+                  <Pressable
+                    key={name}
+                    onPress={() => onCity(name, cityPoints)}
+                    style={{ flexDirection: "row", alignItems: "center", gap: 8, height: 44, paddingLeft: 12, paddingRight: 5, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.06)", borderWidth: 1, borderColor: EDGE }}
+                  >
+                    <View style={{ width: 34, height: 34, borderRadius: 17, overflow: "hidden", backgroundColor: "rgba(246,185,59,0.16)", alignItems: "center", justifyContent: "center" }}>
+                      {thumb ? <MediaImage mediaId={thumb} style={{ width: 34, height: 34 }} /> : <PinIcon size={14} color={AMBER} />}
+                    </View>
+                    <Text style={{ color: INK, fontSize: 13, fontWeight: "700" }}>{name}</Text>
+                    <Text style={{ color: AMBER, fontSize: 12, fontWeight: "800" }}>{ar(cityPoints.length)}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        ) : null}
+
+        {pin.level === "place" && pin.points[0]?.placeName ? (
+          <Pressable
+            onPress={() => void openMaps(pin.points[0])}
+            style={{ marginHorizontal: 16, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: EDGE }}
+          >
+            <Text style={{ color: INK, fontSize: 13.5, fontWeight: "700" }}>افتح في الخرائط</Text>
+          </Pressable>
+        ) : null}
+      </ScrollView>
+
+      <View style={{ paddingHorizontal: 16, paddingTop: 6, paddingBottom: 14 }}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => onAll(`لحظاتي في ${where}`, sorted.map((point) => point.id))}
+          style={({ pressed }) => ({
+            height: 54,
+            borderRadius: 27,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            backgroundColor: AMBER,
+            opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          <Text style={{ color: NIGHT, fontSize: 15, fontWeight: "800" }}>عرض جميع لحظاتي في {where}</Text>
+          <Svg width={14} height={14} viewBox="0 0 24 24">
+            <Path d="M15 5 8 12l7 7" stroke={NIGHT} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          </Svg>
+        </Pressable>
+      </View>
     </Animated.View>
+  );
+}
+
+function MemoriesIcon() {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+      <Rect x={6.5} y={3.5} width={14} height={14} rx={2.5} stroke={AMBER} strokeWidth={1.7} />
+      <Path d="M3.5 7.5v11a2 2 0 002 2h11" stroke={AMBER} strokeWidth={1.7} strokeLinecap="round" />
+      <Path d="M8 15l3.5-3.5 2.5 2.5 2-2 3 3" stroke={AMBER} strokeWidth={1.5} strokeLinejoin="round" />
+    </Svg>
   );
 }
 

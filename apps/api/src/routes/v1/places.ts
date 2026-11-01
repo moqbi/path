@@ -4,6 +4,7 @@ import { requireActive, requireAuth, me } from "../../middleware/auth";
 import { nearbyPlaces, searchPlaces } from "../../lib/places";
 import { checkInCity } from "../../services/moments";
 import { rememberSpot } from "../../services/discover";
+import { landmark } from "../../lib/landmark";
 import { rateLimit } from "../../middleware/rate-limit";
 
 /**
@@ -25,6 +26,26 @@ export const placeRoutes = new Hono()
   .use("*", requireAuth)
   // كلُّ بحثٍ نداءٌ مدفوعٌ عند قوقل: عشرون في الدقيقة تكفي إصبعاً يكتب.
   .use("/search", rateLimit(20, 60))
+
+  /*
+    صورةُ معلم الدولة وبانوراما المدينة في «خريطتي» (القاعدة ٣٨٤): ويكيبيديا تُسأل من هنا
+    وتُحفظ أسبوعاً، والصورةُ تعود \`data:\` مصغّرة. وستّون في الدقيقة تكفي خريطةً تُفتح.
+  */
+  .get("/landmark", rateLimit(60, 60), async (c) => {
+    const parsed = z
+      .object({
+        kind: z.enum(["country", "city"]),
+        name: z.string().trim().min(1).max(80),
+        size: z.enum(["pin", "hero"]).default("pin"),
+        lat: z.coerce.number().min(-90).max(90).optional(),
+        lng: z.coerce.number().min(-180).max(180).optional(),
+      })
+      .safeParse(c.req.query());
+    if (!parsed.success) return c.json({ image: null, credit: null });
+    const { kind, name, size, lat, lng } = parsed.data;
+    const near = lat != null && lng != null ? { lat, lng } : undefined;
+    return c.json(await landmark(kind, name, size, near));
+  })
 
   .get("/nearby", async (c) => {
     const parsed = query.safeParse({ lat: c.req.query("lat"), lng: c.req.query("lng") });
