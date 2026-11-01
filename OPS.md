@@ -324,7 +324,35 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID="...web..."
 SNAP_CLIENT_ID="..."
 TIKTOK_CLIENT_KEY="..."
 TIKTOK_CLIENT_SECRET="..."
+
+# مفاتيحُ آبل على الخادم — كلٌّ اختياريّ، وبلاه يعمل البديل (القاعدة ١٠٢).
+APPLE_TEAM_ID="..."
+# حذفُ حساب آبل (القاعدة ٢٠٨).
+APPLE_KEY_ID="..."
+APPLE_KEY_PATH="/home/athar/keys/apple.p8"
+# بحثُ Apple Music مع دِيزر (القاعدة ٣٠٤).
+MUSICKIT_KEY_ID="..."
+MUSICKIT_KEY_PATH="/home/athar/keys/musickit.p8"
+# خرائطُ آبل من الخادم: المدينةُ والدولةُ والبحثُ بالاسم (القاعدة ٣٨٠).
+# الآيفونُ يسأل MapKit على جهازه بلا مفتاح؛ وهذا لأندرويد والويب وما يُكتب على الخادم.
+MAPKIT_KEY_ID="..."
+MAPKIT_KEY_PATH="/home/athar/keys/mapkit.p8"
 ```
+
+> **مفتاحُ خرائط آبل** (developer.apple.com ← Keys ← ＋ ← **Maps** — ويُربط بـMaps ID من
+> Identifiers): الأمرُ يسأل عن معرّف المفتاح ويُلصق فيه الملفّ — كـ٨٫٢:
+>
+> ```bash
+> ENV=/home/athar/app/.env; setkey() { sed -i "/^$1=/d" "$ENV"; echo "$1=\"$2\"" >> "$ENV"; }
+> read -rp "Maps Key ID: " KID && setkey MAPKIT_KEY_ID "$KID"
+> grep -q '^APPLE_TEAM_ID=..' "$ENV" || { read -rp "Apple Team ID: " TID && setkey APPLE_TEAM_ID "$TID"; }
+> mkdir -p /home/athar/keys && echo "الصق ملف .p8 كاملاً ثم Enter ثم Ctrl+D:" && cat > /home/athar/keys/mapkit.p8
+> chown -R athar:athar /home/athar/keys && chmod 700 /home/athar/keys && chmod 600 /home/athar/keys/mapkit.p8
+> setkey MAPKIT_KEY_PATH /home/athar/keys/mapkit.p8 && systemctl restart athar-api athar-web && echo تم
+> ```
+>
+> والتحقّقُ: `journalctl -u athar-api -n 100 | grep apple-maps` — لا سطرَ يعني أنّ الرمزَ قُبل،
+> و`token 401` يعني مفتاحاً بلا خدمة Maps أو معرّفاً خطأ.
 
 > **تيك توك** (developers.tiktok.com ← تطبيق ← Login Kit، نطاقُ `user.info.basic`):
 > عنوانُ العودة في «Redirect URI» على منصّة Web — **واحدٌ للويب والجوّال**:

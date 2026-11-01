@@ -1,3 +1,4 @@
+import { appleReverse, appleSearch } from "./apple-maps";
 /**
  * تحويل الإحداثيات إلى اسم مكان عربي.
  *
@@ -18,7 +19,7 @@ export type ResolvedPlace = {
   airport?: string | null;
 };
 
-export async function reverseGeocode(lat: number, lng: number): Promise<ResolvedPlace> {
+async function osmReverse(lat: number, lng: number): Promise<ResolvedPlace> {
   const url = new URL("https://nominatim.openstreetmap.org/reverse");
   url.searchParams.set("format", "jsonv2");
   url.searchParams.set("lat", String(lat));
@@ -63,6 +64,22 @@ export async function reverseGeocode(lat: number, lng: number): Promise<Resolved
   } catch {
     return { name: null, city: null };
   }
+}
+
+/**
+ * خرائطُ آبل والـOSM معاً (القاعدة ٣٨٠): آبل أدقُّ في المدينة والدولة بالعربيّة، والـOSM
+ * يعرف اسمَ المحلّ والمطار. يُسألان معاً فلا ينتظر أحدُهما الآخر، وبلا مفتاح آبل الـOSM وحده.
+ */
+export async function reverseGeocode(lat: number, lng: number): Promise<ResolvedPlace> {
+  const [apple, osm] = await Promise.all([appleReverse(lat, lng).catch(() => null), osmReverse(lat, lng)]);
+  if (!apple) return osm;
+  return {
+    name: osm.name ?? apple.name ?? apple.city,
+    city: apple.city ?? osm.city,
+    country: apple.country ?? osm.country ?? null,
+    countryCode: apple.countryCode ?? osm.countryCode ?? null,
+    airport: osm.airport ?? null,
+  };
 }
 
 /** مكانٌ قريب: اسمه ونوعه وبُعده بالأمتار. */
@@ -354,7 +371,9 @@ async function google(lat: number, lng: number, key: string): Promise<NearbyPlac
 export async function searchPlaces(lat: number, lng: number, text: string): Promise<NearbyPlace[]> {
   const key = process.env.GOOGLE_PLACES_KEY;
   const q = text.trim().slice(0, 80);
-  if (!key || q.length < 2) return [];
+  if (q.length < 2) return [];
+  // بلا مفتاح قوقل خرائطُ آبل (القاعدة ٣٨٠)، وبلاهما قائمةٌ فارغة.
+  if (!key) return appleSearch(lat, lng, q).catch(() => []);
   try {
     const list = await askGoogle(GOOGLE_TEXT, key, {
       textQuery: q,
@@ -363,9 +382,10 @@ export async function searchPlaces(lat: number, lng: number, text: string): Prom
       regionCode: "SA",
       locationBias: { circle: { center: { latitude: lat, longitude: lng }, radius: 5000 } },
     });
-    return fromGoogle(lat, lng, list).sort((a, b) => a.meters - b.meters);
+    const found = fromGoogle(lat, lng, list).sort((a, b) => a.meters - b.meters);
+    return found.length ? found : appleSearch(lat, lng, q).catch(() => []);
   } catch {
-    return [];
+    return appleSearch(lat, lng, q).catch(() => []);
   }
 }
 
