@@ -1,6 +1,6 @@
 import { Pressable, View } from "react-native";
 import { create } from "zustand";
-import Svg, { Path } from "react-native-svg";
+import Svg, { Circle, Path } from "react-native-svg";
 import { router } from "expo-router";
 import { interestOf } from "@athar/shared";
 import { Text } from "./type";
@@ -43,26 +43,31 @@ function Chip({ id, strong }: { id: string; strong?: boolean }) {
 }
 
 /**
- * شارةُ الاهتمامات (القاعدة ٣٨٢): قرصٌ بلون اللمسة فيه ثلاثُ نجماتٍ رباعيّة — بقرار المالك بدل
- * الدائرتين المتداخلتين، تُقرأ رسمَ مخطّطٍ لا شارة.
+ * شارةُ الاهتمامات (القاعدة ٣٨٣) — **بقرار المالك**: حلقتان متداخلتان بخطٍّ رفيع ورأسٍ مستدير،
+ * الأولى بحبر الأرضيّة والثانية باللمسة، وموضعُ التقائهما عدسةٌ مملوءةٌ باللمسة شفيفة — ما يجمع
+ * اثنين. وفي «أنا» الثانيةُ قوسٌ ناقص (`open`): اهتماماتُك تنتظر من يلتقي بها.
  */
-function Spark() {
+function Rings({ open }: { open?: boolean }) {
+  const ink = colors.groundInk;
+  const tint = colors.clay;
+  // حلقتان نصفُ قطرهما ٧٫٥ ومركزاهما ١١ و٢١ على سطرٍ ارتفاعُه ٢٢.
+  const lens = "M16 5.41 A7.5 7.5 0 0 1 16 16.59 A7.5 7.5 0 0 1 16 5.41 Z";
   return (
-    <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}>
-      <Svg width={18} height={18} viewBox="0 0 24 24">
-        <Path d="M10 3.5c.6 3.7 2.3 5.4 6 6-3.7.6-5.4 2.3-6 6-.6-3.7-2.3-5.4-6-6 3.7-.6 5.4-2.3 6-6Z" fill={colors.onBrand} />
-        <Path d="M18 13.5c.3 1.9 1.1 2.7 3 3-1.9.3-2.7 1.1-3 3-.3-1.9-1.1-2.7-3-3 1.9-.3 2.7-1.1 3-3Z" fill={colors.onBrand} opacity={0.9} />
-        <Path d="M18.5 2.5c.2 1.2.8 1.8 2 2-1.2.2-1.8.8-2 2-.2-1.2-.8-1.8-2-2 1.2-.2 1.8-.8 2-2Z" fill={colors.onBrand} opacity={0.75} />
-      </Svg>
-    </View>
+    <Svg width={32} height={22} viewBox="0 0 32 22">
+      <Path d={lens} fill={tint} opacity={0.32} />
+      <Circle cx={11} cy={11} r={7.5} stroke={ink} strokeWidth={2} fill="none" />
+      {open ? (
+        // قوسٌ من الثانية تنقصه ربعُها البعيد.
+        <Path d="M21 3.5 A7.5 7.5 0 1 0 28.5 11" stroke={tint} strokeWidth={2} strokeLinecap="round" fill="none" />
+      ) : (
+        <Circle cx={21} cy={11} r={7.5} stroke={tint} strokeWidth={2} fill="none" />
+      )}
+    </Svg>
   );
 }
 
-const countLabel = (count: number) =>
-  `${ar(count)} ${count === 1 ? "اهتمام" : count === 2 ? "اهتمامان" : count <= 10 ? "اهتمامات" : "اهتماماً"}`;
-
-/** سطرُ الاهتمامات على الأرضيّة — واحدٌ لملفّ الصديق و«أنا». */
-function InterestsLine({ label, pill, a11y, onPress }: { label: string; pill: string; a11y: string; onPress: () => void }) {
+/** سطرُ الاهتمامات على الأرضيّة — واحدٌ لملفّ الصديق و«أنا»، بلا عدد (القاعدة ٣٨٣). */
+function InterestsLine({ label, a11y, open, onPress }: { label: string; a11y: string; open?: boolean; onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -70,11 +75,11 @@ function InterestsLine({ label, pill, a11y, onPress }: { label: string; pill: st
       onPress={onPress}
       style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14, paddingHorizontal: 4 }}
     >
-      <Spark />
+      <Rings open={open} />
       <Text style={{ flex: 1, color: colors.groundInk, fontSize: 14, fontWeight: "700" }}>{label}</Text>
-      <View style={{ height: 32, paddingHorizontal: 16, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: colors.chip }}>
-        <Text style={{ color: colors.ink, fontSize: 13, fontWeight: "700" }}>{pill}</Text>
-      </View>
+      <Svg width={16} height={16} viewBox="0 0 24 24">
+        <Path d="M15 5 8 12l7 7" stroke={colors.groundInk} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" fill="none" opacity={0.6} />
+      </Svg>
     </Pressable>
   );
 }
@@ -86,9 +91,9 @@ function InterestsLine({ label, pill, a11y, onPress }: { label: string; pill: st
 export function MyInterests({ count }: { count: number }) {
   return (
     <InterestsLine
-      label="اهتماماتي"
-      pill={count ? countLabel(count) : "اختر"}
-      a11y={count ? `اهتماماتي، ${count}` : "اختر اهتماماتك"}
+      label={count ? "اهتماماتي" : "اختر اهتماماتك"}
+      open
+      a11y={count ? "اهتماماتي" : "اختر اهتماماتك"}
       onPress={() => router.push("/interests?edit=1" as never)}
     />
   );
@@ -102,11 +107,9 @@ export function MyInterests({ count }: { count: number }) {
 export function SharedInterests({ name, data }: { name: string; data: FriendInterests | undefined }) {
   if (!data || data.shared.length + data.theirs.length === 0) return null;
   const shared = data.shared.length;
-  const count = shared || data.theirs.length;
   return (
     <InterestsLine
       label={shared ? "اهتماماتكم المشتركة" : `اهتمامات ${name}`}
-      pill={countLabel(count)}
       a11y={shared ? `${shared} اهتمامات مشتركة` : `اهتمامات ${name}`}
       onPress={() => openInterests(name, data)}
     />
