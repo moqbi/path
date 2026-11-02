@@ -155,7 +155,7 @@ export default function Store() {
     // أثوابُ قاعة المعرض (القاعدة ٣٤٨) — الخادمُ لا يرسلها إلا لنسخة التطوير، والشريحةُ تظهر حين يكون فيها شيء.
     { slug: "kind:GALLERY", name: "المعرض", kinds: ["GALLERY"], other: "المعرض" },
     // أغلفةُ كتاب السنة (القاعدة ٤٠٥) — تُختار في «تجهيز الكتاب» لا تُلبَس.
-    { slug: "kind:BOOK", name: "أغلفة الكتاب", kinds: ["BOOK"], other: "أغلفة الكتاب" },
+    { slug: "kind:BOOK", name: "الكتاب", kinds: ["BOOK"], other: "الكتاب" },
   ] as const;
   const STICKERS = { slug: "kind:STICKER", name: "الملصقات" };
   const stickerTab = slug === STICKERS.slug;

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import {
-  Canvas, ColorMatrix, Image as SkiaImage, RadialGradient, Rect, Skia, vec, type SkImage,
+  Canvas, ColorMatrix, Group, Image as SkiaImage, RadialGradient, Rect, Skia, useVideo, vec, type SkImage,
 } from "@shopify/react-native-skia";
 import { Text } from "./type";
 import { baseUrl, currentAccess } from "../lib/api";
@@ -145,6 +145,93 @@ function Vignette({ amount, width, height }: { amount?: number; width: number; h
 }
 
 /**
+ * مقطعٌ بفلتر — معاينةُ المحرّر قبل النشر (القاعدة ٤٠٧).
+ *
+ * مشغّلُ النظام لا يمرّ بـSkia، فالمقطعُ هنا يُفكّ بـ`useVideo` ويُرسم إطاراً إطاراً بمصفوفة
+ * الفلتر نفسها، وصوتُه معه. والخادمُ يطبع الفلترَ نفسه في المقطع عند الضغط، فما يُرى هنا ما
+ * يراه المشاهدون. ومقطعُ الآيفون الطوليّ تُكتب إطاراتُه عرضيّةً بزاويةٍ في الملفّ — فتُدار.
+ */
+export function FilteredVideo({
+  uri,
+  filter,
+  width,
+  height,
+  muted = false,
+  paused = false,
+}: {
+  uri: string;
+  filter: string;
+  width: number;
+  height: number;
+  muted?: boolean;
+  paused?: boolean;
+}) {
+  const { currentFrame, rotation } = useVideo(uri, { looping: true, paused, volume: muted ? 0 : 1 });
+  const look = filterOf(filter);
+  const turned = rotation === 90 || rotation === 270;
+  const w = turned ? height : width;
+  const h = turned ? width : height;
+  return (
+    <View pointerEvents="none" style={{ width, height }}>
+      <Canvas style={{ width, height }}>
+        <Group
+          transform={[
+            { translateX: width / 2 },
+            { translateY: height / 2 },
+            { rotate: (rotation * Math.PI) / 180 },
+            { translateX: -w / 2 },
+            { translateY: -h / 2 },
+          ]}
+        >
+          <SkiaImage image={currentFrame} x={0} y={0} width={w} height={h} fit="cover">
+            <ColorMatrix matrix={look.matrix} />
+          </SkiaImage>
+        </Group>
+        <Vignette amount={look.vignette} width={width} height={height} />
+      </Canvas>
+    </View>
+  );
+}
+
+/**
+ * إطارٌ من المقطع لأقراص شريط الفلاتر: يُشغَّل صامتاً حتى يصل إطار، ثمّ يُنسخ ويُترك المقطع.
+ * والزاويةُ معه — إطارُ المقطع الطوليّ عرضيٌّ في ملفّه.
+ */
+export function useVideoStill(uri: string | null): { image: SkImage; rotation: number } | null {
+  const [still, setStill] = useState<{ image: SkImage; rotation: number } | null>(null);
+  useEffect(() => {
+    if (!uri) return;
+    let alive = true;
+    (async () => {
+      const video = await Skia.Video(uri);
+      try {
+        video.setVolume(0);
+        video.seek(Math.min(500, Math.max(0, video.duration() / 2)));
+        video.play();
+        for (let i = 0; i < 40 && alive; i++) {
+          const frame = video.nextImage();
+          if (frame) {
+            const copy = frame.makeNonTextureImage() ?? frame;
+            if (alive) setStill({ image: copy, rotation: video.rotation() });
+            return;
+          }
+          await new Promise((done) => setTimeout(done, 60));
+        }
+      } finally {
+        video.pause();
+        video.dispose?.();
+      }
+    })().catch(() => {
+      /* بلا إطارٍ تبقى الأقراصُ داكنة والفلاترُ تُختار بأسمائها */
+    });
+    return () => {
+      alive = false;
+    };
+  }, [uri]);
+  return still;
+}
+
+/**
  * شريطُ الفلاتر بمعاينتها — **الصورةُ نفسها في كلّ قرص** لا أسماءٌ تُخمَّن
  * (القاعدة ٩٦). تُفكّ مرّةً وتُرسم صغيرةً بكلّ فلتر.
  */
@@ -152,12 +239,18 @@ export function FilterStrip({
   uri,
   value,
   onChange,
+  video = false,
 }: {
   uri: string;
   value: string;
   onChange: (key: string) => void;
+  /** المقطعُ يُرسم من إطارٍ فيه لا من ملفّه (القاعدة ٤٠٧). */
+  video?: boolean;
 }) {
-  const image = useAuthedImage(uri, true);
+  const photo = useAuthedImage(video ? null : uri, true);
+  const still = useVideoStill(video ? uri : null);
+  const image = video ? (still?.image ?? null) : photo;
+  const turn = video ? (still?.rotation ?? 0) : 0;
   const W = 62;
   const H = 82;
   return (
@@ -184,9 +277,19 @@ export function FilterStrip({
               <View style={{ width: W, height: H, borderRadius: 10, overflow: "hidden", backgroundColor: "#0b1219" }}>
                 {image ? (
                   <Canvas style={{ width: W, height: H }}>
-                    <SkiaImage image={image} x={0} y={0} width={W} height={H} fit="cover">
-                      <ColorMatrix matrix={item.matrix} />
-                    </SkiaImage>
+                    <Group
+                      transform={[
+                        { translateX: W / 2 },
+                        { translateY: H / 2 },
+                        { rotate: (turn * Math.PI) / 180 },
+                        { translateX: -(turn % 180 ? H : W) / 2 },
+                        { translateY: -(turn % 180 ? W : H) / 2 },
+                      ]}
+                    >
+                      <SkiaImage image={image} x={0} y={0} width={turn % 180 ? H : W} height={turn % 180 ? W : H} fit="cover">
+                        <ColorMatrix matrix={item.matrix} />
+                      </SkiaImage>
+                    </Group>
                     <Vignette amount={item.vignette} width={W} height={H} />
                   </Canvas>
                 ) : null}

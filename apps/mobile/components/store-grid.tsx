@@ -23,7 +23,7 @@ const KIND_LABEL: Record<string, string> = {
   BACKGROUND: "ثيم",
   BUNDLE: "حزمة",
   GALLERY: "معرض",
-  BOOK: "غلاف كتاب",
+  BOOK: "تصميم كتاب",
 };
 
 /** غلافُ الكتاب بمقاسٍ ما — بطاقةُ المتجر ومعاينتُه (القاعدة ٤٠٥). */
@@ -618,7 +618,7 @@ export function StoreGrid({
                   <Text style={{ color: colors.muted, fontSize: 12.5, lineHeight: 21, textAlign: "center", marginTop: 6 }}>
                     {said.ok
                       ? chosen.kind === "BOOK"
-                        ? "صار لك — تختاره غلافاً لكتابك من «تجهيز الكتاب»."
+                        ? "صار لك — تختاره لكتابك من «صمم كتابك» في تجهيز الكتاب."
                         : chosen.kind === "BUNDLE"
                         ? "ما فيها صار لك — تلبسه من إكسسواراتك في «أنا»."
                         : "صار لك — تلبسه الآن أو من إكسسواراتك في «أنا»."

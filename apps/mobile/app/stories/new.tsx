@@ -7,7 +7,8 @@ import { useRouter } from "expo-router";
 import Svg, { Circle } from "react-native-svg";
 import * as Picker from "expo-image-picker";
 import { useQueryClient } from "@tanstack/react-query";
-import { FilterStrip, Filtered } from "../../components/filtered";
+import { FilterStrip, Filtered, FilteredVideo } from "../../components/filtered";
+import { filterOf } from "../../lib/filters";
 import { StoryVideo } from "../../components/story-video";
 import { api } from "../../lib/api";
 import { uploadFile, uploadStoryVideo } from "../../lib/upload";
@@ -117,8 +118,8 @@ export default function NewStory() {
   const frameGesture = useFrameGesture(frame, setFrame, screen.width, screen.height, home);
 
   /**
-   * المقطعُ: الفلاترُ للصور وحدها (القاعدة ١٣١). والموسيقى تبقى — **بقرار المالك**
-   * (القاعدة ٢٧٧) تُضاف إلى الفيديو كالصورة، ومعها زرُّ كتم صوته.
+   * لقطةٌ جديدة تبدأ بلا فلتر. والمقطعُ يُفلتر كالصورة (القاعدة ٤٠٧)، والموسيقى تبقى —
+   * **بقرار المالك** (القاعدة ٢٧٧) تُضاف إلى الفيديو كالصورة، ومعها زرُّ كتم صوته.
    */
   function dropSound() {
     setFilter("");
@@ -187,7 +188,9 @@ export default function NewStory() {
       let mediaId: string;
       let seconds = draft.seconds;
       if (draft.video) {
-        const done = await uploadStoryVideo(draft.uri, draft.mime, draft.start, draft);
+        // الفلترُ يُطبع في المقطع على الخادم (القاعدة ٤٠٧) فلا يُرسَل مع القصّة: يراه كلُّ مشغّل.
+        const look = filter ? filterOf(filter) : null;
+        const done = await uploadStoryVideo(draft.uri, draft.mime, draft.start, draft, look ? { matrix: look.matrix, vignette: look.vignette } : undefined);
         mediaId = done.mediaId;
         seconds = done.seconds || Math.min(draft.seconds, STORY_SECONDS);
       } else {
@@ -197,7 +200,7 @@ export default function NewStory() {
         method: "POST",
         body: JSON.stringify({
           mediaId,
-          filter: filter || undefined,
+          filter: !draft.video && filter ? filter : undefined,
           seconds: draft.video ? Math.max(1, Math.round(seconds)) : undefined,
           texts: texts.length ? texts : undefined,
           audience: only ? picked : undefined,
@@ -277,7 +280,11 @@ export default function NewStory() {
           >
             {(w, h) =>
               draft.video ? (
-                <StoryVideo source={draft.uri} local width={w} height={h} loop muted={muteVideo} cover />
+                filter ? (
+                  <FilteredVideo uri={draft.uri} filter={filter} width={w} height={h} muted={muteVideo} />
+                ) : (
+                  <StoryVideo source={draft.uri} local width={w} height={h} loop muted={muteVideo} cover />
+                )
               ) : !filter ? (
                 <Image source={{ uri: draft.uri }} style={{ width: w, height: h }} resizeMode="cover" />
               ) : (
@@ -287,7 +294,11 @@ export default function NewStory() {
           </FramedMedia>
         </View>
       ) : draft.video ? (
-        <StoryVideo source={draft.uri} local width={screen.width} height={screen.height} loop muted={muteVideo} />
+        filter ? (
+          <FilteredVideo uri={draft.uri} filter={filter} width={screen.width} height={screen.height} muted={muteVideo} />
+        ) : (
+          <StoryVideo source={draft.uri} local width={screen.width} height={screen.height} loop muted={muteVideo} />
+        )
       ) : !filter ? (
         <Image source={{ uri: draft.uri }} style={{ width: screen.width, height: screen.height }} resizeMode="contain" />
       ) : (
@@ -329,11 +340,9 @@ export default function NewStory() {
           <Tool label="ملصق" disabled={full} onPress={() => setTray(true)}>
             <StickerIcon size={21} color="#fff" />
           </Tool>
-          {!draft.video ? (
-            <Tool label="فلتر" on={panel === "filter"} onPress={() => setPanel((one) => (one === "filter" ? null : "filter"))}>
-              <FilterMark />
-            </Tool>
-          ) : null}
+          <Tool label="فلتر" on={panel === "filter"} onPress={() => setPanel((one) => (one === "filter" ? null : "filter"))}>
+            <FilterMark />
+          </Tool>
           <Tool label="موسيقى" disabled={!hasMusic && full} on={hasMusic} onPress={openMusic}>
             <MusicIcon size={20} color="#fff" />
           </Tool>
@@ -347,10 +356,10 @@ export default function NewStory() {
 
       {/* الأسفل: الفلترُ أو نافذةُ المقطع، ثمّ الجمهورُ والنشر في شريطٍ زجاجيّ. */}
       <View pointerEvents={dragging ? "none" : "box-none"} style={{ position: "absolute", left: 0, right: 0, bottom: insets.bottom + 12, paddingHorizontal: 16, gap: 10, opacity: dragging ? 0.25 : 1 }}>
-        {panel === "filter" && !draft.video ? (
+        {panel === "filter" ? (
           <GlassPill style={{ borderRadius: 20, padding: 10, paddingBottom: 6 }}>
             <View style={{ flex: 1 }}>
-              <FilterStrip uri={draft.uri} value={filter} onChange={setFilter} />
+              <FilterStrip uri={draft.uri} value={filter} onChange={setFilter} video={draft.video} />
             </View>
           </GlassPill>
         ) : null}
