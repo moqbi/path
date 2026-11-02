@@ -138,15 +138,23 @@ export default function MyMap() {
   const [delta, setDelta] = useState(30);
   const [open, setOpen] = useState<Pin | null>(null);
   const [mode, setMode] = useState<MapMode>("day");
+  // الخريطةُ لا تُركَّب قبل أن يُقرأ مظهرُها (القاعدة ٣٩٤): تبديلُ `fillColor` والمظهر على خريطةٍ
+  // مركّبة يمرّ بالطبقة القديمة داخل Fabric فيُسقط التطبيق ساعةَ يفتحها من اختار «ليلي» من قبل.
+  const [modeReady, setModeReady] = useState(false);
   const [picking, setPicking] = useState(false);
+  // آخرُ موضعٍ للخريطة: تبديلُ المظهر يبني خريطةً جديدة فتُفتح حيث كانت.
+  const lastRegion = useRef<Region>({ latitude: 24.71, longitude: 46.68, latitudeDelta: 30, longitudeDelta: 30 });
   useEffect(() => {
     SecureStore.getItemAsync(MODE_KEY)
       .then((saved) => {
         if (saved === "day" || saved === "night" || saved === "satellite") setMode(saved);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setModeReady(true));
   }, []);
   const choose = (next: MapMode) => {
+    if (next === mode) return setPicking(false);
+    setOpen(null);
     setMode(next);
     setPicking(false);
     SecureStore.setItemAsync(MODE_KEY, next).catch(() => {});
@@ -278,14 +286,19 @@ export default function MyMap() {
 
   return (
     <View style={{ flex: 1, backgroundColor: NIGHT }}>
-      {state.isLoading ? (
+      {state.isLoading || !modeReady ? (
         <Spinner style={{ marginTop: insets.top + 160 }} color={AMBER} />
       ) : (
         <MapView
+          // المظهرُ مفتاحُ الخريطة: يُبنى من جديد بمظهره لا يُبدَّل عليها (القاعدة ٣٩٤).
+          key={mode}
           ref={map}
           style={{ flex: 1 }}
-          initialRegion={{ latitude: 24.71, longitude: 46.68, latitudeDelta: 30, longitudeDelta: 30 }}
-          onRegionChangeComplete={(region: Region) => setDelta(region.latitudeDelta)}
+          initialRegion={lastRegion.current}
+          onRegionChangeComplete={(region: Region) => {
+            lastRegion.current = region;
+            setDelta(region.latitudeDelta);
+          }}
           mapType={mode === "satellite" ? "hybrid" : mode === "night" && Platform.OS === "ios" ? "mutedStandard" : "standard"}
           userInterfaceStyle={mode === "night" ? "dark" : "light"}
           showsPointsOfInterest={false}
@@ -297,17 +310,19 @@ export default function MyMap() {
           pitchEnabled={false}
           toolbarEnabled={false}
         >
-          {SHADE.map((ring, index) => (
-            <Polygon
-              key={`shade-${index}`}
-              coordinates={ring}
-              // الحجابُ لليليّ وحده، ومركّبٌ دائماً: تركيبُ طبقةٍ ونزعُها يُسقطان (القاعدة ٣٨١).
-              fillColor={mode === "night" ? "rgba(8,15,22,0.46)" : "rgba(0,0,0,0)"}
-              strokeColor="transparent"
-              strokeWidth={0}
-              tappable={false}
-            />
-          ))}
+          {/* الحجابُ لليليّ وحده، يُركَّب مع الخريطة ولا يتبدّل عليها (القاعدة ٣٩٤). */}
+          {mode === "night"
+            ? SHADE.map((ring, index) => (
+                <Polygon
+                  key={`shade-${index}`}
+                  coordinates={ring}
+                  fillColor="rgba(8,15,22,0.46)"
+                  strokeColor="transparent"
+                  strokeWidth={0}
+                  tappable={false}
+                />
+              ))
+            : null}
           {pins.map((pin) => {
             const chosen = open?.key === pin.key;
             const dotted = pin.level !== "place";
