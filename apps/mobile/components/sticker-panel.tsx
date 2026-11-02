@@ -1,6 +1,6 @@
 import { Spinner } from "./spinner";
 import { useMemo, useRef, useState } from "react";
-import { FlatList, Pressable, View, type ViewToken } from "react-native";
+import { FlatList, Pressable, View, type ListViewToken } from "react-native";
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Text } from "./type";
@@ -113,7 +113,7 @@ export function StickerPanel({
   }, [stickers.data, isPlus]);
 
   // الصفحةُ الظاهرة من القائمة نفسها لا من الإزاحة: الإزاحةُ في جذرٍ من اليمين لا تُحسب ببساطة.
-  const onViewable = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+  const onViewable = useRef(({ viewableItems }: { viewableItems: ListViewToken[] }) => {
     const first = viewableItems[0];
     if (first?.index != null) setCurrent(first.index);
   }).current;

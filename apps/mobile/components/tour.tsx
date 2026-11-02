@@ -4,7 +4,7 @@ import { create } from "zustand";
 import Svg, { Path } from "react-native-svg";
 import { Text } from "./type";
 import { measureSpot, type Rect } from "./spot";
-import { usePathname, useRouter, type Router } from "expo-router";
+import { usePathname, useRouter } from "expo-router";
 import { closeAddSheet, useAddMode } from "./add-sheet";
 import { CheckIcon } from "./icons";
 import { api } from "../lib/api";
@@ -55,7 +55,7 @@ type Step = {
    */
   skipMissing?: number;
   /** يجري قبل الخطوة. */
-  before?: (router: Router, path: string) => void;
+  before?: (router: ReturnType<typeof useRouter>, path: string) => void;
 };
 
 /**

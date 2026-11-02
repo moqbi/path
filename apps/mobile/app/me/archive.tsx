@@ -79,8 +79,7 @@ function ArchiveGrid() {
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
         onEndReached={() => pages.hasNextPage && !pages.isFetchingNextPage && void pages.fetchNextPage()}
         onEndReachedThreshold={0.6}
-        ListHeaderComponent={
-          <View style={{ paddingTop: 16 }}>
+        ListHeaderComponent={<View style={{ paddingTop: 16 }}>
             {/* «سنتك في كتاب»: لحظاتُ السنة صفحاتٍ من أوّلها. */}
             <View style={{ borderRadius: 18, borderWidth: 1, borderColor: colors.goldLine, backgroundColor: colors.goldSoft, padding: 14 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
@@ -121,8 +120,7 @@ function ArchiveGrid() {
                 </Text>
               </Pressable>
             ) : null}
-          </View>
-        }
+          </View>}
         renderItem={({ item: row }) =>
           row.type === "month" ? (
             <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", paddingTop: 20, paddingBottom: 8 }}>
@@ -144,7 +142,7 @@ function ArchiveGrid() {
             <Text style={{ color: colors.muted, fontSize: 13, textAlign: "center", marginTop: 24 }}>ما نشرت شي بعد.</Text>
           )
         }
-        ListFooterComponent={pages.isFetchingNextPage ? <Spinner style={{ marginTop: 12 }} color={colors.clay} /> : null}
+        ListFooterComponent={(pages.isFetchingNextPage ? <Spinner style={{ marginTop: 12 }} color={colors.clay} /> : null) ?? undefined}
       />
     </SafeAreaView>
   );

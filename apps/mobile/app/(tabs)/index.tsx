@@ -646,8 +646,7 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
           renderItem={({ item }) => (
             <MomentCard moment={item} viewerId={me.id} isPlus={me.isPlus} moderate={me.canModerate} />
           )}
-          ListHeaderComponent={
-            <View>
+          ListHeaderComponent={<View>
             {/*
               الخيطُ يصل الغلافَ بأوّل يوم (القاعدة ٣٣٤): ما بينهما من بطاقاتٍ يمرّ خلفها، ويُرى في
               الفُرَج — بلا قطعةٍ هنا كان ينقطع تحت الغلاف.
@@ -669,10 +668,8 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
               onPick={(id) => router.push(`/together/${id}` as never)}
               onClear={() => router.back()}
             />
-            </View>
-          }
-          ListEmptyComponent={
-            (view === "together" ? together.isLoading : feed.isLoading) ? (
+            </View>}
+          ListEmptyComponent={((view === "together" ? together.isLoading : feed.isLoading) ? (
               <Spinner style={{ marginTop: 50 }} color={colors.clay} />
             ) : view === "together" && !friend ? null : (
               <View style={{ marginTop: 40, borderRadius: 18, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, padding: 24 }}>
@@ -691,13 +688,10 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
                       : "اضغط الزائد وانشر لحظتك الأولى، أو انتظر أحداً من أصدقائك ينشر."}
                 </Text>
               </View>
-            )
-          }
-          ListFooterComponent={
-            feed.isFetchingNextPage ? (
+            )) ?? undefined}
+          ListFooterComponent={(feed.isFetchingNextPage ? (
               <Spinner style={{ paddingVertical: 18 }} color={colors.clay} />
-            ) : null
-          }
+            ) : null) ?? undefined}
         />
 
         {/* ساعةُ التمرير للعدسة الأولى وحدها — **بقرار المالك** (القاعدة ٣١٤). */}

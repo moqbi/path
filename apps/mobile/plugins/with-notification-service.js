@@ -5,7 +5,7 @@
  * على نهج `expo-share-intent` (`withIosShareExtensionXcodeTarget`) الذي يُبنى به المشروعُ اليوم:
  * ملفّان يُنسخان إلى `ios/AtharNotificationService`، وهدفٌ `app_extension` يُضمَّن في التطبيق،
  * وسطرٌ في `extra.eas…appExtensions` فيُصدر EAS له شهادتَه. **وحدةٌ أصليّة**: لا تصل بتحديث OTA،
- * وتدخل البناءَ القادم (٠٫١٫٤). وبناءٌ بلاها يُظهر التنبيهَ نصّاً كما كان.
+ * دخلت بناءَ ٠٫١٫٤. وبناءٌ بلاها يُظهر التنبيهَ نصّاً كما كان.
  */
 const fs = require("fs");
 const path = require("path");
@@ -39,6 +39,19 @@ function withFiles(config) {
       return config;
     },
   ]);
+}
+
+/** هدفُ الامتداد على حدّ التطبيق نفسه: SDK 58 رفع الأدنى، وامتدادٌ أدنى من تطبيقه يُردّ عند الرفع. */
+function deploymentOf(project) {
+  const configs = project.pbxXCBuildConfigurationSection();
+  let found = null;
+  for (const key in configs) {
+    const settings = configs[key].buildSettings;
+    if (!settings || !settings.IPHONEOS_DEPLOYMENT_TARGET) continue;
+    const value = String(settings.IPHONEOS_DEPLOYMENT_TARGET).replace(/"/g, "");
+    if (!found || Number.parseFloat(value) > Number.parseFloat(found)) found = value;
+  }
+  return found ?? "16.4";
 }
 
 function teamOf(project) {
@@ -76,6 +89,7 @@ function withTarget(config) {
     project.addBuildPhase([], "PBXFrameworksBuildPhase", "Frameworks", target.uuid);
 
     const team = teamOf(project);
+    const deployment = deploymentOf(project);
     const configurations = project.pbxXCBuildConfigurationSection();
     for (const key in configurations) {
       const settings = configurations[key].buildSettings;
@@ -88,7 +102,7 @@ function withTarget(config) {
         MARKETING_VERSION: `"${config.version}"`,
         GENERATE_INFOPLIST_FILE: "YES",
         PRODUCT_BUNDLE_IDENTIFIER: `"${bundleIdentifier}"`,
-        IPHONEOS_DEPLOYMENT_TARGET: "15.1",
+        IPHONEOS_DEPLOYMENT_TARGET: deployment,
         SWIFT_VERSION: "5.0",
         TARGETED_DEVICE_FAMILY: `"1"`,
         ...(team ? { DEVELOPMENT_TEAM: team } : null),

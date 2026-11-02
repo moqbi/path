@@ -1,7 +1,7 @@
 import { Spinner } from "../components/spinner";
 import { useEffect, useRef, useState } from "react";
 import { useKeyboardInset } from "../lib/keyboard";
-import { View, Pressable, ScrollView, Image, useWindowDimensions } from "react-native";
+import { View, Pressable, ScrollView, Image, useWindowDimensions, type ScrollViewInstance } from "react-native";
 import { PhotoFrameEditor } from "../components/photo-frame";
 import { Text, TextInput } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -53,7 +53,7 @@ const HINT: Record<Kind, string> = {
 
 export default function Compose() {
   const keyboard = useKeyboardInset();
-  const scroller = useRef<ScrollView>(null);
+  const scroller = useRef<ScrollViewInstance>(null);
   // موضعُ الحقل في المحتوى، ويُمرَّر إليه حين يظهر الكيبورد وهو مُركَّز.
   const fieldTop = useRef(0);
   const [fieldY, setFieldY] = useState<number | null>(null);
