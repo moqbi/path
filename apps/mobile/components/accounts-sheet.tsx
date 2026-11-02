@@ -9,7 +9,7 @@ import { Text } from "./type";
 import { GlassSheet } from "./glass-sheet";
 import { useBarSpace } from "./glass-bar";
 import { Avatar } from "./avatar";
-import { BackIcon, CheckIcon, PlusIcon, TrashIcon, UserIcon } from "./icons";
+import { BackIcon, CheckIcon, LogoutIcon, PlusIcon, TrashIcon, UserIcon } from "./icons";
 import { MAX_ACCOUNTS } from "../lib/accounts";
 import { useSession } from "../lib/session";
 import { ar } from "../lib/format";
@@ -135,6 +135,8 @@ function Body({ close }: { close: () => void }) {
   const accounts = useSession((s) => s.accounts);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // الخروجُ من الكلّ خطوتان: ضغطةٌ تسأل وضغطةٌ تُنفّذ — آخرُ ما قبل شاشة الدخول.
+  const [confirmAll, setConfirmAll] = useState(false);
 
   // النشطُ أوّلاً وإن لم تُكتب القائمةُ بعد.
   const rows = me
@@ -247,6 +249,46 @@ function Body({ close }: { close: () => void }) {
               <Text style={{ color: "#fff", fontSize: 15, fontWeight: "700" }}>إضافة حساب</Text>
               <Text style={{ color: "rgba(255,255,255,.55)", fontSize: 11.5 }}>يبقى هذا الحساب محفوظاً وترجع له بضغطة</Text>
             </View>
+          </Pressable>
+        ) : null}
+
+        {me ? (
+          /*
+            **الخروجُ من كلّ الحسابات** — **بقرار المالك**: الحسابُ النشطُ لا يُزال من هنا (سلّتُه للمركون
+            وحده)، فمن أزال أحدَ حسابيه لم يجد طريقاً إلى إخراج الآخر من النافذة نفسها.
+          */
+          <Pressable
+            disabled={busy !== null}
+            onPress={() => {
+              if (!confirmAll) {
+                setConfirmAll(true);
+                return;
+              }
+              void run("all", async () => {
+                await useSession.getState().signOutAll();
+                close();
+                router.replace("/login");
+              });
+            }}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              marginTop: 12,
+              paddingVertical: 12,
+              borderRadius: 16,
+              backgroundColor: confirmAll ? colors.live : "rgba(255,255,255,.06)",
+            }}
+          >
+            {busy === "all" ? <Spinner color="#fff" size="small" /> : <LogoutIcon size={18} color={confirmAll ? "#fff" : "#FF9C84"} />}
+            <Text style={{ color: confirmAll ? "#fff" : "#FF9C84", fontSize: 14, fontWeight: "700" }}>
+              {confirmAll
+                ? "اضغط مرة ثانية للتأكيد"
+                : rows.length > 1
+                  ? "تسجيل الخروج من كل الحسابات"
+                  : "تسجيل الخروج"}
+            </Text>
           </Pressable>
         ) : null}
 

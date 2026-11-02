@@ -116,6 +116,8 @@ type State = {
   switchAccount: (id: string) => Promise<void>;
   /** يُخرج حساباً مركوناً من الجهاز: يُبطل جلستَه على الخادم ويمحوه. */
   removeAccount: (id: string) => Promise<void>;
+  /** يُخرج كلَّ حسابٍ على الجهاز — المركونَ ثمّ النشط — فيعود إلى شاشة الدخول (القاعدة ٣٨٩). */
+  signOutAll: () => Promise<void>;
 };
 
 const faceOf = (user: Me): Account => ({
@@ -309,5 +311,15 @@ export const useSession = create<State>((set, get) => ({
     }
     await forgetAccount(id);
     set(await settle(get().me));
+  },
+
+  async signOutAll() {
+    const active = get().me?.id;
+    // المركونُ أوّلاً: لو خرج النشطُ قبله لانتقل إليه `signOut` بدل أن يخرج.
+    for (const row of await listAccounts()) {
+      if (row.id !== active) await get().removeAccount(row.id);
+    }
+    if (active) await get().signOut();
+    else set({ me: null, ready: true, ...(await settle(null)) });
   },
 }));

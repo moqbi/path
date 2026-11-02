@@ -106,11 +106,12 @@ export function AthrHeaderMark() {
  * اسم الشاشة — بنفس وزن `AthrHeaderMark` حتى لا يبدو رأس الشاشة أخفّ أو
  * أثقل من بقية التبويبات.
  */
-export function AthrPageMark({ label }: { label: string }) {
+export function AthrPageMark({ label, face }: { label: string; face?: React.ReactNode }) {
   return (
     // ٤٠ ارتفاعاً دائماً: رأسٌ بلا زرٍّ بجانب العلامة كان يقصر عن غيره.
     <span className="flex min-w-0 items-center gap-3" style={{ minHeight: 44 }}>
-      <span className="shrink-0"><AthrMark size={44} /></span>
+      {/* صورةُ الصديق مكانَ العلامة في المحادثة الخاصّة (القاعدة ٣٨٩). */}
+      <span className="shrink-0">{face ?? <AthrMark size={44} />}</span>
       <span
         aria-hidden="true"
         style={{ width: 1, height: 18, background: "var(--color-chrome-line)" }}
