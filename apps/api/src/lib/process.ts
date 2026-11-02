@@ -174,6 +174,11 @@ export async function probeClip(input: Uint8Array, extension: string): Promise<C
       التسجيل «تعذّرت قراءة المقطع» وتسجيلُه سليم.
     */
     if ((problem as { code?: string }).code === "ENOENT") throw new NoProbe();
+    // السببُ في السجلّ (القاعدة ٤٠٢): «تعذّرت قراءة المقطع» وحدها لا تقول أيّ شيءٍ وصل —
+    // الحجمُ وأوّلُ البايتات وما قاله ffprobe نفسه.
+    const head = Buffer.from(input.subarray(0, 16)).toString("hex");
+    const said = String((problem as { stderr?: string }).stderr ?? (problem as Error).message ?? "").slice(0, 400);
+    console.error(`[media] ffprobe رفض المقطع (.${extension}، ${input.length} بايت، ${head}): ${said}`);
     throw problem;
   } finally {
     await rm(folder, { recursive: true, force: true });
