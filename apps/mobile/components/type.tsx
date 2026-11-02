@@ -111,9 +111,21 @@ export const Text = forwardRef<TextInstance, TextProps>(function Text(
 export type TextInputProps = RNTextInputProps & { face?: Face };
 
 /** وحقل الكتابة مثله: حقلٌ بخطّ النظام داخل شاشةٍ بخطّ العلامة يُرى دخيلاً. */
+/**
+ * **وحقلُ الكتابة غيرُ النصّ على آبل** (القاعدة ٤٠٢): سماتُ نصّه الافتراضيّة تُبنى من خصائصه وحدها
+ * بلا اتجاه تخطيط، فـ«الطبيعيّ» فيه يساراً دائماً، و`right` يبقى يميناً لا يُقلب. فالقصدُ يُكتب كما هو.
+ * وعليه يُرسم نصُّ اللحظة والتعليق والرسالة (`SelectableText` — حقلٌ لا يُكتب فيه، القاعدة ٣٦٦).
+ */
+function inputAlign(flat: TextStyle): Pick<TextStyle, "textAlign"> {
+  if (Platform.OS !== "ios") return {};
+  const want = flat.textAlign ?? "right";
+  return want === "right" || want === "left" ? { textAlign: want } : {};
+}
+
 export const TextInput = forwardRef<TextInputInstance, TextInputProps>(function TextInput(
   { face = "body", style, ...rest },
   ref,
 ) {
-  return <RNTextInput ref={ref} {...rest} style={paint(style, face)} />;
+  const flat = (StyleSheet.flatten(style as never) ?? {}) as TextStyle;
+  return <RNTextInput ref={ref} {...rest} style={[paint(flat, face), inputAlign(flat)]} />;
 });
