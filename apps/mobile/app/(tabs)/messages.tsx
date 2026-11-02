@@ -238,8 +238,7 @@ export default function Messages() {
         onScrollBeginDrag={scrolled}
         keyboardShouldPersistTaps="handled"
         data={rows}
-        ListHeaderComponent={
-          <>
+        ListHeaderComponent={<>
           {
           groups.length > 0 ? (
             <View style={{ paddingBottom: 4 }}>
@@ -294,10 +293,8 @@ export default function Messages() {
             </View>
           ) : null
           }
-          </>
-        }
-        ListFooterComponent={
-          others.length > 0 ? (
+          </>}
+        ListFooterComponent={(others.length > 0 ? (
             <View style={{ paddingTop: 8 }}>
               <Text style={{ color: colors.groundMuted, fontSize: 12, fontWeight: "600", paddingHorizontal: 20, paddingBottom: 4 }}>
                 أصدقاء بلا محادثة
@@ -316,8 +313,7 @@ export default function Messages() {
                 </Pressable>
               ))}
             </View>
-          ) : null
-        }
+          ) : null) ?? undefined}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingTop: 8, paddingBottom: barSpace + 8, flexGrow: 1 }}
         {...pull.props}
@@ -390,8 +386,7 @@ export default function Messages() {
           </SwipeRow>
           );
         }}
-        ListEmptyComponent={
-          list.isLoading ? (
+        ListEmptyComponent={(list.isLoading ? (
             <Spinner style={{ marginTop: 50 }} color={colors.clay} />
           ) : groups.length > 0 ? null : needle ? (
             others.length > 0 ? null : (
@@ -405,8 +400,7 @@ export default function Messages() {
                 لا محادثات بعد. افتح ملف صديقٍ وابدأ منه.
               </Text>
             </View>
-          )
-        }
+          )) ?? undefined}
       />
       {pull.overlay}
       </View>

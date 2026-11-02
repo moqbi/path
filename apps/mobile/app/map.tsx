@@ -301,7 +301,7 @@ export default function MyMap() {
           }}
           mapType={mode === "satellite" ? "hybrid" : mode === "night" && Platform.OS === "ios" ? "mutedStandard" : "standard"}
           userInterfaceStyle={mode === "night" ? "dark" : "light"}
-          showsPointsOfInterest={false}
+          showsPointsOfInterests={false}
           showsBuildings={false}
           showsTraffic={false}
           showsCompass={false}

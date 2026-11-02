@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, Animated, Easing, Pressable, TextInput as RNTextInput, View } from "react-native";
+import { AccessibilityInfo, Animated, Easing, Pressable, TextInput as RNTextInput, View, type TextInputInstance } from "react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { STATUS_COMMENT_MAX } from "@athar/shared";
 import { Text, TextInput } from "./type";
@@ -218,7 +218,7 @@ export function CommentField({
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
-  const field = useRef<RNTextInput>(null);
+  const field = useRef<TextInputInstance>(null);
 
   const send = async () => {
     const body = text.trim();

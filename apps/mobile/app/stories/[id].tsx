@@ -2,7 +2,7 @@ import { Spinner } from "../../components/spinner";
 import { useEffect, useRef, useState } from "react";
 import { View, Pressable, Alert, Dimensions, ScrollView, Animated, PanResponder } from "react-native";
 import type { StorySticker, StoryText } from "@athar/shared";
-import { Audio } from "expo-av";
+import { Audio } from "../../lib/av";
 import { StoryTexts } from "../../components/story-texts";
 import { StoryStickers } from "../../components/story-stickers";
 import { ReactionGlyph } from "../../components/reactions";

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { View, Pressable, Animated, PanResponder, Easing, type ViewStyle } from "react-native";
+import { View, Pressable, Animated, PanResponder, Easing, type ViewStyle, type ViewInstance } from "react-native";
 import { Text } from "./type";
 import { CloseIcon } from "./icons";
 import { colors } from "../theme/tokens";
@@ -96,7 +96,7 @@ export function SwipeRow({
   swiping.current = onSwiping;
   const open = useRef(false);
   const from = useRef(0);
-  const box = useRef<View>(null);
+  const box = useRef<ViewInstance>(null);
 
   /*
     تسجيلُه في السجلّ الواحد (`lib/swipe-open.ts`): فتحُ صفٍّ يطوي غيرَه،

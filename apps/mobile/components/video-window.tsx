@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { PanResponder, View } from "react-native";
-import { ResizeMode, Video } from "expo-av";
+import { useEventListener } from "expo";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { STORY_SECONDS } from "@athar/shared";
 import { Text } from "./type";
 import { ar } from "../lib/format";
@@ -27,34 +28,29 @@ export function VideoWindowPreview({
   width: number;
   height: number;
 }) {
-  const player = useRef<Video | null>(null);
   const span = useRef(start);
   span.current = start;
+  const player = useVideoPlayer({ uri }, (made) => {
+    made.muted = false;
+    made.timeUpdateEventInterval = 0.25;
+    made.play();
+  });
 
   // النافذةُ انتقلت: يقفز إلى أوّلها.
   useEffect(() => {
-    void player.current?.setPositionAsync(start * 1000).catch(() => {});
-  }, [start]);
+    player.currentTime = start;
+  }, [player, start]);
 
-  return (
-    <Video
-      ref={player}
-      source={{ uri }}
-      style={{ width, height }}
-      resizeMode={ResizeMode.CONTAIN}
-      shouldPlay
-      isMuted={false}
-      progressUpdateIntervalMillis={250}
-      onPlaybackStatusUpdate={(status) => {
-        if (!status.isLoaded) return;
-        const end = (span.current + STORY_SECONDS) * 1000;
-        if (status.positionMillis >= end || status.didJustFinish) {
-          void player.current?.setPositionAsync(span.current * 1000).catch(() => {});
-          void player.current?.playAsync().catch(() => {});
-        }
-      }}
-    />
-  );
+  const back = () => {
+    player.currentTime = span.current;
+    player.play();
+  };
+  useEventListener(player, "timeUpdate", ({ currentTime }) => {
+    if (currentTime >= span.current + STORY_SECONDS) back();
+  });
+  useEventListener(player, "playToEnd", back);
+
+  return <VideoView player={player} style={{ width, height }} contentFit="contain" nativeControls={false} />;
 }
 
 /**

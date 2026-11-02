@@ -4,7 +4,7 @@ import { usePullLogo } from "../../components/logo-refresh";
 import { useTabTop } from "../../lib/tab-top";
 import { TabBackdrop } from "../../components/tab-backdrop";
 import { useBarSpace } from "../../components/glass-bar";
-import { View, ScrollView, Pressable } from "react-native";
+import { View, ScrollView, Pressable, type ScrollViewInstance } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -59,7 +59,7 @@ function Row({
  */
 export default function Store() {
   // ضغطةُ التبويب المفتوح ترجع إلى أعلاه (القاعدة ١٥٧).
-  const list = useRef<ScrollView | null>(null);
+  const list = useRef<ScrollViewInstance | null>(null);
   useTabTop(() => list.current?.scrollTo({ y: 0, animated: true }));
   // المحتوى يمرّ تحت الشريط الزجاجيّ، وآخرُه يُقرأ فوقه (القاعدة ٢٢٨).
   const barSpace = useBarSpace();

@@ -1,6 +1,6 @@
 import { Spinner } from "../../components/spinner";
 import { useRef, useState } from "react";
-import { Platform, Pressable, ScrollView, View, type TextInput as RNTextInput } from "react-native";
+import { Platform, Pressable, ScrollView, View, type TextInput as RNTextInput, type TextInputInstance } from "react-native";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -52,7 +52,7 @@ export default function NewNote() {
   const circle = useCircle();
   const groups = circle.data?.groups ?? [];
 
-  const input = useRef<RNTextInput>(null);
+  const input = useRef<TextInputInstance>(null);
   const [text, setText] = useState("");
   const [track, setTrack] = useState<{ track: Track; start: number; full: boolean; seconds: number } | null>(null);
   const [picking, setPicking] = useState(false);

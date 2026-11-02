@@ -273,8 +273,7 @@ function Profile() {
             بالحافتين ويمشي عمود الصور خارج الخيط، فتُقرأ الصفحة مكسورة.
           */
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: barSpace + 8 }}
-          ListHeaderComponent={
-            <>
+          ListHeaderComponent={<>
               {/*
                 الغلاف طبقةٌ واحدة في كل الشاشات (القاعدة ٧١): صورةٌ ودرعٌ
                 تحت قناع الذوبان نفسه. وصورةٌ عاريةٌ في مربّعٍ رماديّ تنتهي
@@ -450,10 +449,8 @@ function Profile() {
                   </View>
                 )}
               </View>
-            </>
-          }
-          ListEmptyComponent={
-            listLoading ? null : tab === "together" ? (
+            </>}
+          ListEmptyComponent={(listLoading ? null : tab === "together" ? (
               <Text style={{ color: colors.groundFaint, fontSize: 12.5, textAlign: "center", paddingVertical: 24 }}>
                 ما جمعتكما لحظةٌ بعد.
               </Text>
@@ -479,8 +476,7 @@ function Profile() {
               <Text style={{ color: colors.groundFaint, fontSize: 12.5, textAlign: "center", paddingVertical: 24 }}>
                 لا لحظات تراها.
               </Text>
-            )
-          }
+            )) ?? undefined}
         />
         {pull.overlay}
         </View>

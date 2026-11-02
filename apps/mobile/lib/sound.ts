@@ -1,5 +1,5 @@
 import { AccessibilityInfo } from "react-native";
-import { Audio } from "expo-av";
+import { Audio } from "./av";
 
 /**
  * نغمات الواجهة.

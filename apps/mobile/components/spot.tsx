@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { View } from "react-native";
+import { View, type ViewInstance } from "react-native";
 
 /**
  * عنصرٌ يُعرف مكانُه على الشاشة — لتضع عليه الجولةُ دائرتها.
@@ -11,7 +11,7 @@ import { View } from "react-native";
  */
 export type Rect = { x: number; y: number; width: number; height: number };
 
-const spots = new Map<string, View>();
+const spots = new Map<string, ViewInstance>();
 
 export function Spot({
   id,
@@ -23,7 +23,7 @@ export function Spot({
   grow?: boolean;
   children: React.ReactNode;
 }) {
-  const ref = useRef<View>(null);
+  const ref = useRef<ViewInstance>(null);
   useEffect(() => {
     const node = ref.current;
     if (node) spots.set(id, node);

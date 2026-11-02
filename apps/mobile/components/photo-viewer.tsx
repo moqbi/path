@@ -98,7 +98,7 @@ function ViewerBody() {
     عقدةُ إزاحة كلّ صورةٍ تُحفظ بمعرّفها (القاعدة ٣٥٠): كانت تُبنى مع كلّ رسمة، والتقليبُ
     يرسم (معرّفٌ جديد) فتُستبدل عقدةُ الصورة الظاهرة تحت الإصبع — فترمش.
   */
-  const shiftCache = useRef(new Map<string, Animated.AnimatedInterpolation<number> | Animated.AnimatedAddition<number>>()).current;
+  const shiftCache = useRef(new Map<string, Animated.AnimatedInterpolation<number> | Animated.AnimatedAddition>()).current;
   const shiftOf = (at: number) => {
     const key = `${at}:${screen.width}`;
     let node = shiftCache.get(key);

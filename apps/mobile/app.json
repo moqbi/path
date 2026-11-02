@@ -3,10 +3,9 @@
     "name": "آثار مومنتس",
     "slug": "athar",
     "scheme": "athar",
-    "version": "0.1.4",
+    "version": "0.1.5",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "app.athar.mobile",
       "supportsTablet": false,
@@ -145,6 +144,30 @@
             }
           ]
         }
+      ],
+      [
+        "expo-audio",
+        {
+          "enableBackgroundPlayback": false,
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": false,
+          "supportsPictureInPicture": false
+        }
+      ],
+      "expo-asset",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/adaptive-icon.png",
+          "resizeMode": "contain",
+          "imageWidth": 200,
+          "backgroundColor": "#0d1c25"
+        }
       ]
     ],
     "extra": {
@@ -156,11 +179,6 @@
     "icon": "./assets/icon.png",
     "web": {
       "favicon": "./assets/athr-mark.png"
-    },
-    "splash": {
-      "image": "./assets/adaptive-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0d1c25"
     },
     "owner": "i.moh57",
     "locales": {

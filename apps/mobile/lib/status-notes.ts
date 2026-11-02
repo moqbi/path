@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Audio } from "expo-av";
+import { Audio } from "./av";
 import { useQuery } from "@tanstack/react-query";
 import { create } from "zustand";
 import { api } from "./api";

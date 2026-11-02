@@ -13,12 +13,12 @@ import { deleteItem, getItem, setItem } from "./store";
  */
 const KEY = "athr.ref";
 
-function memberNoOf(url: string | null): number | null {
+function memberNoOf(url: string | null | undefined): number | null {
   const match = url?.match(/\/u\/(\d{1,9})(?:[/?#]|$)/);
   return match ? Number(match[1]) : null;
 }
 
-async function remember(url: string | null) {
+async function remember(url: string | null | undefined) {
   const no = memberNoOf(url);
   if (!no) return;
   const kept = await getItem(KEY).catch(() => null);

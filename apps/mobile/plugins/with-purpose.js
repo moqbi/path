@@ -15,6 +15,10 @@ const UNUSED = [
   "NSLocationAlwaysAndWhenInUseUsageDescription",
   "NSLocationAlwaysUsageDescription",
   "NSFaceIDUsageDescription",
+  // ومنذ SDK 58 يُضيف `expo-location` نصَّ الحركة (`NSMotionUsageDescription`) ونصَّ
+  // الدقّة المؤقّتة — ولا نقرأ نشاطَ الحركة ولا نطلب دقّةً مؤقّتة (القاعدة ٣٩٨).
+  "NSMotionUsageDescription",
+  "NSLocationTemporaryUsageDescriptionDictionary",
 ];
 
 module.exports = function withPurpose(config) {

@@ -2,7 +2,7 @@ import { Spinner } from "./spinner";
 import { useEffect, useRef, useState } from "react";
 import { Dimensions, PanResponder, Pressable, View } from "react-native";
 import * as Picker from "expo-image-picker";
-import { Audio } from "expo-av";
+import { Audio } from "../lib/av";
 import { SOUND_SOURCE, STORY_SECONDS } from "@athar/shared";
 import { Text, TextInput } from "./type";
 import { CheckIcon, CloseIcon, MusicIcon, PauseIcon, PlayIcon } from "./icons";

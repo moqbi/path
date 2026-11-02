@@ -11,7 +11,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Picker from "expo-image-picker";
-import { Audio } from "expo-av";
+import { Audio } from "../../lib/av";
 import { ChatLine, bubbleStyle, needsHead } from "../../components/chat-line";
 import { viewPhoto } from "../../components/photo-viewer";
 import { MediaImage } from "../../components/media-image";

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Animated, View, Pressable, Platform, PanResponder } from "react-native";
+import { Animated, View, Pressable, Platform, PanResponder, type ViewInstance } from "react-native";
 import * as Haptics from "expo-haptics";
 import * as Notifications from "expo-notifications";
 import { BlurView } from "expo-blur";
@@ -111,7 +111,7 @@ export function useAppBadge() {
   return { unseen, unread };
 }
 
-export function GlassBar({ state, navigation }: BarProps) {
+export function GlassBar({ state, emitter, navigateToTab }: BarProps) {
   const insets = useSafeAreaInsets();
   const path = usePathname();
   const me = useSession((s) => s.me);
@@ -125,7 +125,8 @@ export function GlassBar({ state, navigation }: BarProps) {
   const go = (name: string) => {
     const route = state.routes.find((r) => r.name === name);
     if (!route) return;
-    const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
+    // `emitter` و`navigateToTab` بدل `navigation` في شريط expo-router الجديد (القاعدة ٣٩٨).
+    const event = emitter.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
     if (active !== name && !event.defaultPrevented) {
       /*
         **العدسةُ تنطلق قبل الشاشة**: كانت تنتظر رسمَ التبويب الجديد ثمّ تتحرّك —
@@ -133,7 +134,7 @@ export function GlassBar({ state, navigation }: BarProps) {
       */
       const index = itemsRef.current.findIndex((item) => item.key === (name === "messages" ? "chats" : name));
       if (index >= 0 && targetRef.current !== index) moveTo(index);
-      navigation.navigate(name as never);
+      navigateToTab(route.key);
     }
   };
 
@@ -211,7 +212,7 @@ export function GlassBar({ state, navigation }: BarProps) {
   */
   const slots = useRef<{ x: number; w: number }[]>([]);
   const rowX = useRef(0);
-  const row = useRef<View>(null);
+  const row = useRef<ViewInstance>(null);
   /*
     **الحركةُ كلُّها على الخيط الأصليّ** (`useNativeDriver: true`): كانت تحرّك
     `left` و`width` على خيط جافاسكربت، والنقرُ يبدأ رسمَ الشاشة الجديدة على الخيط

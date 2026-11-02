@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { View, Pressable } from "react-native";
 import { Text } from "./type";
-import { ResizeMode, Video } from "expo-av";
+import { useEventListener } from "expo";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { PlayIcon } from "./icons";
 import { baseUrl, currentAccess, watchAccess } from "../lib/api";
 import { colors } from "../theme/tokens";
@@ -42,7 +43,6 @@ export function StoryVideo({
   /** يملأ اللوحة ويقصّ ما زاد — القصّةُ بملء الشاشة (القاعدة ٢٩٦). */
   cover?: boolean;
 }) {
-  const player = useRef<Video | null>(null);
   const [token, setToken] = useState(currentAccess);
   const [playing, setPlaying] = useState(!paused);
   const [failed, setFailed] = useState(false);
@@ -50,7 +50,38 @@ export function StoryVideo({
   useEffect(() => watchAccess(() => setToken(currentAccess())), []);
   useEffect(() => setPlaying(!paused), [paused]);
 
-  if (!local && !token) return null;
+  // `expo-video` (القاعدة ٣٩٨): المصدرُ ثابتٌ ما لم يتغيّر الملفّ أو التوكن — مصدرٌ جديد يبني مشغّلاً جديداً.
+  const media = useMemo(
+    () =>
+      local
+        ? { uri: source }
+        : token
+          ? { uri: `${baseUrl}/v1/media/${source}`, headers: { authorization: `Bearer ${token}` } }
+          : null,
+    [local, source, token],
+  );
+  const player = useVideoPlayer(media, (made) => {
+    made.loop = loop;
+    made.muted = muted;
+  });
+  useEffect(() => {
+    player.loop = loop;
+  }, [player, loop]);
+  useEffect(() => {
+    player.muted = muted;
+  }, [player, muted]);
+  useEffect(() => {
+    if (playing) player.play();
+    else player.pause();
+  }, [player, playing, media]);
+  useEventListener(player, "playToEnd", () => {
+    if (!loop) setPlaying(false);
+  });
+  useEventListener(player, "statusChange", ({ status }) => {
+    if (status === "error") setFailed(true);
+  });
+
+  if (!media) return null;
 
   if (failed) {
     return (
@@ -62,22 +93,11 @@ export function StoryVideo({
 
   return (
     <View style={{ width, height }}>
-      <Video
-        ref={player}
-        source={
-          local
-            ? { uri: source }
-            : { uri: `${baseUrl}/v1/media/${source}`, headers: { authorization: `Bearer ${token}` } }
-        }
+      <VideoView
+        player={player}
         style={{ width, height }}
-        resizeMode={cover ? ResizeMode.COVER : ResizeMode.CONTAIN}
-        isLooping={loop}
-        isMuted={muted}
-        shouldPlay={playing}
-        onError={() => setFailed(true)}
-        onPlaybackStatusUpdate={(status) => {
-          if (status.isLoaded && status.didJustFinish && !loop) setPlaying(false);
-        }}
+        contentFit={cover ? "cover" : "contain"}
+        nativeControls={false}
       />
 
       {/* زرٌّ يُعيد التشغيل بعد أن ينتهي — ومن أراد أن يراه ثانيةً قبل أن يرسله. */}
@@ -85,8 +105,8 @@ export function StoryVideo({
         <Pressable
           accessibilityLabel="شغّل المقطع"
           onPress={() => {
+            player.replay();
             setPlaying(true);
-            void player.current?.replayAsync();
           }}
           style={{
             position: "absolute",

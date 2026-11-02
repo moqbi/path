@@ -7,6 +7,8 @@ import {
   type TextProps as RNTextProps,
   type TextInputProps as RNTextInputProps,
   type TextStyle,
+  type TextInstance,
+  type TextInputInstance,
 } from "react-native";
 import { familyOf, type Face } from "../theme/fonts";
 
@@ -83,7 +85,7 @@ function paint(style: unknown, face: Face): TextStyle {
   };
 }
 
-export const Text = forwardRef<RNText, TextProps>(function Text(
+export const Text = forwardRef<TextInstance, TextProps>(function Text(
   { face = "body", style, ...rest },
   ref,
 ) {
@@ -93,7 +95,7 @@ export const Text = forwardRef<RNText, TextProps>(function Text(
 export type TextInputProps = RNTextInputProps & { face?: Face };
 
 /** وحقل الكتابة مثله: حقلٌ بخطّ النظام داخل شاشةٍ بخطّ العلامة يُرى دخيلاً. */
-export const TextInput = forwardRef<RNTextInput, TextInputProps>(function TextInput(
+export const TextInput = forwardRef<TextInputInstance, TextInputProps>(function TextInput(
   { face = "body", style, ...rest },
   ref,
 ) {

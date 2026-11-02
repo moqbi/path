@@ -1,11 +1,15 @@
 import { Platform } from "react-native";
 import { Tabs } from "expo-router";
-import { NativeTabs, Icon, Label, Badge } from "expo-router/unstable-native-tabs";
+import { NativeTabs } from "expo-router/unstable-native-tabs";
+
 import { GlassBar, useAppBadge } from "../../components/glass-bar";
 import { ar } from "../../lib/format";
 import { colors } from "../../theme/tokens";
 import { useSession } from "../../lib/session";
 import { useTabAvatar } from "../../lib/tab-avatar";
+
+// الإصدارُ الجديد يجعلها أبناءَ `Trigger` لا تصديراتٍ مستقلّة (القاعدة ٣٩٨).
+const { Icon, Label, Badge } = NativeTabs.Trigger;
 
 /**
  * التبويباتُ الخمسة: اللحظات، الأصدقاء، المحادثات، المتجر، أنا.
@@ -54,7 +58,7 @@ export default function TabsLayout() {
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="me" disableScrollToTop>
           {avatar ? (
-            <Icon src={avatar} />
+            <Icon src={avatar} renderingMode="original" />
           ) : (
             <Icon sf={{ default: "person.crop.circle", selected: "person.crop.circle.fill" }} />
           )}
