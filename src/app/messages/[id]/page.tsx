@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { conversationFor, VOICE_SECONDS } from "@/lib/dm";
 import { markConversationRead } from "@/app/actions";
-import { ScreenHeader } from "@/components/ui";
+import { Avatar, ScreenHeader } from "@/components/ui";
 import { Thread } from "./thread";
 import { Composer } from "./composer";
 import { ChatScroll } from "@/components/chat-scroll";
@@ -27,6 +27,15 @@ export default async function ThreadPage({
       <ScreenHeader
         title={conversation.other.name}
         titleHref={`/u/${conversation.other.id}`}
+        face={
+          <Avatar
+            name={conversation.other.name}
+            size={40}
+            mediaId={conversation.other.avatarMediaId}
+            frame={conversation.other.frame}
+            charm={conversation.other.charm}
+          />
+        }
         back="/messages"
       />
 

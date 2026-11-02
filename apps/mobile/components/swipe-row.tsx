@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { View, Pressable, Animated, PanResponder, Easing } from "react-native";
+import { View, Pressable, Animated, PanResponder, Easing, type ViewStyle } from "react-native";
 import { Text } from "./type";
 import { CloseIcon } from "./icons";
 import { colors } from "../theme/tokens";
@@ -30,8 +30,14 @@ export function SwipeRow({
   icons,
   tint,
   start = 0,
+  inside,
   children,
 }: {
+  /**
+   * الأفعالُ داخل الفقاعة لا بجانبها — **بقرار المالك** في الرسائل الخاصّة (القاعدة ٣٨٩): الصفُّ
+   * يلبس أرضَ الفقاعة وحدَّها، والأفعالُ بلا قرصٍ ملوّن، أيقوناتٌ بلونها على أرض الفقاعة نفسها.
+   */
+  inside?: { backgroundColor?: unknown; borderWidth?: unknown; borderColor?: unknown };
   /**
    * فراغٌ قبل الأفعال من الحافّة: زرُّ التفاعل يطفو في ركن البطاقة، فقلمُ
    * التعديل يبدأ بعده لا تحته (القاعدة ٣٢٤).
@@ -166,14 +172,27 @@ export function SwipeRow({
   }
 
   return (
-    <View ref={box} collapsable={false} style={{ position: "relative", overflow: "hidden", borderRadius: radius }}>
+    <View
+      ref={box}
+      collapsable={false}
+      style={[
+        { position: "relative", overflow: "hidden", borderRadius: radius },
+        inside
+          ? ({
+              backgroundColor: inside.backgroundColor,
+              borderWidth: inside.borderWidth,
+              borderColor: inside.borderColor,
+            } as ViewStyle)
+          : null,
+      ]}
+    >
       <View style={{ position: "absolute", top: 0, bottom: 0, left: start, width: reveal - start, flexDirection: "row" }}>
         {extra ? (
           <Pressable
             disabled={busy}
             onPress={() => fire(extra.run)}
             accessibilityLabel={extra.label}
-            style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 8, backgroundColor: colors.gold, opacity: busy ? 0.6 : 1 }}
+            style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 8, backgroundColor: inside ? "transparent" : colors.gold, opacity: busy ? 0.6 : 1 }}
           >
             {icons?.extra ?? <Text style={{ color: colors.night, fontSize: 13, fontWeight: "700" }}>{extra.label}</Text>}
           </Pressable>
@@ -183,7 +202,7 @@ export function SwipeRow({
             disabled={busy}
             onPress={() => fire(lead.run)}
             accessibilityLabel={lead.label}
-            style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 8, backgroundColor: colors.clay, opacity: busy ? 0.6 : 1 }}
+            style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 8, backgroundColor: inside ? "transparent" : colors.clay, opacity: busy ? 0.6 : 1 }}
           >
             {icons?.lead ?? <Text style={{ color: colors.onBrand, fontSize: 13, fontWeight: "700" }}>{lead.label}</Text>}
           </Pressable>
@@ -193,7 +212,7 @@ export function SwipeRow({
             disabled={busy}
             onPress={() => fire(second.run)}
             accessibilityLabel={second.label}
-            style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 8, backgroundColor: colors.night, opacity: busy ? 0.6 : 1 }}
+            style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 8, backgroundColor: inside ? "transparent" : colors.night, opacity: busy ? 0.6 : 1 }}
           >
             {icons?.second ?? <Text style={{ color: "#f7f5ef", fontSize: 13, fontWeight: "700" }}>{second.label}</Text>}
           </Pressable>
@@ -203,7 +222,7 @@ export function SwipeRow({
           disabled={busy}
           onPress={() => fire(onDelete)}
           accessibilityLabel={confirmLabel}
-          style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 8, backgroundColor: tint ?? colors.live, opacity: busy ? 0.6 : 1 }}
+          style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 8, backgroundColor: inside ? "transparent" : tint ?? colors.live, opacity: busy ? 0.6 : 1 }}
         >
           {icons ? (
             icons.delete

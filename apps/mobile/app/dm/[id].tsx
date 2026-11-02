@@ -3,6 +3,7 @@ import { chatRefused } from "../../lib/dm-closed";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ReportButton, ReportSheet } from "../../components/report-sheet";
 import { SwipeRow } from "../../components/swipe-row";
+import { Avatar } from "../../components/avatar";
 import { scrolled } from "../../lib/scrolled";
 import { View, FlatList, Pressable } from "react-native";
 import { Text, TextInput } from "../../components/type";
@@ -172,6 +173,20 @@ function Voice({ mediaId, seconds, mine }: { mediaId: string; seconds: number; m
  * «تعديل»: النصّ يُصحَّح مكانه ويبقى أثر التعديل مكتوباً للطرفين — لا
  * نُخفي أنّ الكلام تغيّر.
  */
+/**
+ * ما في الفقاعة حين تُسحب (القاعدة ٣٨٩): حشوتُها وأرضُها بلا حدٍّ ولا انحناء — الحدُّ والانحناءُ
+ * على `SwipeRow` الذي يلفّها، فتنكشف الأيقوناتُ داخل الفقاعة لا في قرصٍ بجانبها.
+ */
+function inner(mine: boolean) {
+  const b = bubbleStyle(mine);
+  return {
+    alignSelf: "stretch" as const,
+    paddingHorizontal: b.paddingHorizontal,
+    paddingVertical: b.paddingVertical,
+    backgroundColor: b.backgroundColor,
+  };
+}
+
 export default function Conversation() {
   const { id } = useLocalSearchParams<{ id: string }>();
   useOpenThread(`/dm/${id}`);
@@ -413,6 +428,14 @@ export default function Conversation() {
       <ScreenHeader
         title={other?.name ?? "محادثة"}
         back="/messages"
+        // صورةُ من أحادثه مكانَ العلامة — **بقرار المالك**: الرأسُ يقول مع من لا في أيّ تطبيق.
+        face={
+          other ? (
+            <Pressable accessibilityLabel={`ملف ${other.name}`} onPress={() => router.push(`/u/${other.id}` as never)}>
+              <Avatar name={other.name} size={32} mediaId={other.avatarMediaId} frame={other.frame} charm={other.charm} />
+            </Pressable>
+          ) : undefined
+        }
         // اسمُ من أحادثه بابُ ملفّه: من فتح محادثةً قد يريد أن يرى صاحبها.
         onTitlePress={other ? () => router.push(`/u/${other.id}` as never) : undefined}
       />
@@ -494,7 +517,8 @@ export default function Conversation() {
                   <Pressable
                     // ضغطةٌ على رسالتي تكشف «تعديل»، وعلى رسالته «إبلاغ».
                     onPress={toggle}
-                    style={bubbleStyle(mine)}
+                    // في السحب الفقاعةُ هي `SwipeRow` نفسُه (أرضُه وحدُّه)، وما فيها يُزاح داخلها.
+                    style={swipe ? inner(mine) : bubbleStyle(mine)}
                   >
                     <SelectableText
                       text={item.body}
@@ -513,7 +537,8 @@ export default function Conversation() {
                   <SwipeRow
                     width={56}
                     radius={18}
-                    surface={item.sticker ? colors.groundSolid : "transparent"}
+                    surface={text ? inner(mine).backgroundColor as string : item.sticker ? colors.groundSolid : "transparent"}
+                    inside={text ? bubbleStyle(mine) : undefined}
                     confirmLabel="حذف الرسالة"
                     onSwiping={setSwiping}
                     lead={
@@ -528,8 +553,8 @@ export default function Conversation() {
                         : undefined
                     }
                     icons={{
-                      delete: <TrashIcon size={20} color="#fff" />,
-                      lead: <PencilIcon size={20} color={colors.onBrand} />,
+                      delete: <TrashIcon size={20} color={text ? colors.live : "#fff"} />,
+                      lead: <PencilIcon size={20} color={text ? colors.clay : colors.onBrand} />,
                     }}
                     onDelete={() => drop.mutateAsync(item.id).then(() => undefined)}
                   >
@@ -539,10 +564,11 @@ export default function Conversation() {
                   <SwipeRow
                     width={56}
                     radius={18}
-                    surface={item.sticker ? colors.groundSolid : "transparent"}
+                    surface={text ? inner(mine).backgroundColor as string : item.sticker ? colors.groundSolid : "transparent"}
+                    inside={text ? bubbleStyle(mine) : undefined}
                     confirmLabel="بلاغ عن الرسالة"
                     onSwiping={setSwiping}
-                    icons={{ delete: <FlagIcon size={20} color="#fff" /> }}
+                    icons={{ delete: <FlagIcon size={20} color={text ? colors.live : "#fff"} /> }}
                     onDelete={() => setReporting(item.id)}
                   >
                     {content}

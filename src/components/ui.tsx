@@ -381,8 +381,11 @@ export function ScreenHeader({
   back,
   action,
   titleHref,
+  face,
 }: {
   title: string;
+  /** ما يحلّ محلَّ العلامة: صورةُ الصديق في المحادثة الخاصّة (القاعدة ٣٨٩). */
+  face?: React.ReactNode;
   back?: string;
   action?: React.ReactNode;
   /** اسمٌ في الرأس قد يكون باباً: اسمُ من تحادثه يفتح ملفّه. */
@@ -411,10 +414,10 @@ export function ScreenHeader({
       <div className="min-w-0 grow">
         {titleHref ? (
           <Link href={titleHref} className="block min-w-0">
-            <AthrPageMark label={title} />
+            <AthrPageMark label={title} face={face} />
           </Link>
         ) : (
-          <AthrPageMark label={title} />
+          <AthrPageMark label={title} face={face} />
         )}
       </div>
       {action}

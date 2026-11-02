@@ -18,7 +18,10 @@ export function ScreenHeader({
   back,
   right,
   onTitlePress,
+  face,
 }: {
+  /** ما يحلّ محلَّ العلامة: صورةُ الصديق في المحادثة الخاصّة (القاعدة ٣٨٩). */
+  face?: React.ReactNode;
   title: string;
   back?: string;
   right?: React.ReactNode;
@@ -67,7 +70,7 @@ export function ScreenHeader({
       }}
     >
       {backButton}
-      <AthrMark size={32} />
+      {face ?? <AthrMark size={32} />}
       {onTitlePress ? (
         <Pressable accessibilityRole="link" onPress={onTitlePress} style={{ flex: 1, minWidth: 0 }} hitSlop={8}>
           <Text face="display" style={{ color: colors.chromeInk, fontSize: 16, fontWeight: "700" }}>
