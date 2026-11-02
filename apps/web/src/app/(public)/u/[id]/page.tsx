@@ -32,6 +32,7 @@ async function findPerson(raw: string) {
       id: true,
       memberNo: true,
       name: true,
+      handle: true,
       bio: true,
       city: true,
       isPlus: true,
@@ -108,7 +109,7 @@ export default async function SharedProfile({ params }: Props) {
     (القاعدة ٥٩). وكانت الصفحة ترسم الوجه وحده، فيبدو الملفُّ عارياً لمن
     فتحه في المتصفّح.
   */
-  const AVATAR = 96;
+  const AVATAR = 104;
   const frame = person.frame?.mediaId ? `/api/public/frame/${person.memberNo}` : null;
   const frameScale = person.frame?.mediaId ? frameZoom(person.frame) : 1;
   const facePad = frame && frameScale <= 1.02 ? AVATAR * 0.07 : 0;
@@ -121,10 +122,13 @@ export default async function SharedProfile({ params }: Props) {
   const mine = /android/i.test(agent) ? android ?? ios : ios ?? android;
 
   const zoom = Math.min(300, Math.max(100, person.coverZoom)) / 100;
-  const stats = [
-    { label: "رقم العضوية", value: ar(person.memberNo) },
-    { label: "معنا منذ", value: membership(person.createdAt) },
-    ...(person.city ? [{ label: "المدينة", value: person.city }] : []),
+  // سطرُ العضويّة كما في «أنا» وملفّ الصديق (القاعدة ٢٣٣): رقمٌ، فمعرّفٌ، فمدينةٌ، فمدّة.
+  // والمعرّفُ معزولٌ (`⁨…⁩`) فلا يجرّ اللاتينيُّ الفواصلَ إلى جهته.
+  const line = [
+    `عضوية رقم ${ar(person.memberNo)}`,
+    ...(person.handle ? [`\u2068@${person.handle}\u2069`] : []),
+    ...(person.city ? [`\u2068${person.city}\u2069`] : []),
+    `لك معانا ${membership(person.createdAt)}`,
   ];
 
   return (
@@ -152,8 +156,14 @@ export default async function SharedProfile({ params }: Props) {
         )}
       </div>
 
-      <div className="relative -mt-12 flex flex-col items-center px-5 text-center">
-        <span className="relative block" style={{ width: AVATAR, height: AVATAR, padding: facePad }}>
+      {/*
+        **بهيئة `ProfileHead` في التطبيق** (القاعدة ٣٩٩): الصورةُ في طرف البداية تعبر حافّة
+        الغلاف، والاسمُ ووسمُه بجانبها تحت الحافّة، ثمّ النبذةُ وسطرُ العضويّة من الطرف نفسه.
+        كانت الصورةُ والاسمُ في الوسط فتُقرأ الصفحةُ موقعاً آخر غير التطبيق.
+      */}
+      <div className="relative px-5">
+        <div className="flex items-end gap-3" style={{ marginTop: -AVATAR * 0.55 }}>
+        <span className="relative block shrink-0" style={{ width: AVATAR, height: AVATAR, padding: facePad }}>
           <span
             className="flex h-full w-full items-center justify-center overflow-hidden rounded-full text-[30px] font-bold"
             style={{
@@ -199,26 +209,19 @@ export default async function SharedProfile({ params }: Props) {
           ) : null}
         </span>
 
-        {/* شارةُ التوثيق ووسمُ «داعم» من `NameTag` نفسه — لا رسمٌ ثانٍ لهما هنا. */}
-        <h1 className="mt-3 flex items-center justify-center gap-2 text-[21px] font-bold">
-          <span dir="auto">{person.name}</span>
-          <NameTag isPlus={person.isPlus} tag={person.tag} size={11} />
-        </h1>
+          <h1 className="flex min-w-0 grow items-center gap-2 pb-2 text-[21px] font-bold leading-tight">
+            <span dir="auto" className="min-w-0 truncate">{person.name}</span>
+            <NameTag isPlus={person.isPlus} tag={person.tag} size={11} />
+          </h1>
+        </div>
 
         {person.bio ? (
-          <p dir="auto" className="mt-2 max-w-[420px] text-[13.5px] leading-relaxed text-ink-2">
+          <p dir="auto" className="mt-3 text-start text-[14px] leading-relaxed text-ink">
             {person.bio}
           </p>
         ) : null}
 
-        <dl className="mt-5 grid w-full gap-2" style={{ gridTemplateColumns: `repeat(${stats.length}, 1fr)` }}>
-          {stats.map((stat) => (
-            <div key={stat.label} className="rounded-2xl border border-line bg-card px-2 py-3">
-              <dd className="text-[15px] font-bold leading-tight">{stat.value}</dd>
-              <dt className="mt-1 text-[10.5px] text-muted">{stat.label}</dt>
-            </div>
-          ))}
-        </dl>
+        <p className="mt-2 text-start text-[12.5px] text-muted">{line.join("  │  ")}</p>
 
         <div className="mt-5 w-full">
           <OpenInApp memberNo={person.memberNo} store={mine} />
@@ -228,7 +231,7 @@ export default async function SharedProfile({ params }: Props) {
           الدعوة: من لم يُنزّل التطبيق. ومكانُ اللحظات سطرٌ يقول لماذا لا تُرى
           — كما في ملفّ من ليس صديقاً داخل التطبيق.
         */}
-        <div className="mt-6 w-full rounded-2xl border border-line bg-card p-6">
+        <div className="mt-6 w-full rounded-2xl border border-line bg-card p-6 text-center">
           <span className="mx-auto mb-3 flex w-fit items-center gap-2">
             <AthrMark size={34} />
             <AthrWordmark size={15} />
