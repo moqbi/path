@@ -267,20 +267,7 @@ export default function NewStory() {
   return (
     <View style={{ flex: 1, backgroundColor: "#0b1219" }}>
       {/* اللوحةُ بملء الشاشة كما يراها المشاهد — فالنصُّ والملصقُ يقعان حيث وُضعا. */}
-      {draft.video && long ? (
-        filter ? (
-          <FilteredVideo
-            uri={draft.uri}
-            filter={filter}
-            width={screen.width}
-            height={screen.height}
-            muted={muteVideo}
-            window={{ start: draft.start, length: draft.length, seconds: draft.seconds }}
-          />
-        ) : (
-          <VideoWindowPreview uri={draft.uri} start={draft.start} length={draft.length} width={screen.width} height={screen.height} muted={muteVideo} />
-        )
-      ) : DEV_FEATURES ? (
+      {DEV_FEATURES ? (
         /* طبقةُ الصورة تأخذ ما لم يأخذه نصٌّ ولا ملصقٌ فوقها: سحبٌ وتقريبٌ ونقرتان تُعيدانها. */
         <View {...frameGesture.panHandlers} style={{ position: "absolute", left: 0, top: 0, width: screen.width, height: screen.height }}>
           <FramedMedia
@@ -294,7 +281,22 @@ export default function NewStory() {
             }
           >
             {(w, h) =>
-              draft.video ? (
+              // المقطعُ الطويل في الإطار نفسه كالقصير والصورة (القاعدة ٤٠٩): كان بلا فلترٍ صندوقاً
+              // بنسبته وبالفلتر يملأ الشاشة، فيتبدّل حجمُه بالفلتر — وبلا تقريبٍ ولا سحب.
+              draft.video && long ? (
+                filter ? (
+                  <FilteredVideo
+                    uri={draft.uri}
+                    filter={filter}
+                    width={w}
+                    height={h}
+                    muted={muteVideo}
+                    window={{ start: draft.start, length: draft.length, seconds: draft.seconds }}
+                  />
+                ) : (
+                  <VideoWindowPreview uri={draft.uri} start={draft.start} length={draft.length} width={w} height={h} muted={muteVideo} cover />
+                )
+              ) : draft.video ? (
                 filter ? (
                   <FilteredVideo uri={draft.uri} filter={filter} width={w} height={h} muted={muteVideo} />
                 ) : (

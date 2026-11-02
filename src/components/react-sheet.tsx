@@ -326,29 +326,6 @@ export function ReactSheet({
           <StickerPanel tone="dark" isPlus={isPlus} onPick={sendSticker} />
         ) : null}
 
-        {/* رابطُ اللحظة للمشرف (القاعدة ٤٠٨): يُلصق في «زرّ النافذة» بتنبيه اللوحة. */}
-        {moderate ? (
-          <div className="flex flex-col gap-1.5">
-            <button
-              type="button"
-              onClick={() => {
-                const url = `${location.origin}${BASE}/m/${momentId}`;
-                navigator.clipboard?.writeText(url).then(
-                  () => setCopied("ok"),
-                  () => setCopied("show"),
-                ) ?? setCopied("show");
-              }}
-              className="h-10 w-fit rounded-full px-3.5 text-[12.5px] font-bold"
-              style={{ background: "rgba(255,255,255,.07)", color: "rgba(255,255,255,.8)" }}
-            >
-              {copied === "ok" ? "نُسخ الرابط" : "نسخ رابط اللحظة"}
-            </button>
-            {copied === "show" ? (
-              <input readOnly dir="ltr" value={`${typeof location === "undefined" ? "" : location.origin}${BASE}/m/${momentId}`} onFocus={(e) => e.currentTarget.select()} className="rounded-lg bg-black/30 px-2 py-1.5 text-[12px] text-white" />
-            ) : null}
-          </div>
-        ) : null}
-
         {author || moderate ? (
           asking ? (
             <div className="flex items-center gap-2">
@@ -393,6 +370,29 @@ export function ReactSheet({
             بلاغ
           </button>
         )}
+        {/* رابطُ اللحظة للمشرف (القاعدة ٤٠٨) تحت الحذف لا فوقه: يُلصق في «زرّ النافذة» بتنبيه اللوحة. */}
+        {moderate ? (
+          <div className="flex flex-col gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                const url = `${location.origin}${BASE}/m/${momentId}`;
+                navigator.clipboard?.writeText(url).then(
+                  () => setCopied("ok"),
+                  () => setCopied("show"),
+                ) ?? setCopied("show");
+              }}
+              className="h-10 w-fit rounded-full px-3.5 text-[12.5px] font-bold"
+              style={{ background: "rgba(255,255,255,.07)", color: "rgba(255,255,255,.8)" }}
+            >
+              {copied === "ok" ? "نُسخ الرابط" : "نسخ رابط اللحظة"}
+            </button>
+            {copied === "show" ? (
+              <input readOnly dir="ltr" value={`${typeof location === "undefined" ? "" : location.origin}${BASE}/m/${momentId}`} onFocus={(e) => e.currentTarget.select()} className="rounded-lg bg-black/30 px-2 py-1.5 text-[12px] text-white" />
+            ) : null}
+          </div>
+        ) : null}
+
       </div>
     </GlassSheet>
   );

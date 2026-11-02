@@ -388,19 +388,6 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
           <StickerPanel tone="dark" isPlus={isPlus} onPick={sendSticker} onLeave={close} />
         ) : null}
 
-        {/*
-          رابطُ اللحظة للمشرف (القاعدة ٤٠٨): يُلصق في «زرّ النافذة» بتنبيه اللوحة. ونافذةُ
-          المشاركة فيها «نسخ» — بلا وحدة حافظةٍ أصليّة تحتاج بناءً.
-        */}
-        {staff && appUrl(`/m/${momentId}`) ? (
-          <Pressable
-            onPress={() => void Share.share({ message: appUrl(`/m/${momentId}`) })}
-            style={{ height: 40, paddingHorizontal: 14, borderRadius: 20, alignSelf: "flex-start", justifyContent: "center", backgroundColor: "rgba(255,255,255,.07)" }}
-          >
-            <Text style={{ color: "rgba(255,255,255,.8)", fontSize: 12.5, fontWeight: "700" }}>نسخ رابط اللحظة</Text>
-          </Pressable>
-        ) : null}
-
         {/* البلاغُ لغير صاحبها، والمشرفُ لا يُبلغ بل يحكم (القاعدة ١٣٦). */}
         {author || moderate ? (
           asking ? (
@@ -423,6 +410,7 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
               </Pressable>
             </View>
           ) : (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
             <Pressable
               onPress={() => setAsking(true)}
               style={{ flexDirection: "row", alignItems: "center", gap: 8, height: 44, paddingHorizontal: 14, borderRadius: 22, backgroundColor: "rgba(255,122,90,.14)", alignSelf: "flex-start" }}
@@ -432,10 +420,31 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
                 {author ? "احذف اللحظة" : "احذفها بصلاحية الإشراف"}
               </Text>
             </Pressable>
+            {/*
+              رابطُ اللحظة للمشرف (القاعدة ٤٠٨) بجانب الحذف لا فوقه: يُلصق في «زرّ النافذة» بتنبيه
+              اللوحة. ونافذةُ المشاركة فيها «نسخ» — بلا وحدة حافظةٍ أصليّة تحتاج بناءً.
+            */}
+            {staff && appUrl(`/m/${momentId}`) ? (
+              <Pressable
+                onPress={() => void Share.share({ message: appUrl(`/m/${momentId}`) })}
+                style={{ height: 44, paddingHorizontal: 14, borderRadius: 22, justifyContent: "center", backgroundColor: "rgba(255,255,255,.07)" }}
+              >
+                <Text style={{ color: "rgba(255,255,255,.8)", fontSize: 12.5, fontWeight: "700" }}>نسخ رابط اللحظة</Text>
+              </Pressable>
+            ) : null}
+            </View>
           )
         ) : (
-          <View style={{ alignSelf: "flex-start" }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
             <ReportButton target="MOMENT" targetId={momentId} tone="glass" />
+            {staff && appUrl(`/m/${momentId}`) ? (
+              <Pressable
+                onPress={() => void Share.share({ message: appUrl(`/m/${momentId}`) })}
+                style={{ height: 44, paddingHorizontal: 14, borderRadius: 22, justifyContent: "center", backgroundColor: "rgba(255,255,255,.07)" }}
+              >
+                <Text style={{ color: "rgba(255,255,255,.8)", fontSize: 12.5, fontWeight: "700" }}>نسخ رابط اللحظة</Text>
+              </Pressable>
+            ) : null}
           </View>
         )}
       </SheetScrollView>
