@@ -46,6 +46,7 @@ export function FloatLayer({
   data: given,
   fixed = false,
   replay = 0,
+  run = true,
 }: {
   target: Target;
   top?: number;
@@ -56,6 +57,8 @@ export function FloatLayer({
   fixed?: boolean;
   /** يزيد كلّما أُعيدت القصّةُ من أوّلها: ما طار يُنسى ويطير الكلُّ من جديد. */
   replay?: number;
+  /** القصّةُ لم تبدأ بعد أو واقفة: لا يطير شيءٌ حتى تمضي (القاعدة ٤١٢). */
+  run?: boolean;
 }) {
   const [own] = useFloats(given === undefined ? target : null);
   const data = given === undefined ? own : given;
@@ -97,13 +100,13 @@ export function FloatLayer({
   }, [data, replay]);
 
   useEffect(() => {
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    if (!run || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
     const tick = setInterval(() => {
       const next = queue.current.shift();
       if (next) setFlyers((now) => [...now.slice(-9), next]);
     }, 650);
     return () => clearInterval(tick);
-  }, []);
+  }, [run]);
 
   return (
     // يطير داخل حاويته وحدها (القاعدة ٣٤٥): الارتفاعُ بوحدات الحاوية لا الشاشة.

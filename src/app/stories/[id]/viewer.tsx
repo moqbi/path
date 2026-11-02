@@ -396,7 +396,7 @@ export function StoryViewer({
           </div>
         )}
 
-        {floats ? <FloatLayer key={story.id} target={{ kind: "story", id: story.id }} replay={replay} /> : null}
+        {floats ? <FloatLayer key={story.id} target={{ kind: "story", id: story.id }} replay={replay} run={!paused && progress > 0} /> : null}
 
         {burst ? (
           <span
