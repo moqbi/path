@@ -135,23 +135,100 @@ async function shrink(url: string, size: LandmarkSize): Promise<string | null> {
   return `data:image/jpeg;base64,${out.toString("base64")}`;
 }
 
+type CityPage = { image: string | null; at: { lat: number; lon: number } | null };
+
+const WIKIDATA = "https://www.wikidata.org/w/api.php";
+
+async function getJson<T>(url: string): Promise<T> {
+  const response = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json" }, signal: AbortSignal.timeout(6000) });
+  if (!response.ok) throw new Error(`wiki ${response.status}`);
+  return (await response.json()) as T;
+}
+
+type Claims = Record<string, { mainsnak?: { datavalue?: { value?: unknown } } }[] | undefined>;
+type Entities = { entities?: Record<string, { claims?: Claims }> };
+
+function pointOf(claims: Claims | undefined): { lat: number; lon: number } | null {
+  const value = claims?.P625?.[0]?.mainsnak?.datavalue?.value as { latitude?: number; longitude?: number } | undefined;
+  return value?.latitude != null && value.longitude != null ? { lat: value.latitude, lon: value.longitude } : null;
+}
+
+function commonsOf(claims: Claims | undefined): string | null {
+  const file = claims?.P18?.[0]?.mainsnak?.datavalue?.value;
+  return typeof file === "string" ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file)}?width=1280` : null;
+}
+
+/**
+ * مقالةُ المدينة بالعربيّة وموضعُها من ويكي بيانات — ملخّصُ ويكيبيديا العربيّة لا يحمل
+ * إحداثيّاتٍ أصلاً، فكان شرطُ الستّين يردّ كلَّ مدينة (القاعدة ٣٩٣).
+ */
+async function arabicCity(name: string): Promise<CityPage | null> {
+  type Query = {
+    query?: {
+      pages?: {
+        missing?: boolean;
+        pageprops?: { disambiguation?: string; wikibase_item?: string };
+        thumbnail?: { source: string };
+        original?: { source: string; width?: number };
+      }[];
+    };
+  };
+  const url =
+    "https://ar.wikipedia.org/w/api.php?action=query&format=json&formatversion=2&redirects=1" +
+    "&prop=pageimages|pageprops&ppprop=disambiguation|wikibase_item&piprop=original|thumbnail&pithumbsize=1280" +
+    `&titles=${encodeURIComponent(name)}`;
+  const page = (await getJson<Query>(url)).query?.pages?.[0];
+  if (!page || page.missing || page.pageprops?.disambiguation != null) return null;
+  const item = page.pageprops?.wikibase_item;
+  let at: CityPage["at"] = null;
+  if (item) {
+    const data = await getJson<Entities>(`${WIKIDATA}?action=wbgetentities&format=json&props=claims&ids=${item}`);
+    at = pointOf(data.entities?.[item]?.claims);
+  }
+  const image = page.thumbnail?.source ?? page.original?.source ?? null;
+  return { image, at };
+}
+
+/** بديلٌ لاسمٍ يلتبس («الخبر» صفحةُ توضيح): أقربُ عنصرٍ بالاسم نفسه في ويكي بيانات له موضعٌ وصورة. */
+async function wikidataCity(name: string, near: { lat: number; lng: number }): Promise<string | null> {
+  const found = await getJson<{ search?: { id: string }[] }>(
+    `${WIKIDATA}?action=wbsearchentities&format=json&language=ar&uselang=ar&type=item&limit=7&search=${encodeURIComponent(name)}`,
+  );
+  const ids = (found.search ?? []).map((hit) => hit.id).filter((id) => /^Q\d+$/.test(id));
+  if (ids.length === 0) return null;
+  const data = await getJson<Entities>(`${WIKIDATA}?action=wbgetentities&format=json&props=claims&ids=${ids.join("|")}`);
+  for (const id of ids) {
+    const claims = data.entities?.[id]?.claims;
+    const at = pointOf(claims);
+    const image = commonsOf(claims);
+    if (at && image && distanceKm(at.lat, at.lon, near.lat, near.lng) <= 60) return image;
+  }
+  return null;
+}
+
+async function cityImage(raw: string, near?: { lat: number; lng: number }): Promise<string | null> {
+  // «جدة، السعودية» ← «جدة»: الدولةُ بعد الفاصلة ليست جزءاً من عنوان المقالة.
+  const name = raw.split(/[،,]/)[0]!.trim();
+  if (!name) return null;
+  const page = await arabicCity(name);
+  if (page?.image) {
+    // المقالةُ مدينتُه هو لا اسمٌ يشبهه: بلا موضعٍ معروفٍ لا تُقبل حين يُعرف موضعُه.
+    if (!near) return page.image;
+    if (page.at && distanceKm(page.at.lat, page.at.lon, near.lat, near.lng) <= 60) return page.image;
+  }
+  return near ? wikidataCity(name, near) : null;
+}
+
 async function look(kind: "country" | "city", name: string, size: LandmarkSize, near?: { lat: number; lng: number }): Promise<Hit> {
-  let page: Summary | null = null;
+  let source: string | null = null;
   if (kind === "country") {
     const title = countryTitle(name);
     if (!title) return NONE;
-    page = await summary("en", title);
+    const page = await summary("en", title);
+    source = page ? sourceFor(page, size) : null;
   } else {
-    page = await summary("ar", name);
-    if (page && page.type !== "standard") page = null;
-    // المقالةُ مدينتُه هو لا اسمٌ يشبهه.
-    if (page && near) {
-      const at = page.coordinates;
-      if (!at || distanceKm(at.lat, at.lon, near.lat, near.lng) > 60) page = null;
-    }
+    source = await cityImage(name, near);
   }
-  if (!page) return NONE;
-  const source = sourceFor(page, size);
   if (!source) return NONE;
   const image = await shrink(source, size);
   return image ? { image, credit: "ويكيبيديا" } : NONE;
