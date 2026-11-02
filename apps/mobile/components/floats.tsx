@@ -41,12 +41,15 @@ export function FloatLayer({
   top = 0.22,
   bottom = 0.78,
   replay = 0,
+  run = true,
 }: {
   target: Target | null;
   top?: number;
   bottom?: number;
   /** رقمٌ يزيد كلّما أُعيدت من أوّلها: يُفرغ ما طار ويُطيّر الكلَّ من جديد. */
   replay?: number;
+  /** القصّةُ لم تبدأ بعد أو واقفة: لا يطير شيءٌ حتى تمضي (القاعدة ٤١٢). */
+  run?: boolean;
 }) {
   const data = useFloats(target).data;
   const [flyers, setFlyers] = useState<Flyer[]>([]);
@@ -102,14 +105,14 @@ export function FloatLayer({
 
   // واحدٌ كلّ ٦٥٠ مللي، وعلى الشاشة عشرةٌ على الأكثر.
   useEffect(() => {
-    if (still) return;
+    if (still || !run) return;
     const tick = setInterval(() => {
       const next = queue.current.shift();
       if (!next) return;
       setFlyers((now) => [...now.slice(-9), next]);
     }, 650);
     return () => clearInterval(tick);
-  }, [still]);
+  }, [still, run]);
 
   if (!target || still) return null;
   return (

@@ -638,7 +638,7 @@ export default function StoryViewer() {
         </View>
       )}
 
-      {DEV_FEATURES && !dragging ? <FloatLayer key={story.id} target={{ kind: "story", id: story.id }} replay={round} /> : null}
+      {DEV_FEATURES && !dragging ? <FloatLayer key={story.id} target={{ kind: "story", id: story.id }} replay={round} run={!paused && progress > 0} /> : null}
 
       {burst ? (
         <Animated.View
