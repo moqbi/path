@@ -204,7 +204,7 @@ async function reject(mediaId: string, key: string | null, message: string) {
  * يذهب هو وكائنه في اللحظة نفسها: ملفٌّ مرفوضٌ يبقى في الدلو هو ملفٌّ
  * لا يعرف أحدٌ أنّه هناك.
  */
-export async function commit(userId: string, mediaId: string, options: { start?: number; look?: VideoLook | null } = {}) {
+export async function commit(userId: string, mediaId: string, options: { start?: number; look?: VideoLook | null; length?: number } = {}) {
   const media = await prisma.media.findUnique({
     where: { id: mediaId },
     select: { id: true, ownerId: true, key: true, mime: true, purpose: true, ready: true },
@@ -267,7 +267,7 @@ export async function commit(userId: string, mediaId: string, options: { start?:
     throw await reject(media.id, media.key, "الملف كبير");
   }
 
-  const shaped = await shape(media.id, media.key, actual, purpose, moving, bytes, options.start ?? 0, options.look ?? null);
+  const shaped = await shape(media.id, media.key, actual, purpose, moving, bytes, options.start ?? 0, options.look ?? null, options.length);
 
   const ready = await prisma.media.update({
     where: { id: media.id },
@@ -293,6 +293,7 @@ async function shape(
   bytes: Uint8Array,
   start = 0,
   look: VideoLook | null = null,
+  length?: number,
 ): Promise<{ mime: string; width: number; height: number; seconds?: number; peaks?: number[] }> {
   // صندوقُ `chnl` الذي يكتبه آبل ٢٦ ولا يقرؤه ffmpeg 6 يُطمس، ويُكتب الملفُّ المصحَّح مكان الأصل
   // فيقرؤه كلُّ مشغّلٍ بعده (القاعدة ٤٠٣). يسري على الصوت والمقطع: الكاميرا تكتبه أيضاً.
@@ -371,7 +372,7 @@ async function shape(
   if (purpose === "STORY") {
     let out: Awaited<ReturnType<typeof compressStoryVideo>> | null = null;
     try {
-      out = await compressStoryVideo(bytes, EXT[mime] ?? "bin", start, STORY_SECONDS, look);
+      out = await compressStoryVideo(bytes, EXT[mime] ?? "bin", start, Math.min(STORY_SECONDS, Math.max(1, length ?? STORY_SECONDS)), look);
     } catch (problem) {
       if (!(problem instanceof NoFfmpeg)) throw await reject(mediaId, key, "تعذّرت قراءة المقطع");
       // بلا ffmpeg يبقى الطريقُ القديم: المصدرُ نفسه بحدّه ومدّته، والسطرُ ليُثبَّت.

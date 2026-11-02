@@ -8,7 +8,17 @@ import { Spinner } from "./spinner";
 import { api } from "../lib/api";
 import { colors } from "../theme/tokens";
 
-type Card = { id: string; cardTitle: string; cardBody: string; mediaId: string | null; momentId?: string | null };
+type Card = { id: string; cardTitle: string; cardBody: string; mediaId: string | null; momentId?: string | null; link?: string | null };
+
+/**
+ * زرُّ النافذة يفتح شاشةً في التطبيق (القاعدة ٤٠٨) — قائمةٌ مغلقة يكتبها الخادم، فما لا
+ * يُعرف هنا لا يُرسم زرّاً، ولا متصفّح.
+ */
+const SCREENS: Record<string, { href: "/subscribe" | "/coins" | "/(tabs)/store"; label: string }> = {
+  plus: { href: "/subscribe", label: "اشترك في آثار+" },
+  coins: { href: "/coins", label: "اشحن نقاطك" },
+  store: { href: "/(tabs)/store", label: "افتح المتجر" },
+};
 
 const useOpenBroadcast = create<{ id: string | null }>(() => ({ id: null }));
 /** يفتح بطاقةَ تنبيه المشرف بمعرّفه — من ضغطة التنبيه في الجذر (القاعدة ٣٦٣). */
@@ -91,6 +101,18 @@ export function BroadcastCard() {
           </ScrollView>
         )}
         {/* «عرض التفاصيل» (القاعدة ٣٩٠): لحظةٌ اختارها المشرف — والخادمُ يرسلها لمن يراها وحده. */}
+        {card?.link && SCREENS[card.link] ? (
+          <Pressable
+            onPress={() => {
+              const screen = SCREENS[card.link!];
+              close();
+              router.push(screen.href as never);
+            }}
+            style={{ marginHorizontal: 18, marginBottom: 14, height: 46, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
+          >
+            <Text style={{ color: colors.onBrand, fontSize: 14.5, fontWeight: "700" }}>{SCREENS[card.link].label}</Text>
+          </Pressable>
+        ) : null}
         {card?.momentId ? (
           <Pressable
             onPress={() => {

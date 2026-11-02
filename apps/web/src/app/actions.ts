@@ -2349,7 +2349,11 @@ export async function sendBroadcast(formData: FormData): Promise<{ ok?: string; 
   // «عرض التفاصيل» (القاعدة ٣٩٠): رابطُ لحظةٍ أو معرّفُها، اختياريّ. يُقرأ المعرّفُ
   // من آخر الرابط (`/m/<id>` أو `/app/m/<id>`) ويُتحقَّق من اللحظة قبل الحفظ.
   let momentId: string | null = null;
-  const link = text("momentLink", 300);
+  // وزرُّ النافذة شاشةٌ من قائمةٍ مغلقة (القاعدة ٤٠٨) أو لحظة — واحدٌ لا الاثنان.
+  const target = text("target", 12);
+  const screen = ["plus", "coins", "store"].includes(target) ? target : null;
+  const link = target === "moment" ? text("momentLink", 300) : "";
+  if (target === "moment" && !link) return { error: "الصق رابط اللحظة أو اختر زرّاً آخر" };
   if (link) {
     const found = link.match(/\/m\/([a-z0-9]{20,40})/i)?.[1] ?? (/^[a-z0-9]{20,40}$/i.test(link) ? link : null);
     if (!found) return { error: "رابط اللحظة غير صالح — انسخه من «مشاركة» اللحظة أو من صفحتها" };
@@ -2373,7 +2377,7 @@ export async function sendBroadcast(formData: FormData): Promise<{ ok?: string; 
     }
   }
 
-  await prisma.broadcast.create({ data: { title, body, cardTitle, cardBody, mediaId, momentId, createdById: admin.id } });
+  await prisma.broadcast.create({ data: { title, body, cardTitle, cardBody, mediaId, momentId, link: screen, createdById: admin.id } });
   revalidatePath("/admin");
   return { ok: "سيُرسل خلال دقيقة" };
 }

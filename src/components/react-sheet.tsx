@@ -17,6 +17,7 @@ import { EyeIcon, FlagIcon, LockIcon, StickerIcon, TrashIcon, UnlockIcon } from 
 import { StickerPanel, useStickersAllowed } from "@/components/sticker-panel";
 import { CUSTOM, EMOJI_GROUPS, facesFor, ReactionGlyph } from "@/components/reactions";
 import { ar } from "@/lib/format";
+import { BASE } from "@/lib/base";
 
 type Mine = { kind: string; emoji: string | null } | null;
 
@@ -64,6 +65,7 @@ export function ReactSheet({
   const stickersAllowed = useStickersAllowed();
   const [asking, setAsking] = useState(false);
   const [reporting, setReporting] = useState(false);
+  const [copied, setCopied] = useState<"" | "ok" | "show">("");
   const [views, setViews] = useState<number | null>(null);
   const [pending, start] = useTransition();
   const faces = facesFor(momentKind);
@@ -322,6 +324,29 @@ export function ReactSheet({
 
         {stickers && stickersAllowed && !(locked && !author) ? (
           <StickerPanel tone="dark" isPlus={isPlus} onPick={sendSticker} />
+        ) : null}
+
+        {/* رابطُ اللحظة للمشرف (القاعدة ٤٠٨): يُلصق في «زرّ النافذة» بتنبيه اللوحة. */}
+        {moderate ? (
+          <div className="flex flex-col gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                const url = `${location.origin}${BASE}/m/${momentId}`;
+                navigator.clipboard?.writeText(url).then(
+                  () => setCopied("ok"),
+                  () => setCopied("show"),
+                ) ?? setCopied("show");
+              }}
+              className="h-10 w-fit rounded-full px-3.5 text-[12.5px] font-bold"
+              style={{ background: "rgba(255,255,255,.07)", color: "rgba(255,255,255,.8)" }}
+            >
+              {copied === "ok" ? "نُسخ الرابط" : "نسخ رابط اللحظة"}
+            </button>
+            {copied === "show" ? (
+              <input readOnly dir="ltr" value={`${typeof location === "undefined" ? "" : location.origin}${BASE}/m/${momentId}`} onFocus={(e) => e.currentTarget.select()} className="rounded-lg bg-black/30 px-2 py-1.5 text-[12px] text-white" />
+            ) : null}
+          </div>
         ) : null}
 
         {author || moderate ? (

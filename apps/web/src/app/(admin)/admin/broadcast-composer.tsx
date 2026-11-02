@@ -18,6 +18,7 @@ export function BroadcastComposer() {
   const [cardTitle, setCardTitle] = useState("");
   const [cardBody, setCardBody] = useState("");
   const [momentLink, setMomentLink] = useState("");
+  const [target, setTarget] = useState<Target>("none");
   const [image, setImage] = useState<{ file: Blob; width: number; height: number; url: string } | null>(null);
   const [said, setSaid] = useState<{ ok: boolean; text: string } | null>(null);
   const [sure, setSure] = useState(false);
@@ -34,6 +35,7 @@ export function BroadcastComposer() {
       data.set("body", body);
       data.set("cardTitle", cardTitle);
       data.set("cardBody", cardBody);
+      data.set("target", target);
       data.set("momentLink", momentLink);
       if (image) {
         data.set("image", image.file);
@@ -49,6 +51,7 @@ export function BroadcastComposer() {
       setCardTitle("");
       setCardBody("");
       setMomentLink("");
+      setTarget("none");
       setImage(null);
     });
 
@@ -92,19 +95,34 @@ export function BroadcastComposer() {
           <textarea value={cardBody} onChange={(e) => setCardBody(e.target.value)} maxLength={600} rows={4} className={FIELD} />
         </label>
         <label className="flex flex-col gap-1.5 text-[12px] font-semibold text-muted">
-          رابط لحظة (اختياري)
-          <input
-            value={momentLink}
-            onChange={(e) => setMomentLink(e.target.value)}
-            maxLength={300}
-            dir="ltr"
-            className={FIELD}
-            placeholder="https://atharmts.com/app/m/…"
-          />
+          زرّ في النافذة (اختياري)
+          <select value={target} onChange={(e) => setTarget(e.target.value as Target)} className={FIELD}>
+            {(Object.keys(TARGETS) as Target[]).map((key) => (
+              <option key={key} value={key}>
+                {TARGETS[key].option}
+              </option>
+            ))}
+          </select>
           <span className="text-[11px] font-normal leading-relaxed">
-            يظهر في النافذة زرُّ «عرض التفاصيل» يفتح اللحظة — لمن يراها وحده. وبلا رابطٍ لا زرّ.
+            يفتح الشاشةَ داخل التطبيق لا في المتصفّح. واللحظةُ تُفتح لمن يراها وحده.
           </span>
         </label>
+        {target === "moment" ? (
+          <label className="flex flex-col gap-1.5 text-[12px] font-semibold text-muted">
+            رابط اللحظة
+            <input
+              value={momentLink}
+              onChange={(e) => setMomentLink(e.target.value)}
+              maxLength={300}
+              dir="ltr"
+              className={FIELD}
+              placeholder="https://atharmts.com/app/m/…"
+            />
+            <span className="text-[11px] font-normal leading-relaxed">
+              انسخه من «نسخ رابط اللحظة» في نافذة التفاعل على اللحظة — في التطبيق أو الويب.
+            </span>
+          </label>
+        ) : null}
 
         {sure ? (
           <div className="flex items-center gap-2 rounded-xl border border-line p-3">
@@ -160,9 +178,9 @@ export function BroadcastComposer() {
             <p className="text-[11px] font-bold text-clay-ink">من آثار</p>
             <p className="text-[17px] font-bold" dir="auto">{cardTitle || "العبارة الرئيسية"}</p>
             <p className="whitespace-pre-line text-[13px] leading-relaxed text-ink-2" dir="auto">{cardBody || "النص تحتها"}</p>
-            {momentLink.trim() ? (
+            {target !== "none" ? (
               <p className="mt-3 rounded-xl py-2.5 text-center text-[13px] font-bold" style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}>
-                عرض التفاصيل
+                {TARGETS[target].button}
               </p>
             ) : null}
             <p className="mt-3 text-center text-[13px] font-semibold text-muted">إغلاق</p>
@@ -172,6 +190,17 @@ export function BroadcastComposer() {
     </div>
   );
 }
+
+type Target = "none" | "plus" | "coins" | "store" | "moment";
+
+/** زرُّ النافذة (القاعدة ٤٠٨): شاشاتٌ في التطبيق من قائمةٍ مغلقة، أو لحظة. وعناوينُها كما يرسمها الجوّال. */
+const TARGETS: Record<Target, { option: string; button: string }> = {
+  none: { option: "بلا زرّ", button: "" },
+  plus: { option: "الاشتراك في آثار+", button: "اشترك في آثار+" },
+  coins: { option: "شحن النقاط", button: "اشحن نقاطك" },
+  store: { option: "المتجر", button: "افتح المتجر" },
+  moment: { option: "لحظة", button: "عرض التفاصيل" },
+};
 
 /** نسبةُ الصورة في النافذة كما يرسمها الجوّال: بين ٠٫٧ و٢. */
 function shape(ratio: number) {

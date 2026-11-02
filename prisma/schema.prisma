@@ -1214,6 +1214,9 @@ model Broadcast {
   /// لحظةٌ يفتحها «عرض التفاصيل» في البطاقة (القاعدة ٣٩٠) — بلا مفتاحٍ أجنبيّ:
   /// لحظةٌ حُذفت يغيب زرُّها ولا يذهب التنبيهُ معها.
   momentId    String?
+  /// شاشةٌ في التطبيق يفتحها زرُّ النافذة (القاعدة ٤٠٨): «plus» أو «coins» أو «store» — قائمةٌ
+  /// مغلقة لا رابطٌ حرّ، فلا يُفتح متصفّحٌ ولا مسارٌ لا يعرفه التطبيق.
+  link        String?
   media       Media?    @relation("BroadcastMedia", fields: [mediaId], references: [id], onDelete: SetNull)
 
   @@index([pushedAt])

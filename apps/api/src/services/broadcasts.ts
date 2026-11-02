@@ -43,7 +43,7 @@ export async function sendBroadcasts(): Promise<number> {
 export async function broadcastCard(id: string, viewerId: string) {
   const row = await prisma.broadcast.findFirst({
     where: { id, pushedAt: { not: null } },
-    select: { id: true, cardTitle: true, cardBody: true, mediaId: true, createdAt: true, momentId: true },
+    select: { id: true, cardTitle: true, cardBody: true, mediaId: true, createdAt: true, momentId: true, link: true },
   });
   if (!row) return null;
   const momentId = row.momentId && (await canSeeMoment(viewerId, row.momentId)) ? row.momentId : null;

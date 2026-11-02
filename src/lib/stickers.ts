@@ -98,7 +98,12 @@ export async function buyStickerPack(userId: string, packId: string): Promise<{ 
   return { ok: `اشتريت ${pack.name}` };
 }
 
-/** الواجهةُ في الويب للمالك وممنوحي اللوحة كلّها — مقابلُ نسخة التطوير في الجوّال. */
-export function canTryStickers(user: { role: string; adminScope: string }): boolean {
-  return user.role === "ADMIN" || user.adminScope === "ALL";
+/**
+ * كان مقابلَ نسخة التطوير في الجوّال: الواجهةُ الجديدة للمالك وممنوحي اللوحة كلّها. وصارت
+ * للجميع (القاعدة ٤٠٨) — **بقرار المالك**: نسخةُ ٠٫١٫٥ تحمل ما كان في التطوير ظاهراً
+ * (`DEV_FEATURES = true` — القاعدة ٣٦٨)، والويبُ يطابق التطبيق. والاسمُ باقٍ لأنّ ثمانيةَ
+ * عشر موضعاً تقرؤه.
+ */
+export function canTryStickers(_user: { role: string; adminScope: string }): boolean {
+  return true;
 }
