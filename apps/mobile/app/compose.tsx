@@ -1,6 +1,7 @@
 import { Spinner } from "../components/spinner";
-import { useEffect, useState } from "react";
-import { View, Pressable, ScrollView, KeyboardAvoidingView, Platform, Image, useWindowDimensions } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { useKeyboardInset } from "../lib/keyboard";
+import { View, Pressable, ScrollView, Image, useWindowDimensions } from "react-native";
 import { PhotoFrameEditor } from "../components/photo-frame";
 import { Text, TextInput } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -51,6 +52,16 @@ const HINT: Record<Kind, string> = {
 };
 
 export default function Compose() {
+  const keyboard = useKeyboardInset();
+  const scroller = useRef<ScrollView>(null);
+  // موضعُ الحقل في المحتوى، ويُمرَّر إليه حين يظهر الكيبورد وهو مُركَّز.
+  const fieldTop = useRef(0);
+  const [fieldY, setFieldY] = useState<number | null>(null);
+  useEffect(() => {
+    if (keyboard > 0 && fieldY !== null) {
+      requestAnimationFrame(() => scroller.current?.scrollTo({ y: Math.max(0, fieldY - 12), animated: true }));
+    }
+  }, [keyboard, fieldY]);
   const params = useLocalSearchParams<{ kind?: string }>();
   const kind = (["PHOTO", "THOUGHT", "PLACE", "MUSIC"].includes(params.kind ?? "")
     ? params.kind
@@ -426,11 +437,19 @@ export default function Compose() {
       {/* الرأس كبقية الشاشات: العلامة ثم فاصل ثم «لحظة» — لا اسم نوعٍ عارٍ. */}
       <ScreenHeader title="لحظة" back="/" />
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={{ flex: 1 }}
-      >
-        <ScrollView scrollEnabled={!framing} contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 16 }}>
+      {/*
+        يصعد كلُّه بارتفاع الكيبورد نفسه (القاعدة ١٨٦) لا بـ`KeyboardAvoidingView`
+        تحت رأسٍ مرسوم — كان يُخطئ بقدر الرأس فيُغطّى الحقل. والحقلُ المُركَّز
+        يُمرَّر إليه ساعةَ يظهر الكيبورد: تحت صورة اللحظة يقع خلفه.
+      */}
+      <View style={{ flex: 1, paddingBottom: keyboard }}>
+        <ScrollView
+          ref={scroller}
+          scrollEnabled={!framing}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 16 }}
+        >
           {kind === "PHOTO" ? (
             <View style={{ marginBottom: 16 }}>
               {/*
@@ -529,6 +548,10 @@ export default function Compose() {
               <TextInput
                 value={musicUrl}
                 onChangeText={setMusicUrl}
+                onFocus={() => setFieldY(fieldTop.current)}
+                onLayout={(e) => {
+                  fieldTop.current = e.nativeEvent.layout.y;
+                }}
                 placeholder="https://open.spotify.com/track/..."
                 placeholderTextColor={colors.faint}
                 autoCapitalize="none"
@@ -543,6 +566,11 @@ export default function Compose() {
               <TextInput
                 value={text}
                 onChangeText={(value) => setText(value.slice(0, TEXT_MAX))}
+                onFocus={() => setFieldY(fieldTop.current)}
+                onBlur={() => setFieldY(null)}
+                onLayout={(e) => {
+                  fieldTop.current = e.nativeEvent.layout.y;
+                }}
                 placeholder={HINT[kind]}
                 placeholderTextColor={colors.faint}
                 multiline
@@ -776,8 +804,9 @@ export default function Compose() {
           ) : null}
         </ScrollView>
 
-        <View style={{ paddingHorizontal: 20, paddingBottom: 26, paddingTop: 6 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 }}>
+        <View style={{ paddingHorizontal: 20, paddingBottom: keyboard ? 10 : 26, paddingTop: 6 }}>
+          {/* والكيبورد ظاهرٌ يُطوى سطرُ الجمهور: المساحةُ للحقل. */}
+          <View style={{ display: keyboard ? "none" : "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 }}>
             <LockIcon size={14} color={colors.groundInk} />
             <Text style={{ color: colors.groundInk, fontSize: 11.5 }}>
               {audience === "CIRCLE"
@@ -811,7 +840,7 @@ export default function Compose() {
             )}
           </Pressable>
         </View>
-      </KeyboardAvoidingView>
+      </View>
 
       {sheet ? (
         <PeopleSheet

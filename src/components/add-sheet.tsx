@@ -95,9 +95,8 @@ function Body({ me, mode, go, close }: { me: Me; mode: Mode; go: (mode: Mode) =>
   );
 }
 
-/** المعرّفُ إن وُجد، وإلّا الاسمُ الأوّل وحده — «من حولك» لا تُري الاسمَ كاملاً (القاعدة ٢٨٢). */
-const aliasOf = (person: Found) =>
-  person.handle ? `⁨@${person.handle}⁩` : (person.name.trim().split(/\s+/)[0] ?? person.name);
+/** الاسمُ لا المعرّف — بقرار المالك (القاعدة ٣٩٦). */
+const aliasOf = (person: Found) => person.name;
 
 function PersonRow({
   person,
