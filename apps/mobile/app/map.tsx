@@ -135,7 +135,9 @@ export default function MyMap() {
   const [open, setOpen] = useState<Pin | null>(null);
   const [trail, setTrail] = useState(true);
   // صورُ العلامات تُرسم ثمّ تُجمَّد: علامةٌ تتابع تغيّرها تُعيد رسمَ الخريطة مع كلّ إطار.
-  const [tracking, setTracking] = useState(true);
+  // وتُحسب في الرسمة نفسها لا بعدها (القاعدة ٣٩١): علامةٌ تُركَّب والمتابعةُ مطفأةٌ من قبلُ تُصوَّر
+  // قبل أن يُرسم نصُّها، فكانت كبسولةُ المدينة فارغة.
+  const [settled, setSettled] = useState("");
 
   const state = useQuery({
     queryKey: ["my-map"],
@@ -230,31 +232,45 @@ export default function MyMap() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [points]);
 
+  const signature = `${pins.map((pin) => `${pin.key}:${pin.points.length}`).join("|")}#${open?.key ?? ""}#${landmarkReady}`;
+  const tracking = settled !== signature;
   useEffect(() => {
-    setTracking(true);
-    const timer = setTimeout(() => setTracking(false), 1800);
+    const timer = setTimeout(() => setSettled(signature), 2500);
     return () => clearTimeout(timer);
   }, [pins, open?.key, landmarkReady]);
 
   const { height: screenH } = useWindowDimensions();
   const sheetH = Math.round(Math.min(screenH * 0.72, 610));
 
+  /*
+    الطيرانُ إلى ما اختير يُحسب بيدنا لا بـ`fitToCoordinates` (القاعدة ٣٩١): حشوةُ البطاقة
+    (نحو ستّمئة) مع الرأس أكبرُ من الشاشة، فكان MapKit يبتعد إلى العالم كلّه بدل المدينة.
+    المدينةُ تُفتح على درجة الأماكن فتظهر لحظاتُها، والدولةُ على درجة المدن، والمكانُ قريباً.
+    والموضعُ في الجزء الظاهر فوق البطاقة: المركزُ يُزاح جنوباً بقدر ما تغطّيه.
+  */
   const select = (pin: Pin) => {
     setOpen(pin);
-    const coords = pin.points.map((point) => ({ latitude: point.lat, longitude: point.lng }));
-    if (pin.level === "place" || coords.length === 1) {
-      map.current?.animateToRegion(
-        {
-          latitude: pin.lat - (pin.level === "place" ? 0.004 : 0.06),
-          longitude: pin.lng,
-          latitudeDelta: pin.level === "place" ? 0.014 : 0.25,
-          longitudeDelta: pin.level === "place" ? 0.014 : 0.25,
-        },
-        500,
-      );
-      return;
-    }
-    fit(coords, sheetH + 30);
+    const lats = pin.points.map((point) => point.lat);
+    const lngs = pin.points.map((point) => point.lng);
+    const spread = Math.max(Math.max(...lats) - Math.min(...lats), Math.max(...lngs) - Math.min(...lngs));
+    const top = insets.top + 90;
+    const visible = Math.max(160, screenH - sheetH - top);
+    const [least, most] =
+      pin.level === "place" ? [0.01, 0.05] : pin.level === "city" ? [0.04, CITY_ZOOM * 0.8] : [CITY_ZOOM * 1.5, COUNTRY_ZOOM * 0.8];
+    const fitted = (spread * 1.5 * screenH) / visible;
+    const delta = Math.min(most, Math.max(least, fitted));
+    // نقطةُ الاختيار في منتصف الجزء الظاهر لا في منتصف الشاشة.
+    const target = top + visible / 2;
+    const shift = ((screenH / 2 - target) / screenH) * delta;
+    map.current?.animateToRegion(
+      {
+        latitude: (Math.max(...lats) + Math.min(...lats)) / 2 - shift,
+        longitude: (Math.max(...lngs) + Math.min(...lngs)) / 2,
+        latitudeDelta: delta,
+        longitudeDelta: delta,
+      },
+      550,
+    );
   };
 
   // مدينةٌ من قائمة الدولة: تُختار بعلامتها في درجة المدن ولو كانت الخريطةُ على الدول.
@@ -329,7 +345,9 @@ export default function MyMap() {
             const core = coreOf(pin.points.length);
             const box = core * 3;
             // الارتكازُ على مركز النقطة: فوقها الكبسولةُ (٢٦) أو الصورةُ المختارة (٦٤).
-            const above = pin.level === "country" ? COUNTRY_ABOVE : chosen ? 64 : 26;
+            // ثابتٌ مع الاختيار: تبديلُ ارتكاز العلامة وترتيبِها وشجرةِ ما فيها عند الضغط كان
+            // يُسقط التطبيق (الطبقةُ القديمة داخل Fabric — القاعدة ٣٩١).
+            const above = pin.level === "country" ? COUNTRY_ABOVE : 26;
             return (
               <Marker
                 key={pin.key}
@@ -337,7 +355,7 @@ export default function MyMap() {
                 onPress={() => select(pin)}
                 tracksViewChanges={tracking}
                 anchor={dotted ? { x: 0.5, y: (above + box / 2) / (above + box) } : { x: 0.5, y: 1 }}
-                zIndex={chosen ? 9999 : pin.points.length}
+                zIndex={pin.points.length}
               >
                 {dotted ? <DotPin pin={pin} chosen={chosen} landmark={landmarkOf.get(pin.label) ?? null} /> : <PlacePin pin={pin} chosen={chosen} />}
               </Marker>
@@ -547,7 +565,7 @@ function DotPin({ pin, chosen, landmark }: { pin: Pin; chosen: boolean; landmark
   const core = coreOf(pin.points.length) + (chosen ? 3 : 0);
   const box = coreOf(pin.points.length) * 3;
   const glow = Math.min(1, 0.35 + Math.log2(pin.points.length + 1) / 10);
-  const photo = chosen || pin.level === "country" ? photoOf(pin.points) : null;
+  const photo = pin.level === "country" ? photoOf(pin.points) : null;
   const pill = (
     <View
       style={{
@@ -603,32 +621,6 @@ function DotPin({ pin, chosen, landmark }: { pin: Pin; chosen: boolean; landmark
             </View>
           ) : null}
           {pill}
-        </View>
-      ) : chosen ? (
-        <View style={{ height: 64, justifyContent: "flex-start" }}>
-          <View
-            style={{
-              width: 58,
-              height: 58,
-              borderRadius: 29,
-              padding: 3,
-              backgroundColor: AMBER,
-              shadowColor: AMBER,
-              shadowOpacity: 0.6,
-              shadowRadius: 10,
-              shadowOffset: { width: 0, height: 0 },
-            }}
-          >
-            <View style={{ flex: 1, borderRadius: 26, overflow: "hidden", backgroundColor: NIGHT, alignItems: "center", justifyContent: "center" }}>
-              {photo ? (
-                <MediaImage mediaId={photo} style={{ width: 52, height: 52 }} fade={false} />
-              ) : (
-                <Text face="display" style={{ color: AMBER, fontSize: 16, fontWeight: "800" }}>
-                  {ar(pin.points.length)}
-                </Text>
-              )}
-            </View>
-          </View>
         </View>
       ) : (
         <View style={{ height: 26, justifyContent: "flex-start" }}>{pill}</View>
