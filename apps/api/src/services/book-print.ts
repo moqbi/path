@@ -1,8 +1,8 @@
 import { prisma } from "@athar/db";
 import { cloudReady, getObject } from "@athar/storage";
 import sharp from "sharp";
-import { book } from "./archive";
-import { BOOK_SECTION_LABEL, bookBlocks, bookPatternSvg, SITE_URL, storeCoverId, type BookCover, type BookSection, type BookSkin } from "@athar/shared";
+import { book, type OwnedCover } from "./archive";
+import { BOOK_SECTION_LABEL, bookBlocks, bookPalette, bookPatternSvg, type BookPalette, SITE_URL, storeCoverId, type BookCover, type BookSection, type BookSkin } from "@athar/shared";
 import { ar } from "../lib/riyadh-day";
 
 /**
@@ -120,7 +120,12 @@ async function thumbs(ids: string[], width: number): Promise<Map<string, string>
 }
 
 const CSS = `
-@page { size: A5; margin: 0; }
+/*
+  هامشٌ أعلى الورقة وأسفلها (القاعدة ٤٠٦): يومٌ أطولُ من ورقته يُكمل في التالية، وبلا هامشٍ كان
+  يبدأ ملتصقاً بحافّتها العليا وينتهي ملتصقاً بالسفلى. والغلافُ — أوّلُ ورقة — بلا هامش يملؤها.
+*/
+@page { size: A5; margin: 12mm 0; }
+@page :first { margin: 0; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { direction: rtl; background: #FBF8F1; color: #182830;
   font-family: "IBM Plex Sans Arabic", "SF Arabic", "Geeza Pro", system-ui, sans-serif;
@@ -135,14 +140,14 @@ h1, h2, .display { font-family: "Tajawal", "IBM Plex Sans Arabic", sans-serif; }
   الورقة كريميٌّ على كريميّ لا يُرى. والصفحاتُ الداكنة تمدّ لونها بظلٍّ تحتها حتى
   حافّة الورقة، والصفحةُ بعدها تُرسم فوقه.
 */
-.page { width: 148mm; min-height: 195mm; padding: 16mm 14mm 18mm; break-before: page; page-break-before: always;
+.page { width: 148mm; min-height: 180mm; padding: 6mm 14mm 10mm; break-before: page; page-break-before: always;
   position: relative; background: #FBF8F1; }
 .page:first-child { break-before: auto; page-break-before: auto; }
 .night { height: 195mm; overflow: hidden; box-shadow: 0 18mm 0 0 #08121a; }
 .folio { counter-increment: folio; }
-.folio::after { content: counter(folio, arabic-indic); position: absolute; bottom: 9mm; left: 14mm;
+.folio::after { content: counter(folio, arabic-indic); position: absolute; bottom: 3mm; left: 14mm;
   font-size: 9px; color: #9aa4a8; letter-spacing: .5px; }
-.folio::before { content: attr(data-run); position: absolute; bottom: 9mm; right: 14mm;
+.folio::before { content: attr(data-run); position: absolute; bottom: 3mm; right: 14mm;
   font-size: 9px; color: #9aa4a8; }
 .rule { height: 1px; background: #E4DCC8; }
 .gold { height: 2px; width: 36px; background: #F6B93B; border-radius: 2px; }
@@ -194,6 +199,7 @@ h2 { font-size: 26px; font-weight: 800; margin-top: 3mm; }
 .moment { position: relative; display: flex; gap: 4mm; padding-bottom: 6mm; break-inside: avoid; page-break-inside: avoid; }
 .moment::before { content: ""; position: absolute; right: 10px; top: 24px; bottom: 0; width: 1px; background: #E4DCC8; }
 .moment:last-child::before { display: none; }
+.moment:last-child { padding-bottom: 0; }
 .num { flex: 0 0 21px; height: 21px; border-radius: 50%; background: #0E1A24; color: #F6B93B;
   font-size: 10.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; position: relative; z-index: 1; }
 .body { flex: 1; min-width: 0; }
@@ -245,7 +251,8 @@ h2 { font-size: 26px; font-weight: 800; margin-top: 3mm; }
 .dedication .line { font-family: "Tajawal", sans-serif; font-size: 20px; font-weight: 700; line-height: 1.8; color: #3c4a52; max-width: 100mm; margin-top: 6mm; }
 
 /* الخاتمة */
-.end { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.end { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+  height: 182mm; box-shadow: none; border-radius: 3mm; background-size: cover; background-position: center; }
 .end .big { font-family: "Tajawal", sans-serif; font-size: 22px; font-weight: 800; margin-top: 8mm; line-height: 1.5; }
 .end .gold { margin: 6mm auto 0; }
 .end .sub { font-size: 12px; color: rgba(247,245,239,.6); margin-top: 5mm; }
@@ -307,15 +314,51 @@ function coverHtml(
     </section>`;
 }
 
+/** ألوانُ الكتاب الأصليّة في `CSS` ومفاتيحُها في الثوب — تُبدَّل حرفاً بحرف (القاعدة ٤٠٦). */
+const TOKENS: [string, keyof BookPalette][] = [
+  ["#FBF8F1", "paper"],
+  ["#182830", "ink"],
+  ["#3c4a52", "ink2"],
+  ["#6b7880", "soft"],
+  ["#8a949a", "muted"],
+  ["#9aa4a8", "folio"],
+  ["#b07d1c", "kicker"],
+  ["#8a7a55", "label"],
+  ["#E4DCC8", "rule"],
+  ["#EFE8D8", "ruleSoft"],
+  ["#F1E8D2", "ghost"],
+  ["#F6B93B", "gold"],
+  ["#6a5420", "story"],
+  ["#F6EFDD", "quote"],
+  ["#0E1A24", "numBg"],
+  ["#FBF1DA", "privBg"],
+  ["#EBD9AE", "privLine"],
+  ["#8a5f10", "privInk"],
+];
+
+/** ورقةُ الأنماط بألوان الثوب، وصورتا الورق والخاتمة فوقها. */
+function themedCss(cover: OwnedCover | null, paperArt: string | null, endArt: string | null): string {
+  if (!cover) return CSS;
+  const pal = bookPalette(cover.skin);
+  let css = CSS;
+  for (const [hex, key] of TOKENS) css = css.replace(new RegExp(hex, "gi"), pal[key]);
+  return `${css}
+.end { background: ${pal.end}${endArt ? ` url("${endArt}") center / cover no-repeat` : ""}; color: ${pal.endInk}; }
+.end .sub { color: ${pal.endSoft}; }
+${paperArt ? `.page:not(.cover):not(.end) { background: ${pal.paper} url("${paperArt}") center / cover no-repeat; }` : ""}`;
+}
+
 /** الكتابُ صفحةَ HTML واحدة، والجوّالُ يطبعها. */
 export async function bookHtml(userId: string, year: number): Promise<{ html: string; name: string }> {
   const data = await book(userId, year);
   const s = data.stats;
   const photoIds = data.moments.filter((m) => m.mediaId).map((m) => m.mediaId!).slice(0, MAX_PHOTOS);
-  const [photos, avatar, art] = await Promise.all([
+  const [photos, avatar, art, paperArt, endArt] = await Promise.all([
     thumbs(photoIds, 900),
     data.avatarMediaId ? thumb(data.avatarMediaId, 240) : Promise.resolve(null),
     data.coverSkin?.mediaId ? thumb(data.coverSkin.mediaId, 1100) : Promise.resolve(null),
+    data.coverSkin?.paperMediaId ? thumb(data.coverSkin.paperMediaId, 1100) : Promise.resolve(null),
+    data.coverSkin?.endMediaId ? thumb(data.coverSkin.endMediaId, 1100) : Promise.resolve(null),
   ]);
 
   const run = `آثار مومنتس · ${ar(year)}`;
@@ -453,6 +496,6 @@ export async function bookHtml(userId: string, year: number): Promise<{ html: st
   const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;700&family=Tajawal:wght@700;800&display=swap" rel="stylesheet">
-<style>${CSS}</style></head><body>${pages.join("")}</body></html>`;
+<style>${themedCss(data.coverSkin, paperArt, endArt)}</style></head><body>${pages.join("")}</body></html>`;
   return { html, name: `athar-${year}` };
 }

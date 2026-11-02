@@ -20,14 +20,34 @@ export const BOOK_PATTERN_LABEL: Record<BookPattern, string> = {
   arches: "أقواس",
 };
 
-export type BookSkin = { bg: string; bg2: string; ink: string; accent: string; pattern: BookPattern };
+export type BookSkin = {
+  bg: string;
+  bg2: string;
+  ink: string;
+  accent: string;
+  pattern: BookPattern;
+  /** ورقُ الصفحات وحبرُها ولمستُها (القاعدة ٤٠٦) — الافتراضُ ورقُ الكتاب الكريميّ. */
+  paper: string;
+  paperInk: string;
+  paperAccent: string;
+  /** صفحةُ الخاتمة. */
+  endBg: string;
+  endInk: string;
+};
 
+/** الحقولُ بأقسامها كما تُرى في اللوحة: الغلاف، ثمّ الورق، ثمّ الخاتمة. */
 export const BOOK_SKIN_FIELDS = [
-  { key: "bg", label: "الأرضية (أعلى)", fallback: "#0E1A24" },
-  { key: "bg2", label: "الأرضية (أسفل)", fallback: "#08121A" },
-  { key: "ink", label: "الحبر", fallback: "#F7F5EF" },
-  { key: "accent", label: "اللمسة", fallback: "#F6B93B" },
+  { key: "bg", part: "cover", label: "أرضية الغلاف (أعلى)", fallback: "#0E1A24" },
+  { key: "bg2", part: "cover", label: "أرضية الغلاف (أسفل)", fallback: "#08121A" },
+  { key: "ink", part: "cover", label: "حبر الغلاف", fallback: "#F7F5EF" },
+  { key: "accent", part: "cover", label: "لمسة الغلاف", fallback: "#F6B93B" },
+  { key: "paper", part: "paper", label: "لون الورق", fallback: "#FBF8F1" },
+  { key: "paperInk", part: "paper", label: "حبر الصفحات", fallback: "#182830" },
+  { key: "paperAccent", part: "paper", label: "لمسة الصفحات", fallback: "#B07D1C" },
+  { key: "endBg", part: "end", label: "أرضية الخاتمة", fallback: "#0E1A24" },
+  { key: "endInk", part: "end", label: "حبر الخاتمة", fallback: "#F7F5EF" },
 ] as const;
+export type BookSkinKey = (typeof BOOK_SKIN_FIELDS)[number]["key"];
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
@@ -40,12 +60,115 @@ export function bookSkinOf(raw: unknown): BookSkin {
     value = {};
   }
   if (!value || typeof value !== "object") value = {};
-  const color = (key: (typeof BOOK_SKIN_FIELDS)[number]["key"]) => {
+  const color = (key: BookSkinKey) => {
     const got = value[key];
     return typeof got === "string" && HEX.test(got) ? got.toUpperCase() : BOOK_SKIN_FIELDS.find((one) => one.key === key)!.fallback;
   };
   const pattern = BOOK_PATTERNS.includes(value.pattern as BookPattern) ? (value.pattern as BookPattern) : "none";
-  return { bg: color("bg"), bg2: color("bg2"), ink: color("ink"), accent: color("accent"), pattern };
+  return {
+    bg: color("bg"),
+    bg2: color("bg2"),
+    ink: color("ink"),
+    accent: color("accent"),
+    pattern,
+    paper: color("paper"),
+    paperInk: color("paperInk"),
+    paperAccent: color("paperAccent"),
+    endBg: color("endBg"),
+    endInk: color("endInk"),
+  };
+}
+
+/**
+ * ألوانُ صفحات الكتاب كلّها (القاعدة ٤٠٦): الورقُ وحبرُه ودرجاتُه وخطوطُه وصفحةُ الخاتمة.
+ * بلا ثوبٍ هي ألوانُ الكتاب الأصليّة حرفاً بحرف، ومع ثوبٍ تُشتقّ من ألوانه الخمسة — فلا
+ * يُسأل المشرفُ عن عشرين درجة، ولا تختلف صفحةٌ بين الـPDF والجوّال والويب.
+ */
+export type BookPalette = {
+  paper: string;
+  ink: string;
+  ink2: string;
+  soft: string;
+  muted: string;
+  folio: string;
+  kicker: string;
+  label: string;
+  rule: string;
+  ruleSoft: string;
+  ghost: string;
+  gold: string;
+  story: string;
+  quote: string;
+  numBg: string;
+  numInk: string;
+  privBg: string;
+  privLine: string;
+  privInk: string;
+  end: string;
+  endInk: string;
+  endSoft: string;
+};
+
+export const BOOK_PALETTE: BookPalette = {
+  paper: "#FBF8F1",
+  ink: "#182830",
+  ink2: "#3c4a52",
+  soft: "#6b7880",
+  muted: "#8a949a",
+  folio: "#9aa4a8",
+  kicker: "#b07d1c",
+  label: "#8a7a55",
+  rule: "#E4DCC8",
+  ruleSoft: "#EFE8D8",
+  ghost: "#F1E8D2",
+  gold: "#F6B93B",
+  story: "#6a5420",
+  quote: "#F6EFDD",
+  numBg: "#0E1A24",
+  numInk: "#F6B93B",
+  privBg: "#FBF1DA",
+  privLine: "#EBD9AE",
+  privInk: "#8a5f10",
+  end: "#0E1A24",
+  endInk: "#f7f5ef",
+  endSoft: "rgba(247,245,239,.6)",
+};
+
+/** يمزج لونين: `weight` حصّةُ الأوّل. */
+export function mixHex(a: string, b: string, weight: number): string {
+  const pa = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16));
+  const pb = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16));
+  return `#${pa.map((v, i) => Math.round(v * weight + pb[i] * (1 - weight)).toString(16).padStart(2, "0")).join("")}`;
+}
+
+export function bookPalette(skin: BookSkin | null | undefined): BookPalette {
+  if (!skin) return BOOK_PALETTE;
+  const { paper: p, paperInk: k, paperAccent: a } = skin;
+  const rgb = [1, 3, 5].map((i) => parseInt(skin.endInk.slice(i, i + 2), 16)).join(",");
+  return {
+    paper: p,
+    ink: k,
+    ink2: mixHex(k, p, 0.82),
+    soft: mixHex(k, p, 0.62),
+    muted: mixHex(k, p, 0.5),
+    folio: mixHex(k, p, 0.42),
+    kicker: a,
+    label: mixHex(a, k, 0.7),
+    rule: mixHex(k, p, 0.14),
+    ruleSoft: mixHex(k, p, 0.08),
+    ghost: mixHex(a, p, 0.13),
+    gold: skin.accent,
+    story: mixHex(a, k, 0.6),
+    quote: mixHex(a, p, 0.1),
+    numBg: k,
+    numInk: p,
+    privBg: mixHex(a, p, 0.1),
+    privLine: mixHex(a, p, 0.3),
+    privInk: mixHex(a, k, 0.75),
+    end: skin.endBg,
+    endInk: skin.endInk,
+    endSoft: `rgba(${rgb},.6)`,
+  };
 }
 
 /** تدرّجُ بطاقة الصنف في المتجر — من ثوبه (كـ`specFor` للثيم). */

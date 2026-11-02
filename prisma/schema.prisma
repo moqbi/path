@@ -834,6 +834,12 @@ model StoreItem {
   hallSkin        String?
   /// ثوبُ غلاف الكتاب (JSON — `bookSkinOf` في `packages/shared`) لصنف `BOOK`.
   bookSkin        String?
+  /// صورتا ثوب الكتاب (القاعدة ٤٠٦): خلفيّةُ الورق تملأ كلَّ صفحةٍ تحت النصّ، وصورةُ الخاتمة
+  /// تملأ صفحتَها. وصورةُ الغلاف هي صورةُ الصنف نفسها (`mediaId`).
+  bookPaperMediaId String?   @unique
+  bookPaperMedia   Media?    @relation("StoreItemBookPaper", fields: [bookPaperMediaId], references: [id], onDelete: SetNull)
+  bookEndMediaId   String?   @unique
+  bookEndMedia     Media?    @relation("StoreItemBookEnd", fields: [bookEndMediaId], references: [id], onDelete: SetNull)
   /// صورُ قاعة المعرض (القاعدة ٣٥٠): نقشُ الجدار ونقشُ الأرضيّة يتكرّران، وإطارُ الصورة
   /// PNG شفّافُ الوسط يُمدّ فوق كلّ صورة. وبلاها تُرسم القاعةُ من ألوان `hallSkin` وحدها.
   hallWallMediaId  String?    @unique
@@ -1269,6 +1275,8 @@ model Media {
   storeHallWall  StoreItem?    @relation("StoreItemHallWall")
   storeHallFloor StoreItem?    @relation("StoreItemHallFloor")
   storeHallFrame StoreItem?    @relation("StoreItemHallFrame")
+  storeBookPaper StoreItem?    @relation("StoreItemBookPaper")
+  storeBookEnd   StoreItem?    @relation("StoreItemBookEnd")
   sticker        Sticker?      @relation("StickerMedia")
   broadcast      Broadcast?    @relation("BroadcastMedia")
 

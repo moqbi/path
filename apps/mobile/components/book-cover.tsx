@@ -18,7 +18,15 @@ const NIGHT = "#0E1A24";
 const GOLD = "#F6B93B";
 
 /** غلافُ المتجر كما يُختار ويُطبع (القاعدة ٤٠٥). */
-export type CoverSkin = { id: string; name: string; skin: BookSkin; mediaId: string | null };
+export type CoverSkin = {
+  id: string;
+  name: string;
+  skin: BookSkin;
+  mediaId: string | null;
+  /** خلفيّةُ الورق وصورةُ الخاتمة (القاعدة ٤٠٦) — خادمٌ قبلها بلاهما. */
+  paperMediaId?: string | null;
+  endMediaId?: string | null;
+};
 
 /**
  * غلافٌ من المتجر بتخطيط «ليلي» وألوانِ ثوبه، والنقشُ أو صورتُه خلفه — كـ`skinCoverHtml`

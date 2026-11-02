@@ -41,17 +41,32 @@ async function since(userId: string): Promise<Date | null> {
 }
 
 /** غلافٌ من المتجر يملكه صاحبُه الآن (القاعدة ٤٠٥). */
-export type OwnedCover = { id: string; name: string; skin: BookSkin; mediaId: string | null };
+export type OwnedCover = {
+  id: string;
+  name: string;
+  skin: BookSkin;
+  mediaId: string | null;
+  /** خلفيّةُ الورق وصورةُ الخاتمة (القاعدة ٤٠٦). */
+  paperMediaId: string | null;
+  endMediaId: string | null;
+};
 
 /** أغلفةُ الكتاب التي يملكها — ما انتهت مدّتُه لا يُعدّ (`ACTIVE`). */
 export async function ownedCovers(userId: string): Promise<OwnedCover[]> {
   const now = new Date();
   const rows = await prisma.purchase.findMany({
     where: { userId, item: { kind: "BOOK" }, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
-    select: { item: { select: { id: true, name: true, bookSkin: true, mediaId: true } } },
+    select: { item: { select: { id: true, name: true, bookSkin: true, mediaId: true, bookPaperMediaId: true, bookEndMediaId: true } } },
     orderBy: { createdAt: "asc" },
   });
-  return rows.map(({ item }) => ({ id: item.id, name: item.name, skin: bookSkinOf(item.bookSkin), mediaId: item.mediaId }));
+  return rows.map(({ item }) => ({
+    id: item.id,
+    name: item.name,
+    skin: bookSkinOf(item.bookSkin),
+    mediaId: item.mediaId,
+    paperMediaId: item.bookPaperMediaId,
+    endMediaId: item.bookEndMediaId,
+  }));
 }
 
 /**
