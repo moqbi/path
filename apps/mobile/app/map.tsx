@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, PanResponder, Platform, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
-import MapView, { Marker, Polygon, Polyline, type Region } from "react-native-maps";
+import MapView, { Marker, Polygon, type Region } from "react-native-maps";
 import { BlurView } from "expo-blur";
+import * as SecureStore from "expo-secure-store";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueries, useQuery } from "@tanstack/react-query";
@@ -92,16 +93,19 @@ type Pin = { key: string; level: Level; lat: number; lng: number; label: string;
 const COUNTRY_ZOOM = 14;
 const CITY_ZOOM = 0.6;
 
-/**
- * خطوطُ الأثر خاناتٌ ثابتةُ العدد تُركَّب مع الخريطة ولا تُنزع (القاعدة ٣٨١): تركيبُ
- * `Polyline` ونزعُها في الطبقة القديمة داخل Fabric أسقطا التطبيقَ عند «أثري».
- */
-const TRAIL_SLOTS = 24;
 type Coord = { latitude: number; longitude: number };
-const NOWHERE: Coord[] = [
-  { latitude: 0, longitude: 0 },
-  { latitude: 0, longitude: 0 },
+
+/**
+ * مظهرُ الخريطة يختاره صاحبُها (القاعدة ٣٩٢) — **بقرار المالك**: نهاريٌّ افتراضاً، وليليٌّ هادئٌ
+ * بحجابه، وقمرٌ صناعيّ بأسمائه. ويُحفظ على الجهاز فيفتح عليه في المرّة التالية.
+ */
+type MapMode = "day" | "night" | "satellite";
+const MODES: { key: MapMode; label: string }[] = [
+  { key: "day", label: "نهاري" },
+  { key: "night", label: "ليلي" },
+  { key: "satellite", label: "قمر صناعي" },
 ];
+const MODE_KEY = "athr.map.mode";
 
 // ألوانُ الخريطة ثابتةٌ لا تتبع الثيم: أرضٌ داكنةٌ هادئة وذهبُ آثار عليها.
 const AMBER = "#F6B93B";
@@ -133,7 +137,20 @@ export default function MyMap() {
   const [year, setYear] = useState<number | null>(null);
   const [delta, setDelta] = useState(30);
   const [open, setOpen] = useState<Pin | null>(null);
-  const [trail, setTrail] = useState(true);
+  const [mode, setMode] = useState<MapMode>("day");
+  const [picking, setPicking] = useState(false);
+  useEffect(() => {
+    SecureStore.getItemAsync(MODE_KEY)
+      .then((saved) => {
+        if (saved === "day" || saved === "night" || saved === "satellite") setMode(saved);
+      })
+      .catch(() => {});
+  }, []);
+  const choose = (next: MapMode) => {
+    setMode(next);
+    setPicking(false);
+    SecureStore.setItemAsync(MODE_KEY, next).catch(() => {});
+  };
   // صورُ العلامات تُرسم ثمّ تُجمَّد: علامةٌ تتابع تغيّرها تُعيد رسمَ الخريطة مع كلّ إطار.
   // وتُحسب في الرسمة نفسها لا بعدها (القاعدة ٣٩١): علامةٌ تُركَّب والمتابعةُ مطفأةٌ من قبلُ تُصوَّر
   // قبل أن يُرسم نصُّها، فكانت كبسولةُ المدينة فارغة.
@@ -179,34 +196,6 @@ export default function MyMap() {
     }
     return [...groups.values()];
   }, [points, level]);
-
-  /*
-    الأثرُ بترتيب الزيارة، ولكلّ درجةٍ خطوطُها (القاعدة ٣٨١): من بعيدٍ خطٌّ بين الدول، ثمّ
-    مدنُ الدولة الواحدة، ثمّ أماكنُ المدينة الواحدة.
-  */
-  const lines = useMemo(() => {
-    const byPoint = new Map<string, Pin>();
-    for (const pin of pins) for (const point of pin.points) byPoint.set(point.id, pin);
-    const groups = new Map<string, { coords: Coord[]; last: string | null }>();
-    for (const point of points) {
-      const pin = byPoint.get(point.id);
-      if (!pin) continue;
-      const area = level === "country" ? "world" : level === "city" ? countryOf(point) : cityOf(point);
-      const group = groups.get(area) ?? { coords: [], last: null };
-      if (group.last !== pin.key) {
-        group.coords.push({ latitude: pin.lat, longitude: pin.lng });
-        group.last = pin.key;
-      }
-      groups.set(area, group);
-    }
-    return [...groups.values()]
-      .map((group) => group.coords)
-      .filter((coords) => coords.length > 1)
-      .sort((a, b) => b.length - a.length)
-      .slice(0, TRAIL_SLOTS);
-  }, [pins, points, level]);
-  // من بعيدٍ لا أثر: خطوطٌ بين الدول تعبر القارّاتِ وتزحم الخريطة (القاعدة ٣٨٤).
-  const showTrail = trail && level !== "country";
 
   // صورُ معالم الدول على علاماتها.
   const countryNames = level === "country" ? pins.map((pin) => pin.label) : [];
@@ -297,8 +286,8 @@ export default function MyMap() {
           style={{ flex: 1 }}
           initialRegion={{ latitude: 24.71, longitude: 46.68, latitudeDelta: 30, longitudeDelta: 30 }}
           onRegionChangeComplete={(region: Region) => setDelta(region.latitudeDelta)}
-          mapType={Platform.OS === "ios" ? "mutedStandard" : "standard"}
-          userInterfaceStyle="dark"
+          mapType={mode === "satellite" ? "hybrid" : mode === "night" && Platform.OS === "ios" ? "mutedStandard" : "standard"}
+          userInterfaceStyle={mode === "night" ? "dark" : "light"}
           showsPointsOfInterest={false}
           showsBuildings={false}
           showsTraffic={false}
@@ -312,33 +301,13 @@ export default function MyMap() {
             <Polygon
               key={`shade-${index}`}
               coordinates={ring}
-              fillColor="rgba(8,15,22,0.46)"
+              // الحجابُ لليليّ وحده، ومركّبٌ دائماً: تركيبُ طبقةٍ ونزعُها يُسقطان (القاعدة ٣٨١).
+              fillColor={mode === "night" ? "rgba(8,15,22,0.46)" : "rgba(0,0,0,0)"}
               strokeColor="transparent"
               strokeWidth={0}
               tappable={false}
             />
           ))}
-          {Array.from({ length: TRAIL_SLOTS }, (_, slot) => {
-            const line = showTrail ? lines[slot] : undefined;
-            return [
-              <Polyline
-                key={`glow-${slot}`}
-                coordinates={line ?? NOWHERE}
-                geodesic
-                strokeWidth={line ? 5 : 0}
-                strokeColor={line ? "rgba(246,185,59,0.14)" : "transparent"}
-              />,
-              <Polyline
-                key={`dash-${slot}`}
-                coordinates={line ?? NOWHERE}
-                geodesic
-                strokeWidth={line ? 1.6 : 0}
-                strokeColor={line ? "rgba(246,185,59,0.85)" : "transparent"}
-                lineDashPattern={[2, 6]}
-                lineCap="round"
-              />,
-            ];
-          })}
           {pins.map((pin) => {
             const chosen = open?.key === pin.key;
             const dotted = pin.level !== "place";
@@ -396,11 +365,34 @@ export default function MyMap() {
         ) : null}
       </View>
 
-      {/* أدواتُ الخريطة في طرفها: «أثري» يُظهر خطوطَ الرحلة ويُخفيها. */}
-      {points.length && !open && level !== "country" ? (
-        <View pointerEvents="box-none" style={{ position: "absolute", right: 14, bottom: insets.bottom + 86, gap: 10 }}>
-          <RoundGlass label="أثري" on={trail} onPress={() => setTrail((on) => !on)}>
-            <TrailIcon on={trail} />
+      {/* مظهرُ الخريطة في طرفها: زرٌّ يفتح ثلاثة اختيارات (القاعدة ٣٩٢). */}
+      {!open ? (
+        <View pointerEvents="box-none" style={{ position: "absolute", right: 14, bottom: insets.bottom + 86, alignItems: "flex-end", gap: 8 }}>
+          {picking ? (
+            <Glass style={{ borderRadius: 18 }}>
+              <View style={{ padding: 6, gap: 4 }}>
+                {MODES.map((one) => (
+                  <Pressable
+                    key={one.key}
+                    onPress={() => choose(one.key)}
+                    accessibilityLabel={one.label}
+                    style={{
+                      height: 36,
+                      minWidth: 112,
+                      paddingHorizontal: 14,
+                      borderRadius: 12,
+                      justifyContent: "center",
+                      backgroundColor: mode === one.key ? AMBER : "transparent",
+                    }}
+                  >
+                    <Text style={{ color: mode === one.key ? NIGHT : INK, fontSize: 13, fontWeight: "700" }}>{one.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </Glass>
+          ) : null}
+          <RoundGlass label="مظهر الخريطة" on={picking} onPress={() => setPicking((on) => !on)}>
+            <LayersIcon on={picking} />
           </RoundGlass>
         </View>
       ) : null}
@@ -500,13 +492,13 @@ function LocateIcon() {
   );
 }
 
-function TrailIcon({ on }: { on: boolean }) {
+function LayersIcon({ on }: { on: boolean }) {
   const color = on ? AMBER : INK;
   return (
     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-      <Path d="M5 18c3-1 3-6 7-6s4-5 7-6" stroke={color} strokeWidth={1.8} strokeDasharray="2 3" strokeLinecap="round" />
-      <Circle cx={5} cy={18} r={2.2} fill={color} />
-      <Circle cx={19} cy={6} r={2.2} fill={color} />
+      <Path d="M12 3.5l8.5 4.5L12 12.5 3.5 8 12 3.5z" stroke={color} strokeWidth={1.7} strokeLinejoin="round" />
+      <Path d="M3.5 12L12 16.5 20.5 12" stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M3.5 16L12 20.5 20.5 16" stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   );
 }
