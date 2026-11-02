@@ -17,7 +17,7 @@ import { viewPhoto } from "../../components/photo-viewer";
 import { MediaImage } from "../../components/media-image";
 import { ScreenHeader } from "../../components/screen-header";
 import { Ticks, receiptOf } from "../../components/receipt";
-import { CameraIcon, CloseIcon, FlagIcon, PencilIcon, TrashIcon, MicIcon, PauseIcon, PlayIcon, PlusIcon, SendIcon, StickerIcon } from "../../components/icons";
+import { CameraIcon, CloseIcon, FlagIcon, ModDeleteIcon, PencilIcon, TrashIcon, MicIcon, PauseIcon, PlayIcon, PlusIcon, SendIcon, StickerIcon } from "../../components/icons";
 import { SourceSheet } from "../../components/source-sheet";
 import { takeShot } from "../../lib/capture";
 import { StickerImage, StickerPanel } from "../../components/sticker-panel";
@@ -281,6 +281,12 @@ export default function Conversation() {
 
   const drop = useMutation({
     mutationFn: (messageId: string) => api(`/v1/messages/${messageId}`, { method: "DELETE" }),
+    onSuccess: () => refresh(),
+    onError: (e) => setError(e instanceof Error ? e.message : "تعذّر الحذف"),
+  });
+
+  const modDrop = useMutation({
+    mutationFn: (messageId: string) => api(`/v1/moderation/messages/${messageId}`, { method: "DELETE" }),
     onSuccess: () => refresh(),
     onError: (e) => setError(e instanceof Error ? e.message : "تعذّر الحذف"),
   });
@@ -566,10 +572,19 @@ export default function Conversation() {
                     radius={18}
                     surface={text ? inner(mine).backgroundColor as string : item.sticker ? colors.groundSolid : "transparent"}
                     inside={text ? bubbleStyle(mine) : undefined}
-                    confirmLabel="بلاغ عن الرسالة"
+                    /* المشرفُ يحذف بصلاحيته — سلّةٌ ودرع (القاعدة ٣٩٠) — وغيرُه يُبلغ. */
+                    confirmLabel={me?.canModerate ? "حذف بصلاحية الإشراف" : "بلاغ عن الرسالة"}
                     onSwiping={setSwiping}
-                    icons={{ delete: <FlagIcon size={20} color={text ? colors.live : "#fff"} /> }}
-                    onDelete={() => setReporting(item.id)}
+                    icons={{
+                      delete: me?.canModerate ? (
+                        <ModDeleteIcon size={20} color={text ? colors.live : "#fff"} />
+                      ) : (
+                        <FlagIcon size={20} color={text ? colors.live : "#fff"} />
+                      ),
+                    }}
+                    onDelete={() =>
+                      me?.canModerate ? modDrop.mutateAsync(item.id).then(() => undefined) : setReporting(item.id)
+                    }
                   >
                     {content}
                   </SwipeRow>

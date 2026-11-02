@@ -17,6 +17,7 @@ export function BroadcastComposer() {
   const [body, setBody] = useState("");
   const [cardTitle, setCardTitle] = useState("");
   const [cardBody, setCardBody] = useState("");
+  const [momentLink, setMomentLink] = useState("");
   const [image, setImage] = useState<{ file: Blob; width: number; height: number; url: string } | null>(null);
   const [said, setSaid] = useState<{ ok: boolean; text: string } | null>(null);
   const [sure, setSure] = useState(false);
@@ -33,6 +34,7 @@ export function BroadcastComposer() {
       data.set("body", body);
       data.set("cardTitle", cardTitle);
       data.set("cardBody", cardBody);
+      data.set("momentLink", momentLink);
       if (image) {
         data.set("image", image.file);
         data.set("width", String(image.width));
@@ -46,6 +48,7 @@ export function BroadcastComposer() {
       setBody("");
       setCardTitle("");
       setCardBody("");
+      setMomentLink("");
       setImage(null);
     });
 
@@ -87,6 +90,20 @@ export function BroadcastComposer() {
         <label className="flex flex-col gap-1.5 text-[12px] font-semibold text-muted">
           النص تحتها
           <textarea value={cardBody} onChange={(e) => setCardBody(e.target.value)} maxLength={600} rows={4} className={FIELD} />
+        </label>
+        <label className="flex flex-col gap-1.5 text-[12px] font-semibold text-muted">
+          رابط لحظة (اختياري)
+          <input
+            value={momentLink}
+            onChange={(e) => setMomentLink(e.target.value)}
+            maxLength={300}
+            dir="ltr"
+            className={FIELD}
+            placeholder="https://atharmts.com/app/m/…"
+          />
+          <span className="text-[11px] font-normal leading-relaxed">
+            يظهر في النافذة زرُّ «عرض التفاصيل» يفتح اللحظة — لمن يراها وحده. وبلا رابطٍ لا زرّ.
+          </span>
         </label>
 
         {sure ? (
@@ -143,6 +160,11 @@ export function BroadcastComposer() {
             <p className="text-[11px] font-bold text-clay-ink">من آثار</p>
             <p className="text-[17px] font-bold" dir="auto">{cardTitle || "العبارة الرئيسية"}</p>
             <p className="whitespace-pre-line text-[13px] leading-relaxed text-ink-2" dir="auto">{cardBody || "النص تحتها"}</p>
+            {momentLink.trim() ? (
+              <p className="mt-3 rounded-xl py-2.5 text-center text-[13px] font-bold" style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}>
+                عرض التفاصيل
+              </p>
+            ) : null}
             <p className="mt-3 text-center text-[13px] font-semibold text-muted">إغلاق</p>
           </div>
         </div>

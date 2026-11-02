@@ -330,6 +330,42 @@ export async function removeComment(adminId: string, commentId: string) {
   return { ok: "حُذف التعليق" };
 }
 
+/**
+ * حذفُ رسالةٍ خاصّة بيد المشرف (القاعدة ٣٩٠) — في محادثةٍ هو طرفُها وحده:
+ * لا بابَ للمشرف إلى محادثات الناس (القاعدة ١٩٥)، وما يراه في محادثته يحكم
+ * فيه. بابٌ غيرُ باب المرسل (`/v1/messages/:id`)، ومعه سجلّ. والملفُّ يذهب
+ * ببكسلاته (القاعدة ١٠٤)، والبلاغُ السابق يبقى بنسخته.
+ */
+export async function removeMessage(adminId: string, messageId: string) {
+  const message = await prisma.message.findUnique({
+    where: { id: messageId },
+    select: {
+      id: true,
+      senderId: true,
+      body: true,
+      mediaId: true,
+      conversationId: true,
+      conversation: { select: { aId: true, bId: true } },
+    },
+  });
+  const party = message && (message.conversation.aId === adminId || message.conversation.bId === adminId);
+  if (!message || !party) throw notFound("الرسالة غير موجودة");
+
+  await prisma.moderationLog.create({
+    data: {
+      adminId,
+      action: "MESSAGE_REMOVED",
+      targetId: message.id,
+      ownerId: message.senderId,
+      snippet: message.body.slice(0, 200),
+    },
+  });
+  await prisma.message.delete({ where: { id: message.id } });
+  if (message.mediaId) await dropMedia([message.mediaId]).catch(() => {});
+  const to = message.conversation.aId === adminId ? message.conversation.bId : message.conversation.aId;
+  return { to, conversationId: message.conversationId };
+}
+
 /** سجلّ ما فعله المشرفون — يقرؤه المالك في اللوحة. */
 export async function logs(limit = 100) {
   const rows = await prisma.moderationLog.findMany({

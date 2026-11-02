@@ -6,6 +6,7 @@ import { rateLimitUser } from "../../middleware/rate-limit";
 import { requireAuth, requireAdmin, requireModerator, me } from "../../middleware/auth";
 import * as feed from "../../services/feed";
 import * as reports from "../../services/reports";
+import { pushBoth } from "../../lib/hub";
 
 const reportInput = z.object({
   target: z.enum(["MOMENT", "STORY", "MESSAGE", "COMMENT", "USER"]),
@@ -100,6 +101,14 @@ export const contentRoutes = new Hono()
   .delete("/comments/:id", zValidator("param", z.object({ id: cuid })), async (c) =>
     c.json(await reports.removeComment(me(c), c.req.valid("param").id)),
   )
+
+  /* رسالةٌ خاصّة في محادثة المشرف نفسه (القاعدة ٣٩٠). */
+  .delete("/messages/:id", zValidator("param", z.object({ id: cuid })), async (c) => {
+    const id = c.req.valid("param").id;
+    const gone = await reports.removeMessage(me(c), id);
+    pushBoth(me(c), gone.to, "message:gone", { conversationId: gone.conversationId, messageId: id });
+    return c.json({ ok: true });
+  })
 
   /* السجلّ: من حذف ماذا ومتى. */
   .get("/logs", async (c) => c.json(await reports.logs()));

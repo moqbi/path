@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { requireAuth } from "../../middleware/auth";
+import { me, requireAuth } from "../../middleware/auth";
 import { broadcastCard } from "../../services/broadcasts";
 import { notFound } from "../../lib/errors";
 
@@ -7,7 +7,7 @@ import { notFound } from "../../lib/errors";
 export const broadcastRoutes = new Hono()
   .use("*", requireAuth)
   .get("/:id", async (c) => {
-    const card = await broadcastCard(c.req.param("id"));
+    const card = await broadcastCard(c.req.param("id"), me(c));
     if (!card) throw notFound("غير موجود");
     return c.json({ card });
   });

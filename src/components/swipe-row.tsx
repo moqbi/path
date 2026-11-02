@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { BlockIcon, CloseIcon, FlagIcon, TrashIcon, UserMinusIcon } from "@/components/icons";
+import { BlockIcon, CloseIcon, FlagIcon, ModDeleteIcon, TrashIcon, UserMinusIcon } from "@/components/icons";
 
 const REVEAL = 88;
 
@@ -112,7 +112,7 @@ export function SwipeRow({
           ) : icons === "flag" ? (
             <FlagIcon size={22} />
           ) : icons === "shield" ? (
-            <TrashIcon size={22} />
+            <ModDeleteIcon size={22} />
           ) : icons ? (
             <UserMinusIcon size={22} />
           ) : (

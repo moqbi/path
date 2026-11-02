@@ -7,7 +7,7 @@ import { Text } from "./type";
 import { useRouter } from "expo-router";
 import { Avatar, frameBleed } from "./avatar";
 import { ReactionGlyph } from "./reactions";
-import { FlagIcon, PencilIcon, TrashIcon } from "./icons";
+import { FlagIcon, ModDeleteIcon, PencilIcon, TrashIcon } from "./icons";
 import { openEdit } from "./edit-sheet";
 import { DEV_FEATURES } from "../lib/dev-features";
 import { NameTag } from "./name-tag";
@@ -313,9 +313,8 @@ export function CommentList({
                 : undefined
             }
             icons={{
-              // والمشرفُ بسلّةٍ ودرع (القاعدة ٣٨٦): الدرعُ وحده لا يقول «حذف».
-              // سلّةُ المشرف سلّةُ صاحب التعليق نفسها — **بقرار المالك** (القاعدة ٣٨٩).
-              delete: <TrashIcon size={22} color="#fff" />,
+              // والمشرفُ بسلّةٍ ودرع (القاعدة ٣٩٠): يحذف بصلاحيةٍ لا بملكية.
+              delete: own ? <TrashIcon size={22} color="#fff" /> : <ModDeleteIcon size={22} color="#fff" />,
               lead: <PencilIcon size={22} color={colors.onBrand} />,
             }}
             onDelete={() => drop.mutateAsync({ id: comment.id, mine: own }).then(() => undefined)}
