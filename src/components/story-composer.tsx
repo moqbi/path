@@ -9,7 +9,7 @@ import { Portal } from "@/components/sheet";
 
 /** أقصى مدّة للفيديو، وأقصى حجمٍ يُقبل — نفس ما يفحصه الخادم. */
 const MAX_SECONDS = 20;
-const MAX_VIDEO = 9_000_000;
+const MAX_VIDEO = 18_000_000;
 
 /**
  * الفلاتر: اسمٌ يُحفظ، وقيمة CSS تُطبَّق عند العرض.

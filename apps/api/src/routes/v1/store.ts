@@ -8,9 +8,11 @@ import * as store from "../../services/store";
 
 const byId = z.object({ id: cuid });
 
-/** الجوّالُ الذي يعرف صنفَ «المعرض» يقوله (القاعدة ٣٤٨) — وما سواه لا يراه. */
-const knowsGallery = (c: { req: { header: (name: string) => string | undefined } }) =>
-  (c.req.header("x-store-kinds") ?? "").split(",").includes("gallery");
+/** الجوّالُ الذي يعرف «المعرض» (القاعدة ٣٤٨) و«أغلفة الكتاب» (القاعدة ٤٠٥) يقولهما — وما سواه لا يراهما. */
+const knowsGallery = (c: { req: { header: (name: string) => string | undefined } }): store.Known => {
+  const said = (c.req.header("x-store-kinds") ?? "").split(",");
+  return { gallery: said.includes("gallery"), book: said.includes("book") };
+};
 
 /**
  * المتجر.

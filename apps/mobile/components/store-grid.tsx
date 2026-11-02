@@ -11,6 +11,9 @@ import { keys, type StoreItem } from "../lib/queries";
 import { ar, coinText, daysLabel, leftUntil } from "../lib/format";
 import { colors } from "../theme/tokens";
 import { Sheet } from "./sheet";
+import { useRouter } from "expo-router";
+import { bookSkinOf } from "@athar/shared";
+import { SkinCoverPage } from "./book-cover";
 
 /** اسمُ النوع كما يُقرأ في بطاقته — كنسخة الويب. */
 const KIND_LABEL: Record<string, string> = {
@@ -20,7 +23,25 @@ const KIND_LABEL: Record<string, string> = {
   BACKGROUND: "ثيم",
   BUNDLE: "حزمة",
   GALLERY: "معرض",
+  BOOK: "غلاف كتاب",
 };
+
+/** غلافُ الكتاب بمقاسٍ ما — بطاقةُ المتجر ومعاينتُه (القاعدة ٤٠٥). */
+function BookThumb({ item, height }: { item: StoreItem; height: number }) {
+  const width = Math.round(height * 0.7);
+  return (
+    <View style={{ width, height, borderRadius: Math.max(3, height * 0.05), overflow: "hidden" }}>
+      <SkinCoverPage
+        cover={{ id: item.id, name: item.name, skin: bookSkinOf(item.bookSkin), mediaId: item.mediaId }}
+        year={new Date().getFullYear()}
+        scale={width / 310}
+      />
+    </View>
+  );
+}
+
+/** ما اشتُري من أغلفة الكتاب يُختار في تجهيز كتاب السنة الجارية. */
+const studioHref = () => `/me/book-studio?year=${new Date().getFullYear()}`;
 
 /**
  * معاينة الصنف تتبع نوعه.
@@ -31,6 +52,7 @@ const KIND_LABEL: Record<string, string> = {
  */
 export function Preview({ item }: { item: StoreItem }) {
   const paint = firstColor(item.spec, colors.chip);
+  if (item.kind === "BOOK") return <BookThumb item={item} height={62} />;
 
   /*
     الحزمة تُعرض بما فيها: رسومٌ متداخلة وعددُ ما بقي — فما يُشترى يُرى
@@ -278,6 +300,7 @@ export function StoreGrid({
     void client.invalidateQueries({ queryKey: ["feed"] });
   };
 
+  const router = useRouter();
   const buy = useMutation({
     mutationFn: ({ id, plan }: { id: string; plan?: string }) =>
       api<{ ok: string }>(`/v1/store/${id}/buy`, {
@@ -451,7 +474,17 @@ export function StoreGrid({
             </Pressable>
 
             {ownedSet.has(chosen.id) ? (
-              chosen.kind === "BUNDLE" ? (
+              chosen.kind === "BOOK" ? (
+                <Pressable
+                  onPress={() => {
+                    setOpen(null);
+                    router.push(studioHref() as never);
+                  }}
+                  style={{ flex: 1, height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
+                >
+                  <Text style={{ color: colors.onBrand, fontSize: 14, fontWeight: "700" }}>اختره لكتابك</Text>
+                </Pressable>
+              ) : chosen.kind === "BUNDLE" ? (
                 <View style={{ flex: 1, height: 48, borderRadius: 12, backgroundColor: colors.chip, alignItems: "center", justifyContent: "center" }}>
                   <Text style={{ color: colors.ink2, fontSize: 13, fontWeight: "600" }}>
                     صارت لك — ما فيها في إكسسواراتك
@@ -552,7 +585,9 @@ export function StoreGrid({
                 onPress={() => setShowing(false)}
                 style={{ flex: 1, backgroundColor: "rgba(14,26,36,.88)", alignItems: "center", justifyContent: "center", padding: 32 }}
               >
-                {chosen.mediaId || chosen.promoMediaId ? (
+                {chosen.kind === "BOOK" ? (
+                  <BookThumb item={chosen} height={380} />
+                ) : chosen.mediaId || chosen.promoMediaId ? (
                   <MediaImage
                     mediaId={(chosen.mediaId ?? chosen.promoMediaId)!}
                     resizeMode="contain"
@@ -582,7 +617,9 @@ export function StoreGrid({
                   </Text>
                   <Text style={{ color: colors.muted, fontSize: 12.5, lineHeight: 21, textAlign: "center", marginTop: 6 }}>
                     {said.ok
-                      ? chosen.kind === "BUNDLE"
+                      ? chosen.kind === "BOOK"
+                        ? "صار لك — تختاره غلافاً لكتابك من «تجهيز الكتاب»."
+                        : chosen.kind === "BUNDLE"
                         ? "ما فيها صار لك — تلبسه من إكسسواراتك في «أنا»."
                         : "صار لك — تلبسه الآن أو من إكسسواراتك في «أنا»."
                       : "اشحن نقاطك من زرّ الرصيد في أعلى المتجر ثم أعِد المحاولة."}
@@ -592,13 +629,16 @@ export function StoreGrid({
                     <Pressable
                       disabled={wear.isPending}
                       onPress={() => {
-                        wear.mutate(chosen.id);
+                        if (chosen.kind === "BOOK") router.push(studioHref() as never);
+                        else wear.mutate(chosen.id);
                         setSaid(null);
                         setOpen(null);
                       }}
                       style={{ height: 46, borderRadius: 12, backgroundColor: colors.clay, alignItems: "center", justifyContent: "center", marginTop: 16 }}
                     >
-                      <Text style={{ color: colors.onBrand, fontSize: 13.5, fontWeight: "700" }}>ألبسه الآن</Text>
+                      <Text style={{ color: colors.onBrand, fontSize: 13.5, fontWeight: "700" }}>
+                        {chosen.kind === "BOOK" ? "اختره الآن" : "ألبسه الآن"}
+                      </Text>
                     </Pressable>
                   ) : null}
                   <Pressable
@@ -712,7 +752,7 @@ export function StoreGrid({
                   <Text style={{ color: colors.clayInk, fontSize: 10.5, fontWeight: "600" }}>ملبوس</Text>
                 </View>
               ) : have ? (
-                <Text style={{ color: colors.clayInk, fontSize: 10.5, fontWeight: "600" }}>ألبسه</Text>
+                <Text style={{ color: colors.clayInk, fontSize: 10.5, fontWeight: "600" }}>{item.kind === "BOOK" ? "عندك" : "ألبسه"}</Text>
               ) : locked ? (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   <LockIcon size={11} color={colors.faint} />

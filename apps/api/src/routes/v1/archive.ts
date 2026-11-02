@@ -11,7 +11,7 @@ const pageQuery = z.object({
   limit: z.coerce.number().int().min(1).max(90).default(60),
 });
 const bookPrefsBody = z.object({
-  cover: z.string().max(20),
+  cover: z.string().max(48),
   title: z.string().max(200).nullable().optional(),
   dedication: z.string().max(400).nullable().optional(),
   sections: z.array(z.object({ id: z.string().max(20), on: z.boolean() })).max(20),

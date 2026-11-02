@@ -85,6 +85,8 @@ enum StoreItemKind {
   BUNDLE
   /// ثوبُ قاعة المعرض (القاعدة ٣٤٨): ألوانُ الجدار والأرضيّة والإطار — يُلبَس في القاعة وحدها.
   GALLERY
+  /// غلافُ كتاب السنة (القاعدة ٤٠٥): ثوبٌ في `bookSkin` يُختار في «تجهيز الكتاب» — لا يُلبَس.
+  BOOK
 }
 
 enum FriendshipStatus {
@@ -830,6 +832,8 @@ model StoreItem {
   palette         String?
   /// ثوبُ قاعة المعرض (JSON مسطّح — `HALL_FIELDS` في `packages/shared`) لصنف `GALLERY`.
   hallSkin        String?
+  /// ثوبُ غلاف الكتاب (JSON — `bookSkinOf` في `packages/shared`) لصنف `BOOK`.
+  bookSkin        String?
   /// صورُ قاعة المعرض (القاعدة ٣٥٠): نقشُ الجدار ونقشُ الأرضيّة يتكرّران، وإطارُ الصورة
   /// PNG شفّافُ الوسط يُمدّ فوق كلّ صورة. وبلاها تُرسم القاعةُ من ألوان `hallSkin` وحدها.
   hallWallMediaId  String?    @unique

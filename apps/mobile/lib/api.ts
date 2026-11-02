@@ -155,7 +155,7 @@ export async function api<T>(path: string, init: RequestInit = {}, retry = true)
       */
       "x-moment-kinds": "2",
       // صنفُ «المعرض» في المتجر (القاعدة ٣٤٨) لمن يعرف رسمَه — نسخةُ التطوير وحدها الآن.
-      ...(DEV_FEATURES ? { "x-store-kinds": "gallery" } : {}),
+      ...(DEV_FEATURES ? { "x-store-kinds": "gallery,book" } : {}),
       ...init.headers,
     },
     signal: abort.signal,

@@ -35,7 +35,7 @@ export const VOICE_SECONDS = { free: 20, plus: 120 } as const;
 
 /** القصة: عمرها بالساعات، وأقصى مدّة لفيديوها بالثواني. */
 export const STORY_HOURS = 24;
-export const STORY_SECONDS = 30;
+export const STORY_SECONDS = 60;
 
 /** نصوصُ القصة: خمسةٌ على الأكثر، و١٢٠ حرفاً لكلٍّ — سطرٌ يُقرأ لا مقال. */
 export const STORY_TEXTS = 5;
@@ -92,6 +92,8 @@ export const LIMITS = {
   animated: 3_000_000,
   audio: 2_000_000,
   video: 9_000_000,
+  /** مقطعُ القصّة بعد ضغطه: دقيقةٌ بـ٢٢٠٠ كيلوبت حدّاً أعلى ≈ ١٦٫٥ ميغا (القاعدة ٤٠٥). */
+  storyVideo: 18_000_000,
 } as const;
 
 /**

@@ -16,7 +16,7 @@ import { clear, clientIp, hit, TOO_MANY } from "@/lib/rate-limit";
 import { SUSPEND_HOURS } from "@/lib/suspend";
 import { isPlusDays, PLUS_COINS, PLUS_LABEL } from "@/lib/plus";
 import { SITE_TEXT, type SiteKey } from "@/lib/site";
-import { ALL_COUNTRIES, COUNTRIES, hallFlatFrom, hallSkinOf } from "@athar/shared";
+import { ALL_COUNTRIES, BOOK_SKIN_FIELDS, bookSkinOf, bookSpec, COUNTRIES, hallFlatFrom, hallSkinOf } from "@athar/shared";
 
 /*
   إجراءات اللوحة، منقولةٌ كما هي من `src/app/actions.ts` في الويب الحالي:
@@ -153,8 +153,17 @@ function readHall(formData: FormData, kind: string): string | null {
   return kind === "GALLERY" ? hallFlatFrom((key) => (formData.get(key) as string | null) ?? null) : null;
 }
 
+/** ثوبُ غلاف الكتاب من نموذجه (القاعدة ٤٠٥) — لصنف «غلاف كتاب» وحده. */
+function readBook(formData: FormData, kind: string): string | null {
+  if (kind !== "BOOK") return null;
+  const get = (key: string) => String(formData.get(`book.${key}`) ?? "").trim();
+  const raw = Object.fromEntries([...BOOK_SKIN_FIELDS.map((field) => [field.key, get(field.key)]), ["pattern", get("pattern")]]);
+  return JSON.stringify(bookSkinOf(raw));
+}
+
 /** الثيمُ بألوانٍ يُرسم من ألوانه، فلا يُضبط التدرّجُ بيدٍ ثانيةً (`paletteSpec`). */
-function specFor(kind: string, palette: string | null, spec: string, hall?: string | null): string {
+function specFor(kind: string, palette: string | null, spec: string, hall?: string | null, book?: string | null): string {
+  if (kind === "BOOK" && book) return bookSpec(bookSkinOf(book));
   // وثوبُ القاعة يُرسم في المتجر من جداره وأرضيّته وإطاره: الصورةُ المصغّرةُ تُشبهه.
   if (kind === "GALLERY" && hall) {
     const skin = hallSkinOf(hall);
@@ -168,7 +177,7 @@ function specFor(kind: string, palette: string | null, spec: string, hall?: stri
 export type AdminResult = { ok?: string; error?: string } | null;
 
 const storeItemInput = z.object({
-  kind: z.enum(["FRAME", "BACKGROUND", "THEME", "CHARM", "BUNDLE", "GALLERY"]),
+  kind: z.enum(["FRAME", "BACKGROUND", "THEME", "CHARM", "BUNDLE", "GALLERY", "BOOK"]),
   name: z.string().trim().min(1, "اكتب الاسم").max(40),
   priceCoins: z.coerce.number().int().min(0).max(1_000_000),
   spec: z.string().trim().min(1, "اكتب تدرّج CSS").max(1000),
@@ -240,6 +249,7 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
     parsed.data;
   const palette = readPalette(formData);
   const hallSkin = readHall(formData, kind);
+  const bookSkin = readBook(formData, kind);
   const collection = await readCollection(formData, kind);
   if (collection.error) return { error: collection.error };
 
@@ -255,7 +265,7 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
       name,
       // الأسعار تُدخَل بالريال وتُخزَّن بالهللات، فلا تدخل كسور عشرية القاعدة.
       priceCoins,
-      spec: specFor(kind, palette, spec, hallSkin),
+      spec: specFor(kind, palette, spec, hallSkin, bookSkin),
       plusOnly,
       earnedAfterDays: earnedAfterDays && earnedAfterDays > 0 ? earnedAfterDays : null,
       categoryId: categoryId || null,
@@ -263,6 +273,7 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
       hidden,
       palette,
       hallSkin,
+      bookSkin,
       ...readPromo(formData, null),
       collectionId: collection.id ?? null,
       sortOrder: 0,
@@ -310,6 +321,7 @@ export async function updateStoreItem(
   } = parsed.data;
   const palette = readPalette(formData);
   const hallSkin = readHall(formData, kind);
+  const bookSkin = readBook(formData, kind);
   const collection = await readCollection(formData, kind);
   if (collection.error) return { error: collection.error };
   const was = await prisma.storeItem.findUnique({ where: { id: itemId }, select: { promoAt: true } });
@@ -320,7 +332,7 @@ export async function updateStoreItem(
       kind,
       name,
       priceCoins,
-      spec: specFor(kind, palette, spec, hallSkin),
+      spec: specFor(kind, palette, spec, hallSkin, bookSkin),
       plusOnly,
       earnedAfterDays: earnedAfterDays && earnedAfterDays > 0 ? earnedAfterDays : null,
       categoryId: categoryId || null,
@@ -328,6 +340,7 @@ export async function updateStoreItem(
       hidden,
       palette,
       hallSkin,
+      bookSkin,
       collectionId: collection.id,
       sortOrder: sortOrder ?? undefined,
     },

@@ -48,7 +48,7 @@ import { InvitesView } from "./invites";
 import { coinText, ar, relative, riyals } from "@/lib/format";
 import { groundInkOf, parsePalette } from "@/lib/theme";
 import { ReportContext } from "./report-context";
-import { HALL_FIELDS } from "@athar/shared";
+import { BOOK_PATTERN_LABEL, BOOK_PATTERNS, BOOK_SKIN_FIELDS, bookSkinOf, HALL_FIELDS } from "@athar/shared";
 import { linkedMany, type LinkedResult } from "@/lib/linked";
 import { StickersSection } from "./stickers";
 import { BroadcastsSection } from "./broadcasts";
@@ -88,6 +88,7 @@ const KINDS = [
   { value: "BACKGROUND", label: "خلفية" },
   { value: "BUNDLE", label: "حزمة" },
   { value: "GALLERY", label: "معرض" },
+  { value: "BOOK", label: "غلاف كتاب" },
 ] as const;
 
 const KIND_LABEL: Record<string, string> = {
@@ -97,6 +98,7 @@ const KIND_LABEL: Record<string, string> = {
   BACKGROUND: "خلفية",
   BUNDLE: "حزمة",
   GALLERY: "معرض",
+  BOOK: "غلاف كتاب",
 };
 
 /**
@@ -111,6 +113,8 @@ const STORE_KINDS = [
   { key: "BUNDLE", label: "الحزم", other: "الحزم", kinds: ["BUNDLE"] },
   // ثوبُ قاعة المعرض (القاعدة ٣٤٨): ألوانٌ ومقاساتٌ تُلبَس القاعةَ كلَّها.
   { key: "GALLERY", label: "المعرض", other: "المعرض", kinds: ["GALLERY"] },
+  // غلافُ كتاب السنة (القاعدة ٤٠٥): ألوانٌ ونقش، أو صورةٌ تملأ الغلاف.
+  { key: "BOOK", label: "أغلفة الكتاب", other: "أغلفة الكتاب", kinds: ["BOOK"] },
 ] as const;
 
 const STORE_VIEWS = [
@@ -238,7 +242,7 @@ function KindField({ kinds, value }: { kinds: readonly string[]; value: string }
  */
 function SpecField({ kind, value }: { kind: string; value: string }) {
   // والمعرضُ يُرسم من ثوبه (`specFor` في الإجراء) فلا يُكتب له تدرّج.
-  if (kind === "BUNDLE" || kind === "GALLERY") return <input type="hidden" name="spec" value={value} />;
+  if (kind === "BUNDLE" || kind === "GALLERY" || kind === "BOOK") return <input type="hidden" name="spec" value={value} />;
   return (
     <Field
       label="تدرّج CSS"
@@ -291,6 +295,42 @@ function HallFields({ hall }: { hall: string | null }) {
         <p className="text-[10.5px] leading-relaxed text-faint">
           يُلبَس من «إكسسواراتي» في التطبيق ويغيّر القاعة كلّها: الجدار وألواحه، والسقف، والأرضيّة،
           وإطار الصور وبطانتها، ولوحات الخاطرة والمكان، والأسطوانة، والحبل، ولون الشهر المختار.
+        </p>
+      </div>
+    </details>
+  );
+}
+
+/**
+ * غلافُ الكتاب (القاعدة ٤٠٥): لونا الأرضية والحبرُ واللمسةُ ونقشٌ يُرسم من الكود — وصورةُ
+ * الصنف إن رُفعت تملأ الغلافَ بدل النقش. ويُختار في «تجهيز الكتاب» على الجوّال.
+ */
+function BookFields({ skin }: { skin: string | null }) {
+  const now = bookSkinOf(skin);
+  return (
+    <details className="rounded-xl border border-line" open>
+      <summary className="flex cursor-pointer list-none items-center justify-between p-3">
+        <span className="text-[12.5px] font-semibold">ثوب الغلاف</span>
+        <span className="text-[11px] text-muted">ألوانٌ ونقش</span>
+      </summary>
+      <div className="flex flex-col gap-2 border-t border-line p-3">
+        <div className="flex flex-wrap gap-2">
+          {BOOK_SKIN_FIELDS.map((field) => (
+            <Color key={field.key} name={`book.${field.key}`} label={field.label} value={now[field.key]} />
+          ))}
+        </div>
+        <Field label="النقش">
+          <select name="book.pattern" defaultValue={now.pattern} className={SELECT} style={{ height: 46 }}>
+            {BOOK_PATTERNS.map((one) => (
+              <option key={one} value={one}>
+                {BOOK_PATTERN_LABEL[one]}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <p className="text-[10.5px] leading-relaxed text-faint">
+          الغلاف بتخطيط «ليلي»: الشعار والسنة والعنوان وصورة صاحبه. وإن رُفعت للصنف صورةٌ ملأت الغلاف بدل
+          النقش — فاختر الحبر بما يُقرأ فوقها.
         </p>
       </div>
     </details>
@@ -1517,6 +1557,7 @@ export default async function AdminPage({
 
                 {kindTab.key === "THEME" ? <PaletteFields palette={null} /> : null}
                 {kindTab.key === "GALLERY" ? <HallFields hall={null} /> : null}
+                {kindTab.key === "BOOK" ? <BookFields skin={null} /> : null}
 
                 <button
                   type="submit"
@@ -1753,6 +1794,7 @@ export default async function AdminPage({
                             <PaletteFields palette={parsePalette(item.palette)} />
                           ) : null}
                           {item.kind === "GALLERY" ? <HallFields hall={item.hallSkin} /> : null}
+                          {item.kind === "BOOK" ? <BookFields skin={item.bookSkin} /> : null}
 
                           <button
                             type="submit"

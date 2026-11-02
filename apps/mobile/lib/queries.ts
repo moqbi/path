@@ -208,9 +208,11 @@ export const useUnreadDm = () =>
 
 export type StoreItem = {
   id: string;
-  kind: "FRAME" | "BACKGROUND" | "THEME" | "CHARM" | "BUNDLE" | "GALLERY";
+  kind: "FRAME" | "BACKGROUND" | "THEME" | "CHARM" | "BUNDLE" | "GALLERY" | "BOOK";
   name: string;
   priceCoins: number;
+  /** ثوبُ غلاف الكتاب (القاعدة ٤٠٥) — لصنف `BOOK`. */
+  bookSkin?: string | null;
   spec: string;
   mediaId: string | null;
   /** اتّساعُ فراغ الإطار الأوسط: الوجه يجلس فيه لا في مربّع الرسم. */
@@ -247,6 +249,8 @@ export const useStore = () =>
           frames?: StoreItem[];
           /** أثوابُ قاعة المعرض (القاعدة ٣٤٨) — لمن يقول `x-store-kinds: gallery` وحده. */
           halls?: StoreItem[];
+          /** أغلفةُ كتاب السنة (القاعدة ٤٠٥) — لمن يقول `x-store-kinds: book`. */
+          books?: StoreItem[];
           themes: StoreItem[];
           bundles: StoreItem[];
           limited: StoreItem[];

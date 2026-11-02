@@ -29,6 +29,8 @@ const ITEM = {
   palette: true,
   /** ثوبُ القاعة لصنف «المعرض» (القاعدة ٣٤٨). */
   hallSkin: true,
+  /** ثوبُ غلاف الكتاب (القاعدة ٤٠٥). */
+  bookSkin: true,
   /** صورةُ الإعلان: بطاقةُ الحزمة في المتجر تعرضها بدل رسوم ما فيها، وبطاقةُ الإعلان كذلك. */
   promoMediaId: true,
   /** موعدُ إخفائه: الحزمةُ بمدّة عرضٍ تُعدّ محدودة (القاعدة ٢٨٤). */
@@ -70,9 +72,14 @@ const PROMO_DAYS = 14;
  * بطاقةً بتدرّجٍ في «وصل حديثاً» ولبسُه يكتبه ثيماً. فالجوّالُ الذي يعرفه يقول
  * `x-store-kinds: gallery`، وما سواه لا يرى `GALLERY` في متجرٍ ولا إكسسوارات ولا إعلان.
  */
-const NO_GALLERY = { kind: { not: "GALLERY" as const } };
+/** ما يعرفه الجوّال من الأنواع الجديدة: المعرض (القاعدة ٣٤٨)، وأغلفةُ الكتاب (القاعدة ٤٠٥). */
+export type Known = { gallery: boolean; book: boolean };
+const UNKNOWN = (known: Known) => {
+  const hide = [...(known.gallery ? [] : ["GALLERY" as const]), ...(known.book ? [] : ["BOOK" as const])];
+  return hide.length ? { kind: { notIn: hide } } : {};
+};
 
-export async function promo(userId: string, gallery = false) {
+export async function promo(userId: string, known: Known = { gallery: false, book: false }) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { promoSeenAt: true, createdAt: true },
@@ -88,7 +95,7 @@ export async function promo(userId: string, gallery = false) {
     floor,
   );
   const item = await prisma.storeItem.findFirst({
-    where: { hidden: false, promoAt: { gt: after }, ...(gallery ? {} : NO_GALLERY) },
+    where: { hidden: false, promoAt: { gt: after }, ...UNKNOWN(known) },
     orderBy: { promoAt: "desc" },
     select: { ...ITEM, promoText: true, promoAt: true },
   });
@@ -102,8 +109,8 @@ export async function promo(userId: string, gallery = false) {
  * عند الفتح. والجوّالُ القديم لا يسأل عن المجموعات (`packs`) فيبقى على الصنف كما كان.
  * والمجموعةُ بلا ملصقٍ أو مخفيّة لا تُعلَن، ومن يملكها يُقال له «عندك».
  */
-export async function promoFor(userId: string, withPacks: boolean, gallery = false) {
-  const item = await promo(userId, gallery);
+export async function promoFor(userId: string, withPacks: boolean, known: Known = { gallery: false, book: false }) {
+  const item = await promo(userId, known);
   if (!withPacks) return { item, pack: null };
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -139,7 +146,8 @@ export async function promoSeen(userId: string) {
   return { ok: true };
 }
 
-export async function storefront(userId: string, gallery = false) {
+export async function storefront(userId: string, known: Known = { gallery: false, book: false }) {
+  const gallery = known.gallery;
   const [categories, collections, every, purchases, user, bundled] = await Promise.all([
     prisma.storeCategory.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),
     prisma.storeCollection.findMany({
@@ -148,7 +156,7 @@ export async function storefront(userId: string, gallery = false) {
     }),
     // والمخفيّ لا يُعرض: يُرفع ويُنزل بلا حذفٍ يُضيع ما اشتراه أحد.
     prisma.storeItem.findMany({
-      where: { hidden: false, ...(gallery ? {} : NO_GALLERY) },
+      where: { hidden: false, ...UNKNOWN(known) },
       orderBy: { sortOrder: "asc" },
       select: ITEM,
     }),
@@ -182,7 +190,7 @@ export async function storefront(userId: string, gallery = false) {
     purchases.filter((row) => row.expiresAt).map((row) => [row.itemId, row.expiresAt!.toISOString()]),
   );
   // والحزمُ لها صفّاها («الحزم» و«حزم محدودة»)، فلا تُعاد في «وصل حديثاً» — **بقرار المالك**.
-  const fresh = items.filter((item) => item.kind !== "BUNDLE" && item.kind !== "GALLERY").sort((a, b) => +b.createdAt - +a.createdAt).slice(0, FRESH);
+  const fresh = items.filter((item) => item.kind !== "BUNDLE" && item.kind !== "GALLERY" && item.kind !== "BOOK").sort((a, b) => +b.createdAt - +a.createdAt).slice(0, FRESH);
   const themes = items.filter(
     (item) => (item.kind === "THEME" || item.kind === "BACKGROUND") && !item.limited,
   );
@@ -196,6 +204,8 @@ export async function storefront(userId: string, gallery = false) {
   const frames = items.filter((item) => item.kind === "FRAME" && !item.limited);
   // وأثوابُ القاعة شريحةٌ وحدها «المعرض» (القاعدة ٣٤٨) — لا تدخل «وصل حديثاً»: تُرى في شريحتها.
   const halls = items.filter((item) => item.kind === "GALLERY");
+  // وأغلفةُ الكتاب شريحةٌ وحدها (القاعدة ٤٠٥) — تُختار في «تجهيز الكتاب» لا تُلبَس.
+  const books = items.filter((item) => item.kind === "BOOK");
 
   /*
     المجموعةُ المختلطة (القاعدة ١٩٧) تُرسَل مرّةً لكل نوعٍ فيها، بالمعرّف نفسه
@@ -226,7 +236,7 @@ export async function storefront(userId: string, gallery = false) {
     items,
     owned,
     expires,
-    rows: { fresh, charms, frames, themes, bundles, limited, ...(gallery ? { halls } : {}) },
+    rows: { fresh, charms, frames, themes, bundles, limited, ...(gallery ? { halls } : {}), ...(known.book ? { books } : {}) },
     coins: user?.coins ?? 0,
     isPlus: user?.isPlus ?? false,
     daysHere: user ? Math.floor((Date.now() - +user.createdAt) / 86_400_000) : 0,
@@ -235,9 +245,9 @@ export async function storefront(userId: string, gallery = false) {
 }
 
 /** ما يملكه صاحب الحساب — منه تُلبَس الإكسسوارات. */
-export async function myItems(userId: string, gallery = false) {
+export async function myItems(userId: string, known: Known = { gallery: false, book: false }) {
   const rows = await prisma.purchase.findMany({
-    where: { userId, ...ACTIVE(), ...(gallery ? {} : { item: NO_GALLERY }) },
+    where: { userId, ...ACTIVE(), item: UNKNOWN(known) },
     orderBy: { createdAt: "desc" },
     select: {
       createdAt: true,
@@ -460,6 +470,7 @@ export async function equip(userId: string, itemId: string) {
   if (purchase.expiresAt && purchase.expiresAt <= new Date()) throw forbidden("انتهت مدّة هذا الصنف");
   // الحزمةُ لا تُلبَس (القاعدة ٤٤ب): كانت تُكتب في `backgroundId` فيُلبَس ثيمٌ لا وجود له.
   if (purchase.item.kind === "BUNDLE") throw forbidden("الحزمة لا تُلبَس — البس ما فيها");
+  if (purchase.item.kind === "BOOK") throw forbidden("الغلاف يُختار من تجهيز الكتاب");
 
   const field =
     purchase.item.kind === "FRAME"

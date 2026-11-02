@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { View, Pressable } from "react-native";
 import { Text } from "./type";
 import { useEventListener } from "expo";
@@ -30,6 +30,7 @@ export function StoryVideo({
   loop = false,
   muted = false,
   cover = false,
+  onStall,
 }: {
   /** معرّف الملف على الخادم، أو عنوانه على الجهاز حين `local`. */
   source: string;
@@ -42,6 +43,11 @@ export function StoryVideo({
   muted?: boolean;
   /** يملأ اللوحة ويقصّ ما زاد — القصّةُ بملء الشاشة (القاعدة ٢٩٦). */
   cover?: boolean;
+  /**
+   * المقطعُ لا يُرى بعد — يُجلب أو يتوقّف ليجلب (القاعدة ٤٠٥). الشاشةُ تقف عليه:
+   * كان العدُّ يمضي والشاشةُ سوداء فيضيع أوّلُ المقطع وصوتُه.
+   */
+  onStall?: (stalled: boolean) => void;
 }) {
   const [token, setToken] = useState(currentAccess);
   const [playing, setPlaying] = useState(!paused);
@@ -77,8 +83,24 @@ export function StoryVideo({
   useEventListener(player, "playToEnd", () => {
     if (!loop) setPlaying(false);
   });
+  // لم يُرسم أوّلُ إطارٍ بعد: يُقال من أوّل تركيب، ثمّ يُقال كلّما توقّف ليجلب.
+  const shown = useRef(false);
+  const stall = useRef(onStall);
+  stall.current = onStall;
+  useEffect(() => {
+    shown.current = false;
+    stall.current?.(true);
+    return () => stall.current?.(false);
+  }, [media]);
   useEventListener(player, "statusChange", ({ status }) => {
-    if (status === "error") setFailed(true);
+    if (status === "error") {
+      setFailed(true);
+      stall.current?.(false);
+      return;
+    }
+    if (!shown.current) return;
+    if (status === "loading") stall.current?.(true);
+    if (status === "readyToPlay") stall.current?.(false);
   });
 
   if (!media) return null;
@@ -98,6 +120,10 @@ export function StoryVideo({
         style={{ width, height }}
         contentFit={cover ? "cover" : "contain"}
         nativeControls={false}
+        onFirstFrameRender={() => {
+          shown.current = true;
+          stall.current?.(false);
+        }}
       />
 
       {/* زرٌّ يُعيد التشغيل بعد أن ينتهي — ومن أراد أن يراه ثانيةً قبل أن يرسله. */}
