@@ -304,6 +304,47 @@ export async function trimAudio(input: Uint8Array, start: number, length: number
   }
 }
 
+/** فلترُ المقطع كما يرسمه الجوّال: مصفوفةُ ألوان ٤×٥ (الإزاحةُ ٠–١) وإعتامُ الأطراف ٠–١. */
+export type VideoLook = { matrix: number[]; vignette?: number };
+
+/** جدولُ ألوانٍ ثلاثيّ بصيغة `.cube` من مصفوفة Skia — الأحمرُ أسرعُ المحاور. */
+export function cubeOf(matrix: number[], size = 33): string {
+  const m = matrix;
+  const clamp = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
+  const lines = [`LUT_3D_SIZE ${size}`];
+  for (let bi = 0; bi < size; bi++) {
+    for (let gi = 0; gi < size; gi++) {
+      for (let ri = 0; ri < size; ri++) {
+        const r = ri / (size - 1);
+        const g = gi / (size - 1);
+        const b = bi / (size - 1);
+        const ch = (row: number) => clamp(m[row * 5] * r + m[row * 5 + 1] * g + m[row * 5 + 2] * b + m[row * 5 + 3] + m[row * 5 + 4]);
+        lines.push(`${ch(0).toFixed(5)} ${ch(1).toFixed(5)} ${ch(2).toFixed(5)}`);
+      }
+    }
+  }
+  return lines.join("\n") + "\n";
+}
+
+/**
+ * إعتامُ الأطراف كما يرسمه Skia: تدرّجٌ دائريٌّ من الشفاف عند نصف القطر إلى أسودَ بشفافيّة `amount`
+ * عند نصف القُطر — على لوحةٍ بنسبة الشاشة، ويُمدّ إلى مقاس المقطع.
+ */
+async function vignettePng(amount: number): Promise<Buffer> {
+  const width = 360;
+  const height = 780;
+  const radius = Math.hypot(width, height) / 2;
+  const raw = Buffer.alloc(width * height * 4);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const d = Math.hypot(x + 0.5 - width / 2, y + 0.5 - height / 2) / radius;
+      const t = d <= 0.5 ? 0 : Math.min(1, (d - 0.5) / 0.5);
+      raw[(y * width + x) * 4 + 3] = Math.round(255 * amount * t);
+    }
+  }
+  return sharp(raw, { raw: { width, height, channels: 4 } }).png().toBuffer();
+}
+
 /**
  * مقطعُ القصّة يُقصّ ويُضغط على الخادم (القاعدة ٢٤٩) — **بقرار المالك**: كان
  * يُردّ «الملف كبير» أو «أطول من ٣٠ ثانية» فلا يُنشر. الآن يُؤخذ منه
@@ -317,18 +358,42 @@ export async function compressStoryVideo(
   extension: string,
   start: number,
   length: number,
+  look: VideoLook | null = null,
 ): Promise<{ bytes: Uint8Array; seconds: number; width: number; height: number }> {
   const folder = await mkdtemp(join(tmpdir(), "athr-"));
   const source = join(folder, `in.${extension}`);
   const out = join(folder, "out.mp4");
   try {
     await writeFile(source, input);
+    const scale = "scale='if(gt(iw,ih),-2,min(720,iw))':'if(gt(iw,ih),min(720,ih),-2)',fps=30";
+    /*
+      الفلترُ يُطبع في المقطع (القاعدة ٤٠٧): مصفوفةُ الألوان نفسُها التي يرسمها Skia في المعاينة
+      تصير جدولَ ألوانٍ ثلاثيّاً (`lut3d`) — خطّيٌّ بقصٍّ في طرفيه فيُطابقها بلا تقريبٍ يُرى —
+      وإعتامُ الأطراف صورةٌ شفّافةٌ تُركَّب فوقه بمقاسه.
+    */
+    let graph: string[] = ["-vf", scale];
+    const inputs: string[] = [];
+    if (look) {
+      const lut = join(folder, "look.cube");
+      await writeFile(lut, cubeOf(look.matrix));
+      let chain = `[0:v]${scale},lut3d=file=${lut}`;
+      if (look.vignette && look.vignette > 0) {
+        const vig = join(folder, "vig.png");
+        await writeFile(vig, await vignettePng(look.vignette));
+        inputs.push("-loop", "1", "-i", vig);
+        chain += `[base];[1:v][base]scale2ref[vg][main];[main][vg]overlay=shortest=1:format=auto,format=yuv420p[v]`;
+      } else {
+        chain += "[v]";
+      }
+      graph = ["-filter_complex", chain];
+    }
     await ffmpeg([
       "-ss", Math.max(0, start).toFixed(2),
       "-i", source,
+      ...inputs,
       "-t", length.toFixed(2),
-      "-map", "0:v:0", "-map", "0:a?",
-      "-vf", "scale='if(gt(iw,ih),-2,min(720,iw))':'if(gt(iw,ih),min(720,ih),-2)',fps=30",
+      "-map", look ? "[v]" : "0:v:0", "-map", "0:a?",
+      ...graph,
       "-c:v", "libx264", "-preset", "veryfast", "-crf", "27",
       "-maxrate", "2200k", "-bufsize", "4400k", "-pix_fmt", "yuv420p",
       "-c:a", "aac", "-b:a", "96k", "-ac", "2",

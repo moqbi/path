@@ -135,7 +135,7 @@ export default function BookStudio() {
               الأغلفةُ: الثلاثةُ لآثار+ و«ليلي» للجميع، ثمّ ما اشتراه من المتجر (القاعدة ٤٠٥) —
               ما دُفع بنقاطٍ يُختار بلا اشتراك — ثمّ بابُ المتجر لمزيدٍ منها.
             */}
-            <Text style={{ color: colors.groundInk, fontSize: 13.5, fontWeight: "800" }}>الغلاف</Text>
+            <Text style={{ color: colors.groundInk, fontSize: 13.5, fontWeight: "800" }}>صمم كتابك</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 2 }}>
               {[
                 ...BOOK_COVERS.map((cover) => ({ key: cover as BookPrefs["cover"], label: BOOK_COVER_LABEL[cover], skin: null as CoverSkin | null, locked: !open && cover !== "night" })),
@@ -174,7 +174,7 @@ export default function BookStudio() {
               <Pressable
                 onPress={() => router.push("/(tabs)/store?tab=kind:BOOK" as never)}
                 style={{ width: 98, alignItems: "center", gap: 6 }}
-                accessibilityLabel="أغلفة أكثر من المتجر"
+                accessibilityLabel="تصاميم أكثر من المتجر"
               >
                 <View
                   style={{
@@ -191,7 +191,7 @@ export default function BookStudio() {
                   }}
                 >
                   <Text style={{ color: colors.groundInk, fontSize: 24, fontWeight: "300" }}>＋</Text>
-                  <Text style={{ color: colors.groundInk, fontSize: 11.5, fontWeight: "700", textAlign: "center" }}>أغلفة{"\n"}من المتجر</Text>
+                  <Text style={{ color: colors.groundInk, fontSize: 11.5, fontWeight: "700", textAlign: "center" }}>تصاميم{"\n"}من المتجر</Text>
                 </View>
                 <Text style={{ color: colors.groundInk, fontSize: 12, fontWeight: "600" }}>المزيد</Text>
               </Pressable>
@@ -264,7 +264,7 @@ export default function BookStudio() {
                   <Spinner size="small" color={colors.onBrand} />
                 ) : (
                   <Text face="display" style={{ color: colors.onBrand, fontSize: 16, fontWeight: "800" }}>
-                    {open ? "احفظ وشوف كتابك" : "احفظ الغلاف"}
+                    {open ? "احفظ وشوف كتابك" : "احفظ التصميم"}
                   </Text>
                 )}
               </Pressable>

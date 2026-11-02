@@ -8,6 +8,12 @@ import { requireAuth, me } from "../../middleware/auth";
 import { canSeeMedia } from "../../services/visibility";
 import { rateLimit } from "../../middleware/rate-limit";
 import { notFound } from "../../lib/errors";
+
+/** فلترُ مقطع القصّة كما يرسمه الجوّال: مصفوفةٌ ٤×٥ وإعتامُ أطراف. */
+const LOOK = z.object({
+  matrix: z.array(z.number().finite().min(-8).max(8)).length(20),
+  vignette: z.number().min(0).max(1).optional(),
+});
 import * as upload from "../../services/upload";
 
 /**
@@ -41,11 +47,14 @@ export const mediaRoutes = new Hono()
    * ٢٤٩). يُقرأ بلا مدقّق: النسخُ القديمة ترسل الطلب بلا جسمٍ أصلاً.
    */
   .post("/:id/commit", zValidator("param", z.object({ id: cuid })), async (c) => {
-    const body = (await c.req.json().catch(() => ({}))) as { start?: unknown };
+    const body = (await c.req.json().catch(() => ({}))) as { start?: unknown; look?: unknown };
     const start = Number(body.start);
+    // وفلترُ مقطع القصّة (القاعدة ٤٠٧): يُطبع فيه أثناء الضغط. وما فسد يُترك — المقطعُ بلا فلتر.
+    const look = LOOK.safeParse(body.look);
     return c.json(
       await upload.commit(me(c), c.req.valid("param").id, {
         start: Number.isFinite(start) ? Math.max(0, Math.min(start, 3600)) : 0,
+        look: look.success ? look.data : null,
       }),
     );
   })

@@ -88,7 +88,7 @@ const KINDS = [
   { value: "BACKGROUND", label: "خلفية" },
   { value: "BUNDLE", label: "حزمة" },
   { value: "GALLERY", label: "معرض" },
-  { value: "BOOK", label: "غلاف كتاب" },
+  { value: "BOOK", label: "تصميم كتاب" },
 ] as const;
 
 const KIND_LABEL: Record<string, string> = {
@@ -98,7 +98,7 @@ const KIND_LABEL: Record<string, string> = {
   BACKGROUND: "خلفية",
   BUNDLE: "حزمة",
   GALLERY: "معرض",
-  BOOK: "غلاف كتاب",
+  BOOK: "تصميم كتاب",
 };
 
 /**
@@ -114,7 +114,7 @@ const STORE_KINDS = [
   // ثوبُ قاعة المعرض (القاعدة ٣٤٨): ألوانٌ ومقاساتٌ تُلبَس القاعةَ كلَّها.
   { key: "GALLERY", label: "المعرض", other: "المعرض", kinds: ["GALLERY"] },
   // غلافُ كتاب السنة (القاعدة ٤٠٥): ألوانٌ ونقش، أو صورةٌ تملأ الغلاف.
-  { key: "BOOK", label: "أغلفة الكتاب", other: "أغلفة الكتاب", kinds: ["BOOK"] },
+  { key: "BOOK", label: "الكتاب", other: "الكتاب", kinds: ["BOOK"] },
 ] as const;
 
 const STORE_VIEWS = [

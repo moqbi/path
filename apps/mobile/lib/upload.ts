@@ -77,8 +77,10 @@ export async function uploadStoryVideo(
   mime: string,
   start: number,
   size: { width: number; height: number },
+  /** فلترُ المقطع يُطبع فيه على الخادم (القاعدة ٤٠٧). */
+  look?: { matrix: number[]; vignette?: number },
 ): Promise<{ mediaId: string; seconds: number }> {
-  const done = await send(uri, mime, "STORY", size, { start });
+  const done = await send(uri, mime, "STORY", size, look ? { start, look } : { start });
   return { mediaId: done.mediaId, seconds: done.commit.seconds ?? 0 };
 }
 
@@ -87,7 +89,7 @@ async function send(
   mime: string,
   purpose: Purpose,
   size: { width: number; height: number },
-  extra?: { start: number },
+  extra?: { start: number; look?: { matrix: number[]; vignette?: number } },
 ): Promise<{ mediaId: string; commit: { seconds?: number; peaks?: number[] } }> {
 
   /*
