@@ -1,5 +1,5 @@
 import { Spinner } from "../components/spinner";
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { AppState, Appearance, I18nManager, Platform, View, StyleSheet } from "react-native";
 import { MediaImage } from "../components/media-image";
 import { Stack, useRouter, useSegments } from "expo-router";
@@ -133,12 +133,21 @@ function Gate() {
     تبديلُ الحساب (القاعدة ٣١٦): ما في الذاكرة من استعلاماتٍ للحساب السابق —
     خطُّه وأصدقاؤه ومحادثاتُه — يُمحى، وإلّا رُسم لحظةً تحت اسم الآخر.
   */
-  const lastId = useRef<string | null>(null);
   useEffect(() => {
-    const id = me?.id ?? null;
-    if (lastId.current && id && lastId.current !== id) client.clear();
-    if (id) lastId.current = id;
-  }, [me?.id]);
+    let last = useSession.getState().me?.id ?? null;
+    // اشتراكٌ في المخزن لا أثرٌ بعد الرسم: يجري لحظةَ يتبدّل الحساب قبل أن يُرسم
+    // بشيءٍ من الأوّل. و`resetQueries` لا `clear`: الأخيرةُ تمحو الذاكرة وتترك
+    // الشاشاتِ المركّبة على ما في أيديها بلا جلب — فكان محتوى الحساب الثاني
+    // لا ينزل حتى يُسحب للتحديث. الأولى تُفرغ وتُعيد جلبَ المركّب في الحال.
+    return useSession.subscribe((state) => {
+      const id = state.me?.id ?? null;
+      if (last && id && last !== id) {
+        void client.cancelQueries();
+        void client.resetQueries();
+      }
+      if (id) last = id;
+    });
+  }, []);
 
   useEffect(() => {
     if (!ready) return;

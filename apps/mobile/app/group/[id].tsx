@@ -1,5 +1,5 @@
 import { Spinner } from "../../components/spinner";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { View, FlatList, Pressable, Alert } from "react-native";
 import { Text, TextInput } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -42,7 +42,7 @@ export default function Group() {
   const list = useRef<FlatList<GroupLine>>(null);
   const pinned = useRef(true);
   const toEnd = (animated = true) => {
-    if (pinned.current) requestAnimationFrame(() => list.current?.scrollToEnd({ animated }));
+    if (pinned.current) requestAnimationFrame(() => list.current?.scrollToOffset({ offset: 0, animated }));
   };
   useEffect(() => {
     if (keyboard > 0) toEnd();
@@ -106,7 +106,8 @@ export default function Group() {
   }
 
   const data = thread.data;
-  const lines = data?.messages ?? [];
+  // مقلوبةٌ كالمحادثة الخاصّة: تُفتح عند آخرها بلا انزلاق.
+  const rows = useMemo(() => [...(data?.messages ?? [])].reverse(), [data?.messages]);
 
   return (
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
@@ -132,13 +133,12 @@ export default function Group() {
       <View style={{ flex: 1, paddingBottom: keyboard }}>
         <FlatList
           ref={list}
-          data={lines}
+          data={rows}
+          inverted
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
-          onContentSizeChange={() => toEnd(false)}
           onScroll={(event) => {
-            const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-            pinned.current = contentSize.height - contentOffset.y - layoutMeasurement.height < 120;
+            pinned.current = event.nativeEvent.contentOffset.y < 120;
           }}
           scrollEventThrottle={64}
           keyExtractor={(item) => item.id}
@@ -180,7 +180,7 @@ export default function Group() {
               );
             }
             const mine = item.senderId === me?.id;
-            const before = lines[index - 1];
+            const before = rows[index + 1];
             const canDrop = mine || Boolean(data?.canManage);
 
             return (

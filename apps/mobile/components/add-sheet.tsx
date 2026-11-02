@@ -269,9 +269,9 @@ function Pulse({ delay, size }: { delay: number; size: number }) {
   );
 }
 
-/** المعرّفُ إن وُجد، وإلّا الاسمُ الأوّل وحده. */
+/** الاسمُ لا المعرّف — بقرار المالك (القاعدة ٣٩٦). */
 function aliasOf(person: FoundPerson): string {
-  return person.handle ? `\u2068@${person.handle}\u2069` : person.name.trim().split(/\s+/)[0] ?? person.name;
+  return person.name;
 }
 
 function Near({ row }: { row: (p: FoundPerson, alias?: boolean) => React.ReactNode }) {

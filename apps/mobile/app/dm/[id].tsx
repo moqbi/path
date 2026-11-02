@@ -1,6 +1,6 @@
 import { Spinner } from "../../components/spinner";
 import { chatRefused } from "../../lib/dm-closed";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ReportButton, ReportSheet } from "../../components/report-sheet";
 import { SwipeRow } from "../../components/swipe-row";
 import { Avatar } from "../../components/avatar";
@@ -202,9 +202,12 @@ export default function Conversation() {
     وحين يصعد الكيبورد — كانت تبقى حيث هي فيُكتب السطرُ ويُرسل ولا يُرى.
     ومن صعد يقرأ قديماً لا يُسحب إلى الأسفل برسالةٍ وصلت.
   */
+  // والقائمةُ مقلوبة (`inverted`): آخرُها أوّلُها وموضعُها صفر، فتُفتح عنده بلا قفز —
+  // كانت تُفتح من أعلاها ثمّ تُسحب إلى آخرها مع كلّ دفعةٍ ترسمها، فتنزلق المحادثةُ
+  // الطويلةُ مراراً في كلّ فتح. والجديدُ يدخل من أسفلها وهي واقفةٌ عنده.
   const pinned = useRef(true);
   const toEnd = (animated = true) => {
-    if (pinned.current) requestAnimationFrame(() => list.current?.scrollToEnd({ animated }));
+    if (pinned.current) requestAnimationFrame(() => list.current?.scrollToOffset({ offset: 0, animated }));
   };
   useEffect(() => {
     if (keyboard > 0) toEnd();
@@ -427,7 +430,7 @@ export default function Conversation() {
   };
 
   const other = thread.data?.other;
-  const lines = thread.data?.messages ?? [];
+  const rows = useMemo(() => [...(thread.data?.messages ?? [])].reverse(), [thread.data?.messages]);
 
   return (
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
@@ -452,13 +455,12 @@ export default function Conversation() {
           ref={list}
           scrollEnabled={!swiping}
           onScrollBeginDrag={scrolled}
-          data={lines}
+          data={rows}
+          inverted
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
-          onContentSizeChange={() => toEnd(false)}
           onScroll={(event) => {
-            const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-            pinned.current = contentSize.height - contentOffset.y - layoutMeasurement.height < 120;
+            pinned.current = event.nativeEvent.contentOffset.y < 120;
           }}
           scrollEventThrottle={64}
           keyExtractor={(item) => item.id}
@@ -597,7 +599,7 @@ export default function Conversation() {
                 person={person ?? { name: "", avatarMediaId: null }}
                 mine={mine}
                 at={item.createdAt}
-                head={needsHead(item, lines[index - 1])}
+                head={needsHead(item, rows[index + 1])}
                 meta={
                   <>
                     {item.editedAt ? <Text style={{ color: colors.groundFaint, fontSize: 10 }}>عُدّلت</Text> : null}
