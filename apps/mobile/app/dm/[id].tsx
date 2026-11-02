@@ -126,7 +126,8 @@ function Voice({ mediaId, seconds, mine }: { mediaId: string; seconds: number; m
     }
   }
 
-  const ink = mine ? colors.onBrand : colors.ink2;
+  // داخل فقاعة الرسالة كالنصّ (القاعدة ٤٠٤): أرضُها أرضُ الفقاعة، فالحبرُ حبرُ النصّ.
+  const ink = colors.ink2;
   const started = state === "playing" || state === "paused";
   const progress = started && length > 0 ? Math.min(1, at / length) : 0;
   const shown = started ? Math.floor(at / 1000) : seconds;
@@ -136,20 +137,9 @@ function Voice({ mediaId, seconds, mine }: { mediaId: string; seconds: number; m
       onPress={() => void toggle()}
       accessibilityRole="button"
       accessibilityLabel={state === "playing" ? "إيقاف مؤقّت" : "تشغيل الرسالة الصوتية"}
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 10,
-        maxWidth: "78%",
-        borderRadius: 16,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        backgroundColor: mine ? colors.clay : colors.card,
-        borderWidth: mine ? 0 : 1,
-        borderColor: colors.line,
-      }}
+      style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
     >
-      <View style={{ width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: mine ? "rgba(14,26,36,.18)" : colors.chip }}>
+      <View style={{ width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: mine ? colors.paper : colors.chip }}>
         {state === "loading" ? (
           <Spinner size="small" color={ink} />
         ) : state === "playing" ? (
@@ -158,7 +148,7 @@ function Voice({ mediaId, seconds, mine }: { mediaId: string; seconds: number; m
           <PlayIcon size={13} color={ink} />
         )}
       </View>
-      <View style={{ width: 90, height: 3, borderRadius: 2, overflow: "hidden", backgroundColor: mine ? "rgba(14,26,36,.25)" : colors.line }}>
+      <View style={{ flex: 1, minWidth: 0, height: 3, borderRadius: 2, overflow: "hidden", backgroundColor: colors.line }}>
         <View style={{ width: `${progress * 100}%`, height: 3, borderRadius: 2, backgroundColor: ink }} />
       </View>
       <Text style={{ color: ink, fontSize: 12, fontWeight: "600" }}>{clock(shown)}</Text>
@@ -487,6 +477,8 @@ export default function Conversation() {
             // وما حولها ساكن (القاعدة ٣٨٦).
             const swipe = DEV_FEATURES && !open;
             const text = item.kind === "TEXT" && !item.sticker;
+            // ما يجلس في فقاعة: النصُّ والصوت — تنكشف أفعالُ السحب داخل حدّها.
+            const bubbled = text || (item.kind === "VOICE" && Boolean(item.mediaId));
             const content = (
               open ? (
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "stretch" }}>
@@ -520,7 +512,10 @@ export default function Conversation() {
                     <StickerImage mediaId={item.sticker.mediaId} />
                   </Pressable>
                 ) : item.kind === "VOICE" && item.mediaId ? (
-                  <Voice mediaId={item.mediaId} seconds={item.seconds ?? 0} mine={mine} />
+                  // في فقاعةٍ كالنصّ (القاعدة ٤٠٤) — وفي السحب الفقاعةُ هي `SwipeRow` نفسُه.
+                  <View style={swipe ? inner(mine) : bubbleStyle(mine)}>
+                    <Voice mediaId={item.mediaId} seconds={item.seconds ?? 0} mine={mine} />
+                  </View>
                 ) : (
                   <Pressable
                     // ضغطةٌ على رسالتي تكشف «تعديل»، وعلى رسالته «إبلاغ».
@@ -540,13 +535,13 @@ export default function Conversation() {
             const bubble = !swipe ? (
               content
             ) : (
-              <View style={text ? { alignSelf: "stretch" } : undefined}>
+              <View style={bubbled ? { alignSelf: "stretch" } : undefined}>
                 {mine ? (
                   <SwipeRow
                     width={56}
                     radius={18}
-                    surface={text ? inner(mine).backgroundColor as string : item.sticker ? colors.groundSolid : "transparent"}
-                    inside={text ? bubbleStyle(mine) : undefined}
+                    surface={bubbled ? inner(mine).backgroundColor as string : item.sticker ? colors.groundSolid : "transparent"}
+                    inside={bubbled ? bubbleStyle(mine) : undefined}
                     confirmLabel="حذف الرسالة"
                     onSwiping={setSwiping}
                     lead={
@@ -561,7 +556,7 @@ export default function Conversation() {
                         : undefined
                     }
                     icons={{
-                      delete: <TrashIcon size={20} color={text ? colors.live : "#fff"} />,
+                      delete: <TrashIcon size={20} color={bubbled ? colors.live : "#fff"} />,
                       lead: <PencilIcon size={20} color={text ? colors.clay : colors.onBrand} />,
                     }}
                     onDelete={() => drop.mutateAsync(item.id).then(() => undefined)}
@@ -572,16 +567,16 @@ export default function Conversation() {
                   <SwipeRow
                     width={56}
                     radius={18}
-                    surface={text ? inner(mine).backgroundColor as string : item.sticker ? colors.groundSolid : "transparent"}
-                    inside={text ? bubbleStyle(mine) : undefined}
+                    surface={bubbled ? inner(mine).backgroundColor as string : item.sticker ? colors.groundSolid : "transparent"}
+                    inside={bubbled ? bubbleStyle(mine) : undefined}
                     /* المشرفُ يحذف بصلاحيته — سلّةٌ ودرع (القاعدة ٣٩٠) — وغيرُه يُبلغ. */
                     confirmLabel={me?.canModerate ? "حذف بصلاحية الإشراف" : "بلاغ عن الرسالة"}
                     onSwiping={setSwiping}
                     icons={{
                       delete: me?.canModerate ? (
-                        <ModDeleteIcon size={20} color={text ? colors.live : "#fff"} />
+                        <ModDeleteIcon size={20} color={bubbled ? colors.live : "#fff"} />
                       ) : (
-                        <FlagIcon size={20} color={text ? colors.live : "#fff"} />
+                        <FlagIcon size={20} color={bubbled ? colors.live : "#fff"} />
                       ),
                     }}
                     onDelete={() =>
