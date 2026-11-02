@@ -24,12 +24,15 @@ export function VideoWindowPreview({
   width,
   height,
   muted = false,
+  cover = false,
 }: {
   uri: string;
   start: number;
   length: number;
   width: number;
   height: number;
+  /** داخل \`FramedMedia\` الصندوقُ بنسبة المقطع، فيملؤه (القاعدة ٣٠٢). */
+  cover?: boolean;
   muted?: boolean;
 }) {
   const span = useRef({ start, length });
@@ -57,7 +60,7 @@ export function VideoWindowPreview({
   });
   useEventListener(player, "playToEnd", back);
 
-  return <VideoView player={player} style={{ width, height }} contentFit="contain" nativeControls={false} />;
+  return <VideoView player={player} style={{ width, height }} contentFit={cover ? "cover" : "contain"} nativeControls={false} />;
 }
 
 /** أقصرُ مقطعٍ يُقصّ (القاعدة ٤٠٨). */

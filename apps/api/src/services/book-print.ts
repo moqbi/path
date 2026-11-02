@@ -143,16 +143,14 @@ h1, h2, .display { font-family: "Tajawal", "IBM Plex Sans Arabic", sans-serif; }
   الورقة كريميٌّ على كريميّ لا يُرى. والصفحاتُ الداكنة تمدّ لونها بظلٍّ تحتها حتى
   حافّة الورقة، والصفحةُ بعدها تُرسم فوقه.
 */
-.page { width: 148mm; min-height: 180mm; padding: 6mm 14mm 10mm; break-before: page; page-break-before: always;
+.page { width: auto; min-height: 176mm; padding: 6mm 14mm 10mm; break-before: page; page-break-before: always;
   position: relative; background: #FBF8F1; }
 .page:first-child { break-before: auto; page-break-before: auto; }
 /* الغلافُ والخاتمةُ لوحان داخل الهامش (القاعدة ٤٠٨): ١٨٤ ملم أقلُّ من مساحة الورقة (١٨٦) فلا يفيض بشعرة. */
-.night, .skinc, .paperc, .minc, .end { height: 184mm; width: 140mm; margin: 0 auto; border-radius: 3mm; overflow: hidden; }
+.night, .skinc, .paperc, .minc, .end { height: 180mm; width: auto; margin: 0 4mm; border-radius: 3mm; overflow: hidden; }
 .folio { counter-increment: folio; }
-.folio::after { content: counter(folio, arabic-indic); position: absolute; bottom: 3mm; left: 14mm;
-  font-size: 9px; color: #9aa4a8; letter-spacing: .5px; }
-.folio::before { content: attr(data-run); position: absolute; bottom: 3mm; right: 14mm;
-  font-size: 9px; color: #9aa4a8; }
+.folio::after { content: attr(data-run) "   ·   " counter(folio, arabic-indic); display: block; text-align: center;
+  margin-top: 10mm; font-size: 9px; color: #9aa4a8; letter-spacing: .5px; }
 .rule { height: 1px; background: #E4DCC8; }
 .gold { height: 2px; width: 36px; background: #F6B93B; border-radius: 2px; }
 
@@ -210,7 +208,7 @@ h2 { font-size: 26px; font-weight: 800; margin-top: 3mm; }
 .meta { font-size: 10.5px; color: #8a949a; margin-bottom: 2mm; letter-spacing: .2px; }
 .text { font-size: 13.5px; line-height: 1.8; white-space: pre-wrap; word-wrap: break-word; }
 .text.big { font-family: "Tajawal", sans-serif; font-size: 18px; font-weight: 700; line-height: 1.55; }
-.photo { width: 100%; aspect-ratio: 5 / 4; max-height: 88mm; object-fit: cover; border-radius: 10px; margin-bottom: 2.5mm; display: block;
+.photo { width: 100%; aspect-ratio: 5 / 4; max-height: 78mm; object-fit: cover; border-radius: 10px; margin: 0 auto 2.5mm; display: block;
   box-shadow: 0 1px 0 #E4DCC8, 0 6px 16px rgba(14,26,36,.08); }
 .with { font-size: 11.5px; color: #3c4a52; margin-top: 1.5mm; }
 .with b { font-weight: 700; }
@@ -222,7 +220,7 @@ h2 { font-size: 26px; font-weight: 800; margin-top: 3mm; }
   font-size: 12.5px; line-height: 1.8; color: #182830; }
 .quote cite { display: block; font-style: normal; font-size: 10.5px; color: #8a7a55; margin-top: 1mm; }
 .circle { margin-top: 8mm; padding-top: 5mm; border-top: 1px solid #E4DCC8; }
-.circle p { font-size: 12.5px; line-height: 1.9; color: #3c4a52; }
+.cline, .circle p { font-size: 12.5px; line-height: 1.9; color: #3c4a52; }
 .private { display: inline-block; font-size: 10.5px; color: #8a5f10; border: 1px solid #EBD9AE; background: #FBF1DA; border-radius: 6px; padding: 1.5px 7px; margin-top: 2mm; }
 
 /* الأغلفةُ والإهداء — تجهيزُ الكتاب (القاعدة ٣٧٨) */
@@ -340,13 +338,37 @@ const TOKENS: [string, keyof BookPalette][] = [
   ["#8a5f10", "privInk"],
 ];
 
+/*
+  WebKit يرصف الصفحةَ المطبوعة بعرضٍ أوسعَ من الورقة ثمّ يصغّرها (printingMinimumShrinkFactor)،
+  فصفحةٌ بعرضٍ ثابت جلست في طرف البداية — يميناً — وبجانبها فراغ، والغلافُ أقصرُ من ورقته فتحته
+  شريطٌ أبيض. فكلُّ طولٍ في الورقة نسبةٌ من عرض ما يُرصف (vw): ٥٦٠ بكسلاً هي عرضُ الورقة، فـ١px
+  = 100vw/560 — والصفحةُ تُرصف على هيئةٍ واحدة مهما كان العرضُ الذي يختاره المحرّك، وطولُ الورقة
+  يتّسع بالنسبة نفسها. و@page وحدها بالبكسل: هي الورقةُ نفسها لا ما عليها.
+*/
+const UNIT = "calc(100vw / 560)";
+const MM_PX = 96 / 25.4;
+export function fluid(css: string): string {
+  return css
+    .split("\n")
+    .map((line) =>
+      line.startsWith("@page")
+        ? line
+        : line.replace(/(-?\d*\.?\d+)(px|mm)\b/g, (_, n: string, unit: string) => {
+            const px = Number(n) * (unit === "mm" ? MM_PX : 1);
+            return `calc(${Number(px.toFixed(3))} * ${UNIT})`;
+          }),
+    )
+    .join("\n");
+}
+
 /** ورقةُ الأنماط بألوان الثوب، وصورتا الورق والخاتمة فوقها. */
 function themedCss(cover: OwnedCover | null, paperArt: string | null, endArt: string | null): string {
-  if (!cover) return CSS;
+  // الصورُ بعد التحويل لا قبله: نصُّ base64 قد يحمل «9px».
+  if (!cover) return fluid(CSS);
   const pal = bookPalette(cover.skin);
   let css = CSS;
   for (const [hex, key] of TOKENS) css = css.replace(new RegExp(hex, "gi"), pal[key]);
-  return `${css}
+  return `${fluid(css)}
 .end { background: ${pal.end}${endArt ? ` url("${endArt}") center / cover no-repeat` : ""}; color: ${pal.endInk}; }
 .end .sub { color: ${pal.endSoft}; }
 ${paperArt ? `.page:not(.cover):not(.end) { background: ${pal.paper} url("${paperArt}") center / cover no-repeat; }` : ""}`;
@@ -408,7 +430,7 @@ export async function bookHtml(userId: string, year: number): Promise<{ html: st
     if (id === "song") return s.topSong ? `<div class="facts">${factRow(["أغنيتك", esc(s.topSong)])}</div>` : "";
     if (id === "circle")
       return s.circleLines.length
-        ? `<div class="${first ? "" : "circle"}">${first ? "" : `<div class="kicker">دائرتك</div>`}${s.circleLines.map((text) => `<p style="font-size:12.5px;line-height:1.9;color:#3c4a52">${esc(text)}</p>`).join("")}</div>`
+        ? `<div class="${first ? "" : "circle"}">${first ? "" : `<div class="kicker">دائرتك</div>`}${s.circleLines.map((text) => `<p class="cline">${esc(text)}</p>`).join("")}</div>`
         : "";
     return "";
   };

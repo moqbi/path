@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { BackIcon, BookIcon, CalendarIcon, ClockIcon, CloseIcon, LockIcon, MoonIcon, PinIcon, PlaneIcon, SparkIcon, SunIcon } from "@/components/icons";
 import { AthrMark } from "@/components/brand";
@@ -479,8 +480,8 @@ function MonthGrid({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-  return (
-    <div className="shell-fixed fixed inset-0 z-50 flex flex-col justify-end" style={{ background: "rgba(20,14,6,.45)" }} onClick={onClose}>
+  return createPortal(
+    <div className="shell-fixed z-50 flex flex-col justify-end" style={{ ...OVERLAY, background: "rgba(20,14,6,.45)" }} onClick={onClose}>
       <div className="hall-enter max-h-[78%] overflow-y-auto rounded-t-[26px] px-[18px] pb-6" style={{ background: skin.placard.bg }} onClick={(event) => event.stopPropagation()}>
         <span className="mx-auto mt-2.5 block h-[5px] w-[42px] rounded-full" style={{ background: skin.placard.muted, opacity: 0.35 }} />
         <div className="flex items-center gap-2.5 pb-2.5 pt-3">
@@ -516,7 +517,8 @@ function MonthGrid({
           ))}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -618,6 +620,13 @@ type Tab = "art" | "echo" | "comments";
  * وبسحبها إلى أسفل من رأسها، أو من جسمها ما دام في أعلاه. ثلاثُ شرائح: اللوحة، والتفاعلات
  * قائمةً مرتّبة بشرائحَ تُصفّي، والتعليقات — من اللحظة نفسها في الخادم (`hallEcho`).
  */
+/*
+  نافذتا القاعة على جسد الصفحة (القاعدة ٩٢) وبهيكل الهاتف (\`.shell-fixed\` — القاعدة ٨): كانت
+  \`inset-0\` تكتب \`left: 0\` فوق \`left: 50%\` والتحويلُ \`translateX(-50%)\` باقٍ، فتنزاح النافذةُ نصفَ
+  عرضها إلى اليسار خارج الشاشة. والهيكلُ لا يلتقط اللمس (\`pointer-events: none\`) فيُفتح هنا.
+*/
+const OVERLAY: React.CSSProperties = { top: 0, bottom: 0, pointerEvents: "auto" };
+
 function HallSheet({ skin, piece, tab: first, onClose }: { skin: HallSkin; piece: HallPiece; tab: Tab; onClose: () => void }) {
   const [tab, setTab] = useState<Tab>(first);
   const [echo, setEcho] = useState<{ reactions: HallReaction[]; comments: HallComment[] } | null>(null);
@@ -685,8 +694,8 @@ function HallSheet({ skin, piece, tab: first, onClose }: { skin: HallSkin; piece
   ];
   const shown = entered && !leaving;
 
-  return (
-    <div className="shell-fixed inset-0 z-40">
+  return createPortal(
+    <div className="shell-fixed z-40" style={OVERLAY}>
       <div
         onClick={close}
         className="absolute inset-0"
@@ -773,7 +782,8 @@ function HallSheet({ skin, piece, tab: first, onClose }: { skin: HallSkin; piece
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
