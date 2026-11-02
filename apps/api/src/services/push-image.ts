@@ -7,8 +7,10 @@ import { getObject } from "@athar/storage";
  * صورةُ التنبيه (القاعدة ٣٨٨): ما يُرى حين يُضغط التنبيهُ مطوّلاً أو يُسحب — صورةُ اللحظة أو
  * الرسالة أو الملصق. آبل وقوقل تجلبانها بلا جلسة، و`/v1/media` يشترط جلسةً ومن يرى (القاعدة
  * ٢٣ب)، فالرابطُ **موقَّعٌ بيدنا** لملفٍّ واحدٍ يومين: لا يُصنع لغير ما أرسلناه، ولا يُفتح بعد
- * مدّته. والصورةُ مصغّرةٌ (٧٢٠ JPEG) — تنبيهٌ لا ألبوم.
+ * مدّته. والصورةُ بمقاسها كما في اللحظة (١٢٨٠ على الأطول، القاعدة ٤١٣): التنبيهُ الموسَّع بعرض
+ * الشاشة — نحو ١١٧٠ بكسلاً في آيفون — و٧٢٠ كانت تُمطّ فيه فتُرى مغبّشة.
  */
+const PUSH_SIDE = 1280;
 const TTL_SECONDS = 2 * 24 * 3600;
 
 // السرُّ يُقرأ ساعةَ التوقيع لا عند التحميل: `env.ts` يتحقّق من البيئة كلّها ويُنهي العمليّة،
@@ -45,8 +47,8 @@ export async function pushImageBytes(id: string): Promise<Buffer | null> {
   if (!input) return null;
   return sharp(Buffer.from(input), { animated: false, limitInputPixels: 60_000_000 })
     .rotate()
-    .resize(720, 720, { fit: "inside", withoutEnlargement: true })
+    .resize(PUSH_SIDE, PUSH_SIDE, { fit: "inside", withoutEnlargement: true })
     .flatten({ background: "#ffffff" })
-    .jpeg({ quality: 78, mozjpeg: true })
+    .jpeg({ quality: 88, mozjpeg: true, chromaSubsampling: "4:4:4" })
     .toBuffer();
 }
