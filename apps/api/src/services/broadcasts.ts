@@ -1,5 +1,6 @@
 import { prisma } from "@athar/db";
 import { broadcast } from "./push";
+import { canSeeMoment } from "./visibility";
 
 /**
  * تنبيهاتُ المشرف لكلّ مستخدم (القاعدة ٣٦٣).
@@ -33,10 +34,18 @@ export async function sendBroadcasts(): Promise<number> {
   return sent;
 }
 
-/** بطاقةُ التنبيه — لكلّ من دخل: ما يُقال للجميع لا يُحجب عن أحد. */
-export function broadcastCard(id: string) {
-  return prisma.broadcast.findFirst({
+/**
+ * بطاقةُ التنبيه — لكلّ من دخل: ما يُقال للجميع لا يُحجب عن أحد.
+ *
+ * و`momentId` لـ«عرض التفاصيل» (القاعدة ٣٩٠) **لمن يرى اللحظة وحده**: زرٌّ يفتح
+ * «غير موجودة» أسوأ من غيابه، ولحظةٌ حُذفت يغيب زرُّها.
+ */
+export async function broadcastCard(id: string, viewerId: string) {
+  const row = await prisma.broadcast.findFirst({
     where: { id, pushedAt: { not: null } },
-    select: { id: true, cardTitle: true, cardBody: true, mediaId: true, createdAt: true },
+    select: { id: true, cardTitle: true, cardBody: true, mediaId: true, createdAt: true, momentId: true },
   });
+  if (!row) return null;
+  const momentId = row.momentId && (await canSeeMoment(viewerId, row.momentId)) ? row.momentId : null;
+  return { ...row, momentId };
 }

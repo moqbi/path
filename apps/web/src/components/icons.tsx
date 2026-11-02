@@ -301,3 +301,13 @@ export const PauseIcon = ({ size = 20, className }: IconProps) => (
     <rect x="13.6" y="5" width="3.4" height="14" rx="1.2" />
   </svg>
 );
+
+/** الحذف: سلّة — نسخةُ التطبيق. */
+export const TrashIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M4 6.5h16" />
+    <path d="M9 6.5V4.5h6v2" />
+    <path d="M6.5 6.5l1 13h9l1-13" />
+    <path d="M10 10.5v5.5M14 10.5v5.5" />
+  </svg>
+);

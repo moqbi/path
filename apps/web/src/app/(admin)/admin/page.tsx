@@ -535,6 +535,7 @@ function LinkedRow({ result }: { result: LinkedResult }) {
 const LOG_ACTION: Record<string, string> = {
   MOMENT_REMOVED: "حذف لحظةً",
   COMMENT_REMOVED: "حذف تعليقاً",
+  MESSAGE_REMOVED: "حذف رسالةً",
   PLUS_GRANTED: "منح آثار+",
   PLUS_REVOKED: "أوقف آثار+",
   USER_SUSPENDED: "أوقف حساباً",

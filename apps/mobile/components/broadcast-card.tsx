@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
+import { router } from "expo-router";
 import { create } from "zustand";
 import { Text } from "./type";
 import { MediaImage } from "./media-image";
@@ -7,7 +8,7 @@ import { Spinner } from "./spinner";
 import { api } from "../lib/api";
 import { colors } from "../theme/tokens";
 
-type Card = { id: string; cardTitle: string; cardBody: string; mediaId: string | null };
+type Card = { id: string; cardTitle: string; cardBody: string; mediaId: string | null; momentId?: string | null };
 
 const useOpenBroadcast = create<{ id: string | null }>(() => ({ id: null }));
 /** يفتح بطاقةَ تنبيه المشرف بمعرّفه — من ضغطة التنبيه في الجذر (القاعدة ٣٦٣). */
@@ -89,6 +90,19 @@ export function BroadcastCard() {
             </View>
           </ScrollView>
         )}
+        {/* «عرض التفاصيل» (القاعدة ٣٩٠): لحظةٌ اختارها المشرف — والخادمُ يرسلها لمن يراها وحده. */}
+        {card?.momentId ? (
+          <Pressable
+            onPress={() => {
+              const target = card.momentId;
+              close();
+              router.push(`/m/${target}`);
+            }}
+            style={{ marginHorizontal: 18, marginBottom: 14, height: 46, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
+          >
+            <Text style={{ color: colors.onBrand, fontSize: 14.5, fontWeight: "700" }}>عرض التفاصيل</Text>
+          </Pressable>
+        ) : null}
         <Pressable onPress={close} style={{ height: 50, alignItems: "center", justifyContent: "center", borderTopWidth: 1, borderTopColor: colors.line }}>
           <Text style={{ color: colors.muted, fontSize: 14, fontWeight: "600" }}>إغلاق</Text>
         </Pressable>

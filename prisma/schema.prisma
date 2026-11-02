@@ -1201,6 +1201,9 @@ model Broadcast {
   pushedAt    DateTime?
   /// كم جهازاً خرج إليه — يُكتب بعد الإرسال ليُقرأ في اللوحة.
   sentCount   Int?
+  /// لحظةٌ يفتحها «عرض التفاصيل» في البطاقة (القاعدة ٣٩٠) — بلا مفتاحٍ أجنبيّ:
+  /// لحظةٌ حُذفت يغيب زرُّها ولا يذهب التنبيهُ معها.
+  momentId    String?
   media       Media?    @relation("BroadcastMedia", fields: [mediaId], references: [id], onDelete: SetNull)
 
   @@index([pushedAt])
@@ -1451,7 +1454,7 @@ model ModerationLog {
   ownerId String?
   owner   User?   @relation("ModerationOn", fields: [ownerId], references: [id], onDelete: SetNull)
 
-  /// ما جرى: `MOMENT_REMOVED` أو `COMMENT_REMOVED`.
+  /// ما جرى: `MOMENT_REMOVED` أو `COMMENT_REMOVED` أو `MESSAGE_REMOVED`…
   action   String
   /// معرّف المحذوف — بلا مفتاحٍ أجنبيّ: المشار إليه ذهب.
   targetId String

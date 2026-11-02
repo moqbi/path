@@ -2325,6 +2325,18 @@ export async function sendBroadcast(formData: FormData): Promise<{ ok?: string; 
   if (!title || !body) return { error: "اكتب عنوان التنبيه ونصّه" };
   if (!cardTitle || !cardBody) return { error: "اكتب عبارة النافذة ونصّها" };
 
+  // «عرض التفاصيل» (القاعدة ٣٩٠): رابطُ لحظةٍ أو معرّفُها، اختياريّ. يُقرأ المعرّفُ
+  // من آخر الرابط (`/m/<id>` أو `/app/m/<id>`) ويُتحقَّق من اللحظة قبل الحفظ.
+  let momentId: string | null = null;
+  const link = text("momentLink", 300);
+  if (link) {
+    const found = link.match(/\/m\/([a-z0-9]{20,40})/i)?.[1] ?? (/^[a-z0-9]{20,40}$/i.test(link) ? link : null);
+    if (!found) return { error: "رابط اللحظة غير صالح — انسخه من «مشاركة» اللحظة أو من صفحتها" };
+    const moment = await prisma.moment.findUnique({ where: { id: found }, select: { id: true } });
+    if (!moment) return { error: "اللحظة غير موجودة" };
+    momentId = moment.id;
+  }
+
   // وتنبيهان في دقيقةٍ زلّةُ إصبع لا قرار: كلُّ إرسالٍ يصل إلى كلّ جوّال.
   const last = await prisma.broadcast.findFirst({ orderBy: { createdAt: "desc" }, select: { createdAt: true } });
   if (last && Date.now() - last.createdAt.getTime() < 60_000) return { error: "أُرسل تنبيهٌ قبل أقلّ من دقيقة — انتظر قليلاً" };
@@ -2340,7 +2352,22 @@ export async function sendBroadcast(formData: FormData): Promise<{ ok?: string; 
     }
   }
 
-  await prisma.broadcast.create({ data: { title, body, cardTitle, cardBody, mediaId, createdById: admin.id } });
+  await prisma.broadcast.create({ data: { title, body, cardTitle, cardBody, mediaId, momentId, createdById: admin.id } });
   revalidatePath("/admin");
   return { ok: "سيُرسل خلال دقيقة" };
+}
+
+/**
+ * حذفُ تنبيهٍ من القائمة (القاعدة ٣٩٠) — كي لا تتراكم. ما وصل إلى الأجهزة لا
+ * يُسحب، لكنّ بطاقته تُردّ «غير موجود» بعده، وصورتُه تذهب ببكسلاتها (القاعدة ١٠٤).
+ * والحذفُ قبل الإرسال يُلغيه: الكنسُ لا يجد الصفّ.
+ */
+export async function deleteBroadcast(id: string): Promise<{ ok?: string; error?: string }> {
+  await requireAdmin();
+  const row = await prisma.broadcast.findUnique({ where: { id }, select: { mediaId: true } });
+  if (!row) return { error: "التنبيه غير موجود" };
+  await prisma.broadcast.delete({ where: { id } });
+  if (row.mediaId) await dropMedia([row.mediaId]).catch(() => {});
+  revalidatePath("/admin");
+  return { ok: "حُذف التنبيه" };
 }

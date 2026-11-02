@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { ar } from "@/lib/format";
 import { mediaUrl } from "@/lib/media";
 import { BroadcastComposer } from "./broadcast-composer";
+import { BroadcastDelete } from "./broadcast-delete";
 
 /**
  * قسمُ التنبيهات في اللوحة (القاعدة ٣٦٣): تنبيهٌ لكلّ مستخدم، ومن ضغطه رأى
@@ -11,7 +12,7 @@ export async function BroadcastsSection() {
   const recent = await prisma.broadcast.findMany({
     orderBy: { createdAt: "desc" },
     take: 20,
-    select: { id: true, title: true, body: true, cardTitle: true, mediaId: true, createdAt: true, pushedAt: true, sentCount: true },
+    select: { id: true, title: true, body: true, cardTitle: true, mediaId: true, momentId: true, createdAt: true, pushedAt: true, sentCount: true },
   });
 
   return (
@@ -39,12 +40,14 @@ export async function BroadcastsSection() {
               <div className="min-w-0 grow">
                 <p className="truncate text-[13.5px] font-bold">{row.title}</p>
                 <p className="truncate text-[12px] text-muted">{row.body}</p>
+                {row.momentId ? <p className="text-[11px] font-semibold text-clay-ink">معه «عرض التفاصيل»</p> : null}
               </div>
               <span className="shrink-0 text-[11.5px] text-muted">
                 {row.pushedAt
                   ? `${ar(row.sentCount ?? 0)} جهاز · ${row.pushedAt.toLocaleDateString("ar-SA-u-ca-gregory", { day: "numeric", month: "short" })}`
                   : "بانتظار الإرسال"}
               </span>
+              <BroadcastDelete id={row.id} />
             </div>
           ))}
         </div>
