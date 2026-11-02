@@ -343,3 +343,45 @@ export async function compressStoryVideo(
     await rm(folder, { recursive: true, force: true });
   }
 }
+
+/**
+ * صندوقُ `chnl` بنسخته الأولى يُطمس (القاعدة ٤٠٣): آبل ٢٦ صار يكتبه في كلّ M4A يسجّله
+ * (`AVAudioRecorder`)، وffmpeg 6 لا يعرف نسختَه فيردّ الملفَّ كلَّه «error reading header» — فكانت
+ * الرسالةُ الصوتيّة تُسمع في المعاينة ويردّها الخادم. والصندوقُ وصفٌ لترتيب القنوات لا يحتاجه
+ * مشغّل؛ فيُبدَّل اسمُه إلى `free` بحجمه نفسه — صندوقٌ فارغ يتجاوزه كلُّ قارئ — ولا يُمسّ غيرُه.
+ *
+ * يُبحث داخل `moov` وحده، وبحجمٍ معقول لا يتجاوز حدوده: بايتاتُ الصوت نفسُها قد تحمل الحروف
+ * الأربعة صدفةً. ويردّ `null` حين لا شيء يُبدَّل.
+ */
+export function scrubChnl(bytes: Uint8Array): Uint8Array | null {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const fourcc = (at: number) => String.fromCharCode(bytes[at], bytes[at + 1], bytes[at + 2], bytes[at + 3]);
+  // الصناديقُ العليا: نصل إلى `moov` بأحجامها.
+  let moovStart = -1;
+  let moovEnd = -1;
+  for (let at = 0; at + 8 <= bytes.length; ) {
+    let size = view.getUint32(at);
+    if (size === 1 && at + 16 <= bytes.length) size = Number(view.getBigUint64(at + 8));
+    else if (size === 0) size = bytes.length - at;
+    if (size < 8) break;
+    if (fourcc(at + 4) === "moov") {
+      moovStart = at;
+      moovEnd = Math.min(bytes.length, at + size);
+      break;
+    }
+    at += size;
+  }
+  if (moovStart < 0) return null;
+
+  let out: Uint8Array | null = null;
+  for (let at = moovStart + 8; at + 8 <= moovEnd; at++) {
+    if (bytes[at] !== 0x63 || fourcc(at) !== "chnl") continue; // "c"
+    const box = at - 4;
+    const size = view.getUint32(box);
+    if (size < 12 || box + size > moovEnd) continue;
+    out = out ?? Uint8Array.from(bytes);
+    out.set([0x66, 0x72, 0x65, 0x65], at); // "free"
+    at += size - 5;
+  }
+  return out;
+}
