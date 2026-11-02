@@ -22,6 +22,7 @@ import { BackIcon, LockIcon, SparkIcon } from "../../components/icons";
 import { api } from "../../lib/api";
 import { ar } from "../../lib/format";
 import type { Book } from "../../lib/archive";
+import type { CoverSkin } from "../../components/book-cover";
 import { colors } from "../../theme/tokens";
 
 /** ما يقوله كلُّ قسمٍ تحته — من أرقام السنة نفسها حيث تُعرف. */
@@ -82,7 +83,9 @@ export default function BookStudio() {
     setSaving(true);
     try {
       const prefs = await api<BookPrefs>(`/v1/archive/book/${year}/prefs`, { method: "PUT", body: JSON.stringify(draft) });
+      // والغلافُ من المتجر يُقرأ ثوبُه من جديد: الكتابُ يرسمه من `coverSkin`.
       client.setQueryData<Book>(["archive", "book", year], (old) => (old ? { ...old, prefs } : old));
+      void client.invalidateQueries({ queryKey: ["archive", "book", year] });
       router.back();
     } catch (problem) {
       Alert.alert("ما انحفظ", problem instanceof Error ? problem.message : "حاول مرة ثانية");
@@ -128,36 +131,73 @@ export default function BookStudio() {
               </View>
             )}
 
-            <View pointerEvents={open ? "auto" : "none"} style={{ gap: 14, opacity: open ? 1 : 0.55 }}>
-              <Text style={{ color: colors.groundInk, fontSize: 13.5, fontWeight: "800" }}>الغلاف</Text>
-              <View style={{ flexDirection: "row", gap: 12 }}>
-                {BOOK_COVERS.map((cover) => {
-                  const on = draft.cover === cover;
-                  return (
-                    <Pressable key={cover} onPress={() => setDraft({ ...draft, cover })} style={{ flex: 1, alignItems: "center", gap: 6 }} accessibilityLabel={`غلاف ${BOOK_COVER_LABEL[cover]}`}>
-                      <View
-                        style={{
-                          width: "100%",
-                          aspectRatio: 0.7,
-                          borderRadius: 8,
-                          overflow: "hidden",
-                          borderWidth: on ? 3 : 1,
-                          borderColor: on ? "#F6B93B" : colors.line,
-                        }}
-                      >
-                        <BookCoverPage book={{ ...data, prefs: { ...draft, cover } }} scale={0.34} />
-                        {open ? null : cover === "night" ? null : (
-                          <View style={{ position: "absolute", inset: 0, backgroundColor: "rgba(14,26,36,.45)", alignItems: "center", justifyContent: "center" }}>
-                            <LockIcon size={18} color="#F6B93B" />
-                          </View>
-                        )}
-                      </View>
-                      <Text style={{ color: colors.groundInk, fontSize: 12, fontWeight: on ? "800" : "600" }}>{BOOK_COVER_LABEL[cover]}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+            {/*
+              الأغلفةُ: الثلاثةُ لآثار+ و«ليلي» للجميع، ثمّ ما اشتراه من المتجر (القاعدة ٤٠٥) —
+              ما دُفع بنقاطٍ يُختار بلا اشتراك — ثمّ بابُ المتجر لمزيدٍ منها.
+            */}
+            <Text style={{ color: colors.groundInk, fontSize: 13.5, fontWeight: "800" }}>الغلاف</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 2 }}>
+              {[
+                ...BOOK_COVERS.map((cover) => ({ key: cover as BookPrefs["cover"], label: BOOK_COVER_LABEL[cover], skin: null as CoverSkin | null, locked: !open && cover !== "night" })),
+                ...(data.ownedCovers ?? []).map((one) => ({ key: `item:${one.id}` as BookPrefs["cover"], label: one.name, skin: one, locked: false })),
+              ].map(({ key, label, skin, locked }) => {
+                const on = draft.cover === key;
+                return (
+                  <Pressable
+                    key={key}
+                    disabled={locked}
+                    onPress={() => setDraft({ ...draft, cover: key })}
+                    style={{ width: 98, alignItems: "center", gap: 6 }}
+                    accessibilityLabel={`غلاف ${label}`}
+                  >
+                    <View
+                      style={{
+                        width: 98,
+                        height: 140,
+                        borderRadius: 8,
+                        overflow: "hidden",
+                        borderWidth: on ? 3 : 1,
+                        borderColor: on ? "#F6B93B" : colors.line,
+                      }}
+                    >
+                      <BookCoverPage book={{ ...data, prefs: { ...draft, cover: key } }} skin={skin} scale={0.32} />
+                      {locked ? (
+                        <View style={{ position: "absolute", inset: 0, backgroundColor: "rgba(14,26,36,.45)", alignItems: "center", justifyContent: "center" }}>
+                          <LockIcon size={18} color="#F6B93B" />
+                        </View>
+                      ) : null}
+                    </View>
+                    <Text numberOfLines={1} style={{ color: colors.groundInk, fontSize: 12, fontWeight: on ? "800" : "600" }}>{label}</Text>
+                  </Pressable>
+                );
+              })}
+              <Pressable
+                onPress={() => router.push("/(tabs)/store?tab=kind:BOOK" as never)}
+                style={{ width: 98, alignItems: "center", gap: 6 }}
+                accessibilityLabel="أغلفة أكثر من المتجر"
+              >
+                <View
+                  style={{
+                    width: 98,
+                    height: 140,
+                    borderRadius: 8,
+                    borderWidth: 1.5,
+                    borderStyle: "dashed",
+                    borderColor: colors.groundInk,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    opacity: 0.8,
+                  }}
+                >
+                  <Text style={{ color: colors.groundInk, fontSize: 24, fontWeight: "300" }}>＋</Text>
+                  <Text style={{ color: colors.groundInk, fontSize: 11.5, fontWeight: "700", textAlign: "center" }}>أغلفة{"\n"}من المتجر</Text>
+                </View>
+                <Text style={{ color: colors.groundInk, fontSize: 12, fontWeight: "600" }}>المزيد</Text>
+              </Pressable>
+            </ScrollView>
 
+            <View pointerEvents={open ? "auto" : "none"} style={{ gap: 14, opacity: open ? 1 : 0.55 }}>
               <View style={{ backgroundColor: colors.card, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 6 }}>
                 <Field
                   label="عنوان الكتاب"
@@ -213,7 +253,7 @@ export default function BookStudio() {
               </Text>
             </View>
           </ScrollView>
-          {open ? (
+          {open || (data.ownedCovers?.length ?? 0) > 0 ? (
             <View style={{ padding: 16, paddingTop: 8 }}>
               <Pressable
                 onPress={save}
@@ -223,7 +263,9 @@ export default function BookStudio() {
                 {saving ? (
                   <Spinner size="small" color={colors.onBrand} />
                 ) : (
-                  <Text face="display" style={{ color: colors.onBrand, fontSize: 16, fontWeight: "800" }}>احفظ وشوف كتابك</Text>
+                  <Text face="display" style={{ color: colors.onBrand, fontSize: 16, fontWeight: "800" }}>
+                    {open ? "احفظ وشوف كتابك" : "احفظ الغلاف"}
+                  </Text>
                 )}
               </Pressable>
             </View>

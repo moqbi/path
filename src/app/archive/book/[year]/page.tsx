@@ -8,7 +8,9 @@ import { BASE } from "@/lib/base";
 import { ar, MONTHS } from "@/lib/format";
 import { ReactionGlyph } from "@/components/reactions";
 import { PrintButton } from "./print-button";
-import { BOOK_SECTION_LABEL, bookBlocks, type BookCover, type BookSection } from "@/lib/book-prefs";
+import { BOOK_SECTION_LABEL, bookBlocks, type BookCoverChoice, type BookSection } from "@/lib/book-prefs";
+import { bookPatternSvg } from "@/lib/book-skin";
+import type { OwnedCover } from "@/lib/archive";
 
 type Moment = Awaited<ReturnType<typeof book>>["moments"][number];
 
@@ -86,7 +88,7 @@ export default async function BookPage({ params }: { params: Promise<{ year: str
           <PrintButton />
         </div>
 
-        <Cover cover={data.prefs.cover} title={data.prefs.title} year={year} name={data.name} memberNo={data.memberNo} avatarMediaId={data.avatarMediaId} />
+        <Cover cover={data.prefs.cover} skin={data.coverSkin} title={data.prefs.title} year={year} name={data.name} memberNo={data.memberNo} avatarMediaId={data.avatarMediaId} />
         {data.prefs.dedication ? (
           <section className="page sheet mb-6 flex flex-col items-center justify-center p-10 text-center" style={{ background: PAPER, minHeight: 340 }}>
             <span className="block h-[2px] w-9 rounded" style={{ background: GOLD }} />
@@ -207,7 +209,58 @@ export default async function BookPage({ params }: { params: Promise<{ year: str
 type Data = Awaited<ReturnType<typeof book>>;
 
 /** الغلافُ بتصميمه (القاعدة ٣٧٨) — كالـPDF: ليليٌّ كما كان، وكلاسيكيٌّ بورقه وإطاره، وبسيطٌ بخطٍّ مرجانيّ. */
-function Cover({ cover, title, year, name, memberNo, avatarMediaId }: { cover: BookCover; title: string | null; year: number; name: string; memberNo: number; avatarMediaId: string | null }) {
+/** غلافُ المتجر (القاعدة ٤٠٥): بتخطيط «ليلي» وألوانِ ثوبه، والنقشُ أو صورتُه خلفه — كالـPDF. */
+function SkinCover({ cover, title, year, name, memberNo, avatarMediaId }: { cover: OwnedCover; title: string | null; year: number; name: string; memberNo: number; avatarMediaId: string | null }) {
+  const { skin } = cover;
+  const pattern = cover.mediaId ? null : bookPatternSvg(skin);
+  return (
+    <section
+      className="page sheet relative mb-6 flex flex-col items-center overflow-hidden px-6 pb-8 pt-12 text-center"
+      style={{ background: `linear-gradient(170deg, ${skin.bg}, ${skin.bg2})`, color: skin.ink, minHeight: 560 }}
+    >
+      {cover.mediaId ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={`${BASE}/api/media/${cover.mediaId}`} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      ) : pattern ? (
+        <span className="pointer-events-none absolute inset-0 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: pattern }} />
+      ) : null}
+      <span className="relative flex flex-col items-center">
+        <AthrMark size={60} />
+        <p className="mt-7 text-[11px] tracking-[3px] opacity-60">كتاب السنة</p>
+        <p className="display mt-1 text-[80px] font-extrabold leading-none">{ar(year)}</p>
+        <span className="mt-5 block h-[2px] w-9 rounded" style={{ background: skin.accent }} />
+        {title ? <p className="display mt-4 text-[21px] font-extrabold leading-[1.5]">{title}</p> : null}
+      </span>
+      <div className="relative mt-auto flex flex-col items-center pt-16">
+        <span className="rounded-full p-[2px]" style={{ border: `2px solid ${skin.accent}` }}>
+          <Avatar name={name} mediaId={avatarMediaId} size={60} />
+        </span>
+        <p className="display mt-2.5 text-[19px] font-extrabold">{name}</p>
+        <p className="text-[11px] opacity-60">عضوية رقم {ar(memberNo)}</p>
+      </div>
+      <p className="relative mt-7 text-[12.5px] tracking-[1px]" style={{ color: skin.accent }}>لحظاتك، مع ناسك.</p>
+    </section>
+  );
+}
+
+function Cover({
+  cover,
+  skin,
+  title,
+  year,
+  name,
+  memberNo,
+  avatarMediaId,
+}: {
+  cover: BookCoverChoice;
+  skin: OwnedCover | null;
+  title: string | null;
+  year: number;
+  name: string;
+  memberNo: number;
+  avatarMediaId: string | null;
+}) {
+  if (skin) return <SkinCover cover={skin} title={title} year={year} name={name} memberNo={memberNo} avatarMediaId={avatarMediaId} />;
   if (cover === "minimal") {
     return (
       <section className="page sheet relative mb-6 flex flex-col px-8 pb-8 pt-12" style={{ background: "#EDE6D8", color: INK, minHeight: 560 }}>

@@ -2,7 +2,7 @@ import { prisma } from "@athar/db";
 import { cloudReady, getObject } from "@athar/storage";
 import sharp from "sharp";
 import { book } from "./archive";
-import { BOOK_SECTION_LABEL, bookBlocks, SITE_URL, type BookCover, type BookSection } from "@athar/shared";
+import { BOOK_SECTION_LABEL, bookBlocks, bookPatternSvg, SITE_URL, storeCoverId, type BookCover, type BookSection, type BookSkin } from "@athar/shared";
 import { ar } from "../lib/riyadh-day";
 
 /**
@@ -234,6 +234,13 @@ h2 { font-size: 26px; font-weight: 800; margin-top: 3mm; }
 .minc .foot { position: absolute; right: 18mm; left: 18mm; bottom: 18mm; display: flex; justify-content: space-between; align-items: flex-end; font-size: 12px; color: #3c4a52; }
 .minc .logo { width: 44px; }
 .minc .mark { width: 34px; height: 34px; border-radius: 10px; }
+/* غلافُ المتجر (القاعدة ٤٠٥): ألوانُه في الصفحة نفسها، والنقشُ أو الصورةُ خلفه. */
+.skinc { height: 195mm; overflow: hidden; }
+.skinc .art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.skinc .art svg { width: 100%; height: 100%; display: block; }
+.skinc > :not(.art) { position: relative; }
+.skinc .who, .skinc .motto { position: absolute; }
+.skinc .eyebrow, .skinc .member { color: inherit; opacity: .6; }
 .dedication { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 .dedication .line { font-family: "Tajawal", sans-serif; font-size: 20px; font-weight: 700; line-height: 1.8; color: #3c4a52; max-width: 100mm; margin-top: 6mm; }
 
@@ -243,6 +250,30 @@ h2 { font-size: 26px; font-weight: 800; margin-top: 3mm; }
 .end .gold { margin: 6mm auto 0; }
 .end .sub { font-size: 12px; color: rgba(247,245,239,.6); margin-top: 5mm; }
 `;
+
+/** غلافُ المتجر (القاعدة ٤٠٥): بتخطيط «ليلي» وألوانِ ثوبه، والنقشُ أو صورتُه خلفه. */
+function skinCoverHtml(
+  skin: BookSkin,
+  art: string | null,
+  b: { year: number; title: string | null; name: string; memberNo: number; avatar: string | null },
+): string {
+  const pattern = art ? `<img class="art" src="${art}">` : bookPatternSvg(skin) ? `<div class="art">${bookPatternSvg(skin)}</div>` : "";
+  return `
+    <section class="page cover skinc" style="background: linear-gradient(170deg, ${skin.bg}, ${skin.bg2}); color: ${skin.ink}; box-shadow: 0 18mm 0 0 ${skin.bg2};">
+      ${pattern}
+      ${MARK}
+      <div class="eyebrow">كتاب السنة</div>
+      <div class="year display">${ar(b.year)}</div>
+      <div class="gold" style="background: ${skin.accent}"></div>
+      ${b.title ? `<div class="title display">${esc(b.title)}</div>` : ""}
+      <div class="who">
+        ${b.avatar ? `<img class="avatar" src="${b.avatar}" style="border-color: ${skin.accent}; background: ${skin.bg2}">` : ""}
+        <div class="name display">${esc(b.name)}</div>
+        <div class="member">عضوية رقم ${ar(b.memberNo)}</div>
+      </div>
+      <div class="motto" style="color: ${skin.accent}">لحظاتك، مع ناسك.</div>
+    </section>`;
+}
 
 /** الغلافُ بتصميمه (القاعدة ٣٧٨): ليليٌّ كما كان، وكلاسيكيٌّ بورقه وإطاره، وبسيطٌ بخطٍّ مرجانيّ. */
 function coverHtml(
@@ -281,15 +312,21 @@ export async function bookHtml(userId: string, year: number): Promise<{ html: st
   const data = await book(userId, year);
   const s = data.stats;
   const photoIds = data.moments.filter((m) => m.mediaId).map((m) => m.mediaId!).slice(0, MAX_PHOTOS);
-  const [photos, avatar] = await Promise.all([
+  const [photos, avatar, art] = await Promise.all([
     thumbs(photoIds, 900),
     data.avatarMediaId ? thumb(data.avatarMediaId, 240) : Promise.resolve(null),
+    data.coverSkin?.mediaId ? thumb(data.coverSkin.mediaId, 1100) : Promise.resolve(null),
   ]);
 
   const run = `آثار مومنتس · ${ar(year)}`;
   const pages: string[] = [];
   const prefs = data.prefs;
-  pages.push(coverHtml(prefs.cover, { year, title: prefs.title, name: data.name, memberNo: data.memberNo, avatar }));
+  const who = { year, title: prefs.title, name: data.name, memberNo: data.memberNo, avatar };
+  pages.push(
+    data.coverSkin
+      ? skinCoverHtml(data.coverSkin.skin, art, who)
+      : coverHtml(storeCoverId(prefs.cover) ? "night" : (prefs.cover as BookCover), who),
+  );
   if (prefs.dedication)
     pages.push(`
     <section class="page dedication">

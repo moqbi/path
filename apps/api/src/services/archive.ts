@@ -1,6 +1,6 @@
 import { momentsByIds } from "./feed";
 import { prisma } from "@athar/db";
-import { cleanBookPrefs, DEFAULT_BOOK_PREFS, type BookPrefs } from "@athar/shared";
+import { bookSkinOf, cleanBookPrefs, DEFAULT_BOOK_PREFS, storeCoverId, type BookPrefs, type BookSkin } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { guard } from "../lib/moderation";
 import { dayKey, riyadhDay } from "../lib/riyadh-day";
@@ -38,6 +38,33 @@ async function since(userId: string): Promise<Date | null> {
   const me = await prisma.user.findUnique({ where: { id: userId }, select: { isPlus: true } });
   if (!me) throw notFound("الحساب غير موجود");
   return me.isPlus ? null : new Date(Date.now() - FREE_ARCHIVE_DAYS * 86_400_000);
+}
+
+/** غلافٌ من المتجر يملكه صاحبُه الآن (القاعدة ٤٠٥). */
+export type OwnedCover = { id: string; name: string; skin: BookSkin; mediaId: string | null };
+
+/** أغلفةُ الكتاب التي يملكها — ما انتهت مدّتُه لا يُعدّ (`ACTIVE`). */
+export async function ownedCovers(userId: string): Promise<OwnedCover[]> {
+  const now = new Date();
+  const rows = await prisma.purchase.findMany({
+    where: { userId, item: { kind: "BOOK" }, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+    select: { item: { select: { id: true, name: true, bookSkin: true, mediaId: true } } },
+    orderBy: { createdAt: "asc" },
+  });
+  return rows.map(({ item }) => ({ id: item.id, name: item.name, skin: bookSkinOf(item.bookSkin), mediaId: item.mediaId }));
+}
+
+/**
+ * ما يُقرأ من التجهيز (القاعدة ٣٧٨ و٤٠٥): المشتركُ ما اختاره كلَّه، وغيرُه الهيئةُ الأصليّة
+ * إلّا غلافاً من المتجر يملكه — ما اشتراه بنقاطه لا يُقفل بانتهاء اشتراك. وغلافُ متجرٍ
+ * لم يعد يملكه يرجع «ليلي».
+ */
+function readPrefs(stored: unknown, free: boolean, owned: OwnedCover[]): { prefs: BookPrefs; cover: OwnedCover | null } {
+  const clean = stored ? cleanBookPrefs(stored) : DEFAULT_BOOK_PREFS;
+  const itemId = storeCoverId(clean.cover);
+  const cover = itemId ? (owned.find((one) => one.id === itemId) ?? null) : null;
+  const base = free ? { ...DEFAULT_BOOK_PREFS, cover: cover ? clean.cover : DEFAULT_BOOK_PREFS.cover } : clean;
+  return { prefs: itemId && !cover ? { ...base, cover: "night" } : base, cover };
 }
 
 /**
@@ -166,7 +193,7 @@ export async function book(userId: string, year: number) {
   const tail = new Date(Math.min(end.getTime(), Date.now()) - FREE_ARCHIVE_DAYS * 86_400_000);
   const lower = free && tail > start ? tail : start;
 
-  const [me, found, circleList, blockedList, stored] = await Promise.all([
+  const [me, found, circleList, blockedList, stored, owned] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: { name: true, memberNo: true, avatarMediaId: true, gender: true },
@@ -195,9 +222,11 @@ export async function book(userId: string, year: number) {
     circleIds(userId),
     blockedWith(userId),
     prisma.bookPrefs.findUnique({ where: { userId_year: { userId, year } } }),
+    ownedCovers(userId),
   ]);
   if (!me) throw notFound("الحساب غير موجود");
   const circle = new Set(circleList);
+  const chosen = readPrefs(stored, free, owned);
   const blocked = new Set(blockedList);
 
   /*
@@ -284,7 +313,11 @@ export async function book(userId: string, year: number) {
       اختاره باقٍ في القاعدة يعود بعودته. والجوّالُ القديم لا يقرأ الحقلين فيبقى كما كان.
     */
     custom: !free,
-    prefs: !free && stored ? cleanBookPrefs(stored) : DEFAULT_BOOK_PREFS,
+    prefs: chosen.prefs,
+    /** ثوبُ غلاف المتجر المختار — والجوّالُ القديم لا يقرؤه فيرسم «ليلي». */
+    coverSkin: chosen.cover,
+    /** أغلفةُ المتجر التي يملكها — تُعرض في «تجهيز الكتاب». */
+    ownedCovers: owned,
     stats: {
       moments: rows.length,
       photos: count("PHOTO"),
@@ -307,8 +340,24 @@ export async function book(userId: string, year: number) {
 /** يحفظ تجهيزَ كتاب سنةٍ — لمشتركي آثار+ وحدهم، والخادمُ يفحص لا الشاشة (القاعدة ٣٧٨). */
 export async function saveBookPrefs(userId: string, year: number, raw: unknown): Promise<BookPrefs> {
   if (!Number.isInteger(year) || year < 2024 || year > 2100) throw badRequest("سنة غير صالحة");
-  if ((await since(userId)) !== null) throw forbidden("تجهيز الكتاب مع آثار+");
+  const free = (await since(userId)) !== null;
   const prefs = cleanBookPrefs(raw);
+  const itemId = storeCoverId(prefs.cover);
+  if (itemId && !(await ownedCovers(userId)).some((one) => one.id === itemId)) throw forbidden("هذا الغلاف ليس عندك");
+  /*
+    غيرُ المشترك يختار غلافاً اشتراه أو «ليلي» وحدهما (القاعدة ٤٠٥)، وما سواه
+    من التجهيز يبقى كما هو في القاعدة — لا يُكتب ولا يُمحى.
+  */
+  if (free) {
+    if (!itemId && prefs.cover !== "night") throw forbidden("تجهيز الكتاب مع آثار+");
+    const rest = DEFAULT_BOOK_PREFS;
+    await prisma.bookPrefs.upsert({
+      where: { userId_year: { userId, year } },
+      create: { userId, year, cover: prefs.cover, title: null, dedication: null, sections: rest.sections },
+      update: { cover: prefs.cover },
+    });
+    return { ...rest, cover: prefs.cover };
+  }
   await guard(prefs.title);
   await guard(prefs.dedication);
   const data = { cover: prefs.cover, title: prefs.title, dedication: prefs.dedication, sections: prefs.sections };

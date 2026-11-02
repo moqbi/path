@@ -889,11 +889,6 @@ function MapSheet({
             </View>
           ) : null}
         </View>
-        {panorama ? (
-          <Text style={{ position: "absolute", left: 14, bottom: 10, color: "rgba(247,245,239,0.45)", fontSize: 9 }}>
-            الصورة: ويكيبيديا
-          </Text>
-        ) : null}
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingTop: 6, paddingBottom: 12, gap: 16 }} showsVerticalScrollIndicator={false}>

@@ -1,3 +1,4 @@
+import type { CoverSkin } from "../components/book-cover";
 import type { BookPrefs } from "@athar/shared";
 /** «أرشيفي» و«سنتك في كتاب» (القاعدة ٢٤٤) — ما يردّه `/v1/archive`. */
 export type ArchiveMoment = {
@@ -80,6 +81,9 @@ export type Book = {
   /** تجهيزُ الكتاب (القاعدة ٣٧٨): هل يملكه (آثار+)، وما اختاره — وخادمٌ قديم بلاهما فالأصل. */
   custom?: boolean;
   prefs?: BookPrefs;
+  /** غلافُ المتجر المختار، وما يملكه منها (القاعدة ٤٠٥) — خادمٌ قديم بلاهما. */
+  coverSkin?: CoverSkin | null;
+  ownedCovers?: CoverSkin[];
   /** صفحةٌ لكلّ يوم بتوقيت الرياض — خادمٌ قديم بلاها يُجمَّع منه هنا. */
   days?: { day: string; moments: BookMoment[] }[];
 };

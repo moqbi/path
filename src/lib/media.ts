@@ -14,7 +14,7 @@ const MIN_ANIMATED_SIDE = 120;
 /** الصوت مسجَّلٌ في المتصفح بجودةٍ منخفضة: دقيقتان فيه أقلّ من ميغا. */
 const MAX_AUDIO_BYTES = 2_000_000;
 /** الفيديو عشرون ثانية بمعدّل بتّ محدود — وما زاد يُردّ برسالة لا بصمت. */
-const MAX_VIDEO_BYTES = 9_000_000;
+const MAX_VIDEO_BYTES = 18_000_000;
 
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 /** صيغ التسجيل التي تخرج من `MediaRecorder` على المتصفحات المختلفة. */

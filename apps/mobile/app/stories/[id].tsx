@@ -111,11 +111,24 @@ export default function StoryViewer() {
     ثانيةٍ ويضيع أوّلُه — والقصّةُ بصوتها طولُها طولُ مقطعها (القاعدة ٢٣٨).
   */
   const [waiting, setWaiting] = useState(false);
+  /*
+    والمقطعُ يُنتظر كذلك حتى يُرسم أوّلُ إطاره (القاعدة ٤٠٥): كان الشريطُ يمضي
+    والشاشةُ سوداء، فيضيع أوّلُ المقطع وصوتُه. وبمهلة: مقطعٌ لا يصل في ثمانٍ
+    لا يحبس القصّة.
+  */
+  const [loadingClip, setLoadingClip] = useState(false);
   const [saving, setSaving] = useState(false);
   // يقف ما دام صاحبُه يكتب تعليقاً (القاعدة ٣٤٤).
   const [typing, setTyping] = useState(false);
   const keyboard = useKeyboardInset();
-  const paused = held || watching || dragging || waiting || saving || typing;
+  // المقطعُ نفسُه لا يقف على انتظاره: يُشغَّل ليُرسم، والعدُّ والموسيقى ينتظرانه.
+  const userPaused = held || watching || dragging || waiting || saving || typing;
+  const paused = userPaused || loadingClip;
+  useEffect(() => {
+    if (!loadingClip) return;
+    const giveUp = setTimeout(() => setLoadingClip(false), 8000);
+    return () => clearTimeout(giveUp);
+  }, [loadingClip]);
   const started = useRef(Date.now());
   // الوقفةُ لا تبدأ الشريحة من أوّلها: ما مضى منها يُحفظ ويُستأنف منه.
   const elapsed = useRef(0);
@@ -439,7 +452,8 @@ export default function StoryViewer() {
           source={story.mediaId}
           width={w}
           height={h}
-          paused={paused}
+          paused={userPaused}
+          onStall={setLoadingClip}
           muted={Boolean(story.videoMuted)}
           cover={DEV_FEATURES}
           key={`${story.id}-${round}`}
@@ -454,6 +468,11 @@ export default function StoryViewer() {
         />
       )}
       </FramedMedia>
+      {video && loadingClip ? (
+        <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}>
+          <Spinner color="#fff" />
+        </View>
+      ) : null}
 
       {/* نصوصُها فوقها بموضعها ومقاسها — لا محروقةً في الصورة. */}
       <StoryTexts texts={story.texts} width={screen.width} height={screen.height} />

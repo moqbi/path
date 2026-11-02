@@ -1,4 +1,5 @@
-import { cleanBookPrefs, DEFAULT_BOOK_PREFS } from "./book-prefs";
+import { cleanBookPrefs, DEFAULT_BOOK_PREFS, storeCoverId, type BookPrefs } from "./book-prefs";
+import { bookSkinOf, type BookSkin } from "./book-skin";
 import "server-only";
 import { prisma } from "@/lib/db";
 import { dayKey, riyadhDay } from "@/lib/riyadh-day";
@@ -16,6 +17,27 @@ import { circleIds } from "@/lib/circle";
  * و**آثار+ «أرشيفٌ بلا نهاية»** (وعدُ قائمة المزايا): غيرُ المشترك يرى آخر
  * ستّة أشهر، والأقدمُ باقٍ في القاعدة يعود بالاشتراك — لا يُحذف شيء.
  */
+/** غلافٌ من المتجر يملكه صاحبُه الآن (القاعدة ٤٠٥) — كالخادم حرفاً بحرف. */
+export type OwnedCover = { id: string; name: string; skin: BookSkin; mediaId: string | null };
+
+async function ownedCovers(userId: string): Promise<OwnedCover[]> {
+  const now = new Date();
+  const rows = await prisma.purchase.findMany({
+    where: { userId, item: { kind: "BOOK" }, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+    select: { item: { select: { id: true, name: true, bookSkin: true, mediaId: true } } },
+    orderBy: { createdAt: "asc" },
+  });
+  return rows.map(({ item }) => ({ id: item.id, name: item.name, skin: bookSkinOf(item.bookSkin), mediaId: item.mediaId }));
+}
+
+function readPrefs(stored: unknown, free: boolean, owned: OwnedCover[]): { prefs: BookPrefs; cover: OwnedCover | null } {
+  const clean = stored ? cleanBookPrefs(stored) : DEFAULT_BOOK_PREFS;
+  const itemId = storeCoverId(clean.cover);
+  const cover = itemId ? (owned.find((one) => one.id === itemId) ?? null) : null;
+  const base = free ? { ...DEFAULT_BOOK_PREFS, cover: cover ? clean.cover : DEFAULT_BOOK_PREFS.cover } : clean;
+  return { prefs: itemId && !cover ? { ...base, cover: "night" } : base, cover };
+}
+
 const KINDS = ["PHOTO", "PLACE", "THOUGHT", "MUSIC", "SLEEP", "WAKE", "CITY"] as const;
 export const FREE_ARCHIVE_DAYS = 183;
 
@@ -107,7 +129,7 @@ export async function book(userId: string, year: number) {
   const tail = new Date(Math.min(end.getTime(), Date.now()) - FREE_ARCHIVE_DAYS * 86_400_000);
   const lower = free && tail > start ? tail : start;
 
-  const [me, found, circleList, blocks, stored] = await Promise.all([
+  const [me, found, circleList, blocks, stored, owned] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: { name: true, memberNo: true, avatarMediaId: true, gender: true },
@@ -139,8 +161,10 @@ export async function book(userId: string, year: number) {
       select: { blockerId: true, blockedId: true },
     }),
     prisma.bookPrefs.findUnique({ where: { userId_year: { userId, year } } }),
+    ownedCovers(userId),
   ]);
   if (!me) throw new Error("الحساب غير موجود");
+  const chosen = readPrefs(stored, free, owned);
   const circle = new Set(circleList);
   const blocked = new Set(blocks.map((row) => (row.blockerId === userId ? row.blockedId : row.blockerId)));
 
@@ -215,7 +239,8 @@ export async function book(userId: string, year: number) {
     partial: lower > start,
     // تجهيزُ الكتاب (القاعدة ٣٧٨) — كالخادم حرفاً بحرف: يُقرأ والاشتراكُ قائم.
     custom: !free,
-    prefs: !free && stored ? cleanBookPrefs(stored) : DEFAULT_BOOK_PREFS,
+    prefs: chosen.prefs,
+    coverSkin: chosen.cover,
     stats: {
       moments: rows.length,
       photos: count("PHOTO"),

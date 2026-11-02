@@ -82,7 +82,13 @@ export default function Store() {
   // من بطاقة الإعلان: الصنفُ تُفتح بطاقتُه فوق المتجر (القاعدة ٢٦٧).
   // والمعرّفُ يُمسك في الحالة ثمّ يُمسح من العنوان: لو بقي فيه لفُتحت البطاقة
   // ثانيةً مع كلّ عودةٍ إلى التبويب، ولو مُسح وحده لأُغلقت لحظةَ فُتحت.
-  const params = useLocalSearchParams<{ item?: string; pack?: string }>();
+  const params = useLocalSearchParams<{ item?: string; pack?: string; tab?: string }>();
+  // شريحةٌ بعينها من خارج المتجر — «المزيد من الأغلفة» في تجهيز الكتاب (القاعدة ٤٠٥).
+  useEffect(() => {
+    if (!params.tab) return;
+    setSlug(params.tab);
+    router.setParams({ tab: undefined } as never);
+  }, [params.tab]);
   const [held, setHeld] = useState<string | null>(null);
   useEffect(() => {
     if (!params.item) return;
@@ -148,6 +154,8 @@ export default function Store() {
     { slug: "kind:THEME", name: "الثيمات", kinds: ["THEME", "BACKGROUND"], other: "الثيمات الأخرى" },
     // أثوابُ قاعة المعرض (القاعدة ٣٤٨) — الخادمُ لا يرسلها إلا لنسخة التطوير، والشريحةُ تظهر حين يكون فيها شيء.
     { slug: "kind:GALLERY", name: "المعرض", kinds: ["GALLERY"], other: "المعرض" },
+    // أغلفةُ كتاب السنة (القاعدة ٤٠٥) — تُختار في «تجهيز الكتاب» لا تُلبَس.
+    { slug: "kind:BOOK", name: "أغلفة الكتاب", kinds: ["BOOK"], other: "أغلفة الكتاب" },
   ] as const;
   const STICKERS = { slug: "kind:STICKER", name: "الملصقات" };
   const stickerTab = slug === STICKERS.slug;
@@ -212,7 +220,11 @@ export default function Store() {
           */}
           {[
             { slug: "", name: "المميز" },
-            ...KINDS.filter((kind) => kind.slug !== "kind:GALLERY" || (data?.rows.halls?.length ?? 0) > 0),
+            ...KINDS.filter(
+              (kind) =>
+                (kind.slug !== "kind:GALLERY" || (data?.rows.halls?.length ?? 0) > 0) &&
+                (kind.slug !== "kind:BOOK" || (data?.rows.books?.length ?? 0) > 0),
+            ),
             ...(DEV_FEATURES && packs.length > 0 ? [STICKERS] : []),
             ...(data?.categories ?? []).filter(
               // «التمائم» اسمُها القديم: خادمٌ لم تمرّ عليه هجرةُ الاسم بعدُ (القاعدة ٢٧١).

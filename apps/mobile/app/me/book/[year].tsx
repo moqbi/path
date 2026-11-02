@@ -183,7 +183,7 @@ function Gold({ center }: { center?: boolean }) {
 }
 
 function PageBody({ page, book, onOpen }: { page: Page; book: Book; onOpen: (id: string) => void }) {
-  if (page.type === "cover") return <BookCoverPage book={book} />;
+  if (page.type === "cover") return <BookCoverPage book={book} skin={book.coverSkin} />;
 
   if (page.type === "dedication") {
     return (

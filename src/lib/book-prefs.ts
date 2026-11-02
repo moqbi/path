@@ -6,6 +6,15 @@
 export const BOOK_COVERS = ["night", "paper", "minimal"] as const;
 export type BookCover = (typeof BOOK_COVERS)[number];
 export const BOOK_COVER_LABEL: Record<BookCover, string> = { night: "ليلي", paper: "كلاسيكي", minimal: "بسيط" };
+/**
+ * غلافٌ من المتجر (القاعدة ٤٠٥): `item:<معرّف الصنف>`. يُقرأ إن كان صاحبُه يملكه
+ * الآن، وإلّا رجع الكتابُ إلى «ليلي» — والاختيارُ باقٍ يعود بتجديد مدّته.
+ */
+export type BookCoverChoice = BookCover | `item:${string}`;
+const STORE_COVER = /^item:[a-z0-9]{8,40}$/;
+export function storeCoverId(cover: string): string | null {
+  return STORE_COVER.test(cover) ? cover.slice(5) : null;
+}
 
 export const BOOK_SECTIONS = ["numbers", "places", "song", "circle", "months", "end"] as const;
 export type BookSection = (typeof BOOK_SECTIONS)[number];
@@ -26,7 +35,7 @@ export const BOOK_TITLE_MAX = 40;
 export const BOOK_DEDICATION_MAX = 140;
 
 export type BookPrefs = {
-  cover: BookCover;
+  cover: BookCoverChoice;
   title: string | null;
   dedication: string | null;
   sections: { id: BookSection; on: boolean }[];
@@ -42,7 +51,10 @@ export const DEFAULT_BOOK_PREFS: BookPrefs = {
 /** ما في القاعدة أو ما أرسله الجهاز: المجهولُ يسقط، والمكرّرُ مرّة، والناقصُ يُلحق في آخره. */
 export function cleanBookPrefs(raw: unknown): BookPrefs {
   const value = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
-  const cover = BOOK_COVERS.includes(value.cover as BookCover) ? (value.cover as BookCover) : "night";
+  const cover: BookCoverChoice =
+    BOOK_COVERS.includes(value.cover as BookCover) || (typeof value.cover === "string" && STORE_COVER.test(value.cover))
+      ? (value.cover as BookCoverChoice)
+      : "night";
   const text = (input: unknown, max: number) => {
     if (typeof input !== "string") return null;
     const trimmed = input.trim().slice(0, max);

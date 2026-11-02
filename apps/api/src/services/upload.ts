@@ -363,7 +363,7 @@ async function shape(
   }
 
   /*
-    مقطعُ القصّة يُقصّ ويُضغط (القاعدة ٢٤٩): ثلاثون ثانيةً من حيث اختار صاحبُه،
+    مقطعُ القصّة يُقصّ ويُضغط (القاعدة ٢٤٩): دقيقةٌ من حيث اختار صاحبُه،
     والناتجُ يُكتب مكان الأصل — فلا يبقى المصدرُ الكبير في الدلو.
   */
   if (purpose === "STORY") {
@@ -374,10 +374,10 @@ async function shape(
       if (!(problem instanceof NoFfmpeg)) throw await reject(mediaId, key, "تعذّرت قراءة المقطع");
       // بلا ffmpeg يبقى الطريقُ القديم: المصدرُ نفسه بحدّه ومدّته، والسطرُ ليُثبَّت.
       console.error("[media] ffmpeg مفقود على هذا الخادم — مقطعُ القصّة لا يُضغط");
-      if (bytes.length > LIMITS.video) throw await reject(mediaId, key, "الملف كبير");
+      if (bytes.length > LIMITS.storyVideo) throw await reject(mediaId, key, "الملف كبير");
     }
     if (out) {
-      if (out.bytes.length > LIMITS.video) throw await reject(mediaId, key, "تعذّر ضغط المقطع — اختر جزءاً أقصر");
+      if (out.bytes.length > LIMITS.storyVideo) throw await reject(mediaId, key, "تعذّر ضغط المقطع — اختر جزءاً أقصر");
       await putObject(key, out.bytes, "video/mp4");
       return { mime: "video/mp4", width: out.width, height: out.height, seconds: Math.min(out.seconds, STORY_SECONDS) };
     }
@@ -405,7 +405,7 @@ async function shape(
   // آثار+. الحدّ الأعلى هنا، والتمييز بينهما عند الإرسال حيث يُعرف المشترك.
   const cap = purpose === "STORY" ? STORY_SECONDS : VOICE_SECONDS.plus;
   if (clip.seconds > cap) {
-    throw await reject(mediaId, key, purpose === "STORY" ? "المقطع أطول من ٣٠ ثانية" : "التسجيل طويل");
+    throw await reject(mediaId, key, purpose === "STORY" ? "المقطع أطول من دقيقة" : "التسجيل طويل");
   }
 
   return { mime, width: clip.width, height: clip.height, seconds: clip.seconds };

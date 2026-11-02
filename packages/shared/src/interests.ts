@@ -118,7 +118,7 @@ export const INTERESTS: InterestGroup[] = [
 
 /** أقلُّ ما يُحفظ وأكثرُه — والصفرُ مقبولٌ أيضاً: من أراد أن يمحوها كلَّها. */
 export const INTERESTS_MIN = 3;
-export const INTERESTS_MAX = 15;
+export const INTERESTS_MAX = 25;
 
 export type InterestInfo = { id: string; label: string; emoji: string; group: string };
 

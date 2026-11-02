@@ -46,7 +46,7 @@ export default async function StorePage({
     // ما اشتراه أحد (`hidden`).
     prisma.storeItem.findMany({
       // وثوبُ القاعة يُباع في التطبيق وحده (القاعدة ٣٤٨) — الويبُ لا يرسم القاعةَ بثوبٍ يُشترى منه.
-      where: { hidden: false, kind: { not: "GALLERY" } },
+      where: { hidden: false, kind: { notIn: ["GALLERY", "BOOK"] } },
       orderBy: { sortOrder: "asc" },
       include: {
         // ما تحمله الحزمة: بطاقتُها ترسمه وتعدّه، فلا تُشترى على غير علم.
