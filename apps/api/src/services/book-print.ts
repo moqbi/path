@@ -137,6 +137,7 @@ const CSS = `
 */
 @page { size: 560px 794px; margin: 0; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
+html { container-type: inline-size; }
 html, body { direction: rtl; background: #FBF8F1; color: #182830;
   font-family: "IBM Plex Sans Arabic", "SF Arabic", "Geeza Pro", system-ui, sans-serif;
   -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -346,11 +347,12 @@ const TOKENS: [string, keyof BookPalette][] = [
 /*
   WebKit يرصف الصفحةَ المطبوعة بعرضٍ أوسعَ من الورقة ثمّ يصغّرها (printingMinimumShrinkFactor)،
   فصفحةٌ بعرضٍ ثابت جلست في طرف البداية — يميناً — وبجانبها فراغ، والغلافُ أقصرُ من ورقته فتحته
-  شريطٌ أبيض. فكلُّ طولٍ في الورقة نسبةٌ من عرض ما يُرصف (vw): ٥٦٠ بكسلاً هي عرضُ الورقة، فـ١px
-  = 100vw/560 — والصفحةُ تُرصف على هيئةٍ واحدة مهما كان العرضُ الذي يختاره المحرّك، وطولُ الورقة
+  شريطٌ أبيض. فكلُّ طولٍ في الورقة نسبةٌ من عرض ما يُرصف: ٥٦٠ بكسلاً هي عرضُ الورقة، فـ١px
+  = 100cqw/560 (القاعدة ٤١١) — لا vw: آبل تُبقي vw على عرض الشاشة وتطبع بعرضٍ أوسع، فخرج كلُّ
+  شيءٍ أصغرَ من ورقته بالخُمس والصورُ أطول، فقُصّ آخرُ اليوم. والجذرُ حاويةٌ فتُقاس به. والصفحةُ تُرصف على هيئةٍ واحدة مهما كان العرضُ الذي يختاره المحرّك، وطولُ الورقة
   يتّسع بالنسبة نفسها. و@page وحدها بالبكسل: هي الورقةُ نفسها لا ما عليها.
 */
-const UNIT = "calc(100vw / 560)";
+const UNIT = "calc(100cqw / 560)";
 const MM_PX = 96 / 25.4;
 export function fluid(css: string): string {
   return css
@@ -398,7 +400,7 @@ var proto=[].slice.call(body.children).filter(function(e){return e.tagName==='SE
 var BOARD=/(^| )(cover|night|end|minc|skinc|paperc)( |$)/;
 function ar(n){return String(n).replace(/[0-9]/g,function(d){return '٠١٢٣٤٥٦٧٨٩'[d];});}
 function sheet(board){var d=document.createElement('div');d.className='sheet'+(board?' board':'');body.appendChild(d);return d;}
-function room(sh){var r=sh.getBoundingClientRect();return r.bottom-parseFloat(getComputedStyle(sh).paddingBottom);}
+function room(sh){var r=sh.getBoundingClientRect();return r.bottom-parseFloat(getComputedStyle(sh).paddingBottom)-r.height*0.015;}
 function build(){
   body.innerHTML='';var n=0;
   function mark(sh,s){n++;if(!/(^| )folio( |$)/.test(s.className))return;var f=document.createElement('div');f.className='folio-line';f.textContent=(s.getAttribute('data-run')||'')+'   ·   '+ar(n);sh.appendChild(f);}
