@@ -2,7 +2,9 @@ import { Spinner } from "./spinner";
 import { MentionPicker } from "./mention-picker";
 import { insertMention, mentionIds, mentionQuery, type MentionPerson } from "../lib/mentions";
 import { useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, Share, View } from "react-native";
+import { appUrl } from "@athar/shared";
+import { useSession } from "../lib/session";
 import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { create } from "zustand";
@@ -56,6 +58,7 @@ export function ReactSheet() {
 
 function Body({ target, close }: { target: ReactTarget; close: () => void }) {
   const { momentId, momentKind, mine, isPlus, author, moderate } = target;
+  const staff = useSession((s) => Boolean(s.me?.canGroups || s.me?.canModerate));
   const router = useRouter();
   const client = useQueryClient();
   const [board, setBoard] = useState(false);
@@ -383,6 +386,19 @@ function Body({ target, close }: { target: ReactTarget; close: () => void }) {
         {/* الملصقات تحت الحقل (القاعدة ٢٩١). */}
         {DEV_FEATURES && stickers && !(locked && !author) ? (
           <StickerPanel tone="dark" isPlus={isPlus} onPick={sendSticker} onLeave={close} />
+        ) : null}
+
+        {/*
+          رابطُ اللحظة للمشرف (القاعدة ٤٠٨): يُلصق في «زرّ النافذة» بتنبيه اللوحة. ونافذةُ
+          المشاركة فيها «نسخ» — بلا وحدة حافظةٍ أصليّة تحتاج بناءً.
+        */}
+        {staff && appUrl(`/m/${momentId}`) ? (
+          <Pressable
+            onPress={() => void Share.share({ message: appUrl(`/m/${momentId}`) })}
+            style={{ height: 40, paddingHorizontal: 14, borderRadius: 20, alignSelf: "flex-start", justifyContent: "center", backgroundColor: "rgba(255,255,255,.07)" }}
+          >
+            <Text style={{ color: "rgba(255,255,255,.8)", fontSize: 12.5, fontWeight: "700" }}>نسخ رابط اللحظة</Text>
+          </Pressable>
         ) : null}
 
         {/* البلاغُ لغير صاحبها، والمشرفُ لا يُبلغ بل يحكم (القاعدة ١٣٦). */}

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { addComment } from "@/app/actions";
-import { StickerIcon } from "@/components/icons";
+import { SendIcon, StickerIcon } from "@/components/icons";
 import { StickerPanel, useStickersAllowed } from "@/components/sticker-panel";
 
 /** حقلُ التعليق في صفحة اللحظة، ومعه زرُّ الملصقات بجانب الإرسال (القاعدة ٢٩١). */
@@ -14,14 +14,17 @@ export function CommentBar({ momentId, isPlus }: { momentId: string; isPlus: boo
 
   return (
     <div className="px-5 pb-8 pt-3">
-      <form action={send} className="flex items-center gap-2">
+      {/*
+        قرصٌ واحد كحقل الجوّال (القاعدة ٢٩٥): الحقلُ، فالملصقات، فالإرسالُ دائرةً باللمسة — لا ثلاثُ
+        قطعٍ متجاورة يُقرأ كلٌّ وحده.
+      */}
+      <form action={send} className="flex h-12 items-center gap-1 rounded-full border border-line bg-card pe-1.5 ps-5 focus-within:border-clay">
         <input
           name="body"
           required
           maxLength={500}
           placeholder="اكتب تعليق…"
-          className="min-w-0 grow rounded-full border border-line bg-card px-5 text-[13.5px] outline-none focus:border-clay"
-          style={{ height: 48 }}
+          className="h-full min-w-0 grow bg-transparent text-[13.5px] outline-none"
         />
         {allowed ? (
           <button
@@ -29,7 +32,7 @@ export function CommentBar({ momentId, isPlus }: { momentId: string; isPlus: boo
             aria-label="الملصقات"
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-line bg-card"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
             style={{ color: open ? "var(--color-clay-ink)" : "var(--color-ink-2)" }}
           >
             <StickerIcon size={20} />
@@ -37,10 +40,11 @@ export function CommentBar({ momentId, isPlus }: { momentId: string; isPlus: boo
         ) : null}
         <button
           type="submit"
-          className="brand-gradient shrink-0 rounded-full px-5 text-[13.5px] font-bold"
-          style={{ height: 48, color: "var(--color-on-brand)" }}
+          aria-label="إرسال"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+          style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
         >
-          إرسال
+          <SendIcon size={17} />
         </button>
       </form>
       {open && allowed ? (

@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BackIcon, BookIcon, CalendarIcon, ClockIcon, CloseIcon, LockIcon, MoonIcon, PinIcon, PlaneIcon, SparkIcon, SunIcon } from "@/components/icons";
 import { AthrMark } from "@/components/brand";
+import { useGoBack } from "@/components/nav";
 import { BASE } from "@/lib/base";
 import { ar, MONTHS, relative } from "@/lib/format";
 import { hallEcho, type HallComment, type HallReaction } from "@/app/hall-actions";
@@ -81,11 +82,12 @@ export function GalleryHall({
   const drag = useRef<{ x: number; y: number; t: number; on: boolean; id: number } | null>(null);
   const moved = useRef(false);
   const [grid, setGrid] = useState(false);
+  const goBack = useGoBack("/archive");
   const [W, setW] = useState(220);
   const H = Math.round(W * 1.25);
   // الجارتان تُطلّان من الحافّتين: يُرى أنّ الجدارَ يمتدّ.
   const STEP = W + 44;
-  const frameTop = HEAD_TOP + 96;
+  const frameTop = HEAD_TOP + 104;
   const [wallH, setWallH] = useState(0);
   // اللوحُ الخشبيّ يبدأ تحت البطاقة، ولا يقلّ ولا يأكل الجدار.
   const wainscot = wallH ? Math.round(Math.max(64, Math.min(wallH * 0.24, wallH - (frameTop + H + 104)))) : 80;
@@ -314,11 +316,11 @@ export function GalleryHall({
                 <p className="font-display text-[30px] font-extrabold leading-[40px]" style={{ color: skin.sign.ink }}>
                   جدار {MONTHS[wallMonth]}
                 </p>
+                {/* سطرٌ واحد: كان سطرين فيختفي العددُ خلف حافّة اللوحة. */}
                 <p className="flex items-center gap-1.5 text-[12.5px] font-bold" style={{ color: skin.sign.muted }}>
                   <LockIcon size={12} /> خاص بك
-                </p>
-                <p className="text-[12px] opacity-85" style={{ color: skin.sign.muted }}>
-                  {ar(months.find((row) => row.month === wallMonth)?.count ?? 0)} لحظة
+                  <span className="opacity-60">·</span>
+                  <span className="font-semibold">{ar(months.find((row) => row.month === wallMonth)?.count ?? 0)} لحظة</span>
                 </p>
               </>
             ) : null}
@@ -335,8 +337,13 @@ export function GalleryHall({
           <div className="absolute inset-x-4 top-5 z-20 flex items-start justify-between" onPointerDown={(event) => event.stopPropagation()}>
             {/* الرجوعُ و«عرض اللحظات» على خطّ «آثار» والعلامة. */}
             <div className="mt-[9px] flex items-center gap-2">
-              <Link
-                href="/archive"
+              {/*
+                رجوعٌ إلى ما جاء منه لا رابطٌ إلى المدخل (القاعدة ٤٠٨): الرابطُ كان يدفع صفحةً جديدة، فيرجع
+                زرُّ المدخل بعده إلى القاعة — حلقةٌ لا يُخرج منها.
+              */}
+              <button
+                type="button"
+                onClick={goBack}
                 aria-label="رجوع"
                 className="flex h-[38px] w-[38px] items-center justify-center rounded-full"
                 style={{ background: skin.sign.bg, color: skin.sign.ink, boxShadow: SOFT }}
@@ -344,7 +351,7 @@ export function GalleryHall({
                 <span className="block -scale-x-100">
                   <BackIcon size={18} />
                 </span>
-              </Link>
+              </button>
               {months.length ? (
                 <button
                   type="button"

@@ -40,6 +40,8 @@ type Draft = {
   seconds: number;
   /** أوّلُ النافذة المختارة من مقطعٍ أطول من الحدّ (القاعدة ٢٤٩). */
   start: number;
+  /** وطولُها — يحدّده صاحبُه بمقبضين (القاعدة ٤٠٨). */
+  length: number;
 };
 
 /**
@@ -166,6 +168,7 @@ export default function NewStory() {
       video,
       seconds,
       start: 0,
+      length: Math.min(seconds, STORY_SECONDS),
     });
     // من الاستديو بنسبةٍ أخرى: كاملةً لا مقصوصة (القاعدة ٣٠٢).
     const fit = fitFrame(asset.width, asset.height, screen.width, screen.height);
@@ -190,9 +193,10 @@ export default function NewStory() {
       if (draft.video) {
         // الفلترُ يُطبع في المقطع على الخادم (القاعدة ٤٠٧) فلا يُرسَل مع القصّة: يراه كلُّ مشغّل.
         const look = filter ? filterOf(filter) : null;
-        const done = await uploadStoryVideo(draft.uri, draft.mime, draft.start, draft, look ? { matrix: look.matrix, vignette: look.vignette } : undefined);
+        const clip = draft.seconds > STORY_SECONDS ? draft.length : Math.min(draft.seconds, STORY_SECONDS);
+        const done = await uploadStoryVideo(draft.uri, draft.mime, draft.start, draft, look ? { matrix: look.matrix, vignette: look.vignette } : undefined, clip);
         mediaId = done.mediaId;
-        seconds = done.seconds || Math.min(draft.seconds, STORY_SECONDS);
+        seconds = done.seconds || clip;
       } else {
         mediaId = await uploadFile(draft.uri, draft.mime, "STORY", draft);
       }
@@ -230,7 +234,7 @@ export default function NewStory() {
           onLibrary={() => void pick()}
           onShot={(shot) => {
             setError(null);
-            setDraft({ ...shot, start: 0 });
+            setDraft({ ...shot, start: 0, length: Math.min(shot.seconds, STORY_SECONDS) });
             if (shot.video) dropSound();
           }}
         />
@@ -264,7 +268,18 @@ export default function NewStory() {
     <View style={{ flex: 1, backgroundColor: "#0b1219" }}>
       {/* اللوحةُ بملء الشاشة كما يراها المشاهد — فالنصُّ والملصقُ يقعان حيث وُضعا. */}
       {draft.video && long ? (
-        <VideoWindowPreview uri={draft.uri} start={draft.start} width={screen.width} height={screen.height} />
+        filter ? (
+          <FilteredVideo
+            uri={draft.uri}
+            filter={filter}
+            width={screen.width}
+            height={screen.height}
+            muted={muteVideo}
+            window={{ start: draft.start, length: draft.length, seconds: draft.seconds }}
+          />
+        ) : (
+          <VideoWindowPreview uri={draft.uri} start={draft.start} length={draft.length} width={screen.width} height={screen.height} muted={muteVideo} />
+        )
       ) : DEV_FEATURES ? (
         /* طبقةُ الصورة تأخذ ما لم يأخذه نصٌّ ولا ملصقٌ فوقها: سحبٌ وتقريبٌ ونقرتان تُعيدانها. */
         <View {...frameGesture.panHandlers} style={{ position: "absolute", left: 0, top: 0, width: screen.width, height: screen.height }}>
@@ -366,10 +381,12 @@ export default function NewStory() {
         {long ? (
           <GlassPill style={{ borderRadius: 20, padding: 12 }}>
             <View style={{ flex: 1, gap: 6 }}>
-              <VideoWindowBar seconds={draft.seconds} start={draft.start} onChange={(start) => setDraft((d) => (d ? { ...d, start } : d))} />
-              <Text style={{ color: "rgba(255,255,255,.75)", fontSize: 11, textAlign: "center" }}>
-                يُنشر {ar(STORY_SECONDS)} ثانية تختارها ويُضغط تلقائياً
-              </Text>
+              <VideoWindowBar
+                seconds={draft.seconds}
+                start={draft.start}
+                length={draft.length}
+                onChange={(start, length) => setDraft((d) => (d ? { ...d, start, length } : d))}
+              />
             </View>
           </GlassPill>
         ) : null}

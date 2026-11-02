@@ -121,11 +121,14 @@ async function thumbs(ids: string[], width: number): Promise<Map<string, string>
 
 const CSS = `
 /*
-  هامشٌ أعلى الورقة وأسفلها (القاعدة ٤٠٦): يومٌ أطولُ من ورقته يُكمل في التالية، وبلا هامشٍ كان
-  يبدأ ملتصقاً بحافّتها العليا وينتهي ملتصقاً بالسفلى. والغلافُ — أوّلُ ورقة — بلا هامش يملؤها.
+  الورقةُ ٥٦٠×٧٩٤ نقطة بنسبة A5 وهامشٌ ٤٥ أعلاها وأسفلها (القاعدة ٤٠٨) — ويرسلها الجوّالُ
+  بالأرقام نفسها إلى \`expo-print\`: طابعةُ آبل لا تقرأ \`@page\`، وتقيس الورقةَ بالنقطة فتُصغّر
+  صفحةً عرضُها ١٤٨ ملم (٥٦٠ بكسل) إلى ٤٢٠ نقطة إن طُلب A5 بالنقطة — فكان كلُّ شيءٍ ثلاثةَ أرباعه
+  وبقيّةُ الورقة فارغة، ويومٌ طويلٌ يُكمل في التالية ملتصقاً بحافّتها. هنا بكسلٌ لكلّ نقطة،
+  والهامشُ في كلّ ورقةٍ بلا استثناء: الغلافُ والخاتمةُ لوحان داخله. وهذه القاعدةُ لـChromium
+  وحده — به تُجرَّب الصفحاتُ على هيئتها في آبل.
 */
-@page { size: A5; margin: 12mm 0; }
-@page :first { margin: 0; }
+@page { size: 560px 794px; margin: 45px 0; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { direction: rtl; background: #FBF8F1; color: #182830;
   font-family: "IBM Plex Sans Arabic", "SF Arabic", "Geeza Pro", system-ui, sans-serif;
@@ -143,7 +146,8 @@ h1, h2, .display { font-family: "Tajawal", "IBM Plex Sans Arabic", sans-serif; }
 .page { width: 148mm; min-height: 180mm; padding: 6mm 14mm 10mm; break-before: page; page-break-before: always;
   position: relative; background: #FBF8F1; }
 .page:first-child { break-before: auto; page-break-before: auto; }
-.night { height: 195mm; overflow: hidden; box-shadow: 0 18mm 0 0 #08121a; }
+/* الغلافُ والخاتمةُ لوحان داخل الهامش (القاعدة ٤٠٨): ١٨٤ ملم أقلُّ من مساحة الورقة (١٨٦) فلا يفيض بشعرة. */
+.night, .skinc, .paperc, .minc, .end { height: 184mm; width: 140mm; margin: 0 auto; border-radius: 3mm; overflow: hidden; }
 .folio { counter-increment: folio; }
 .folio::after { content: counter(folio, arabic-indic); position: absolute; bottom: 3mm; left: 14mm;
   font-size: 9px; color: #9aa4a8; letter-spacing: .5px; }
@@ -223,7 +227,7 @@ h2 { font-size: 26px; font-weight: 800; margin-top: 3mm; }
 
 /* الأغلفةُ والإهداء — تجهيزُ الكتاب (القاعدة ٣٧٨) */
 .cover .title { font-size: 22px; font-weight: 800; margin-top: 7mm; line-height: 1.45; padding: 0 8mm; }
-.paperc { height: 195mm; overflow: hidden; background: #FBF8F1; color: #182830; }
+.paperc { overflow: hidden; background: #FBF8F1; color: #182830; border: 1px solid #E4DCC8; }
 .paperc .frame { position: absolute; inset: 9mm; border: 1px solid #D9C9A3; }
 .paperc .frame::after { content: ""; position: absolute; inset: 2mm; border: 1px solid #EBDFC4; }
 .paperc .eyebrow { color: #b07d1c; }
@@ -232,7 +236,7 @@ h2 { font-size: 26px; font-weight: 800; margin-top: 3mm; }
 .paperc .member { color: #8a949a; }
 .paperc .motto { color: #b07d1c; }
 .paperc .avatar { background: #FBF8F1; }
-.minc { height: 195mm; overflow: hidden; background: #EDE6D8; color: #182830; padding: 22mm 18mm; }
+.minc { overflow: hidden; background: #EDE6D8; color: #182830; padding: 22mm 18mm; }
 .minc .bar { position: absolute; right: 14mm; top: 22mm; width: 3px; height: 118mm; background: #FF7A5A; border-radius: 2px; }
 .minc .kicker { margin-right: 4mm; }
 .minc .ttl { font-size: 34px; font-weight: 800; line-height: 1.3; margin: 4mm 4mm 0 0; }
@@ -241,7 +245,7 @@ h2 { font-size: 26px; font-weight: 800; margin-top: 3mm; }
 .minc .logo { width: 44px; }
 .minc .mark { width: 34px; height: 34px; border-radius: 10px; }
 /* غلافُ المتجر (القاعدة ٤٠٥): ألوانُه في الصفحة نفسها، والنقشُ أو الصورةُ خلفه. */
-.skinc { height: 195mm; overflow: hidden; }
+.skinc { overflow: hidden; }
 .skinc .art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .skinc .art svg { width: 100%; height: 100%; display: block; }
 .skinc > :not(.art) { position: relative; }
@@ -252,7 +256,7 @@ h2 { font-size: 26px; font-weight: 800; margin-top: 3mm; }
 
 /* الخاتمة */
 .end { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
-  height: 182mm; box-shadow: none; border-radius: 3mm; background-size: cover; background-position: center; }
+  box-shadow: none; background-size: cover; background-position: center; }
 .end .big { font-family: "Tajawal", sans-serif; font-size: 22px; font-weight: 800; margin-top: 8mm; line-height: 1.5; }
 .end .gold { margin: 6mm auto 0; }
 .end .sub { font-size: 12px; color: rgba(247,245,239,.6); margin-top: 5mm; }

@@ -47,14 +47,17 @@ export const mediaRoutes = new Hono()
    * ٢٤٩). يُقرأ بلا مدقّق: النسخُ القديمة ترسل الطلب بلا جسمٍ أصلاً.
    */
   .post("/:id/commit", zValidator("param", z.object({ id: cuid })), async (c) => {
-    const body = (await c.req.json().catch(() => ({}))) as { start?: unknown; look?: unknown };
+    const body = (await c.req.json().catch(() => ({}))) as { start?: unknown; look?: unknown; length?: unknown };
     const start = Number(body.start);
+    // وطولُ ما اختاره صاحبُه بالمقبضين (القاعدة ٤٠٨) — بلاه الحدُّ كاملاً كما كان.
+    const length = Number(body.length);
     // وفلترُ مقطع القصّة (القاعدة ٤٠٧): يُطبع فيه أثناء الضغط. وما فسد يُترك — المقطعُ بلا فلتر.
     const look = LOOK.safeParse(body.look);
     return c.json(
       await upload.commit(me(c), c.req.valid("param").id, {
         start: Number.isFinite(start) ? Math.max(0, Math.min(start, 3600)) : 0,
         look: look.success ? look.data : null,
+        length: Number.isFinite(length) && length > 0 ? length : undefined,
       }),
     );
   })

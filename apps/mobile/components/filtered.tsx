@@ -3,6 +3,7 @@ import { Pressable, ScrollView, View } from "react-native";
 import {
   Canvas, ColorMatrix, Group, Image as SkiaImage, RadialGradient, Rect, Skia, useVideo, vec, type SkImage,
 } from "@shopify/react-native-skia";
+import { useAnimatedReaction, useSharedValue } from "react-native-reanimated";
 import { Text } from "./type";
 import { baseUrl, currentAccess } from "../lib/api";
 import { FILTERS, filterOf } from "../lib/filters";
@@ -158,6 +159,7 @@ export function FilteredVideo({
   height,
   muted = false,
   paused = false,
+  window,
 }: {
   uri: string;
   filter: string;
@@ -165,8 +167,26 @@ export function FilteredVideo({
   height: number;
   muted?: boolean;
   paused?: boolean;
+  /** نافذةُ مقطعٍ طويلٍ يُقصّ (القاعدة ٤٠٨): تدور المعاينةُ داخلها وحدها. */
+  window?: { start: number; length: number; seconds: number };
 }) {
-  const { currentFrame, rotation } = useVideo(uri, { looping: true, paused, volume: muted ? 0 : 1 });
+  const seek = useSharedValue<number | null>(null);
+  const { currentFrame, currentTime, duration, rotation } = useVideo(uri, { looping: true, paused, volume: muted ? 0 : 1, seek });
+  // وحدةُ Skia في الزمن تُقرأ من مدّة الملفّ نفسه: ملّي ثانيةٍ أو ثانية.
+  const unit = window && duration > window.seconds * 100 ? 1000 : 1;
+  const from = window ? window.start * unit : -1;
+  const to = window ? (window.start + window.length) * unit : -1;
+  useEffect(() => {
+    if (window) seek.value = from;
+  }, [from, window, seek]);
+  useAnimatedReaction(
+    () => currentTime.value,
+    (now) => {
+      if (from < 0) return;
+      if (now >= to || now < from - unit) seek.value = from;
+    },
+    [from, to, unit],
+  );
   const look = filterOf(filter);
   const turned = rotation === 90 || rotation === 270;
   const w = turned ? height : width;

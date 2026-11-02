@@ -71,7 +71,11 @@ export function SwipeRow({
 
   return (
     <div className="relative overflow-hidden" style={{ touchAction: "pan-y" }}>
-      <div className="absolute inset-y-0 flex" style={{ left: gap, width: reveal - gap }}>
+      {/*
+        الأفعالُ تحت الصفّ لا تُرسم ما دام مغلقاً (القاعدة ٤٠٨): هامشُ آخر ما في الصفّ كان ينفذ من
+        حاويته فيظهر تحته شريطُ القلم أو السلّة ملوّناً أسفل اللحظة والتعليق.
+      */}
+      <div className="absolute inset-y-0 flex" style={{ left: gap, width: reveal - gap, visibility: offset > 0 || open ? "visible" : "hidden" }}>
         {extra.map((action) => (
           <button
             key={action.label}
@@ -171,6 +175,8 @@ export function SwipeRow({
           axis.current = "none";
         }}
         style={{
+          // حاويةٌ تحبس هوامشَ ما فيها فلا ينكشف ما تحتها.
+          display: "flow-root",
           userSelect: "none",
           WebkitUserSelect: "none",
           transform: `translateX(${offset}px)`,
