@@ -77,7 +77,14 @@ function dayTitle(key: string): { title: string; weekday: string } {
 }
 
 /** بايتاتُ الملفّ مصغّرةً JPEG — من R2 أو من القاعدة، والفشلُ يُسقط الصورة لا الكتاب. */
+type Thumb = { src: string; w: number; h: number };
+
 async function thumb(mediaId: string, width: number): Promise<string | null> {
+  return (await sized(mediaId, width))?.src ?? null;
+}
+
+/** المصغّرةُ ومقاسُها: الورقةُ تُوزَّع قبل أن تُفكّ الصور، فلا بدّ أن يُعرف ارتفاعُها من مقاسها. */
+async function sized(mediaId: string, width: number): Promise<Thumb | null> {
   try {
     const media = await prisma.media.findUnique({
       where: { id: mediaId },
@@ -99,19 +106,19 @@ async function thumb(mediaId: string, width: number): Promise<string | null> {
       .resize({ width, withoutEnlargement: true })
       .flatten({ background: "#ffffff" })
       .jpeg({ quality: 72 })
-      .toBuffer();
-    return `data:image/jpeg;base64,${out.toString("base64")}`;
+      .toBuffer({ resolveWithObject: true });
+    return { src: `data:image/jpeg;base64,${out.data.toString("base64")}`, w: out.info.width, h: out.info.height };
   } catch {
     return null;
   }
 }
 
 /** صورٌ كثيرة بالتوازي بلا أن تُغرق الخادم: ثمانٍ معاً. */
-async function thumbs(ids: string[], width: number): Promise<Map<string, string>> {
-  const out = new Map<string, string>();
+async function thumbs(ids: string[], width: number): Promise<Map<string, Thumb>> {
+  const out = new Map<string, Thumb>();
   for (let index = 0; index < ids.length; index += 8) {
     const slice = ids.slice(index, index + 8);
-    const done = await Promise.all(slice.map((id) => thumb(id, width)));
+    const done = await Promise.all(slice.map((id) => sized(id, width)));
     slice.forEach((id, i) => {
       if (done[i]) out.set(id, done[i]!);
     });
@@ -128,29 +135,27 @@ const CSS = `
   والهامشُ في كلّ ورقةٍ بلا استثناء: الغلافُ والخاتمةُ لوحان داخله. وهذه القاعدةُ لـChromium
   وحده — به تُجرَّب الصفحاتُ على هيئتها في آبل.
 */
-@page { size: 560px 794px; margin: 45px 0; }
+@page { size: 560px 794px; margin: 0; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { direction: rtl; background: #FBF8F1; color: #182830;
   font-family: "IBM Plex Sans Arabic", "SF Arabic", "Geeza Pro", system-ui, sans-serif;
   -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-body { counter-reset: folio; }
 h1, h2, .display { font-family: "Tajawal", "IBM Plex Sans Arabic", sans-serif; }
 /*
-  لا صفحةَ تملأ ورقتها: الجوّالُ يرسم المستند شريطاً طويلاً ويقطعه على ارتفاع الورقة،
-  وقياسُ الورقة بوحدات CSS يتغيّر بتصغيرٍ لا نملكه — فصفحةٌ تساويها تفيض بشعرةٍ
-  وتجرّ ورقةً بيضاء (جُرّبت ٢١٠ ثمّ ٢٠٩٫٥ وبقي). فكلُّ صفحةٍ **تبدأ** ورقةً جديدة
-  (break-before) ولا تُجبر ما بعدها، وأدناها ١٩٥ مم بفُسحةٍ واسعة؛ وما بقي من
-  الورقة كريميٌّ على كريميّ لا يُرى. والصفحاتُ الداكنة تمدّ لونها بظلٍّ تحتها حتى
-  حافّة الورقة، والصفحةُ بعدها تُرسم فوقه.
+  الورقةُ تُرصف بأيدينا لا بالطابعة (القاعدة ٤١٠): هامشُ \`expo-print\` يُرسم خارج الصفحة أبيضَ
+  فوق الكريميّ وتحته، ويومٌ يُكمل في الورقة التالية ملتصقاً بحافّتها. فكلُّ ورقةٍ \`.sheet\` بارتفاعٍ
+  ثابت أقلَّ من الورقة بشعرة — صفحةٌ تساويها تفيض وتجرّ ورقةً بيضاء — وبحشوتها هامشاً، وسكربتُ
+  آخر الصفحة يوزّع لحظاتِ اليوم على أوراقه ويكتب في ركنها الأيمن الأسفل «آثار مومنتس · السنة · الرقم».
+  والغلافُ والخاتمةُ لوحان داخل ورقتهما.
 */
-.page { width: auto; min-height: 176mm; padding: 6mm 14mm 10mm; break-before: page; page-break-before: always;
-  position: relative; background: #FBF8F1; }
-.page:first-child { break-before: auto; page-break-before: auto; }
-/* الغلافُ والخاتمةُ لوحان داخل الهامش (القاعدة ٤٠٨): ١٨٤ ملم أقلُّ من مساحة الورقة (١٨٦) فلا يفيض بشعرة. */
-.night, .skinc, .paperc, .minc, .end { height: 180mm; width: auto; margin: 0 4mm; border-radius: 3mm; overflow: hidden; }
-.folio { counter-increment: folio; }
-.folio::after { content: attr(data-run) "   ·   " counter(folio, arabic-indic); display: block; text-align: center;
-  margin-top: 10mm; font-size: 9px; color: #9aa4a8; letter-spacing: .5px; }
+.sheet { position: relative; height: 790px; overflow: hidden; padding: 16mm 14mm 18mm; background: #FBF8F1;
+  break-before: page; page-break-before: always; break-inside: avoid; page-break-inside: avoid; }
+.sheet:first-child { break-before: auto; page-break-before: auto; }
+.sheet.board { padding: 14px 14px; }
+.page { position: relative; }
+.sheet.board > .page, .sheet > .month, .sheet > .dedication { height: 100%; }
+.night, .skinc, .paperc, .minc, .end { width: auto; margin: 0; border-radius: 3mm; overflow: hidden; }
+.folio-line { position: absolute; bottom: 8mm; right: 14mm; font-size: 9px; color: #9aa4a8; letter-spacing: .5px; }
 .rule { height: 1px; background: #E4DCC8; }
 .gold { height: 2px; width: 36px; background: #F6B93B; border-radius: 2px; }
 
@@ -183,7 +188,7 @@ h2 { font-size: 26px; font-weight: 800; margin-top: 3mm; }
 .note { font-size: 10.5px; color: #8a949a; margin-top: 6mm; line-height: 1.7; }
 
 /* فاصلُ الشهر */
-.month { display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 30mm; }
+.month { display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 22mm; }
 .month .ghost { position: absolute; top: 10mm; left: 8mm; font-family: "Tajawal", sans-serif; font-size: 200px; font-weight: 800; color: #F1E8D2; line-height: 1; }
 .month .y { font-size: 11px; letter-spacing: 3px; color: #b07d1c; }
 .month .m { font-family: "Tajawal", sans-serif; font-size: 54px; font-weight: 800; line-height: 1.1; margin-top: 2mm; position: relative; }
@@ -208,7 +213,7 @@ h2 { font-size: 26px; font-weight: 800; margin-top: 3mm; }
 .meta { font-size: 10.5px; color: #8a949a; margin-bottom: 2mm; letter-spacing: .2px; }
 .text { font-size: 13.5px; line-height: 1.8; white-space: pre-wrap; word-wrap: break-word; }
 .text.big { font-family: "Tajawal", sans-serif; font-size: 18px; font-weight: 700; line-height: 1.55; }
-.photo { width: 100%; aspect-ratio: 5 / 4; max-height: 78mm; object-fit: cover; border-radius: 10px; margin: 0 auto 2.5mm; display: block;
+.photo { height: auto; border-radius: 10px; margin: 0 auto 2.5mm; display: block;
   box-shadow: 0 1px 0 #E4DCC8, 0 6px 16px rgba(14,26,36,.08); }
 .with { font-size: 11.5px; color: #3c4a52; margin-top: 1.5mm; }
 .with b { font-weight: 700; }
@@ -268,7 +273,7 @@ function skinCoverHtml(
 ): string {
   const pattern = art ? `<img class="art" src="${art}">` : bookPatternSvg(skin) ? `<div class="art">${bookPatternSvg(skin)}</div>` : "";
   return `
-    <section class="page cover skinc" style="background: linear-gradient(170deg, ${skin.bg}, ${skin.bg2}); color: ${skin.ink}; box-shadow: 0 18mm 0 0 ${skin.bg2};">
+    <section class="page cover skinc" style="background: linear-gradient(170deg, ${skin.bg}, ${skin.bg2}); color: ${skin.ink};">
       ${pattern}
       ${MARK}
       <div class="eyebrow">كتاب السنة</div>
@@ -371,8 +376,49 @@ function themedCss(cover: OwnedCover | null, paperArt: string | null, endArt: st
   return `${fluid(css)}
 .end { background: ${pal.end}${endArt ? ` url("${endArt}") center / cover no-repeat` : ""}; color: ${pal.endInk}; }
 .end .sub { color: ${pal.endSoft}; }
-${paperArt ? `.page:not(.cover):not(.end) { background: ${pal.paper} url("${paperArt}") center / cover no-repeat; }` : ""}`;
+${paperArt ? `.sheet:not(.board) { background: ${pal.paper} url("${paperArt}") center / cover no-repeat; }` : ""}`;
 }
+
+/*
+  الصورةُ بنسبتها كما في اللحظات لا مقصوصةً في ٥:٤ (القاعدة ٤١٠): عرضُها نسبةٌ من عمودها تكفل
+  ألّا يزيد ارتفاعُها على عرض العمود — المربّعةُ والعرضيّةُ بعرضه كلّه، والطوليّةُ أضيقُ في الوسط.
+*/
+function photoStyle({ w, h }: Thumb): string {
+  const pct = Math.min(100, Math.round((w / h) * 100));
+  return `width:${pct}%;aspect-ratio:${w}/${h}`;
+}
+
+/*
+  يُوزّع الصفحاتِ على أوراقٍ بارتفاعٍ ثابت (القاعدة ٤١٠): لحظاتُ اليوم واحدةً واحدة، وما لا يتّسع
+  في ورقته يبدأ ورقةً بعدها. ويُعاد حين تجهز الخطوط فيُقاس بالخطّ الذي يُطبع به.
+*/
+const PAGINATE = `(function(){
+var body=document.body;
+var proto=[].slice.call(body.children).filter(function(e){return e.tagName==='SECTION';}).map(function(e){return e.cloneNode(true);});
+var BOARD=/(^| )(cover|night|end|minc|skinc|paperc)( |$)/;
+function ar(n){return String(n).replace(/[0-9]/g,function(d){return '٠١٢٣٤٥٦٧٨٩'[d];});}
+function sheet(board){var d=document.createElement('div');d.className='sheet'+(board?' board':'');body.appendChild(d);return d;}
+function room(sh){var r=sh.getBoundingClientRect();return r.bottom-parseFloat(getComputedStyle(sh).paddingBottom);}
+function build(){
+  body.innerHTML='';var n=0;
+  function mark(sh,s){n++;if(!/(^| )folio( |$)/.test(s.className))return;var f=document.createElement('div');f.className='folio-line';f.textContent=(s.getAttribute('data-run')||'')+'   ·   '+ar(n);sh.appendChild(f);}
+  proto.forEach(function(orig){
+    var s=orig.cloneNode(true);var board=BOARD.test(s.className);var tl=s.querySelector('.timeline');
+    var sh=sheet(board);sh.appendChild(s);mark(sh,s);
+    if(board||!tl)return;
+    var items=[].slice.call(tl.children);tl.innerHTML='';var cur=tl,curSheet=sh;
+    items.forEach(function(it){
+      cur.appendChild(it);
+      if(it.getBoundingClientRect().bottom>room(curSheet)+1&&cur.children.length>1){
+        cur.removeChild(it);var c=s.cloneNode(false);var t=tl.cloneNode(false);c.appendChild(t);
+        curSheet=sheet(false);curSheet.appendChild(c);mark(curSheet,c);t.appendChild(it);cur=t;
+      }
+    });
+  });
+}
+build();
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(build);
+})();`;
 
 /** الكتابُ صفحةَ HTML واحدة، والجوّالُ يطبعها. */
 export async function bookHtml(userId: string, year: number): Promise<{ html: string; name: string }> {
@@ -482,7 +528,7 @@ export async function bookHtml(userId: string, year: number): Promise<{ html: st
             <div class="body">
               <div class="meta">${clock(moment.createdAt)}${where}</div>
               ${moment.story ? `<div class="story">${esc(moment.story)}</div>` : ""}
-              ${photo ? `<img class="photo" src="${photo}" style="object-position:${moment.photoX ?? 50}% ${moment.photoY ?? 50}%">` : ""}
+              ${photo ? `<img class="photo" src="${photo.src}" width="${photo.w}" height="${photo.h}" style="${photoStyle(photo)}">` : ""}
               ${own ? `<div class="text${photo ? "" : " big"}">${esc(own)}</div>` : ""}
               ${moment.echoText ? `<div class="echo">${glyph(moment.echo?.top)}<span>${esc(moment.echoText)}</span></div>` : ""}
               ${quote ? `<div class="quote">«${esc(quote.text)}»<cite>— ${esc(quote.name)}</cite></div>` : ""}
@@ -522,6 +568,6 @@ export async function bookHtml(userId: string, year: number): Promise<{ html: st
   const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;700&family=Tajawal:wght@700;800&display=swap" rel="stylesheet">
-<style>${themedCss(data.coverSkin, paperArt, endArt)}</style></head><body>${pages.join("")}</body></html>`;
+<style>${themedCss(data.coverSkin, paperArt, endArt)}</style></head><body>${pages.join("")}<script>${PAGINATE}</script></body></html>`;
   return { html, name: `athar-${year}` };
 }
