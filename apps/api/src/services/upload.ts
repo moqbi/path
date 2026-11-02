@@ -21,6 +21,7 @@ import {
   extractAudio,
   measure,
   probeClip,
+  scrubChnl,
   processImage,
   squareAvatar,
 } from "../lib/process";
@@ -291,6 +292,16 @@ async function shape(
   bytes: Uint8Array,
   start = 0,
 ): Promise<{ mime: string; width: number; height: number; seconds?: number; peaks?: number[] }> {
+  // صندوقُ `chnl` الذي يكتبه آبل ٢٦ ولا يقرؤه ffmpeg 6 يُطمس، ويُكتب الملفُّ المصحَّح مكان الأصل
+  // فيقرؤه كلُّ مشغّلٍ بعده (القاعدة ٤٠٣). يسري على الصوت والمقطع: الكاميرا تكتبه أيضاً.
+  if (mime.startsWith("audio/mp4") || mime.startsWith("video/")) {
+    const clean = scrubChnl(bytes);
+    if (clean) {
+      bytes = clean;
+      await putObject(key, bytes, mime);
+    }
+  }
+
   /*
     مصدرُ الصوت يُستبدل بصوته وحده: المقطعُ الأصليّ لا يبقى في الدلو لحظةً بعد
     هذا (القاعدة ٢٣٨)، وما يُحفظ M4A يُقصّ منه عند النشر. ومعه موجتُه لشريط القصّ.
