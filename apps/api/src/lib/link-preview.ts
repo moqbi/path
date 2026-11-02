@@ -1,5 +1,7 @@
-import { lookup } from "node:dns/promises";
-import { isIP } from "node:net";
+import { lookup as dnsLookup, type LookupAddress } from "node:dns";
+import { get as httpGet } from "node:http";
+import { get as httpsGet } from "node:https";
+import { BlockList, isIP, type LookupFunction } from "node:net";
 import sharp from "sharp";
 
 /**
@@ -130,94 +132,130 @@ function safeShape(url: URL): boolean {
   return true;
 }
 
-/** يُحلّ الاسمُ ويُردّ إن كان أيٌّ من عناوينه خاصّاً — قبل كلّ طلبٍ وكلّ تحويلة. */
-async function publicHost(host: string): Promise<boolean> {
-  const bare = host.replace(/^\[|\]$/g, "");
-  if (isIP(bare)) return !privateIp(bare);
-  try {
-    const all = await lookup(bare, { all: true, verbatim: true });
-    return all.length > 0 && all.every((one) => !privateIp(one.address));
-  } catch {
-    return false;
+/*
+  الحارسُ في **الاتّصال نفسه** لا قبله: كان الاسمُ يُحلّ ويُفحص ثمّ يُطلب بـ`fetch`
+  الذي يحلّه ثانيةً — واسمٌ يردّ عنواناً عامّاً للفحص وخاصّاً للطلب (DNS rebinding)
+  كان يعبر إلى ما خلف الجدار. الآن `lookup` الطلبِ هو الذي يفحص، فما يُتّصل به هو
+  ما فُحص. و`BlockList` يفهم صيغَ IPv6 كلَّها والمعيّنةَ من IPv4 (`::ffff:7f00:1`).
+*/
+const BLOCKED = new BlockList();
+for (const [net, bits] of [
+  ["0.0.0.0", 8], ["10.0.0.0", 8], ["100.64.0.0", 10], ["127.0.0.0", 8], ["169.254.0.0", 16],
+  ["172.16.0.0", 12], ["192.0.0.0", 24], ["192.0.2.0", 24], ["192.168.0.0", 16], ["198.18.0.0", 15],
+  ["198.51.100.0", 24], ["203.0.113.0", 24], ["224.0.0.0", 3],
+] as const) BLOCKED.addSubnet(net, bits, "ipv4");
+for (const [net, bits] of [
+  ["::", 128], ["::1", 128], ["64:ff9b::", 96], ["64:ff9b:1::", 48], ["100::", 64],
+  ["2001:db8::", 32], ["2002::", 16], ["fc00::", 7], ["fe80::", 10], ["fec0::", 10], ["ff00::", 8],
+] as const) BLOCKED.addSubnet(net, bits, "ipv6");
+
+export function privateIp(ip: string): boolean {
+  const kind = isIP(ip);
+  if (kind === 4) return BLOCKED.check(ip, "ipv4");
+  if (kind === 6) {
+    // المعيّنُ من IPv4 يُفحص بعنوانه الرباعيّ: `::ffff:8.8.8.8` عامٌّ لا خاصّ.
+    const low = ip.toLowerCase();
+    const dotted = low.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+    if (dotted) return BLOCKED.check(dotted[1], "ipv4");
+    const hex = low.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+    if (hex) {
+      const hi = parseInt(hex[1], 16);
+      const lo = parseInt(hex[2], 16);
+      return BLOCKED.check(`${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`, "ipv4");
+    }
+    return BLOCKED.check(ip, "ipv6");
   }
+  return true;
 }
 
-function privateIp(ip: string): boolean {
-  if (isIP(ip) === 4) {
-    const [a, b] = ip.split(".").map(Number);
-    return (
-      a === 0 ||
-      a === 10 ||
-      a === 127 ||
-      (a === 100 && b >= 64 && b <= 127) ||
-      (a === 169 && b === 254) ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 168) ||
-      (a === 198 && (b === 18 || b === 19)) ||
-      a >= 224
-    );
-  }
-  const low = ip.toLowerCase();
-  if (low === "::" || low === "::1") return true;
-  const mapped = low.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-  if (mapped) return privateIp(mapped[1]);
-  return low.startsWith("fc") || low.startsWith("fd") || low.startsWith("fe8") || low.startsWith("fe9") || low.startsWith("fea") || low.startsWith("feb") || low.startsWith("ff");
-}
+/** `lookup` للطلب: يحلّ ويرفض ما كان خاصّاً، فالاتّصالُ بما فُحص وحده. */
+const guardedLookup: LookupFunction = (hostname, options, callback) => {
+  dnsLookup(hostname, { ...options, all: true, verbatim: true }, (error, addresses) => {
+    if (error) return callback(error, "", 0);
+    const list = addresses as unknown as LookupAddress[];
+    if (!list.length || list.some((one) => privateIp(one.address))) {
+      return callback(Object.assign(new Error("blocked address"), { code: "EBLOCKED" }), "", 0);
+    }
+    if ((options as { all?: boolean }).all) return (callback as unknown as (e: null, a: LookupAddress[]) => void)(null, list);
+    callback(null, list[0].address, list[0].family);
+  });
+};
 
 type Got = { url: URL; type: string; bytes: Buffer };
 
 async function fetchSafe(start: URL, accept: string, cap: number): Promise<Got | null> {
   let url = start;
   for (let hop = 0; hop <= MAX_HOPS; hop++) {
-    if (!safeShape(url) || !(await publicHost(url.hostname))) return null;
-    const res = await fetch(url, {
-      redirect: "manual",
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-      headers: {
-        accept,
-        "accept-language": "ar,en;q=0.8",
-        // بعضُ المواقع لا تُعطي وسومَها إلا لزاحفٍ معروف الاسم.
-        "user-agent": "Mozilla/5.0 (compatible; AtharLinkPreview/1.0; +https://atharmts.com)",
-      },
-    });
+    if (!safeShape(url)) return null;
+    // عنوانٌ مكتوبٌ رقماً لا يمرّ بـ`lookup` أصلاً — فيُفحص هنا.
+    const bare = url.hostname.replace(/^\[|\]$/g, "");
+    if (isIP(bare) && privateIp(bare)) return null;
+    const res = await request(url, accept, cap);
+    if (!res) return null;
     if (res.status >= 300 && res.status < 400) {
-      const next = res.headers.get("location");
-      await res.body?.cancel().catch(() => {});
-      if (!next) return null;
-      url = new URL(next, url);
+      if (!res.location) return null;
+      url = new URL(res.location, url);
       continue;
     }
-    if (!res.ok || !res.body) {
-      await res.body?.cancel().catch(() => {});
-      return null;
-    }
-    const declared = Number(res.headers.get("content-length") ?? 0);
-    if (declared > cap) {
-      await res.body.cancel().catch(() => {});
-      return null;
-    }
-    const bytes = await readCapped(res.body, cap);
-    return { url, type: res.headers.get("content-type") ?? "", bytes };
+    if (res.status < 200 || res.status >= 300) return null;
+    return { url, type: res.type, bytes: res.bytes };
   }
   return null;
 }
 
-/** يقرأ حتى السقف ويقطع — رأسُ الصفحة فيه الوسوم، وما بعده لا يلزم. */
-async function readCapped(body: ReadableStream<Uint8Array>, cap: number): Promise<Buffer> {
-  const reader = body.getReader();
-  const parts: Uint8Array[] = [];
-  let size = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done || !value) break;
-    parts.push(value);
-    size += value.length;
-    if (size >= cap) {
-      await reader.cancel().catch(() => {});
-      break;
-    }
-  }
-  return Buffer.concat(parts).subarray(0, cap);
+type Raw = { status: number; location: string | null; type: string; bytes: Buffer };
+
+/** طلبٌ واحد بلا تحويلات، بمهلةٍ وسقفِ بايتات — والتحويلةُ يتبعها `fetchSafe` بحارسه. */
+function request(url: URL, accept: string, cap: number): Promise<Raw | null> {
+  return new Promise((resolve) => {
+    const get = url.protocol === "https:" ? httpsGet : httpGet;
+    let done = false;
+    const finish = (value: Raw | null) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      resolve(value);
+    };
+    const req = get(
+      url,
+      {
+        lookup: guardedLookup,
+        headers: {
+          accept,
+          "accept-language": "ar,en;q=0.8",
+          // بعضُ المواقع لا تُعطي وسومَها إلا لزاحفٍ معروف الاسم.
+          "user-agent": "Mozilla/5.0 (compatible; AtharLinkPreview/1.0; +https://atharmts.com)",
+        },
+      },
+      (res) => {
+        const status = res.statusCode ?? 0;
+        const location = typeof res.headers.location === "string" ? res.headers.location : null;
+        const type = String(res.headers["content-type"] ?? "");
+        if (status < 200 || status >= 300 || Number(res.headers["content-length"] ?? 0) > cap) {
+          res.destroy();
+          return finish({ status, location, type, bytes: Buffer.alloc(0) });
+        }
+        const parts: Buffer[] = [];
+        let size = 0;
+        res.on("data", (chunk: Buffer) => {
+          parts.push(chunk);
+          size += chunk.length;
+          // رأسُ الصفحة فيه الوسوم، وما بعد السقف لا يلزم.
+          if (size >= cap) {
+            res.destroy();
+            finish({ status, location, type, bytes: Buffer.concat(parts).subarray(0, cap) });
+          }
+        });
+        res.on("end", () => finish({ status, location, type, bytes: Buffer.concat(parts) }));
+        res.on("error", () => finish(null));
+      },
+    );
+    const timer = setTimeout(() => {
+      req.destroy();
+      finish(null);
+    }, TIMEOUT_MS);
+    req.on("error", () => finish(null));
+  });
 }
 
 function decode(bytes: Buffer, type: string): string {
