@@ -41,7 +41,7 @@ import { PlusGrant } from "./plus";
 import { CoinsGrant } from "./coins";
 import { SITE_TEXT, siteText, siteImage, type SiteKey } from "@/lib/site";
 import { ItemImage } from "./item-image";
-import { HallImages, ItemCover, ItemPromo } from "./item-cover";
+import { BookImages, HallImages, ItemCover, ItemPromo } from "./item-cover";
 import { BundleItems } from "./bundle";
 import { CollectionsView, ItemHideAt, ItemPlans } from "./store-extras";
 import { InvitesView } from "./invites";
@@ -307,30 +307,42 @@ function HallFields({ hall }: { hall: string | null }) {
  */
 function BookFields({ skin }: { skin: string | null }) {
   const now = bookSkinOf(skin);
+  const PARTS = [
+    { part: "cover", title: "الغلاف", hint: "الشعار والسنة والعنوان وصورة صاحبه فوق اللون والنقش — أو فوق «صورة الغلاف» إن رُفعت." },
+    { part: "paper", title: "الورق", hint: "كلّ صفحةٍ داخل الكتاب: المقدّمة وفواصل الشهور والأيّام والإهداء — ودرجاتُ الخطوط والاقتباس تُشتقّ منها." },
+    { part: "end", title: "الخاتمة", hint: "آخر صفحة: «… لحظة تركت أثرها» على هذا اللون أو «صورة الخاتمة»." },
+  ] as const;
   return (
     <details className="rounded-xl border border-line" open>
       <summary className="flex cursor-pointer list-none items-center justify-between p-3">
-        <span className="text-[12.5px] font-semibold">ثوب الغلاف</span>
-        <span className="text-[11px] text-muted">ألوانٌ ونقش</span>
+        <span className="text-[12.5px] font-semibold">ثوب الكتاب</span>
+        <span className="text-[11px] text-muted">الغلاف والورق والخاتمة</span>
       </summary>
-      <div className="flex flex-col gap-2 border-t border-line p-3">
-        <div className="flex flex-wrap gap-2">
-          {BOOK_SKIN_FIELDS.map((field) => (
-            <Color key={field.key} name={`book.${field.key}`} label={field.label} value={now[field.key]} />
-          ))}
-        </div>
-        <Field label="النقش">
-          <select name="book.pattern" defaultValue={now.pattern} className={SELECT} style={{ height: 46 }}>
-            {BOOK_PATTERNS.map((one) => (
-              <option key={one} value={one}>
-                {BOOK_PATTERN_LABEL[one]}
-              </option>
-            ))}
-          </select>
-        </Field>
+      <div className="flex flex-col gap-3 border-t border-line p-3">
+        {PARTS.map(({ part, title, hint }) => (
+          <div key={part} className="flex flex-col gap-2">
+            <p className="text-[12px] font-semibold">{title}</p>
+            <div className="flex flex-wrap gap-2">
+              {BOOK_SKIN_FIELDS.filter((field) => field.part === part).map((field) => (
+                <Color key={field.key} name={`book.${field.key}`} label={field.label} value={now[field.key]} />
+              ))}
+            </div>
+            {part === "cover" ? (
+              <Field label="النقش (اختياريّ)">
+                <select name="book.pattern" defaultValue={now.pattern} className={SELECT} style={{ height: 46 }}>
+                  {BOOK_PATTERNS.map((one) => (
+                    <option key={one} value={one}>
+                      {BOOK_PATTERN_LABEL[one]}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            ) : null}
+            <p className="text-[10.5px] leading-relaxed text-faint">{hint}</p>
+          </div>
+        ))}
         <p className="text-[10.5px] leading-relaxed text-faint">
-          الغلاف بتخطيط «ليلي»: الشعار والسنة والعنوان وصورة صاحبه. وإن رُفعت للصنف صورةٌ ملأت الغلاف بدل
-          النقش — فاختر الحبر بما يُقرأ فوقها.
+          والصور الثلاث (الغلاف والورق والخاتمة) تُرفع من «صور الكتاب» في صفحة الصنف بعد حفظه.
         </p>
       </div>
     </details>
@@ -1617,6 +1629,9 @@ export default async function AdminPage({
                         </summary>
 
                         <div className="border-t border-line p-3.5">
+                          {/* غلافُ الكتاب صورُه في «صور الكتاب» تحته: الغلافُ والورقُ والخاتمة (القاعدة ٤٠٦). */}
+                          {item.kind === "BOOK" ? null : (
+                          <>
                           <p className="mb-2 text-[12px] font-semibold text-muted">الصورة</p>
                           <ItemImage
                             itemId={item.id}
@@ -1625,6 +1640,16 @@ export default async function AdminPage({
                             mime={item.media?.mime ?? null}
                             hole={item.frameHole}
                           />
+                          </>
+                          )}
+                          {item.kind === "BOOK" ? (
+                            <BookImages
+                              itemId={item.id}
+                              cover={item.mediaId}
+                              paper={item.bookPaperMediaId}
+                              end={item.bookEndMediaId}
+                            />
+                          ) : null}
                           {/* مُدَدُ الشراء — للإطار والتشارم والثيم. والمجموعةُ في النموذج تحت. */}
                           {item.kind !== "BUNDLE" ? <ItemPlans itemId={item.id} /> : null}
                           <ItemHideAt itemId={item.id} />

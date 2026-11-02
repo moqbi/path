@@ -1028,7 +1028,15 @@ export async function clearItemPromo(itemId: string): Promise<void> {
  * صورُ قاعة المعرض (القاعدة ٣٥٠): نقشُ الجدار، ونقشُ الأرضيّة، وإطارُ الصورة. الخانةُ من
  * قائمةٍ مغلقة — اسمُ عمودٍ يأتي من النموذج لا يُكتب كما هو — والسابقةُ تذهب ببكسلاتها.
  */
-const HALL_IMAGE = { wall: "hallWallMediaId", floor: "hallFloorMediaId", frame: "hallFrameMediaId" } as const;
+const HALL_IMAGE = {
+  wall: "hallWallMediaId",
+  floor: "hallFloorMediaId",
+  frame: "hallFrameMediaId",
+  // وصورُ ثوب الكتاب (القاعدة ٤٠٦): الغلافُ صورةُ الصنف نفسها، والورقُ والخاتمة.
+  bookCover: "mediaId",
+  bookPaper: "bookPaperMediaId",
+  bookEnd: "bookEndMediaId",
+} as const;
 type HallSlot = keyof typeof HALL_IMAGE;
 
 export async function setHallImage(itemId: string, slot: HallSlot, formData: FormData): Promise<void> {

@@ -1,5 +1,5 @@
 import { Spinner } from "../../../components/spinner";
-import { useState } from "react";
+import { createContext, useContext, useState } from "react";
 import { View, FlatList, Pressable, Alert, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -17,7 +17,7 @@ import { canDownloadBook, downloadBook } from "../../../lib/book-pdf";
 import { colors } from "../../../theme/tokens";
 import { SparkIcon } from "../../../components/icons";
 import { BookCoverPage } from "../../../components/book-cover";
-import { BOOK_SECTION_LABEL, bookBlocks, DEFAULT_BOOK_PREFS, type BookSection } from "@athar/shared";
+import { BOOK_PALETTE, BOOK_SECTION_LABEL, bookBlocks, bookPalette, DEFAULT_BOOK_PREFS, type BookPalette, type BookSection } from "@athar/shared";
 
 type Day = { day: string; moments: BookMoment[] };
 
@@ -65,6 +65,7 @@ export default function YearBook() {
   });
 
   const data = book.data;
+  const pal = bookPalette(data?.coverSkin?.skin);
   const pages: Page[] = [];
   if (data) {
     const days = daysOf(data);
@@ -140,6 +141,7 @@ export default function YearBook() {
       {!data ? (
         <Spinner style={{ marginTop: 40 }} color={colors.clay} />
       ) : (
+        <Pal.Provider value={pal}>
         <FlatList
           data={pages}
           keyExtractor={(page, i) => (page.type === "day" ? page.day.day : page.type === "intro" ? `intro-${page.ids.join("-")}` : `${page.type}-${i}`)}
@@ -149,7 +151,7 @@ export default function YearBook() {
               style={{
                 minHeight: item.type === "day" || item.type === "intro" ? undefined : item.type === "month" || item.type === "dedication" ? height * 0.42 : height * 0.62,
                 borderRadius: 6,
-                backgroundColor: PAPER,
+                backgroundColor: item.type === "end" ? pal.end : pal.paper,
                 overflow: "hidden",
                 shadowColor: "#000",
                 shadowOpacity: 0.35,
@@ -158,38 +160,42 @@ export default function YearBook() {
                 elevation: 6,
               }}
             >
+              {/* صورةُ الورق تحت كلّ صفحة، وصورةُ الخاتمة تحت صفحتها (القاعدة ٤٠٦). الغلافُ يرسم صورتَه بنفسه. */}
+              {item.type === "cover" ? null : (item.type === "end" ? data.coverSkin?.endMediaId : data.coverSkin?.paperMediaId) ? (
+                <MediaImage
+                  mediaId={(item.type === "end" ? data.coverSkin!.endMediaId : data.coverSkin!.paperMediaId)!}
+                  resizeMode="cover"
+                  style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+                />
+              ) : null}
               <PageBody page={item} book={data} onOpen={(id) => router.push(`/m/${id}` as never)} />
             </View>
           )}
         />
+        </Pal.Provider>
       )}
     </SafeAreaView>
   );
 }
 
-// ورقُ الكتاب وحبرُه — كالـPDF حرفاً بحرف (`book-print.ts`)، لا ألوانُ الثيم.
-const PAPER = "#FBF8F1";
-const INK = "#182830";
-const RULE = "#E4DCC8";
-const MUTED = "#8a949a";
-const KICKER = "#b07d1c";
-const NIGHT = "#0E1A24";
-const GOLD = "#F6B93B";
-// صوتُ الراوي: بنّيٌّ دافئ يفصله عن كلام صاحب اللحظة (القاعدة ٢٥٩).
-const STORY = "#6a5420";
+// ورقُ الكتاب وحبرُه — كالـPDF حرفاً بحرف (`book-print.ts`)، لا ألوانُ الثيم؛ ومع غلافٍ من
+// المتجر ألوانُ ثوبه (القاعدة ٤٠٦) — `bookPalette` نفسها في الأوجه الثلاثة.
+const Pal = createContext<BookPalette>(BOOK_PALETTE);
 
 function Gold({ center }: { center?: boolean }) {
-  return <View style={{ width: 36, height: 2, borderRadius: 2, backgroundColor: GOLD, alignSelf: center ? "center" : "flex-start" }} />;
+  const P = useContext(Pal);
+  return <View style={{ width: 36, height: 2, borderRadius: 2, backgroundColor: P.gold, alignSelf: center ? "center" : "flex-start" }} />;
 }
 
 function PageBody({ page, book, onOpen }: { page: Page; book: Book; onOpen: (id: string) => void }) {
+  const P = useContext(Pal);
   if (page.type === "cover") return <BookCoverPage book={book} skin={book.coverSkin} />;
 
   if (page.type === "dedication") {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 32 }}>
         <Gold center />
-        <Text face="display" style={{ color: "#3c4a52", fontSize: 19, fontWeight: "700", lineHeight: 34, textAlign: "center", marginTop: 16 }}>
+        <Text face="display" style={{ color: P.ink2, fontSize: 19, fontWeight: "700", lineHeight: 34, textAlign: "center", marginTop: 16 }}>
           {page.text}
         </Text>
       </View>
@@ -199,11 +205,11 @@ function PageBody({ page, book, onOpen }: { page: Page; book: Book; onOpen: (id:
   if (page.type === "intro") {
     return (
       <View style={{ padding: 24 }}>
-        <Text style={{ color: KICKER, fontSize: 10.5, letterSpacing: 3 }}>مقدّمة</Text>
-        <Text face="display" style={{ color: INK, fontSize: 26, fontWeight: "700", marginTop: 2 }}>{BOOK_SECTION_LABEL[page.ids[0]]}</Text>
+        <Text style={{ color: P.kicker, fontSize: 10.5, letterSpacing: 3 }}>مقدّمة</Text>
+        <Text face="display" style={{ color: P.ink, fontSize: 26, fontWeight: "700", marginTop: 2 }}>{BOOK_SECTION_LABEL[page.ids[0]]}</Text>
         {page.ids.map((id, at) => <IntroPart key={id} id={id} first={at === 0} book={book} />)}
         {book.partial ? (
-          <Text style={{ color: MUTED, fontSize: 11, marginTop: 16 }}>هذا الكتاب من آخر ستة أشهر من سنتك — السنة كاملة مع آثار+.</Text>
+          <Text style={{ color: P.muted, fontSize: 11, marginTop: 16 }}>هذا الكتاب من آخر ستة أشهر من سنتك — السنة كاملة مع آثار+.</Text>
         ) : null}
       </View>
     );
@@ -214,31 +220,31 @@ function PageBody({ page, book, onOpen }: { page: Page; book: Book; onOpen: (id:
       <View style={{ flex: 1, justifyContent: "flex-end", padding: 24, paddingBottom: 32 }}>
         <Text
           face="display"
-          style={{ position: "absolute", top: 4, left: 16, color: "#F1E8D2", fontSize: 150, fontWeight: "700", lineHeight: 170 }}
+          style={{ position: "absolute", top: 4, left: 16, color: P.ghost, fontSize: 150, fontWeight: "700", lineHeight: 170 }}
         >
           {ar(page.month + 1)}
         </Text>
-        <Text style={{ color: KICKER, fontSize: 11, letterSpacing: 3 }}>{ar(book.year)}</Text>
-        <Text face="display" style={{ color: INK, fontSize: 46, fontWeight: "700", lineHeight: 56, marginTop: 2 }}>{MONTHS[page.month]}</Text>
+        <Text style={{ color: P.kicker, fontSize: 11, letterSpacing: 3 }}>{ar(book.year)}</Text>
+        <Text face="display" style={{ color: P.ink, fontSize: 46, fontWeight: "700", lineHeight: 56, marginTop: 2 }}>{MONTHS[page.month]}</Text>
         <View style={{ marginTop: 10 }}>
           <Gold />
         </View>
-        <Text style={{ color: "#6b7880", fontSize: 12, marginTop: 10 }}>{ar(page.count)} لحظة</Text>
+        <Text style={{ color: P.soft, fontSize: 12, marginTop: 10 }}>{ar(page.count)} لحظة</Text>
       </View>
     );
   }
 
   if (page.type === "end") {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: NIGHT }}>
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: P.end }}>
         <AthrMark size={48} />
-        <Text face="display" style={{ color: "#f7f5ef", fontSize: 21, fontWeight: "700", marginTop: 18, textAlign: "center", lineHeight: 32 }}>
+        <Text face="display" style={{ color: P.endInk, fontSize: 21, fontWeight: "700", marginTop: 18, textAlign: "center", lineHeight: 32 }}>
           {ar(book.stats.moments)} لحظة تركت أثرها{"\n"}في {ar(book.year)}
         </Text>
         <View style={{ marginTop: 14 }}>
           <Gold center />
         </View>
-        <Text style={{ color: "rgba(247,245,239,.6)", fontSize: 12.5, marginTop: 12 }}>والصفحة الجاية تكتبها أنت.</Text>
+        <Text style={{ color: P.endSoft, fontSize: 12.5, marginTop: 12 }}>والصفحة الجاية تكتبها أنت.</Text>
       </View>
     );
   }
@@ -248,14 +254,14 @@ function PageBody({ page, book, onOpen }: { page: Page; book: Book; onOpen: (id:
   const count = page.day.moments.length;
   return (
     <View style={{ padding: 20 }}>
-      <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 12, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: RULE, marginBottom: 16 }}>
-        <Text face="display" style={{ color: INK, fontSize: 46, fontWeight: "700", lineHeight: 48 }}>{ar(d)}</Text>
+      <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 12, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: P.rule, marginBottom: 16 }}>
+        <Text face="display" style={{ color: P.ink, fontSize: 46, fontWeight: "700", lineHeight: 48 }}>{ar(d)}</Text>
         <View style={{ flex: 1, paddingBottom: 3 }}>
-          <Text face="display" style={{ color: INK, fontSize: 17, fontWeight: "700" }}>{MONTHS[m - 1]}</Text>
-          <Text style={{ color: "#6b7880", fontSize: 11.5 }}>{weekday}</Text>
+          <Text face="display" style={{ color: P.ink, fontSize: 17, fontWeight: "700" }}>{MONTHS[m - 1]}</Text>
+          <Text style={{ color: P.soft, fontSize: 11.5 }}>{weekday}</Text>
         </View>
-        <View style={{ borderWidth: 1, borderColor: RULE, borderRadius: 20, paddingHorizontal: 9, paddingVertical: 2, marginBottom: 4 }}>
-          <Text style={{ color: "#8a7a55", fontSize: 11 }}>
+        <View style={{ borderWidth: 1, borderColor: P.rule, borderRadius: 20, paddingHorizontal: 9, paddingVertical: 2, marginBottom: 4 }}>
+          <Text style={{ color: P.label, fontSize: 11 }}>
             {ar(count)} {count === 1 ? "لحظة" : "لحظات"}
           </Text>
         </View>
@@ -269,6 +275,7 @@ function PageBody({ page, book, onOpen }: { page: Page; book: Book; onOpen: (id:
 
 /** لحظةٌ في صفحة يومها: رقمُها على خطّ اليوم، وساعتُها، وصورتُها، وسطرُها، ولمن كانت. */
 function DayMoment({ moment, n, last, onOpen }: { moment: BookMoment; n: number; last: boolean; onOpen: (id: string) => void }) {
+  const P = useContext(Pal);
   // الراوي (القاعدة ٢٥٩): ما فعله يُروى، وكلامُه هو يبقى كما كتبه. وخادمٌ قديمٌ بلا
   // جملةٍ يُرسم بسطره كما كان.
   const told = Boolean(moment.story);
@@ -283,17 +290,17 @@ function DayMoment({ moment, n, last, onOpen }: { moment: BookMoment; n: number;
   return (
     <Pressable onPress={() => onOpen(moment.id)} style={{ flexDirection: "row", gap: 12 }}>
       <View style={{ width: 22, alignItems: "center" }}>
-        <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: NIGHT, alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ color: GOLD, fontSize: 11, fontWeight: "700" }}>{ar(n)}</Text>
+        <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: P.numBg, alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ color: P.gold, fontSize: 11, fontWeight: "700" }}>{ar(n)}</Text>
         </View>
-        {last ? null : <View style={{ flex: 1, width: 1, backgroundColor: RULE, marginTop: 2 }} />}
+        {last ? null : <View style={{ flex: 1, width: 1, backgroundColor: P.rule, marginTop: 2 }} />}
       </View>
       <View style={{ flex: 1, minWidth: 0, paddingBottom: last ? 0 : 20 }}>
-        <Text style={{ color: MUTED, fontSize: 11, marginBottom: 6, marginTop: 3 }}>
+        <Text style={{ color: P.muted, fontSize: 11, marginBottom: 6, marginTop: 3 }}>
           {timeOfDay(new Date(moment.createdAt))}
           {moment.placeName && (told ? moment.kind === "PHOTO" : moment.kind !== "PLACE") ? ` · ${moment.placeName}` : ""}
         </Text>
-        {told ? <Text style={{ color: STORY, fontSize: 13.5, lineHeight: 24, marginBottom: 8 }}>{moment.story}</Text> : null}
+        {told ? <Text style={{ color: P.story, fontSize: 13.5, lineHeight: 24, marginBottom: 8 }}>{moment.story}</Text> : null}
         {moment.mediaId ? (
           <MediaImage
             mediaId={moment.mediaId}
@@ -303,12 +310,12 @@ function DayMoment({ moment, n, last, onOpen }: { moment: BookMoment; n: number;
         ) : null}
         {line ? (
           moment.mediaId ? (
-            <Text style={{ color: INK, fontSize: 14, lineHeight: 25 }}>{line}</Text>
+            <Text style={{ color: P.ink, fontSize: 14, lineHeight: 25 }}>{line}</Text>
           ) : (
-            <Text face="display" style={{ color: INK, fontSize: 18, fontWeight: "700", lineHeight: 28 }}>{line}</Text>
+            <Text face="display" style={{ color: P.ink, fontSize: 18, fontWeight: "700", lineHeight: 28 }}>{line}</Text>
           )
         ) : null}
-        {together ? <Text style={{ color: "#3c4a52", fontSize: 12, marginTop: 4 }}>{together}</Text> : null}
+        {together ? <Text style={{ color: P.ink2, fontSize: 12, marginTop: 4 }}>{together}</Text> : null}
         {moment.echoText ? (
           <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, marginTop: 10 }}>
             {moment.echo?.top ? (
@@ -316,19 +323,19 @@ function DayMoment({ moment, n, last, onOpen }: { moment: BookMoment; n: number;
                 <ReactionGlyph kind={moment.echo.top.kind} emoji={moment.echo.top.emoji} size={20} />
               </View>
             ) : null}
-            <Text style={{ flex: 1, color: "#3c4a52", fontSize: 12.5, lineHeight: 22 }}>{moment.echoText}</Text>
+            <Text style={{ flex: 1, color: P.ink2, fontSize: 12.5, lineHeight: 22 }}>{moment.echoText}</Text>
           </View>
         ) : null}
         {quote ? (
-          <View style={{ marginTop: 6, paddingVertical: 8, paddingHorizontal: 12, borderRightWidth: 2, borderRightColor: GOLD, backgroundColor: "#F6EFDD", borderTopLeftRadius: 8, borderBottomLeftRadius: 8 }}>
-            <Text style={{ color: INK, fontSize: 13.5, lineHeight: 24 }}>«{quote.text}»</Text>
-            <Text style={{ color: "#8a7a55", fontSize: 11, marginTop: 2 }}>— {quote.name}</Text>
+          <View style={{ marginTop: 6, paddingVertical: 8, paddingHorizontal: 12, borderRightWidth: 2, borderRightColor: P.gold, backgroundColor: P.quote, borderTopLeftRadius: 8, borderBottomLeftRadius: 8 }}>
+            <Text style={{ color: P.ink, fontSize: 13.5, lineHeight: 24 }}>«{quote.text}»</Text>
+            <Text style={{ color: P.label, fontSize: 11, marginTop: 2 }}>— {quote.name}</Text>
           </View>
         ) : null}
         {note ? (
-          <View style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#FBF1DA", borderWidth: 1, borderColor: "#EBD9AE", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, marginTop: 7 }}>
-            {moment.private?.audience === "EXCEPT" ? null : <PrivateIcon size={11} color="#8a5f10" />}
-            <Text style={{ color: "#8a5f10", fontSize: 11 }}>{note}</Text>
+          <View style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: P.privBg, borderWidth: 1, borderColor: P.privLine, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, marginTop: 7 }}>
+            {moment.private?.audience === "EXCEPT" ? null : <PrivateIcon size={11} color={P.privInk} />}
+            <Text style={{ color: P.privInk, fontSize: 11 }}>{note}</Text>
           </View>
         ) : null}
       </View>
@@ -338,6 +345,7 @@ function DayMoment({ moment, n, last, onOpen }: { moment: BookMoment; n: number;
 
 /** قسمٌ من المقدّمة (القاعدة ٣٧٨) — كالـPDF: الأرقام، والمدن والأماكن، والأغنية، والدائرة. */
 function IntroPart({ id, first, book }: { id: BookSection; first: boolean; book: Book }) {
+  const P = useContext(Pal);
   const s = book.stats;
   if (id === "numbers") {
     const days = daysOf(book).length;
@@ -352,7 +360,7 @@ function IntroPart({ id, first, book }: { id: BookSection; first: boolean; book:
       ] as [number, string][]
     ).filter(([n]) => n > 0);
     return (
-      <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 20, borderTopWidth: 1, borderTopColor: RULE }}>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 20, borderTopWidth: 1, borderTopColor: P.rule }}>
         {tiles.map(([n, label], i) => (
           <View
             key={label}
@@ -362,13 +370,13 @@ function IntroPart({ id, first, book }: { id: BookSection; first: boolean; book:
               paddingLeft: i % 2 ? 0 : 14,
               paddingRight: i % 2 ? 14 : 0,
               borderBottomWidth: 1,
-              borderBottomColor: RULE,
+              borderBottomColor: P.rule,
               borderLeftWidth: i % 2 ? 0 : 1,
-              borderLeftColor: RULE,
+              borderLeftColor: P.rule,
             }}
           >
-            <Text face="display" style={{ color: INK, fontSize: 36, fontWeight: "700", lineHeight: 42 }}>{ar(n)}</Text>
-            <Text style={{ color: "#6b7880", fontSize: 11.5 }}>{label}</Text>
+            <Text face="display" style={{ color: P.ink, fontSize: 36, fontWeight: "700", lineHeight: 42 }}>{ar(n)}</Text>
+            <Text style={{ color: P.soft, fontSize: 11.5 }}>{label}</Text>
           </View>
         ))}
       </View>
@@ -387,9 +395,9 @@ function IntroPart({ id, first, book }: { id: BookSection; first: boolean; book:
     return (
       <View style={{ marginTop: 18 }}>
         {facts.map(([k, v]) => (
-          <View key={k} style={{ flexDirection: "row", gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#EFE8D8" }}>
-            <Text style={{ width: 92, color: "#8a7a55", fontSize: 11.5, paddingTop: 2 }}>{k}</Text>
-            <Text style={{ flex: 1, color: INK, fontSize: 13.5 }}>{v}</Text>
+          <View key={k} style={{ flexDirection: "row", gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: P.ruleSoft }}>
+            <Text style={{ width: 92, color: P.label, fontSize: 11.5, paddingTop: 2 }}>{k}</Text>
+            <Text style={{ flex: 1, color: P.ink, fontSize: 13.5 }}>{v}</Text>
           </View>
         ))}
       </View>
@@ -398,10 +406,10 @@ function IntroPart({ id, first, book }: { id: BookSection; first: boolean; book:
   if (id === "circle") {
     if (!s.circleLines?.length) return null;
     return (
-      <View style={first ? { marginTop: 14 } : { marginTop: 20, paddingTop: 14, borderTopWidth: 1, borderTopColor: RULE }}>
-        {first ? null : <Text style={{ color: KICKER, fontSize: 10.5, letterSpacing: 3, marginBottom: 6 }}>دائرتك</Text>}
+      <View style={first ? { marginTop: 14 } : { marginTop: 20, paddingTop: 14, borderTopWidth: 1, borderTopColor: P.rule }}>
+        {first ? null : <Text style={{ color: P.kicker, fontSize: 10.5, letterSpacing: 3, marginBottom: 6 }}>دائرتك</Text>}
         {s.circleLines.map((text) => (
-          <Text key={text} style={{ color: "#3c4a52", fontSize: 13, lineHeight: 24 }}>
+          <Text key={text} style={{ color: P.ink2, fontSize: 13, lineHeight: 24 }}>
             {text}
           </Text>
         ))}

@@ -223,3 +223,93 @@ export function HallImages({
     </div>
   );
 }
+
+const BOOK_SLOTS = [
+  {
+    slot: "bookCover",
+    label: "صورة الغلاف",
+    hint: "تملأ الغلافَ كلَّه بدل النقش — رسمٌ أو صورةٌ أو أيّ شيء. طوليّةٌ بنسبة A5 (١ : ١٫٤٢)، والشعارُ والسنةُ والاسمُ تُكتب فوقها بحبر الغلاف.",
+    size: 1400,
+  },
+  {
+    slot: "bookPaper",
+    label: "خلفيّة الورق",
+    hint: "تحت كلّ صفحةٍ داخل الكتاب: ورقٌ قديم، نقشٌ خفيف، زخرفةٌ في الحافّة. هادئةٌ وفاتحة — النصُّ يُكتب فوقها بحبر الصفحات. طوليّةٌ بنسبة A5.",
+    size: 1400,
+  },
+  {
+    slot: "bookEnd",
+    label: "صورة الخاتمة",
+    hint: "تملأ صفحةَ الخاتمة، والعبارةُ فوقها بحبر الخاتمة. طوليّةٌ بنسبة A5.",
+    size: 1400,
+  },
+] as const;
+
+/**
+ * صورُ ثوب الكتاب (القاعدة ٤٠٦) — كلٌّ منها اختياريّ: بلا صورة الغلاف يُرسم النقشُ أو اللونُ،
+ * وبلا خلفيّة الورق لونُه، وبلا صورة الخاتمة لونُها.
+ */
+export function BookImages({
+  itemId,
+  cover,
+  paper,
+  end,
+}: {
+  itemId: string;
+  cover: string | null;
+  paper: string | null;
+  end: string | null;
+}) {
+  const now = { bookCover: cover, bookPaper: paper, bookEnd: end };
+  return (
+    <div className="mt-1 border-t border-line pt-3">
+      <p className="mb-2 text-[12px] font-semibold text-muted">صور الكتاب</p>
+      <div className="grid gap-3">
+        {BOOK_SLOTS.map(({ slot, label, hint, size }) => {
+          const mediaId = now[slot];
+          return (
+            <div key={slot}>
+              <div className="flex items-center gap-2.5">
+                <span className="h-14 w-10 shrink-0 rounded-md" style={itemPaint({ spec: "var(--color-chip)", mediaId })} />
+                <ImagePicker
+                  label={label}
+                  maxSize={size}
+                  accept="image/jpeg,image/png,image/webp"
+                  onPicked={(file, width, height) => {
+                    const data = new FormData();
+                    data.set("image", file);
+                    data.set("width", String(width));
+                    data.set("height", String(height));
+                    return setHallImage(itemId, slot, data);
+                  }}
+                  className="grow"
+                >
+                  <span
+                    className="flex items-center justify-center gap-2 rounded-xl border border-line bg-card text-[12.5px] font-semibold text-ink-2"
+                    style={{ height: 46 }}
+                  >
+                    <CameraIcon size={15} />
+                    {mediaId ? `غيّر ${label}` : `ارفع ${label}`}
+                  </span>
+                </ImagePicker>
+                {mediaId ? (
+                  <form action={clearHallImage.bind(null, itemId, slot)}>
+                    <button
+                      type="submit"
+                      aria-label={`أزل ${label}`}
+                      className="flex w-11 items-center justify-center rounded-xl border border-line"
+                      style={{ height: 46, color: "var(--color-live)" }}
+                    >
+                      <CloseIcon size={16} />
+                    </button>
+                  </form>
+                ) : null}
+              </div>
+              <p className="mt-1 text-[11px] leading-relaxed text-muted">{hint}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
