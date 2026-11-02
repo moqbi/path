@@ -4,7 +4,7 @@ import * as Haptics from "expo-haptics";
 import * as Notifications from "expo-notifications";
 import { BlurView } from "expo-blur";
 import { LiquidGlass, LiquidLens } from "../lib/liquid-glass";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { initialWindowMetrics, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Tabs, usePathname } from "expo-router";
 import { Text } from "./type";
 import { Avatar } from "./avatar";
@@ -36,9 +36,16 @@ export function useBarSpace() {
   return barBottom(insets.bottom) + PILL + 16;
 }
 
-/** موضعُ الشريط من أسفل الشاشة — فوق خطّ الرجوع إلى الشاشة الرئيسيّة. */
+/**
+ * موضعُ الشريط من أسفل الشاشة — فوق خطّ الرجوع إلى الشاشة الرئيسيّة.
+ *
+ * من حافّة الجهاز الثابتة (`initialWindowMetrics`) لا من سياق الشاشة (القاعدة ٤٠١): منذ SDK 58
+ * صار هامشُ الأمان داخل تبويبات آبل الأصليّة يشمل ارتفاعَ الشريط نفسه، فارتفع زرُّ النشر فوقه
+ * بقدره. والسياقُ احتياطٌ حين لا تُعرف الحافّة.
+ */
 export function barBottom(inset: number) {
-  return Math.max(inset - 6, 12);
+  const device = initialWindowMetrics?.insets.bottom ?? inset;
+  return Math.max(device - 6, 12);
 }
 
 const ICON = 23;
