@@ -15,7 +15,7 @@ import { MediaImage } from "../components/media-image";
 import { AthrMark } from "../components/brand";
 import { BackChevron } from "../components/screen-header";
 import { MapIcon, PinIcon } from "../components/icons";
-import { api } from "../lib/api";
+import { api, baseUrl, currentAccess, watchAccess } from "../lib/api";
 import { openMaps } from "../lib/maps";
 import { openMapMoments } from "../lib/map-moments";
 import { ar, dayLabel } from "../lib/format";
@@ -334,7 +334,9 @@ export default function MyMap() {
             const above = pin.level === "country" ? COUNTRY_ABOVE : 26;
             return (
               <Marker
-                key={pin.key}
+                // شكلُ ما في العلامة جزءٌ من مفتاحها (القاعدة ٣٩٥): تركيبُ ابنٍ أو نزعُه داخل علامةٍ مركّبة
+                // يُسقط التطبيق، وتبديلُ العلامة كلّها لا يُسقطه.
+                key={`${pin.key}|${shapeOf(pin, landmarkOf.get(pin.label) ?? null)}`}
                 coordinate={{ latitude: pin.lat, longitude: pin.lng }}
                 onPress={() => select(pin)}
                 tracksViewChanges={tracking}
@@ -618,7 +620,7 @@ function DotPin({ pin, chosen, landmark }: { pin: Pin; chosen: boolean; landmark
                   {landmark ? (
                     <Image source={{ uri: landmark }} style={{ width: 51, height: 51 }} contentFit="cover" transition={0} />
                   ) : (
-                    <MediaImage mediaId={photo} style={{ width: 51, height: 51 }} fade={false} />
+                    <PinImage mediaId={photo} size={51} />
                   )}
                 </View>
               </View>
@@ -649,6 +651,35 @@ function DotPin({ pin, chosen, landmark }: { pin: Pin; chosen: boolean; landmark
   );
 }
 
+/**
+ * شكلُ شجرة العلامة: ما يُركَّب فيها وما لا يُركَّب (القاعدة ٣٩٥). علامةٌ مركّبة في طبقة
+ * `react-native-maps` القديمة داخل Fabric لا تُنزل ابنَها من الشاشة حين يُنزع، فيُعاد تدويرُه وهو
+ * معلّق — `Attempt to recycle a mounted view` — فيسقط التطبيق. كان هذا حين تصل صورةُ معلم الدولة
+ * بعد العلامة (بعد تبديل الحساب تُمحى الذاكرة فتتأخّر)، أو يتغيّر العدد فيظهر قرصُه.
+ */
+function shapeOf(pin: Pin, landmark: string | null): string {
+  if (pin.level === "place") return `p${photoOf(pin.points) ? 1 : 0}${pin.points.length > 1 ? 1 : 0}`;
+  const art = pin.level === "country" ? (landmark ? "l" : photoOf(pin.points) ? "m" : "n") : "";
+  return `${pin.level[0]}${art}${pin.label ? 1 : 0}`;
+}
+
+/**
+ * صورةٌ داخل علامة: تُركَّب مرّةً ولا يتبدّل مفتاحُها ولا تُنزع (القاعدة ٣٩٥) — `MediaImage` يُعيد
+ * تركيبَ صورته حين يُعاد الطلب ويُرجع لا شيء بلا توكن، وكلاهما نزعُ ابنٍ داخل علامةٍ مركّبة.
+ */
+function PinImage({ mediaId, size }: { mediaId: string | null; size: number }) {
+  const [token, setToken] = useState(currentAccess);
+  useEffect(() => watchAccess(() => setToken(currentAccess())), []);
+  const source = useMemo(
+    () =>
+      mediaId && token
+        ? { uri: `${baseUrl}/v1/media/${mediaId}`, headers: { authorization: `Bearer ${token}` }, cacheKey: mediaId }
+        : null,
+    [mediaId, token],
+  );
+  return <Image source={source} style={{ width: size, height: size }} contentFit="cover" transition={0} />;
+}
+
 /** المكانُ من قريب: صورةُ آخر لحظةٍ فيه بذيلٍ يشير إلى موضعه، والمختارُ بحلقةٍ ذهبيّة. */
 function PlacePin({ pin, chosen }: { pin: Pin; chosen: boolean }) {
   const photo = photoOf(pin.points);
@@ -656,7 +687,7 @@ function PlacePin({ pin, chosen }: { pin: Pin; chosen: boolean }) {
     <View style={{ width: 60, height: 66, alignItems: "center" }}>
       <View style={{ width: 50, height: 50, borderRadius: 15, padding: 2.5, backgroundColor: chosen ? AMBER : "#fff" }}>
         <View style={{ flex: 1, borderRadius: 12.5, overflow: "hidden", backgroundColor: NIGHT, alignItems: "center", justifyContent: "center" }}>
-          {photo ? <MediaImage mediaId={photo} style={{ width: 45, height: 45 }} fade={false} /> : <PinIcon size={18} color={AMBER} />}
+          {photo ? <PinImage mediaId={photo} size={45} /> : <PinIcon size={18} color={AMBER} />}
         </View>
       </View>
       <Svg width={12} height={8} viewBox="0 0 12 8" style={{ marginTop: -1 }}>
