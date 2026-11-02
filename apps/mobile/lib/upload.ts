@@ -1,3 +1,4 @@
+import { File, UploadType } from "expo-file-system";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { api } from "./api";
 
@@ -89,7 +90,14 @@ async function send(
   extra?: { start: number },
 ): Promise<{ mediaId: string; commit: { seconds?: number; peaks?: number[] } }> {
 
-  const blob = await (await fetch(uri)).blob();
+  /*
+    الملفُّ على الجهاز يُقرأ ويُرفع بـ`expo-file-system` (القاعدة ٤٠١) لا بـ`fetch(file://).blob()`:
+    منذ React Native 0.88 صار الرفعُ بالأخيرة يُرسل ما لا يُقرأ — فكانت الرسالةُ الصوتيّة تُسمع في
+    المعاينة ويردّها الخادمُ «تعذّرت قراءة المقطع». والرفعُ الأصليّ يدفق الملفَّ كما هو.
+  */
+  const local = uri.startsWith("file://") ? new File(uri) : null;
+  const blob = local ? null : await (await fetch(uri)).blob();
+  const bytes = local ? local.size : blob!.size;
 
   const ticket = await api<{ mediaId: string; url: string; headers: Record<string, string> }>(
     "/v1/media/presign",
@@ -97,7 +105,7 @@ async function send(
       method: "POST",
       body: JSON.stringify({
         mime,
-        bytes: blob.size,
+        bytes,
         width: Math.round(size.width),
         height: Math.round(size.height),
         purpose,
@@ -105,12 +113,14 @@ async function send(
     },
   );
 
-  const put = await fetch(ticket.url, {
-    method: "PUT",
-    headers: { ...ticket.headers, "content-type": mime },
-    body: blob,
-  });
-  if (!put.ok) throw new Error("تعذّر رفع الملف");
+  const headers = { ...ticket.headers, "content-type": mime };
+  const ok = local
+    ? await local
+        .upload(ticket.url, { httpMethod: "PUT", uploadType: UploadType.BINARY_CONTENT, headers })
+        .then((done) => done.status >= 200 && done.status < 300)
+        .catch(() => false)
+    : (await fetch(ticket.url, { method: "PUT", headers, body: blob })).ok;
+  if (!ok) throw new Error("تعذّر رفع الملف");
 
   // الاعتماد يفحص البايتات: ما لم يُعتمد لا يُربط بلحظةٍ ولا يُقدَّم.
   const commit = await api<{ seconds?: number; peaks?: number[] }>(`/v1/media/${ticket.mediaId}/commit`, {

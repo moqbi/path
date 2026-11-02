@@ -2,7 +2,7 @@ import { Spinner } from "../components/spinner";
 import { useEffect, useSyncExternalStore } from "react";
 import { AppState, Appearance, I18nManager, Platform, View, StyleSheet } from "react-native";
 import { MediaImage } from "../components/media-image";
-import { Stack, useRouter, useSegments } from "expo-router";
+import { enableLegacyHeaderAppearance, Stack, useRouter, useSegments } from "expo-router";
 import * as Notifications from "expo-notifications";
 import { enablePush } from "../lib/push";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -44,6 +44,10 @@ import { Launch, UpdateWait, useLaunch } from "../components/launch";
 import { useFreshUpdate, useResumeUpdate } from "../lib/fresh-update";
 import { StorePromo } from "../components/store-promo";
 import { BroadcastCard, openBroadcast } from "../components/broadcast-card";
+
+// رؤوسُ المكدّس كما كانت قبل SDK 58 (القاعدة ٤٠١): رأسُ آبل ٢٦ الشفّافُ الجديد يعلو الشاشة
+// وإن كانت رؤوسُنا مرسومةً بأيدينا — فلا يقع شيءٌ تحته ولا يأخذ ضغطةً من أزرارها.
+enableLegacyHeaderAppearance();
 
 /*
   شريطُ آبل داكن — **بقرار المالك** (القاعدة ٢٦١): زجاجُه يتبع مظهرَ التطبيق، و`app.json`
