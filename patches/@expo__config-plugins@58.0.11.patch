@@ -1,0 +1,19 @@
+diff --git a/build/ios/utils/Xcodeproj.js b/build/ios/utils/Xcodeproj.js
+index 0d83ba043c919ba57cf5c20f3913a55426337fed..15a214bebc3259099028bd38fab1276100793044 100644
+--- a/build/ios/utils/Xcodeproj.js
++++ b/build/ios/utils/Xcodeproj.js
+@@ -203,10 +203,10 @@ const NEITHER_LETTER_NOR_NUMBER = /[^\p{L}\p{N}]+/gu;
+ const COMBINING_MARKS = /\p{M}+/gu;
+ const NOT_ASCII_ALPHANUMERIC = /[\W_]+/g;
+ function sanitizedName(name) {
+-    // NFKD before slugify, or letters are lost: 'Ċ' decomposes to 'C' + a combining mark
+-    // that the next line drops, while slugify deletes it outright.
+-    const lettersAndNumbers = name.replace(NEITHER_LETTER_NOR_NUMBER, '').normalize('NFKD').replace(COMBINING_MARKS, '');
+-    return toAsciiIdentifier((0, _slugify().default)(lettersAndNumbers)) || toAsciiIdentifier((0, _slugify().default)(name)) || 'app';
++    // آثار: خوارزميّةُ ما قبل SDK 56 كما هي — eas-cli يحسب اسمَ الهدف بها، فاسمٌ عربيٌّ
++    // بـ«آ» يخرج هنا «atharmwmnts» وهناك «aatharmwmnts» ويسقط البناءُ عند التوقيع (القاعدة ٤٠٠).
++    const old = (value) => value.replace(/[\W_]+/g, '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
++    return old(name) || old((0, _slugify().default)(name)) || 'app';
+ }
+ function toAsciiIdentifier(name) {
+     return name.replace(NOT_ASCII_ALPHANUMERIC, '');
