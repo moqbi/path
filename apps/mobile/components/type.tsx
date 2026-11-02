@@ -85,11 +85,27 @@ function paint(style: unknown, face: Face): TextStyle {
   };
 }
 
+/**
+ * **ومنذ React Native 0.88 يُحسم «الطبيعيّ» باتجاه عقدة النصّ نفسها** لا باتجاه الكتابة
+ * (`RCTResolveTextAlignment`: Natural ← يمينٌ إن كانت العقدةُ من اليمين، وإلّا يسار) —
+ * فخرجت النصوصُ من اليسار في اللحظات والمحادثات والتعليقات والتخطيطُ حولها من اليمين
+ * (القاعدة ٤٠٢). فالاتجاهُ يُكتب على العقدة نفسها (`direction`) بالقصد ذاته: يمينٌ ← `rtl`،
+ * ويسارٌ ← `ltr` — لا يُترك لما يرثه، والوراثةُ لم تصل.
+ */
+function nodeDirection(flat: TextStyle): Pick<TextStyle, "direction"> {
+  if (Platform.OS !== "ios") return {};
+  const want = flat.textAlign ?? "right";
+  if (want === "right") return { direction: "rtl" };
+  if (want === "left") return { direction: "ltr" };
+  return {};
+}
+
 export const Text = forwardRef<TextInstance, TextProps>(function Text(
   { face = "body", style, ...rest },
   ref,
 ) {
-  return <RNText ref={ref} {...rest} style={paint(style, face)} />;
+  const flat = (StyleSheet.flatten(style as never) ?? {}) as TextStyle;
+  return <RNText ref={ref} {...rest} style={[paint(flat, face), nodeDirection(flat)]} />;
 });
 
 export type TextInputProps = RNTextInputProps & { face?: Face };
