@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AthrMark, AthrWordmark } from "@/components/brand";
 import { lines, siteImage, siteShots, siteText, storeUrl } from "@/lib/site";
 import { ShotsCarousel } from "./shots-carousel";
+import { NewFeatures } from "./new-features";
 
 /*
   أربع مزايا لا أكثر: ما يفعله المستخدم في التطبيق كل يوم.
@@ -297,7 +298,7 @@ export default async function LandingPage() {
                 <img src="/composer/music.png" alt="" width={40} height={40} />
                 <span className="flex flex-col leading-tight">
                   <span className="text-[13px] font-bold">يسمع الآن</span>
-                  <span className="text-[11.5px] text-muted">من سبوتيفاي · مع دائرته</span>
+                  <span className="text-[11.5px] text-muted">على نوته · مع دائرته</span>
                 </span>
               </div>
 
@@ -405,6 +406,9 @@ export default async function LandingPage() {
           </ul>
         </div>
       </section>
+
+      {/* ───────────── آثار تكبر معك (القاعدة ٤١٥) ───────────── */}
+      <NewFeatures text={text} />
 
       {/* ───────────── الخصوصية ───────────── */}
       <section className="l-wide pt-20">

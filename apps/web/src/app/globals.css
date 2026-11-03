@@ -1199,3 +1199,222 @@ h3 {
     animation: none;
   }
 }
+
+/* ── آثار تكبر معك (القاعدة ٤١٥): ستُّ بطاقاتٍ برسومٍ تقول الميزة ── */
+.n-grid {
+  display: grid;
+  gap: 18px;
+}
+@media (min-width: 720px) {
+  .n-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1180px) {
+  .n-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.n-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-radius: 28px;
+  background: var(--color-card);
+  box-shadow: 0 10px 30px rgba(14, 26, 36, 0.06);
+  overflow: hidden;
+  transition: transform 0.25s ease;
+}
+.n-card:hover { transform: translateY(-3px); }
+.n-art {
+  position: relative;
+  height: 190px;
+  overflow: hidden;
+  background: #efe9dc;
+}
+.n-copy { padding: 18px 22px 22px; }
+
+/* رادار «من حولك» */
+.n-radar {
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% 50%, #183243 0%, #0e1a24 70%);
+}
+.n-ring {
+  position: absolute; left: 50%; top: 50%;
+  width: 60px; height: 60px; margin: -30px 0 0 -30px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(246, 185, 59, 0.6);
+  animation: n-ping 2.7s ease-out infinite;
+}
+@keyframes n-ping {
+  from { transform: scale(0.6); opacity: 1; }
+  to { transform: scale(4.2); opacity: 0; }
+}
+.n-core {
+  position: absolute; left: 50%; top: 50%;
+  width: 52px; height: 52px; margin: -26px 0 0 -26px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; background: #fdfcf8;
+  box-shadow: 0 0 0 4px rgba(246, 185, 59, 0.35);
+}
+.n-face {
+  position: absolute;
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: linear-gradient(140deg, #f6b93b, #ff7a5a);
+  color: #fff; font-weight: 800; font-size: 14px;
+  border: 2px solid #fdfcf8;
+  animation: n-appear 3.6s ease-in-out infinite;
+}
+@keyframes n-appear {
+  0%, 15% { opacity: 0; transform: scale(0.6); }
+  30%, 85% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.9); }
+}
+.n-chips {
+  position: absolute; bottom: 12px; inset-inline-start: 14px;
+  display: flex; gap: 6px;
+}
+.n-chips span {
+  border-radius: 999px; padding: 3px 10px;
+  font-size: 11px; font-weight: 700;
+  color: #ffd27a; background: rgba(255, 255, 255, 0.08);
+}
+
+/* خريطتي */
+.n-map {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, #cfe3ea 0%, #dfeef0 100%);
+}
+.n-map-land { position: absolute; inset: 0; width: 100%; height: 100%; }
+.n-map-land path:first-child { fill: #f2ead8; }
+.n-map-road { fill: none; stroke: #fff; stroke-width: 3; stroke-dasharray: 2 6; stroke-linecap: round; }
+.n-pin { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 4px; transform: translate(-50%, -50%); }
+.n-pin-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: #f6b93b; box-shadow: 0 0 0 5px rgba(246, 185, 59, 0.28);
+}
+.n-pin-big { width: 18px; height: 18px; box-shadow: 0 0 0 8px rgba(246, 185, 59, 0.3); animation: n-glow 2.4s ease-in-out infinite; }
+@keyframes n-glow {
+  50% { box-shadow: 0 0 0 13px rgba(246, 185, 59, 0.12); }
+}
+.n-pin-cap {
+  white-space: nowrap; border-radius: 999px; padding: 2px 9px;
+  font-size: 11px; font-weight: 700;
+  background: rgba(14, 26, 36, 0.82); color: #fdfcf8;
+}
+.n-pin-cap b { color: #ffd27a; font-weight: 800; }
+
+/* المعرض */
+.n-wall {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, #f4eee2 0%, #ece3d1 74%, #8a6545 74%, #6f4f35 100%);
+}
+.n-sign {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+  font-family: var(--font-display); font-weight: 800; font-size: 13px; color: #5a4632;
+}
+.n-frames {
+  position: absolute; inset-inline: 0; top: 40px;
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+}
+.n-frame {
+  position: relative;
+  border: 4px solid #c9962b; background: #fbf6ea; padding: 8px;
+  box-shadow: 0 10px 18px rgba(60, 40, 20, 0.22);
+}
+.n-frame-main { width: 92px; height: 112px; }
+.n-frame-side { width: 64px; height: 80px; opacity: 0.88; transform: scale(0.94); }
+.n-canvas {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 100%;
+}
+.n-canvas-text { background: #fdfcf8; font-size: 10px; font-weight: 700; color: #5a4632; text-align: center; }
+.n-lamp {
+  position: absolute; top: -34px; left: 50%; transform: translateX(-50%);
+  width: 110px; height: 40px;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255, 214, 140, 0.75), transparent 70%);
+  pointer-events: none;
+}
+.n-floor { position: absolute; inset-inline: 0; bottom: 0; height: 26%; background: repeating-linear-gradient(90deg, transparent 0 46px, rgba(0, 0, 0, 0.12) 46px 48px); }
+
+/* صمّم كتابك */
+.n-book-stage {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center; gap: 18px;
+  background: radial-gradient(circle at 50% 120%, #e3d6bb, #efe9dc 70%);
+}
+.n-book {
+  position: relative; display: flex;
+  width: 104px; height: 140px;
+  transform: rotate(-6deg);
+  box-shadow: 0 16px 26px rgba(14, 26, 36, 0.28);
+  border-radius: 4px 10px 10px 4px;
+  overflow: hidden;
+}
+.n-book-spine { width: 10px; background: #0a141c; }
+.n-book-face {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  background: linear-gradient(160deg, #13273d, #0e1a24);
+  color: #fdfcf8;
+}
+.n-book-face img, .n-book-face svg { filter: brightness(1.1); }
+.n-book-year { font-family: var(--font-display); font-weight: 800; font-size: 22px; color: #ffd27a; }
+.n-book-title { font-size: 10px; opacity: 0.85; }
+.n-book-page {
+  position: relative;
+  width: 92px; height: 124px; padding: 12px;
+  transform: rotate(5deg);
+  background: #fbf8f1; border-radius: 6px;
+  box-shadow: 0 12px 22px rgba(14, 26, 36, 0.16);
+  display: flex; flex-direction: column; gap: 7px;
+}
+.n-book-day { font-family: var(--font-display); font-weight: 800; font-size: 26px; color: #13273d; line-height: 1; }
+.n-book-line { height: 5px; border-radius: 3px; background: #e2d9c6; }
+.n-book-line.n-short { width: 62%; }
+.n-book-pdf {
+  position: absolute; bottom: 10px; inset-inline-end: 10px;
+  border-radius: 6px; padding: 2px 7px;
+  font: 800 10px/1.4 var(--font-latin, sans-serif); letter-spacing: 0.06em;
+  background: #ff7a5a; color: #fff;
+}
+
+/* الملصقات */
+.n-stickers {
+  position: absolute; inset: 0;
+  display: grid; grid-template-columns: repeat(3, 64px); justify-content: center; align-content: center; gap: 12px 18px;
+  background: radial-gradient(circle at 50% 40%, #fdf3df, #efe9dc 75%);
+}
+.n-sticker {
+  display: flex; align-items: center; justify-content: center;
+  width: 64px; height: 64px; border-radius: 18px;
+  background: #fff; border: 3px solid #fff;
+  box-shadow: 0 8px 16px rgba(14, 26, 36, 0.12);
+  animation: l-bob 3.4s ease-in-out infinite;
+}
+
+/* ذكريات ومناسبات */
+.n-cal {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  background: #efe9dc;
+}
+.n-cal-head { font-family: var(--font-display); font-weight: 800; font-size: 13px; color: #13273d; }
+.n-cal-grid {
+  display: grid; grid-template-columns: repeat(7, 26px); gap: 2px;
+  direction: rtl;
+}
+.n-day {
+  position: relative;
+  height: 18px; display: flex; align-items: center; justify-content: center;
+  font-size: 9.5px; color: #5d6b76; border-radius: 6px;
+}
+.n-day i { position: absolute; bottom: -1px; width: 4px; height: 4px; border-radius: 50%; }
+.n-today { background: #13273d; color: #fdfcf8; font-weight: 800; }
+.n-cal-note {
+  margin-top: 2px; border-radius: 999px; padding: 3px 11px;
+  font-size: 10.5px; font-weight: 700; background: #fdfcf8; color: #8a5a00;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .n-ring, .n-face, .n-pin-big, .n-sticker, .n-card { animation: none; transition: none; }
+  .n-face { opacity: 1; }
+}

@@ -21,9 +21,25 @@ const UNUSED = [
   "NSLocationTemporaryUsageDescriptionDictionary",
 ];
 
+/*
+ * إذنُ الشبكة المحلّيّة لمُشغّل التطوير وحده (القاعدة ٤١٥): `expo-dev-launcher` يكتب
+ * نصَّه الإنجليزيّ و`_expo._tcp` ويعتمد على خطوة بناءٍ تحذفهما من نسخة الإصدار — وتلك
+ * تبحث عن الهدف باسمٍ غير اسمه (القاعدة ٤٠٠) فلا تجده، فبقيا في البناء ٣٨. نسخةُ المتجر
+ * لا تفتح الشبكة المحلّيّة أصلاً، فيُحذفان هنا في كلّ ملفٍّ غير `development`.
+ */
+const DEV_ONLY = process.env.EAS_BUILD_PROFILE && process.env.EAS_BUILD_PROFILE !== "development";
+
 module.exports = function withPurpose(config) {
   return withInfoPlist(config, (mod) => {
     for (const key of UNUSED) delete mod.modResults[key];
+    if (DEV_ONLY) {
+      delete mod.modResults.NSLocalNetworkUsageDescription;
+      const bonjour = (mod.modResults.NSBonjourServices ?? []).filter(
+        (s) => s.toLowerCase().replace(/\.$/, "") !== "_expo._tcp",
+      );
+      if (bonjour.length) mod.modResults.NSBonjourServices = bonjour;
+      else delete mod.modResults.NSBonjourServices;
+    }
     return mod;
   });
 };
