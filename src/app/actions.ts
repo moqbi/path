@@ -34,7 +34,7 @@ import { seat as groupSeat, sendToGroup } from "@/lib/groups";
 import { dropMedia, migrateToCloud, storeClip, storeUpload } from "@/lib/media";
 import { announceAvatar } from "@/lib/avatar-moment";
 import { cloudReady, probeBucket } from "@/lib/storage";
-import { isSupportedMusicUrl, resolveTrack } from "@/lib/music-link";
+import { expandMusicUrl, pickMusicUrl, resolveTrack } from "@/lib/music-link";
 import { guard } from "@/lib/moderation";
 import { assertSticker, buyStickerPack as buyPack, canTryStickers, STICKER_TEXT, stickerPacks as readStickerPacks, type StickerPack } from "@/lib/stickers";
 import { ar } from "@/lib/format";
@@ -600,8 +600,9 @@ export async function postPlace(formData: FormData): Promise<void> {
 export async function postMusicLink(formData: FormData): Promise<void> {
   const user = await requireUser();
 
-  const url = String(formData.get("url") ?? "").trim();
-  if (!isSupportedMusicUrl(url)) throw new Error("الرابط غير صالح");
+  const picked = pickMusicUrl(String(formData.get("url") ?? ""));
+  if (!picked) throw new Error("الرابط من يوتيوب أو ساوندكلاود أو سبوتيفاي");
+  const url = await expandMusicUrl(picked);
 
   const track = await resolveTrack(url);
   await prisma.moment.create({
