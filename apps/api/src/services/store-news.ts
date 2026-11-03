@@ -21,7 +21,7 @@ export async function announceStore(): Promise<number> {
   const fresh = await prisma.storeItem.findMany({
     // وثوبُ القاعة يُعلَن يومَ يُتاح للجميع (القاعدة ٣٤٨) — لا جرسَ لما لا يراه أكثرُ الناس.
     where: { hidden: false, announcedAt: null, kind: { notIn: ["GALLERY", "BOOK"] } },
-    select: { id: true, name: true, limited: true },
+    select: { id: true, name: true, limited: true, mediaId: true, promoMediaId: true, coverMediaId: true },
     orderBy: { createdAt: "asc" },
     take: 20,
   });
@@ -41,7 +41,9 @@ export async function announceStore(): Promise<number> {
         : `${first.name} وصل المتجر`
       : `${first.name} و${fresh.length - 1 === 1 ? "صنفٌ آخر" : `${fresh.length - 1} أصناف أخرى`} وصلت المتجر`;
 
-  return broadcast("STORE", "جديد في المتجر", body, "/store");
+  // الصورةُ صورةُ أوّل صنف: إعلانُه إن رُفع، ثمّ رسمُه، ثمّ غلافُ الثيم.
+  const image = first.promoMediaId ?? first.mediaId ?? first.coverMediaId;
+  return broadcast("STORE", "جديد في المتجر", body, "/store", undefined, undefined, image);
 }
 
 /**
@@ -58,7 +60,12 @@ export async function announceStore(): Promise<number> {
 export async function announcePacks(): Promise<number> {
   const fresh = await prisma.stickerPack.findMany({
     where: { hidden: false, announcedAt: null, stickers: { some: {} } },
-    select: { id: true, name: true, priceCoins: true },
+    select: {
+      id: true,
+      name: true,
+      priceCoins: true,
+      stickers: { select: { mediaId: true }, orderBy: { sortOrder: "asc" }, take: 1 },
+    },
     orderBy: { createdAt: "asc" },
     take: 20,
   });
@@ -83,5 +90,5 @@ export async function announcePacks(): Promise<number> {
         : `مجموعة «${first.name}» — حصرياً لمشتركي آثار+`
       : `«${first.name}» و${fresh.length - 1 === 1 ? "مجموعةٌ أخرى" : `${fresh.length - 1} مجموعات أخرى`} وصلت المتجر`;
 
-  return broadcast("STORE", "ملصقات جديدة", body, `/store?pack=${first.id}`, only);
+  return broadcast("STORE", "ملصقات جديدة", body, `/store?pack=${first.id}`, only, undefined, first.stickers[0]?.mediaId);
 }
