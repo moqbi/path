@@ -211,7 +211,11 @@ export async function broadcast(
   only?: Record<string, unknown>,
   /** ما يُحمل مع المسار — معرّفُ تنبيه المشرف (القاعدة ٣٦٣). */
   extra?: Record<string, unknown>,
+  /** صورةُ التنبيه الموسَّع (القاعدة ٤١٨): صورةُ الصنف أو الملصق أو تنبيه المشرف. */
+  image?: string | null,
 ): Promise<number> {
+  // رابطٌ واحدٌ للدفعة كلّها: موقَّعٌ يومين، والإرسالُ ينتهي قبله بكثير.
+  const rich = richOf(image);
   // التبويبُ يُشتقّ من القاعدة، وخبيئتُه لا تعرف بالخبر حتى تُنسى.
   forgetAllNotifications();
 
@@ -237,6 +241,7 @@ export async function broadcast(
           body,
           ...SOUNDS[SOUND_OF[kind]],
           data: { ...(path ? { path } : {}), ...extra },
+          ...rich,
         })),
       );
     for (let index = 0; index < messages.length; index += 100) {

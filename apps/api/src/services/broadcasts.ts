@@ -15,7 +15,7 @@ import { canSeeMoment } from "./visibility";
 export async function sendBroadcasts(): Promise<number> {
   const rows = await prisma.broadcast.findMany({
     where: { pushedAt: null },
-    select: { id: true, title: true, body: true },
+    select: { id: true, title: true, body: true, mediaId: true },
     orderBy: { createdAt: "asc" },
     take: 5,
   });
@@ -26,7 +26,7 @@ export async function sendBroadcasts(): Promise<number> {
       data: { pushedAt: new Date() },
     });
     if (stamp.count === 0) continue;
-    const count = await broadcast("NEWS", row.title, row.body, "/", undefined, { broadcast: row.id });
+    const count = await broadcast("NEWS", row.title, row.body, "/", undefined, { broadcast: row.id }, row.mediaId);
     await prisma.broadcast.update({ where: { id: row.id }, data: { sentCount: count } });
     console.log(`[تنبيه المشرف] ${row.id} ← ${count} جهاز`);
     sent += count;
