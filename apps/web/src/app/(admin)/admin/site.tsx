@@ -392,6 +392,26 @@ const GROUPS: { title: string; note?: string; fields: { key: string; label: stri
     ],
   },
   {
+    title: "آثار تكبر معك",
+    note: "ستّ بطاقاتٍ برسومها بعد «ليش آثار»: المزايا الجديدة.",
+    fields: [
+      { key: "new.title", label: "عنوان القسم" },
+      { key: "new.sub", label: "سطرٌ تحته" },
+      { key: "new.nearby.title", label: "من حولك — العنوان" },
+      { key: "new.nearby.body", label: "من حولك — المتن", multiline: true },
+      { key: "new.map.title", label: "خريطتي — العنوان" },
+      { key: "new.map.body", label: "خريطتي — المتن", multiline: true },
+      { key: "new.gallery.title", label: "المعرض — العنوان" },
+      { key: "new.gallery.body", label: "المعرض — المتن", multiline: true },
+      { key: "new.book.title", label: "الكتاب — العنوان" },
+      { key: "new.book.body", label: "الكتاب — المتن", multiline: true },
+      { key: "new.stickers.title", label: "الملصقات — العنوان" },
+      { key: "new.stickers.body", label: "الملصقات — المتن", multiline: true },
+      { key: "new.memories.title", label: "الذكريات — العنوان" },
+      { key: "new.memories.body", label: "الذكريات — المتن", multiline: true },
+    ],
+  },
+  {
     title: "الخصوصية",
     fields: [
       { key: "privacy.title", label: "العنوان" },
