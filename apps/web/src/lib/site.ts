@@ -187,3 +187,19 @@ export const siteShots = cache(async function siteShots(): Promise<Shot[]> {
   if (rows.length === 0) return DEFAULT_SHOTS;
   return rows.map((row) => ({ id: row.id, label: row.label, src: `/api/site-media/${row.mediaId}` }));
 });
+
+/**
+ * ملصقاتٌ حقيقيّة لبطاقة «الملصقات» في الهبوط (القاعدة ٤١٧): ستّةٌ من المجموعات
+ * الظاهرة بترتيبها، تُقدَّم من `/api/site-media`. وبلا ملصقٍ مرفوع تبقى الرسومُ.
+ */
+export const siteStickers = cache(async function siteStickers(): Promise<string[]> {
+  const rows = await prisma.sticker
+    .findMany({
+      where: { pack: { hidden: false } },
+      orderBy: [{ pack: { sortOrder: "asc" } }, { sortOrder: "asc" }],
+      select: { mediaId: true },
+      take: 6,
+    })
+    .catch(() => []);
+  return rows.map((r) => r.mediaId);
+});

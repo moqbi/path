@@ -39,7 +39,9 @@ export default function PrivacyPage() {
               member number, and optional city, bio and gender; the moments, comments, reactions, stories,
               messages, photos, audio and video you post; your location when you post a place (converted to a place name and city on
               our server) and, if you have granted location permission, the point where you posted each moment,
-              kept for your private "My Map" and never shown to anyone else; your friends list; last-seen time; and your
+              kept for your private "My Map" and never shown to anyone else (to show a city or landmark photo
+              on that map, our server — not your device — asks Wikipedia/Wikidata using only the city or
+              country name, with nothing that identifies you); your friends list; last-seen time; and your
               IP address and a random app-generated device ID used only to fight fake accounts.
             </li>
             <li>
@@ -54,7 +56,8 @@ export default function PrivacyPage() {
             </li>
             <li>
               <strong>Who sees your posts:</strong> only your circle, or the friends/groups you choose for each
-              moment. There is no public discovery or search by name or email.
+              moment. There is no public discovery: someone can find you only by typing your exact handle or full
+              name (never by email), and still needs you to accept their request.
             </li>
             <li>
               <strong>Storage and retention:</strong> data in a PostgreSQL database and files in private
@@ -120,6 +123,11 @@ export default function PrivacyPage() {
               أجلها، وتُحذف مع اللحظة.
             </li>
             <li>
+              <strong>صور «خريطتي»</strong>: لعرض صورة المدينة أو معلم الدولة يسأل
+              خادمُنا — لا جهازك — ويكيبيديا وويكي بيانات باسم المدينة أو الدولة
+              وحده، بلا أيّ شيءٍ يعرّف بك. ولا يخرج موضعُك ولا لحظاتُك إليهما.
+            </li>
+            <li>
               <strong>«من حولك»</strong>: حين تفتحها يُقارَن موقعُك بمن فتحها قريباً
               منك على مئةٍ وخمسين متراً، ولا يُرسَل موقعُك لأحد — يظهر اسمُك
               وصورتُك وحدهما. وإن فعّلت تنبيهَها حفظنا آخرَ موقعٍ عرفناه لك ساعةً
@@ -164,8 +172,9 @@ export default function PrivacyPage() {
         <DocSection id="privacy-3" index={3} title="من يرى ما تنشره">
           <p>
             دائرتك وحدها — أو التصنيف أو الأشخاص الذين تختارهم للحظة بعينها.
-            ولا استكشافَ عاماً في آثار: لا صفحةَ تعرض لحظاتك لغرباء، ولا بحثَ
-            يصل إليك باسمك أو بريدك. ورابطُ ملفك يُشارَك برقم عضويتك، فما يصل
+            ولا استكشافَ عاماً في آثار: لا صفحةَ تعرض لحظاتك لغرباء، ولا قائمةَ
+            تُتصفَّح، ولا بحثَ ببريدك. يجدك من يكتب معرّفك أو اسمك الكامل كما هو
+            تماماً، ثمّ يرسل طلباً لا يصير صديقاً إلا إن قبلته — ولا يرى لحظاتك قبل ذلك. ورابطُ ملفك يُشارَك برقم عضويتك، فما يصل
             الناسَ هو ما أعطيتَهم إيّاه.
           </p>
         </DocSection>
