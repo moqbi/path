@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AthrMark, AthrWordmark } from "@/components/brand";
-import { lines, siteImage, siteShots, siteText, storeUrl } from "@/lib/site";
+import { lines, siteImage, siteShots, siteStickers, siteText, storeUrl } from "@/lib/site";
 import { ShotsCarousel } from "./shots-carousel";
 import { NewFeatures } from "./new-features";
 
@@ -408,7 +408,7 @@ export default async function LandingPage() {
       </section>
 
       {/* ───────────── آثار تكبر معك (القاعدة ٤١٥) ───────────── */}
-      <NewFeatures text={text} />
+      <NewFeatures text={text} stickers={await siteStickers()} />
 
       {/* ───────────── الخصوصية ───────────── */}
       <section className="l-wide pt-20">

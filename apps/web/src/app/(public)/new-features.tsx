@@ -106,14 +106,17 @@ function Book() {
   );
 }
 
-function Stickers() {
-  const art = ["/reactions/love.png", "/composer/music.png", "/reactions/laugh.png", "/composer/wake.png", "/reactions/smile.png", "/composer/place.png"];
+function Stickers({ stickers }: { stickers: string[] }) {
+  // ملصقاتٌ حقيقيّة من اللوحة (القاعدة ٤١٧)، وبلاها رسومُ التطبيق.
+  const art = stickers.length
+    ? stickers.map((id) => `/api/site-media/${id}`)
+    : ["/reactions/love.png", "/composer/music.png", "/reactions/laugh.png", "/composer/wake.png", "/reactions/smile.png", "/composer/place.png"];
   return (
     <div className="n-stickers" aria-hidden>
       {art.map((src, i) => (
         <span key={src} className="n-sticker" style={{ animationDelay: `${i * 0.3}s`, rotate: `${(i % 2 ? 1 : -1) * (4 + i)}deg` }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt="" width={44} height={44} />
+          <img src={src} alt="" width={56} height={56} loading="lazy" />
         </span>
       ))}
     </div>
@@ -140,7 +143,7 @@ function Memories() {
   );
 }
 
-const ART: Record<Key, () => React.ReactElement> = {
+const ART: Record<Key, (p: { stickers: string[] }) => React.ReactElement> = {
   nearby: Nearby,
   map: MapArt,
   gallery: Gallery,
@@ -149,7 +152,7 @@ const ART: Record<Key, () => React.ReactElement> = {
   memories: Memories,
 };
 
-export function NewFeatures({ text }: { text: Record<string, string> }) {
+export function NewFeatures({ text, stickers }: { text: Record<string, string>; stickers: string[] }) {
   return (
     <section className="l-wide pt-20">
       <div className="text-center">
@@ -162,7 +165,7 @@ export function NewFeatures({ text }: { text: Record<string, string> }) {
           return (
             <article key={key} className="n-card">
               <div className="n-art">
-                <Art />
+                <Art stickers={stickers} />
               </div>
               <div className="n-copy">
                 <h3 className="text-[17px] font-extrabold" style={{ fontFamily: "var(--font-display)" }}>
