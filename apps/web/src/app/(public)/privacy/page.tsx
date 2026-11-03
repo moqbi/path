@@ -37,8 +37,9 @@ export default function PrivacyPage() {
             <li>
               <strong>What we collect:</strong> your name, email and password (stored hashed with scrypt),
               member number, and optional city, bio and gender; the moments, comments, reactions, stories,
-              messages, photos, audio and video you post; your location only when you choose to post a place
-              (converted to a place name and city on our server); your friends list; last-seen time; and your
+              messages, photos, audio and video you post; your location when you post a place (converted to a place name and city on
+              our server) and, if you have granted location permission, the point where you posted each moment,
+              kept for your private "My Map" and never shown to anyone else; your friends list; last-seen time; and your
               IP address and a random app-generated device ID used only to fight fake accounts.
             </li>
             <li>
@@ -113,8 +114,14 @@ export default function PrivacyPage() {
               «إظهار موقعي» حُفظت المدينة وحدها.
             </li>
             <li>
+              <strong>موضعُ كلّ لحظةٍ لخريطتك</strong>: إن كنت منحت التطبيقَ إذنَ
+              الموقع حفظنا مع كلّ لحظةٍ تنشرها النقطةَ التي نشرتها منها، لتُرسم في
+              «خريطتي» — خريطتك أنت وحدك. لا يراها أحدٌ غيرك، ولا يُطلب الإذنُ من
+              أجلها، وتُحذف مع اللحظة.
+            </li>
+            <li>
               <strong>«من حولك»</strong>: حين تفتحها يُقارَن موقعُك بمن فتحها قريباً
-              منك على مئةٍ وخمسين متراً، ولا يُرسَل موقعُك لأحد — يظهر معرّفُك
+              منك على مئةٍ وخمسين متراً، ولا يُرسَل موقعُك لأحد — يظهر اسمُك
               وصورتُك وحدهما. وإن فعّلت تنبيهَها حفظنا آخرَ موقعٍ عرفناه لك ساعةً
               واحدة في ذاكرة الخادم لا في قاعدة البيانات، لننبّهك إذا فتحها أحدٌ
               قريبٌ منك — ولا يُحفظ لمن لم يفعّله.
