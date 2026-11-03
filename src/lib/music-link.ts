@@ -46,6 +46,49 @@ export function isSupportedMusicUrl(raw: string): boolean {
   }
 }
 
+/**
+ * الرابطُ من نصّ المشاركة لا النصُّ كلّه (القاعدة ٤١٩): تطبيقُ ساوندكلاود
+ * يشارك «Listen to … on #SoundCloud» ثمّ الرابط، فكان الحقلُ كلُّه يُقرأ
+ * رابطاً فيُردّ. يُؤخذ أوّلُ رابطٍ مدعوم، وما لصق بآخره من ترقيمٍ يُترك.
+ */
+export function pickMusicUrl(raw: string): string | null {
+  const text = raw.trim();
+  if (isSupportedMusicUrl(text)) return text;
+  for (const found of text.match(/https?:\/\/[^\s<>"'«»]+/gi) ?? []) {
+    const url = found.replace(/[.,;:!?)\]}،]+$/u, "");
+    if (isSupportedMusicUrl(url)) return url;
+  }
+  return null;
+}
+
+/** روابطُ المشاركة القصيرة: oEmbed لا يعرفها، فتُتبَع إلى صفحة المقطع. */
+const SHORT_HOSTS = /^on\.soundcloud\.com$/i;
+const LONG_HOSTS = /(^|\.)soundcloud\.com$/i;
+
+/**
+ * يُبدّل الرابطَ القصير بصفحته: تحويلةٌ بعد تحويلة بيدنا (ثلاثٌ على الأكثر)،
+ * ولا تُقبل وجهةٌ خارج ساوندكلاود — فلا يصير البابُ طريقاً إلى عنوانٍ آخر.
+ * والفشلُ يُبقي الرابطَ كما هو: يُنشر ويُفتح ولو بلا عنوان.
+ */
+export async function expandMusicUrl(raw: string): Promise<string> {
+  let current = raw;
+  try {
+    for (let hop = 0; hop < 3; hop++) {
+      const url = new URL(current);
+      if (!SHORT_HOSTS.test(url.hostname)) break;
+      const response = await fetch(current, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(5000) });
+      const next = response.headers.get("location");
+      if (!next) break;
+      const target = new URL(next, current);
+      if (target.protocol !== "https:" || !LONG_HOSTS.test(target.hostname)) break;
+      current = target.toString();
+    }
+  } catch {
+    return raw;
+  }
+  return SHORT_HOSTS.test(new URL(current).hostname) ? raw : current;
+}
+
 export async function resolveTrack(raw: string): Promise<ResolvedTrack> {
   let host = "";
   try {

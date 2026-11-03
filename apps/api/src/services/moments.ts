@@ -3,7 +3,7 @@ import { recordCity } from "./city";
 import { POLL_DAYS_DEFAULT, type MomentInput } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { reverseGeocode } from "../lib/places";
-import { isSupportedMusicUrl, resolveTrack } from "../lib/music-link";
+import { expandMusicUrl, pickMusicUrl, resolveTrack } from "../lib/music-link";
 import { guard } from "../lib/moderation";
 import { canInteract, canReachMoment, canSeeMoment, circleIds, moderatorReach } from "./visibility";
 import { dropMedia, squareMomentPhoto } from "./media";
@@ -183,12 +183,13 @@ export async function createMoment(userId: string, input: MomentInput) {
     العنوان والفنان والصورة تُقرأ من oEmbed — واجهةٌ عامّة بلا مفاتيح ولا
     OAuth — والفشل لا يمنع النشر: يبقى الرابط وحده قابلاً للفتح.
   */
-  const musicUrl = input.kind === "MUSIC" ? (input.musicUrl?.trim() ?? "") : "";
+  const pasted = input.kind === "MUSIC" ? (input.musicUrl?.trim() ?? "") : "";
+  let musicUrl = "";
   if (input.kind === "MUSIC") {
-    if (!musicUrl) throw badRequest("الصق رابط الأغنية");
-    if (!isSupportedMusicUrl(musicUrl)) {
-      throw badRequest("الرابط من يوتيوب أو ساوندكلاود أو سبوتيفاي");
-    }
+    if (!pasted) throw badRequest("الصق رابط الأغنية");
+    const picked = pickMusicUrl(pasted);
+    if (!picked) throw badRequest("الرابط من يوتيوب أو ساوندكلاود أو سبوتيفاي");
+    musicUrl = await expandMusicUrl(picked);
   }
   const track = musicUrl ? await resolveTrack(musicUrl) : null;
 

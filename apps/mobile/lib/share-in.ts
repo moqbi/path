@@ -47,7 +47,9 @@ function read(intent: Intent): Shared | null {
       picture: { uri: image.path, mime: image.mimeType, width: image.width ?? 0, height: image.height ?? 0 },
     };
   }
-  const music = musicUrl(intent.webUrl);
+  // ساوندكلاود يشارك نصّاً فيه الرابط لا رابطاً وحده (القاعدة ٤١٩).
+  const inText = intent.text?.match(/https?:\/\/[^\s<>"'«»]+/gi)?.map((u) => u.replace(/[.,;:!?)\]}،]+$/u, "")) ?? [];
+  const music = musicUrl(intent.webUrl) ?? inText.map(musicUrl).find(Boolean) ?? null;
   if (music) return { kind: "MUSIC", url: music };
   const text = (intent.text ?? intent.webUrl ?? "").trim();
   return text ? { kind: "THOUGHT", text } : null;

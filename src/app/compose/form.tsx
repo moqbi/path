@@ -256,7 +256,7 @@ export function ComposeForm({
             </p>
             <input
               name="url"
-              type="url"
+              type="text"
               dir="ltr"
               inputMode="url"
               value={musicUrl}
