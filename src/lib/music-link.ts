@@ -86,7 +86,14 @@ export async function expandMusicUrl(raw: string): Promise<string> {
   } catch {
     return raw;
   }
-  return SHORT_HOSTS.test(new URL(current).hostname) ? raw : current;
+  const final = new URL(current);
+  if (SHORT_HOSTS.test(final.hostname)) return raw;
+  // ما بعد «?» من ساوندكلاود تتبّعٌ للمشاركة (utm وsi) لا جزءٌ من المقطع.
+  if (LONG_HOSTS.test(final.hostname) && final.search) {
+    final.search = "";
+    return final.toString();
+  }
+  return current;
 }
 
 export async function resolveTrack(raw: string): Promise<ResolvedTrack> {
@@ -105,7 +112,7 @@ export async function resolveTrack(raw: string): Promise<ResolvedTrack> {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(7000),
     });
-    if (!response.ok) return { title: null, artist: null, thumb: null };
+    if (!response.ok) return LONG_HOSTS.test(host) ? await soundCloudPage(raw) : { title: null, artist: null, thumb: null };
 
     const data = (await response.json()) as {
       title?: string;
@@ -121,5 +128,47 @@ export async function resolveTrack(raw: string): Promise<ResolvedTrack> {
     };
   } catch {
     return { title: null, artist: null, thumb: null };
+  }
+}
+
+function decode(value: string): string {
+  return value
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&#x27;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .trim();
+}
+
+/**
+ * مقطعٌ منع صاحبُه تضمينَه يردّ oEmbed عليه ٤٠٣ — فيُقرأ من صفحته نفسها:
+ * `og:title` و`og:image`، والفنانُ من «Stream … by X | Listen…» في العنوان.
+ * الصفحةُ من ساوندكلاود وحدها (`LONG_HOSTS`)، وبلا تحويلات، ونصفُ ميغا حدّاً.
+ */
+async function soundCloudPage(raw: string): Promise<ResolvedTrack> {
+  const empty = { title: null, artist: null, thumb: null };
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" || !LONG_HOSTS.test(url.hostname) || SHORT_HOSTS.test(url.hostname)) return empty;
+    const response = await fetch(url, {
+      redirect: "error",
+      headers: { Accept: "text/html", "User-Agent": "Mozilla/5.0 (compatible; AtharBot/1.0)" },
+      signal: AbortSignal.timeout(7000),
+    });
+    if (!response.ok) return empty;
+    const html = (await response.text()).slice(0, 512_000);
+    const meta = (key: string) =>
+      html.match(new RegExp(`<meta[^>]+property="${key}"[^>]+content="([^"]*)"`, "i"))?.[1] ?? null;
+    const title = meta("og:title");
+    const image = meta("og:image");
+    const artist = html.match(/<title>Stream [\s\S]*? by ([^|<]+?) \| Listen/i)?.[1] ?? null;
+    return {
+      title: title ? decode(title) || null : null,
+      artist: artist ? decode(artist) || null : null,
+      thumb: image?.startsWith("https://") ? decode(image) : null,
+    };
+  } catch {
+    return empty;
   }
 }
