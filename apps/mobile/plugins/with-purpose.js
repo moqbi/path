@@ -15,9 +15,9 @@ const UNUSED = [
   "NSLocationAlwaysAndWhenInUseUsageDescription",
   "NSLocationAlwaysUsageDescription",
   "NSFaceIDUsageDescription",
-  // ومنذ SDK 58 يُضيف `expo-location` نصَّ الحركة (`NSMotionUsageDescription`) ونصَّ
-  // الدقّة المؤقّتة — ولا نقرأ نشاطَ الحركة ولا نطلب دقّةً مؤقّتة (القاعدة ٣٩٨).
-  "NSMotionUsageDescription",
+  // ونصُّ الدقّة المؤقّتة من `expo-location` منذ SDK 58 — لا نطلبها (القاعدة ٣٩٨).
+  // أمّا نصُّ الحركة فباقٍ بنصّنا: كودُ `expo-location` يشير إلى CoreMotion، وآبل
+  // ردّت البناء ٣٧ بلاه (ITMS-90683) — القاعدة ٤١٤.
   "NSLocationTemporaryUsageDescriptionDictionary",
 ];
 
