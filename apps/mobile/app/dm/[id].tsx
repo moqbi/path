@@ -46,6 +46,8 @@ type Line = {
   editedAt: string | null;
   /** ملصقٌ بدل النصّ (القاعدة ٢٩١). */
   sticker?: { mediaId: string } | null;
+  /** مقطعٌ صوتيّ يُرفع الآن — يُرسم في الحال قبل أن يردّ الخادم (القاعدة ٤٢٢). */
+  pending?: boolean;
 };
 
 const clock = (seconds: number) =>
@@ -218,6 +220,7 @@ export default function Conversation() {
   const [seconds, setSeconds] = useState(0);
   // ما سُجِّل ووقف ولم يُرسل بعد: يُسمع ويُحذف قبل أن يخرج.
   const [tape, setTape] = useState<{ uri: string; seconds: number } | null>(null);
+  const [outbox, setOutbox] = useState<Line[]>([]);
   const [hearing, setHearing] = useState(false);
   const heard = useRef<Audio.Sound | null>(null);
   const recorder = useRef<Audio.Recording | null>(null);
@@ -361,16 +364,41 @@ export default function Conversation() {
     setTape(null);
   }
 
+  // الرفعُ والفحصُ على الخادم ثمّ الإرسالُ ثوانٍ، فيُرسم المقطعُ في الحال بساعةٍ مكان
+  // الإيصال، ويذهب حين تصل رسالتُه الحقيقيّة أو يفشل (القاعدة ٤٢٢).
   async function sendTape() {
     if (!tape) return;
     const { uri, seconds: length } = tape;
+    const local: Line = {
+      id: `local-${Date.now()}`,
+      body: "",
+      kind: "VOICE",
+      mediaId: null,
+      seconds: length,
+      senderId: me?.id ?? "",
+      createdAt: new Date().toISOString(),
+      deliveredAt: null,
+      readAt: null,
+      editedAt: null,
+      pending: true,
+    };
+    setOutbox((lines) => [...lines, local]);
+    pinned.current = true;
+    list.current?.scrollToOffset({ offset: 0, animated: true });
     await dropTape();
     try {
-      const mediaId = await uploadFile(uri, "audio/mp4", "VOICE");
-      pinned.current = true;
-      send.mutate({ kind: "VOICE", mediaId, seconds: length });
-    } catch (problem) {
-      setError(problem instanceof Error ? problem.message : "تعذّر الإرسال");
+      let mediaId: string;
+      try {
+        mediaId = await uploadFile(uri, "audio/mp4", "VOICE");
+      } catch (problem) {
+        setError(problem instanceof Error ? problem.message : "تعذّر الإرسال");
+        return;
+      }
+      // خطأُ الإرسال يقوله `onError` نفسُه («مقفل الخاص» سطرٌ زجاجيّ وغيرُه تحت الحقل).
+      await send.mutateAsync({ kind: "VOICE", mediaId, seconds: length }).catch(() => undefined);
+      await client.refetchQueries({ queryKey: keys.thread(id) }).catch(() => undefined);
+    } finally {
+      setOutbox((lines) => lines.filter((line) => line.id !== local.id));
     }
   }
 
@@ -420,7 +448,10 @@ export default function Conversation() {
   };
 
   const other = thread.data?.other;
-  const rows = useMemo(() => [...(thread.data?.messages ?? [])].reverse(), [thread.data?.messages]);
+  const rows = useMemo(
+    () => [...(thread.data?.messages ?? []), ...outbox].reverse(),
+    [thread.data?.messages, outbox],
+  );
 
   return (
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
@@ -465,6 +496,23 @@ export default function Conversation() {
             )
           }
           renderItem={({ item, index }) => {
+            if (item.pending) {
+              return (
+                <ChatLine
+                  person={me ?? { name: "", avatarMediaId: null }}
+                  mine
+                  at={item.createdAt}
+                  head={needsHead(item, rows[index + 1])}
+                  meta={<Text style={{ color: colors.groundFaint, fontSize: 10.5 }}>يُرسل…</Text>}
+                >
+                  <View style={[bubbleStyle(true), { flexDirection: "row", alignItems: "center", gap: 10, opacity: 0.75 }]}>
+                    <Spinner size="small" color={colors.clay} />
+                    <View style={{ flex: 1, height: 3, borderRadius: 2, backgroundColor: colors.line }} />
+                    <Text style={{ color: colors.muted, fontSize: 12 }}>{clock(item.seconds ?? 0)}</Text>
+                  </View>
+                </ChatLine>
+              );
+            }
             const mine = item.senderId === me?.id;
             const open = editing === item.id;
             // صورةُ المرسل واسمُه ووسمُه فوق أوّل رسالةٍ من سلسلته (القاعدة ٢١٦).
