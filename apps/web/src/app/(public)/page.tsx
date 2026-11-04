@@ -3,6 +3,8 @@ import { AthrMark, AthrWordmark } from "@/components/brand";
 import { lines, siteImage, siteShots, siteStickers, siteText, storeUrl } from "@/lib/site";
 import { ShotsCarousel } from "./shots-carousel";
 import { NewFeatures } from "./new-features";
+import { HeroPhone } from "./hero-phone";
+import { PostCard } from "./post-card";
 
 /*
   أربع مزايا لا أكثر: ما يفعله المستخدم في التطبيق كل يوم.
@@ -277,30 +279,7 @@ export default async function LandingPage() {
             </div>
 
             <div className="l-hero-art">
-              <div className="rise rise-3 flex items-end">
-                <figure className="l-phone l-phone-hero">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/shots/hero.webp" alt="الخط الزمني في آثار مومنتس" />
-                </figure>
-              </div>
-
-              <div className="l-float l-float-moment rise rise-4" aria-hidden>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/composer/place.png" alt="" width={40} height={40} />
-                <span className="flex flex-col leading-tight">
-                  <span className="text-[13px] font-bold">في مقهى الحيّ</span>
-                  <span className="text-[11.5px] text-muted">مع نورة وخالد · الآن</span>
-                </span>
-              </div>
-
-              <div className="l-float l-float-music rise rise-5" aria-hidden>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/composer/music.png" alt="" width={40} height={40} />
-                <span className="flex flex-col leading-tight">
-                  <span className="text-[13px] font-bold">يسمع الآن</span>
-                  <span className="text-[11.5px] text-muted">على نوته · مع دائرته</span>
-                </span>
-              </div>
+              <HeroPhone />
 
               <div className="l-float l-float-circle rise rise-5" aria-hidden>
                 <span className="l-num">١٥٠</span>
@@ -330,25 +309,7 @@ export default async function LandingPage() {
 
         <div className="l-posts mt-8">
           {POSTS.map((key, index) => (
-            <article key={key} className="l-post">
-              {/* الرسمُ عائمٌ بلا قرصٍ ولا أرضية — بقرار المالك — يطفو بظلّه وحده. */}
-              <div className="l-post-tile" aria-hidden>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`/composer/${key}.png`} alt="" width={88} height={88} style={{ animationDelay: `${index * 0.4}s` }} />
-              </div>
-              <div className="l-post-text">
-                <h3 className="text-[17px] font-extrabold" style={{ fontFamily: "var(--font-display)" }}>
-                  {text[`post.${key}.title` as const]}
-                </h3>
-                <ul className="mt-3 flex flex-wrap gap-1.5">
-                  {lines(text[`post.${key}.tags` as const]).map((tag) => (
-                    <li key={tag} className="l-chip">
-                      {tag}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </article>
+            <PostCard key={key} kind={key} delay={index * 0.4} title={text[`post.${key}.title` as const]} tags={lines(text[`post.${key}.tags` as const])} />
           ))}
         </div>
       </section>
@@ -372,7 +333,7 @@ export default async function LandingPage() {
       </section>
 
       {/* ───────────── ليش آثار ───────────── */}
-      <section className="l-wide pt-20">
+      <section id="why" className="l-wide scroll-mt-20 pt-20">
         <div className="text-center">
           <h2 className="l-title">{text["why.title"]}</h2>
           <p className="l-sub mx-auto">{text["why.sub"]}</p>

@@ -15,17 +15,18 @@
     "@prisma/client": "7.10.0",
     "jose": "6.2.10",
     "next": "16.4.2",
+    "qrcode": "1.5.4",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "server-only": "^0.0.1",
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4",
     "@types/node": "^22",
     "@types/react": "^19",
+    "@types/react-dom": "^19",
     "tailwindcss": "^4",
-    "typescript": "^5",
-    "@tailwindcss/postcss": "^4",
-    "@types/react-dom": "^19"
+    "typescript": "^5"
   }
 }

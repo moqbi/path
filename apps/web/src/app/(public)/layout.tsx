@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AthrMark, AthrWordmark } from "@/components/brand";
 import { FollowRow } from "@/components/social";
+import { SiteHead } from "@/components/site-head";
 import { headers } from "next/headers";
 import { siteText, socialLinks, storeUrl } from "@/lib/site";
 
@@ -61,16 +62,12 @@ export default async function PublicLayout({ children }: { children: React.React
 
   return (
     <div className="site">
-      <header className="site-head">
-        <div className="l-wide flex items-center justify-between gap-3 py-3">
-          {/*
-            الاسم كاملاً حيث يتّسع، ومختصراً حيث لا يتّسع.
-
-            الرأس يحمل زرّ التحميل بجانبه، فعلى شاشةٍ ٣٢٠ لا يبقى للاسم
-            إلا نحو مئةٍ وعشرين بكسلاً — «ATHAR Moments» فيها تُقصّ من
-            أوّلها فتُقرأ «HAR Moments». قيس فعلاً. فالكامل من `sm` فما
-            فوق، والمختصر تحتها، والذيلُ والبطلُ يحملان الكامل دائماً.
-          */}
+      {/*
+        الرأسُ الزجاجيّ بأقسام الموقع كلّها (`SiteHead` — القاعدة ٤٢٠): الاسمُ كاملاً حيث
+        يتّسع ومختصراً حيث لا يتّسع — على شاشةٍ ٣٢٠ كانت «ATHAR Moments» تُقصّ من أوّلها.
+      */}
+      <SiteHead
+        brand={
           <Link href="/" className="flex items-center gap-2.5" aria-label="آثار مومنتس">
             <AthrMark size={32} />
             <span className="flex min-w-0 flex-col leading-none">
@@ -86,23 +83,8 @@ export default async function PublicLayout({ children }: { children: React.React
               </span>
             </span>
           </Link>
-
-          {/*
-            الخصوصية والشروط في الرأس لا في الذيل وحده — **بقرار المالك**: ردّ
-            مراجعُ تيك توك التطبيقَ لأنّهما «لا تُريان بوضوح من الصفحة الرئيسية».
-            وباسمهما الإنجليزيّ معه، فالمراجعُ لا يقرأ العربية.
-          */}
-          <nav className="flex shrink-0 items-center gap-2.5 text-[11.5px] font-semibold sm:gap-5 sm:text-[12.5px]" aria-label="القانوني">
-            <Link href="/privacy" className="whitespace-nowrap opacity-85 hover:opacity-100">
-              <span className="hidden sm:inline">الخصوصية · </span>
-              <span style={{ fontFamily: "var(--font-latin)" }}>Privacy</span>
-            </Link>
-            <Link href="/terms" className="whitespace-nowrap opacity-85 hover:opacity-100">
-              <span className="hidden sm:inline">الشروط · </span>
-              <span style={{ fontFamily: "var(--font-latin)" }}>Terms</span>
-            </Link>
-          </nav>
-
+        }
+        action={
           <Link
             href={download}
             className="flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-[12.5px] font-bold sm:px-4"
@@ -114,8 +96,8 @@ export default async function PublicLayout({ children }: { children: React.React
               <path d="M19 12H5M11 6l-6 6 6 6" />
             </svg>
           </Link>
-        </div>
-      </header>
+        }
+      />
 
       <main className="grow">{children}</main>
 
