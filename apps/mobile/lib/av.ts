@@ -157,6 +157,17 @@ class Recording {
 
 type Mode = { playsInSilentModeIOS?: boolean; allowsRecordingIOS?: boolean };
 
+/**
+ * الرسالةُ الصوتيّة كلامٌ لا موسيقى (القاعدة ٤٢١): قناةٌ واحدة بـ٦٤ كيلوبت — دقيقتا آثار+
+ * نحو ميغا. `HIGH_QUALITY` كان ستيريو بأعلى جودةٍ لآبل فيتجاوز الحدَّ بعد ثلاثين ثانية.
+ */
+export const VOICE_PRESET: typeof RecordingPresets.HIGH_QUALITY = {
+  ...RecordingPresets.HIGH_QUALITY,
+  numberOfChannels: 1,
+  bitRate: 64000,
+  ios: { ...RecordingPresets.HIGH_QUALITY.ios, audioQuality: 64 },
+};
+
 export const Audio = {
   Sound: { createAsync },
   Recording,

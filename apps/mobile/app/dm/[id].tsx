@@ -11,7 +11,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Picker from "expo-image-picker";
-import { Audio } from "../../lib/av";
+import { Audio, VOICE_PRESET } from "../../lib/av";
 import { ChatLine, bubbleStyle, needsHead } from "../../components/chat-line";
 import { viewPhoto } from "../../components/photo-viewer";
 import { MediaImage } from "../../components/media-image";
@@ -295,7 +295,7 @@ export default function Conversation() {
     await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
 
     const { recording } = await Audio.Recording.createAsync(
-      Audio.RecordingOptionsPresets.HIGH_QUALITY,
+      VOICE_PRESET,
     );
     recorder.current = recording;
     setTaping(true);
