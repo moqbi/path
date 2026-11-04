@@ -12,7 +12,7 @@ const MAX_ANIMATED_BYTES = 3_000_000;
 const MAX_ANIMATED_SIDE = 320;
 const MIN_ANIMATED_SIDE = 120;
 /** الصوت مسجَّلٌ في المتصفح بجودةٍ منخفضة: دقيقتان فيه أقلّ من ميغا. */
-const MAX_AUDIO_BYTES = 2_000_000;
+const MAX_AUDIO_BYTES = 6_000_000;
 /** الفيديو عشرون ثانية بمعدّل بتّ محدود — وما زاد يُردّ برسالة لا بصمت. */
 const MAX_VIDEO_BYTES = 18_000_000;
 
