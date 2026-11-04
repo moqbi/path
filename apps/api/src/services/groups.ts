@@ -424,12 +424,15 @@ export async function candidates(userId: string, query: string) {
 /** الكنسُ كالمحادثات: ثلاثون يوماً (القاعدة ٨٣) — والمجموعةُ تبقى. */
 export async function sweepOld(): Promise<number> {
   const cutoff = new Date(Date.now() - MESSAGE_KEEP_DAYS * 86_400_000);
+  // ما جُمعت ملفّاتُه وحده وما بلا ملفّ — لا يبقى ملفٌّ بلا رسالة (القاعدة ٤٢٤).
   const files = await prisma.groupMessage.findMany({
     where: { createdAt: { lt: cutoff }, mediaId: { not: null } },
-    select: { mediaId: true },
+    select: { id: true, mediaId: true },
     take: 500,
   });
-  const { count } = await prisma.groupMessage.deleteMany({ where: { createdAt: { lt: cutoff } } });
+  const withFiles = await prisma.groupMessage.deleteMany({ where: { id: { in: files.map((row) => row.id) } } });
+  const bare = await prisma.groupMessage.deleteMany({ where: { createdAt: { lt: cutoff }, mediaId: null } });
+  const count = withFiles.count + bare.count;
   const ids = files.flatMap((row) => (row.mediaId ? [row.mediaId] : []));
   if (ids.length > 0) await dropMedia(ids);
   return count;

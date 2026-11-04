@@ -2,12 +2,12 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { prisma } from "@athar/db";
 import { getObject } from "@athar/storage";
-import { cuid, presignInput } from "@athar/shared";
+import { LIMITS, cuid, presignInput } from "@athar/shared";
 import { zValidator } from "../../lib/validate";
 import { requireAuth, me } from "../../middleware/auth";
 import { canSeeMedia } from "../../services/visibility";
 import { rateLimit } from "../../middleware/rate-limit";
-import { notFound } from "../../lib/errors";
+import { badRequest, notFound } from "../../lib/errors";
 
 /** فلترُ مقطع القصّة كما يرسمه الجوّال: مصفوفةٌ ٤×٥ وإعتامُ أطراف. */
 const LOOK = z.object({
@@ -39,6 +39,18 @@ export const mediaRoutes = new Hono()
   .post("/presign", zValidator("json", presignInput), async (c) =>
     c.json(await upload.presign(me(c), c.req.valid("json")), 201),
   )
+
+  /**
+   * الرسالةُ الصوتيّة بجسمها خاماً (القاعدة ٤٢٣): رحلةٌ واحدة بدل رابطٍ ورفعٍ واعتماد.
+   * والحدُّ يُفحص من الترويسة قبل أن يُقرأ الجسم، ثمّ على ما وصل فعلاً.
+   */
+  .use("/voice", rateLimit(30, 60))
+  .post("/voice", async (c) => {
+    const declared = Number(c.req.header("content-length") ?? 0);
+    if (declared > LIMITS.audio) throw badRequest("الملف كبير");
+    const bytes = new Uint8Array(await c.req.arrayBuffer());
+    return c.json(await upload.direct(me(c), c.req.header("content-type") ?? "", bytes), 201);
+  })
 
   /**
    * اعتماد ما رُفع بعد فحص بايتاته.

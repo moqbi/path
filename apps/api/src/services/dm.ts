@@ -400,13 +400,17 @@ export async function sweepOld(): Promise<number> {
   const cutoff = new Date(Date.now() - MESSAGE_KEEP_DAYS * 86_400_000);
 
   // الملفات أولاً: حذف الرسالة يُفرغ `mediaId` ويترك بكسلاتها في الدلو.
+  // ويُحذف ما جُمعت ملفّاتُه وحده، وما بلا ملفّ: لو حُذفت القديمةُ كلُّها وجُمع ٥٠٠ ملفٍّ
+  // فقط لبقي ما زاد في الدلو بلا رسالةٍ تدلّ عليه (القاعدة ٤٢٤). والباقي في الدورة التالية.
   const orphans = await prisma.message.findMany({
     where: { createdAt: { lt: cutoff }, mediaId: { not: null } },
-    select: { mediaId: true },
+    select: { id: true, mediaId: true },
     take: 500,
   });
 
-  const { count } = await prisma.message.deleteMany({ where: { createdAt: { lt: cutoff } } });
+  const withFiles = await prisma.message.deleteMany({ where: { id: { in: orphans.map((row) => row.id) } } });
+  const bare = await prisma.message.deleteMany({ where: { createdAt: { lt: cutoff }, mediaId: null } });
+  const count = withFiles.count + bare.count;
   await prisma.conversation.deleteMany({
     where: { messages: { none: {} }, createdAt: { lt: cutoff } },
   });

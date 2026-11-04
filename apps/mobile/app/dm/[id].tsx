@@ -25,7 +25,7 @@ import { DEV_FEATURES } from "../../lib/dev-features";
 import { SelectableText } from "../../components/selectable-text";
 import { LinkPreview } from "../../components/link-preview";
 import { api, baseUrl, currentAccess } from "../../lib/api";
-import { uploadFile } from "../../lib/upload";
+import { uploadFile, uploadVoice } from "../../lib/upload";
 import { useKeyboardInset } from "../../lib/keyboard";
 import { keys } from "../../lib/queries";
 import { useOpenThread } from "../../lib/open-thread";
@@ -389,14 +389,25 @@ export default function Conversation() {
     try {
       let mediaId: string;
       try {
-        mediaId = await uploadFile(uri, "audio/mp4", "VOICE");
+        // رحلةٌ واحدة إلى الخادم بدل رابطٍ ورفعٍ إلى الدلو واعتماد (القاعدة ٤٢٣).
+        mediaId = await uploadVoice(uri, "audio/mp4");
       } catch (problem) {
         setError(problem instanceof Error ? problem.message : "تعذّر الإرسال");
         return;
       }
       // خطأُ الإرسال يقوله `onError` نفسُه («مقفل الخاص» سطرٌ زجاجيّ وغيرُه تحت الحقل).
-      await send.mutateAsync({ kind: "VOICE", mediaId, seconds: length }).catch(() => undefined);
-      await client.refetchQueries({ queryKey: keys.thread(id) }).catch(() => undefined);
+      const sent = (await send.mutateAsync({ kind: "VOICE", mediaId, seconds: length }).catch(() => null)) as
+        | { message?: Line }
+        | null;
+      // ما ردّه الخادمُ يُكتب في المحادثة في الحال، فلا تنتظر الفقاعةُ جلبَها كلَّها.
+      const message = sent?.message;
+      if (message) {
+        client.setQueryData(keys.thread(id), (old: { messages: Line[] } | undefined) =>
+          old && !old.messages.some((line) => line.id === message.id)
+            ? { ...old, messages: [...old.messages, message] }
+            : old,
+        );
+      }
     } finally {
       setOutbox((lines) => lines.filter((line) => line.id !== local.id));
     }
