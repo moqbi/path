@@ -7,6 +7,9 @@ import { NameTag, frameZoom } from "@/components/ui";
 import { ar, membership } from "@/lib/format";
 import { siteText, storeUrl } from "@/lib/site";
 import { OpenInApp } from "./open-in-app";
+import { MemberFlip } from "./member-flip";
+import { SITE_URL } from "@/lib/site-url";
+import { create } from "qrcode/lib/core/qrcode";
 
 /**
  * صفحة المشاركة — بطاقة شخصٍ لمن لم ينزّل التطبيق بعد.
@@ -131,101 +134,118 @@ export default async function SharedProfile({ params }: Props) {
     `لك معانا ${membership(person.createdAt)}`,
   ];
 
+  /*
+    رمزُ QR لرابط الملفّ (القاعدة ٤٢٠) — يُرسم على الخادم مساراً واحداً من نواة
+    `qrcode` كما في التطبيق (القاعدة ٨٧)، بتصحيح «H» وفي وسطه العلامة. وبلا
+    نطاقٍ مضبوط (القاعدة ١٠٥) لا رمز: رابطٌ نسبيّ لا تفتحه كاميرا.
+  */
+  const qr = SITE_URL ? <MemberQr url={`${SITE_URL}/u/${person.memberNo}`} name={person.name} /> : null;
+
   return (
     <article className="mx-auto max-w-[520px] pb-10">
-      {/* الغلاف بموضعه وقُربه — المعادلةُ نفسها في التطبيق (`coverFrame`). */}
-      <div className="relative h-[176px] overflow-hidden sm:rounded-b-2xl">
-        {cover ? (
-          <span
-            aria-hidden
-            className="absolute inset-0 block"
-            style={{
-              backgroundImage: `url(${cover})`,
-              backgroundSize: "cover",
-              backgroundPosition: `${person.coverX}% ${person.coverY}%`,
-              transform: zoom === 1 ? undefined : `scale(${zoom})`,
-              transformOrigin: `${person.coverX}% ${person.coverY}%`,
-            }}
-          />
-        ) : (
-          <span
-            aria-hidden
-            className="absolute inset-0 block"
-            style={{ backgroundImage: "linear-gradient(135deg,#0e1a24,#2b3f4f)" }}
-          />
-        )}
-      </div>
+      <MemberFlip
+        back={qr}
+        front={
+          <>
+        {/* الغلاف بموضعه وقُربه — المعادلةُ نفسها في التطبيق (`coverFrame`). */}
+        <div className="relative h-[176px] overflow-hidden">
+          {cover ? (
+            <span
+              aria-hidden
+              className="absolute inset-0 block"
+              style={{
+                backgroundImage: `url(${cover})`,
+                backgroundSize: "cover",
+                backgroundPosition: `${person.coverX}% ${person.coverY}%`,
+                transform: zoom === 1 ? undefined : `scale(${zoom})`,
+                transformOrigin: `${person.coverX}% ${person.coverY}%`,
+              }}
+            />
+          ) : (
+            <span
+              aria-hidden
+              className="absolute inset-0 block"
+              style={{ backgroundImage: "linear-gradient(135deg,#0e1a24,#2b3f4f)" }}
+            />
+          )}
+        </div>
 
-      {/*
-        **بهيئة `ProfileHead` في التطبيق** (القاعدة ٣٩٩): الصورةُ في طرف البداية تعبر حافّة
-        الغلاف، والاسمُ ووسمُه بجانبها تحت الحافّة، ثمّ النبذةُ وسطرُ العضويّة من الطرف نفسه.
-        كانت الصورةُ والاسمُ في الوسط فتُقرأ الصفحةُ موقعاً آخر غير التطبيق.
-      */}
-      <div className="relative px-5">
-        <div className="flex items-end gap-3" style={{ marginTop: -AVATAR * 0.55 }}>
-        <span className="relative block shrink-0" style={{ width: AVATAR, height: AVATAR, padding: facePad }}>
-          <span
-            className="flex h-full w-full items-center justify-center overflow-hidden rounded-full text-[30px] font-bold"
-            style={{
-              border: frame ? undefined : "4px solid var(--color-paper)",
-              backgroundImage: avatar ? `url(${avatar})` : "linear-gradient(135deg,#f6b93b,#ff7a5a)",
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              color: "#14212b",
-            }}
-          >
-            {avatar ? "" : person.name.slice(0, 1)}
+        {/*
+          **بهيئة `ProfileHead` في التطبيق** (القاعدة ٣٩٩): الصورةُ في طرف البداية تعبر حافّة
+          الغلاف، والاسمُ ووسمُه بجانبها تحت الحافّة، ثمّ النبذةُ وسطرُ العضويّة من الطرف نفسه.
+          كانت الصورةُ والاسمُ في الوسط فتُقرأ الصفحةُ موقعاً آخر غير التطبيق.
+        */}
+        <div className="relative px-5 pb-5">
+          <div className="flex items-end gap-3" style={{ marginTop: -AVATAR * 0.55 }}>
+          <span className="relative block shrink-0" style={{ width: AVATAR, height: AVATAR, padding: facePad }}>
+            <span
+              className="flex h-full w-full items-center justify-center overflow-hidden rounded-full text-[30px] font-bold"
+              style={{
+                border: frame ? undefined : "4px solid var(--color-paper)",
+                backgroundImage: avatar ? `url(${avatar})` : "linear-gradient(135deg,#f6b93b,#ff7a5a)",
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                color: "#14212b",
+              }}
+            >
+              {avatar ? "" : person.name.slice(0, 1)}
+            </span>
+            {frame ? (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute block"
+                style={{
+                  inset: `${((1 - frameScale) / 2) * 100}%`,
+                  backgroundImage: `url(${frame})`,
+                  backgroundSize: "contain",
+                  backgroundPosition: "center",
+                  backgroundRepeat: "no-repeat",
+                }}
+              />
+            ) : null}
+            {charm ? (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute block"
+                style={{
+                  width: badge,
+                  height: badge,
+                  left: -badge * 0.3,
+                  top: AVATAR - badge * 0.8,
+                  zIndex: 2,
+                  backgroundImage: `url(${charm})`,
+                  backgroundSize: "contain",
+                  backgroundPosition: "center",
+                  backgroundRepeat: "no-repeat",
+                  filter: "drop-shadow(0 2px 4px rgba(14,26,36,.28))",
+                }}
+              />
+            ) : null}
           </span>
-          {frame ? (
-            <span
-              aria-hidden
-              className="pointer-events-none absolute block"
-              style={{
-                inset: `${((1 - frameScale) / 2) * 100}%`,
-                backgroundImage: `url(${frame})`,
-                backgroundSize: "contain",
-                backgroundPosition: "center",
-                backgroundRepeat: "no-repeat",
-              }}
-            />
+
+            <h1 className="flex min-w-0 grow items-center gap-2 pb-2 text-[21px] font-bold leading-tight">
+              <span dir="auto" className="min-w-0 truncate">{person.name}</span>
+              <NameTag isPlus={person.isPlus} tag={person.tag} size={11} />
+            </h1>
+          </div>
+
+          {person.bio ? (
+            <p dir="auto" className="mt-3 text-start text-[14px] leading-relaxed text-ink">
+              {person.bio}
+            </p>
           ) : null}
-          {charm ? (
-            <span
-              aria-hidden
-              className="pointer-events-none absolute block"
-              style={{
-                width: badge,
-                height: badge,
-                left: -badge * 0.3,
-                top: AVATAR - badge * 0.8,
-                zIndex: 2,
-                backgroundImage: `url(${charm})`,
-                backgroundSize: "contain",
-                backgroundPosition: "center",
-                backgroundRepeat: "no-repeat",
-                filter: "drop-shadow(0 2px 4px rgba(14,26,36,.28))",
-              }}
-            />
-          ) : null}
-        </span>
 
-          <h1 className="flex min-w-0 grow items-center gap-2 pb-2 text-[21px] font-bold leading-tight">
-            <span dir="auto" className="min-w-0 truncate">{person.name}</span>
-            <NameTag isPlus={person.isPlus} tag={person.tag} size={11} />
-          </h1>
-        </div>
+          <p className="mt-2 text-start text-[12.5px] text-muted">{line.join("  │  ")}</p>
 
-        {person.bio ? (
-          <p dir="auto" className="mt-3 text-start text-[14px] leading-relaxed text-ink">
-            {person.bio}
-          </p>
-        ) : null}
+          <div className="mt-5 w-full">
+            <OpenInApp memberNo={person.memberNo} store={mine} />
+          </div>
+            </div>
+          </>
+        }
+      />
 
-        <p className="mt-2 text-start text-[12.5px] text-muted">{line.join("  │  ")}</p>
-
-        <div className="mt-5 w-full">
-          <OpenInApp memberNo={person.memberNo} store={mine} />
-        </div>
+      <div className="relative px-5">
 
         {/*
           الدعوة: من لم يُنزّل التطبيق. ومكانُ اللحظات سطرٌ يقول لماذا لا تُرى
@@ -290,5 +310,35 @@ function StoreButton({ store, href }: { store: string; href: string | null }) {
     >
       {store}
     </span>
+  );
+}
+
+function MemberQr({ url, name }: { url: string; name: string }) {
+  const { modules } = create(url, { errorCorrectionLevel: "H" });
+  const n = modules.size;
+  let d = "";
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (modules.get(x, y)) d += `M${x} ${y}h1v1h-1z`;
+  // العلامةُ في الوسط على رقعةٍ بيضاء — تصحيحُ «H» يحتمل نحو ٣٠٪ مغطّى.
+  const hole = Math.round(n * 0.24);
+  const at = (n - hole) / 2;
+  return (
+    <div className="flex flex-col items-center gap-3 text-center">
+      <span className="text-[12px] font-semibold" style={{ color: "var(--color-gold-bright)" }}>
+        امسح لتضيف
+      </span>
+      <span dir="auto" className="text-[19px] font-bold" style={{ fontFamily: "var(--font-display)" }}>
+        {name}
+      </span>
+      <span className="relative block rounded-2xl bg-white p-3">
+        <svg viewBox={`0 0 ${n} ${n}`} width={196} height={196} shapeRendering="crispEdges" role="img" aria-label={`رمز QR لملفّ ${name}`}>
+          <path d={d} fill="#0e1a24" />
+          <rect x={at - 0.5} y={at - 0.5} width={hole + 1} height={hole + 1} rx={1.5} fill="#fff" />
+          <image href="/athr-mark.png" x={at} y={at} width={hole} height={hole} />
+        </svg>
+      </span>
+      <span dir="ltr" className="latin text-[12px]" style={{ color: "var(--color-chrome-muted)" }}>
+        {url.replace(/^https?:\/\//, "")}
+      </span>
+    </div>
   );
 }

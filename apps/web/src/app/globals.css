@@ -1418,3 +1418,372 @@ h3 {
   .n-ring, .n-face, .n-pin-big, .n-sticker, .n-card { animation: none; transition: none; }
   .n-face { opacity: 1; }
 }
+
+/* ═════════════ تجميلُ الموقع العامّ (القاعدة ٤٢٠) ═════════════ */
+
+/* ١ — الرأسُ زجاجٌ حين يمرّ المحتوى تحته، وفي أسفله خطُّ ما قُرئ. */
+.site-head {
+  transition: background-color 0.35s ease, box-shadow 0.35s ease;
+}
+
+.site-head-glass {
+  background: rgba(14, 26, 36, 0.72);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+  box-shadow: 0 10px 28px -18px rgba(0, 0, 0, 0.7);
+}
+
+.site-head-progress {
+  position: absolute;
+  inset-inline: 0;
+  bottom: -1px;
+  height: 2px;
+  background: linear-gradient(to left, var(--color-gold), #ff7a5a);
+  transform: scaleX(0);
+  transform-origin: right;
+  pointer-events: none;
+}
+
+.site-nav {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.site-nav a {
+  position: relative;
+  white-space: nowrap;
+  opacity: 0.78;
+  transition: opacity 0.2s;
+}
+
+.site-nav a:hover,
+.site-nav a.site-nav-on {
+  opacity: 1;
+}
+
+.site-nav a.site-nav-on::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: -7px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--color-gold);
+}
+
+/* الأقسامُ حيث تتّسع، والخصوصيةُ والشروطُ على كلّ عرض (القاعدة ١٧٨). */
+.site-nav-wide {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .site-nav {
+    gap: 18px;
+    font-size: 12.5px;
+  }
+}
+
+@media (min-width: 900px) {
+  .site-nav-wide {
+    display: inline;
+  }
+}
+
+/* ٢ — هاتفُ الرأس يتنقّل بين اللقطات، والبطاقتان تتبدّلان معه. */
+.l-phone-live {
+  position: relative;
+  display: grid;
+}
+
+.l-phone-live img {
+  grid-area: 1 / 1;
+  opacity: 0;
+  transform: scale(1.03);
+  transition: opacity 0.6s ease, transform 0.9s ease;
+}
+
+.l-phone-live img.on {
+  opacity: 1;
+  transform: none;
+}
+
+.l-float-swap {
+  animation: l-swap 0.55s cubic-bezier(0.2, 1.3, 0.4, 1) backwards;
+}
+
+.l-float-music.l-float-swap {
+  animation-delay: 0.15s;
+}
+
+@keyframes l-swap {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.94);
+  }
+}
+
+.l-shot-dots {
+  position: absolute;
+  top: 190px;
+  inset-inline-start: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 2;
+}
+
+.l-shot-dots button {
+  height: 8px;
+  min-width: 8px;
+  border-radius: 99px;
+  background: rgba(14, 26, 36, 0.25);
+  transition: background-color 0.3s, min-width 0.3s;
+}
+
+.l-shot-dots button.on {
+  height: 22px;
+  min-width: 0;
+  padding: 0 10px;
+  background: var(--color-chrome);
+  color: var(--color-chrome-ink);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  /* تحت بطاقة «١٥٠» لا فوقها: تلك تجلس على ١٥٤ في هذا العرض. */
+  .l-shot-dots {
+    top: 226px;
+    inset-inline-start: 0;
+  }
+}
+
+/* ٣ — بطاقةُ «ماذا تنشر» تنقلب إلى ما ستراه الدائرة. */
+.l-post-flip {
+  perspective: 900px;
+  overflow: visible;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  border-radius: 24px;
+}
+
+.l-post-card {
+  display: grid;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.7s cubic-bezier(0.3, 1.25, 0.4, 1);
+}
+
+.l-post-flip.on .l-post-card {
+  transform: rotateY(180deg);
+}
+
+@media (hover: hover) {
+  .l-post-flip:hover .l-post-card {
+    transform: rotateY(180deg);
+  }
+}
+
+.l-post-face {
+  grid-area: 1 / 1;
+  overflow: hidden;
+  border-radius: 24px;
+  border: 1px solid var(--color-line);
+  background: var(--color-card);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.l-post-back {
+  transform: rotateY(180deg);
+  background: var(--color-paper);
+  padding: 16px;
+}
+
+.l-post-dot {
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--color-card);
+  padding: 4px;
+  box-shadow: 0 2px 8px rgba(14, 26, 36, 0.12);
+}
+
+.l-post-bubble {
+  margin-top: 6px;
+  border-radius: 14px;
+  background: var(--color-card);
+  padding: 8px 11px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--color-ink);
+}
+
+.l-post-face-rx {
+  margin-inline-start: -5px;
+}
+
+.l-post-face-rx:first-child {
+  margin-inline-start: 0;
+}
+
+.l-post-flip:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 3px;
+}
+
+/* ٤ — فهرسٌ جانبيّ يتبع القراءة، للكمبيوتر وحده. */
+.doc-rail {
+  display: none;
+}
+
+@media (min-width: 1240px) {
+  .doc-rail {
+    position: fixed;
+    top: 112px;
+    /* عمودُ النصّ ٧٢٠ في الوسط، والفهرسُ في جهة البداية بجانبه. */
+    inset-inline-start: calc(50% + 384px);
+    width: 210px;
+    display: flex;
+    flex-direction: column;
+    border-radius: 20px;
+    border: 1px solid var(--color-line);
+    background: var(--color-card);
+    padding: 16px 12px;
+    box-shadow: 0 1px 2px rgba(14, 26, 36, 0.04);
+    transition: opacity 0.3s, transform 0.3s;
+    z-index: 5;
+  }
+
+  .doc-rail-away {
+    opacity: 0;
+    transform: translateY(-8px);
+    pointer-events: none;
+  }
+
+  .doc-rail a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 10px;
+    padding: 5px 8px;
+    font-size: 12.5px;
+    color: var(--color-muted);
+    transition: background-color 0.25s, color 0.25s;
+  }
+
+  .doc-rail a i {
+    width: 6px;
+    height: 6px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--color-line);
+    transition: transform 0.25s, background-color 0.25s;
+  }
+
+  .doc-rail a.on {
+    background: var(--color-gold-soft);
+    color: var(--color-ink);
+    font-weight: 700;
+  }
+
+  .doc-rail a.on i {
+    background: var(--color-gold);
+    transform: scale(1.5);
+  }
+
+  /* الشرائحُ في أعلى الصفحة تؤدّي ما يؤدّيه الفهرس — فلا تُكرَّر بجانبه. */
+  .doc-index {
+    display: none;
+  }
+}
+
+/* ٥ — بطاقةُ العضويّة تنقلب إلى رمز QR. */
+.member-flip {
+  display: grid;
+  perspective: 1200px;
+  margin-inline: 12px;
+  margin-top: 12px;
+}
+
+.member-face {
+  grid-area: 1 / 1;
+  position: relative;
+  overflow: hidden;
+  border-radius: 26px;
+  background: var(--color-card);
+  box-shadow: 0 30px 50px -30px rgba(14, 26, 36, 0.45);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transition: transform 0.8s cubic-bezier(0.3, 1.2, 0.4, 1);
+}
+
+.member-back {
+  transform: rotateY(-180deg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  background: var(--color-chrome);
+  color: var(--color-chrome-ink);
+}
+
+.member-flip.on .member-face:not(.member-back) {
+  transform: rotateY(180deg);
+}
+
+.member-flip.on .member-back {
+  transform: none;
+}
+
+.member-qr-btn {
+  position: absolute;
+  top: 12px;
+  inset-inline-end: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 99px;
+  padding: 6px 12px;
+  background: rgba(14, 26, 36, 0.62);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.member-back-btn {
+  border-radius: 99px;
+  border: 1px solid var(--color-chrome-line);
+  padding: 7px 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-chrome-ink);
+}
+
+@media (min-width: 560px) {
+  .member-flip {
+    margin-inline: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .l-phone-live img,
+  .l-post-card,
+  .member-face,
+  .site-head,
+  .doc-rail {
+    transition: none;
+  }
+
+  .l-float-swap {
+    animation: none;
+  }
+}

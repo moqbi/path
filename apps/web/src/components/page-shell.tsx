@@ -1,5 +1,6 @@
 import { AthrMark } from "@/components/brand";
 import { ar } from "@/lib/format";
+import { DocRail } from "@/components/doc-rail";
 
 /**
  * هيكلُ صفحات الموقع الداخلية — عن آثار، والخصوصية، والشروط، والتواصل،
@@ -92,7 +93,9 @@ export function DocSection({
 /** سطرُ «آخر تحديث» وفهرسٌ قصير بأقسام الصفحة — للخصوصية والشروط. */
 export function DocIndex({ updated, sections }: { updated: string; sections: { id: string; title: string }[] }) {
   return (
-    <nav className="doc-card" aria-label="أقسام الصفحة">
+    <>
+    <DocRail sections={sections} />
+    <nav className="doc-card doc-index" aria-label="أقسام الصفحة">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-[13px] font-bold text-ink">في هذه الصفحة</span>
         <span className="text-[11.5px] text-faint">آخر تحديث: {updated}</span>
@@ -109,6 +112,7 @@ export function DocIndex({ updated, sections }: { updated: string; sections: { i
         ))}
       </div>
     </nav>
+    </>
   );
 }
 
