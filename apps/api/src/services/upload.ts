@@ -227,6 +227,41 @@ export async function commit(userId: string, mediaId: string, options: { start?:
   if (!response.ok) throw await reject(media.id, media.key, "لم يصل الملف");
   const bytes = new Uint8Array(await response.arrayBuffer());
 
+  return accept(userId, { id: media.id, key: media.key, mime: media.mime }, purpose, bytes, options);
+}
+
+/**
+ * الرسالةُ الصوتيّة تُرفع إلى الخادم مباشرةً (القاعدة ٤٢٣) لا إلى الدلو ثمّ تُنزَّل منه:
+ * كانت تمشي جوّال ← R2 ← الخادم ← R2 في خمس رحلاتٍ متتابعة، والملفُّ في يد الخادم
+ * من أوّل لحظة. يُطمس صندوقُ `chnl` قبل الكتابة (القاعدة ٤٠٣) فيُكتب الملفُّ مرّةً،
+ * ثمّ الفحوصُ نفسُها التي في `commit` حرفاً بحرف.
+ */
+export async function direct(userId: string, declared: string, bytes: Uint8Array) {
+  if (!cloudReady()) throw badRequest("تخزين الملفات غير مضبوط");
+  const purpose = "VOICE" as const;
+  const mime = baseMime(declared);
+  if (!RULES[purpose].mimes.includes(mime)) throw badRequest("صيغة غير مدعومة");
+  if (bytes.length === 0) throw badRequest("الملف فارغ");
+  if (bytes.length > maxFor(purpose, mime)) throw badRequest("الملف كبير");
+
+  const key = `${userId}/${randomUUID()}.${EXT[mime] ?? "bin"}`;
+  const media = await prisma.media.create({
+    data: { ownerId: userId, mime, key, width: 0, height: 0, ready: false, purpose },
+    select: { id: true },
+  });
+  const clean = scrubChnl(bytes) ?? bytes;
+  await putObject(key, clean, mime);
+  return accept(userId, { id: media.id, key, mime }, purpose, clean, {});
+}
+
+async function accept(
+  userId: string,
+  media: { id: string; key: string; mime: string },
+  purpose: PresignInput["purpose"],
+  bytes: Uint8Array,
+  options: { start?: number; look?: VideoLook | null; length?: number },
+) {
+  const rule = RULES[purpose];
   const real = sniff(bytes);
   if (!real) throw await reject(media.id, media.key, "صيغة غير مدعومة");
 

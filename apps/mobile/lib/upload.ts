@@ -1,6 +1,6 @@
 import { File, UploadType } from "expo-file-system";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
-import { api } from "./api";
+import { api, baseUrl, currentAccess, renewAccess } from "./api";
 
 /**
  * رفعُ ملفٍ في خطوتين — كما يشترطه الخادم.
@@ -54,6 +54,37 @@ export async function uploadFile(
 ): Promise<string> {
   const ready = await shrink(uri, mime, size).catch(() => ({ uri, mime, ...size }));
   return (await send(ready.uri, ready.mime, purpose, { width: ready.width, height: ready.height })).mediaId;
+}
+
+/**
+ * الرسالةُ الصوتيّة إلى الخادم مباشرةً (القاعدة ٤٢٣): رحلةٌ واحدة بدل رابطٍ ورفعٍ إلى الدلو
+ * واعتمادٍ يُنزّلها منه. وخادمٌ قديمٌ بلا البابِ (٤٠٤) يرجع إلى الطريق القديم.
+ */
+export async function uploadVoice(uri: string, mime: string): Promise<string> {
+  if (!uri.startsWith("file://")) return uploadFile(uri, mime, "VOICE");
+  const file = new File(uri);
+  const attempt = () =>
+    file.upload(`${baseUrl}/v1/media/voice`, {
+      httpMethod: "POST",
+      uploadType: UploadType.BINARY_CONTENT,
+      headers: {
+        "content-type": mime,
+        ...(currentAccess() ? { authorization: `Bearer ${currentAccess()}` } : {}),
+      },
+    });
+  let done = await attempt().catch(() => null);
+  if (done?.status === 401 && (await renewAccess())) done = await attempt().catch(() => null);
+  if (!done) throw new Error("تعذّر رفع الملف");
+  if (done.status === 404 || done.status === 405) return uploadFile(uri, mime, "VOICE");
+  const data = (() => {
+    try {
+      return JSON.parse(done.body) as { id?: string; error?: string };
+    } catch {
+      return {} as { id?: string; error?: string };
+    }
+  })();
+  if (done.status < 200 || done.status >= 300 || !data.id) throw new Error(data.error ?? "تعذّر رفع الملف");
+  return data.id;
 }
 
 /**
