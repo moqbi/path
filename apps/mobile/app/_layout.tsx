@@ -44,6 +44,7 @@ import { Launch, UpdateWait, useLaunch } from "../components/launch";
 import { useFreshUpdate, useResumeUpdate } from "../lib/fresh-update";
 import { StorePromo } from "../components/store-promo";
 import { BroadcastCard, openBroadcast } from "../components/broadcast-card";
+import { UpdatePrompt } from "../components/update-prompt";
 
 // رؤوسُ المكدّس كما كانت قبل SDK 58 (القاعدة ٤٠١): رأسُ آبل ٢٦ الشفّافُ الجديد يعلو الشاشة
 // وإن كانت رؤوسُنا مرسومةً بأيدينا — فلا يقع شيءٌ تحته ولا يأخذ ضغطةً من أزرارها.
@@ -398,6 +399,7 @@ function Gate() {
     {me ? <StorePromo key={`promo-${me.id}`} /> : null}
     {/* وبطاقةُ تنبيه المشرف فوقهما: فُتحت بضغطةٍ قصدها صاحبُها (القاعدة ٣٦٣). */}
     {me ? <BroadcastCard /> : null}
+    {me ? <UpdatePrompt /> : null}
     </>
   );
 }

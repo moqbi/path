@@ -26,6 +26,9 @@ const schema = z.object({
 
   DATABASE_URL: z.string().min(1, "رابط القاعدة مفقود"),
 
+  /** أدنى إصدارٍ يُقبل على آبل (القاعدة ٤٣٢): ما دونه يُطلب تحديثُه ولا يُتجاوز. فارغٌ = لا إلزام. */
+  MIN_IOS_VERSION: z.string().regex(/^\d+(\.\d+){0,3}$/).optional().or(z.literal("")),
+
   JWT_ACCESS_SECRET: z.string().min(32, "مفتاح الوصول ٣٢ حرفاً فأكثر"),
   JWT_REFRESH_SECRET: z.string().min(32, "مفتاح التجديد ٣٢ حرفاً فأكثر"),
 
