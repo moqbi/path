@@ -459,10 +459,33 @@ export default function Conversation() {
   };
 
   const other = thread.data?.other;
-  const rows = useMemo(
-    () => [...(thread.data?.messages ?? []), ...outbox].reverse(),
-    [thread.data?.messages, outbox],
-  );
+  /*
+    الأقدمُ صفحاتٌ تُجلب بالصعود (القاعدة ٤٣٠): الاستعلامُ يجلب أحدثَ خمسين ويُعاد كلَّ
+    ثماني ثوانٍ، وما قبلها كان لا يُرى أبداً. فما يُجلب بالمؤشّر يُحفظ هنا ويُضمّ تحت
+    الصفحة الحيّة، والمكرّرُ بينهما بمعرّفه مرّةً.
+  */
+  const [older, setOlder] = useState<Line[]>([]);
+  const [olderCursor, setOlderCursor] = useState<string | null | undefined>(undefined);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const cursor = olderCursor === undefined ? (thread.data as { nextCursor?: string } | undefined)?.nextCursor ?? null : olderCursor;
+  const loadOlder = async () => {
+    if (!cursor || loadingOlder) return;
+    setLoadingOlder(true);
+    try {
+      const page = await api<{ messages: Line[]; nextCursor?: string }>(`/v1/dm/${id}?limit=50&cursor=${cursor}`);
+      setOlder((rows) => [...page.messages, ...rows]);
+      setOlderCursor(page.nextCursor ?? null);
+    } catch {
+      /* يُعاد بالصعود ثانيةً */
+    } finally {
+      setLoadingOlder(false);
+    }
+  };
+  const rows = useMemo(() => {
+    const live = thread.data?.messages ?? [];
+    const seen = new Set(live.map((row) => row.id));
+    return [...older.filter((row) => !seen.has(row.id)), ...live, ...outbox].reverse();
+  }, [thread.data?.messages, outbox, older]);
 
   return (
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
@@ -489,6 +512,10 @@ export default function Conversation() {
           onScrollBeginDrag={scrolled}
           data={rows}
           inverted
+          // المقلوبةُ نهايتُها أعلاها: الصعودُ إلى أقدمها يجلب الصفحةَ التي قبلها.
+          onEndReached={() => void loadOlder()}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={loadingOlder ? <Spinner style={{ marginVertical: 12 }} color={colors.clay} /> : undefined}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
           onScroll={(event) => {

@@ -1,3 +1,4 @@
+import { canRunGroups } from "./groups";
 import { prisma } from "@athar/db";
 import { PLUS_COINS } from "@athar/shared";
 import { env } from "../env";
@@ -117,7 +118,8 @@ export async function intent(giverId: string, to: string, plan: GiftPlan) {
 
   // للأصدقاء وحدهم كبقيّة الإهداء (القاعدة ٣٩) — والحظرُ يفكّ الصداقة.
   const circle = await circleIds(giverId);
-  if (!circle.includes(to)) throw forbidden("الإهداء للأصدقاء فقط");
+  // والمشرفُ يُهدي أيَّ حساب (القاعدة ٤٣١) كما يُراسله (القاعدة ٣١٧).
+  if (!circle.includes(to) && !(await canRunGroups(giverId))) throw forbidden("الإهداء للأصدقاء فقط");
 
   const row = await prisma.plusGift.create({
     data: { giverId, recipientId: to, plan, days: GIFT_PLANS[plan].days },

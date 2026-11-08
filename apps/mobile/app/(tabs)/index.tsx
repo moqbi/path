@@ -5,6 +5,7 @@ import { TabBackdrop } from "../../components/tab-backdrop";
 import { WelcomeCard } from "../../components/welcome-card";
 import { WeeklyCard } from "../../components/weekly-card";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useBarSpace } from "../../components/glass-bar";
 import { scrolled } from "../../lib/scrolled";
 import { markSeen } from "../../lib/seen";
@@ -186,12 +187,15 @@ export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
   const [gripped, setGripped] = useState(false);
 
   const refreshMe = useSession((s) => s.refresh);
+  const queryClient = useQueryClient();
   // والتحديث يسأل عن صاحب الشاشة أيضاً: غلافُه وإطارُه وتشارمه منه.
   const reload = () =>
     Promise.all([
       view === "together" ? together.refetch() : feed.refetch(),
       refreshMe(),
       unread.refetch(),
+      // وجوهُ لحظاتي استعلامٌ مستقلّ: التحديثُ يسأله أيضاً (القاعدة ٤٣٠).
+      queryClient.invalidateQueries({ queryKey: ["audience"] }),
     ]);
 
   /*

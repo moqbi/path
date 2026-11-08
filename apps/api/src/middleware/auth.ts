@@ -31,6 +31,7 @@ export const requireAuth: MiddlewareHandler = async (c, next) => {
   // من أين دخل — لكشف الحسابات المرتبطة (القاعدة ١٩٤).
   recordAccess(c, c.get("user").sub);
   markSeen(c.get("user").sub);
+  markDelivered(c.get("user").sub);
   await next();
 };
 
@@ -49,6 +50,21 @@ function markSeen(userId: string): void {
     .update({ where: { id: userId }, data: { lastSeenAt: new Date() } })
     .catch(() => undefined);
   markActive(userId);
+}
+
+/**
+ * «وصلت» من أيّ طلبٍ موثَّق (القاعدة ٤٣٠): التطبيقُ المفتوح يسأل الخادمَ كلَّ دقيقة
+ * وأكثر، فوصولُ أيّ طلبٍ منه دليلُ أنّ جهازه حيٌّ ومتصل. كان يُكتب عند فتح المحادثات
+ * وحدها، فيبقى الصحُّ واحداً ساعاتٍ والمستلمُ في التطبيق. كلَّ عشر ثوانٍ على الأكثر.
+ */
+function markDelivered(userId: string): void {
+  if (!passed(`delivered:${userId}`, 10_000)) return;
+  void prisma.message
+    .updateMany({
+      where: { senderId: { not: userId }, deliveredAt: null, conversation: { OR: [{ aId: userId }, { bId: userId }] } },
+      data: { deliveredAt: new Date() },
+    })
+    .catch(() => undefined);
 }
 
 /**

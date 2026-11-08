@@ -1,3 +1,4 @@
+import { canRunGroups } from "./groups";
 import { prisma } from "@athar/db";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { circleIds } from "./visibility";
@@ -99,7 +100,8 @@ export async function buyPack(userId: string, packId: string) {
 /** ما يملكه الصديقُ من المجموعات المدفوعة — لنافذة الإهداء («عنده»)، وللأصدقاء وحدهم. */
 export async function friendPacks(userId: string, toUserId: string) {
   const circle = await circleIds(userId);
-  if (!circle.includes(toUserId)) throw forbidden("الإهداء للأصدقاء فقط");
+  // والمشرفُ يُهدي أيَّ حساب (القاعدة ٤٣١) كما يُراسله (القاعدة ٣١٧).
+  if (!circle.includes(toUserId) && !(await canRunGroups(userId))) throw forbidden("الإهداء للأصدقاء فقط");
   const rows = await prisma.stickerPurchase.findMany({ where: { userId: toUserId }, select: { packId: true } });
   return { owned: rows.map((row) => row.packId) };
 }
@@ -113,7 +115,8 @@ export async function friendPacks(userId: string, toUserId: string) {
 export async function giftPack(userId: string, packId: string, toUserId: string) {
   if (toUserId === userId) throw badRequest("الإهداء لصاحبك لا لنفسك");
   const circle = await circleIds(userId);
-  if (!circle.includes(toUserId)) throw forbidden("الإهداء للأصدقاء فقط");
+  // والمشرفُ يُهدي أيَّ حساب (القاعدة ٤٣١) كما يُراسله (القاعدة ٣١٧).
+  if (!circle.includes(toUserId) && !(await canRunGroups(userId))) throw forbidden("الإهداء للأصدقاء فقط");
 
   const [pack, friend] = await Promise.all([
     prisma.stickerPack.findFirst({
