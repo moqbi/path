@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { circleIds } from "@/lib/circle";
 import { sweepStories } from "@/lib/stories";
 import { sweepPendingSignups } from "@/lib/signup";
-import { migrateToCloud } from "@/lib/media";
+import { dropMedia, migrateToCloud } from "@/lib/media";
 import { groupUnread } from "@/lib/groups";
 
 /** الطرفان مرتّبان دائماً، فيكون للزوج صفٌّ واحد مهما بدأ المحادثة. */
@@ -154,7 +154,17 @@ export async function sweepOld(): Promise<void> {
   sweptAt = Date.now();
   const cutoff = new Date(Date.now() - KEEP_DAYS * 86_400_000);
   try {
-    await prisma.message.deleteMany({ where: { createdAt: { lt: cutoff } } });
+    // ما جُمعت ملفّاتُه وحده يُحذف، فلا يبقى في السحابة ملفٌّ بلا رسالة (القاعدة ٤٢٤).
+    const withMedia = await prisma.message.findMany({
+      where: { createdAt: { lt: cutoff }, mediaId: { not: null } },
+      select: { id: true, mediaId: true },
+      take: 500,
+    });
+    if (withMedia.length) {
+      await prisma.message.deleteMany({ where: { id: { in: withMedia.map((row) => row.id) } } });
+      await dropMedia(withMedia.map((row) => row.mediaId!));
+    }
+    await prisma.message.deleteMany({ where: { createdAt: { lt: cutoff }, mediaId: null } });
     await prisma.conversation.deleteMany({
       where: { messages: { none: {} }, createdAt: { lt: cutoff } },
     });

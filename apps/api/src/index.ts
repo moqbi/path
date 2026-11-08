@@ -15,7 +15,7 @@ import { notificationRoutes } from "./routes/v1/notifications";
 import { profileRoutes } from "./routes/v1/profile";
 import { dmRoutes, messageRoutes } from "./routes/v1/dm";
 import { mountWs } from "./routes/v1/ws";
-import { sweepPending } from "./services/upload";
+import { sweepOrphans, sweepPending } from "./services/upload";
 import { sweepOld } from "./services/dm";
 import { sweepOld as sweepGroups } from "./services/groups";
 import { groupRoutes } from "./routes/v1/groups";
@@ -114,6 +114,9 @@ const SWEEP_MINUTES = 30;
 setInterval(
   () => {
     void sweepPending().catch((error) => console.error("✗ كنس المعلّقة", error));
+    void sweepOrphans()
+      .then((count) => (count > 0 ? console.log(`[media] كُنس ${count} ملفاً بلا صاحب`) : undefined))
+      .catch((error) => console.error("✗ كنس الملفات اليتيمة", error));
     void sweepOld().catch((error) => console.error("✗ كنس المحادثات", error));
     void sweepGroups().catch((error) => console.error("✗ كنس المجموعات", error));
     void sweepStories().catch((error) => console.error("✗ كنس القصص", error));

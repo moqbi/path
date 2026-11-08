@@ -645,7 +645,10 @@ export async function setAvatar(formData: FormData): Promise<string | void> {
     const { file, width, height } = picture(formData);
     // صورة العرض المتحركة من مزايا آثار+ — والفحص هنا، فالعميل ليس قيداً.
     const media = await storeUpload(user.id, file, width, height, user.isPlus);
+    const before = await prisma.user.findUnique({ where: { id: user.id }, select: { avatarMediaId: true } });
     await prisma.user.update({ where: { id: user.id }, data: { avatarMediaId: media.id } });
+    // السابقةُ تذهب ببكسلاتها (القاعدة ١٠٤).
+    if (before?.avatarMediaId && before.avatarMediaId !== media.id) await dropMedia([before.avatarMediaId]);
     // «غيّر صورته» لدائرته (القاعدة ٢١٤).
     await announceAvatar(user.id);
   } catch (problem) {
@@ -660,10 +663,12 @@ export async function setCover(formData: FormData): Promise<string | void> {
   try {
     const { file, width, height } = picture(formData);
     const media = await storeUpload(user.id, file, width, height);
+    const before = await prisma.user.findUnique({ where: { id: user.id }, select: { coverMediaId: true } });
     await prisma.user.update({
       where: { id: user.id },
       data: { coverMediaId: media.id, coverItemId: null, coverY: 50, coverX: 50, coverZoom: 100 },
     });
+    if (before?.coverMediaId && before.coverMediaId !== media.id) await dropMedia([before.coverMediaId]);
   } catch (problem) {
     return problem instanceof Error ? problem.message : "تعذّر حفظ الصورة";
   }
@@ -907,7 +912,9 @@ export async function setCoverPosition(y: number): Promise<void> {
 
 export async function clearCover(): Promise<void> {
   const user = await requireUser();
+  const before = await prisma.user.findUnique({ where: { id: user.id }, select: { coverMediaId: true } });
   await prisma.user.update({ where: { id: user.id }, data: { coverMediaId: null, coverItemId: null } });
+  if (before?.coverMediaId) await dropMedia([before.coverMediaId]);
   revalidatePath("/me");
   revalidatePath("/");
 }
