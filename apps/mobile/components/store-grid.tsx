@@ -215,8 +215,8 @@ function Shelf({ strip, children }: { strip: boolean; children: React.ReactNode 
       horizontal
       showsHorizontalScrollIndicator={false}
       // الصفُّ يخرج إلى حافّتي الشاشة لا حشوة القائمة، وأعلاه فسحةٌ لشارة «محدودة».
-      style={{ marginHorizontal: -20, marginBottom: 24 }}
-      contentContainerStyle={{ flexDirection: "row", gap: 12, paddingHorizontal: 20, paddingTop: 8 }}
+      style={{ marginHorizontal: -20, marginBottom: 24, direction: "rtl" }}
+      contentContainerStyle={{ flexDirection: "row", gap: 12, paddingHorizontal: 20, paddingTop: 8, direction: "rtl" }}
     >
       {children}
     </ScrollView>

@@ -89,7 +89,7 @@ export default async function CirclePage() {
     const seen = presence(member.lastSeenAt) || "ما فتح التطبيق بعد";
     return (
       <FriendRow key={member.id} id={member.id} name={member.name} staff={member.role === "ADMIN" || member.adminScope === "ALL"} group={groupOf.get(member.id) ?? null} groups={options}>
-        <span className="relative shrink-0">
+        <span className="relative shrink-0" style={online(member) ? undefined : { filter: "grayscale(1)" }}>
           <Avatar
             name={member.name}
             size={46}
@@ -209,7 +209,7 @@ export default async function CirclePage() {
           <Empty title="ما عندك أصدقاء بعد" hint="اضغط زرّ الإضافة في الأعلى وشارك رابط ملفك مع من تعرفهم." />
         ) : (
           <>
-            <Fold label="متصل" count={live.length} dot="var(--color-live)">
+            <Fold label="متصل" count={live.length} dot="#2FB36B">
               {live.map((member) => row(member))}
             </Fold>
             <Fold label="غير متصل" count={away.length} dot="var(--color-faint)">

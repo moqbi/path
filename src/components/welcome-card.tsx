@@ -95,7 +95,7 @@ export function WelcomeCard({ data, name, memberNo }: { data: Shown; name: strin
           <p className="text-[16px] font-extrabold text-ink">
             أهلاً <span dir="auto">{name}</span>، حيّاك في آثار
           </p>
-          <p className="mt-0.5 text-[12px] text-muted">أربع خطوات وتصير آثار بيتك — {ar(done)} من ٤</p>
+          <p className="mt-0.5 text-[12px] text-muted">أربع خطوات ويصير آثار بيتك — {ar(done)} من ٤</p>
         </div>
         <button type="button" aria-label="إخفاء" onClick={close} className="p-1 text-muted">
           <CloseIcon size={14} />

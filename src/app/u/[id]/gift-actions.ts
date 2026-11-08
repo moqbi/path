@@ -19,6 +19,7 @@ export type GiftItem = {
   priceCoins: number;
   spec: string;
   mediaId: string | null;
+  promoMediaId?: string | null;
   plusOnly: boolean;
   earnedAfterDays: number | null;
   collectionId?: string | null;

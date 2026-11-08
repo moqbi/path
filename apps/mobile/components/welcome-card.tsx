@@ -165,7 +165,7 @@ export function WelcomeCard() {
         <View style={{ flex: 1 }}>
           <Text style={{ color: colors.ink, fontSize: 16, fontWeight: "800" }}>أهلاً {me.name}، حيّاك في آثار</Text>
           <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
-            أربع خطوات وتصير آثار بيتك — {ar(done)} من ٤
+            أربع خطوات ويصير آثار بيتك — {ar(done)} من ٤
           </Text>
         </View>
         <Pressable accessibilityLabel="إخفاء" hitSlop={8} onPress={close} style={{ padding: 4 }}>

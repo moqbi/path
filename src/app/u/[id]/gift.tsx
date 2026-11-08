@@ -262,6 +262,8 @@ function GiftSheet({
                     const locked = item.earnedAfterDays !== null || (item.plusOnly && !friendIsPlus);
                     const chosen = pick?.id === item.id;
                     const round = item.kind !== "CHARM";
+                    const theme = item.kind === "THEME" || item.kind === "BACKGROUND";
+                    const art = theme ? item.promoMediaId ?? item.mediaId : item.mediaId;
                     return (
                       <button
                         key={item.id}
@@ -275,18 +277,19 @@ function GiftSheet({
                         className={tile(chosen, already || locked)}
                         style={{ border: chosen ? "2px solid var(--color-clay)" : "1px solid var(--color-line)" }}
                       >
+                        {/* الثيمُ بصورته في مستطيل، والإطارُ والتشارم بلا أرضيةٍ تحتهما (القاعدة ٤٢٦). */}
                         <span
-                          className={`block h-[58px] w-[58px] overflow-hidden ${round ? "rounded-full" : ""}`}
+                          className={`block h-[58px] overflow-hidden ${theme ? "w-[80px] rounded-xl" : `w-[58px] ${round ? "rounded-full" : ""}`}`}
                           style={{
-                            padding: item.mediaId ? 0 : 3,
-                            background: item.mediaId && !round ? "transparent" : firstColor(item.spec),
+                            padding: art ? 0 : 3,
+                            background: art ? "transparent" : firstColor(item.spec),
                           }}
                         >
-                          {item.mediaId ? (
+                          {art ? (
                             <img
-                              src={media(item.mediaId)}
+                              src={media(art)}
                               alt=""
-                              className={`h-[58px] w-[58px] ${item.kind === "CHARM" || item.kind === "FRAME" ? "object-contain" : "object-cover"}`}
+                              className={`h-[58px] ${theme ? "w-[80px] object-cover" : "w-[58px] object-contain"}`}
                             />
                           ) : (
                             <span className="block h-full w-full rounded-full bg-card" />

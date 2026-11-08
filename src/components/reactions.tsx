@@ -61,7 +61,10 @@ export function ReactionGlyph({
 }) {
   if (kind === "CUSTOM") {
     return (
-      <span style={{ fontSize: size * 0.92, lineHeight: 1 }} aria-hidden>
+      <span
+        style={{ width: size, height: size, fontSize: size * 0.6, lineHeight: 1, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+        aria-hidden
+      >
         {emoji ?? "🙂"}
       </span>
     );

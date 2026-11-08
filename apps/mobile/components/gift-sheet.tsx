@@ -483,13 +483,23 @@ function Sheet({
                   opacity: already || locked ? 0.55 : 1,
                 }}
               >
-                <View style={{ width: 58, height: 58, borderRadius: item.kind === "CHARM" ? 0 : 29, padding: item.mediaId ? 0 : 3, overflow: "hidden", backgroundColor: item.mediaId && item.kind === "CHARM" ? "transparent" : firstColor(item.spec, colors.chip) }}>
-                  {item.mediaId ? (
-                    <MediaImage mediaId={item.mediaId} resizeMode={item.kind === "CHARM" || item.kind === "FRAME" ? "contain" : "cover"} style={{ width: 58, height: 58 }} />
+                {/*
+                  الثيمُ بصورته (إعلانُه ثمّ خلفيّتُه — القاعدة ٢٨٤) في مستطيلٍ لا قرص، والإطارُ
+                  والتشارم برسمهما على شفافيّتهما بلا أرضيةٍ ملوّنة تحتهما (القاعدة ٤٢٦).
+                */}
+                {(() => {
+                  const theme = item.kind === "THEME" || item.kind === "BACKGROUND";
+                  const art = theme ? item.promoMediaId ?? item.mediaId : item.mediaId;
+                  return (
+                <View style={{ width: theme ? 80 : 58, height: 58, borderRadius: theme ? 12 : item.kind === "CHARM" ? 0 : 29, padding: art ? 0 : 3, overflow: "hidden", backgroundColor: art ? "transparent" : firstColor(item.spec, colors.chip) }}>
+                  {art ? (
+                    <MediaImage mediaId={art} resizeMode={theme ? "cover" : "contain"} style={{ width: theme ? 80 : 58, height: 58 }} />
                   ) : (
                     <View style={{ flex: 1, borderRadius: 26, backgroundColor: colors.card }} />
                   )}
                 </View>
+                  );
+                })()}
 
                 <Text numberOfLines={1} style={{ color: colors.ink, fontSize: 11.5, fontWeight: "500" }}>
                   {item.name}
@@ -521,7 +531,7 @@ function Sheet({
             <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "700" }}>
               {pickPack.name} · {ar(pickPack.stickers.length)} ملصق
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ direction: "rtl" }} contentContainerStyle={{ gap: 6, flexDirection: "row", direction: "rtl" }}>
               {pickPack.stickers.map((one) => (
                 <MediaImage key={one.id} mediaId={one.mediaId} resizeMode="contain" style={{ width: 48, height: 48 }} />
               ))}
