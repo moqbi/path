@@ -195,6 +195,11 @@ function Profile() {
     أفعالُه أقراصٌ بجانب اسمه، وقصّتُه على صورته، وتحت الرأس «لحظاتها | آثارنا».
   */
   const fresh = DEV_FEATURES && person.data?.friend === true;
+  /*
+    المشرفُ على ملفّ من ليس صديقه (القاعدة ٤٣١): بهيئة ملفّ الصديق — الإهداءُ والمحادثةُ على
+    الغلاف — ومعها «أضفه». كان ملفّاً مقفولاً بلا أقراص، والخادمُ يقبل منه الإهداءَ والمحادثة.
+  */
+  const staffView = DEV_FEATURES && person.data?.friend === false && Boolean(me?.canGroups);
   const rings = useRings();
   const ring = fresh && who ? rings.data?.rings.find((r) => r.userId === who.id) ?? null : null;
   const [tab, setTab] = useState<"moments" | "together">("moments");
@@ -284,7 +289,7 @@ function Profile() {
                 <StretchCover y={scrollY} height={COVER_HEIGHT}>
                   <CoverLayer mediaId={who.coverMediaId} themeMediaId={who.background?.coverMediaId} spec={null} height={COVER_HEIGHT} x={who.coverX} y={who.coverY} zoom={who.coverZoom} />
                 </StretchCover>
-                {fresh ? (
+                {fresh || staffView ? (
                   // الإهداءُ والمحادثةُ على الغلاف في طرفه الأيسر كأقراص «أنا» (القاعدة ٣٤٠):
                   // داكنةٌ لا شفّافة (القاعدة ٥٧)، والصورةُ في الطرف الآخر.
                   <View style={{ position: "absolute", top: COVER_HEIGHT - 48, left: 16, flexDirection: "row", gap: 8, zIndex: 5 }}>
@@ -437,7 +442,7 @@ function Profile() {
                   </Spot>
                   {/* والحسابُ المفتوح يُراسَل بلا إضافة (القاعدة ٢٢١) — حسابُ الدعم —
                       والمشرفُ يُراسل أيَّ حساب (القاعدة ٣١٧). */}
-                  {who.isOpen || me?.canGroups ? (
+                  {(who.isOpen || me?.canGroups) && !staffView ? (
                     <Pressable
                       accessibilityLabel="محادثة"
                       onPress={() => talk.mutate()}

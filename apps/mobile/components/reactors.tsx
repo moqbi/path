@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { mentionPeople, splitMentions, type MentionPerson } from "../lib/mentions";
 import { View, Pressable, ScrollView } from "react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -83,9 +83,21 @@ export function Reactors({
  * شاهد ولم يتفاعل باهتاً. وهو بدلُ `Reactors` لا إضافةٌ إليه: صفّان
  * يتكرّر فيهما المتفاعلون يُقرآن قائمتين.
  */
-export function AuthorFaces({ momentId }: { momentId: string }) {
+export function AuthorFaces({ momentId, count }: { momentId: string; count?: number }) {
   const router = useRouter();
   const audience = useAudience(momentId, true);
+  /*
+    وجوهُ صاحب اللحظة استعلامٌ وحدها لا من الخطّ (القاعدة ٤٣٠): كان التحديثُ يجلب الخطَّ
+    بعدد التفاعلات الجديد ويبقى هذا الصفّ على ما حُفظ، فلا يُرى من تفاعل حتى يُغلق
+    التطبيق. فتغيُّرُ العدد في الخطّ يُعيد سؤالَه.
+  */
+  const refetch = audience.refetch;
+  const lastCount = useRef(count);
+  useEffect(() => {
+    if (count === lastCount.current) return;
+    lastCount.current = count;
+    void refetch();
+  }, [count, refetch]);
   const people = audience.data?.people ?? [];
   if (people.length === 0) return null;
 

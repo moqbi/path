@@ -255,7 +255,10 @@ export function MomentCard({
   const open = () => {
     if (!here) router.push(`/m/${moment.id}` as never);
   };
-  const isEvent = EVENTS.has(moment.kind);
+  // الذكرى المُشارَكة بطاقةٌ ولو كان أصلُها سطرَ حدث (القاعدة ٤٣٠): شاركها صاحبُها
+  // ليُقرأ ما عاشه، وسطرٌ على الورق بين أسطر اليوم لا يقول إنّها ذكرى.
+  const isEvent = EVENTS.has(moment.kind) && !moment.memoryOf;
+  const memoryEvent = EVENTS.has(moment.kind) && Boolean(moment.memoryOf);
   const found = moment.reactions.find((r) => r.mine);
   const mineReaction = found ? { kind: found.kind, emoji: found.emoji } : null;
 
@@ -555,7 +558,15 @@ export function MomentCard({
         }
       >
         {moment.memoryOf ? <MemoryTag at={moment.memoryOf} /> : null}
-        {moment.recapYear && moment.text ? (
+        {memoryEvent ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }}>
+            <EventIcon kind={moment.kind} />
+            <Text style={{ flex: 1, color: colors.ink, fontSize: 13.5, fontWeight: "600", lineHeight: 21 }}>
+              {eventText(moment, [], viewerId).title}
+            </Text>
+          </View>
+        ) : null}
+        {memoryEvent ? null : moment.recapYear && moment.text ? (
           <RecapBlock text={moment.text} />
         ) : moment.text ? (
           DEV_FEATURES ? (
@@ -657,7 +668,7 @@ export function MomentCard({
             <View style={{ paddingHorizontal: 14, paddingBottom: 12, paddingTop: 8 }}>
               {moment.author.id === viewerId ? (
                 /* لصاحبها صفٌّ واحد: من تفاعل ومن شاهد باهتاً (القاعدة ٢٠٢). */
-                <AuthorFaces momentId={moment.id} />
+                <AuthorFaces momentId={moment.id} count={moment._count.reactions} />
               ) : moment.reactions.length > 0 ? (
                 <>
                   <Reactors reactions={moment.reactions} viewerId={viewerId} />

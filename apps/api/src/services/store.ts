@@ -1,3 +1,4 @@
+import { canRunGroups } from "./groups";
 import { env } from "../env";
 import { prisma } from "@athar/db";
 import { endPlus } from "./plus";
@@ -391,7 +392,8 @@ export async function gift(userId: string, itemId: string, toUserId: string, pla
   if (toUserId === userId) throw badRequest("الإهداء لصاحبك لا لنفسك");
 
   const circle = await circleIds(userId);
-  if (!circle.includes(toUserId)) throw forbidden("الإهداء للأصدقاء فقط");
+  // والمشرفُ يُهدي أيَّ حساب (القاعدة ٤٣١) كما يُراسله (القاعدة ٣١٧).
+  if (!circle.includes(toUserId) && !(await canRunGroups(userId))) throw forbidden("الإهداء للأصدقاء فقط");
 
   const [me, item, friend] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { isPlus: true, coins: true } }),

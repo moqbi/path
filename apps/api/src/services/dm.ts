@@ -284,6 +284,21 @@ export async function send(
   const to = otherSide(conversation, userId);
 
   const who = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+  /*
+    «وصلت» (القاعدة ٤٣٠): المستلمُ في التطبيق الآن (ظهر في آخر دقيقتين) فالرسالةُ عنده؛
+    وإلّا فحين يقبل خادمُ التنبيهات التنبيهَ لجهازه — ما لم يُرسَل (أطفأ التنبيهات، بلا جهاز،
+    وضعٌ هادئ) يبقى صحّاً واحداً حتى يفتح التطبيق.
+  */
+  const reader = await prisma.user.findUnique({ where: { id: to }, select: { lastSeenAt: true } });
+  const delivered = () =>
+    prisma.message
+      .updateMany({ where: { id: message.id, deliveredAt: null }, data: { deliveredAt: new Date() } })
+      .catch(() => undefined);
+  if (reader?.lastSeenAt && Date.now() - reader.lastSeenAt.getTime() < 120_000) {
+    await delivered();
+    message.deliveredAt = new Date();
+  }
+
   void push({
     userId: to,
     kind: "DM",
@@ -299,7 +314,7 @@ export async function send(
     // صورةُ الرسالة أو ملصقُها تُرى في التنبيه (القاعدة ٣٨٨).
     image: input.kind === "PHOTO" ? mediaId : message.sticker?.mediaId,
     path: `/dm/${conversationId}`,
-  });
+  }).then((outcome) => (outcome === "sent" ? delivered() : undefined));
 
   return { message, to, conversationId };
 }

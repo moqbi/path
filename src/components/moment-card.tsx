@@ -335,9 +335,12 @@ export function EventLine({
   withNames,
   href,
   viewerId,
+  onCard = false,
 }: {
   moment: FeedMoment;
   withNames: string[];
+  /** ذكرى مُشارَكة تُرسم في بطاقة (القاعدة ٤٣٠): حبرُ البطاقة لا حبرُ الأرضية. */
+  onCard?: boolean;
   /** القارئ: اسمُه في «مع …» يفتح «أنا» لا ملفّه بعين غيره. */
   viewerId?: string;
   /** وجهة الفتح حين تُفتح اللحظة في صفحتها — على النصّ وحده لا على الصفّ. */
@@ -448,12 +451,12 @@ export function EventLine({
     <>
       <EventIcon kind={kind} />
       <div className="min-w-0 grow pt-1">
-        {moment.memoryOf ? <MemoryTag at={moment.memoryOf} /> : null}
-        <p dir="auto" className="text-[13.5px] font-semibold leading-snug text-ground-ink">
+        {moment.memoryOf && !onCard ? <MemoryTag at={moment.memoryOf} /> : null}
+        <p dir="auto" className={`text-[13.5px] font-semibold leading-snug ${onCard ? "text-ink" : "text-ground-ink"}`}>
           {title}
         </p>
         {subtitle ? (
-          <p dir="auto" className="mt-0.5 truncate text-[12px] font-medium text-ground-ink-2">
+          <p dir="auto" className={`mt-0.5 truncate text-[12px] font-medium ${onCard ? "text-ink-2" : "text-ground-ink-2"}`}>
             {subtitle}
           </p>
         ) : null}
@@ -545,7 +548,9 @@ export function MomentCard({
   // الفتح في صفحة مستقلة له معنى واحد: تعليقات لم تسعها البطاقة.
   const opens = moment._count.comments > INLINE_COMMENTS;
 
-  if (EVENTS.has(kind)) {
+  // الذكرى المُشارَكة بطاقةٌ ولو كان أصلُها سطرَ حدث (القاعدة ٤٣٠).
+  const memoryEvent = EVENTS.has(kind) && Boolean(moment.memoryOf);
+  if (EVENTS.has(kind) && !memoryEvent) {
     const line = (
       <EventLine
         moment={moment}
@@ -600,7 +605,11 @@ export function MomentCard({
       {/* بلا صورةٍ يبدأ النصّ من أعلى البطاقة بجانب الزرّ، ومعها يأتي تحتها. */}
       <div className={media ? "px-4 pt-3" : "min-h-[50px] pl-[52px] pr-4 pt-3.5"}>
         {moment.memoryOf ? <MemoryTag at={moment.memoryOf} /> : null}
-        {moment.recapYear && moment.text ? (
+        {memoryEvent ? (
+          <div className="mb-2 flex gap-2.5">
+            <EventLine moment={moment} withNames={withNames} viewerId={viewerId} onCard />
+          </div>
+        ) : moment.recapYear && moment.text ? (
           <RecapBlock text={moment.text} />
         ) : moment.text ? (
           <p dir="auto" className="mb-2 text-[13.5px] leading-relaxed text-ink">
