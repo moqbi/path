@@ -3,6 +3,7 @@ import { prisma } from "@athar/db";
 import { requireAuth } from "../../middleware/auth";
 import { supportAccount } from "../../services/support-account";
 import { interestCatalog } from "../../services/interests";
+import { appVersion } from "../../lib/app-version";
 
 /**
  * محتوى الموقع كما يقرؤه التطبيق.
@@ -31,6 +32,9 @@ export const siteRoutes = new Hono()
     const account = await supportAccount();
     return c.json({ account });
   })
+
+  /** آخرُ إصدارٍ في المتجر وأدنى ما يُقبل — لنافذة التحديث (القاعدة ٤٣٢). */
+  .get("/app-version", async (c) => c.json(await appVersion()))
 
   /** قائمةُ الاهتمامات كما ضُبطت في اللوحة (القاعدة ٣٧٥). */
   .get("/interests", async (c) => {
