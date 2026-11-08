@@ -49,7 +49,7 @@ import { coinText, ar, relative, riyals } from "@/lib/format";
 import { groundInkOf, parsePalette } from "@/lib/theme";
 import { ReportContext } from "./report-context";
 import { BOOK_PATTERN_LABEL, BOOK_PATTERNS, BOOK_SKIN_FIELDS, bookSkinOf, HALL_FIELDS } from "@athar/shared";
-import { linkedMany, type LinkedResult } from "@/lib/linked";
+import { type LinkedResult } from "@/lib/linked";
 import { StickersSection } from "./stickers";
 import { BroadcastsSection } from "./broadcasts";
 import { OccasionsSection } from "./occasions";
@@ -820,12 +820,6 @@ export default async function AdminPage({
       : Promise.resolve([]),
   ]);
 
-  // الحسابات المرتبطة لكل صفٍّ ظاهر — لمن يملك الإشراف (القاعدة ١٩٤).
-  const linked =
-    section === "users" && user.canModerate
-      ? await linkedMany(people.map((person) => person.id))
-      : new Map<string, LinkedResult>();
-
   const collections =
     section === "store"
       ? await prisma.storeCollection.findMany({
@@ -1060,8 +1054,7 @@ export default async function AdminPage({
           {q
             ? `نتائج البحث عن «${q}» — ${ar(people.length)} حساب.`
             : "أحدث خمسين حساباً. ابحث برقم العضوية للوصول إلى غيرهم."}
-          {" "}امنح وسماً لحساب أو انزعه. الرقم على اليمين رقم العضوية.
-          {owner ? " وتغييرُ البريد لك وحدك: من يبدّل بريد حسابٍ ينقله إلى عنوانه." : ""}
+          {" "}اضغط الحساب لترى رصيده ومشترياته وهداياه وأجهزته ومشاكله، وما تفعله فيه. الرقم على اليمين رقم العضوية.
         </p>
         {/*
           منحُ النقاط لكل من يحمل وسماً (القاعدة ١٩٨) — مكافأةُ المختبرين بعد كل
@@ -1111,113 +1104,39 @@ export default async function AdminPage({
           </p>
         ) : null}
 
-        <div className="mb-7 flex flex-col gap-2">
+        {/*
+          صفٌّ يُضغط لا بطاقةٌ بأدواتها (القاعدة ٤٢٩): خمسون حساباً تحت كلٍّ منها ستّةُ
+          نماذج كانت تُقرأ لوحةَ أزرار. فالحسابُ يُفتح وفيه كلُّ ما يخصّه بأقسامه.
+        */}
+        <div className="mb-7 flex flex-col gap-1.5">
           {people.map((person) => (
-            /* البطاقة تحوي نموذجين: الوسم وطيّةُ البريد — ولا يتداخلان. */
-            <div key={person.id} className="rounded-2xl border border-line bg-card">
-              <form
-                action={setUserTag.bind(null, person.id)}
-                className="flex items-center gap-2 p-3"
+            <Link
+              key={person.id}
+              href={`/admin/u/${person.id}`}
+              className="flex items-center gap-2.5 rounded-2xl border border-line bg-card px-3 py-2.5"
+            >
+              <span
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
+                style={{ background: "var(--color-chip)", color: "var(--color-muted)" }}
               >
-                <span
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
-                  style={{ background: "var(--color-chip)", color: "var(--color-muted)" }}
-                >
-                  {ar(person.memberNo)}
+                {ar(person.memberNo)}
+              </span>
+              <span className="min-w-0 grow">
+                <span className="flex items-center gap-1.5 truncate text-[13.5px] font-semibold">
+                  <bdi className="truncate">{person.name}</bdi>
+                  <TagPill tag={person.tag} size={10} />
+                  {person.suspendedUntil && person.suspendedUntil > new Date() ? (
+                    <span className="shrink-0 rounded-full px-1.5 text-[10px] font-semibold" style={{ background: "var(--color-live-soft)", color: "var(--color-live)" }}>
+                      موقوف
+                    </span>
+                  ) : null}
                 </span>
-                <div className="min-w-0 grow">
-                  <p className="flex items-center gap-1.5 truncate text-[13.5px] font-semibold">
-                    {person.name}
-                    <TagPill tag={person.tag} size={10} />
-                  </p>
-                  <p dir="ltr" className="truncate text-right text-[11px] text-faint">
-                    {person.email}
-                  </p>
-                </div>
-                <select
-                  name="tagId"
-                  defaultValue={person.tagId ?? ""}
-                  className="h-10 max-w-[110px] shrink-0 rounded-xl border border-line bg-paper px-2 text-[12px] text-ink outline-none"
-                >
-                  <option value="">بلا وسم</option>
-                  {tags.map((tag) => (
-                    <option key={tag.id} value={tag.id}>
-                      {tag.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="submit"
-                  className="h-10 shrink-0 rounded-xl px-3 text-[12px] font-bold"
-                  style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
-                >
-                  امنح
-                </button>
-              </form>
-
-              {/*
-                وبابُ لحظاته لمن يملك صلاحية الإشراف وحده: البلاغ يصل على
-                منشور، فيُفتح الحساب ليُرى ما حوله ثمّ يُحكم. ومن لا يملكها
-                لا يرى الرابط — والصفحة نفسها تفحص الصلاحية، فإخفاءُ
-                الرابط ليس حماية (القاعدة ١٣).
-              */}
-              {user.canModerate ? (
-                <Link
-                  href={`/admin/u/${person.id}`}
-                  className="block border-t border-line px-3 py-2.5 text-[12px] font-semibold text-clay-ink"
-                >
-                  اقرأ لحظاته
-                </Link>
-              ) : null}
-
-              {/*
-                الحسابات المرتبطة في صفّه (القاعدة ١٩٤): من شاركه جهازاً أو
-                شبكة. قرينةٌ لا دليل — والجهازُ أقوى من الشبكة.
-              */}
-              {linked.has(person.id) ? (
-                <LinkedRow result={linked.get(person.id)!} />
-              ) : null}
-
-              {owner ? <AdminEmail userId={person.id} current={person.email} /> : null}
-
-              {/*
-                والإيقاف المؤقّت لمن يملك صلاحية الإشراف: من يقرأ البلاغ
-                هو من يتصرّف فيه، فلا يُحوّله إلى المالك ليضغط زرّاً.
-              */}
-              {user.canModerate ? (
-                <Suspend
-                  userId={person.id}
-                  until={person.suspendedUntil}
-                  reason={person.suspendedReason}
-                />
-              ) : null}
-
-              {/* ومنحُ آثار+ حيث يُقرأ الحساب لا في شاشةٍ تعرض الناس كلَّهم. */}
-              {scope === "ALL" ? <PlusGrant userId={person.id} until={person.plusUntil} /> : null}
-
-              {/* ومنحُ النقاط بجانبه — مكافأةُ المختبرين (القاعدة ١٩٨). */}
-              {scope === "ALL" ? <CoinsGrant userId={person.id} /> : null}
-
-              {/*
-                وفتحُ الحساب للمالك وحده: بطاقتُه ولحظاتُه العامّة تُقرأ
-                بلا صداقة، ويقبل الإضافة من الجميع — لحساب أخبار التطبيق.
-              */}
-              {owner ? (
-                <form
-                  action={setOpenAccount.bind(null, person.id, !person.isOpen)}
-                  className="flex items-center gap-2 border-t border-line px-3 py-2.5"
-                >
-                  <button type="submit" className="text-[12px] font-semibold text-clay-ink">
-                    {person.isOpen ? "أغلقه" : "افتحه للجميع"}
-                  </button>
-                  <span className="text-[11px] text-faint">
-                    {person.isOpen
-                      ? "مفتوح — لحظاته العامّة تُقرأ بلا صداقة ويُضيفه الجميع"
-                      : "حسابٌ عاديّ — لا يُقرأ إلا بعد الإضافة"}
-                  </span>
-                </form>
-              ) : null}
-            </div>
+                <span dir="ltr" className="block truncate text-right text-[11px] text-faint">
+                  {person.email ?? "بلا بريد"}
+                </span>
+              </span>
+              <span aria-hidden className="shrink-0 text-[16px] text-faint">‹</span>
+            </Link>
           ))}
         </div>
 

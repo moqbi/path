@@ -124,7 +124,7 @@ function Sheet({
     يُفتح بالاشتراك. وما يملكه الصديقُ منها يُعرض «عنده». في نسخة التطوير وحدها.
   */
   const stickers = useStickers(DEV_FEATURES);
-  const giftable = (stickers.data?.packs ?? []).filter((pack) => (pack.priceCoins ?? 0) > 0);
+  const giftable = (stickers.data?.packs ?? []).filter((pack) => (pack.priceCoins ?? 0) > 0 && !pack.hidden);
   const friendPacks = useQuery({
     queryKey: ["sticker-owned", friendId],
     queryFn: () => api<{ owned: string[] }>(`/v1/stickers/owned/${friendId}`),

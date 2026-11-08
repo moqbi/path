@@ -47,7 +47,7 @@ export async function giftShelf(friendId: string): Promise<GiftShelf | { error: 
     let packsOwned: string[] = [];
     if (canTryStickers(user)) {
       const all = await apiAs<{ packs: GiftPack[] }>(user.id, "/v1/stickers").catch(() => ({ packs: [] }));
-      packs = all.packs.filter((pack) => (pack.priceCoins ?? 0) > 0);
+      packs = all.packs.filter((pack) => (pack.priceCoins ?? 0) > 0 && !(pack as { hidden?: boolean }).hidden);
       if (packs.length) {
         packsOwned = (await apiAs<{ owned: string[] }>(user.id, `/v1/stickers/owned/${encodeURIComponent(friendId)}`).catch(() => ({ owned: [] }))).owned;
       }

@@ -164,14 +164,43 @@ export const useSession = create<State>((set, get) => ({
       return set({ ready: true, me: null, accounts: [], parked: null });
     }
 
-    try {
-      const { user } = await api<{ user: Me }>("/v1/me");
-      void startBilling(user.id).catch(() => {});
-      set({ me: user, ready: true, ...(await settle(user)) });
-    } catch {
-      await clearTokens();
-      set({ me: null, ready: true, ...(await settle(null)) });
+    /*
+      الجلسةُ لا تُمحى إلا بما يقوله الخادم (القاعدة ٤٢٨): ٤٠١ أو ٤٠٣. كان كلُّ فشلٍ
+      يمحوها — تطبيقٌ فُتح بلا شبكة، أو والخادمُ يُعاد تشغيلُه مع نشر — فيخرج صاحبُه
+      بلا سبب. فالشبكةُ والخادمُ يُعاد سؤالُهما بمهلٍ تطول، ثمّ آخرُ «أنا» محفوظة على
+      الجهاز، وتُصحَّح حين يعود الاتصال (`refresh` كلَّ خمس دقائق ومع كلّ عودة).
+    */
+    // ٤٠١ بعد تجديدٍ رُفض حقّاً يمحو التوكن في `renew` — فإن بقي التوكن فالتجديدُ تعثّر
+    // بشبكةٍ أو خادمٍ يُعاد تشغيلُه، لا جلسةٌ انتهت.
+    const auth = async (error: unknown) => {
+      const status = (error as { status?: number })?.status;
+      if (status === 403) return true;
+      return status === 401 && !(await getItem("athr.refresh"));
+    };
+    for (const wait of [0, 1500, 3000, 6000]) {
+      if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
+      try {
+        const { user } = await api<{ user: Me }>("/v1/me");
+        void startBilling(user.id).catch(() => {});
+        set({ me: user, ready: true, ...(await settle(user)) });
+        return;
+      } catch (error) {
+        if (await auth(error)) {
+          await clearTokens();
+          await forgetMe();
+          set({ me: null, ready: true, ...(await settle(null)) });
+          return;
+        }
+      }
     }
+    const cached = await rememberedMe();
+    if (cached) {
+      void startBilling(cached.id).catch(() => {});
+      set({ me: cached, ready: true, ...(await settle(cached)) });
+      return;
+    }
+    // لا «أنا» محفوظة: شاشةُ الدخول، والتوكن باقٍ فيُفتح التطبيقُ في الإقلاع التالي.
+    set({ me: null, ready: true, ...(await settle(null)) });
   },
 
   /*
@@ -219,6 +248,7 @@ export const useSession = create<State>((set, get) => ({
     // ونزعُ الجهاز قبل مسح التوكن: بعده لا تصل الطلبات مُستوثَقة.
     await disablePush();
     await clearTokens();
+    await forgetMe();
     await stopBilling();
     if (leaving) await forgetAccount(leaving);
     // حسابٌ ثانٍ على الجهاز: الخروجُ من أحدهما دخولٌ إلى الآخر لا شاشةُ الدخول.
@@ -323,3 +353,42 @@ export const useSession = create<State>((set, get) => ({
     else set({ me: null, ready: true, ...(await settle(null)) });
   },
 }));
+
+/*
+  آخرُ «أنا» على الجهاز (القاعدة ٤٢٨): ملفٌّ في مجلّد التطبيق لا المخزنُ الآمن — صفُّ
+  الحساب أكبرُ من حدّه، وليس فيه سرّ: التوكنُ وحده السرّ وهو في المخزن الآمن. يُكتب
+  مع كلّ «أنا» جديدة، ويُمحى بالخروج.
+*/
+const ME_FILE = "athr-me.json";
+async function meFile() {
+  const { File, Paths } = await import("expo-file-system");
+  return new File(Paths.document, ME_FILE);
+}
+async function rememberedMe(): Promise<Me | null> {
+  try {
+    const file = await meFile();
+    if (!file.exists) return null;
+    return JSON.parse(await file.text()) as Me;
+  } catch {
+    return null;
+  }
+}
+async function forgetMe() {
+  try {
+    const file = await meFile();
+    if (file.exists) file.delete();
+  } catch {}
+}
+let lastWritten: string | null = null;
+useSession.subscribe((state) => {
+  if (!state.me || state.me.id === undefined) return;
+  const text = JSON.stringify(state.me);
+  if (text === lastWritten) return;
+  lastWritten = text;
+  void meFile()
+    .then((file) => {
+      if (!file.exists) file.create();
+      file.write(text);
+    })
+    .catch(() => {});
+});
