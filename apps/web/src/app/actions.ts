@@ -281,7 +281,7 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
     }),
   ]);
 
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/store");
   return { ok: `أُضيف «${name}»` };
 }
@@ -346,7 +346,7 @@ export async function updateStoreItem(
     },
   });
 
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/store");
   return { ok: "حُفظ" };
 }
@@ -376,7 +376,7 @@ export async function createCategory(_prev: AdminResult, formData: FormData): Pr
     data: { name, slug, sortOrder: sortOrder ?? (last?.sortOrder ?? 0) + 1 },
   });
 
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/store");
   return { ok: `أُضيف تصنيف «${name}»` };
 }
@@ -409,7 +409,7 @@ export async function updateCategory(
     },
   });
 
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/store");
   return { ok: "حُفظ" };
 }
@@ -418,7 +418,7 @@ export async function updateCategory(
 export async function deleteCategory(categoryId: string): Promise<void> {
   await requireAdmin("store");
   await prisma.storeCategory.delete({ where: { id: categoryId } });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/store");
 }
 
@@ -449,14 +449,14 @@ export async function createCollection(formData: FormData): Promise<void> {
       sortOrder: digits(formData.get("sortOrder")) || 0,
     },
   });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 /** حذفُ المجموعة لا يحذف أصنافها: تعود إلى «الأخرى». */
 export async function deleteCollection(collectionId: string): Promise<void> {
   await requireAdmin("store");
   await prisma.storeCollection.delete({ where: { id: collectionId } });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 /** تعديلُ المجموعة: اسمُها ونوعُها وترتيبُها. وتغييرُ النوع لا يُخرج أصنافَها — تبقى فيها. */
@@ -475,7 +475,7 @@ export async function updateCollection(collectionId: string, _prev: AdminResult,
       sortOrder: digits(formData.get("sortOrder")) || 0,
     },
   });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: "حُفظ" };
 }
 
@@ -494,7 +494,7 @@ export async function addItemPlan(itemId: string, formData: FormData): Promise<v
     create: { itemId, days, priceCoins },
     update: { priceCoins },
   });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 /**
@@ -510,13 +510,13 @@ export async function setItemHideAt(itemId: string, formData: FormData): Promise
     where: { id: itemId },
     data: { hideAt: days === 0 ? null : new Date(Date.now() + days * 86_400_000) },
   });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 export async function dropItemPlan(planId: string): Promise<void> {
   await requireAdmin("store");
   await prisma.storeItemPlan.delete({ where: { id: planId } });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 // ───────────────────────── باقات النقاط (اللوحة) ─────────────────────────
@@ -575,7 +575,7 @@ export async function createCoinPack(_prev: AdminResult, formData: FormData): Pr
     },
   });
 
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: `أُضيفت باقة «${name}»` };
 }
 
@@ -607,7 +607,7 @@ export async function updateCoinPack(
     },
   });
 
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: "حُفظ" };
 }
 
@@ -618,7 +618,7 @@ export async function updateCoinPack(
 export async function deleteCoinPack(packId: string): Promise<void> {
   await requireAdmin("store");
   await prisma.coinPack.delete({ where: { id: packId } });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 // ───────────────────────────── الوسوم ─────────────────────────────
@@ -729,7 +729,7 @@ export async function setOpenAccount(userId: string, open: boolean): Promise<voi
 }
 
 function revalidateTags() {
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/");
   revalidatePath("/me");
   revalidatePath("/circle");
@@ -765,21 +765,21 @@ export async function addToBundle(bundleId: string, formData: FormData): Promise
     update: {},
   });
 
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/store");
 }
 
 export async function dropFromBundle(bundleId: string, itemId: string): Promise<void> {
   await requireAdmin("store");
   await prisma.bundleItem.deleteMany({ where: { bundleId, itemId } });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/store");
 }
 
 export async function deleteStoreItem(itemId: string): Promise<void> {
   await requireAdmin("store");
   await prisma.storeItem.delete({ where: { id: itemId } });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/store");
 }
 
@@ -789,7 +789,7 @@ export async function grantCredit(userId: string, riyals: number): Promise<void>
     where: { id: userId },
     data: { coins: { increment: Math.round(riyals * 100) } },
   });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 /**
@@ -817,7 +817,7 @@ export async function setAdminScope(userId: string, formData: FormData): Promise
   });
   // من صار مشرفاً لا يُحظر (القاعدة ٣١٨): ما سبق من حظرٍ عليه يُرفع.
   if (scope === "ALL") await prisma.block.deleteMany({ where: { blockedId: userId } });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 // ─────────────────────── الإشراف على المحتوى ───────────────────────
@@ -874,7 +874,7 @@ export async function removeMomentAsAdmin(
   await dropMedia([moment.mediaId, ...moment.photos.map((photo) => photo.mediaId)].filter((id): id is string => Boolean(id)));
 
   revalidatePath(`/admin/u/${moment.authorId}`);
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: "حُذفت اللحظة" };
 }
 
@@ -899,7 +899,7 @@ export async function openTicket(_prev: AdminResult, formData: FormData): Promis
   await prisma.supportTicket.create({ data: { userId: user.id, body } });
   void tellSupport({ from: `${user.name} (#${user.memberNo})`, body });
   revalidatePath("/settings/support");
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: "وصلتنا رسالتك — نردّ عليك هنا" };
 }
 
@@ -923,7 +923,7 @@ export async function replyTicket(
     void mailReply({ to: ticket.email, name: ticket.name, question: ticket.body, reply });
   }
 
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/settings/support");
   return { ok: "أُرسل الردّ" };
 }
@@ -931,7 +931,7 @@ export async function replyTicket(
 export async function closeTicket(ticketId: string): Promise<void> {
   await requireAdmin("reports");
   await prisma.supportTicket.update({ where: { id: ticketId }, data: { closed: true } });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/settings/support");
 }
 
@@ -952,7 +952,7 @@ export async function setItemImage(itemId: string, formData: FormData): Promise<
     where: { id: itemId },
     data: { mediaId: media.id, frameHole: hole },
   });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/store");
   revalidatePath("/");
 }
@@ -963,7 +963,7 @@ export async function setFrameHole(itemId: string, formData: FormData): Promise<
   const raw = Number(String(formData.get("hole") ?? "").replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))));
   const hole = Number.isFinite(raw) && raw >= 20 && raw <= 99 ? Math.round(raw) : null;
   await prisma.storeItem.update({ where: { id: itemId }, data: { frameHole: hole } });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 /**
@@ -986,7 +986,7 @@ export async function setItemCover(itemId: string, formData: FormData): Promise<
   // والسابق يذهب ببكسلاته: ما لا يشير إليه شيء لا يبقى في السحابة.
   if (before?.coverMediaId) await dropMedia([before.coverMediaId]);
 
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/store");
 }
 
@@ -998,7 +998,7 @@ export async function clearItemCover(itemId: string): Promise<void> {
   });
   await prisma.storeItem.update({ where: { id: itemId }, data: { coverMediaId: null } });
   if (before?.coverMediaId) await dropMedia([before.coverMediaId]);
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/store");
 }
 
@@ -1013,7 +1013,7 @@ export async function setItemPromo(itemId: string, formData: FormData): Promise<
   const before = await prisma.storeItem.findUnique({ where: { id: itemId }, select: { promoMediaId: true } });
   await prisma.storeItem.update({ where: { id: itemId }, data: { promoMediaId: media.id } });
   if (before?.promoMediaId) await dropMedia([before.promoMediaId]);
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 export async function clearItemPromo(itemId: string): Promise<void> {
@@ -1021,7 +1021,7 @@ export async function clearItemPromo(itemId: string): Promise<void> {
   const before = await prisma.storeItem.findUnique({ where: { id: itemId }, select: { promoMediaId: true } });
   await prisma.storeItem.update({ where: { id: itemId }, data: { promoMediaId: null } });
   if (before?.promoMediaId) await dropMedia([before.promoMediaId]);
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 /**
@@ -1049,7 +1049,7 @@ export async function setHallImage(itemId: string, slot: HallSlot, formData: For
   await prisma.storeItem.update({ where: { id: itemId }, data: { [column]: media.id } });
   const old = (before as Record<string, string | null> | null)?.[column];
   if (old) await dropMedia([old]);
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 export async function clearHallImage(itemId: string, slot: HallSlot): Promise<void> {
@@ -1060,7 +1060,7 @@ export async function clearHallImage(itemId: string, slot: HallSlot): Promise<vo
   await prisma.storeItem.update({ where: { id: itemId }, data: { [column]: null } });
   const old = (before as Record<string, string | null> | null)?.[column];
   if (old) await dropMedia([old]);
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 export async function clearItemImage(itemId: string): Promise<void> {
@@ -1069,7 +1069,7 @@ export async function clearItemImage(itemId: string): Promise<void> {
     where: { id: itemId },
     data: { mediaId: null, frameHole: null },
   });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/store");
 }
 
@@ -1122,7 +1122,7 @@ export async function moveMediaToCloud(
 
   try {
     const moved = await migrateToCloud(60);
-    revalidatePath("/admin");
+    revalidatePath("/admin", "layout");
     return { ok: moved > 0 ? `نُقل ${moved}` : "لا شيء ينتظر النقل" };
   } catch (problem) {
     return { error: problem instanceof Error ? problem.message : "تعذّر النقل" };
@@ -1248,7 +1248,7 @@ export async function setUserEmail(
   if ("error" in checked) return checked;
 
   const result = await writeEmail(userId, checked.email);
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return result;
 }
 
@@ -1302,7 +1302,7 @@ export async function decideReport(
     where: { id: reportId },
     data: { state, handledAt: new Date(), handledBy: admin.id },
   });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 const wordInput = z.object({
@@ -1337,7 +1337,7 @@ export async function addBannedWord(_prev: AdminResult, formData: FormData): Pro
     },
   });
   forgetWords();
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: `أُضيفت «${word}»` };
 }
 
@@ -1345,7 +1345,7 @@ export async function dropBannedWord(wordId: string): Promise<void> {
   await requireAdmin();
   await prisma.bannedWord.deleteMany({ where: { id: wordId } });
   forgetWords();
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 // ───────────────────────── الصفحات العامة ─────────────────────────
@@ -1443,7 +1443,7 @@ async function sendPublicTicket(
     body: parsed.data.body + extra,
     replyTo: parsed.data.email,
   });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return {
     ok:
       topic === "careers"
@@ -1565,7 +1565,7 @@ export async function setSiteImage(key: string, formData: FormData): Promise<voi
   if (old && old.mediaId !== media.id) await dropMedia([old.mediaId]);
 
   revalidatePath("/", "layout");
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 export async function clearSiteImage(key: string): Promise<void> {
@@ -1575,7 +1575,7 @@ export async function clearSiteImage(key: string): Promise<void> {
   await prisma.siteImage.delete({ where: { key } });
   await dropMedia([row.mediaId]);
   revalidatePath("/", "layout");
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 // ── لقطات «من داخل التطبيق» ──
@@ -1608,7 +1608,7 @@ export async function addSiteShot(formData: FormData): Promise<AdminResult> {
     return { error: problem instanceof Error ? problem.message : "تعذّر رفع اللقطة" };
   }
   revalidatePath("/", "layout");
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: "أُضيفت" };
 }
 
@@ -1629,7 +1629,7 @@ export async function updateSiteShot(
     data: { label: label.data, sortOrder: order.data, hidden: formData.get("hidden") === "on" },
   });
   revalidatePath("/", "layout");
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: "حُفظ" };
 }
 
@@ -1654,7 +1654,7 @@ export async function replaceSiteShot(id: string, formData: FormData): Promise<A
   }
   await dropMedia([row.mediaId]);
   revalidatePath("/", "layout");
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: "بُدّلت" };
 }
 
@@ -1666,7 +1666,7 @@ export async function deleteSiteShot(id: string): Promise<void> {
   await dropMedia([row.mediaId]);
   await prisma.siteShot.deleteMany({ where: { id } });
   revalidatePath("/", "layout");
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 // ── روابط التواصل ──
@@ -1700,7 +1700,7 @@ export async function createSocialLink(
 
   await prisma.socialLink.create({ data: { ...parsed.data, url: url.toString() } });
   revalidatePath("/", "layout");
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: "أُضيف" };
 }
 
@@ -1731,7 +1731,7 @@ export async function updateSocialLink(
     },
   });
   revalidatePath("/", "layout");
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: "حُفظ" };
 }
 
@@ -1739,7 +1739,7 @@ export async function deleteSocialLink(id: string): Promise<void> {
   await requireAdmin();
   await prisma.socialLink.deleteMany({ where: { id } });
   revalidatePath("/", "layout");
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 // ───────────────────────── الإيقاف المؤقّت ─────────────────────────
@@ -1800,7 +1800,7 @@ export async function suspendUser(
     },
   });
 
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: `أُوقف ${pick.label}` };
 }
 
@@ -1814,7 +1814,7 @@ export async function liftSuspension(userId: string): Promise<void> {
   await prisma.moderationLog.create({
     data: { adminId: admin.id, action: "USER_RESTORED", targetId: userId, ownerId: userId },
   });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 /**
@@ -1875,7 +1875,7 @@ export async function grantPlus(
     },
   });
 
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: `مُنح ${PLUS_LABEL[days]}` };
 }
 
@@ -1923,7 +1923,7 @@ export async function grantCoins(
     }),
   ]);
 
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: `مُنح ${input.coins.toLocaleString("ar-SA")} نقطة` };
 }
 
@@ -1958,7 +1958,7 @@ export async function grantCoinsToTag(_prev: AdminResult, formData: FormData): P
     }),
   ]);
 
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: `مُنح ${input.coins.toLocaleString("ar-SA")} نقطة لـ${ids.length.toLocaleString("ar-SA")} حساب` };
 }
 
@@ -1980,7 +1980,7 @@ export async function revokePlus(userId: string): Promise<void> {
   await prisma.moderationLog.create({
     data: { adminId: admin.id, action: "PLUS_REVOKED", targetId: userId, ownerId: userId },
   });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 /**
@@ -2013,7 +2013,7 @@ export async function saveInvites(_prev: AdminResult, formData: FormData): Promi
     update: { enabled, every, coins, ...(enabled ? {} : { announcedAt: null }) },
   });
 
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   if (enabled && !before?.enabled) return { ok: "فُعّل البرنامج — يصل التنبيه للجميع خلال دقائق" };
   if (!enabled && before?.enabled) return { ok: "أُوقف البرنامج" };
   return { ok: "حُفظ" };
@@ -2088,7 +2088,7 @@ export async function restoreMember(memberNo: number, _prev: AdminResult, formDa
   } catch {
     return { error: "تعذّر الإنشاء — ربما أُخذ الرقم أو البريد للتوّ" };
   }
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: `أُنشئت العضوية ${memberNo}` };
 }
 
@@ -2114,7 +2114,7 @@ export async function createStickerPack(_prev: AdminResult, formData: FormData):
   if (!name) return { error: "اكتب اسم المجموعة" };
   const last = await prisma.stickerPack.aggregate({ _max: { sortOrder: true } });
   await prisma.stickerPack.create({ data: { name, priceCoins: readPackPrice(formData), sortOrder: (last._max.sortOrder ?? 0) + 1 } });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: "أُضيفت المجموعة" };
 }
 
@@ -2130,7 +2130,7 @@ export async function updateStickerPack(packId: string, _prev: AdminResult, form
     data: { name, sortOrder, priceCoins: readPackPrice(formData), hidden: formData.get("hidden") === "on" },
   });
   if (saved.count === 0) return { error: "المجموعة غير موجودة" };
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: "تمّ الحفظ" };
 }
 
@@ -2142,7 +2142,7 @@ export async function deleteStickerPack(packId: string): Promise<void> {
   const stickers = await prisma.sticker.findMany({ where: { packId }, select: { mediaId: true } });
   await prisma.stickerPack.delete({ where: { id: packId } });
   if (stickers.length) await dropMedia(stickers.map((sticker) => sticker.mediaId));
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 /** ملصقٌ واحد في المجموعة — يردّ نصَّ الخطأ لا يرميه (القاعدة ٩٠): الرفعُ دفعةُ ملفّات. */
@@ -2158,7 +2158,7 @@ export async function addSticker(packId: string, formData: FormData): Promise<Ad
   } catch (error) {
     return { error: (error as Error).message };
   }
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: "أُضيف" };
 }
 
@@ -2168,7 +2168,7 @@ export async function deleteSticker(stickerId: string): Promise<void> {
   if (!sticker) return;
   // الصفُّ يذهب مع ملفّه (`Cascade` من جهة الملف)، والبكسلاتُ معه.
   await dropMedia([sticker.mediaId]);
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 /** تقديمُ ملصقٍ درجةً أو تأخيرُه داخل مجموعته. */
@@ -2188,7 +2188,7 @@ export async function moveSticker(stickerId: string, step: number): Promise<void
   const [moved] = all.splice(from, 1);
   all.splice(to, 0, moved);
   await prisma.$transaction(all.map((row, index) => prisma.sticker.update({ where: { id: row.id }, data: { sortOrder: index } })));
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 // ───────────────────────────── المناسبات الوطنيّة ─────────────────────────────
@@ -2222,7 +2222,7 @@ export async function createNationalDay(_prev: AdminResult, formData: FormData):
   const input = readOccasion(formData);
   if ("error" in input) return input;
   await prisma.nationalDay.create({ data: input });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: "أُضيفت المناسبة" };
 }
 
@@ -2232,14 +2232,14 @@ export async function updateNationalDay(id: string, _prev: AdminResult, formData
   if ("error" in input) return input;
   const saved = await prisma.nationalDay.updateMany({ where: { id }, data: { ...input, hidden: formData.get("hidden") === "on" } });
   if (saved.count === 0) return { error: "المناسبة غير موجودة" };
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: "تمّ الحفظ" };
 }
 
 export async function deleteNationalDay(id: string): Promise<void> {
   await requireAdmin();
   await prisma.nationalDay.deleteMany({ where: { id } });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 // ───────────────────────────── الاهتمامات ─────────────────────────────
@@ -2273,7 +2273,7 @@ export async function createInterestGroup(_prev: AdminResult, formData: FormData
   if ("error" in input) return input;
   const last = await prisma.interestGroup.aggregate({ _max: { sortOrder: true } });
   await prisma.interestGroup.create({ data: { id: `g${interestId()}`, ...input, sortOrder: (last._max.sortOrder ?? -1) + 1 } });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: "أُضيف التصنيف — أضف إليه اهتماماته، فالتصنيفُ الفارغ لا يظهر في التطبيق" };
 }
 
@@ -2284,7 +2284,7 @@ export async function updateInterestGroup(id: string, _prev: AdminResult, formDa
   const sortOrder = orderOf(formData);
   const saved = await prisma.interestGroup.updateMany({ where: { id }, data: { ...input, ...(sortOrder === null ? {} : { sortOrder }) } });
   if (saved.count === 0) return { error: "التصنيف غير موجود" };
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: "تمّ الحفظ" };
 }
 
@@ -2294,7 +2294,7 @@ export async function deleteInterestGroup(id: string, _prev: AdminResult, _formD
   if ((await prisma.interestGroup.count()) <= 1) return { error: "لا يُحذف آخر تصنيف" };
   const gone = await prisma.interestGroup.deleteMany({ where: { id } });
   if (gone.count === 0) return { error: "التصنيف غير موجود" };
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: "حُذف التصنيف واهتماماته" };
 }
 
@@ -2306,7 +2306,7 @@ export async function createInterest(groupId: string, _prev: AdminResult, formDa
   if (!group) return { error: "التصنيف غير موجود" };
   const last = await prisma.interest.aggregate({ where: { groupId }, _max: { sortOrder: true } });
   await prisma.interest.create({ data: { id: `${groupId}.${interestId()}`, groupId, ...input, sortOrder: (last._max.sortOrder ?? -1) + 1 } });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: "أُضيف الاهتمام" };
 }
 
@@ -2324,7 +2324,7 @@ export async function updateInterest(id: string, _prev: AdminResult, formData: F
     data: { ...input, ...(sortOrder === null ? {} : { sortOrder }), ...(groupId ? { groupId } : {}) },
   });
   if (saved.count === 0) return { error: "الاهتمام غير موجود" };
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: "تمّ الحفظ" };
 }
 
@@ -2332,7 +2332,7 @@ export async function deleteInterest(id: string, _prev: AdminResult, _formData: 
   await requireAdmin();
   const gone = await prisma.interest.deleteMany({ where: { id } });
   if (gone.count === 0) return { error: "الاهتمام غير موجود" };
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: "حُذف الاهتمام" };
 }
 
@@ -2385,7 +2385,7 @@ export async function sendBroadcast(formData: FormData): Promise<{ ok?: string; 
   }
 
   await prisma.broadcast.create({ data: { title, body, cardTitle, cardBody, mediaId, momentId, link: screen, createdById: admin.id } });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: "سيُرسل خلال دقيقة" };
 }
 
@@ -2400,6 +2400,6 @@ export async function deleteBroadcast(id: string): Promise<{ ok?: string; error?
   if (!row) return { error: "التنبيه غير موجود" };
   await prisma.broadcast.delete({ where: { id } });
   if (row.mediaId) await dropMedia([row.mediaId]).catch(() => {});
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: "حُذف التنبيه" };
 }

@@ -10,6 +10,8 @@ export type StickerPack = {
   name: string;
   priceCoins?: number;
   owned?: boolean;
+  /** مخفيّةٌ يملكها صاحبُها: في لوحته لا في المتجر. خادمٌ قديم لا يرسله. */
+  hidden?: boolean;
   /** خادمٌ قديم لا يرسله، فلا تدخل المجموعةُ «وصل حديثاً». */
   createdAt?: string;
   stickers: { id: string; mediaId: string }[];

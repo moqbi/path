@@ -82,10 +82,16 @@ async function renew(): Promise<boolean> {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ refreshToken: token }),
     });
-    if (!response.ok) {
+    /*
+      الخروجُ لما يقوله الخادم وحده (القاعدة ٤٢٨): ٤٠١ «انتهت الجلسة». أمّا ٥٠٢ والخادمُ
+      يُعاد تشغيلُه مع كلّ نشر، أو ٤٢٩، أو ٥٠٠ عابر — فكان يمحو التوكن فيخرج صاحبُه، وهذا
+      ما أخرج المشرفين. الآن تبقى الجلسةُ ويُعاد التجديدُ في الطلب التالي.
+    */
+    if (response.status === 401 || response.status === 403) {
       await clearTokens();
       return false;
     }
+    if (!response.ok) return false;
 
     const data = (await response.json()) as { accessToken: string; refreshToken: string };
     await saveTokens(data.accessToken, data.refreshToken);
@@ -175,7 +181,10 @@ export async function api<T>(path: string, init: RequestInit = {}, retry = true)
   }
 
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error((data as { error?: string }).error ?? "تعذّر الاتصال");
+  // الحالةُ مع الخطأ: من يقرؤه يفرّق «جلستك انتهت» (٤٠١) من «الخادم يُعاد تشغيلُه» (٥٠٢).
+  if (!response.ok) {
+    throw Object.assign(new Error((data as { error?: string }).error ?? "تعذّر الاتصال"), { status: response.status });
+  }
   return data as T;
 }
 

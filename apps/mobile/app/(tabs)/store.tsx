@@ -75,7 +75,8 @@ export default function Store() {
   const pull = usePullLogo({ ...pullRefresh, tint: colors.clay });
   const [slug, setSlug] = useState("");
   const data = store.data;
-  const packs = stickers.data?.packs ?? [];
+  // المخفيّةُ لا تُعرض في المتجر ولو ملكها صاحبُها — تبقى له في لوحة الملصقات (القاعدة ٤٢٧).
+  const packs = (stickers.data?.packs ?? []).filter((pack) => !pack.hidden);
   const plusPacks = packs.filter((pack) => (pack.priceCoins ?? 0) === 0);
   const paidPacks = packs.filter((pack) => (pack.priceCoins ?? 0) > 0);
   const newPacks = freshPacks(packs);

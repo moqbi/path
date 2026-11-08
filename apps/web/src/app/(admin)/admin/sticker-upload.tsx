@@ -54,7 +54,7 @@ export function StickerUpload({ packId }: { packId: string }) {
         className="flex h-11 cursor-pointer items-center justify-center rounded-xl border border-dashed border-line bg-card text-[12.5px] font-semibold text-ink-2"
         aria-busy={busy !== null}
       >
-        {busy ?? "ارفع ملصقات (PNG أو WebP أو GIF — حتى ٢ ميغا)"}
+        {busy ?? "ارفع ملصقات (PNG أو WebP أو GIF — الكبير يُصغَّر وحده)"}
         <input
           ref={input}
           type="file"

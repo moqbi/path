@@ -21,6 +21,8 @@ export async function packs(userId: string) {
       id: true,
       name: true,
       priceCoins: true,
+      // المخفيّةُ تبقى لمالكها في لوحة الملصقات ولا تُعرض في المتجر ولا الإهداء (القاعدة ٤٢٧).
+      hidden: true,
       // لـ«وصل حديثاً» في المتجر: مجموعةٌ جديدة خبرٌ كالصنف الجديد.
       createdAt: true,
       purchases: { where: { userId }, select: { id: true } },

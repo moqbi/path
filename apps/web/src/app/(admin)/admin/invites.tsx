@@ -11,7 +11,7 @@ const FIELD =
  * حتى الآن — كم سجّل بدعوة، وكم نشر منهم، وكم أُعطي.
  */
 export async function InvitesView() {
-  const [program, invited, posted, paid] = await Promise.all([
+  const [program, invited, posted, paid, recent] = await Promise.all([
     prisma.inviteProgram.findUnique({ where: { id: "main" } }),
     prisma.user.count({ where: { invitedById: { not: null } } }),
     prisma.user.count({
@@ -21,6 +21,20 @@ export async function InvitesView() {
       },
     }),
     prisma.coinGrant.aggregate({ where: { invites: { not: null } }, _sum: { coins: true }, _count: true }),
+    // من دعا من: أحدثُ مئة، والداعي والمدعوّ رابطان إلى صفحتيهما في اللوحة.
+    prisma.user.findMany({
+      where: { invitedById: { not: null } },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      select: {
+        id: true,
+        name: true,
+        memberNo: true,
+        createdAt: true,
+        _count: { select: { moments: true } },
+        invitedBy: { select: { id: true, name: true, memberNo: true } },
+      },
+    }),
   ]);
   const p = program ?? { enabled: false, every: 10, coins: 500, announcedAt: null };
 
@@ -69,6 +83,28 @@ export async function InvitesView() {
           </div>
         ))}
       </div>
+      <section className="flex flex-col gap-1.5">
+        <h3 className="px-1 text-[13px] font-bold">من دعا من</h3>
+        {recent.length === 0 ? (
+          <p className="px-1 text-[12px] text-muted">لا أحد سجّل بدعوة بعد.</p>
+        ) : (
+          recent.map((row) => (
+            <div key={row.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-line bg-card px-3 py-2 text-[12.5px]">
+              <a href={`/admin/u/${row.invitedBy!.id}`} className="font-bold text-clay-ink" dir="auto">
+                {row.invitedBy!.name} · {ar(row.invitedBy!.memberNo)}
+              </a>
+              <span className="text-faint">دعا</span>
+              <a href={`/admin/u/${row.id}`} className="font-bold" dir="auto">
+                {row.name} · {ar(row.memberNo)}
+              </a>
+              <span className="ms-auto text-[11px] text-faint">
+                {row.createdAt.toLocaleDateString("ar-SA-u-ca-gregory")} · {ar(row._count.moments)} لحظة
+              </span>
+            </div>
+          ))
+        )}
+      </section>
+
       {p.enabled && p.announcedAt ? (
         <p className="px-1 text-[11px] text-faint">أُعلن للجميع — {p.announcedAt.toLocaleString("ar-SA-u-ca-gregory")}</p>
       ) : null}

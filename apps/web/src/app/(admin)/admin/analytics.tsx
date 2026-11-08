@@ -242,6 +242,16 @@ export async function AnalyticsSection() {
     prisma.moderationLog
       .findMany({ where: { action: "PLUS_GRANTED", createdAt }, distinct: ["ownerId"], select: { ownerId: true } })
       .then((rows) => rows.length);
+  // هديةُ آثار+ اشتراكٌ أيضاً (القاعدة ٢٣٤) — كلُّ مُهدى إليه مرّة، بيوم إتمامها.
+  const gifted = (doneAt: { gte: Date; lt?: Date }) =>
+    prisma.plusGift
+      .findMany({ where: { status: "DONE", doneAt }, distinct: ["recipientId"], select: { recipientId: true } })
+      .then((rows) => rows.length);
+  const [giftsNow, giftsBefore, giftedLive] = await Promise.all([
+    gifted(month),
+    gifted(lastMonth),
+    prisma.user.count({ where: { isPlus: true, plusGiftUntil: { gt: new Date(now) } } }),
+  ]);
   const [subsNow, subsBefore, renewals, grantsNow, grantsBefore, endedNow, endedBefore] = await Promise.all([
     subscribers("INITIAL_PURCHASE", month),
     subscribers("INITIAL_PURCHASE", lastMonth),
@@ -353,15 +363,19 @@ export async function AnalyticsSection() {
           من {dayMonth(new Date(monthStart.getTime() + OFFSET))} حتى الآن، ويُقارن بالمدّة نفسها من الشهر الماضي.
         </p>
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
-          <Tile label="مشتركون جدد" value={ar(subsNow)} hint="اشتراكٌ أوّل من المتجر — كلُّ حسابٍ مرّة">
-            <Delta now={subsNow} before={subsBefore} />
+          <Tile
+            label="مشتركون جدد"
+            value={ar(subsNow + giftsNow)}
+            hint={`${ar(subsNow)} من المتجر و${ar(giftsNow)} هدية من صديق — كلُّ حسابٍ مرّة`}
+          >
+            <Delta now={subsNow + giftsNow} before={subsBefore + giftsBefore} />
           </Tile>
           <Tile label="جدّدوا" value={ar(renewals)} hint="تجديدٌ تلقائيّ هذا الشهر" />
           <Tile label="مُنحوا من اللوحة" value={ar(grantsNow)}>
             <Delta now={grantsNow} before={grantsBefore} />
           </Tile>
           <Tile label="انتهى اشتراكهم" value={ar(endedNow)} hint={`${ar(endedBefore)} في الفترة نفسها الماضية`} />
-          <Tile label="مشتركون الآن" value={ar(plus)} hint={`${pct(plus, total)} من الكل`} />
+          <Tile label="مشتركون الآن" value={ar(plus)} hint={`${pct(plus, total)} من الكل، منهم ${ar(giftedLive)} بهدية`} />
         </div>
       </section>
 

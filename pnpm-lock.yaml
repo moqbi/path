@@ -346,7 +346,7 @@ importers:
         version: 6.2.10
       next:
         specifier: 16.4.2
-        version: 16.4.2(@opentelemetry/api@1.9.1)(@types/node@22.20.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 16.4.2(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@types/node@22.20.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       qrcode:
         specifier: 1.5.4
         version: 1.5.4
@@ -359,6 +359,9 @@ importers:
       server-only:
         specifier: ^0.0.1
         version: 0.0.1
+      sharp:
+        specifier: 0.35.5
+        version: 0.35.5(@types/node@22.20.1)
       zod:
         specifier: 4.6.7
         version: 4.6.7
@@ -11893,16 +11896,16 @@ snapshots:
     dependencies:
       content-type: 2.1.0
 
-  next@16.4.2(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@types/node@22.20.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
+  next@16.4.2(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@types/node@22.20.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
     dependencies:
       '@next/env': 16.4.2
       '@swc/helpers': 0.5.23
       baseline-browser-mapping: 2.11.23
       caniuse-lite: 1.0.30001810
       postcss: 8.5.28
-      react: 19.2.8
-      react-dom: 19.2.8(react@19.2.8)
-      styled-jsx: 5.1.6(@babel/core@7.29.7)(react@19.2.8)
+      react: 19.2.0
+      react-dom: 19.2.0(react@19.2.0)
+      styled-jsx: 5.1.6(@babel/core@7.29.7)(react@19.2.0)
     optionalDependencies:
       '@next/swc-darwin-arm64': 16.4.2
       '@next/swc-darwin-x64': 16.4.2
@@ -11920,16 +11923,16 @@ snapshots:
       - '@types/node'
       - babel-plugin-macros
 
-  next@16.4.2(@opentelemetry/api@1.9.1)(@types/node@22.20.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
+  next@16.4.2(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@types/node@22.20.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
     dependencies:
       '@next/env': 16.4.2
       '@swc/helpers': 0.5.23
       baseline-browser-mapping: 2.11.23
       caniuse-lite: 1.0.30001810
       postcss: 8.5.28
-      react: 19.2.0
-      react-dom: 19.2.0(react@19.2.0)
-      styled-jsx: 5.1.6(react@19.2.0)
+      react: 19.2.8
+      react-dom: 19.2.8(react@19.2.8)
+      styled-jsx: 5.1.6(@babel/core@7.29.7)(react@19.2.8)
     optionalDependencies:
       '@next/swc-darwin-arm64': 16.4.2
       '@next/swc-darwin-x64': 16.4.2
@@ -13002,17 +13005,19 @@ snapshots:
 
   structured-headers@0.4.1: {}
 
+  styled-jsx@5.1.6(@babel/core@7.29.7)(react@19.2.0):
+    dependencies:
+      client-only: 0.0.1
+      react: 19.2.0
+    optionalDependencies:
+      '@babel/core': 7.29.7
+
   styled-jsx@5.1.6(@babel/core@7.29.7)(react@19.2.8):
     dependencies:
       client-only: 0.0.1
       react: 19.2.8
     optionalDependencies:
       '@babel/core': 7.29.7
-
-  styled-jsx@5.1.6(react@19.2.0):
-    dependencies:
-      client-only: 0.0.1
-      react: 19.2.0
 
   styleq@0.1.3: {}
 

@@ -291,6 +291,29 @@ export async function refresh(token: string, device?: string) {
 
   if (!row || row.userId !== claims.sub) throw unauthorized("جلسة غير معروفة");
 
+  /*
+    مهلةُ التدوير (القاعدة ٤٢٨): الجوّالُ يرسل التجديد فيُدوَّر هنا، ثمّ يضيع الردُّ في
+    شبكةٍ ضعيفة أو يُغلق التطبيقُ قبل أن يحفظه — فيعود بالقديم بعد لحظة. كان ذلك يُقرأ
+    سرقةً فتُلغى العائلةُ كلُّها ويخرج صاحبُها بلا سبب. فالقديمُ المُدوَّر في دقيقتين،
+    وله خلَفٌ حيٌّ صدر معه في العائلة نفسها، يُجدَّد ثانيةً ولا يُلغي شيئاً. والخروجُ
+    يُبطل بلا خلَف، فتوكنُ من خرج لا يمرّ بهذا الباب.
+  */
+  if (row.revokedAt && row.expiresAt > new Date() && Date.now() - row.revokedAt.getTime() < 120_000) {
+    const successor = await prisma.refreshToken.findFirst({
+      where: {
+        family: row.family,
+        revokedAt: null,
+        createdAt: { gte: new Date(row.revokedAt.getTime() - 5_000), lte: new Date(row.revokedAt.getTime() + 5_000) },
+      },
+      select: { id: true },
+    });
+    if (successor) {
+      const user = await prisma.user.findUnique({ where: { id: row.userId }, select: PUBLIC_USER });
+      if (!user) throw unauthorized();
+      return { user, ...(await issue(user, device, row.family)) };
+    }
+  }
+
   if (row.revokedAt || row.expiresAt <= new Date()) {
     await prisma.refreshToken.updateMany({
       where: { family: row.family, revokedAt: null },

@@ -98,20 +98,39 @@ export async function storeSiteShot(ownerId: string, file: File | Blob, width: n
 
 /** الملصق (القاعدة ٢٩١): رسمٌ صغير بشفافيّته، متحرّكٌ أو ساكن. */
 const MAX_STICKER_BYTES = 2_000_000;
+/** ما يُقبل قبل التحويل: متحرّكٌ من محرّرٍ يخرج أكبرَ من حدّه بكثير (القاعدة ٤٢٧). */
+const MAX_STICKER_SOURCE = 12_000_000;
+/** ضلعُ الملصق: أكبرُ ما يُعرض فيه نحو ١٦٠ — ٣٢٠ لشاشات الكثافة العالية. */
+const STICKER_SIDE = 320;
 
 /**
- * ملصقٌ من لوحة الملصقات — يُحفظ بملفه كما رُفع: الشفافيّةُ والحركةُ هما الملصق،
- * وإعادةُ ترميزه تُسطّحه أو توقفه. والصيغةُ من البايتات لا من `type`.
+ * ملصقٌ من لوحة الملصقات. ما كان في حدّه يُحفظ بملفه كما رُفع؛ وما زاد يُصغَّر إلى
+ * ٣٢٠ ويُكتب WebP بحركته وشفافيّته (`animated: true`) — صورةٌ متحرّكة بثلاثة ميغا
+ * كانت تُردّ، ومثلُها WebP بعُشر حجمها. والصيغةُ من البايتات لا من `type`.
  */
 export async function storeSticker(ownerId: string, file: File | Blob, width: number, height: number) {
   // الحجمُ قبل القراءة: لا يُحمَّل في الذاكرة ما سيُردّ.
-  if (file.size > MAX_STICKER_BYTES) throw new Error("الملصق أكبر من ٢ ميغا");
-  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (file.size > MAX_STICKER_SOURCE) throw new Error("الملصق أكبر من ١٢ ميغا");
+  let bytes = new Uint8Array(await file.arrayBuffer());
   if (bytes.length === 0) throw new Error("الملف فارغ");
-  if (bytes.length > MAX_STICKER_BYTES) throw new Error("الملصق أكبر من ٢ ميغا");
-  const mime = sniffImage(bytes);
+  let mime = sniffImage(bytes);
   if (!mime || mime === "image/jpeg") throw new Error("الملصق PNG أو WebP أو GIF بشفافيّته");
-  return write(ownerId, mime, bytes, Math.max(1, Math.round(width)), Math.max(1, Math.round(height)));
+  let w = Math.max(1, Math.round(width));
+  let h = Math.max(1, Math.round(height));
+  if (bytes.length > MAX_STICKER_BYTES || Math.max(w, h) > STICKER_SIDE * 2) {
+    const sharp = (await import("sharp")).default;
+    const out = await sharp(bytes, { animated: true, limitInputPixels: 268_402_689 })
+      .resize({ width: STICKER_SIDE, height: STICKER_SIDE, fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 80, alphaQuality: 90, effort: 4 })
+      .toBuffer({ resolveWithObject: true });
+    bytes = new Uint8Array(out.data);
+    mime = "image/webp";
+    w = out.info.width;
+    // المتحرّكُ يُكتب إطاراتٍ فوق بعض: ارتفاعُ الإطار الواحد لا مجموعُها.
+    h = out.info.pageHeight ?? out.info.height;
+    if (bytes.length > MAX_STICKER_BYTES) throw new Error("الملصق ما زال أكبر من ٢ ميغا بعد التصغير — قلّل إطاراته");
+  }
+  return write(ownerId, mime, bytes, w, h);
 }
 
 /** صيغةُ الصورة من توقيعها — أو `null` إن لم تكن صورةً نعرفها. */
