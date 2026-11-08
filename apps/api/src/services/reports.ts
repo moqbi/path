@@ -225,9 +225,16 @@ export async function decide(
       await prisma.moment.deleteMany({ where: { id: report.targetId } });
       if (gone) await dropMedia([gone.mediaId, ...gone.photos.map((photo) => photo.mediaId)].filter((id): id is string => Boolean(id)));
     } else if (report.target === "STORY") {
+      const gone = await prisma.story.findUnique({
+        where: { id: report.targetId },
+        select: { mediaId: true, audioMediaId: true },
+      });
       await prisma.story.deleteMany({ where: { id: report.targetId } });
+      if (gone) await dropMedia([gone.mediaId, gone.audioMediaId].filter((id): id is string => Boolean(id)));
     } else if (report.target === "MESSAGE") {
+      const gone = await prisma.message.findUnique({ where: { id: report.targetId }, select: { mediaId: true } });
       await prisma.message.deleteMany({ where: { id: report.targetId } });
+      if (gone?.mediaId) await dropMedia([gone.mediaId]);
     } else if (report.target === "COMMENT") {
       await prisma.comment.deleteMany({ where: { id: report.targetId } });
     }

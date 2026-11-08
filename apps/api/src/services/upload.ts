@@ -467,3 +467,46 @@ export async function sweepPending(): Promise<number> {
   await deleteObjects(stale.map((row) => row.key).filter((key): key is string => !!key));
   return stale.length;
 }
+
+/**
+ * يكنس ما اعتُمد ولم يُربط بشيء (القاعدة ٤٢٥): صورةٌ رُفعت ثمّ أُغلقت شاشةُ النشر، أو صورةُ
+ * عرضٍ اعتُمدت ولم تُختر، أو بابٌ نسي أن يحذف القديم. لا يشير إليه صفٌّ فلا يحذفه أحد،
+ * ويبقى في الدلو إلى الأبد. يُقرأ من علاقات `Media` نفسها — كلُّ مكانٍ يحمل ملفّاً علاقةٌ
+ * هناك — فمكانٌ جديد يُضاف علاقةً ويُضاف هنا. ومهلةُ يومٍ لشاشةٍ ما زالت مفتوحة.
+ */
+export async function sweepOrphans(): Promise<number> {
+  const stale = await prisma.media.findMany({
+    where: {
+      ready: true,
+      createdAt: { lt: new Date(Date.now() - 86_400_000) },
+      avatarOf: { is: null },
+      coverOf: { is: null },
+      storyOf: { is: null },
+      storyAudio: { is: null },
+      messageOf: { is: null },
+      groupMessageOf: { is: null },
+      groupPhotoOf: { is: null },
+      moment: { is: null },
+      momentPhoto: { is: null },
+      storeItem: { is: null },
+      storeCover: { is: null },
+      storePromo: { is: null },
+      storeHallWall: { is: null },
+      storeHallFloor: { is: null },
+      storeHallFrame: { is: null },
+      storeBookPaper: { is: null },
+      storeBookEnd: { is: null },
+      sticker: { is: null },
+      broadcast: { is: null },
+      siteImage: { is: null },
+      siteShot: { is: null },
+    },
+    select: { id: true, key: true },
+    take: 200,
+  });
+  if (stale.length === 0) return 0;
+
+  await prisma.media.deleteMany({ where: { id: { in: stale.map((row) => row.id) } } });
+  await deleteObjects(stale.map((row) => row.key).filter((key): key is string => !!key));
+  return stale.length;
+}
