@@ -1,4 +1,4 @@
-import { Image } from "react-native";
+import { Image, View } from "react-native";
 import { Text } from "./type";
 
 /**
@@ -46,7 +46,18 @@ export function ReactionGlyph({
   size?: number;
 }) {
   if (kind === "CUSTOM") {
-    return <Text style={{ fontSize: size * 0.92 }}>{emoji ?? "🙂"}</Text>;
+    // بمقاس قرص الوجوه لا أكبر: الرسمُ قرصٌ ٩٦ في لوحة ١٢٨، فالإيموجي ثلاثةُ أرباع المربّع
+    // في وسطه — كان بحجم المربّع كلّه فيطفح من دائرة التفاعل (القاعدة ٤٢٦).
+    return (
+      <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
+        <Text
+          allowFontScaling={false}
+          style={{ fontSize: size * 0.6, lineHeight: size * 0.78, textAlign: "center", includeFontPadding: false }}
+        >
+          {emoji ?? "🙂"}
+        </Text>
+      </View>
+    );
   }
   return (
     <Image

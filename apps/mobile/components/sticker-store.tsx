@@ -209,7 +209,7 @@ export function PackShelf({
   return (
     <>
       {strip ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20, marginBottom: 24 }} contentContainerStyle={{ flexDirection: "row", gap: 12, paddingHorizontal: 20 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20, marginBottom: 24, direction: "rtl" }} contentContainerStyle={{ flexDirection: "row", gap: 12, paddingHorizontal: 20, direction: "rtl" }}>
           {cards}
         </ScrollView>
       ) : (

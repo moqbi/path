@@ -213,7 +213,7 @@ export default function Store() {
 
       {/* شريط التصنيفات: «المميز» أولاً، ثم ما يضيفه المشرف. */}
       <View style={{ paddingTop: 12, paddingBottom: 4 }}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: "row", paddingHorizontal: 20, gap: 8 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ direction: "rtl" }} contentContainerStyle={{ flexDirection: "row", paddingHorizontal: 20, gap: 8, direction: "rtl" }}>
           {/*
             تصنيفُ المشرف الذي يحمل اسمَ نوعٍ («التشارمز») لا يُعرض ثانيةً بجانب
             شريحة النوع نفسها: شريحتان باسمٍ واحد تُقرآن خطأً.

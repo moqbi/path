@@ -46,6 +46,9 @@ type Head = { id: string; head: "online" | "offline"; count: number };
 type Row = Member | Head;
 
 /** متصلٌ من ظهر في آخر ثلاث دقائق — العتبةُ نفسها في `presence()`. */
+/** أخضرُ الاتصال — ثابتٌ لا يتبع الثيم، والمرجانيُّ للحالات الحيّة في اللحظات. */
+const ONLINE_GREEN = "#2FB36B";
+
 const onlineNow = (lastSeenAt: string | null) =>
   Boolean(lastSeenAt) && Date.now() - new Date(lastSeenAt as string).getTime() < 3 * 60_000;
 
@@ -285,7 +288,7 @@ export default function Circle() {
                     width: 8,
                     height: 8,
                     borderRadius: 4,
-                    backgroundColor: item.head === "online" ? colors.live : colors.faint,
+                    backgroundColor: item.head === "online" ? ONLINE_GREEN : colors.faint,
                   }}
                 />
                 <Text style={{ flex: 1, color: colors.groundInk, fontSize: 13.5, fontWeight: "700" }}>
@@ -330,13 +333,16 @@ export default function Circle() {
             onPress={() => router.push(`/u/${friend.id}` as never)}
             style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12 }}
           >
-            <Avatar
-              name={friend.name}
-              size={44}
-              mediaId={friend.avatarMediaId}
-              frame={friend.frame}
-              charm={friend.charm}
-            />
+            {/* غيرُ المتصل رماديّ والمتصلُ بألوانه — يُقرأ من الصورة قبل السطر (القاعدة ٤٢٦). */}
+            <View style={onlineNow(friend.lastSeenAt) ? undefined : { filter: [{ grayscale: 1 }] }}>
+              <Avatar
+                name={friend.name}
+                size={44}
+                mediaId={friend.avatarMediaId}
+                frame={friend.frame}
+                charm={friend.charm}
+              />
+            </View>
             <View style={{ flex: 1, minWidth: 0 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <Text

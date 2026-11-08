@@ -82,7 +82,7 @@ export async function FriendsPanel({ user }: { user: SessionUser }) {
     return (
       <div key={member.id} className="desk-row group">
         <Link href={`/u/${member.id}`} className="flex min-w-0 grow items-center gap-3">
-          <span className="relative shrink-0">
+          <span className="relative shrink-0" style={on ? undefined : { filter: "grayscale(1)" }}>
             <Avatar name={member.name} size={42} frame={member.frame} charm={member.charm} mediaId={member.avatarMediaId} />
             {on ? (
               <span
