@@ -117,6 +117,21 @@ export async function uploadStoryVideo(
   return { mediaId: done.mediaId, seconds: done.commit.seconds ?? 0 };
 }
 
+/**
+ * مقطعُ اللحظة (القاعدة ٤٣٤): كمقطع القصّة — يُرفع كما صُوِّر ويقصّه الخادمُ ويضغطه
+ * إلى `MOMENT_VIDEO_SECONDS` من حيث اختار صاحبُه.
+ */
+export async function uploadMomentVideo(
+  uri: string,
+  mime: string,
+  start: number,
+  size: { width: number; height: number },
+  length?: number,
+): Promise<string> {
+  const done = await send(uri, mime, "MOMENT", size, { start, ...(length ? { length } : {}) });
+  return done.mediaId;
+}
+
 async function send(
   uri: string,
   mime: string,

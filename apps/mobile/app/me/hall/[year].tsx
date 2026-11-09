@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { VideoBadge } from "../../../components/moment-video";
 import { Animated, Easing, Image, Modal, PanResponder, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -884,7 +885,10 @@ function MonthGrid({
               }}
             >
               {moment.kind === "PHOTO" && moment.mediaId ? (
-                <MediaImage fade={false} mediaId={moment.mediaId} style={{ width: "100%", height: "100%" }} />
+                <>
+                  <MediaImage fade={false} mediaId={moment.mediaId} style={{ width: "100%", height: "100%" }} />
+                  {moment.videoId ? <VideoBadge small /> : null}
+                </>
               ) : (
                 <Text numberOfLines={4} style={{ color: skin.placard.ink, fontSize: 11.5, textAlign: "center", lineHeight: 17 }}>
                   {momentLine(moment)}
@@ -1485,6 +1489,12 @@ function Piece({
           mediaId={moment.mediaId}
           pos={moment.photoX != null ? { x: moment.photoX, y: moment.photoY ?? 50 } : undefined}
         />
+        {/* المعرضُ لوحاتٌ لا تُشغَّل: غلافُ المقطع وعلامتُه (القاعدة ٤٣٤). */}
+        {moment.videoId ? (
+          <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, margin: skin.photo.width + skin.photo.matWidth }}>
+            <VideoBadge />
+          </View>
+        ) : null}
         {more.length ? (
           <View style={{ position: "absolute", top: skin.photo.width + 6, right: skin.photo.width + 6, paddingHorizontal: 7, height: 20, borderRadius: 10, justifyContent: "center", backgroundColor: "rgba(14,26,36,.6)" }}>
             <Text style={{ color: "#fff", fontSize: 10.5, fontWeight: "700" }}>{ar(more.length + 1)} صور</Text>

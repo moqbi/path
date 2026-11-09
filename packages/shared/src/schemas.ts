@@ -54,6 +54,8 @@ export const momentInput = z.object({
   square: z.boolean().optional(),
   /** الصورُ بعد الأولى (القاعدة ٣٤٣): خمسٌ مع `mediaId` على الأكثر. */
   photos: z.array(cuid).max(MOMENT_PHOTOS_MAX - 1).optional(),
+  /** مقطعُ اللحظة (القاعدة ٤٣٤) بدل الصور — والخادمُ يصنع غلافَه ويكتبه `mediaId`. */
+  videoId: cuid.optional(),
   /** موضعُ كلّ صورةٍ بعد الأولى بترتيبها (القاعدة ٣٤٨) — ونسخةٌ لا ترسله تأخذ الوسط. */
   photoPositions: z
     .array(z.object({ x: z.number().int().min(0).max(100), y: z.number().int().min(0).max(100) }))

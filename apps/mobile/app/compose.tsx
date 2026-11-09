@@ -14,11 +14,12 @@ import { PeopleSheet, PickerButton, type Friend } from "../components/people-she
 import { CloseIcon, LockIcon, PinIcon, PlusIcon, WithIcon } from "../components/icons";
 import { api } from "../lib/api";
 import { quietFix } from "../lib/quiet-fix";
-import { uploadFile } from "../lib/upload";
+import { uploadFile, uploadMomentVideo } from "../lib/upload";
+import { VideoWindowBar, VideoWindowPreview } from "../components/video-window";
 import { maybeAskToRate } from "../lib/rate";
 import { useCircle } from "../lib/queries";
 import { useSession } from "../lib/session";
-import { MOMENT_PHOTOS_MAX, POLL_DAYS, POLL_DAYS_DEFAULT, POLL_OPTION_MAX } from "@athar/shared";
+import { MOMENT_PHOTOS_MAX, MOMENT_VIDEO_SECONDS, STORY_VIDEO_SOURCE, POLL_DAYS, POLL_DAYS_DEFAULT, POLL_OPTION_MAX } from "@athar/shared";
 import { DEV_FEATURES } from "../lib/dev-features";
 import { ar } from "../lib/format";
 import { appleNearby, appleSearch } from "../lib/apple-places";
@@ -45,7 +46,7 @@ function metersApart(a: { lat: number; lng: number }, b: { lat: number; lng: num
 const TEXT_MAX = 250;
 
 const HINT: Record<Kind, string> = {
-  PHOTO: "اكتب شي عن الصورة…",
+  PHOTO: "اكتب شي عن الصورة أو المقطع…",
   THOUGHT: "وش في بالك؟",
   PLACE: "",
   MUSIC: "",
@@ -87,6 +88,17 @@ export default function Compose() {
   const [picture, setPicture] = useState<Picked | null>(null);
   // الصورُ بعد الأولى (القاعدة ٣٤٣) — في نسخة التطوير وحدها.
   const [extras, setExtras] = useState<Picked[]>([]);
+  /*
+    مقطعُ اللحظة (القاعدة ٤٣٤): بدل الصور لا معها، وما زاد على عشرين ثانيةً يُختار
+    منه بالمقبضين كمقطع القصّة ويقصّه الخادم.
+  */
+  const [clip, setClip] = useState<(Picked & { seconds: number; start: number; length: number }) | null>(null);
+  const takeClip = (one: Picked & { seconds: number }) => {
+    setClip({ ...one, start: 0, length: Math.min(one.seconds, MOMENT_VIDEO_SECONDS) });
+    setPicture(null);
+    setExtras([]);
+    resetFraming();
+  };
   const room = MOMENT_PHOTOS_MAX - (picture ? 1 : 0) - extras.length;
   /*
     موضعُ كلّ صورةٍ في إطار البطاقة — يبدأ من الوسط، ويُضبط لأيّها اختير من الصفّ لا
@@ -286,8 +298,11 @@ export default function Compose() {
     } else if (shared?.kind === "MUSIC") setMusicUrl(shared.url);
     else if (shared?.kind === "THOUGHT") setText(shared.text.slice(0, TEXT_MAX));
     const shot = takeShot();
-    if (shot && !shot.video) {
+    if (shot?.video) {
+      takeClip({ uri: shot.uri, width: shot.width, height: shot.height, mime: shot.mime, seconds: Math.max(1, Math.round(shot.seconds)) });
+    } else if (shot) {
       setPicture({ uri: shot.uri, width: shot.width, height: shot.height, mime: shot.mime });
+      setClip(null);
       resetFraming();
     }
   });
@@ -301,7 +316,9 @@ export default function Compose() {
       return;
     }
     const result = await Picker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
+      // الإضافةُ إلى الصور صورٌ، والاختيارُ الأوّل صورٌ أو مقطعٌ واحد (القاعدة ٤٣٤).
+      mediaTypes: more ? ["images"] : ["images", "videos"],
+      videoExportPreset: Picker.VideoExportPreset.H264_1280x720,
       quality: 0.85,
       // يُصغَّر قبل الرفع: ميغاباياتٌ لا تُرسل ليُعاد تصغيرها على الخادم.
       allowsEditing: false,
@@ -311,6 +328,16 @@ export default function Compose() {
         : {}),
     });
     if (result.canceled || !result.assets[0]) return;
+    const film = more ? undefined : result.assets.find((asset) => asset.type === "video");
+    if (film) {
+      const seconds = Math.round((film.duration ?? 0) / 1000);
+      if (seconds > STORY_VIDEO_SOURCE.seconds) {
+        setError(`المقطع طويل جداً — اختر مقطعاً أقصر من ${ar(STORY_VIDEO_SOURCE.seconds / 60)} دقائق`);
+        return;
+      }
+      takeClip({ uri: film.uri, width: film.width, height: film.height, mime: film.mimeType ?? "video/mp4", seconds: Math.max(1, seconds) });
+      return;
+    }
     const picked = result.assets.map((asset) => ({
       uri: asset.uri,
       width: asset.width,
@@ -323,6 +350,7 @@ export default function Compose() {
     }
     setPicture(picked[0]);
     setExtras(picked.slice(1, MOMENT_PHOTOS_MAX));
+    setClip(null);
     resetFraming();
   }
 
@@ -345,7 +373,7 @@ export default function Compose() {
         ? text.trim().length > 0 && pollReady
         : kind === "PLACE"
           ? !!fix
-          : !!picture || text.trim().length > 0) &&
+          : !!picture || !!clip || text.trim().length > 0) &&
     (audience !== "EXCEPT" || except !== null);
 
   async function publish() {
@@ -354,7 +382,11 @@ export default function Compose() {
     setError(null);
 
     try {
-      const mediaId = picture
+      const videoId =
+        clip && kind === "PHOTO"
+          ? await uploadMomentVideo(clip.uri, clip.mime, clip.start, clip, clip.seconds > MOMENT_VIDEO_SECONDS ? clip.length : undefined)
+          : undefined;
+      const mediaId = picture && !videoId
         ? await uploadFile(picture.uri, picture.mime, "MOMENT", picture)
         : undefined;
       // واحدةً بعد أخرى لا معاً: خمسُ رفعاتٍ على شبكة جوّالٍ تتزاحم فتبطؤ كلُّها.
@@ -372,6 +404,7 @@ export default function Compose() {
           kind,
           text: text.trim() || undefined,
           mediaId,
+          videoId,
           photoX: mediaId ? photoPos.x : undefined,
           photoY: mediaId ? photoPos.y : undefined,
           photos: photos.length ? photos : undefined,
@@ -456,7 +489,45 @@ export default function Compose() {
                 المحرّرُ بنسبة إطار البطاقة نفسها: ما يُضبط هنا هو ما يُرى في
                 الخطّ الزمنيّ — بقرار المالك.
               */}
-              {picture ? (
+              {clip ? (
+                // المقطعُ بإطار البطاقة نفسه، يدور في النافذة المختارة (القاعدة ٤٣٤).
+                <View style={{ marginBottom: 10, gap: 10 }}>
+                  <View style={{ width: screenWidth - 40, height: screenWidth - 40, borderRadius: 16, overflow: "hidden", backgroundColor: "#0E1A24" }}>
+                    <VideoWindowPreview
+                      key={clip.uri}
+                      uri={clip.uri}
+                      start={clip.start}
+                      length={clip.length}
+                      width={screenWidth - 40}
+                      height={screenWidth - 40}
+                      cover
+                    />
+                    <Pressable
+                      accessibilityLabel="احذف المقطع"
+                      onPress={() => setClip(null)}
+                      hitSlop={8}
+                      style={{ position: "absolute", top: 10, right: 10, width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(14,26,36,.7)" }}
+                    >
+                      <CloseIcon size={13} color="#fff" />
+                    </Pressable>
+                  </View>
+                  {clip.seconds > MOMENT_VIDEO_SECONDS ? (
+                    <View style={{ borderRadius: 16, padding: 12, backgroundColor: "#0E1A24" }}>
+                      <VideoWindowBar
+                        seconds={clip.seconds}
+                        start={clip.start}
+                        length={clip.length}
+                        max={MOMENT_VIDEO_SECONDS}
+                        onChange={(start, length) => setClip((now) => (now ? { ...now, start, length } : now))}
+                      />
+                    </View>
+                  ) : (
+                    <Text style={{ color: colors.groundInk, fontSize: 12 }}>
+                      مقطع {ar(clip.seconds)} ثانية — حتى {ar(MOMENT_VIDEO_SECONDS)} ثانية
+                    </Text>
+                  )}
+                </View>
+              ) : picture ? (
                 <View style={{ marginBottom: 10 }}>
                   <PhotoFrameEditor
                     key={editing?.uri ?? picture.uri}
@@ -485,7 +556,7 @@ export default function Compose() {
                     marginBottom: 10,
                   }}
                 >
-                  <Text style={{ color: colors.muted, fontSize: 12.5 }}>ما اخترت صورة بعد</Text>
+                  <Text style={{ color: colors.muted, fontSize: 12.5 }}>ما اخترت صورة أو مقطعاً بعد</Text>
                 </View>
               )}
               {DEV_FEATURES && picture ? (
@@ -533,7 +604,13 @@ export default function Compose() {
                 style={{ height: 46, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
               >
                 <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600" }}>
-                  {picture ? (DEV_FEATURES ? "غيّر الصور" : "غيّر الصورة") : DEV_FEATURES ? "صور اللحظة · حتى ٥" : "صورة اللحظة"}
+                  {clip
+                    ? "غيّر المقطع"
+                    : picture
+                      ? DEV_FEATURES
+                        ? "غيّر الصور"
+                        : "غيّر الصورة"
+                      : `صور حتى ${ar(MOMENT_PHOTOS_MAX)} أو مقطع ${ar(MOMENT_VIDEO_SECONDS)} ثانية`}
                 </Text>
               </Pressable>
             </View>
@@ -858,10 +935,15 @@ export default function Compose() {
 
       <SourceSheet
         open={asking}
+        title="من أين الصورة أو المقطع؟"
         onClose={() => setAsking(false)}
         onCamera={() => {
           setAsking(false);
           router.push("/camera?mode=picture" as never);
+        }}
+        onVideo={() => {
+          setAsking(false);
+          router.push(`/camera?mode=video&seconds=${MOMENT_VIDEO_SECONDS}` as never);
         }}
         onLibrary={() => void pickImage()}
       />

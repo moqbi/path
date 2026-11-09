@@ -609,6 +609,10 @@ model Moment {
   media   Media?        @relation("MomentMedia", fields: [mediaId], references: [id], onDelete: SetNull)
   /// الصورُ بعد الأولى (القاعدة ٣٤٣): الأولى `mediaId` فيقرؤها الجوّالُ القديم.
   photos  MomentPhoto[]
+  /// مقطعُ اللحظة (القاعدة ٤٣٤) — و`mediaId` صورةُ غلافه، فيقرؤها الجوّالُ القديم
+  /// والكتابُ والمعرضُ والخريطةُ صورةً كما هي.
+  videoId String?       @unique
+  video   Media?        @relation("MomentVideo", fields: [videoId], references: [id], onDelete: SetNull)
 
   /// الجمهور: الدائرة كلها، أو تصنيف منها، أو أشخاص بأعيانهم.
   audience        Audience     @default(CIRCLE)
@@ -1271,6 +1275,7 @@ model Media {
   groupMessageOf GroupMessage? @relation("GroupMessageMedia")
   groupPhotoOf   ChatGroup?    @relation("GroupPhoto")
   moment         Moment?       @relation("MomentMedia")
+  momentVideo    Moment?       @relation("MomentVideo")
   momentPhoto    MomentPhoto?  @relation("MomentPhotoMedia")
   storeItem      StoreItem?    @relation("StoreItemMedia")
   storeCover     StoreItem?    @relation("StoreItemCover")

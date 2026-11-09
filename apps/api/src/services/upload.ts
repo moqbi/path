@@ -4,6 +4,7 @@ import {
   ANIMATED_SIDE,
   AVATAR_SIDE,
   LIMITS,
+  MOMENT_VIDEO_SECONDS,
   STORY_VIDEO_SOURCE,
   MIME,
   SOUND_SOURCE,
@@ -50,7 +51,8 @@ const MOMENT_IMAGE = { side: 1280, quality: 72 };
 const RULES: Record<PresignInput["purpose"], Rule> = {
   AVATAR: { mimes: [...MIME.image, ...MIME.animated], max: LIMITS.animated },
   COVER: { mimes: MIME.image, max: LIMITS.image },
-  MOMENT: { mimes: MIME.image, max: LIMITS.image },
+  // ومقطعُ اللحظة (القاعدة ٤٣٤) يُرفع كمقطع القصّة ويُقصّ إلى `MOMENT_VIDEO_SECONDS`.
+  MOMENT: { mimes: [...MIME.image, ...MIME.video], max: STORY_VIDEO_SOURCE.bytes },
   // المقطعُ يُرفع كما صُوِّر ويُقصّ ويُضغط هنا (القاعدة ٢٤٩)، والصورةُ حدُّها `LIMITS.video`.
   STORY: { mimes: [...MIME.image, ...MIME.video], max: STORY_VIDEO_SOURCE.bytes },
   MESSAGE: { mimes: MIME.image, max: LIMITS.image },
@@ -62,6 +64,7 @@ const RULES: Record<PresignInput["purpose"], Rule> = {
 /** حدُّ الحجم لهذا الغرض وهذا النوع: صورةُ القصّة لا تأخذ حدَّ مصدر المقطع. */
 function maxFor(purpose: PresignInput["purpose"], mime: string): number {
   if (purpose === "STORY" && mime.startsWith("image/")) return LIMITS.video;
+  if (purpose === "MOMENT" && mime.startsWith("image/")) return LIMITS.image;
   return RULES[purpose].max;
 }
 
@@ -404,10 +407,11 @@ async function shape(
     مقطعُ القصّة يُقصّ ويُضغط (القاعدة ٢٤٩): دقيقةٌ من حيث اختار صاحبُه،
     والناتجُ يُكتب مكان الأصل — فلا يبقى المصدرُ الكبير في الدلو.
   */
-  if (purpose === "STORY") {
+  if (purpose === "STORY" || purpose === "MOMENT") {
+    const cap = purpose === "STORY" ? STORY_SECONDS : MOMENT_VIDEO_SECONDS;
     let out: Awaited<ReturnType<typeof compressStoryVideo>> | null = null;
     try {
-      out = await compressStoryVideo(bytes, EXT[mime] ?? "bin", start, Math.min(STORY_SECONDS, Math.max(1, length ?? STORY_SECONDS)), look);
+      out = await compressStoryVideo(bytes, EXT[mime] ?? "bin", start, Math.min(cap, Math.max(1, length ?? cap)), purpose === "STORY" ? look : null);
     } catch (problem) {
       if (!(problem instanceof NoFfmpeg)) throw await reject(mediaId, key, "تعذّرت قراءة المقطع");
       // بلا ffmpeg يبقى الطريقُ القديم: المصدرُ نفسه بحدّه ومدّته، والسطرُ ليُثبَّت.
@@ -417,7 +421,7 @@ async function shape(
     if (out) {
       if (out.bytes.length > LIMITS.storyVideo) throw await reject(mediaId, key, "تعذّر ضغط المقطع — اختر جزءاً أقصر");
       await putObject(key, out.bytes, "video/mp4");
-      return { mime: "video/mp4", width: out.width, height: out.height, seconds: Math.min(out.seconds, STORY_SECONDS) };
+      return { mime: "video/mp4", width: out.width, height: out.height, seconds: Math.min(out.seconds, cap) };
     }
   }
 
@@ -441,9 +445,13 @@ async function shape(
 
   // القصّة عشرون ثانية، والرسالة الصوتية عشرون — ومئةٌ وعشرون لمشتركي
   // آثار+. الحدّ الأعلى هنا، والتمييز بينهما عند الإرسال حيث يُعرف المشترك.
-  const cap = purpose === "STORY" ? STORY_SECONDS : VOICE_SECONDS.plus;
+  const cap = purpose === "STORY" ? STORY_SECONDS : purpose === "MOMENT" ? MOMENT_VIDEO_SECONDS : VOICE_SECONDS.plus;
   if (clip.seconds > cap) {
-    throw await reject(mediaId, key, purpose === "STORY" ? "المقطع أطول من دقيقة" : "التسجيل طويل");
+    throw await reject(
+      mediaId,
+      key,
+      purpose === "STORY" ? "المقطع أطول من دقيقة" : purpose === "MOMENT" ? "المقطع أطول من ٢٠ ثانية" : "التسجيل طويل",
+    );
   }
 
   return { mime, width: clip.width, height: clip.height, seconds: clip.seconds };
@@ -488,6 +496,7 @@ export async function sweepOrphans(): Promise<number> {
       groupPhotoOf: { is: null },
       moment: { is: null },
       momentPhoto: { is: null },
+      momentVideo: { is: null },
       storeItem: { is: null },
       storeCover: { is: null },
       storePromo: { is: null },

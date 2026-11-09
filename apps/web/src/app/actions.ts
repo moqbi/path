@@ -856,7 +856,7 @@ export async function removeMomentAsAdmin(
 
   const moment = await prisma.moment.findUnique({
     where: { id: momentId },
-    select: { id: true, authorId: true, text: true, mediaId: true, photos: { select: { mediaId: true } } },
+    select: { id: true, authorId: true, text: true, mediaId: true, videoId: true, photos: { select: { mediaId: true } } },
   });
   if (!moment) return { error: "اللحظة غير موجودة" };
 
@@ -871,7 +871,7 @@ export async function removeMomentAsAdmin(
   });
 
   await prisma.moment.delete({ where: { id: moment.id } });
-  await dropMedia([moment.mediaId, ...moment.photos.map((photo) => photo.mediaId)].filter((id): id is string => Boolean(id)));
+  await dropMedia([moment.mediaId, moment.videoId, ...moment.photos.map((photo) => photo.mediaId)].filter((id): id is string => Boolean(id)));
 
   revalidatePath(`/admin/u/${moment.authorId}`);
   revalidatePath("/admin", "layout");
@@ -1278,10 +1278,10 @@ export async function decideReport(
       // وصورُها معها (القاعدتان ١٠٤ و٣٤٣) — كان الحذفُ هنا يترك بكسلاتها.
       const gone = await prisma.moment.findUnique({
         where: { id: report.targetId },
-        select: { mediaId: true, photos: { select: { mediaId: true } } },
+        select: { mediaId: true, videoId: true, photos: { select: { mediaId: true } } },
       });
       await prisma.moment.deleteMany({ where: { id: report.targetId } });
-      if (gone) await dropMedia([gone.mediaId, ...gone.photos.map((photo) => photo.mediaId)].filter((id): id is string => Boolean(id)));
+      if (gone) await dropMedia([gone.mediaId, gone.videoId, ...gone.photos.map((photo) => photo.mediaId)].filter((id): id is string => Boolean(id)));
     } else if (report.target === "STORY") {
       const gone = await prisma.story.findUnique({
         where: { id: report.targetId },

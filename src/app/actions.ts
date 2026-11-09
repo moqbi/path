@@ -1067,7 +1067,7 @@ export async function removeMomentAsAdmin(
 
   const moment = await prisma.moment.findUnique({
     where: { id: momentId },
-    select: { id: true, authorId: true, text: true, mediaId: true, photos: { select: { mediaId: true } } },
+    select: { id: true, authorId: true, text: true, mediaId: true, videoId: true, photos: { select: { mediaId: true } } },
   });
   if (!moment) return { error: "اللحظة غير موجودة" };
 
@@ -1082,7 +1082,7 @@ export async function removeMomentAsAdmin(
   });
 
   await prisma.moment.delete({ where: { id: moment.id } });
-  await dropMedia([moment.mediaId, ...moment.photos.map((photo) => photo.mediaId)].filter((id): id is string => Boolean(id)));
+  await dropMedia([moment.mediaId, moment.videoId, ...moment.photos.map((photo) => photo.mediaId)].filter((id): id is string => Boolean(id)));
 
   revalidatePath(`/admin/u/${moment.authorId}`);
   revalidatePath("/admin");
@@ -1667,7 +1667,7 @@ export async function deleteMoment(momentId: string): Promise<void> {
 
   const moment = await prisma.moment.findUnique({
     where: { id: momentId },
-    select: { authorId: true, mediaId: true, photos: { select: { mediaId: true } } },
+    select: { authorId: true, mediaId: true, videoId: true, photos: { select: { mediaId: true } } },
   });
   if (!moment) return;
   if (moment.authorId !== user.id) throw new Error("لا تُحذف لحظة غيرك");
@@ -1680,7 +1680,7 @@ export async function deleteMoment(momentId: string): Promise<void> {
     يترك بكسلاتها في القاعدة إلى الأبد. «تُحذف» تعني ألّا يبقى منها شيء
     لا عند الخادم ولا في القاعدة.
   */
-  await dropMedia([moment.mediaId, ...moment.photos.map((photo) => photo.mediaId)].filter((id): id is string => Boolean(id)));
+  await dropMedia([moment.mediaId, moment.videoId, ...moment.photos.map((photo) => photo.mediaId)].filter((id): id is string => Boolean(id)));
 
   revalidatePath("/");
   revalidatePath("/me");

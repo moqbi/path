@@ -410,6 +410,28 @@ export async function compressStoryVideo(
 }
 
 /**
+ * صورةُ غلاف المقطع (القاعدة ٤٣٤): إطارٌ من ثلثِ ثانيته الأولى — الإطارُ صفر كثيراً ما
+ * يكون أسود — ثمّ يُعالَج كصورة اللحظة. يقرؤها الكتابُ والمعرضُ والأرشيفُ والخريطة
+ * والجوّالُ القديم صورةً كما هي، فلا يعرف أحدٌ منها شيئاً عن الفيديو.
+ */
+export async function videoPoster(input: Uint8Array, extension: string): Promise<Uint8Array> {
+  const folder = await mkdtemp(join(tmpdir(), "athr-"));
+  const source = join(folder, `in.${extension}`);
+  const out = join(folder, "poster.jpg");
+  try {
+    await writeFile(source, input);
+    for (const at of ["0.30", "0"]) {
+      await ffmpeg(["-ss", at, "-i", source, "-frames:v", "1", "-q:v", "3", out]).catch(() => null);
+      const bytes = new Uint8Array(await readFile(out).catch(() => Buffer.alloc(0)));
+      if (bytes.length > 0) return bytes;
+    }
+    throw new Error("لا إطار في المقطع");
+  } finally {
+    await rm(folder, { recursive: true, force: true });
+  }
+}
+
+/**
  * صندوقُ `chnl` بنسخته الأولى يُطمس (القاعدة ٤٠٣): آبل ٢٦ صار يكتبه في كلّ M4A يسجّله
  * (`AVAudioRecorder`)، وffmpeg 6 لا يعرف نسختَه فيردّ الملفَّ كلَّه «error reading header» — فكانت
  * الرسالةُ الصوتيّة تُسمع في المعاينة ويردّها الخادم. والصندوقُ وصفٌ لترتيب القنوات لا يحتاجه

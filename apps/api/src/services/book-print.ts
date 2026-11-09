@@ -216,6 +216,10 @@ h2 { font-size: 26px; font-weight: 800; margin-top: 3mm; }
 .text.big { font-family: "Tajawal", sans-serif; font-size: 18px; font-weight: 700; line-height: 1.55; }
 .photo { height: auto; border-radius: 10px; margin: 0 auto 2.5mm; display: block;
   box-shadow: 0 1px 0 #E4DCC8, 0 6px 16px rgba(14,26,36,.08); }
+.vid { display: flex; align-items: center; justify-content: center; gap: 1.5mm; margin: -1mm auto 2.5mm;
+  font-size: 10.5px; font-weight: 700; color: #6a5420; }
+.vid i { display: inline-flex; width: 16px; height: 16px; border-radius: 50%; background: #0E1A24; color: #F6B93B;
+  font-style: normal; font-size: 8px; align-items: center; justify-content: center; padding-left: 1px; }
 .with { font-size: 11.5px; color: #3c4a52; margin-top: 1.5mm; }
 .with b { font-weight: 700; }
 .story { font-size: 12.5px; line-height: 1.85; color: #6a5420; margin-bottom: 2.5mm; }
@@ -531,6 +535,7 @@ export async function bookHtml(userId: string, year: number): Promise<{ html: st
               <div class="meta">${clock(moment.createdAt)}${where}</div>
               ${moment.story ? `<div class="story">${esc(moment.story)}</div>` : ""}
               ${photo ? `<img class="photo" src="${photo.src}" width="${photo.w}" height="${photo.h}" style="${photoStyle(photo)}">` : ""}
+              ${photo && moment.videoId ? `<div class="vid"><i>▶</i>مقطع فيديو — يُشاهَد في التطبيق</div>` : ""}
               ${own ? `<div class="text${photo ? "" : " big"}">${esc(own)}</div>` : ""}
               ${moment.echoText ? `<div class="echo">${glyph(moment.echo?.top)}<span>${esc(moment.echoText)}</span></div>` : ""}
               ${quote ? `<div class="quote">«${esc(quote.text)}»<cite>— ${esc(quote.name)}</cite></div>` : ""}

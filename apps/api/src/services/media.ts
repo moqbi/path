@@ -2,7 +2,7 @@ import { prisma } from "@athar/db";
 import { cloudReady, deleteObjects, getObject, putObject } from "@athar/storage";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
-import { squareCrop } from "../lib/process";
+import { squareCrop, videoPoster } from "../lib/process";
 
 /**
  * حذفٌ لا يُبقي أثراً.
@@ -123,5 +123,45 @@ export async function squareMomentPhoto(id: string, x: number, y: number): Promi
   } catch (problem) {
     console.error("[moments] تعذّر قصّ الصورة مربّعاً", id, problem);
     return false;
+  }
+}
+
+/**
+ * غلافُ مقطع اللحظة (القاعدة ٤٣٤): إطارٌ منه مربّعٌ كصورة اللحظة (القاعدة ٣٦٤)،
+ * ملفٌّ مستقلٌّ لصاحبه يُكتب `Moment.mediaId`. والفشلُ `null` — لحظةٌ بمقطعٍ بلا
+ * غلاف خيرٌ من مقطعٍ لا يُنشر، والسطرُ في السجلّ يقول السبب.
+ */
+export async function posterFor(ownerId: string, videoId: string): Promise<string | null> {
+  try {
+    const video = await prisma.media.findUnique({ where: { id: videoId }, select: { key: true, bytes: true } });
+    if (!video) return null;
+    let input: Uint8Array;
+    if (video.key) {
+      if (!cloudReady()) return null;
+      const answer = await getObject(video.key);
+      if (!answer.ok) return null;
+      input = new Uint8Array(await answer.arrayBuffer());
+    } else if (video.bytes) input = video.bytes;
+    else return null;
+
+    const frame = await videoPoster(input, "mp4");
+    const out = await squareCrop(frame, 50, 50);
+    if (cloudReady()) {
+      const key = `${ownerId}/${randomUUID()}.${EXT[out.mime] ?? "bin"}`;
+      await putObject(key, out.bytes, out.mime);
+      const row = await prisma.media.create({
+        data: { ownerId, mime: out.mime, key, width: out.width, height: out.height, ready: true, purpose: "MOMENT" },
+        select: { id: true },
+      });
+      return row.id;
+    }
+    const row = await prisma.media.create({
+      data: { ownerId, mime: out.mime, bytes: Buffer.from(out.bytes), width: out.width, height: out.height, ready: true, purpose: "MOMENT" },
+      select: { id: true },
+    });
+    return row.id;
+  } catch (problem) {
+    console.error("[moments] تعذّر صنعُ غلاف المقطع", videoId, problem);
+    return null;
   }
 }

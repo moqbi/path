@@ -1,4 +1,5 @@
 import { Spinner } from "../../../components/spinner";
+import { VideoBadge } from "../../../components/moment-video";
 import { createContext, useContext, useState } from "react";
 import { View, FlatList, Pressable, Alert, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -302,11 +303,15 @@ function DayMoment({ moment, n, last, onOpen }: { moment: BookMoment; n: number;
         </Text>
         {told ? <Text style={{ color: P.story, fontSize: 13.5, lineHeight: 24, marginBottom: 8 }}>{moment.story}</Text> : null}
         {moment.mediaId ? (
-          <MediaImage
-            mediaId={moment.mediaId}
-            style={{ width: "100%", aspectRatio: 5 / 4, borderRadius: 10, marginBottom: 8 }}
-            position={moment.photoX != null ? { x: moment.photoX, y: moment.photoY ?? 50 } : undefined}
-          />
+          <View style={{ marginBottom: 8 }}>
+            <MediaImage
+              mediaId={moment.mediaId}
+              style={{ width: "100%", aspectRatio: 5 / 4, borderRadius: 10 }}
+              position={moment.photoX != null ? { x: moment.photoX, y: moment.photoY ?? 50 } : undefined}
+            />
+            {/* الكتابُ لا يُشغّل: غلافُ المقطع وعلامتُه (القاعدة ٤٣٤). */}
+            {moment.videoId ? <VideoBadge /> : null}
+          </View>
         ) : null}
         {line ? (
           moment.mediaId ? (

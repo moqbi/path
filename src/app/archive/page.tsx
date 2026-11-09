@@ -8,6 +8,7 @@ import { BASE } from "@/lib/base";
 import { ar, MONTHS } from "@/lib/format";
 import { canTryStickers } from "@/lib/stickers";
 import { HALL_SKIN } from "@/lib/gallery-skin";
+import { VideoBadge } from "@/components/moment-video";
 
 type Row = Awaited<ReturnType<typeof archive>>["moments"][number];
 
@@ -137,6 +138,7 @@ export default async function ArchivePage() {
                       <span className="absolute right-2 top-1.5 text-[11px] font-extrabold text-white" style={{ textShadow: "0 1px 3px rgba(0,0,0,.5)" }}>
                         {ar(moment.createdAt.getDate())}
                       </span>
+                      {moment.videoId ? <VideoBadge small /> : null}
                     </Link>
                   ) : (
                     <Link

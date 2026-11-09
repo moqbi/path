@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Text } from "./type";
 import { Sheet } from "./sheet";
+import { RtlStrip } from "./rtl-strip";
 import { MediaImage } from "./media-image";
 import { CheckIcon, SparkIcon } from "./icons";
 import { api } from "../lib/api";
@@ -209,9 +210,9 @@ export function PackShelf({
   return (
     <>
       {strip ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20, marginBottom: 24, direction: "rtl" }} contentContainerStyle={{ flexDirection: "row", gap: 12, paddingHorizontal: 20, direction: "rtl" }}>
+        <RtlStrip style={{ marginHorizontal: -20, marginBottom: 24 }} contentContainerStyle={{ gap: 12, paddingHorizontal: 20 }}>
           {cards}
-        </ScrollView>
+        </RtlStrip>
       ) : (
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 24 }}>{cards}</View>
       )}

@@ -1,4 +1,5 @@
 import { Spinner } from "../../components/spinner";
+import { VideoBadge } from "../../components/moment-video";
 import { useMemo } from "react";
 import { View, Pressable, FlatList, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -161,6 +162,7 @@ function Tile({ moment, size, onPress }: { moment: ArchiveMoment; size: number; 
         <Text style={{ position: "absolute", top: 6, right: 8, color: "#fff", fontSize: 11, fontWeight: "800", textShadowColor: "rgba(0,0,0,.5)", textShadowRadius: 3 }}>
           {day}
         </Text>
+        {moment.videoId ? <VideoBadge small /> : null}
       </Pressable>
     );
   }

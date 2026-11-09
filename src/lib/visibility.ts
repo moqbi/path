@@ -151,6 +151,8 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
       moment: { select: { id: true } },
       // والصورُ بعد الأولى بقواعد لحظتها (القاعدة ٣٤٣).
       momentPhoto: { select: { momentId: true } },
+      // مقطعُ اللحظة بقواعد لحظته (القاعدة ٤٣٤).
+      momentVideo: { select: { id: true } },
       storyOf: {
         select: {
           authorId: true,
@@ -197,6 +199,7 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
 
   if (media.moment) return canSeeMoment(userId, media.moment.id);
   if (media.momentPhoto) return canSeeMoment(userId, media.momentPhoto.momentId);
+  if (media.momentVideo) return canSeeMoment(userId, media.momentVideo.id);
 
   const story = media.storyOf ?? media.storyAudio;
   if (story) {

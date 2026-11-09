@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { View, Pressable, Modal, ScrollView, useWindowDimensions } from "react-native";
+import { View, Pressable, Modal, useWindowDimensions } from "react-native";
+import { RtlStrip } from "./rtl-strip";
 import { Text } from "./type";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MediaImage } from "./media-image";
@@ -211,15 +212,13 @@ function Shelf({ strip, children }: { strip: boolean; children: React.ReactNode 
     return <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 24 }}>{children}</View>;
   }
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      // الصفُّ يخرج إلى حافّتي الشاشة لا حشوة القائمة، وأعلاه فسحةٌ لشارة «محدودة».
-      style={{ marginHorizontal: -20, marginBottom: 24, direction: "rtl" }}
-      contentContainerStyle={{ flexDirection: "row", gap: 12, paddingHorizontal: 20, paddingTop: 8, direction: "rtl" }}
+    // الصفُّ يخرج إلى حافّتي الشاشة لا حشوة القائمة، وأعلاه فسحةٌ لشارة «محدودة».
+    <RtlStrip
+      style={{ marginHorizontal: -20, marginBottom: 24 }}
+      contentContainerStyle={{ gap: 12, paddingHorizontal: 20, paddingTop: 8 }}
     >
       {children}
-    </ScrollView>
+    </RtlStrip>
   );
 }
 

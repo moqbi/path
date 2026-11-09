@@ -114,7 +114,7 @@ export function ComposerFan() {
 
   const items = [
     { key: "write", label: "اكتب", run: () => router.push("/compose?kind=THOUGHT" as never) },
-    { key: "photo", label: "صورة", run: () => router.push("/compose?kind=PHOTO" as never) },
+    { key: "photo", label: "صورة · فيديو", run: () => router.push("/compose?kind=PHOTO" as never) },
     { key: "place", label: "مكان", run: () => router.push("/compose?kind=PLACE" as never) },
     { key: "music", label: "أغنية", run: () => router.push("/compose?kind=MUSIC" as never) },
     { key: "sleep", label: "نوم", run: () => { setBusy("sleep"); mark.mutate("SLEEP"); } },

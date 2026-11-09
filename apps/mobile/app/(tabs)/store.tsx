@@ -5,6 +5,7 @@ import { useTabTop } from "../../lib/tab-top";
 import { TabBackdrop } from "../../components/tab-backdrop";
 import { useBarSpace } from "../../components/glass-bar";
 import { View, ScrollView, Pressable, type ScrollViewInstance } from "react-native";
+import { RtlStrip } from "../../components/rtl-strip";
 import { Text } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -214,7 +215,7 @@ export default function Store() {
 
       {/* شريط التصنيفات: «المميز» أولاً، ثم ما يضيفه المشرف. */}
       <View style={{ paddingTop: 12, paddingBottom: 4 }}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ direction: "rtl" }} contentContainerStyle={{ flexDirection: "row", paddingHorizontal: 20, gap: 8, direction: "rtl" }}>
+        <RtlStrip contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}>
           {/*
             تصنيفُ المشرف الذي يحمل اسمَ نوعٍ («التشارمز») لا يُعرض ثانيةً بجانب
             شريحة النوع نفسها: شريحتان باسمٍ واحد تُقرآن خطأً.
@@ -252,7 +253,7 @@ export default function Store() {
               </Pressable>
             );
           })}
-        </ScrollView>
+        </RtlStrip>
       </View>
 
       {focused && data ? (
