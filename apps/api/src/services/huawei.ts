@@ -123,6 +123,7 @@ async function send(token: string, message: unknown): Promise<{ code: string; ms
   const body = (await response.json().catch(() => ({}))) as { code?: string; msg?: string };
   const code = body.code ?? String(response.status);
   if (code !== "80000000") console.error("[huawei] ردّت Push Kit", code, (body.msg ?? "").slice(0, 300));
+  else console.log("[huawei] قبلت Push Kit التنبيه", (body as { requestId?: string }).requestId ?? "");
   return { code, msg: body.msg ?? "" };
 }
 

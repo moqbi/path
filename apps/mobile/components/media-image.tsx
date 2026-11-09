@@ -64,7 +64,7 @@ export function MediaImage({
             uri: `${baseUrl}/v1/media/${mediaId}${gray ? "?gray=1" : ""}`,
             headers: { authorization: `Bearer ${token}` },
             // الخبيئة بالمعرّف: العنوان ثابت لكنّ الترويسة تتجدّد، والصورة هي هي.
-            cacheKey: gray ? `${mediaId}.gray` : mediaId,
+            cacheKey: gray ? `${mediaId}.gray2` : mediaId,
           }
         : null,
     [mediaId, token, gray],
