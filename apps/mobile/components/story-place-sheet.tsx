@@ -2,7 +2,7 @@ import { Spinner } from "./spinner";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { useKeyboardInset } from "../lib/keyboard";
-import * as Location from "expo-location";
+import * as Location from "../lib/location";
 import { Text, TextInput } from "./type";
 import { CloseIcon, PinIcon, SearchIcon } from "./icons";
 import { api } from "../lib/api";

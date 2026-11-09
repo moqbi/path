@@ -1,7 +1,7 @@
 import { Spinner } from "./spinner";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Easing, Linking, Pressable, Share, View } from "react-native";
-import * as Location from "expo-location";
+import * as Location from "../lib/location";
 import { useRouter } from "expo-router";
 import { useMutation } from "@tanstack/react-query";
 import { create } from "zustand";

@@ -62,6 +62,7 @@
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundImage": "./assets/adaptive-bg.png",
         "backgroundColor": "#0d1c25"
       },
       "blockedPermissions": [
