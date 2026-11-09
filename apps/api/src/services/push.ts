@@ -148,7 +148,7 @@ export async function push(message: PushMessage): Promise<PushOutcome> {
         notifyNearby: true,
         quietFrom: true,
         quietTo: true,
-        devices: { select: { token: true } },
+        devices: { select: { token: true, platform: true } },
       },
     });
     if (!user) return "gone";
@@ -160,8 +160,24 @@ export async function push(message: PushMessage): Promise<PushOutcome> {
     if (user.devices.length === 0) return "no-device";
 
     const badge = await badgeOf(message.userId);
+    // جوّالاتُ هواوي بلا خدمات قوقل تمرّ بـPush Kit لا بخدمة Expo (القاعدة ٤٤٦).
+    const hw = user.devices.filter((device) => device.platform === "huawei").map((device) => device.token);
+    if (hw.length) {
+      // كسولٌ: `huawei.ts` يقرأ البيئة، واختباراتُ الوضع الهادئ تستورد هذا الملفّ بلاها.
+      const { pushHuawei } = await import("./huawei");
+      await pushHuawei(hw, {
+        title: message.title,
+        body: message.body,
+        channelId: SOUNDS[SOUND_OF[message.kind]].channelId,
+        data: message.path ? { path: message.path } : {},
+        image: pushImageUrl(message.image),
+        badge,
+      });
+    }
+    const expo = user.devices.filter((device) => device.platform !== "huawei");
+    if (expo.length === 0) return "sent";
     await deliver(
-      user.devices.map((device) => ({
+      expo.map((device) => ({
         to: device.token,
         title: message.title,
         body: message.body,
@@ -224,7 +240,7 @@ export async function broadcast(
   for (;;) {
     const users = await prisma.user.findMany({
       where: { ...(GATE[kind] ? { [GATE[kind]!]: true } : null), ...only, devices: { some: {} } },
-      select: { id: true, quietFrom: true, quietTo: true, devices: { select: { token: true } } },
+      select: { id: true, quietFrom: true, quietTo: true, devices: { select: { token: true, platform: true } } },
       orderBy: { id: "asc" },
       take: 500,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -232,10 +248,23 @@ export async function broadcast(
     if (users.length === 0) break;
     cursor = users[users.length - 1].id;
 
-    const messages = users
-      .filter((user) => !inQuietHours(user.quietFrom, user.quietTo))
+    const awake = users.filter((user) => !inQuietHours(user.quietFrom, user.quietTo));
+    const hw = awake.flatMap((user) =>
+      user.devices.filter((device) => device.platform === "huawei").map((device) => device.token),
+    );
+    if (hw.length) {
+      const { pushHuawei } = await import("./huawei");
+      await pushHuawei(hw, {
+        title,
+        body,
+        channelId: SOUNDS[SOUND_OF[kind]].channelId,
+        data: { ...(path ? { path } : {}), ...extra },
+        image: pushImageUrl(image),
+      });
+    }
+    const messages = awake
       .flatMap((user) =>
-        user.devices.map((device) => ({
+        user.devices.filter((device) => device.platform !== "huawei").map((device) => ({
           to: device.token,
           title,
           body,
@@ -249,7 +278,7 @@ export async function broadcast(
         console.error("[push] دفعةٌ لم تخرج", problem),
       );
     }
-    sent += messages.length;
+    sent += messages.length + hw.length;
     if (users.length < 500) break;
   }
   return sent;

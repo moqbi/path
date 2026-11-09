@@ -4,6 +4,7 @@ import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
 import { api } from "./api";
 import { openThread } from "./open-thread";
+import { HUAWEI_APP_ID, hms, huawei } from "./huawei";
 
 /**
  * ثلاثةُ أصواتٍ للتنبيهات (القاعدة ٢٥٣) — **بقرار المالك**: الأذنُ تعرف ما جرى
@@ -117,6 +118,20 @@ async function registerPush(): Promise<{
     }
   }
 
+  /*
+    جوّالُ هواوي بلا خدمات قوقل (القاعدة ٤٤٦): رمزُ Push Kit لا رمزُ Expo — Expo يمرّ بـFCM
+    ولا FCM هنا. والخادمُ يرسل إلى هواوي ما سُجّل بـ«huawei».
+  */
+  if (huawei() && hms) {
+    const hwToken = await hms.pushToken(HUAWEI_APP_ID).catch(() => null);
+    if (!hwToken) return { token: null, reason: "لم يُعطِ HMS Core رمزاً للجهاز" };
+    await api("/v1/me/devices", {
+      method: "PUT",
+      body: JSON.stringify({ token: hwToken, platform: "huawei" }),
+    });
+    return { token: hwToken };
+  }
+
   const { data: token } = await Notifications.getExpoPushTokenAsync({
     projectId: projectId(),
   });
@@ -136,9 +151,10 @@ async function registerPush(): Promise<{
 export async function disablePush(): Promise<void> {
   try {
     if (!Device.isDevice) return;
-    const { data: token } = await Notifications.getExpoPushTokenAsync({
-      projectId: projectId(),
-    });
+    const token =
+      huawei() && hms
+        ? await hms.pushToken(HUAWEI_APP_ID).catch(() => null)
+        : (await Notifications.getExpoPushTokenAsync({ projectId: projectId() })).data;
     if (token) {
       await api("/v1/me/devices", {
         method: "DELETE",

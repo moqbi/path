@@ -3,3 +3,6 @@
 /android
 /ios
 .expo/
+
+# إعدادُ هواوي يُرفع إلى EAS ملفّاً سرّيّاً (AGCONNECT_SERVICES) لا إلى المستودع — القاعدة ٤٤٦.
+agconnect-services.json

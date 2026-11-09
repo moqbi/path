@@ -61,6 +61,15 @@ const schema = z.object({
    * يُنشأ في App Store Connect وRevenueCat. فارغٌ = القسمُ يختفي من نافذة
    * الإهداء: زرٌّ لا يفتح شيئاً أسوأ من زرٍّ غائب.
    */
+  /**
+   * هواوي (القاعدة ٤٤٦): معرّفُ التطبيق في AppGallery Connect وسرُّه (App secret — لا ملفّ
+   * `agconnect-services.json`). بلا السرّ لا تنبيهَ إلى جوّالات هواوي ولا تحقّقَ من دفعها.
+   * و`HUAWEI_IAP_SITE` موقعُ خوادم الدفع أوّلاً: dra (آسيا وأفريقيا) — ثمّ تُجرَّب البقيّة.
+   */
+  HUAWEI_APP_ID: z.string().default("119730833"),
+  HUAWEI_CLIENT_SECRET: z.string().optional(),
+  HUAWEI_IAP_SITE: z.enum(["dra", "dre", "drru", "drcn"]).default("dra"),
+
   GIFT_PLUS_MONTH_SKU: z.string().optional(),
   GIFT_PLUS_YEAR_SKU: z.string().optional(),
 

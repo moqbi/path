@@ -1,5 +1,7 @@
 import { Platform, Linking } from "react-native";
 import { PLUS_ENTITLEMENT } from "@athar/shared";
+import { api } from "./api";
+import { CONSUMABLE, HW, SUBSCRIPTION, hms, huawei, hwProblem } from "./huawei";
 
 /**
  * الدفع عبر المتجرين — RevenueCat بينهما وبيننا.
@@ -40,10 +42,53 @@ const TEST_KEY = __DEV__ ? process.env.EXPO_PUBLIC_RC_TEST_KEY : undefined;
 const KEY = STORE_KEY || TEST_KEY;
 
 /** أمضبوطٌ الدفع في هذه النسخة؟ عليه يتوقّف شكل شاشة الاشتراك. */
-export const billingReady = (): boolean => Platform.OS !== "web" && Boolean(KEY);
+export const billingReady = (): boolean => huawei() || (Platform.OS !== "web" && Boolean(KEY));
 
 /** أهو المتجر التجريبي؟ تقوله الشاشة صراحةً فلا يُحسب شراءٌ حقيقياً. */
-export const testStore = (): boolean => billingReady() && !STORE_KEY;
+export const testStore = (): boolean => !huawei() && billingReady() && !STORE_KEY;
+
+/*
+  دفعُ هواوي (القاعدة ٤٤٦) — لا RevenueCat: لا يدعم متجرَ هواوي. الجهازُ يفتح نافذةَ هواوي،
+  وما تردّه يُرسل إلى خادمنا (`/v1/billing/huawei`) فيتحقّق منه عند هواوي ويودع ويستهلك.
+  والمعرّفاتُ نفسُها في المتجرين: `athar_plus_monthly`/`athar_plus_yearly` و`sku` الباقة.
+*/
+const HW_PLANS = ["athar_plus_monthly", "athar_plus_yearly"];
+let hwUser: string | null = null;
+
+async function hwDeliver(data: string, type: number): Promise<{ ok: string; plus?: boolean }> {
+  return api<{ ok: string; plus?: boolean }>("/v1/billing/huawei", {
+    method: "POST",
+    body: JSON.stringify({ data, type }),
+  });
+}
+
+/**
+ * ما دُفع ولم يصل خادمَنا — انقطعت الشبكةُ بعد نافذة الدفع، أو أُغلق التطبيق — يُكمل هنا:
+ * النقاطُ غيرُ المستهلكة والاشتراكاتُ القائمة. والخادمُ لا يودع الطلبَ مرّتين.
+ */
+async function hwRecover(type: number): Promise<boolean> {
+  if (!hms) return false;
+  const list = await hms.owned(type).catch(() => []);
+  let plus = false;
+  for (const one of list) {
+    const res = await hwDeliver(one.data, type).catch(() => null);
+    if (res?.plus) plus = true;
+  }
+  return plus;
+}
+
+async function hwPurchase(productId: string, type: number): Promise<{ done: boolean; cancelled: boolean; plus: boolean }> {
+  if (!hms) throw new Error("خدمات هواوي غير متاحة");
+  const state = await hms.iapReady();
+  if (state !== "ok") throw new Error(hwProblem(state));
+  const result = await hms.buy(productId, type, hwUser ?? "");
+  if (result.code === HW.CANCEL) return { done: false, cancelled: true, plus: false };
+  // مملوكٌ ولم يصل: يُكمل من قائمة المملوك بدل أن يُردّ.
+  if (result.code === HW.OWNED) return { done: true, cancelled: false, plus: await hwRecover(type) };
+  if (result.code !== HW.OK || !result.data) throw new Error(hwProblem(result.code));
+  const res = await hwDeliver(result.data, type);
+  return { done: true, cancelled: false, plus: Boolean(res.plus) };
+}
 
 type Purchases = typeof import("react-native-purchases").default;
 
@@ -64,6 +109,12 @@ async function load(): Promise<Purchases | null> {
  * لمن نفعّل.
  */
 export async function startBilling(userId: string): Promise<void> {
+  if (huawei()) {
+    if (hwUser === userId) return;
+    hwUser = userId;
+    void hwRecover(CONSUMABLE).then(() => hwRecover(SUBSCRIPTION)).catch(() => {});
+    return;
+  }
   const purchases = await load();
   if (!purchases || openedFor === userId) return;
 
@@ -77,6 +128,7 @@ export async function startBilling(userId: string): Promise<void> {
 
 /** يُنسى المشتري عند الخروج، وإلا اشترى التالي على حساب الأول. */
 export async function stopBilling(): Promise<void> {
+  hwUser = null;
   const purchases = await load();
   if (!purchases || !openedFor) return;
   await purchases.logOut().catch(() => {});
@@ -112,6 +164,22 @@ type Package = Awaited<ReturnType<Purchases["getOfferings"]>>["all"][string]["av
 let cached: Package[] = [];
 
 export async function plans(): Promise<Plan[]> {
+  if (huawei() && hms) {
+    const list = await hms.products(HW_PLANS, SUBSCRIPTION);
+    return HW_PLANS.flatMap((id) => {
+      const one = list.find((item) => item.productId === id);
+      if (!one) return [];
+      const yearly = id.endsWith("yearly") || one.period === "P1Y";
+      return [
+        {
+          id,
+          price: one.price,
+          yearly,
+          perMonth: yearly ? `${(one.micros / 12 / 1e6).toFixed(2)} ${one.currency}` : null,
+        },
+      ];
+    });
+  }
   const purchases = await load();
   if (!purchases) return [];
 
@@ -129,6 +197,10 @@ export async function plans(): Promise<Plan[]> {
 
 /** يشتري باقةً ويردّ هل صار الاستحقاق فعّالاً عند المتجر. */
 export async function buy(planId: string): Promise<{ active: boolean; cancelled: boolean }> {
+  if (huawei()) {
+    const result = await hwPurchase(planId, SUBSCRIPTION);
+    return { active: result.plus, cancelled: result.cancelled };
+  }
   const purchases = await load();
   // بلا متجرٍ لا شراء — وكان يردّ «لم يُلغَ» فتقول الشاشة «تمّ الشراء».
   if (!purchases) throw new Error("المتجر غير متاح في هذه النسخة");
@@ -179,6 +251,10 @@ function purchaseProblem(problem: unknown): string {
  * RevenueCat. فما يردّه هذا هو «تمّ الشراء» لا «وصل الرصيد».
  */
 export async function buyCoins(sku: string): Promise<{ bought: boolean; cancelled: boolean }> {
+  if (huawei()) {
+    const result = await hwPurchase(sku, CONSUMABLE);
+    return { bought: result.done, cancelled: result.cancelled };
+  }
   const purchases = await load();
   if (!purchases) return { bought: false, cancelled: false };
 
@@ -205,6 +281,11 @@ export const buyGift = buyCoins;
 
 /** أسعارُ منتجاتٍ بعينها كما يقولها المتجر — ما لا يجده المتجرُ لا يُعرض. */
 export async function prices(skus: string[]): Promise<Record<string, string>> {
+  if (huawei() && hms) {
+    if (skus.length === 0) return {};
+    const list = await hms.products(skus, CONSUMABLE).catch(() => []);
+    return Object.fromEntries(list.map((one) => [one.productId, one.price]));
+  }
   const purchases = await load();
   if (!purchases || skus.length === 0) return {};
   const products = await purchases.getProducts(skus, "NON_SUBSCRIPTION" as never).catch(() => []);
@@ -216,6 +297,10 @@ export async function prices(skus: string[]): Promise<Record<string, string>> {
  * دفع بلا أن يدفع ثانيةً.
  */
 export async function restore(): Promise<boolean> {
+  if (huawei()) {
+    await hwRecover(CONSUMABLE).catch(() => false);
+    return hwRecover(SUBSCRIPTION);
+  }
   const purchases = await load();
   if (!purchases) return false;
   const info = await purchases.restorePurchases();
@@ -230,6 +315,9 @@ export async function restore(): Promise<boolean> {
  * الرابط الذي يعطيه المتجر نفسه.
  */
 export async function openManage(): Promise<void> {
+  if (huawei() && hms) {
+    if (await hms.manage().catch(() => false)) return;
+  }
   const purchases = await load();
   const info = await purchases?.getCustomerInfo();
   const url =

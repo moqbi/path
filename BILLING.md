@@ -242,3 +242,19 @@ Expo Go، بل في نسخة تطوير مبنيّة بـEAS. وحتى ذلك ا
 - بخادمَين معاً: حدثُ `TEST_STORE` وحدثُ `SANDBOX` رُفضا على خادم
   الإنتاج وقُبلا على خادم التطوير، وحدثُ `APP_STORE/PRODUCTION` قُبل على
   الإنتاج.
+
+## متجر هواوي (AppGallery) — القاعدة ٤٤٦
+
+RevenueCat لا يدعم هواوي، فالدفعُ هناك بـHuawei IAP مباشرةً والخادمُ يتحقّق منه بنفسه
+(`apps/api/src/services/huawei.ts`)، ثمّ يمرّ بـ`applyEvent` كأيّ حدث.
+
+**في AppGallery Connect** (التطبيق `app.athar.mobile`):
+1. «In-App Purchases» مفعّل، وحسابُ التاجر (Merchant service) مكتمل.
+2. **اشتراكان** في مجموعةٍ واحدة: `athar_plus_monthly` (شهر) و`athar_plus_yearly` (سنة) —
+   المعرّفاتُ نفسُها التي في آبل.
+3. **منتجاتٌ تُستهلك (Consumable)**: لكلّ باقة نقاط منتجٌ بمعرّف `sku` نفسه الذي في اللوحة،
+   ومنتجا الإهداء بمعرّفي `GIFT_PLUS_MONTH_SKU` و`GIFT_PLUS_YEAR_SKU`.
+4. سرُّ التطبيق (App secret) على الخادم: `HUAWEI_CLIENT_SECRET` في `.env` ثمّ إعادة التشغيل.
+
+والتجديدُ لا يصلنا حدثُه: الخادمُ يسأل هواوي عن كلّ اشتراكٍ قارب موعدَه (`sweepHuaweiSubs`).
+والشراءُ التجريبيّ (Sandbox) يُهمَل في الإنتاج كالتجريبيّ عند آبل (`ALLOW_SANDBOX_BILLING`).
