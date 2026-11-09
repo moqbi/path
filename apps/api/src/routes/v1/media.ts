@@ -106,8 +106,11 @@ export const mediaRoutes = new Hono()
     */
     if (!(await canSeeMedia(me(c), id))) throw notFound("الملف غير موجود");
 
-    // الرماديّةُ للصورة الثابتة وحدها؛ ما سواها يُقدَّم كما هو.
-    if (c.req.query("gray") === "1" && media.mime.startsWith("image/") && media.mime !== "image/gif") {
+    /*
+      والمتحرّكةُ رماديّةٌ ثابتةٌ من إطارها الأوّل (القاعدة ٤٥١): sharp بلا `animated` يقرأ الأوّلَ وحده.
+      كانت تُستثنى فتعود ملوّنة — وصورُ آثار+ متحرّكةٌ غالباً، فبقي مشتركوه ملوّنين وهم غيرُ متّصلين.
+    */
+    if (c.req.query("gray") === "1" && media.mime.startsWith("image/")) {
       let raw: Uint8Array | null = media.bytes ? new Uint8Array(media.bytes) : null;
       if (!raw && media.key) {
         const answer = await getObject(media.key);
