@@ -48,6 +48,13 @@
         "EXPO_APPLE_TEAM_TYPE": "COMPANY_OR_ORGANIZATION"
       },
       "channel": "production"
+    },
+    "huawei": {
+      "extends": "production",
+      "android": {
+        "buildType": "apk"
+      },
+      "channel": "production"
     }
   },
   "submit": {

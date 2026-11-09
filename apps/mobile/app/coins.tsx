@@ -1,6 +1,6 @@
 import { Spinner } from "../components/spinner";
 import { useState } from "react";
-import { View, ScrollView, Pressable } from "react-native";
+import { View, ScrollView, Pressable, Platform } from "react-native";
 import { Text } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -144,7 +144,7 @@ export default function Coins() {
 
         {!billingReady() ? (
           <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 22, textAlign: "center", paddingTop: 16 }}>
-            الشحن يتمّ من داخل التطبيق على الجوّال عبر App Store أو Google Play.
+            {Platform.OS === "ios" ? "الشحن يتمّ من داخل التطبيق على الآيفون عبر App Store." : "الشحن غير متاح في نسخة أندرويد بعد — من الآيفون عبر App Store."}
           </Text>
         ) : null}
 
