@@ -77,18 +77,21 @@ export function VideoWindowBar({
   start,
   length,
   onChange,
+  max = STORY_SECONDS,
 }: {
   seconds: number;
   start: number;
   length: number;
   onChange: (start: number, length: number) => void;
+  /** أطولُ ما يُقصّ: دقيقةُ القصّة، وعشرون ثانيةً للحظة (القاعدة ٤٣٤). */
+  max?: number;
 }) {
   const [width, setWidth] = useState(0);
   const total = Math.max(CLIP_MIN, seconds);
   const px = width / total;
 
-  const live = useRef({ start, length, onChange, px, total });
-  live.current = { start, length, onChange, px, total };
+  const live = useRef({ start, length, onChange, px, total, max });
+  live.current = { start, length, onChange, px, total, max };
   const grip = useRef<{ mode: "start" | "end" | "move"; a: number; len: number }>({ mode: "move", a: 0, len: 0 });
 
   const pan = useRef(
@@ -117,17 +120,17 @@ export function VideoWindowBar({
         }
       },
       onPanResponderMove: (_e, g) => {
-        const { px: p, total: t } = live.current;
+        const { px: p, total: t, max: cap } = live.current;
         const { mode, a, len } = grip.current;
         const d = g.dx / (p || 1);
         if (mode === "move") {
           live.current.onChange(Math.max(0, Math.min(t - len, a + d)), len);
         } else if (mode === "start") {
           const end = a + len;
-          const next = Math.max(0, Math.max(end - STORY_SECONDS, Math.min(end - CLIP_MIN, a + d)));
+          const next = Math.max(0, Math.max(end - cap, Math.min(end - CLIP_MIN, a + d)));
           live.current.onChange(next, end - next);
         } else {
-          const end = Math.min(t, Math.min(a + STORY_SECONDS, Math.max(a + CLIP_MIN, a + len + d)));
+          const end = Math.min(t, Math.min(a + cap, Math.max(a + CLIP_MIN, a + len + d)));
           live.current.onChange(a, end - a);
         }
       },
@@ -146,7 +149,7 @@ export function VideoWindowBar({
   return (
     <View style={{ gap: 8 }}>
       <Text style={{ color: "#fff", fontSize: 13.5, fontWeight: "700" }}>
-        المقطع {clock(seconds)} — حدّد البداية والنهاية (حتى {ar(STORY_SECONDS)} ثانية)
+        المقطع {clock(seconds)} — حدّد البداية والنهاية (حتى {ar(max)} ثانية)
       </Text>
       <View
         {...pan.panHandlers}

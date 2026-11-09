@@ -66,6 +66,8 @@ const select = {
   musicArtist: true,
   musicThumb: true,
   mediaId: true,
+  // مقطعٌ و`mediaId` غلافُه (القاعدة ٤٣٤).
+  videoId: true,
   photoX: true,
   photoY: true,
   createdAt: true,

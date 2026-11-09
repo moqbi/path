@@ -59,6 +59,12 @@ export const SOUND_SOURCE = { seconds: 600, bytes: 40_000_000 } as const;
  */
 export const STORY_VIDEO_SOURCE = { seconds: 600, bytes: 150_000_000 } as const;
 
+/**
+ * مقطعُ اللحظة عشرون ثانية (القاعدة ٤٣٤): يُرفع كما صُوِّر بحدّ `STORY_VIDEO_SOURCE`
+ * ويقصّ الخادمُ منه ما اختاره صاحبُه ويضغطه كمقطع القصّة.
+ */
+export const MOMENT_VIDEO_SECONDS = 20;
+
 /** صورةُ العرض مربّعٌ بهذا الضلع (القاعدة ٢٤٨) — أكبرُ ما تُعرض فيه. */
 export const AVATAR_SIDE = 320;
 

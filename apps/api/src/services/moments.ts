@@ -6,7 +6,7 @@ import { reverseGeocode } from "../lib/places";
 import { expandMusicUrl, pickMusicUrl, resolveTrack } from "../lib/music-link";
 import { guard } from "../lib/moderation";
 import { canInteract, canReachMoment, canSeeMoment, circleIds, moderatorReach } from "./visibility";
-import { dropMedia, squareMomentPhoto } from "./media";
+import { dropMedia, posterFor, squareMomentPhoto } from "./media";
 import { push } from "./push";
 import { canRunGroups } from "./groups";
 import { assertSticker, STICKER_TEXT } from "./stickers";
@@ -134,9 +134,10 @@ async function readPlace(
 
 /** الملف المرفوع لصاحبه وحده، وغير موصولٍ بلحظةٍ سابقة. */
 async function ownMedia(userId: string, mediaId: string) {
-  // معتمدٌ لا مرفوعٌ فقط: ما لم تُفحص بايتاته لا يُربط بلحظة.
+  // معتمدٌ لا مرفوعٌ فقط: ما لم تُفحص بايتاته لا يُربط بلحظة. وصورةٌ لا مقطع —
+  // المقطعُ بابُه `videoId` (القاعدة ٤٣٤).
   const media = await prisma.media.findFirst({
-    where: { id: mediaId, ownerId: userId, ready: true },
+    where: { id: mediaId, ownerId: userId, ready: true, mime: { startsWith: "image/" } },
     select: { id: true },
   });
   if (!media) throw notFound("الملف غير موجود");
@@ -193,12 +194,27 @@ export async function createMoment(userId: string, input: MomentInput) {
   }
   const track = musicUrl ? await resolveTrack(musicUrl) : null;
 
-  const mediaId = input.mediaId ? await ownMedia(userId, input.mediaId) : null;
+  /*
+    مقطعُ اللحظة (القاعدة ٤٣٤): لصاحبه، معتمدٌ، غيرُ موصول — ومعه غلافٌ يصنعه الخادم
+    ويكتبه `mediaId`، فيقرؤه كلُّ ما يقرأ صورة اللحظة. ولا صورَ معه.
+  */
+  let videoId: string | null = null;
+  let posterId: string | null = null;
+  if (input.kind === "PHOTO" && input.videoId) {
+    const video = await prisma.media.findFirst({
+      where: { id: input.videoId, ownerId: userId, ready: true, mime: { startsWith: "video/" }, moment: null, momentVideo: null },
+      select: { id: true },
+    });
+    if (!video) throw notFound("الملف غير موجود");
+    videoId = video.id;
+    posterId = await posterFor(userId, video.id);
+  }
+  const mediaId = videoId ? posterId : input.mediaId ? await ownMedia(userId, input.mediaId) : null;
   /*
     الصورُ بعد الأولى (القاعدة ٣٤٣): لصاحبها، معتمدةٌ، صورٌ لا مقاطع، بلا تكرار —
     وعلى لحظة صورةٍ لها أولى. والأولى تبقى `mediaId` فيقرؤها الجوّالُ القديم.
   */
-  const extra = input.kind === "PHOTO" && mediaId ? [...new Set(input.photos ?? [])].filter((id) => id !== mediaId) : [];
+  const extra = input.kind === "PHOTO" && mediaId && !videoId ? [...new Set(input.photos ?? [])].filter((id) => id !== mediaId) : [];
   if (extra.length) {
     const found = await prisma.media.findMany({
       where: { id: { in: extra }, ownerId: userId, ready: true, mime: { startsWith: "image/" }, moment: null, momentPhoto: null },
@@ -211,8 +227,8 @@ export async function createMoment(userId: string, input: MomentInput) {
     عشوائيّاً (`imageSpec`) فتنزل قالباً أصفر فارغاً فوق ما كتبه صاحبُها. وبلا
     صورةٍ ولا نصّ لا شيء يُنشر.
   */
-  if (input.kind === "PHOTO" && !mediaId && !text) throw badRequest("اختر صورة أو اكتب شيئاً");
-  const kind = input.kind === "PHOTO" && !mediaId ? "THOUGHT" : input.kind;
+  if (input.kind === "PHOTO" && !mediaId && !videoId && !text) throw badRequest("اختر صورة أو اكتب شيئاً");
+  const kind = input.kind === "PHOTO" && !mediaId && !videoId ? "THOUGHT" : input.kind;
   const seen = await readAudience(userId, input);
   const where = await readPlace(userId, input, me.city);
 
@@ -225,7 +241,7 @@ export async function createMoment(userId: string, input: MomentInput) {
     فيصير الموضعُ الوسطَ. وما لم يُقصّ يبقى بموضعه يُقصّ عند العرض.
   */
   const squared = new Set<string>();
-  if (input.square && kind === "PHOTO" && mediaId) {
+  if (input.square && kind === "PHOTO" && mediaId && !videoId) {
     const jobs = [
       { id: mediaId, x: input.photoX ?? 50, y: input.photoY ?? 50 },
       ...extra.map((id) => {
@@ -243,6 +259,7 @@ export async function createMoment(userId: string, input: MomentInput) {
       kind,
       text,
       mediaId,
+      videoId,
       photoX: mediaId ? (squared.has(mediaId) ? 50 : (input.photoX ?? null)) : null,
       photoY: mediaId ? (squared.has(mediaId) ? 50 : (input.photoY ?? null)) : null,
       photos: extra.length
@@ -364,7 +381,7 @@ export async function postMark(userId: string, kind: "SLEEP" | "WAKE") {
 export async function deleteMoment(userId: string, momentId: string) {
   const moment = await prisma.moment.findUnique({
     where: { id: momentId },
-    select: { authorId: true, mediaId: true, photos: { select: { mediaId: true } } },
+    select: { authorId: true, mediaId: true, videoId: true, photos: { select: { mediaId: true } } },
   });
   if (!moment) throw notFound("اللحظة غير موجودة");
 
@@ -377,7 +394,7 @@ export async function deleteMoment(userId: string, momentId: string) {
 
   await prisma.moment.delete({ where: { id: momentId } });
   // والصورُ بعد الأولى معها (القاعدة ٣٤٣).
-  await dropMedia([moment.mediaId, ...moment.photos.map((photo) => photo.mediaId)].filter((id): id is string => Boolean(id)));
+  await dropMedia([moment.mediaId, moment.videoId, ...moment.photos.map((photo) => photo.mediaId)].filter((id): id is string => Boolean(id)));
 
   return { ok: true };
 }

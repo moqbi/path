@@ -29,6 +29,8 @@ const select = {
   musicArtist: true,
   musicThumb: true,
   mediaId: true,
+  // مقطعٌ و`mediaId` غلافُه (القاعدة ٤٣٤): الكتابُ والمعرضُ يرسمان الغلافَ وعليه علامةُ الفيديو.
+  videoId: true,
   photoX: true,
   photoY: true,
   createdAt: true,

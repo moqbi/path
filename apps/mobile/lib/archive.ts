@@ -11,6 +11,8 @@ export type ArchiveMoment = {
   musicArtist: string | null;
   musicThumb: string | null;
   mediaId: string | null;
+  /** مقطعٌ و`mediaId` غلافُه (القاعدة ٤٣٤) — خادمٌ قديم لا يرسله. */
+  videoId?: string | null;
   photoX: number | null;
   photoY: number | null;
   createdAt: string;

@@ -55,6 +55,8 @@ export type Moment = {
   photoX?: number | null;
   photoY?: number | null;
   mediaId: string | null;
+  /** مقطعُ اللحظة و`mediaId` غلافُه (القاعدة ٤٣٤) — خادمٌ قديم لا يرسله. */
+  videoId?: string | null;
   /** الصورُ بعد الأولى (القاعدة ٣٤٣) — خادمٌ قديم لا يرسلها. */
   morePhotos?: string[];
   /** موضعُ كلٍّ منها (القاعدة ٣٤٨) — خادمٌ قديم لا يرسله فالوسط. */

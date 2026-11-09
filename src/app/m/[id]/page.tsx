@@ -18,6 +18,7 @@ import { PinIcon } from "@/components/icons";
 import { PlaceLink } from "@/components/place-link";
 import { mapsUrl } from "@/lib/maps";
 import { ar, timeOfDay } from "@/lib/format";
+import { MomentVideo } from "@/components/moment-video";
 
 export default async function MomentPage({
   params,
@@ -87,7 +88,11 @@ export default async function MomentPage({
               <EventLine moment={moment} withNames={withNames} viewerId={user.id} />
             ) : (
               <>
-                {moment.mediaId ? (
+                {moment.videoId ? (
+                  <div className="mb-3">
+                    <MomentVideo videoId={moment.videoId} posterId={moment.mediaId} />
+                  </div>
+                ) : moment.mediaId ? (
                   <div className="mb-3">
                     <Photo mediaId={moment.mediaId} rounded x={moment.photoX ?? 50} y={moment.photoY ?? 50} more={moment.photos?.map((photo) => photo.mediaId)} morePos={moment.photos?.map((photo) => ({ x: photo.x ?? 50, y: photo.y ?? 50 }))} />
                   </div>

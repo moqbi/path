@@ -11,6 +11,7 @@ import { PrintButton } from "./print-button";
 import { BOOK_SECTION_LABEL, bookBlocks, type BookCoverChoice, type BookSection } from "@/lib/book-prefs";
 import { bookPalette, bookPatternSvg } from "@/lib/book-skin";
 import type { OwnedCover } from "@/lib/archive";
+import { VideoBadge } from "@/components/moment-video";
 
 type Moment = Awaited<ReturnType<typeof book>>["moments"][number];
 
@@ -182,13 +183,17 @@ export default async function BookPage({ params }: { params: Promise<{ year: str
                               </p>
                             ) : null}
                             {moment.mediaId ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={`${BASE}/api/media/${moment.mediaId}`}
-                                alt=""
-                                className="mb-2 w-full rounded-[10px] object-cover"
-                                style={{ aspectRatio: "5 / 4", objectPosition: `${moment.photoX ?? 50}% ${moment.photoY ?? 50}%`, boxShadow: "0 6px 16px rgba(14,26,36,.08)" }}
-                              />
+                              <div className="relative mb-2">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={`${BASE}/api/media/${moment.mediaId}`}
+                                  alt=""
+                                  className="w-full rounded-[10px] object-cover"
+                                  style={{ aspectRatio: "5 / 4", objectPosition: `${moment.photoX ?? 50}% ${moment.photoY ?? 50}%`, boxShadow: "0 6px 16px rgba(14,26,36,.08)" }}
+                                />
+                                {/* الكتابُ لا يُشغّل: غلافُ المقطع وعلامتُه (القاعدة ٤٣٤). */}
+                                {moment.videoId ? <VideoBadge /> : null}
+                              </div>
                             ) : null}
                             {own ? (
                               <p className={moment.mediaId ? "text-[14px] leading-[1.8]" : "display text-[18px] font-bold leading-[1.55]"}>{own}</p>

@@ -13,6 +13,7 @@ import { hallEcho, type HallComment, type HallReaction } from "@/app/hall-action
 import { HALL_SKIN, hallSkinOf, type HallSkin } from "@/lib/gallery-skin";
 import { ReactionGlyph } from "@/components/reactions";
 import { Avatar } from "@/components/ui";
+import { VideoBadge } from "@/components/moment-video";
 
 /** لوحةٌ في القاعة — يُحسب ما يُكتب عليها في الخادم بتوقيت الرياض فلا يختلف عند الترطيب. */
 export type HallPiece = {
@@ -21,6 +22,8 @@ export type HallPiece = {
   line: string;
   text: string | null;
   mediaId: string | null;
+  /** غلافُ مقطع (القاعدة ٤٣٤): لوحةٌ لا تُشغَّل وعليها علامتُه. */
+  video?: boolean;
   photoX: number | null;
   photoY: number | null;
   placeName: string | null;
@@ -507,7 +510,10 @@ function MonthGrid({
             >
               {piece.kind === "PHOTO" && piece.mediaId ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={`${BASE}/api/media/${piece.mediaId}`} alt="" className="h-full w-full object-cover" />
+                <>
+                  <img src={`${BASE}/api/media/${piece.mediaId}`} alt="" className="h-full w-full object-cover" />
+                  {piece.video ? <VideoBadge small /> : null}
+                </>
               ) : (
                 <span className="line-clamp-4 text-center text-[11.5px] leading-[17px]" style={{ color: skin.placard.ink }}>
                   {piece.line}
@@ -1053,6 +1059,11 @@ function Piece({ skin, piece, spin }: { skin: HallSkin; piece: HallPiece; spin: 
         <span className="absolute inset-0 block">
           <PhotoFrame skin={skin} mediaId={piece.mediaId} x={piece.photoX ?? 50} y={piece.photoY ?? 50} />
         </span>
+        {piece.video ? (
+          <span className="absolute block" style={{ inset: skin.photo.width + skin.photo.matWidth }}>
+            <VideoBadge />
+          </span>
+        ) : null}
         {piece.morePhotos.length ? (
           <span
             className="absolute rounded-full px-2 text-[10.5px] font-bold leading-[20px] text-white"

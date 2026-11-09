@@ -33,6 +33,7 @@ import { PulseRings } from "@/components/pulse-rings";
 import { NoteMark, type StripNote } from "@/components/circle-strip";
 import { ar, relative, timeOfDay } from "@/lib/format";
 import type { FeedMoment } from "@/lib/feed";
+import { MomentVideo } from "@/components/moment-video";
 
 /** بعد هذا العدد تُفتح اللحظة لقراءة بقية التعليقات، وقبله لا داعي. */
 const INLINE_COMMENTS = 3;
@@ -574,7 +575,11 @@ export function MomentCard({
           head={line}
           extra={
             <>
-              {moment.mediaId ? (
+              {moment.videoId ? (
+                <div className="mt-2.5">
+                  <MomentVideo videoId={moment.videoId} posterId={moment.mediaId} />
+                </div>
+              ) : moment.mediaId ? (
                 <div className="mt-2.5">
                   <Photo mediaId={moment.mediaId} rounded x={moment.photoX ?? 50} y={moment.photoY ?? 50} more={moment.photos?.map((photo) => photo.mediaId)} morePos={moment.photos?.map((photo) => ({ x: photo.x ?? 50, y: photo.y ?? 50 }))} />
                 </div>
@@ -589,7 +594,11 @@ export function MomentCard({
 
   // ما له متن — صورة أو خاطرة — يبقى في بطاقته.
   // الصورةُ في أعلى البطاقة وزرُّ التفاعل في ركنها فوقها، بإطار المحرّر وموضعه.
-  const media = moment.mediaId ? (
+  const media = moment.videoId ? (
+    <div className="px-3 pt-3">
+      <MomentVideo videoId={moment.videoId} posterId={moment.mediaId} />
+    </div>
+  ) : moment.mediaId ? (
     // حشوةٌ لا هامش: هامشُ أوّل ابنٍ ينهار عبر أبيه فيُزيح البطاقة كلّها.
     <div className="px-3 pt-3">
       <Photo mediaId={moment.mediaId} rounded x={moment.photoX ?? 50} y={moment.photoY ?? 50} more={moment.photos?.map((photo) => photo.mediaId)} morePos={moment.photos?.map((photo) => ({ x: photo.x ?? 50, y: photo.y ?? 50 }))} />

@@ -31,6 +31,7 @@ type Row = {
   musicArtist: string | null;
   musicThumb: string | null;
   mediaId: string | null;
+  videoId?: string | null;
   photoX: number | null;
   photoY: number | null;
   createdAt: Date;
@@ -99,6 +100,7 @@ export default async function HallPage({ params }: { params: Promise<{ year: str
         line: line(moment),
         text: moment.text,
         mediaId: moment.mediaId,
+        video: Boolean(moment.videoId),
         photoX: moment.photoX,
         photoY: moment.photoY,
         placeName: moment.placeName,

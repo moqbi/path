@@ -26,6 +26,8 @@ const shape = {
   photoX: true,
   photoY: true,
   mediaId: true,
+  // مقطعُ اللحظة و`mediaId` غلافُه (القاعدة ٤٣٤).
+  videoId: true,
   // الصورُ بعد الأولى (القاعدة ٣٤٣) — تُسطَّح `morePhotos`.
   photos: { select: { mediaId: true, x: true, y: true }, orderBy: { position: "asc" } },
   commentsLocked: true,

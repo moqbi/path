@@ -1,6 +1,7 @@
 import { Spinner } from "./spinner";
 import { useRef, useState } from "react";
 import { View, Pressable, Modal, ScrollView, PanResponder, Animated, Dimensions } from "react-native";
+import { RtlStrip } from "./rtl-strip";
 import { Text } from "./type";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MediaImage } from "./media-image";
@@ -531,11 +532,11 @@ function Sheet({
             <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "700" }}>
               {pickPack.name} · {ar(pickPack.stickers.length)} ملصق
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ direction: "rtl" }} contentContainerStyle={{ gap: 6, flexDirection: "row", direction: "rtl" }}>
+            <RtlStrip contentContainerStyle={{ gap: 6 }}>
               {pickPack.stickers.map((one) => (
                 <MediaImage key={one.id} mediaId={one.mediaId} resizeMode="contain" style={{ width: 48, height: 48 }} />
               ))}
-            </ScrollView>
+            </RtlStrip>
             <Pressable
               disabled={busy !== null || coins < (pickPack.priceCoins ?? 0)}
               onPress={() => {

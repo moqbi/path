@@ -7,6 +7,7 @@ import { Avatar, firstColor } from "./avatar";
 import { MediaImage } from "./media-image";
 import { viewPhoto } from "./photo-viewer";
 import { PhotoCarousel } from "./photo-carousel";
+import { MomentVideo } from "./moment-video";
 import { AthrMark } from "./brand";
 import { SwipeRow } from "./swipe-row";
 import { openEdit } from "./edit-sheet";
@@ -469,7 +470,9 @@ export function MomentCard({
             head={line}
             extra={
               <>
-                {moment.mediaId && moment.morePhotos?.length ? (
+                {moment.videoId ? (
+                  <MomentVideo videoId={moment.videoId} posterId={moment.mediaId} style={{ marginTop: 10 }} />
+                ) : moment.mediaId && moment.morePhotos?.length ? (
                   <PhotoCarousel
                     ids={[moment.mediaId, ...moment.morePhotos]}
                     position={{ x: moment.photoX ?? 50, y: moment.photoY ?? 50 }}
@@ -500,7 +503,10 @@ export function MomentCard({
     إطارٍ بنسبة المحرّر (`PHOTO_RATIO`) وبالموضع الذي ضبطه صاحبُها، فما رآه
     قبل النشر هو ما تراه دائرته.
   */
-  const media = moment.mediaId && moment.morePhotos?.length ? (
+  const media = moment.videoId ? (
+    // مقطعُ اللحظة في إطار صورتها (القاعدة ٤٣٤).
+    <MomentVideo videoId={moment.videoId} posterId={moment.mediaId} style={{ marginTop: 12, marginHorizontal: 12, width: undefined, alignSelf: "stretch" }} />
+  ) : moment.mediaId && moment.morePhotos?.length ? (
     // خمسُ صورٍ تُقلَّب يميناً ويساراً (القاعدة ٣٤٣).
     <PhotoCarousel
       ids={[moment.mediaId, ...moment.morePhotos]}

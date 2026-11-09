@@ -19,6 +19,8 @@ export const momentShape = {
   photoX: true,
   photoY: true,
   mediaId: true,
+  // مقطعٌ و`mediaId` غلافُه (القاعدة ٤٣٤).
+  videoId: true,
   // الصورُ بعد الأولى (القاعدة ٣٤٣).
   photos: { select: { mediaId: true, x: true, y: true }, orderBy: { position: "asc" as const } },
   commentsLocked: true,
