@@ -1,6 +1,6 @@
 import { Spinner } from "./spinner";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Animated, Easing, Linking, Pressable, Share, View } from "react-native";
+import { Animated, Easing, Linking, Platform, Pressable, Share, View } from "react-native";
 import * as Location from "../lib/location";
 import { useRouter } from "expo-router";
 import { useMutation } from "@tanstack/react-query";
@@ -17,7 +17,7 @@ import { BackIcon, PinIcon, SearchIcon, ShareIcon, UserPlusIcon } from "./icons"
 import { api } from "../lib/api";
 import { ar } from "../lib/format";
 import { useSession } from "../lib/session";
-import { BEACON_SERVICE, beacon, bleState, type BleState } from "../lib/nearby-beacon";
+import { BEACON_SERVICE, askBle, beacon, bleState, type BleState } from "../lib/nearby-beacon";
 import { useAddFriend, type FoundPerson } from "../lib/add-friend";
 import { colors } from "../theme/tokens";
 import { Spot } from "./spot";
@@ -341,18 +341,29 @@ function Near({ row }: { row: (p: FoundPerson, alias?: boolean) => React.ReactNo
     let alive = true;
     // المسحُ يبدأ قبل الرمز — فيُطلب إذنُ البلوتوث مع فتح الشاشة ولو تعثّر الخادم —
     // والبثُّ ينتظر رمزَه. وما لم يصل يُعاد بعد ربع دقيقة لا بعد خمس دقائق.
-    native.start(BEACON_SERVICE, "");
-    setBle$(bleState());
-    const watch = setInterval(() => setBle$(bleState()), 1000);
+    let token = "";
+    let power = "";
+    void askBle().then(() => {
+      if (!alive) return;
+      native.start(BEACON_SERVICE, token);
+      setBle$(bleState());
+    });
+    // أندرويد لا يبدأ والبلوتوثُ مطفأ ولا قبل الإذن: يُعاد البدءُ ساعةَ يصير «on».
+    const watch = setInterval(() => {
+      const now = bleState();
+      if (now === "on" && power !== "on" && Platform.OS === "android") native.start(BEACON_SERVICE, token);
+      power = now;
+      setBle$(now);
+    }, 1000);
     let renew: ReturnType<typeof setTimeout> | null = null;
     const fresh = async () => {
       let ok = false;
       try {
-        const { token, autoOn } = await api<{ token: string; autoOn?: boolean }>("/v1/circle/nearby/token", {
+        const { token: next, autoOn } = await api<{ token: string; autoOn?: boolean }>("/v1/circle/nearby/token", {
           method: "POST",
         });
         if (autoOn) void useSession.getState().refresh();
-        if (alive) native.start(BEACON_SERVICE, token);
+        if (alive) native.start(BEACON_SERVICE, (token = next));
         ok = true;
       } catch {
         // رمزٌ لم يصل: يُعاد بعد قليل.
