@@ -4323,6 +4323,12 @@
    فيبقى ما عندنا. **و`AGCONNECT_SERVICES` ملفٌّ سرّيّ أو نصٌّ بمحتواه** — الإضافةُ تقبل الاثنين —
    **بمستوى «Secret» لا «Sensitive»**: الأخيرُ يُطبع كاملاً في سجلّ البناء ومعه سرُّ المشروع.
 
+448. **قواعدُ R8 لحزم هواوي** (`modules/huawei-hms/android/proguard-hms.pro` ← `consumerProguardFiles`
+   في بناء `huawei` وحده): حزمُ HMS تشير إلى فئاتٍ لا توجد إلا على أجهزة هواوي (`HwTelephonyManager`
+   و`hianalytics` و`iapfull`)، فسقط البناءُ الثاني في `minifyReleaseWithR8` بـ«Missing class». القواعدُ
+   قواعدُ هواوي الرسميّة: `-keep` لـ`com.huawei.hms` و`hianalytics` و`updatesdk`، و`-dontwarn` لـ`com.huawei.**`
+   — لا `-ignorewarnings` عامّةٌ تُسكت ما يخصّ غيرَها.
+
 ## اتجاه التطبيق على الجوّال
 
 الواجهة عربية من اليمين إلى اليسار في الويب والتطبيق سواء، والاتجاه
