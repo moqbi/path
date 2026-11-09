@@ -23,6 +23,8 @@ import { coinRoutes, plusRoutes, storeRoutes } from "./routes/v1/store";
 import { contentRoutes, moderationRoutes, reportRoutes } from "./routes/v1/reports";
 import { webhookRoutes } from "./routes/v1/webhooks";
 import { dripPlusCredit } from "./services/billing";
+import { sweepHuaweiSubs } from "./services/huawei";
+import { billingRoutes } from "./routes/v1/billing";
 import { expirePlus } from "./services/plus";
 import { sweepModerationLog } from "./services/reports";
 import { pushCoinGrants } from "./services/coin-grants";
@@ -140,6 +142,8 @@ setInterval(() => void sendBroadcasts().catch((error) => console.error("✗ تن
 setInterval(
   () => {
     void expirePlus().catch((error) => console.error("✗ انتهاء آثار+", error));
+    // واشتراكاتُ هواوي يُسأل عن تجديدها (القاعدة ٤٤٦) — لا حدثَ يصلنا منها.
+    void sweepHuaweiSubs().catch((error) => console.error("✗ اشتراكات هواوي", error));
     // وما اشتُري بمدّةٍ وانتهت يُنزع ممّن يلبسه.
     void expireRentals().catch((error) => console.error("✗ انتهاء المدد", error));
     // وما انتهت مدّةُ عرضه في المتجر يُخفى (`hideAt`).
@@ -188,6 +192,7 @@ app.route("/v1/me", profileRoutes);
 app.route("/v1/store", storeRoutes);
 app.route("/v1/plus", plusRoutes);
 app.route("/v1/coins", coinRoutes);
+app.route("/v1/billing", billingRoutes);
 app.route("/v1/stories", storyRoutes);
 app.route("/v1/media", mediaRoutes);
 app.route("/v1/push-media", pushMediaRoutes);

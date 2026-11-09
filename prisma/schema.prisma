@@ -284,6 +284,7 @@ model User {
 
   emailTokens       EmailToken[]
   devices           DeviceToken[]
+  huaweiSubs        HuaweiSubscription[]
   identities        AuthIdentity[]
   tickets           SupportTicket[]
   reports           Report[]          @relation("Reporter")
@@ -1768,4 +1769,23 @@ model StatusComment {
   @@index([storyId, createdAt])
   @@index([noteId, createdAt])
   @@index([userId, createdAt])
+}
+
+/// اشتراكُ آثار+ من متجر هواوي (القاعدة ٤٤٦): RevenueCat لا يعرفه، فالتجديدُ يُسأل عنه هواوي
+/// قربَ موعده (`sweepHuaweiSubs`). والمعرّفُ لحسابٍ واحد — لا يُفتح به حسابٌ ثانٍ.
+model HuaweiSubscription {
+  subscriptionId String   @id
+  userId         String
+  productId      String
+  purchaseToken  String
+  /// موقعُ خوادم الدفع الذي أجاب (dra، dre، …) أو «at» لحساباتٍ بعلامة `accountFlag`.
+  site           String
+  expiresAt      DateTime
+  checkedAt      DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@index([userId])
 }

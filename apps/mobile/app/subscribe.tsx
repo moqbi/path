@@ -12,6 +12,7 @@ import { TagPill } from "../components/name-tag";
 import { SITE_URL, SUPPORTER_TAG, hasSite } from "@athar/shared";
 import { api } from "../lib/api";
 import { openIn } from "../lib/browse";
+import { huawei } from "../lib/huawei";
 import { billingReady, buy, openManage, plans, restore, testStore, type Plan } from "../lib/billing";
 import { useSession } from "../lib/session";
 import { colors } from "../theme/tokens";
@@ -360,9 +361,9 @@ export default function Subscribe() {
         */}
         <Text style={{ color: colors.groundMuted, fontSize: 11, lineHeight: 21, textAlign: "center", paddingTop: 20 }}>
           {`اشتراك آثار+ يتجدّد تلقائياً بالسعر نفسه في نهاية كل مدّة (شهر أو سنة) ما لم يُلغَ قبل انتهائها بـ٢٤ ساعة على الأقل. يُخصم المبلغ من حساب ${
-            Platform.OS === "ios" ? "Apple ID" : "Google Play"
+            Platform.OS === "ios" ? "Apple ID" : huawei() ? "HUAWEI ID" : "Google Play"
           } عند تأكيد الشراء، ويمكنك إدارة الاشتراك وإلغاؤه من إعدادات حسابك في ${
-            Platform.OS === "ios" ? "App Store" : "Google Play"
+            Platform.OS === "ios" ? "App Store" : huawei() ? "AppGallery" : "Google Play"
           }.`}
         </Text>
         <View style={{ flexDirection: "row", justifyContent: "center", gap: 18, paddingTop: 12 }}>

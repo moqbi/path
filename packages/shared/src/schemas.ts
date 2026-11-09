@@ -310,7 +310,7 @@ export const verifyInput = z.object({ token: z.string().min(10).max(200) });
 /** تسجيلُ جهازٍ للتنبيهات: رمزُ Expo ومنصّتُه. */
 export const deviceInput = z.object({
   token: z.string().min(10).max(300),
-  platform: z.enum(["ios", "android"]),
+  platform: z.enum(["ios", "android", "huawei"]),
 });
 
 /**

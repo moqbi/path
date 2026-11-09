@@ -4,6 +4,7 @@ import { AppState, Appearance, I18nManager, Platform, View, StyleSheet } from "r
 import { MediaImage } from "../components/media-image";
 import { enableLegacyHeaderAppearance, Stack, useRouter, useSegments } from "expo-router";
 import * as Notifications from "expo-notifications";
+import { onPush, type PushData } from "../lib/push-open";
 import { enablePush } from "../lib/push";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -231,8 +232,9 @@ function Gate() {
     تنبيهاً ووجد نفسه في الخط الزمنيّ يسأل «أين ما نبّهني؟».
   */
   useEffect(() => {
-    const open = (response: Notifications.NotificationResponse) => {
-      const data = response.notification.request.content.data;
+    const open = (response: Notifications.NotificationResponse) =>
+      route(response.notification.request.content.data as PushData | undefined);
+    const route = (data: PushData | undefined) => {
       const path = data?.path;
       // تنبيهُ المشرف (القاعدة ٣٦٣): بطاقتُه في الجذر، ومسارُه «/» لجوّالٍ لا يعرفها.
       if (typeof data?.broadcast === "string") {
@@ -255,6 +257,8 @@ function Gate() {
       else if (typeof path === "string" && path.startsWith("/")) router.push(path as never);
     };
     const sub = Notifications.addNotificationResponseReceivedListener(open);
+    // تنبيهُ هواوي يأتي رابطاً لا ضغطةً على `expo-notifications` (القاعدة ٤٤٦).
+    const offHw = onPush(route);
     /*
       وتطبيقٌ مغلقٌ يُفتح بالضغطة نفسها: المستمعُ يُركَّب بعدها فلا يسمعها، فتُقرأ
       آخرُ ضغطةٍ ثمّ تُمسح — وإلّا أعادت فتحَ موضعها مع كلّ إقلاع.
@@ -266,7 +270,10 @@ function Gate() {
         return Notifications.clearLastNotificationResponseAsync();
       })
       .catch(() => {});
-    return () => sub.remove();
+    return () => {
+      sub.remove();
+      offHw();
+    };
   }, [router]);
 
   /*

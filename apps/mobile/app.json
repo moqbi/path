@@ -91,6 +91,7 @@
       "expo-apple-authentication",
       "./plugins/with-rtl",
       "./plugins/with-gradle-memory",
+      "./plugins/with-huawei",
       "./plugins/with-purpose",
       "./plugins/with-links",
       "./plugins/with-notification-service",

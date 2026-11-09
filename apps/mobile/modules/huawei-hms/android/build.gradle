@@ -1,0 +1,38 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'app.athar'
+version = '1.0.0'
+
+/*
+  خدماتُ هواوي في بناء هواوي وحده (القاعدة ٤٤٦): حزمةُ دفعٍ غيرِ قوقل في نسخة Google Play
+  سببُ ردٍّ هناك. فالكودُ الحقيقيّ في src/hms والبديلُ الفارغ في src/stub، والمختارُ بالبيئة.
+*/
+def huawei = System.getenv("EAS_BUILD_PROFILE") == "huawei" || System.getenv("ATHAR_HMS") == "1"
+
+android {
+  namespace "expo.modules.huaweihms"
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+  sourceSets {
+    main {
+      java.srcDirs += huawei ? 'src/hms/java' : 'src/stub/java'
+      if (huawei) manifest.srcFile 'src/hms/AndroidManifest.xml'
+    }
+  }
+}
+
+repositories {
+  maven { url 'https://developer.huawei.com/repo/' }
+}
+
+dependencies {
+  if (huawei) {
+    implementation 'com.huawei.hms:push:6.13.0.301'
+    implementation 'com.huawei.hms:iap:6.16.6.305'
+  }
+}
