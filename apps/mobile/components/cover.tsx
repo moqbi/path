@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Animated, View } from "react-native";
+import { Animated, Platform, View } from "react-native";
 import { MediaImage } from "./media-image";
 import { firstColor } from "./avatar";
 import { colors } from "../theme/tokens";
@@ -48,7 +48,7 @@ export function CoverLayer({
 }) {
   if (themeMediaId) {
     return (
-      <View style={{ position: "absolute", inset: 0, isolation: "isolate" }}>
+      <View style={{ position: "absolute", inset: 0, isolation: BLEND ? "isolate" : undefined }}>
         <CoverImage mediaId={themeMediaId} height={height} x={50} y={50} zoom={100} />
         {mediaId ? (
           <BlendedCover mediaId={mediaId} height={height} x={x} y={y} zoom={zoom} onNatural={onNatural} />
@@ -151,6 +151,13 @@ function CoverImage({
  * شفافيّتُها درجةً درجة — نسخُ الصورة من خبيئة `expo-image` نفسها لا تُجلب ثانيةً.
  */
 export const COVER_BLEND = 0.4;
+
+/**
+ * أندرويد بلا مزج: `mixBlendMode` هناك طبقةٌ خارج الشاشة لكلّ شريحة، وإحدى عشرة شريحةً
+ * فوق صورةٍ واحدة كانت ترمش بلا توقّف على هواوي (القاعدة ٤٤٣). فتبقى الشفافيّةُ والذوبانُ
+ * وحدهما — غلافُه فوق الثيم بلا أن يأخذ ألوانه.
+ */
+const BLEND = Platform.OS === "android" ? undefined : ("luminosity" as const);
 const SOLID = 0.35;
 const BANDS = 10;
 
@@ -188,7 +195,7 @@ function BlendedCover({
             height: strip.size,
             overflow: "hidden",
             opacity: strip.opacity,
-            mixBlendMode: "luminosity",
+            mixBlendMode: BLEND,
           }}
         >
           <View style={{ position: "absolute", left: 0, right: 0, top: -strip.top, height }}>
