@@ -2449,6 +2449,7 @@ export async function equip(itemId: string): Promise<void> {
         : { backgroundId: itemId };
 
   await prisma.user.update({ where: { id: user.id }, data: field });
+  if (purchase.item.kind === "BACKGROUND") await dropThemeCover(user.id, itemId);
 
   // وغلافُ الثيم يُرسم خلف غلافه من الثيم نفسه، لا يُنسخ فوقه (القاعدة ٢٨٨).
 
@@ -2485,6 +2486,20 @@ export async function clearNotes(): Promise<void> {
   revalidatePath("/", "layout");
 }
 
+/** نسخةُ `dropThemeCover` في الخادم حرفاً بحرف (القاعدة ٤٤٤). غيرُ مُصدَّرة: دالّةٌ لا باب. */
+async function dropThemeCover(userId: string, keep: string | null) {
+  const worn = await prisma.user.findFirst({
+    where: { id: userId, coverItemId: keep ? { not: keep } : { not: null } },
+    select: { coverMediaId: true },
+  });
+  if (!worn) return;
+  await prisma.user.update({
+    where: { id: userId },
+    data: { coverMediaId: null, coverItemId: null, coverY: 50, coverX: 50, coverZoom: 100 },
+  });
+  if (worn.coverMediaId) await dropMedia([worn.coverMediaId]).catch(() => undefined);
+}
+
 export async function unequip(kind: "FRAME" | "BACKGROUND" | "CHARM"): Promise<void> {
   const user = await requireUser();
   await prisma.user.update({
@@ -2496,6 +2511,7 @@ export async function unequip(kind: "FRAME" | "BACKGROUND" | "CHARM"): Promise<v
           ? { charmId: null }
           : { backgroundId: null },
   });
+  if (kind === "BACKGROUND") await dropThemeCover(user.id, null);
   revalidatePath("/me");
   revalidatePath("/store");
   revalidatePath("/");

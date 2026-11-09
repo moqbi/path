@@ -488,8 +488,27 @@ export async function equip(userId: string, itemId: string) {
     خلفه من الثيم نفسه، فلا يضيع غلافٌ اختاره صاحبُه ويذهب بانتهاء الثيم وحده.
   */
   await prisma.user.update({ where: { id: userId }, data: field });
+  if (purchase.item.kind === "BACKGROUND") await dropThemeCover(userId, itemId);
 
   return { ok: true };
+}
+
+/**
+ * غلافٌ نُسخ من ثيمٍ قبل القاعدة ٢٨٨ يذهب حين يُنزع ثيمُه أو يُبدَّل (القاعدة ٤٤٤):
+ * كان يذهب بانتهاء المدّة وحده، فمن نزع الثيم بقي يلبس غلافَه.
+ * وما رفعه صاحبُه بيده لا ختمَ عليه فلا يُمسّ.
+ */
+async function dropThemeCover(userId: string, keep: string | null) {
+  const worn = await prisma.user.findFirst({
+    where: { id: userId, coverItemId: keep ? { not: keep } : { not: null } },
+    select: { coverMediaId: true },
+  });
+  if (!worn) return;
+  await prisma.user.update({
+    where: { id: userId },
+    data: { coverMediaId: null, coverItemId: null, coverY: 50, coverX: 50, coverZoom: 100 },
+  });
+  if (worn.coverMediaId) await dropMedia([worn.coverMediaId]).catch(() => undefined);
 }
 
 export async function unequip(userId: string, kind: "FRAME" | "BACKGROUND" | "CHARM" | "GALLERY") {
@@ -504,6 +523,7 @@ export async function unequip(userId: string, kind: "FRAME" | "BACKGROUND" | "CH
             ? { hallId: null }
             : { backgroundId: null },
   });
+  if (kind === "BACKGROUND") await dropThemeCover(userId, null);
   return { ok: true };
 }
 

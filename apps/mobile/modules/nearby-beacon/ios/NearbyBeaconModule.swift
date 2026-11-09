@@ -95,8 +95,15 @@ final class Beacon: NSObject, CBCentralManagerDelegate, CBPeripheralManagerDeleg
     advertisementData: [String: Any],
     rssi RSSI: NSNumber
   ) {
-    guard let name = advertisementData[CBAdvertisementDataLocalNameKey] as? String,
-          name.hasPrefix("A"), name.count == 9 else { return }
+    // آيفون يبثّ الرمزَ اسماً محلّياً، وأندرويد «بيانات خدمة» على معرّفنا — لا يكتب
+    // اسماً من اختياره (القاعدة ٤٤٥). فيُقرأ الاثنان.
+    var label = advertisementData[CBAdvertisementDataLocalNameKey] as? String
+    if let service = service,
+       let data = advertisementData[CBAdvertisementDataServiceDataKey] as? [CBUUID: Data],
+       let bytes = data[service] {
+      label = String(data: bytes, encoding: .utf8)
+    }
+    guard let name = label, name.hasPrefix("A"), name.count == 9 else { return }
     let rssi = RSSI.intValue
     // ١٢٧ عند آبل «لا قراءة» لا إشارةٌ قويّة.
     if rssi == 127 { return }
