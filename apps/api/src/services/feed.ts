@@ -68,7 +68,8 @@ const shape = {
       emoji: true,
       user: { select: { name: true, avatarMediaId: true } },
     },
-    orderBy: { createdAt: "desc" },
+    // بترتيب التفاعل: أوّلُ من تفاعل أوّلُ الصفّ من اليمين (القاعدة ٤٥٠).
+    orderBy: { createdAt: "asc" },
     take: 40,
   },
   comments: {
@@ -288,6 +289,8 @@ export async function momentById(userId: string, momentId: string) {
         orderBy: { createdAt: "asc" },
         take: 100,
       },
+      // لحظةٌ واحدة تحمل تفاعلاتِها كلَّها: صفُّ الخطّ يجلبها حين يبلغ الإصبعُ آخرَه (القاعدة ٤٥٠).
+      reactions: { ...shape.reactions, take: 1000 },
     },
   });
   if (!moment) throw notFound("اللحظة غير موجودة");

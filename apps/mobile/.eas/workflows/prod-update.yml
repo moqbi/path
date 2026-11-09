@@ -22,5 +22,5 @@ jobs:
       EXPO_PUBLIC_RC_IOS_KEY: appl_kvEJJEfYfvzLeTiuyRCivnbNhJJ
     params:
       branch: production
-      platform: ios
+      platform: all
       message: Production update

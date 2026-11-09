@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { mentionPeople, splitMentions, type MentionPerson } from "../lib/mentions";
 import { View, Pressable } from "react-native";
 import { RtlStrip } from "./rtl-strip";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { Text } from "./type";
 import { useRouter } from "expo-router";
@@ -19,7 +19,7 @@ import { SelectableText } from "./selectable-text";
 import { LinkPreview } from "./link-preview";
 import { colors } from "../theme/tokens";
 import { ar, relative } from "../lib/format";
-import { useAudience, type Moment } from "../lib/queries";
+import { keys, useAudience, type Moment } from "../lib/queries";
 
 /**
  * من تفاعل: صورته وعليها وجهُه.
@@ -28,19 +28,35 @@ import { useAudience, type Moment } from "../lib/queries";
  * **وصفٌّ يُمرَّر لا «+٦»** (القاعدة ٤٤٩): من أراد أن يعرف من البقيّةُ يسحبه بإصبعه.
  */
 export function Reactors({
-  reactions,
+  reactions: first,
   viewerId,
+  momentId,
+  total = 0,
   size = 32,
 }: {
   reactions: Moment["reactions"];
   viewerId: string;
+  /** وعددُ تفاعلاتها كلّها: ما بعد الأربعين يُجلب حين يبلغ الإصبعُ آخرَ الصفّ (القاعدة ٤٥٠). */
+  momentId?: string;
+  total?: number;
   size?: number;
 }) {
   const router = useRouter();
+  const [more, setMore] = useState(false);
+  const full = useQuery({
+    queryKey: momentId ? keys.moment(momentId) : ["moment", "none"],
+    queryFn: () => api<{ moment: Moment }>(`/v1/moments/${momentId}`),
+    enabled: more && Boolean(momentId),
+  });
+  const all = full.data?.moment.reactions;
+  const reactions = all && all.length > first.length ? all : first;
   if (reactions.length === 0) return null;
 
   return (
-    <RtlStrip contentContainerStyle={{ alignItems: "center", gap: 10, paddingTop: 6, paddingHorizontal: 5 }}>
+    <RtlStrip
+      onEnd={momentId && total > first.length && !more ? () => setMore(true) : undefined}
+      contentContainerStyle={{ alignItems: "center", gap: 10, paddingTop: 6, paddingHorizontal: 5 }}
+    >
       {reactions.map((reaction) => (
         <Pressable
           key={reaction.userId}
@@ -365,7 +381,11 @@ export function Bubble({
       }}
     >
       {hasReactions ? (
-        mine ? <AuthorFaces momentId={moment.id} /> : <Reactors reactions={moment.reactions} viewerId={viewerId} />
+        mine ? (
+          <AuthorFaces momentId={moment.id} />
+        ) : (
+          <Reactors reactions={moment.reactions} viewerId={viewerId} momentId={moment.id} total={moment._count.reactions} />
+        )
       ) : null}
       {hasReactions && hasComments ? (
         <View style={{ height: 1, backgroundColor: colors.line, marginVertical: 10 }} />
