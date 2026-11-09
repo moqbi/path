@@ -25,6 +25,7 @@ import { markFirstSeen } from "../lib/rate";
 import { watchCity } from "../lib/arrive";
 import { Suspended } from "../components/suspended";
 import { PhotoViewer } from "../components/photo-viewer";
+import { VideoViewer } from "../components/video-viewer";
 import { PlaceVisitors } from "../components/place-visitors";
 import { ReactSheet } from "../components/react-sheet";
 import { EditSheet } from "../components/edit-sheet";
@@ -378,6 +379,7 @@ function Gate() {
     </Stack>
     {/* نافذةُ الصورة هنا لا في البطاقة: لا جدَّ لها يلتقط سحبتها. */}
     <PhotoViewer />
+    <VideoViewer />
     {/* «من كان هنا» لصاحب لحظة المكان — في الجذر للسبب نفسه. */}
     <PlaceVisitors />
     {/* ولوحةُ التفاعل نافذةٌ زجاجيّة كذلك (القاعدة ٢٤٧). */}

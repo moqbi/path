@@ -37,7 +37,8 @@ export default function PrivacyPage() {
             <li>
               <strong>What we collect:</strong> your name, email and password (stored hashed with scrypt),
               member number, and optional city, bio and gender; the moments, comments, reactions, stories,
-              messages, photos, audio and video you post; your location when you post a place (converted to a place name and city on
+              messages, photos, audio and video you post (moment photos and videos up to 20 seconds are trimmed
+              and compressed on our server, capture metadata is stripped, and the full original is not kept); your location when you post a place (converted to a place name and city on
               our server) and, if you have granted location permission, the point where you posted each moment,
               kept for your private "My Map" and never shown to anyone else (to show a city or landmark photo
               on that map, our server — not your device — asks Wikipedia/Wikidata using only the city or
@@ -105,6 +106,14 @@ export default function PrivacyPage() {
             <li>
               <strong>ما تنشره</strong>: لحظاتك وتعليقاتك وتفاعلاتك وقصصك
               ورسائلك الخاصة، وصورك وأصواتك ومقاطعك.
+            </li>
+            <li>
+              <strong>صور اللحظة ومقطعها</strong>: صورُ اللحظة (حتى خمس) تُقصّ وتُصغَّر
+              على خادمنا وتُنزَع منها بياناتُ الالتقاط — ومنها إحداثيّاتُ المكان — قبل
+              أن تُحفظ. وإن نشرت مقطع فيديو (حتى ٢٠ ثانية) يُقصّ على خادمنا إلى ما
+              اخترته ويُضغط، ويُحذف الأصلُ الكامل فلا يبقى إلا ما نشرته، ويُؤخذ منه إطارٌ
+              واحد يكون صورةَ غلافه في الخطّ وكتاب السنة والمعرض. ويراهما من يرى
+              اللحظة وحده، ويُحذفان معها.
             </li>
             <li>
               <strong>الدخول بآبل أو قوقل أو سناب شات أو تيك توك</strong>: إن اخترت

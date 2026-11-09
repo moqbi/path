@@ -14,6 +14,8 @@ import { PlusGrant } from "../../plus";
 import { CoinsGrant } from "../../coins";
 import { AdminEmail } from "../../email";
 import { RemoveMoment } from "./remove";
+import { FixButton } from "./fix";
+import { SITE_URL } from "@/lib/site-url";
 
 export const metadata: Metadata = { title: "حساب · لوحة التحكم" };
 
@@ -188,17 +190,33 @@ export default async function ModeratedProfile({
   /*
     المشاكلُ تُقرأ من الصفوف لا تُخمَّن: ما يمنع التنبيه، وما يمنع الدخول، وما أخرجه.
   */
-  const problems: string[] = [];
-  if (person.suspendedUntil && person.suspendedUntil > now) problems.push(`موقوف حتى ${when(person.suspendedUntil)}${person.suspendedReason ? ` — ${person.suspendedReason}` : ""}`);
-  if (person.devices.length === 0) problems.push("لا جهاز مسجّل للتنبيهات — لم يسمح بالتنبيهات أو لم يدخل من الجوّال");
-  if (person.email && !person.emailVerifiedAt) problems.push("البريد غير مؤكَّد — لا يستعيد حسابه به");
-  if (!person.email && !person.passwordHash && person.identities.length <= 1) problems.push("لا بريد ولا كلمة مرور — بابُه الوحيد مزوّدُه، فإن فقده فقد الحساب");
-  if (![...families.values()].some((row) => row.alive)) problems.push("لا جلسة حيّة على أيّ جهاز — خرج أو أُخرج، فيحتاج أن يدخل من جديد");
+  /*
+    وكلُّ مشكلةٍ معها حلُّها (القاعدة ٤٣٦): زرٌّ يفعل ما يُفعل من هنا، وما لا يُحلّ إلا عند صاحبه
+    يُقال ما يفعله هو، ومعه «راسله» من حساب الإدارة (القاعدة ٣١٧) ليُقال له.
+  */
+  type Fix = { act: string; label: string };
+  type Problem = { text: string; fixes?: Fix[]; tell?: string; link?: { href: string; label: string } };
+  const problems: Problem[] = [];
+  if (person.suspendedUntil && person.suspendedUntil > now)
+    problems.push({ text: `موقوف حتى ${when(person.suspendedUntil)}${person.suspendedReason ? ` — ${person.suspendedReason}` : ""}`, fixes: [{ act: "unsuspend", label: "ارفع الإيقاف" }] });
+  if (person.devices.length === 0)
+    problems.push({ text: "لا جهاز مسجّل للتنبيهات — لم يسمح بالتنبيهات أو لم يدخل من الجوّال", tell: "يفتح إعدادات الجهاز ← آثار ← الإشعارات ويُفعّلها، ثمّ يفتح التطبيق مرّة" });
+  if (person.email && !person.emailVerifiedAt)
+    problems.push({ text: "البريد غير مؤكَّد — لا يستعيد حسابه به", fixes: [{ act: "sendVerify", label: "أرسل رابط التأكيد" }, { act: "verify", label: "اعتبره مؤكَّداً" }] });
+  if (!person.email && !person.passwordHash && person.identities.length <= 1)
+    problems.push({ text: "لا بريد ولا كلمة مرور — بابُه الوحيد مزوّدُه، فإن فقده فقد الحساب", tell: "يربط بريداً من الإعدادات ← الحساب، أو يضع كلمة مرور" });
+  if (![...families.values()].some((row) => row.alive))
+    problems.push({ text: "لا جلسة حيّة على أيّ جهاز — خرج أو أُخرج، فيحتاج أن يدخل من جديد", fixes: person.email ? [{ act: "sendReset", label: "أرسل رابط ضبط كلمة المرور" }] : undefined, tell: "يدخل من جديد بالطريقة التي سجّل بها" });
   const lostRecently = familyRows.filter((row) => !row.alive && row.endedAt && now.getTime() - row.endedAt.getTime() < 14 * 86_400_000);
-  if (lostRecently.length > 0) problems.push(`انتهت ${ar(lostRecently.length)} جلسة في أسبوعين — آخرها ${when(lostRecently[0].endedAt)}`);
-  if (!person.lastSeenAt || now.getTime() - person.lastSeenAt.getTime() > 14 * 86_400_000) problems.push(`لم يظهر منذ ${person.lastSeenAt ? relative(person.lastSeenAt) : "التسجيل"}`);
-  if (access.length === 0) problems.push("لم يصل إلى الخادم طلبٌ موثَّقٌ منه بعد — إن قال «network request failed» فالطلبُ لا يخرج من جهازه أو شبكته");
-  if (person._count.reportsAgainst > 0) problems.push(`بلاغات عليه: ${ar(person._count.reportsAgainst)}`);
+  if (lostRecently.length > 0)
+    problems.push({ text: `انتهت ${ar(lostRecently.length)} جلسة في أسبوعين — آخرها ${when(lostRecently[0].endedAt)}`, fixes: [{ act: "endSessions", label: "أبطل كلّ جلساته" }], tell: "إن كان يخرج وحده: يحدّث التطبيق من المتجر" });
+  if (!person.lastSeenAt || now.getTime() - person.lastSeenAt.getTime() > 14 * 86_400_000)
+    problems.push({ text: `لم يظهر منذ ${person.lastSeenAt ? relative(person.lastSeenAt) : "التسجيل"}` });
+  if (access.length === 0)
+    problems.push({ text: "لم يصل إلى الخادم طلبٌ موثَّقٌ منه بعد — إن قال «network request failed» فالطلبُ لا يخرج من جهازه أو شبكته", tell: "يجرّب شبكةً أخرى (واي فاي/بيانات)، ويطفئ VPN أو حاجب الإعلانات، ويحدّث التطبيق" });
+  if (person._count.reportsAgainst > 0)
+    problems.push({ text: `بلاغات عليه: ${ar(person._count.reportsAgainst)}`, link: { href: "/admin?s=reports", label: "افتح البلاغات" } });
+  const chatHref = SITE_URL ? `${SITE_URL}/app/u/${person.id}` : null;
 
   const friends = person._count.friendshipsSent + person._count.friendshipsReceived;
   const plusLive = person.isPlus && person.plusUntil && person.plusUntil > now;
@@ -260,9 +278,25 @@ export default async function ModeratedProfile({
             <p className="text-[12.5px] text-muted">لا شيء ظاهر.</p>
           ) : (
             <ul className="flex flex-col gap-1.5">
-              {problems.map((line) => (
-                <li key={line} className="rounded-xl px-3 py-2 text-[12.5px] leading-relaxed" style={{ background: "var(--color-live-soft)", color: "var(--color-ink)" }}>
-                  {line}
+              {problems.map((problem) => (
+                <li key={problem.text} className="rounded-xl px-3 py-2 text-[12.5px] leading-relaxed" style={{ background: "var(--color-live-soft)", color: "var(--color-ink)" }}>
+                  <p>{problem.text}</p>
+                  {problem.tell ? <p className="mt-1 text-[11.5px] text-ink-2">الحلّ عنده: {problem.tell}</p> : null}
+                  {problem.fixes?.length || problem.link || (problem.tell && chatHref) ? (
+                    <div className="mt-2 flex flex-wrap items-start gap-1.5">
+                      {problem.fixes?.map((fix) => <FixButton key={fix.act} userId={person.id} act={fix.act} label={fix.label} />)}
+                      {problem.link ? (
+                        <Link href={problem.link.href} className="rounded-full border border-line px-3 py-1 text-[11.5px] font-bold">
+                          {problem.link.label}
+                        </Link>
+                      ) : null}
+                      {problem.tell && chatHref ? (
+                        <a href={chatHref} target="_blank" rel="noreferrer" className="rounded-full border border-line px-3 py-1 text-[11.5px] font-bold">
+                          راسله من حساب الإدارة
+                        </a>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </li>
               ))}
             </ul>

@@ -2403,3 +2403,87 @@ export async function deleteBroadcast(id: string): Promise<{ ok?: string; error?
   revalidatePath("/admin", "layout");
   return { ok: "حُذف التنبيه" };
 }
+
+// ───────────────────────── حلولُ مشاكل الحساب ─────────────────────────
+
+/**
+ * ما يُحلّ من مشاكل الحساب من صفحته في اللوحة (القاعدة ٤٣٦): المشكلةُ تُقرأ ومعها بابُ حلّها،
+ * لا قائمةٌ تُقال ثمّ لا يُفعل بها شيء. لمن له اللوحة كلّها، وكلُّ فعلٍ يفحص الدورَ بنفسه.
+ * - `verify`: البريد مؤكَّد — المشرفُ رأى أنّه لصاحبه (رسالةٌ لم تصله).
+ * - `sendVerify` و`sendReset`: رسالةُ تأكيدٍ أو إعادةِ ضبطٍ تخرج إلى بريده — الرابطُ معها لا يراه المشرف.
+ * - `endSessions`: جلساتُه كلُّها تُبطَل — جهازٌ فُقد أو حسابٌ يُشكّ أنّ غيرَه فيه.
+ * - `unsuspend`: يُرفع الإيقاف.
+ */
+export async function fixAccount(userId: string, _prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  await requireAdmin();
+  const what = String(formData.get("do") ?? "");
+  const person = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, name: true, email: true, emailVerifiedAt: true },
+  });
+  if (!person) return { error: "الحساب غير موجود" };
+
+  const mailToken = async (kind: "VERIFY" | "RESET") => {
+    const { createHash, randomBytes } = await import("node:crypto");
+    const token = randomBytes(32).toString("base64url");
+    await prisma.emailToken.create({
+      data: {
+        userId,
+        kind,
+        tokenHash: createHash("sha256").update(token).digest("hex"),
+        expiresAt: new Date(Date.now() + (kind === "RESET" ? 3600_000 : 86_400_000)),
+      },
+    });
+    return token;
+  };
+  const { SITE_URL } = await import("@/lib/site-url");
+  const { escapeHtml, letterHtml, sendMail } = await import("@/lib/mail");
+
+  try {
+    if (what === "verify") {
+      if (!person.email) return { error: "لا بريد على الحساب" };
+      await prisma.user.update({ where: { id: userId }, data: { emailVerifiedAt: new Date() } });
+      revalidatePath("/admin", "layout");
+      return { ok: "صار البريد مؤكَّداً" };
+    }
+    if (what === "sendVerify" || what === "sendReset") {
+      if (!person.email) return { error: "لا بريد على الحساب" };
+      if (!SITE_URL) return { error: "SITE_URL غير مضبوط — لا رابط يُرسل" };
+      const reset = what === "sendReset";
+      const token = await mailToken(reset ? "RESET" : "VERIFY");
+      const url = `${SITE_URL}/app/${reset ? "reset" : "verify"}?token=${token}`;
+      const name = escapeHtml(person.name);
+      const sent = await sendMail({
+        to: person.email,
+        subject: reset ? "إعادة ضبط كلمة مرورك في آثار" : "أكّد بريدك في آثار",
+        text: `${person.name} — ${reset ? "اضبط كلمة مرورك" : "أكّد بريدك"} من هذا الرابط: ${url}`,
+        html: letterHtml({
+          title: reset ? "إعادة ضبط كلمة المرور" : `أهلاً ${name}`,
+          intro: reset
+            ? `${name}، أرسلها لك فريقُ آثار بطلبك. اضغط الزرّ لتختار كلمة مرورٍ جديدة — الرابط يعمل ساعةً واحدة ومرّةً واحدة.`
+            : "أرسلها لك فريقُ آثار: أكّد أنّ هذا عنوانك حتى نستطيع أن نصل إليك إن نسيتَ كلمة مرورك. الرابط يعمل يوماً واحداً.",
+          button: reset ? "اضبط كلمة المرور" : "أكّد بريدي",
+          url,
+          note: "إن لم تطلب هذا، تجاهل الرسالة ولا يتغيّر شيء.",
+        }),
+      });
+      return sent ? { ok: `أُرسلت إلى ${person.email}` } : { error: "لم تخرج الرسالة — راجع إعداد البريد" };
+    }
+    if (what === "endSessions") {
+      const done = await prisma.refreshToken.updateMany({
+        where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
+        data: { revokedAt: new Date() },
+      });
+      revalidatePath("/admin", "layout");
+      return { ok: `أُبطلت ${done.count} جلسة — يدخل من جديد` };
+    }
+    if (what === "unsuspend") {
+      await prisma.user.update({ where: { id: userId }, data: { suspendedUntil: null, suspendedReason: null } });
+      revalidatePath("/admin", "layout");
+      return { ok: "رُفع الإيقاف" };
+    }
+  } catch {
+    return { error: "تعذّر التنفيذ" };
+  }
+  return { error: "فعلٌ غير معروف" };
+}
