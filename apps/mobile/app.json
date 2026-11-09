@@ -89,6 +89,7 @@
       ],
       "expo-apple-authentication",
       "./plugins/with-rtl",
+      "./plugins/with-gradle-memory",
       "./plugins/with-purpose",
       "./plugins/with-links",
       "./plugins/with-notification-service",
