@@ -4,7 +4,7 @@ import { usePullLogo } from "../../components/logo-refresh";
 import { TabBackdrop } from "../../components/tab-backdrop";
 import { scrolled } from "../../lib/scrolled";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { View, SectionList, Pressable, Alert, Animated, AccessibilityInfo } from "react-native";
+import { View, SectionList, Pressable, Alert, Animated, AccessibilityInfo, Platform } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -250,15 +250,18 @@ export default function Me() {
             >
               <CalendarIcon size={20} color={colors.chromeInk} />
             </Pressable>
-            {/* «خريطتي» بين التقويم والإعدادات (القاعدة ٣٦٨). */}
-            <Pressable
-              onPress={() => router.push("/map" as never)}
-              hitSlop={6}
-              accessibilityLabel="خريطتي"
-              style={HEAD_DISC}
-            >
-              <MapIcon size={20} color={colors.chromeInk} />
-            </Pressable>
+            {/* «خريطتي» بين التقويم والإعدادات (القاعدة ٣٦٨) — على آبل وحدها:
+                الخريطةُ على أندرويد خرائطُ قوقل، ولا تعمل بلا خدماتها (القاعدة ٤٤٠). */}
+            {Platform.OS === "ios" ? (
+              <Pressable
+                onPress={() => router.push("/map" as never)}
+                hitSlop={6}
+                accessibilityLabel="خريطتي"
+                style={HEAD_DISC}
+              >
+                <MapIcon size={20} color={colors.chromeInk} />
+              </Pressable>
+            ) : null}
             <Spot id="me.settings">
               <Pressable
                 onPress={() => router.push("/settings" as never)}

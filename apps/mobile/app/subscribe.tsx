@@ -326,7 +326,7 @@ export default function Subscribe() {
           */
           <View style={{ paddingTop: 12, gap: 10 }}>
             <Text style={{ color: colors.groundMuted, fontSize: 12.5, lineHeight: 24 }}>
-              الاشتراك يتمّ من داخل التطبيق على الجوّال عبر App Store أو Google Play.
+              {Platform.OS === "ios" ? "الاشتراك يتمّ من داخل التطبيق على الآيفون عبر App Store." : "الاشتراك غير متاح في نسخة أندرويد بعد — من الآيفون عبر App Store."}
             </Text>
             <View style={{ flexDirection: "row", gap: 10 }}>
               <Pressable
