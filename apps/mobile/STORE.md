@@ -37,7 +37,7 @@
 
 | البند | القيمة |
 | --- | --- |
-| App Store | **منشور** — الإصدار ٠٫١٫٢ |
+| App Store | **منشور** — الإصدار ٠٫١٫٥ (SDK 58) — ما فيه في `CHANGELOG.md` |
 | `ascAppId` | `6814671198` (في `eas.json` ← `submit.production`) |
 | سياسة الخصوصية | `https://atharmts.com/privacy` |
 | الدعم | `https://atharmts.com/contact` |
