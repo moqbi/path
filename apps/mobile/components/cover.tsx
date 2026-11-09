@@ -133,7 +133,14 @@ function CoverImage({
           mediaId={mediaId}
           style={{ position: "absolute", left: frame.left, top: frame.top, width: frame.width || "100%", height: frame.height }}
           onSize={(w, h) => {
-            setNatural({ width: w, height: h });
+            /*
+              مقاسُ الصورة مرّةً لا مع كلّ تحميل (القاعدة ٤٤٩): أندرويد يفكّ الصورةَ بمقاس صندوقها،
+              فيردّ مقاساً يتغيّر بكسلاً مع كلّ تحميل — والصندوقُ يُحسب منه فيتغيّر، فيُعاد التحميل
+              بتلاشيه. فكان غلافُ ملفّ الصديق على هواوي يرمش بلا توقّف. النسبةُ وحدها تعني الإطار.
+            */
+            setNatural((was) =>
+              was && Math.abs(was.width / was.height - w / h) < 0.01 ? was : { width: w, height: h },
+            );
             onNatural?.(w, h);
           }}
         />

@@ -247,16 +247,23 @@ export default function Circle() {
                     backgroundColor: colors.card,
                   }}
                 >
-                  <Avatar
-                    name={request.requester.name}
-                    size={40}
-                    mediaId={request.requester.avatarMediaId}
-                    frame={request.requester.frame}
-                    charm={request.requester.charm}
-                  />
-                  <Text style={{ flex: 1, color: colors.ink, fontSize: 13.5, fontWeight: "600" }}>
-                    {request.requester.name}
-                  </Text>
+                  {/* طلبُه إذنٌ بأن يُرى ملفُّه (القاعدة ٤٤٩): الصورةُ والاسمُ بابٌ إليه، ومنه يُقبل أو يُرفض. */}
+                  <Pressable
+                    accessibilityLabel={`ملف ${request.requester.name}`}
+                    onPress={() => router.push(`/u/${request.requester.id}` as never)}
+                    style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 10 }}
+                  >
+                    <Avatar
+                      name={request.requester.name}
+                      size={40}
+                      mediaId={request.requester.avatarMediaId}
+                      frame={request.requester.frame}
+                      charm={request.requester.charm}
+                    />
+                    <Text numberOfLines={1} style={{ flex: 1, color: colors.ink, fontSize: 13.5, fontWeight: "600" }}>
+                      {request.requester.name}
+                    </Text>
+                  </Pressable>
                   <Pressable
                     onPress={() => answer.mutate({ id: request.id, accept: true })}
                     style={{ height: 36, paddingHorizontal: 14, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}

@@ -12,6 +12,7 @@ import { BookIcon, CheckIcon, InfoIcon, ShieldIcon, SparkIcon } from "../../comp
 import { Sheet } from "../../components/sheet";
 import { openIn } from "../../lib/browse";
 import { api } from "../../lib/api";
+import { checkPush } from "../../lib/push";
 import { appleReady, confirmWithApple } from "../../lib/providers";
 import { startTour } from "../../components/tour";
 import { keys } from "../../lib/queries";
@@ -127,6 +128,7 @@ export default function Settings() {
 
         {/* ── التنبيهات ── */}
         <Section title="التنبيهات" note="ما يصل جهازك، ومتى يسكت">
+          <PushCheck />
           <NotifyPrefs />
         </Section>
 
@@ -913,6 +915,37 @@ function clockText(minutes: number): string {
  * والوضع الهادئ يُختار من قائمةٍ بنصف ساعة لا يُكتب حرفاً: حقلُ وقتٍ
  * حرٌّ يقبل «٢٥:٧٠»، والقائمة تعطي ما يقوله الناس فعلاً.
  */
+/** هل يصل هذا الجهازَ تنبيه؟ يقول أين وقف التسجيل (القاعدة ٤٤٩). */
+function PushCheck() {
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  return (
+    <View style={{ borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, padding: 14, marginBottom: 12, gap: 10 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <Text style={{ flex: 1, color: colors.ink, fontSize: 13, fontWeight: "600", textAlign: "right" }}>
+          تنبيهات هذا الجهاز
+        </Text>
+        <Pressable
+          onPress={async () => {
+            setBusy(true);
+            setResult(await checkPush());
+            setBusy(false);
+          }}
+          disabled={busy}
+          style={{ height: 34, paddingHorizontal: 14, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line }}
+        >
+          {busy ? <Spinner size="small" color={colors.ink2} /> : <Text style={{ color: colors.ink2, fontSize: 12, fontWeight: "600" }}>افحص</Text>}
+        </Pressable>
+      </View>
+      {result ? (
+        <Text selectable style={{ color: result.ok ? colors.ink2 : colors.live, fontSize: 12, lineHeight: 19, textAlign: "right" }}>
+          {result.text}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
 function NotifyPrefs() {
   const me = useSession((state) => state.me);
   const refresh = useSession((state) => state.refresh);

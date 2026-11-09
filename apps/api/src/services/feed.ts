@@ -56,8 +56,10 @@ const shape = {
   tags: { select: { user: { select: { id: true, name: true } } } },
   /*
      التفاعلاتُ بسقف: لحظةٌ في دائرةٍ ممتلئة قد تحمل مئةً وخمسين، وعشرون
-     لحظةً في الصفحة تعني ثلاثة آلاف صفٍّ في كلّ تمريرة. والشاشة تعرض
-     وجوهاً وعدداً، فاثنا عشر وجهاً يكفيانها — والعددُ من `_count`.
+     لحظةً في الصفحة تعني ثلاثة آلاف صفٍّ في كلّ تمريرة. والصفُّ يُمرَّر
+     أفقياً بلا عدد (القاعدة ٤٤٩)، فأربعون تكفيه — **وتفاعلُ القارئ يُلحق
+     دائماً** (`ownReactions`): كان خارج الاثني عشر في لحظةٍ مزدحمة، فيرى
+     الزرُّ «لم يتفاعل» ويُقرأ الوجهُ نفسُه ضغطةً تنزعه — «رفض التفاعل».
   */
   reactions: {
     select: {
@@ -66,7 +68,8 @@ const shape = {
       emoji: true,
       user: { select: { name: true, avatarMediaId: true } },
     },
-    take: 12,
+    orderBy: { createdAt: "desc" },
+    take: 40,
   },
   comments: {
     select: {
@@ -127,10 +130,29 @@ type Row = {
   reactions: { userId: string; kind: string; emoji: string | null; user: { name: string; avatarMediaId: string | null } }[];
 };
 
+/**
+ * تفاعلُ القارئ في كلّ لحظة — يُلحق بأوّل القائمة إن قصّها السقف (القاعدة ٤٤٩).
+ * استعلامٌ واحد للصفحة كلّها لا لكلّ لحظة.
+ */
+async function ownReactions<T extends Row & { id: string }>(rows: T[], viewerId: string): Promise<T[]> {
+  const missing = rows.filter((row) => !row.reactions.some((r) => r.userId === viewerId)).map((row) => row.id);
+  if (missing.length === 0) return rows;
+  const mine = await prisma.reaction.findMany({
+    where: { userId: viewerId, momentId: { in: missing } },
+    select: { momentId: true, userId: true, kind: true, emoji: true, user: { select: { name: true, avatarMediaId: true } } },
+  });
+  if (mine.length === 0) return rows;
+  const byMoment = new Map(mine.map(({ momentId, ...reaction }) => [momentId, reaction]));
+  return rows.map((row) => {
+    const own = byMoment.get(row.id);
+    return own ? { ...row, reactions: [own, ...row.reactions] } : row;
+  });
+}
+
 /** صفحةٌ بمؤشّر: نقرأ واحدةً زائدة لنعرف أثمّة تالٍ، ولا نعدّ الكلّ. */
-function page<T extends Row & { id: string }>(rows: T[], limit: number, viewerId: string) {
+async function page<T extends Row & { id: string }>(rows: T[], limit: number, viewerId: string) {
   const more = rows.length > limit;
-  const moments = (more ? rows.slice(0, limit) : rows).map((row) => flatten(row, viewerId));
+  const moments = (await ownReactions(more ? rows.slice(0, limit) : rows, viewerId)).map((row) => flatten(row, viewerId));
   return { moments, nextCursor: more ? moments.at(-1)?.id : undefined };
 }
 
@@ -241,7 +263,7 @@ export async function togetherTimeline(userId: string, friendId: string) {
   });
 
   return {
-    ...page(rows, rows.length, userId),
+    ...(await page(rows, rows.length, userId)),
     /** متى بدأ الأثر: تاريخ الصداقة. */
     since: friendship?.createdAt ?? null,
   };
@@ -269,7 +291,8 @@ export async function momentById(userId: string, momentId: string) {
     },
   });
   if (!moment) throw notFound("اللحظة غير موجودة");
-  return flatten(moment, userId);
+  const [own] = await ownReactions([moment], userId);
+  return flatten(own!, userId);
 }
 
 /**
@@ -285,7 +308,7 @@ export async function momentsByIds(userId: string, ids: string[]) {
     select: shape,
   });
   const order = new Map(ids.map((id, index) => [id, index]));
-  return rows
+  return (await ownReactions(rows, userId))
     .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
     .map((row) => flatten(row, userId));
 }
@@ -310,8 +333,20 @@ export async function momentsOf(
   // والحظر فوق الانفتاح: من حظره صاحبُ الحساب — أو حظره هو — لا يقرأه.
   // وصاحبُ الحساب المفتوح يقرأ لحظاتِه كلَّها: لحظتُه الخاصّة كانت تظهر في
   // الخطّ وتغيب عن «أنا» لأنّ هذا البابَ قصرَه على ما وُجّه إلى الدائرة.
+  /*
+    ومن أرسل إليّ طلبَ صداقةٍ معلّقاً بابٌ ثالثٌ مثلُه (القاعدة ٤٤٩) — **بقرار المالك**: طلبُه إذنٌ
+    بأن يُرى ملفُّه، فأقرأ ما وجّهه إلى دائرته كلّها لأقبل أو أرفض. وبالرفض أو السحب يُغلق.
+  */
+  const asking =
+    authorId !== userId &&
+    Boolean(
+      await prisma.friendship.findFirst({
+        where: { status: "PENDING", requesterId: authorId, addresseeId: userId },
+        select: { id: true },
+      }),
+    );
   const open =
-    author?.isOpen === true &&
+    (author?.isOpen === true || asking) &&
     authorId !== userId &&
     !(await blockedWith(userId)).includes(authorId);
 
