@@ -17,6 +17,7 @@ android {
   defaultConfig {
     versionCode 1
     versionName "1.0.0"
+    if (huawei) consumerProguardFiles 'proguard-hms.pro'
   }
   sourceSets {
     main {
