@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { mentionPeople, splitMentions, type MentionPerson } from "../lib/mentions";
-import { View, Pressable, ScrollView } from "react-native";
+import { View, Pressable } from "react-native";
+import { RtlStrip } from "./rtl-strip";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { Text } from "./type";
@@ -23,8 +24,8 @@ import { useAudience, type Moment } from "../lib/queries";
 /**
  * من تفاعل: صورته وعليها وجهُه.
  *
- * الصور لا الأسماء: ستةٌ منها تُقرأ بلمحة، وسطرٌ بأسماء ستةٍ يُقرأ نصّاً.
- * وتُفتح ملفاتهم بالضغط.
+ * الصور لا الأسماء: وجوهٌ تُقرأ بلمحة، وسطرُ أسماءٍ يُقرأ نصّاً. وتُفتح ملفاتهم بالضغط.
+ * **وصفٌّ يُمرَّر لا «+٦»** (القاعدة ٤٤٩): من أراد أن يعرف من البقيّةُ يسحبه بإصبعه.
  */
 export function Reactors({
   reactions,
@@ -39,8 +40,8 @@ export function Reactors({
   if (reactions.length === 0) return null;
 
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingTop: 4 }}>
-      {reactions.slice(0, 6).map((reaction) => (
+    <RtlStrip contentContainerStyle={{ alignItems: "center", gap: 10, paddingTop: 6, paddingHorizontal: 5 }}>
+      {reactions.map((reaction) => (
         <Pressable
           key={reaction.userId}
           accessibilityLabel={`ملف ${reaction.name}`}
@@ -69,11 +70,7 @@ export function Reactors({
           </View>
         </Pressable>
       ))}
-
-      {reactions.length > 6 ? (
-        <Text style={{ color: colors.muted, fontSize: 11.5 }}>+{reactions.length - 6}</Text>
-      ) : null}
-    </View>
+    </RtlStrip>
   );
 }
 
@@ -102,12 +99,7 @@ export function AuthorFaces({ momentId, count }: { momentId: string; count?: num
   if (people.length === 0) return null;
 
   return (
-    <ScrollView
-      horizontal
-      nestedScrollEnabled
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ flexDirection: "row", gap: 10, paddingTop: 4, direction: "rtl" }}
-    >
+    <RtlStrip contentContainerStyle={{ gap: 10, paddingTop: 6, paddingHorizontal: 5 }}>
       {people.map(({ user, reaction }) => (
         <Pressable
           key={user.id}
@@ -139,7 +131,7 @@ export function AuthorFaces({ momentId, count }: { momentId: string; count?: num
           ) : null}
         </Pressable>
       ))}
-    </ScrollView>
+    </RtlStrip>
   );
 }
 

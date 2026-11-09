@@ -145,6 +145,7 @@ function Profile() {
       if (row?.status === "ACCEPTED") {
         void person.refetch();
         void moments.refetch();
+        void client.invalidateQueries({ queryKey: keys.circle });
       } else if (me) {
         // الطلبُ في ذاكرة الملفّ نفسه (القاعدة ٣٧٩): من خرج ورجع في اللحظة يُرسم من الذاكرة
         // قبل أن يصل الجلب — وكانت تقول «أضفه» كأنّه لم يُضغط.
@@ -153,6 +154,19 @@ function Profile() {
         );
         void client.invalidateQueries({ queryKey: keys.user(id) });
       }
+    },
+  });
+
+  /**
+   * رفضُ طلبه من ملفّه (القاعدة ٤٤٩): بالرفض يُغلق بابُ لحظاته فيُعاد الملفُّ مقفولاً. والقبولُ
+   * «اقبل طلبه» — طلبٌ مقابلٌ يُقبل بنفسه (القاعدة ٢٨٠).
+   */
+  const reject = useMutation({
+    mutationFn: (requestId: string) => api(`/v1/circle/requests/${requestId}/ignore`, { method: "POST" }),
+    onSettled: () => {
+      void person.refetch();
+      void moments.refetch();
+      void client.invalidateQueries({ queryKey: keys.circle });
     },
   });
 
@@ -440,6 +454,16 @@ function Profile() {
                     </Text>
                   </Pressable>
                   </Spot>
+                  {incoming && pendingRow ? (
+                    <Pressable
+                      accessibilityLabel="رفض الطلب"
+                      onPress={() => reject.mutate(pendingRow.id)}
+                      disabled={reject.isPending}
+                      style={{ height: 46, paddingHorizontal: 16, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
+                    >
+                      <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "600" }}>رفض</Text>
+                    </Pressable>
+                  ) : null}
                   {/* والحسابُ المفتوح يُراسَل بلا إضافة (القاعدة ٢٢١) — حسابُ الدعم —
                       والمشرفُ يُراسل أيَّ حساب (القاعدة ٣١٧). */}
                   {(who.isOpen || me?.canGroups) && !staffView ? (
@@ -459,7 +483,7 @@ function Profile() {
               <Text style={{ color: colors.groundFaint, fontSize: 12.5, textAlign: "center", paddingVertical: 24 }}>
                 ما جمعتكما لحظةٌ بعد.
               </Text>
-            ) : person.data?.friend === false && !person.data?.follower && !moderating ? (
+            ) : person.data?.friend === false && !person.data?.follower && !moderating && !incoming ? (
               /* مكانُ اللحظات يقول لماذا لا تُرى — لا سطرٌ يُقرأ «ما نشر شي». */
               <View
                 style={{

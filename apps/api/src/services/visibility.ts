@@ -87,6 +87,27 @@ export async function canSeeMoment(userId: string, momentId: string): Promise<bo
 }
 
 /**
+ * صورُ ما يُقرأ من ملفّ من ليس صديقاً (`momentsOf` — القاعدة ٣٢ب و٤٤٩): الحسابُ المفتوح، ومن
+ * أرسل إليّ طلباً معلّقاً — ما وُجّه إلى الدائرة كلّها وحده، والحظرُ فوقه. للملفّات وحدها لا للتفاعل:
+ * كانت اللحظةُ تُقرأ من بابها وصورتُها «غير موجودة».
+ */
+async function profileDoor(userId: string, momentId: string): Promise<boolean> {
+  const moment = await prisma.moment.findUnique({
+    where: { id: momentId },
+    select: { authorId: true, audience: true, author: { select: { isOpen: true } } },
+  });
+  if (!moment || moment.audience !== "CIRCLE" || moment.authorId === userId) return false;
+  if (!moment.author.isOpen) {
+    const asking = await prisma.friendship.findFirst({
+      where: { status: "PENDING", requesterId: moment.authorId, addresseeId: userId },
+      select: { id: true },
+    });
+    if (!asking) return false;
+  }
+  return !(await blockedWith(userId)).includes(moment.authorId);
+}
+
+/**
  * بابُ المشرف إلى لحظةٍ لا يراها بالصداقة (القاعدة ٣٦٩) — **بقرار المالك**:
  * من يقرأ ملفَّ أيّ حسابٍ بصلاحية الإشراف (القاعدة ١٠٩) يتفاعل ويعلّق ويصوّت
  * على لحظاته كأيّ صديق. **ما وُجّه إلى الدائرة كلّها أو «الكل ما عدا»
@@ -212,9 +233,8 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
     return !media.groupMessageOf || media.groupMessageOf.createdAt >= seat.joinedAt;
   }
 
-  if (media.moment) return canSeeMoment(userId, media.moment.id);
-  if (media.momentPhoto) return canSeeMoment(userId, media.momentPhoto.momentId);
-  if (media.momentVideo) return canSeeMoment(userId, media.momentVideo.id);
+  const momentId = media.moment?.id ?? media.momentPhoto?.momentId ?? media.momentVideo?.id;
+  if (momentId) return (await canSeeMoment(userId, momentId)) || (await profileDoor(userId, momentId));
 
   const story = media.storyOf ?? media.storyAudio;
   if (story) {
