@@ -337,6 +337,7 @@ export default function Circle() {
             <View style={onlineNow(friend.lastSeenAt) ? undefined : { filter: [{ grayscale: 1 }] }}>
               <Avatar
                 name={friend.name}
+                gray={!onlineNow(friend.lastSeenAt)}
                 size={44}
                 mediaId={friend.avatarMediaId}
                 frame={friend.frame}

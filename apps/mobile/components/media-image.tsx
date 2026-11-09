@@ -30,6 +30,7 @@ export function MediaImage({
   onSize,
   blurRadius,
   fade = true,
+  gray = false,
 }: {
   mediaId: string | null | undefined;
   style?: StyleProp<ImageStyle>;
@@ -43,6 +44,8 @@ export function MediaImage({
   blurRadius?: number;
   /** تلاشي الظهور — يُطفأ في قاعة المعرض: لوحةٌ تُركَّب وهي تمرّ تومض بتلاشيها (القاعدة ٣٥٥). */
   fade?: boolean;
+  /** نسخةٌ رماديّة من الخادم (`?gray=1` — القاعدة ٤٣٥): `filter` لا يُرسم في كلّ بناء. */
+  gray?: boolean;
 }) {
   const [token, setToken] = useState(currentAccess);
   const [tries, setTries] = useState(0);
@@ -58,13 +61,13 @@ export function MediaImage({
     () =>
       mediaId && token
         ? {
-            uri: `${baseUrl}/v1/media/${mediaId}`,
+            uri: `${baseUrl}/v1/media/${mediaId}${gray ? "?gray=1" : ""}`,
             headers: { authorization: `Bearer ${token}` },
             // الخبيئة بالمعرّف: العنوان ثابت لكنّ الترويسة تتجدّد، والصورة هي هي.
-            cacheKey: mediaId,
+            cacheKey: gray ? `${mediaId}.gray` : mediaId,
           }
         : null,
-    [mediaId, token],
+    [mediaId, token, gray],
   );
 
   // موضعُ القصّ كائنٌ ثابتٌ ما لم تتغيّر أرقامُه: كائنٌ جديدٌ مع كلّ رسمةٍ يُعيد ضبطَ الصورة فترمش.

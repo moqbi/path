@@ -113,6 +113,7 @@ export function Avatar({
   mediaId,
   charm,
   style,
+  gray = false,
 }: {
   name: string;
   size?: number;
@@ -120,6 +121,8 @@ export function Avatar({
   mediaId?: string | null;
   charm?: Charm;
   style?: StyleProp<ViewStyle>;
+  /** الوجهُ رماديٌّ — غيرُ المتّصل في الأصدقاء (القاعدة ٤٣٥). */
+  gray?: boolean;
 }) {
   /*
     **الإطار المصوَّر يُرسم فوق الصورة لا تحتها** — كنسخة الويب حرفاً
@@ -166,11 +169,11 @@ export function Avatar({
           overflow: "hidden",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: mediaId ? colors.chip : tintFor(name),
+          backgroundColor: mediaId ? colors.chip : gray ? "#c9c9c9" : tintFor(name),
         }}
       >
         {mediaId ? (
-          <MediaImage mediaId={mediaId} style={{ width: inner, height: inner }} />
+          <MediaImage mediaId={mediaId} gray={gray} style={{ width: inner, height: inner }} />
         ) : (
           <Text
             style={{

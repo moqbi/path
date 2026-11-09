@@ -397,6 +397,8 @@ export async function compressStoryVideo(
       "-c:v", "libx264", "-preset", "veryfast", "-crf", "27",
       "-maxrate", "2200k", "-bufsize", "4400k", "-pix_fmt", "yuv420p",
       "-c:a", "aac", "-b:a", "96k", "-ac", "2",
+      // بلا بيانات الالتقاط (القاعدة ٤٣٤): ffmpeg ينسخها افتراضاً، وفيها موضعُ التصوير.
+      "-map_metadata", "-1",
       "-movflags", "+faststart",
       out,
     ]);

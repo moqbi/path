@@ -15,6 +15,21 @@ const LOOK = z.object({
   vignette: z.number().min(0).max(1).optional(),
 });
 import * as upload from "../../services/upload";
+import sharp from "sharp";
+
+/**
+ * صورةُ العرض رماديّةً لغير المتّصل (القاعدة ٤٣٥): تُصنع هنا لا على الجهاز — `filter` في آبل لا يُرسم
+ * إلا في بناءٍ بـRN 0.88، والخادمُ يصل كلَّ بناء. صغيرةٌ ومحفوظةٌ في الذاكرة بمعرّفها.
+ */
+const grays = new Map<string, Uint8Array>();
+async function grayOf(id: string, bytes: Uint8Array): Promise<Uint8Array> {
+  const hit = grays.get(id);
+  if (hit) return hit;
+  const out = new Uint8Array(await sharp(Buffer.from(bytes)).resize(256, 256, { fit: "inside" }).grayscale().webp({ quality: 80 }).toBuffer());
+  if (grays.size > 400) grays.delete(grays.keys().next().value as string);
+  grays.set(id, out);
+  return out;
+}
 
 /**
  * تقديم الملفات.
@@ -90,6 +105,23 @@ export const mediaRoutes = new Hono()
       أنّ الملفّ قائم.
     */
     if (!(await canSeeMedia(me(c), id))) throw notFound("الملف غير موجود");
+
+    // الرماديّةُ للصورة الثابتة وحدها؛ ما سواها يُقدَّم كما هو.
+    if (c.req.query("gray") === "1" && media.mime.startsWith("image/") && media.mime !== "image/gif") {
+      let raw: Uint8Array | null = media.bytes ? new Uint8Array(media.bytes) : null;
+      if (!raw && media.key) {
+        const answer = await getObject(media.key);
+        if (answer.ok) raw = new Uint8Array(await answer.arrayBuffer());
+      }
+      if (raw) {
+        const out = await grayOf(id, raw).catch(() => null);
+        if (out) {
+          return new Response(out, {
+            headers: { "Content-Type": "image/webp", "Cache-Control": "private, max-age=31536000, immutable" },
+          });
+        }
+      }
+    }
 
     const headers = new Headers({
       "Content-Type": media.mime,
