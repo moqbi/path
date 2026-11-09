@@ -1,10 +1,12 @@
-import { useMemo, useRef } from "react";
-import { Animated, Dimensions, Modal, PanResponder, Pressable, View } from "react-native";
+import { useEffect, useMemo, useRef } from "react";
+import { usePathname } from "expo-router";
+import { Animated, AppState, Dimensions, Modal, PanResponder, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { create } from "zustand";
 import { CloseIcon } from "./icons";
 import { baseUrl, currentAccess } from "../lib/api";
+import { stopClip } from "../lib/status-notes";
 
 /**
  * مقطعُ اللحظة بملء الشاشة (القاعدة ٤٣٧) — كالصورة المفتوحة: «×» في أعلاها، والسحبُ إلى
@@ -20,6 +22,31 @@ const DISMISS = 110;
 
 export function VideoViewer() {
   const { videoId, session } = useVideo();
+  /*
+    المقطعُ لا يبقى يُسمع خارج مكانه (القاعدة ٤٣٨): تبديلُ التبويب أو الشاشة، أو خروجُ التطبيق
+    إلى الخلفيّة، يُغلقه — والإغلاقُ يُنزل المشغّلَ فيقف صوتُه.
+  */
+  const path = usePathname();
+  const opened = useRef(path);
+  useEffect(() => {
+    if (!videoId) return;
+    opened.current = path;
+  }, [videoId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (videoId && path !== opened.current) viewVideo(null);
+  }, [path, videoId]);
+  // ومقطعُ أغنية النوت مثلُه: لا يبقى يُسمع في تبويبٍ آخر.
+  useEffect(() => {
+    void stopClip();
+  }, [path]);
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") return;
+      viewVideo(null);
+      void stopClip();
+    });
+    return () => sub.remove();
+  }, []);
   if (!videoId) return null;
   return <Viewer key={session} videoId={videoId} />;
 }
