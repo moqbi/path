@@ -15,7 +15,7 @@ import { Text, TextInput } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Avatar } from "../../components/avatar";
+import { Avatar, grayRoom } from "../../components/avatar";
 import { SwipeRow } from "../../components/swipe-row";
 import { ScreenHeader } from "../../components/screen-header";
 import { StoryStrip } from "../../components/stories";
@@ -334,7 +334,14 @@ export default function Circle() {
             style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12 }}
           >
             {/* غيرُ المتصل رماديّ والمتصلُ بألوانه — يُقرأ من الصورة قبل السطر (القاعدة ٤٢٦). */}
-            <View style={onlineNow(friend.lastSeenAt) ? undefined : { filter: [{ grayscale: 1 }] }}>
+            {/* والطبقةُ الرماديّة تقصّ ما خرج عنها على أندرويد — فتُوسَّع بقدر الإطار والتشارم (القاعدة ٤٤٣). */}
+            <View
+              style={
+                onlineNow(friend.lastSeenAt)
+                  ? undefined
+                  : { filter: [{ grayscale: 1 }], padding: grayRoom(44, friend.frame), margin: -grayRoom(44, friend.frame) }
+              }
+            >
               <Avatar
                 name={friend.name}
                 gray={!onlineNow(friend.lastSeenAt)}

@@ -58,6 +58,15 @@ export function frameBleed(size: number, frame: Frame): number {
 }
 
 /**
+ * ما يُترك حول الصورة لطبقةٍ تُرسم عليها (`filter`): على أندرويد تقصّ الطبقةُ بحدود
+ * حاويتها، فكان إطارُ غير المتصل مقصوصاً من جانبيه (القاعدة ٤٤٣). الإطارُ بقدر ما
+ * يخرج، والتشارمُ يخرج ٠٫١٥ من المقاس يساراً — ومعه ظلّه.
+ */
+export function grayRoom(size: number, frame: Frame): number {
+  return Math.max(frameBleed(size, frame), Math.ceil(size * 0.15) + 2);
+}
+
+/**
  * إزاحةُ الوجه داخل بطاقة الإطار — للمعاينات (المتجر، إكسسواراتي):
  * الوجه يجلس في فراغ الرسم لا في مربّعه.
  */
