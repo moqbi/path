@@ -7,7 +7,7 @@ import { Text, TextInput } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import * as Picker from "expo-image-picker";
-import * as Location from "expo-location";
+import * as Location from "../lib/location";
 import { useQueryClient } from "@tanstack/react-query";
 import { ScreenHeader } from "../components/screen-header";
 import { PeopleSheet, PickerButton, type Friend } from "../components/people-sheet";

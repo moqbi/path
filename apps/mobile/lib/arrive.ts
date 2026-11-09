@@ -1,4 +1,4 @@
-import * as Location from "expo-location";
+import * as Location from "./location";
 import { AppState } from "react-native";
 import { api } from "./api";
 import { appleAirport } from "./apple-places";

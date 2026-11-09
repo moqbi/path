@@ -61,10 +61,16 @@ export type TextProps = RNTextProps & { face?: Face };
  * «يمين» ← طبيعيّةٌ باتجاهٍ من اليمين، و«يسار» ← طبيعيّةٌ باتجاهٍ من
  * اليسار (حقولُ الروابط والبريد). والوسطُ يبقى وسطاً.
  *
- * وأندرويد على حاله: لا يمرّ بهذا الكود، ولم يُرَ فيه عطل.
+ * **وأندرويد مثلُها** (القاعدة ٤٤٢): `TextLayoutManager` يقرأ `right` «نهايةَ» الفقرة —
+ * `ALIGN_OPPOSITE` — فإذا كانت الفقرةُ من اليمين صارت النهايةُ يساراً، وخرجت النصوصُ
+ * كلُّها من اليسار على أوّل جوّالٍ بأندرويد. والطبيعيّةُ هناك تُحسم باتجاه الفقرة
+ * (اتجاهُ العقدة — `nodeDirection`)، فالترجمةُ نفسُها: طبيعيّةٌ واتجاهٌ بالقصد.
  */
 function align(flat: TextStyle): Pick<TextStyle, "textAlign" | "writingDirection"> {
   const want = flat.textAlign ?? "right";
+  if (Platform.OS === "android" && (want === "right" || want === "left")) {
+    return { textAlign: "auto", writingDirection: want === "right" ? "rtl" : "ltr" };
+  }
   if (Platform.OS !== "ios" || (want !== "right" && want !== "left")) {
     return { textAlign: want, writingDirection: flat.writingDirection ?? "rtl" };
   }
@@ -93,7 +99,7 @@ function paint(style: unknown, face: Face): TextStyle {
  * ويسارٌ ← `ltr` — لا يُترك لما يرثه، والوراثةُ لم تصل.
  */
 function nodeDirection(flat: TextStyle): Pick<TextStyle, "direction"> {
-  if (Platform.OS !== "ios") return {};
+  if (Platform.OS !== "ios" && Platform.OS !== "android") return {};
   const want = flat.textAlign ?? "right";
   if (want === "right") return { direction: "rtl" };
   if (want === "left") return { direction: "ltr" };

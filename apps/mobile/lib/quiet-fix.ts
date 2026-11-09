@@ -1,4 +1,4 @@
-import * as Location from "expo-location";
+import * as Location from "./location";
 
 /**
  * موضعُ الجهاز لـ«خريطتي» بلا سؤال (القاعدة ٣٨١): من منح إذن الموقع تُقرأ منه، ومن لم

@@ -269,6 +269,12 @@ export function GlassBar({ state, emitter, navigateToTab }: BarProps) {
       x.setValue(to);
       return;
     }
+    // على أندرويد انزلاقٌ يستقرّ في نحو خُمس ثانية (القاعدة ٤٤٢): عدسةُ آبل ترتفع وتتمطّط
+    // وتهبط بنابضٍ ليّن، فكان التبويبُ يأخذ قرابةَ ثانيةٍ ليستقرّ.
+    if (Platform.OS === "android") {
+      spring(x, to, 420, 41).start();
+      return;
+    }
     // بعد السحب لا تُعاد العدسة: تختفي ساعةَ يُرفع الإصبع.
     const pulse = hoverRef.current === null && Date.now() - releasedAt.current > 600;
     if (!pulse) {
