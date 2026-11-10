@@ -47,6 +47,7 @@ import { useFreshUpdate, useResumeUpdate } from "../lib/fresh-update";
 import { StorePromo } from "../components/store-promo";
 import { BroadcastCard, openBroadcast } from "../components/broadcast-card";
 import { UpdatePrompt } from "../components/update-prompt";
+import { checkHuaweiUpdate } from "../lib/huawei";
 
 // رؤوسُ المكدّس كما كانت قبل SDK 58 (القاعدة ٤٠١): رأسُ آبل ٢٦ الشفّافُ الجديد يعلو الشاشة
 // وإن كانت رؤوسُنا مرسومةً بأيدينا — فلا يقع شيءٌ تحته ولا يأخذ ضغطةً من أزرارها.
@@ -444,6 +445,10 @@ export default function RootLayout() {
   // ومعها سؤالُ التحديث: ما دام جارياً تبقى الشاشةُ الداكنة فوق التطبيق (القاعدة ٢٧٥).
   const updating = useFreshUpdate();
   useResumeUpdate();
+  // فحصُ AppGallery بعد شاشة الانطلاق — قبل الدخول وبعده (القاعدة ٤٥٥).
+  useEffect(() => {
+    if (!launching) checkHuaweiUpdate();
+  }, [launching]);
   // تحت الحركة لا بعدها: حين تذوب الحركةُ تنكشف الأرضُ الداكنة لا التطبيقُ لحظةً ثمّ يُقطع.
   const intro = (
     <>

@@ -25,6 +25,8 @@ object Hms {
 
   fun owned(context: Context, type: Int, promise: Promise) = off(promise)
 
+  fun checkUpdate(activity: Activity?, promise: Promise) = promise.resolve("off")
+
   fun manage(activity: Activity?, promise: Promise) = promise.resolve(false)
 
   fun onResult(activity: Activity, requestCode: Int, data: Intent?) {}

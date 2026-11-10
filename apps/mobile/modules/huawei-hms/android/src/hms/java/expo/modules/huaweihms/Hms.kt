@@ -14,6 +14,10 @@ import com.huawei.hms.iap.entity.ProductInfoReq
 import com.huawei.hms.iap.entity.PurchaseIntentReq
 import com.huawei.hms.iap.entity.StartIapActivityReq
 import com.huawei.hms.iap.util.IapClientHelper
+import com.huawei.hms.jos.JosApps
+import com.huawei.updatesdk.service.appmgr.bean.ApkUpgradeInfo
+import com.huawei.updatesdk.service.otaupdate.CheckUpdateCallBack
+import com.huawei.updatesdk.service.otaupdate.UpdateKey
 import expo.modules.kotlin.Promise
 
 /**
@@ -163,6 +167,49 @@ object Hms {
         promise.resolve(data.mapIndexed { i, d -> mapOf("data" to d, "signature" to (signs.getOrNull(i) ?: "")) })
       }
       .addOnFailureListener { e -> promise.reject("ERR_HMS_IAP", codeOf(e), e) }
+  }
+
+  /**
+   * فحصُ التحديث من AppGallery (القاعدة ٤٥٥) — شرطُ مراجعة هواوي: نسخةٌ أحدث في المتجر تُعرض
+   * نافذتُها (نافذةُ هواوي نفسها، تُغلق بـ«لاحقاً»). والنتيجة: «update» أو «none» أو «error:N».
+   */
+  fun checkUpdate(activity: Activity?, promise: Promise) {
+    if (activity == null) {
+      promise.resolve("no-activity")
+      return
+    }
+    var settled = false
+    fun done(value: String) {
+      if (settled) return
+      settled = true
+      promise.resolve(value)
+    }
+    try {
+      val client = JosApps.getAppUpdateClient(activity)
+      client.checkAppUpdate(activity, object : CheckUpdateCallBack {
+        override fun onUpdateInfo(intent: Intent?) {
+          val info = intent?.getSerializableExtra(UpdateKey.INFO)
+          if (info is ApkUpgradeInfo) {
+            activity.runOnUiThread {
+              try {
+                client.showUpdateDialog(activity, info, false)
+              } catch (e: Throwable) {}
+            }
+            done("update")
+          } else {
+            done("none:${intent?.getIntExtra(UpdateKey.STATUS, -99) ?: -99}")
+          }
+        }
+
+        override fun onMarketInstallInfo(intent: Intent?) {}
+
+        override fun onMarketStoreError(responseCode: Int) = done("error:$responseCode")
+
+        override fun onUpdateStoreError(responseCode: Int) = done("error:$responseCode")
+      })
+    } catch (e: Throwable) {
+      done("error:${e.message}")
+    }
   }
 
   /** صفحةُ إدارة الاشتراكات عند هواوي — الإلغاءُ هناك لا عندنا. */

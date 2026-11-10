@@ -21,6 +21,7 @@ type Native = {
   buy(productId: string, type: number, payload: string): Promise<Purchase>;
   owned(type: number): Promise<{ data: string; signature: string }[]>;
   manage(): Promise<boolean>;
+  checkUpdate?(): Promise<string>;
 };
 
 const native = Platform.OS === "android" ? requireOptionalNativeModule<Native>("HuaweiHms") : null;
@@ -71,4 +72,16 @@ export function hwProblem(code: number | string): string {
   if (n === 60005) return "تعذّر الاتصال بمتجر هواوي — تحقّق من الإنترنت.";
   if (n === 60007) return "المنتجُ غير متاح في بلدك.";
   return `تعذّر الدفع (${code})`;
+}
+
+let updateChecked = false;
+
+/**
+ * فحصُ التحديث من AppGallery مرّةً لكل إقلاع (القاعدة ٤٥٥) — شرطُ مراجعة هواوي، قبل الدخول
+ * وبعده. ونافذتُه نافذةُ هواوي نفسها. وبناءٌ بلا النداء يمضي بلا شيء (القاعدة ١٢٤).
+ */
+export function checkHuaweiUpdate(): void {
+  if (updateChecked || !huawei() || !native?.checkUpdate) return;
+  updateChecked = true;
+  void native.checkUpdate().catch(() => {});
 }
