@@ -98,10 +98,12 @@ function StoreButtons({
   tone = "light",
   ios,
   android,
+  huawei,
 }: {
   tone?: "light" | "dark";
   ios: string | null;
   android: string | null;
+  huawei: string | null;
 }) {
   const stores = [
     {
@@ -120,6 +122,25 @@ function StoreButtons({
         <path d="M4.3 2.6a1 1 0 0 0-.5.9v17a1 1 0 0 0 .5.9l9.3-9.4ZM14.7 10.8l2.9-2.9-10.4-5.9a1 1 0 0 0-.5-.1ZM14.7 13.2l-8 8a1 1 0 0 0 .5-.1l10.4-5.9ZM18.7 8.6l-3.1 3.2 3.1 3.2 2.8-1.6c.8-.5.8-1.7 0-2.2Z" />
       ),
     },
+    /*
+      AppGallery لجوّالات هواوي بلا خدمات قوقل (القاعدة ٤٤٠) — حقيبةُ متجرها.
+      ويظهر حين يُضبط رابطُه وحده: نسخةٌ تحت المراجعة لا تُعرض شارةً بلا رابط.
+    */
+    ...(huawei
+      ? [
+          {
+            name: "AppGallery",
+            href: huawei as string | null,
+            sub: "حمّله من",
+            icon: (
+              <path
+                fillRule="evenodd"
+                d="M6 2.5h12A3.5 3.5 0 0 1 21.5 6v12a3.5 3.5 0 0 1-3.5 3.5H6A3.5 3.5 0 0 1 2.5 18V6A3.5 3.5 0 0 1 6 2.5Zm2 4.3a.8.8 0 0 0-1.6 0 5.6 5.6 0 0 0 11.2 0 .8.8 0 0 0-1.6 0 4 4 0 0 1-8 0Z"
+              />
+            ),
+          },
+        ]
+      : []),
   ];
 
   const dark = tone === "dark";
@@ -228,6 +249,7 @@ export default async function LandingPage() {
   const shots = await siteShots();
   const ios = storeUrl(text["store.ios"]);
   const android = storeUrl(text["store.android"]);
+  const huawei = storeUrl(text["store.huawei"]);
 
   return (
     <div className="landing">
@@ -261,7 +283,7 @@ export default async function LandingPage() {
               <p className="rise rise-3 mt-5 max-w-md text-[15px] leading-[1.95] text-ink-2">{text["hero.body"]}</p>
 
               <div className="rise rise-4 mt-7 flex justify-start">
-                <StoreButtons ios={ios} android={android} />
+                <StoreButtons ios={ios} android={android} huawei={huawei} />
               </div>
 
               <div className="l-react-pill rise rise-5">
@@ -441,7 +463,7 @@ export default async function LandingPage() {
             </h3>
             <p className="mt-1.5 max-w-md text-[13.5px] leading-[1.9] text-muted">{text["download.body"]}</p>
             <div className="mt-5 flex flex-wrap items-center gap-3">
-              <StoreButtons ios={ios} android={android} />
+              <StoreButtons ios={ios} android={android} huawei={huawei} />
               <Link href="/contact" className="l-cta">
                 {text["download.cta"]}
               </Link>

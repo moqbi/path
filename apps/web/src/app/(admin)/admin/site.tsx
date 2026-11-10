@@ -322,6 +322,11 @@ const GROUPS: { title: string; note?: string; fields: { key: string; label: stri
         label: "رابط Google Play",
         note: "مثل https://play.google.com/store/apps/details?id=app.athar.mobile",
       },
+      {
+        key: "store.huawei",
+        label: "رابط AppGallery (هواوي)",
+        note: "مثل https://appgallery.huawei.com/app/C119730833 — فارغُه يُخفي الزرّ",
+      },
     ],
   },
   {

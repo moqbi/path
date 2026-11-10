@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { currentUser } from "@/lib/auth";
 import { ScreenHeader } from "@/components/ui";
-import { ar, dayLabel, relative, timeOfDay } from "@/lib/format";
+import { ar, relative, timeOfDay } from "@/lib/format";
 import { linkedAccounts } from "@/lib/linked";
 import { setOpenAccount, setUserTag } from "@/app/actions";
 import { TagPill } from "@/components/ui";
@@ -13,7 +13,6 @@ import { Suspend } from "../../suspend";
 import { PlusGrant } from "../../plus";
 import { CoinsGrant } from "../../coins";
 import { AdminEmail } from "../../email";
-import { RemoveMoment } from "./remove";
 import { FixButton } from "./fix";
 import { SITE_URL } from "@/lib/site-url";
 
@@ -44,30 +43,6 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 const when = (date: Date | null | undefined) =>
   date ? `${date.toLocaleDateString("ar-SA-u-ca-gregory")} · ${timeOfDay(date)}` : "—";
 
-/**
- * لحظات حسابٍ بعينه — بابُ الإشراف.
- *
- * البلاغ يصل على منشور، فلا يكفي أن يقرأ المشرف نصّاً منسوخاً في صفّ
- * البلاغ: يحتاج أن يفتح الحساب ويرى ما حوله ثمّ يحكم. وهذا **خارج
- * `visibleWhere()`** قصداً ومن بابٍ واحد ظاهر (القاعدة ٢٣): توسعةُ شرط
- * الرؤية بحقلٍ في صفّ القارئ تجعل كلّ استعلامٍ في التطبيق يحمل ثقباً.
- *
- * والصلاحية تُقرأ من الصفّ في كل زيارة لا من الجلسة وحدها، وكلُّ حذفٍ
- * يُختم في `ModerationLog`: من مُنح هذا الباب يُعرف ما فعل به.
- */
-const KIND: Record<string, string> = {
-  PHOTO: "صورة",
-  PLACE: "مكان",
-  THOUGHT: "خاطرة",
-  MUSIC: "أغنية",
-  SLEEP: "نام",
-  WAKE: "صحا",
-  CITY: "انتقل",
-  FRIEND_ADDED: "صديق جديد",
-  GIFT_SENT: "أهدى",
-  GIFT_GOT: "وصلته هدية",
-};
-
 export default async function ModeratedProfile({
   params,
 }: {
@@ -79,7 +54,7 @@ export default async function ModeratedProfile({
   if (!viewer) redirect("/login");
   /*
     صفحةُ الحساب لمن يدير الحسابات (المالك وممنوحُ اللوحة كلّها) ولمن يملك الإشراف.
-    واللحظاتُ للإشراف وحده — من يمنح وسماً لا يحتاج أن يقرأ لحظات الناس (القاعدة ١٠٩).
+    ولا لحظاتَ فيها (القاعدة ٤٥٤): الإشرافُ على المحتوى يجري حيث يُقرأ (القاعدة ١١٤).
   */
   const owner = viewer.role === "ADMIN";
   const manager = owner || viewer.adminScope === "ALL";
@@ -222,25 +197,6 @@ export default async function ModeratedProfile({
   const plusLive = person.isPlus && person.plusUntil && person.plusUntil > now;
 
   const { linked, crowded } = await linkedAccounts(id);
-
-  const moments = !viewer.canModerate ? [] : await prisma.moment.findMany({
-    where: { authorId: id },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-    select: {
-      id: true,
-      kind: true,
-      text: true,
-      placeName: true,
-      placeCity: true,
-      musicTitle: true,
-      musicArtist: true,
-      mediaId: true,
-      audience: true,
-      createdAt: true,
-      _count: { select: { reactions: true, comments: true } },
-    },
-  });
 
   return (
     <div className="screen">
@@ -490,72 +446,6 @@ export default async function ModeratedProfile({
             </p>
           ) : null}
         </section>
-
-        {viewer.canModerate ? <h2 className="mb-2 mt-4 px-1 text-[14px] font-bold">لحظاته</h2> : null}
-        {viewer.canModerate && moments.length === 0 ? (
-          <p className="py-10 text-center text-[13px] text-muted">لا لحظات في هذا الحساب.</p>
-        ) : null}
-
-        <div className="flex flex-col gap-2">
-          {moments.map((moment) => (
-            <article key={moment.id} className="rounded-2xl border border-line bg-card p-3.5">
-              <div className="mb-1.5 flex items-center gap-2">
-                <span
-                  className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                  style={{ background: "var(--color-chip)", color: "var(--color-muted)" }}
-                >
-                  {KIND[moment.kind] ?? moment.kind}
-                </span>
-                <span className="text-[11px] text-faint">
-                  {dayLabel(moment.createdAt)} · {timeOfDay(moment.createdAt)}
-                </span>
-                {moment.audience !== "CIRCLE" ? (
-                  <span className="text-[11px] text-faint">
-                    · {moment.audience === "GROUP" ? "تصنيف" : moment.audience === "EXCEPT" ? "ما عدا تصنيف" : "أشخاص"}
-                  </span>
-                ) : null}
-              </div>
-
-              {moment.text ? (
-                <p dir="auto" className="whitespace-pre-wrap text-[13.5px] leading-relaxed">
-                  {moment.text}
-                </p>
-              ) : null}
-              {moment.placeName ? (
-                <p dir="auto" className="text-[13px]">
-                  {moment.placeName}
-                  {moment.placeCity ? ` · ${moment.placeCity}` : ""}
-                </p>
-              ) : null}
-              {moment.musicTitle ? (
-                <p dir="auto" className="text-[13px]">
-                  {moment.musicTitle}
-                  {moment.musicArtist ? ` — ${moment.musicArtist}` : ""}
-                </p>
-              ) : null}
-
-              {/*
-                والصورة تُقرأ من `/api/media` بجلسة المشرف: البابُ يفحص
-                الصلاحية بنفسه (القاعدة ٢٣ب)، فلا يُفتح بمعرّفٍ وحده.
-              */}
-              {moment.mediaId ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={`/api/media/${moment.mediaId}`}
-                  alt=""
-                  className="mt-2 max-h-[280px] w-full rounded-xl object-cover"
-                />
-              ) : null}
-
-              <div className="mt-2.5 flex items-center justify-between gap-3">
-                <span className="text-[11px] text-faint">
-                  {ar(moment._count.reactions)} تفاعل · {ar(moment._count.comments)} تعليق
-                </span>
-                <RemoveMoment momentId={moment.id} />
-              </div>
-            </article>
-          ))}
-        </div>
 
         <Link
           href="/admin?s=reports"
