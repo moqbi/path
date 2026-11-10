@@ -58,7 +58,10 @@ export default async function PublicLayout({ children }: { children: React.React
   */
   const ios = storeUrl(text["store.ios"]);
   const android = storeUrl(text["store.android"]);
-  const download = (/android/i.test(agent) ? android ?? ios : ios ?? android) ?? "/#download";
+  const huawei = storeUrl(text["store.huawei"]);
+  // جوّالُ هواوي بلا خدمات قوقل فمتجرُه AppGallery (القاعدة ٤٤٠).
+  const isHuawei = /huawei|honor|harmonyos|hmscore/i.test(agent);
+  const download = ((isHuawei ? huawei : null) ?? (/android/i.test(agent) ? android ?? ios : ios ?? android)) ?? "/#download";
 
   return (
     <div className="site">

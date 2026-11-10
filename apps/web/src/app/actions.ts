@@ -838,46 +838,6 @@ async function requireModerator() {
   return user;
 }
 
-/**
- * حذفُ لحظةٍ بيد مشرف — لا بيد صاحبها.
- *
- * البلاغ يصل على منشور، فلا بدّ من بابٍ يدخله المشرف ليتأكّد ثم يحذف.
- * وما يذهب معها يذهب: التفاعلات والتعليقات بـ`Cascade` (القاعدة ٦١)،
- * وصورتها بيدها لأنّ علاقتها `SetNull` (القاعدة ٨٤ و١٠٤).
- *
- * وكلُّ حذفٍ يُختم في `ModerationLog`: سلطةٌ بلا أثرٍ مكتوب لا يُسأل عنها
- * أحد. والإجراء يردّ رسالةً ولا يرمي (القاعدة ٣١ و٩٠).
- */
-export async function removeMomentAsAdmin(
-  momentId: string,
-  _prev: AdminResult,
-): Promise<AdminResult> {
-  const admin = await requireModerator();
-
-  const moment = await prisma.moment.findUnique({
-    where: { id: momentId },
-    select: { id: true, authorId: true, text: true, mediaId: true, videoId: true, photos: { select: { mediaId: true } } },
-  });
-  if (!moment) return { error: "اللحظة غير موجودة" };
-
-  await prisma.moderationLog.create({
-    data: {
-      adminId: admin.id,
-      action: "MOMENT_REMOVED",
-      targetId: moment.id,
-      ownerId: moment.authorId,
-      snippet: moment.text?.slice(0, 200) ?? null,
-    },
-  });
-
-  await prisma.moment.delete({ where: { id: moment.id } });
-  await dropMedia([moment.mediaId, moment.videoId, ...moment.photos.map((photo) => photo.mediaId)].filter((id): id is string => Boolean(id)));
-
-  revalidatePath(`/admin/u/${moment.authorId}`);
-  revalidatePath("/admin", "layout");
-  return { ok: "حُذفت اللحظة" };
-}
-
 // ───────────────────────────── الدعم الفني ─────────────────────────────
 
 /**

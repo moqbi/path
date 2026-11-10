@@ -121,8 +121,11 @@ export default async function SharedProfile({ params }: Props) {
 
   const ios = storeUrl(text["store.ios"]);
   const android = storeUrl(text["store.android"]);
+  const huawei = storeUrl(text["store.huawei"]);
+  // جوّالُ هواوي بلا خدمات قوقل فمتجرُه AppGallery (القاعدة ٤٤٠).
+  const isHuawei = /huawei|honor|harmonyos|hmscore/i.test(agent);
   // متجرُ جهاز القارئ: من فتح الرابط من أندرويد لا يُرسَل إلى App Store.
-  const mine = /android/i.test(agent) ? android ?? ios : ios ?? android;
+  const mine = (isHuawei ? huawei : null) ?? (/android/i.test(agent) ? android ?? ios : ios ?? android);
 
   const zoom = Math.min(300, Math.max(100, person.coverZoom)) / 100;
   // سطرُ العضويّة كما في «أنا» وملفّ الصديق (القاعدة ٢٣٣): رقمٌ، فمعرّفٌ، فمدينةٌ، فمدّة.
@@ -267,6 +270,7 @@ export default async function SharedProfile({ params }: Props) {
           <div className="mt-5 flex flex-col gap-2 sm:flex-row">
             <StoreButton store="App Store" href={ios} />
             <StoreButton store="Google Play" href={android} />
+            {huawei ? <StoreButton store="AppGallery" href={huawei} /> : null}
           </div>
 
           {/*
