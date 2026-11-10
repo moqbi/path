@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { postSleep, postWake } from "@/app/actions";
 import { playClose, playOpen } from "@/lib/sound";
@@ -22,26 +22,30 @@ type Item = {
 };
 
 /*
- * قوس القائمة.
+ * قوس القائمة — وجهان (القاعدة ٤٥٦):
  *
- * الزوايا تُقسَّم على عدد الأصناف لا تُكتب لكل صنف: إضافة صنفٍ سادس
- * بزاوياتٍ ثابتة كانت ستُخرج أعلاها عن الشاشة أو تُلصق الأقراص.
+ * **في الشريط** (`bar`): الزرُّ في وسط الشريط الزجاجيّ والقوسُ نصفُ دائرةٍ
+ * متناظرٌ فوقه، من ٢٤° إلى ١٥٦° — أدناها فوق حافّة الشريط لا عليها. المسافة
+ * بين مركزين = نصف القطر × الزاوية بالراديان: ١٣٨ × ٢٦٫٤° ≈ ٦٤ والقرص ٤٤.
+ * وأبعدُ الأصناف عن الوسط ١٣٨ × cos(٢٤°) + ٢٢ ≈ ١٤٨، فيتّسع له هيكلٌ عرضُه ٣٢٠.
  *
- * والمسافة بين مركزين = نصف القطر × الزاوية بالراديان: ٢٤٦ × ١٦٫٨° ≈ ٧٢
- * بكسلاً والقرص ٥٦، فتبقى فرجة تُرى. وأعلى الأصناف عند ٨٨° لا ٩٠: القرص
- * عند القائمة تماماً يخرج من حافة الإطار اليمنى.
+ * **في شريط سطح المكتب** (`rail`): ربعُ دائرةٍ من ركنٍ يمينيّ كما رُسم أوّلَ
+ * مرّة — من ٨٨° إلى ٤° بنصف قطر ٢٤٦ — لأنّ الزرّ هناك على الحافّة اليمنى.
+ *
+ * والزوايا تُقسَّم على عدد الأصناف لا تُكتب لكل صنف.
  */
 /** قرصُ الصنف ورسمُه: الرسم ٣٢ والقرص يلبسه بحشوةٍ لا يزيد. */
 const DISC = 44;
 const ICON = 32;
-/** رسمُ زرّ النشر — **بقرار المالك** ٣٢ كالجوّال. */
-const PLUS = 32;
 
-const RADIUS = 246;
-const TOP = 88;
-const BOTTOM = 4;
+const ARC = {
+  bar: { radius: 138, from: 24, to: 156, plus: 42 },
+  rail: { radius: 246, from: 88, to: 4, plus: 36 },
+} as const;
 
-export function ComposerFan() {
+export function ComposerFan({ mode = "bar" }: { mode?: "bar" | "rail" }) {
+  const arc = ARC[mode];
+  const box = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
@@ -57,7 +61,10 @@ export function ComposerFan() {
 
   // بطاقةُ الترحيب تفتح القوس من خطوة «انشر أوّل لحظة» (القاعدة ٢٤٦).
   useEffect(() => {
-    const onOpen = () => toggle(true);
+    // وجهان مركّبان معاً على سطح المكتب: الظاهرُ منهما وحده يُجيب.
+    const onOpen = () => {
+      if (box.current?.getClientRects().length) toggle(true);
+    };
     window.addEventListener("athr:fan", onOpen);
     return () => window.removeEventListener("athr:fan", onOpen);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -138,18 +145,24 @@ export function ComposerFan() {
         }}
       />
 
-      <div className="shell-fixed z-30">
-        {/*
-          `mr-5` لا `ml-5`: الصندوقُ في RTL يجلس على الحافّة اليمنى، والهامشُ
-          الأيسر لا يحرّكه — فكان الزرّ لاصقاً بطرف العمود (بقرار المالك).
-        */}
-        <div className="relative mb-[86px] mr-5 h-14 w-14">
+      {/*
+        في الشريط: مثبّتٌ في وسط الهيكل ومركزُه مركزُ القرص الزجاجيّ (حشوتُه
+        السفليّة ثمّ نصفُ ارتفاعه ٦٢، ناقصاً نصفَ مربّع الزرّ ٥٦)، ويختفي على
+        سطح المكتب مع الشريط. وفي شريط سطح المكتب: في مكانه من الصفّ.
+      */}
+      <div className={mode === "bar" ? "glassbar-fan shell-fixed z-30 flex justify-center" : "relative"} ref={mode === "rail" ? box : undefined}>
+        <div
+          ref={mode === "bar" ? box : undefined}
+          className="relative h-14 w-14"
+          style={mode === "bar" ? { marginBottom: "calc(max(12px, env(safe-area-inset-bottom)) + 3px)" } : undefined}
+        >
           {items.map((item, index) => {
-            // الأوّل في الأعلى والأخير في الأسفل، وما بينهما بالتساوي.
-            const angle = TOP - ((TOP - BOTTOM) * index) / (items.length - 1);
+            // من أوّل القوس إلى آخره بالتساوي. في الشريط الأوّلُ يميناً (قراءةُ العربية)،
+            // وفي شريط سطح المكتب الأوّلُ في الأعلى والقوسُ كلُّه إلى اليسار.
+            const angle = arc.from + ((arc.to - arc.from) * index) / (items.length - 1);
             const radians = (angle * Math.PI) / 180;
-            const x = -Math.cos(radians) * RADIUS;
-            const y = -Math.sin(radians) * RADIUS;
+            const x = (mode === "bar" ? 1 : -1) * Math.cos(radians) * arc.radius;
+            const y = -Math.sin(radians) * arc.radius;
             const delay = open ? index * 42 : (items.length - 1 - index) * 26;
 
             return (
@@ -226,16 +239,16 @@ export function ComposerFan() {
             }}
           >
             {/*
-              الرسمُ ٣٢ — **بقرار المالك** كالجوّال (`PLUS`، القاعدة ٥١) —
-              ومربّعُ اللمس يبقى ٥٦ فلا يصغر مدارُ القوس ولا مساحةُ الإصبع.
-              والظلُّ على الرسم لا على المربّع، وإلا رُسمت هالةٌ بحجم ٥٦.
+              الرسمُ ٤٢ في وسط الشريط — قرصٌ بارتفاع ٦٢ يحمله — و٣٦ في شريط سطح
+              المكتب، ومربّعُ اللمس ٥٦ في الاثنين. والظلُّ على الرسم لا على
+              المربّع، وإلا رُسمت هالةٌ بحجم ٥٦.
             */}
             <span
               aria-hidden="true"
               className="block rounded-full"
               style={{
-                width: PLUS,
-                height: PLUS,
+                width: arc.plus,
+                height: arc.plus,
                 boxShadow: "0 6px 16px rgba(14,26,36,.35)",
                 backgroundImage: `url(${asset("/composer/plus.png")})`,
                 backgroundSize: "contain",

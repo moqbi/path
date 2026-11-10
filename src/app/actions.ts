@@ -1926,40 +1926,6 @@ export async function startConversation(otherId: string): Promise<void> {
   redirect(`/messages/${id}`);
 }
 
-/**
- * المحادثة داخل عمود الأصدقاء على سطح المكتب — **بقرار المالك**: تُفتح في
- * العمود نفسه بزرّ رجوع لا في الوسط. يردّ ما يرسمه العمود، ويختم القراءة
- * كما تختمها صفحةُ المحادثة. والدائرةُ شرطٌ كما في `startConversation`.
- */
-export async function deskChat(otherId: string) {
-  const user = await requireUser();
-  if (!(await canChat(user.id, otherId))) return { error: "المحادثة بعد قبول الإضافة" } as const;
-  const closed = await dmClosedReason(user.id, otherId);
-  if (closed) return { error: closed } as const;
-  const id = await openConversation(user.id, otherId);
-  return deskThread(id);
-}
-
-/** سطورُ محادثةٍ للعمود — ويُعاد جلبُها بعد كل إرسالٍ وكل بضع ثوانٍ. */
-export async function deskThread(conversationId: string) {
-  const user = await requireUser();
-  const conversation = await conversationFor(user.id, conversationId);
-  if (!conversation) return { error: "المحادثة غير موجودة" } as const;
-  await prisma.message.updateMany({
-    where: { conversationId, senderId: { not: user.id }, readAt: null },
-    data: { readAt: new Date(), deliveredAt: new Date() },
-  });
-  const me = await prisma.user.findUnique({ where: { id: user.id }, select: { isPlus: true } });
-  return {
-    id: conversation.id,
-    meId: user.id,
-    isPlus: Boolean(me?.isPlus),
-    other: { id: conversation.other.id, name: conversation.other.name },
-    people: { [conversation.me.id]: conversation.me, [conversation.other.id]: conversation.other },
-    lines: conversation.messages,
-  } as const;
-}
-
 /** يتحقق أنّ المحادثة لي ثم يردّ معرّفها — كل إرسالٍ يمرّ عليه. */
 async function myConversation(conversationId: string, userId: string): Promise<{ aId: string; bId: string }> {
   const conversation = await prisma.conversation.findUnique({

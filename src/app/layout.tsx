@@ -9,9 +9,12 @@ import { parsePalette, themeVars, veilOf } from "@/lib/theme";
 import { NavProbe } from "@/components/nav";
 import { BASE, asset } from "@/lib/base";
 import { isDesktopRequest } from "@/lib/device";
-import { FriendsPanel } from "@/components/desk/friends-panel";
-import { MePanel } from "@/components/desk/me-panel";
+import { headers } from "next/headers";
+import { DeskRail } from "@/components/desk/rail";
+import { DeskDetail, EmbedGuard } from "@/components/desk/detail";
 import { DeskRefresh } from "@/components/desk/refresh";
+import { unreadCount } from "@/lib/dm";
+import { unseenCount } from "@/lib/notifications";
 
 export const metadata: Metadata = {
   title: "آثار مومنتس · ATHAR Moments",
@@ -46,8 +49,11 @@ export default async function RootLayout({
   const palette = parsePalette(theme?.palette);
   // حجابٌ خفيف: يكفي لقراءة النصّ ولا يطمس الصورة. أعلى من هذا كان يخفيها.
   const veil = veilOf(palette);
-  // سطح المكتب ثلاثة أعمدة (`.desk`)، والجوّال الهيكلُ وحده كما هو.
-  const desk = user ? await isDesktopRequest() : false;
+  // سطح المكتب شريطٌ وهيكلٌ ولوحةُ لحظة (`.desk`)، والجوّال الهيكلُ وحده كما هو.
+  // والصفحةُ داخل اللوحة نفسها (إطار) هيكلٌ وحده: لا لوحةَ داخل لوحة.
+  const framed = (await headers()).get("sec-fetch-dest") === "iframe";
+  const desk = user && !framed ? await isDesktopRequest() : false;
+  const [unread, unseen] = desk && user ? await Promise.all([unreadCount(user.id), unseenCount(user.id)]) : [0, 0];
 
   const shell = (
     <div
@@ -62,6 +68,7 @@ export default async function RootLayout({
       }}
     >
       <NavProbe />
+      <EmbedGuard />
       {/* «ما فيه اتصال» (القاعدة ٣٢١) — للمالك وممنوحي اللوحة كلّها كنسخة التطوير. */}
       {user && canTryStickers(user) ? <OfflineBanner /> : null}
       {/* بطاقةُ الإعلان عند الفتح (القاعدتان ٢٦٧ و٣٣٥). */}
@@ -84,20 +91,15 @@ export default async function RootLayout({
       <body>
         {desk && user ? (
           /*
-            ثلاثة أعمدة على سطح المكتب — **بقرار المالك**: الأصدقاء يميناً،
-            والخطّ الزمنيّ في الوسط، و«أنا» مع الإشعارات يساراً. والوسطُ هو
-            الهيكلُ نفسه بكلّ صفحاته، فما يُفتح فيه يُفتح كما على الجوّال.
-            وتحت ١٢٠٠ بكسل يختفي العمودان ويعود الهيكلُ وحده.
+            سطح المكتب — **بقرار المالك** (القاعدة ٤٥٦): شريطُ أيقوناتٍ في طرف
+            البداية، فالهيكلُ نفسه بكلّ صفحاته، فلوحةُ اللحظة المختارة. وتحت
+            ١٢٠٠ بكسل يختفي الشريطُ واللوحة ويعود الهيكلُ وحده.
           */
-          // ألوانُ الثيم على الأعمدة الثلاثة لا على الوسط وحده.
+          // ألوانُ الثيم على الثلاثة لا على الهيكل وحده.
           <div className="desk" style={palette ? themeVars(palette) : undefined}>
-            <aside className="desk-side desk-side-start" aria-label="الأصدقاء">
-              <FriendsPanel user={user} />
-            </aside>
+            <DeskRail me={{ name: user.name, avatarMediaId: user.avatarMediaId }} unread={unread} unseen={unseen} />
             {shell}
-            <aside className="desk-side desk-side-end" aria-label="أنا والإشعارات">
-              <MePanel user={user} />
-            </aside>
+            <DeskDetail />
             <DeskRefresh />
           </div>
         ) : (

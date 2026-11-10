@@ -7,6 +7,7 @@ import { HTTPException } from "hono/http-exception";
 import { logger } from "hono/logger";
 import { corsOrigins, env, isProd } from "./env";
 import { secureHeaders } from "./middleware/secure";
+import { bodyLimit } from "hono/body-limit";
 import { authRoutes } from "./routes/v1/auth";
 import { circleRoutes, userRoutes } from "./routes/v1/circle";
 import { commentRoutes, feedRoutes, momentRoutes } from "./routes/v1/feed";
@@ -71,6 +72,12 @@ const app = new Hono();
 const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
 
 app.use("*", secureHeaders);
+/*
+  سقفٌ لكلّ جسمِ طلب (تدقيق نوفمبر، AUDIT.md): لا بابَ هنا يستقبل أكثر من مرفقات الدعم
+  (ثلاثُ صورٍ بخمسة ميغا) — الصورُ والمقاطعُ تُرفع إلى R2 مباشرةً. وبلا سقفٍ كان طلبٌ
+  بلا `Content-Length` (مجزّأ) يُقرأ كلُّه في الذاكرة قبل أن يُفحص حجمُه.
+*/
+app.use("*", bodyLimit({ maxSize: 20 * 1024 * 1024, onError: (c) => c.json({ error: "الطلب كبير" }, 413) }));
 app.use(
   "*",
   cors({
