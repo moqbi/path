@@ -49,13 +49,15 @@ const nextConfig: NextConfig = {
     نموذجاً محقوناً من الإرسال خارج النطاق. ولا `script-src`: Next يحقن
     نصوصاً في السطر، وسياسةٌ تكسرها أسوأ من غيابها. و`/api` خارج السياسة
     لأنّ ملفّاته تكتب سياستها بنفسها (`lib/served.ts` بـ`sandbox`).
+    **وصفحةُ اللحظة `/m/*` وحدها تُؤطَّر، ومن نطاقنا وحده** (`'self'`): لوحةُ
+    اللحظة على سطح المكتب إطارٌ لها (القاعدة ٤٥٦). وما سواها `'none'` كما كان.
     والكاميرا والميكروفون والموقع **لهذا النطاق**: القصّةُ والصوتُ واللحظةُ
     تطلبها — `()` كان سيُطفئها.
   */
   async headers() {
     return [
       {
-        source: "/((?!api/).*)",
+        source: "/((?!api/|m/).*)",
         headers: [
           {
             key: "Content-Security-Policy",
@@ -64,15 +66,29 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        source: "/((?!m/).*)",
+        headers: [{ key: "X-Frame-Options", value: "DENY" }],
+      },
+      {
         source: "/:path*",
         headers: [
-          { key: "X-Frame-Options", value: "DENY" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {
             key: "Permissions-Policy",
             value: "camera=(self), microphone=(self), geolocation=(self), payment=()",
           },
+        ],
+      },
+      // القاعدتان العامّتان تستثنيان `/m/`: ترويستان بالاسم نفسه تُرسلان معاً فتغلب الأضيق.
+      {
+        source: "/m/:id",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: "frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'",
+          },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
         ],
       },
     ];

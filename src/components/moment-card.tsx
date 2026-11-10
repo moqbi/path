@@ -280,7 +280,7 @@ function Row({
   children: React.ReactNode;
 }) {
   return (
-    <article className="relative flex items-start gap-2 pb-5">
+    <article data-moment={moment.id} className="relative flex items-start gap-2 pb-5">
       <Spine
         authorId={moment.author.id}
         viewerId={viewerId}

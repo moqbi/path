@@ -3,6 +3,7 @@ import { AthrMark, AthrWordmark } from "@/components/brand";
 import { FollowRow } from "@/components/social";
 import { SiteHead } from "@/components/site-head";
 import { headers } from "next/headers";
+import { WEB_BASE } from "@athar/shared";
 import { siteText, socialLinks, storeUrl } from "@/lib/site";
 
 const COLUMNS = [
@@ -73,7 +74,8 @@ export default async function PublicLayout({ children }: { children: React.React
         brand={
           <Link href="/" className="flex items-center gap-2.5" aria-label="آثار مومنتس">
             <AthrMark size={32} />
-            <span className="flex min-w-0 flex-col leading-none">
+            {/* تحت ٣٨٠ العلامةُ وحدها: «دخول» و«حمّل» ورابطا الخصوصية والشروط لا تترك للاسم مكاناً. */}
+            <span className="flex min-w-0 flex-col leading-none max-[379px]:hidden">
               <span className="hidden sm:block">
                 <AthrWordmark size={15} />
               </span>
@@ -88,6 +90,18 @@ export default async function PublicLayout({ children }: { children: React.React
           </Link>
         }
         action={
+          <div className="flex shrink-0 items-center gap-1.5">
+          {/*
+            «دخول» إلى تطبيق الويب (القاعدة ٤٥٦) — `<a>` لا `Link`: التطبيقُ تحت
+            `/app` مشروعٌ آخر (القاعدة ١٢٢)، والموجّهُ هنا لا يعرف صفحاته.
+          */}
+          <a
+            href={`${WEB_BASE}/login`}
+            className="flex h-9 shrink-0 items-center whitespace-nowrap rounded-full px-3 text-[12.5px] font-bold max-[379px]:px-2.5 sm:px-4"
+            style={{ border: "1.5px solid currentColor" }}
+          >
+            دخول
+          </a>
           <Link
             href={download}
             className="flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-[12.5px] font-bold sm:px-4"
@@ -95,10 +109,11 @@ export default async function PublicLayout({ children }: { children: React.React
           >
             {/* على شاشةٍ ٣٢٠ يتّسع الرأسُ لـ«حمّل» وحدها بجانب رابطَي الخصوصية والشروط. */}
             حمّل<span className="hidden sm:inline"> التطبيق</span>
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <svg className="max-[379px]:hidden" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M19 12H5M11 6l-6 6 6 6" />
             </svg>
           </Link>
+          </div>
         }
       />
 

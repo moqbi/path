@@ -1,35 +1,31 @@
 "use client";
 
+import { Fragment } from "react";
 import Link from "next/link";
 import {
   CircleIcon,
   HomeIcon,
   MessageIcon,
-  StoreIcon,
   UserIcon,
 } from "@/components/icons";
 import { Avatar } from "@/components/ui";
 import { ar } from "@/lib/format";
+import { ComposerFan } from "@/components/composer-fan";
 
 /**
- * خمسةُ أبوابٍ كشريط الجوّال (القاعدة ٢٦١): الإشعاراتُ جرسٌ في رأس اللحظات لا
- * تبويب، و«أنا» صورةُ صاحبها. ولا ضغطةَ مطوّلة: العدساتُ قرصٌ بجانب أوّل يوم.
+ * أربعةُ أبوابٍ وزرُّ النشر في وسطها — **بقرار المالك** (القاعدة ٤٥٦): اللحظات
+ * والأصدقاء، ثمّ الزائد، ثمّ المحادثات و«أنا» بصورة صاحبها. والمتجرُ أيقونةٌ
+ * في رأس اللحظات مع الجرس. وعلى سطح المكتب يختفي الشريطُ كلُّه: شريطُ
+ * الأيقونات يحمل الأقسام (`components/desk/rail.tsx`).
  */
 const TABS = [
   { href: "/", label: "اللحظات", Icon: HomeIcon },
   { href: "/circle", label: "الأصدقاء", Icon: CircleIcon },
   { href: "/messages", label: "المحادثات", Icon: MessageIcon },
-  { href: "/store", label: "المتجر", Icon: StoreIcon },
   { href: "/me", label: "أنا", Icon: UserIcon },
 ];
 
 const PILL = 62;
-
-/**
- * ما له عمودٌ على سطح المكتب لا يتكرّر في شريط الوسط — **بقرار المالك**
- * (القاعدة ٢٠٠): الأصدقاءُ والمحادثاتُ يميناً، و«أنا» يساراً.
- */
-const DESK_ELSEWHERE = new Set(["/circle", "/messages", "/me"]);
 
 /** الشريط السفلي: زجاجٌ عائم بأيقوناتٍ بلا أسماء (القاعدة ٢٢٨). */
 export function TabBarNav({
@@ -62,17 +58,19 @@ export function TabBarNav({
             boxShadow: "0 8px 26px rgba(14,26,36,.28)",
           }}
         >
-          {TABS.map(({ href, label, Icon }) => {
+          {TABS.map(({ href, label, Icon }, index) => {
             const on = href === active;
             const count = href === "/messages" && unread > 0 ? unread : 0;
             return (
+              <Fragment key={href}>
+              {/* مكانُ زرّ النشر في الوسط: القوسُ نفسه مثبّتٌ فوقه (`ComposerFan`). */}
+              {index === 2 ? <span aria-hidden="true" className="shrink-0" style={{ width: 56 }} /> : null}
               <Link
-                key={href}
                 href={href}
                 aria-label={label}
                 title={label}
                 aria-current={on ? "page" : undefined}
-                className={`flex flex-1 items-center justify-center${DESK_ELSEWHERE.has(href) ? " desk-hide" : ""}`}
+                className="flex flex-1 items-center justify-center"
                 style={{ height: PILL - 14, touchAction: "manipulation" }}
               >
                 <span
@@ -101,10 +99,12 @@ export function TabBarNav({
                   ) : null}
                 </span>
               </Link>
+              </Fragment>
             );
           })}
         </div>
       </nav>
+      <ComposerFan />
     </>
   );
 }

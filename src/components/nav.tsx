@@ -45,6 +45,7 @@ export function BackButton({ href, end = false }: { href?: string; end?: boolean
     <button
       type="button"
       aria-label="رجوع"
+      data-back
       onClick={back}
       className="-mr-2 flex h-10 w-10 shrink-0 items-center justify-center"
       style={{ color: end ? "var(--color-chrome-ink)" : "var(--color-chrome-muted)" }}

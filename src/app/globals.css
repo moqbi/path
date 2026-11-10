@@ -222,14 +222,6 @@ h3 {
   height: calc(96px + env(safe-area-inset-bottom));
 }
 
-/* على سطح المكتب يبقى في الشريط بابان (القاعدة ٢٠٠)، فالقرصُ بمقاسهما لا بعرض العمود. */
-@media (min-width: 1200px) {
-  .desk .glassbar > div {
-    max-width: 200px;
-    margin-inline: auto;
-  }
-}
-
 .shell-fixed {
   position: fixed;
   bottom: 0;
@@ -453,183 +445,138 @@ h3 {
 }
 
 /*
- * سطح المكتب ثلاثة أعمدة — **بقرار المالك** (`layout.tsx` ← `.desk`):
- * الأصدقاء يميناً، والهيكلُ في الوسط بعرضٍ أوسع من الهاتف، و«أنا» مع
- * الإشعارات يساراً. والعمودان متساويان فيبقى الوسطُ في وسط الشاشة تماماً —
- * وعليه تُحسب `.shell-fixed` (زرّ النشر والشريط السفلي) بـ`left: 50%`.
- * وتحت ١٢٠٠ بكسل يختفي العمودان ويعود الهيكلُ ٤٣٠ كما كان.
+ * سطح المكتب: شريطُ أيقونات، فالهيكل، فلوحةُ اللحظة — **بقرار المالك**
+ * (`layout.tsx` ← `.desk`، القاعدة ٤٥٦): الشريطُ في طرف البداية يحمل الأقسام،
+ * والهيكلُ بجانبه بكلّ صفحاته كما هي، واللحظةُ المختارة تُفتح في اللوحة
+ * الباقية بتفاعلها وتعليقاتها. وتحت ١٢٠٠ بكسل يعود الهيكلُ ٤٣٠ وحده.
+ * و`.shell-fixed` تُحسب من موضع الهيكل لا من وسط الشاشة.
  */
-.desk-side,
+.desk-rail,
+.desk-detail,
 .desk-only {
   display: none;
 }
 
 @media (min-width: 1200px) {
   .desk {
+    --rail-w: 76px;
+    --shell-w: clamp(430px, 36vw, 560px);
     display: grid;
-    grid-template-columns: minmax(300px, 1fr) minmax(0, 640px) minmax(300px, 1fr);
+    grid-template-columns: var(--rail-w) var(--shell-w) minmax(0, 1fr);
     height: 100dvh;
     overflow: hidden;
   }
 
-  /*
-   * والوسطُ بطاقةٌ كالعمودين (القاعدة ٢٧٣): بهامشهما العلويّ والسفليّ وزواياهما،
-   * فتُقرأ الشاشةُ ثلاثَ لوحاتٍ على أرضٍ واحدة لا لوحتين تطفوان بجانب جدار.
-   */
   .desk > .shell {
     max-width: none;
     width: 100%;
-    height: calc(100dvh - 40px);
-    margin: 20px 0;
-    border-radius: 22px;
-    overflow: hidden;
-    box-shadow: 0 0 0 1px var(--color-line), 0 24px 70px rgba(14, 26, 36, 0.12);
+    margin: 0;
+    box-shadow: none;
+    border-inline-end: 1px solid var(--color-line);
   }
 
   .desk .shell-fixed {
-    max-width: 640px;
-    bottom: 20px;
+    left: auto;
+    right: var(--rail-w);
+    transform: none;
+    width: var(--shell-w);
+    max-width: none;
   }
 
   .desk .desk-only {
     display: flex;
   }
 
-  /* تبويباتٌ لها عمودُها على سطح المكتب (القاعدة ٢٠٠). */
-  .desk .desk-hide {
+  /* الشريطُ السفليّ والجرسُ لهما مكانُهما في شريط الأيقونات. */
+  .desk .desk-hide,
+  .desk .glassbar,
+  .desk .glassbar-fan {
     display: none;
   }
+  .desk .screen:has(.glassbar) .scroll-area::after {
+    height: 24px;
+  }
 
-  .desk-side {
+  .desk-rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 18px 0;
+    background: var(--color-chrome);
+    color: var(--color-chrome-muted, rgba(255, 255, 255, 0.6));
+    position: relative;
+    z-index: 31;
+  }
+  .desk-rail-link {
+    position: relative;
+    display: flex;
+    height: 48px;
+    width: 48px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    transition: background-color 0.15s, color 0.15s;
+  }
+  .desk-rail-link:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+  }
+  .desk-rail-link[aria-current="page"] {
+    background: color-mix(in srgb, var(--color-clay) 18%, transparent);
+    color: var(--color-clay);
+  }
+
+  .desk-detail {
     display: flex;
     min-width: 0;
-    height: 100dvh;
-    padding: 20px 24px;
+    flex-direction: column;
+    background: var(--color-ground);
+  }
+  .desk-detail iframe {
+    height: 100%;
+    width: 100%;
+    border: 0;
   }
 
-  /* العمودُ يلتصق بالوسط، وما زاد من العرض يذهب إلى حافّة الشاشة. */
-  .desk-side-start {
-    justify-content: flex-end;
-  }
-  .desk-side-end {
-    justify-content: flex-start;
+  /* اللحظةُ المفتوحة في اللوحة تُعلَّم في الخطّ، وكلُّ لحظةٍ تُضغط. */
+  .desk .shell [data-moment] {
+    cursor: pointer;
+    border-radius: 18px;
+    transition: background-color 0.15s;
   }
 }
 
-.desk-panel {
-  display: flex;
-  flex-direction: column;
+/*
+ * الصفحةُ داخل لوحة اللحظة (`html.embedded` من `EmbedGuard`): الهيكلُ وحده بعرضٍ
+ * يُقرأ، بلا شريطٍ ولا لوحةٍ ثانية ولو أُعيد رسمُ التخطيط، وبلا زرّ رجوع.
+ */
+html.embedded body {
+  background: var(--color-ground);
+}
+html.embedded .desk {
+  display: block;
+}
+html.embedded .desk-rail,
+html.embedded .desk-detail,
+html.embedded [data-back] {
+  display: none !important;
+}
+html.embedded .shell,
+html.embedded .desk > .shell {
+  max-width: 720px;
   width: 100%;
-  max-width: 360px;
-  min-height: 0;
-  border: 1px solid var(--color-line);
-  border-radius: 22px;
-  background: var(--color-card);
-  box-shadow: 0 1px 2px rgba(14, 26, 36, 0.04), 0 14px 40px rgba(14, 26, 36, 0.07);
-  overflow: hidden;
+  margin-inline: auto;
+  box-shadow: none;
+  border: 0;
 }
-
-.desk-panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 18px 16px 12px;
-  border-bottom: 1px solid var(--color-line);
-}
-
-.desk-panel-body {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-.desk-panel-body[hidden] {
-  display: none;
-}
-
-.desk-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 8px;
-  padding: 8px;
-  border-radius: 14px;
-}
-
-.desk-row:hover {
-  background: var(--color-paper);
-}
-
-.desk-icon-btn {
-  display: flex;
-  height: 34px;
-  width: 34px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  color: var(--color-muted);
-}
-
-.desk-icon-btn:hover {
-  background: var(--color-card);
-  color: var(--color-clay-ink);
-}
-
-.desk-tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  margin: 12px;
-  padding: 4px;
-  border-radius: 14px;
-  background: var(--color-paper);
-}
-
-.desk-tab {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 36px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-ink-2);
-}
-
-.desk-tab[aria-selected="true"] {
-  background: var(--color-card);
-  color: var(--color-ink);
-  box-shadow: 0 1px 3px rgba(14, 26, 36, 0.1);
-}
-
-.desk-tab-badge {
-  display: inline-flex;
-  min-width: 18px;
-  height: 18px;
-  align-items: center;
-  justify-content: center;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: var(--color-live);
-  color: var(--color-on-brand);
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.desk-link {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  font-size: 13.5px;
-  font-weight: 600;
-}
-
-.desk-link:hover {
-  background: var(--color-paper);
+html.embedded .shell-fixed,
+html.embedded .desk .shell-fixed {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 720px;
 }
 
 /*
@@ -850,42 +797,6 @@ h3 {
 }
 .glass-field:focus-within {
   border-color: rgba(246, 185, 59, 0.7);
-}
-
-/* أقسامُ عمود الأصدقاء: عنوانٌ صغير بعدده ثمّ الصفوف. */
-.desk-section {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 16px 6px;
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--color-faint);
-}
-.desk-section::after {
-  content: "";
-  height: 1px;
-  flex: 1;
-  background: var(--color-line);
-}
-.desk-meter {
-  height: 4px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--color-chip);
-}
-.desk-meter > span {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--color-clay);
-}
-.desk-row .desk-icon-btn {
-  opacity: 0.55;
-}
-.desk-row:hover .desk-icon-btn,
-.desk-row .desk-icon-btn:focus-visible {
-  opacity: 1;
 }
 
 /* أعمدةُ ملصق الموسيقى في القصّة (القاعدة ٢٣٨): تتراقص ما دام الصوتُ يُسمع. */

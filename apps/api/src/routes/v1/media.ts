@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
+import { bodyLimit } from "hono/body-limit";
 import { prisma } from "@athar/db";
 import { getObject } from "@athar/storage";
 import { LIMITS, cuid, presignInput } from "@athar/shared";
@@ -57,12 +58,11 @@ export const mediaRoutes = new Hono()
 
   /**
    * الرسالةُ الصوتيّة بجسمها خاماً (القاعدة ٤٢٣): رحلةٌ واحدة بدل رابطٍ ورفعٍ واعتماد.
-   * والحدُّ يُفحص من الترويسة قبل أن يُقرأ الجسم، ثمّ على ما وصل فعلاً.
+   * والحدُّ يُفحص والجسمُ يُقرأ (`bodyLimit`): الترويسةُ وحدها يكتبها المرسل أو يحذفها —
+   * طلبٌ مجزّأ بلا `Content-Length` كان يُقرأ كلُّه في الذاكرة ثمّ يُردّ.
    */
   .use("/voice", rateLimit(30, 60))
-  .post("/voice", async (c) => {
-    const declared = Number(c.req.header("content-length") ?? 0);
-    if (declared > LIMITS.audio) throw badRequest("الملف كبير");
+  .post("/voice", bodyLimit({ maxSize: LIMITS.audio, onError: () => { throw badRequest("الملف كبير"); } }), async (c) => {
     const bytes = new Uint8Array(await c.req.arrayBuffer());
     return c.json(await upload.direct(me(c), c.req.header("content-type") ?? "", bytes), 201);
   })

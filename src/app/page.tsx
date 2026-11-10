@@ -6,7 +6,6 @@ import { circleIds } from "@/lib/circle";
 import { privateTimeline, timeline } from "@/lib/feed";
 import { friendshipSince, togetherMoments } from "@/lib/together";
 import { MomentCard } from "@/components/moment-card";
-import { ComposerFan } from "@/components/composer-fan";
 import { Avatar, Empty, NameTag } from "@/components/ui";
 import { TabBar } from "@/components/tab-bar";
 import { TimelineHead } from "@/components/timeline-head";
@@ -18,7 +17,7 @@ import { WeeklyCard } from "@/components/weekly-card";
 import { welcome } from "@/lib/welcome";
 import { weeklyFor, weeklyShown } from "@/lib/weekly";
 import { AthrHeaderMark } from "@/components/brand";
-import { BellIcon, SparkIcon } from "@/components/icons";
+import { BellIcon, SparkIcon, StoreIcon } from "@/components/icons";
 import { SearchButton } from "@/components/search-sheet";
 import { unseenCount } from "@/lib/notifications";
 import { Lenses } from "@/components/lenses";
@@ -147,8 +146,22 @@ export default async function TimelinePage({
           {trial ? <SearchButton isPlus={user.isPlus} /> : null}
 
           {/*
+            المتجرُ هنا لا في الشريط — **بقرار المالك** (القاعدة ٤٥٦): مكانُه في
+            الشريط أخذه زرُّ النشر. وعلى سطح المكتب له أيقونتُه في شريط الأيقونات.
+          */}
+          <Link
+            href="/store"
+            aria-label="المتجر"
+            title="المتجر"
+            className="desk-hide flex h-10 w-10 items-center justify-center rounded-full"
+            style={{ background: "rgba(255,255,255,.08)", color: "var(--color-chrome-ink)" }}
+          >
+            <StoreIcon size={20} />
+          </Link>
+
+          {/*
             الإشعاراتُ جرسٌ هنا لا تبويب — كالجوّال (القاعدة ٢٦١)، والنقطةُ لما لم
-            يُقرأ (القاعدة ٢٣١). وعلى سطح المكتب لها عمودُها فلا يتكرّر الجرس.
+            يُقرأ (القاعدة ٢٣١). وعلى سطح المكتب جرسُها في شريط الأيقونات.
           */}
           <Link
             href="/notifications"
@@ -325,7 +338,6 @@ export default async function TimelinePage({
         )}
       </TimelineHead>
 
-      <ComposerFan />
       <TabBar active="/" />
     </div>
   );
