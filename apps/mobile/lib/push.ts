@@ -69,21 +69,6 @@ export async function enablePush(): Promise<string | null> {
   }
 }
 
-/**
- * فحصُ التنبيهات من الإعدادات (القاعدة ٤٤٩): التسجيلُ نفسُه بجوابٍ يُقرأ — كان الإقلاعُ يبلع
- * السببَ، فلا يُعرف على هواوي أين وقف. ويقول من أيّ خدمةٍ الرمز.
- */
-export async function checkPush(): Promise<{ ok: boolean; text: string }> {
-  try {
-    const result = await registerPush();
-    if (!result.token) return { ok: false, text: result.reason ?? "لم يُسجَّل الجهاز" };
-    const via = huawei() ? "Huawei Push Kit" : Platform.OS === "ios" ? "Apple عبر Expo" : "Google عبر Expo";
-    return { ok: true, text: `الجهاز مسجّل — ${via}` };
-  } catch (error) {
-    return { ok: false, text: error instanceof Error ? error.message : "تعذّر التسجيل" };
-  }
-}
-
 /** التسجيلُ نفسه، ويقول أين وقف — والإقلاعُ يبلعه. */
 async function registerPush(): Promise<{
   token: string | null;
