@@ -44,6 +44,10 @@ class HuaweiHmsModule : Module() {
       Hms.owned(context, type, promise)
     }
 
+    AsyncFunction("checkUpdate") { promise: Promise ->
+      Hms.checkUpdate(appContext.currentActivity, promise)
+    }
+
     AsyncFunction("manage") { promise: Promise ->
       Hms.manage(appContext.currentActivity, promise)
     }

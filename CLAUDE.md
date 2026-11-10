@@ -4364,6 +4364,13 @@
    ثمّ Google Play ثمّ App Store. **وقسمُ «لحظاته» ذهب من `/admin/u/[id]`** ومعه `removeMomentAsAdmin`
    — بابٌ بلا شاشة (القاعدة ١٣): الإشرافُ على اللحظات من داخل التطبيق حيث تُقرأ (القاعدة ١١٤).
 
+455. **فحصُ التحديث من AppGallery عند كلّ إقلاع** (`checkUpdate` في `modules/huawei-hms` ← `JosApps.getAppUpdateClient`
+   و`checkHuaweiUpdate` في `lib/huawei.ts`) — رُدّت 0.1.5 في هواوي: «Integrate the version update API (checkUpdate)».
+   بعد شاشة الانطلاق، قبل الدخول وبعده، مرّةً لكلّ إقلاع: نسخةٌ أحدث في AppGallery تُعرض نافذتُها (نافذةُ هواوي
+   نفسها، `showUpdateDialog` بلا إلزام). **في بناء `huawei` وحده** (`com.huawei.hms:appservice`)، والبديلُ الفارغ يردّ
+   `off`، وقواعدُ R8 (القاعدة ٤٤٨) تحفظ `com.huawei.updatesdk` و`com.huawei.hms` كما تطلب هواوي. وحدةٌ أصليّة:
+   تحتاج بناءَ هواوي جديداً، والإصدارُ باقٍ ٠٫١٫٥ (`versionCode` يرتفع بنفسه).
+
 ## اتجاه التطبيق على الجوّال
 
 الواجهة عربية من اليمين إلى اليسار في الويب والتطبيق سواء، والاتجاه

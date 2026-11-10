@@ -35,5 +35,7 @@ dependencies {
   if (huawei) {
     implementation 'com.huawei.hms:push:6.13.0.301'
     implementation 'com.huawei.hms:iap:6.16.6.305'
+    // فحصُ التحديث من AppGallery (`checkAppUpdate`) — شرطُ مراجعة هواوي (القاعدة ٤٥٥).
+    implementation 'com.huawei.hms:appservice:6.16.2.300'
   }
 }
