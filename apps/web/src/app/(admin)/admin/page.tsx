@@ -593,6 +593,12 @@ const LOG_ACTION: Record<string, string> = {
   USER_SUSPENDED: "أوقف حساباً",
   USER_RESTORED: "رفع الإيقاف",
   COINS_GRANTED: "منح نقاطاً",
+  AVATAR_REMOVED: "أزال صورة عرض",
+  COVER_REMOVED: "أزال غلافاً",
+  NAME_CHANGED: "غيّر اسماً",
+  HANDLE_CHANGED: "غيّر معرّفاً",
+  HANDLE_REMOVED: "أزال معرّفاً",
+  BIO_REMOVED: "مسح نبذة",
 };
 
 const SECTIONS = [

@@ -2447,3 +2447,78 @@ export async function fixAccount(userId: string, _prev: AdminResult, formData: F
   }
   return { error: "فعلٌ غير معروف" };
 }
+
+// ───────────────────────────── ملفُّ الحساب بيد المشرف ─────────────────────────────
+
+/**
+ * صورةٌ أو غلافٌ أو اسمٌ مخالف يُزال من اللوحة (القاعدة ٤٥٩): كان المشرف يرى المخالفة
+ * ولا يملك إلّا الإيقاف. لمن يدير الحسابات (المالك وممنوحُ اللوحة كلّها) ولمن يملك
+ * الإشراف — والدرجةُ من الصفّ لا من الجلسة. وحسابُ المالك لا يمسّه غيرُه.
+ *
+ * الصورةُ والغلافُ يُزالان ولا يُستبدلان: صورةٌ يختارها المشرفُ لوجه غيره ليست صورتَه،
+ * والفراغُ يعود إلى رسم الحرف الأوّل. والملفُّ يذهب ببكسلاته (القاعدة ١٠٤). وكلُّ تغييرٍ
+ * سطرٌ في السجلّ بما كان قبله — فيُعرف ما أُزيل ومن أزاله.
+ */
+export async function moderateProfile(userId: string, _prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  const actor = await requireUser();
+  const me = await prisma.user.findUnique({
+    where: { id: actor.id },
+    select: { role: true, adminScope: true, canModerate: true },
+  });
+  const owner = me?.role === "ADMIN";
+  if (!owner && me?.adminScope !== "ALL" && !me?.canModerate) return { error: "هذا للمشرفين" };
+
+  const person = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true, name: true, handle: true, bio: true, avatarMediaId: true, coverMediaId: true },
+  });
+  if (!person) return { error: "الحساب غير موجود" };
+  if (person.role === "ADMIN" && !owner) return { error: "حساب المالك لا يُعدَّل من هنا" };
+
+  const log = (action: string, snippet: string | null) =>
+    prisma.moderationLog.create({ data: { adminId: actor.id, action, targetId: userId, ownerId: userId, snippet } });
+  const what = String(formData.get("do") ?? "");
+
+  if (what === "avatar") {
+    if (!person.avatarMediaId) return { error: "لا صورة عرض" };
+    await prisma.user.update({ where: { id: userId }, data: { avatarMediaId: null } });
+    await dropMedia([person.avatarMediaId]).catch(() => {});
+    await log("AVATAR_REMOVED", null);
+  } else if (what === "cover") {
+    if (!person.coverMediaId) return { error: "لا غلاف" };
+    await prisma.user.update({
+      where: { id: userId },
+      data: { coverMediaId: null, coverItemId: null, coverX: 50, coverY: 50, coverZoom: 100 },
+    });
+    await dropMedia([person.coverMediaId]).catch(() => {});
+    await log("COVER_REMOVED", null);
+  } else if (what === "name") {
+    const name = String(formData.get("name") ?? "").trim();
+    if (!name) return { error: "اكتب اسماً" };
+    if (name.length > 40) return { error: "الاسم أطول من ٤٠ حرفاً" };
+    if (name === person.name) return { error: "الاسم كما هو" };
+    await prisma.user.update({ where: { id: userId }, data: { name } });
+    await log("NAME_CHANGED", person.name);
+  } else if (what === "handle") {
+    const handle = String(formData.get("handle") ?? "").trim().replace(/^@/, "").toLowerCase();
+    if (handle && !/^[a-z0-9_]{3,20}$/.test(handle)) {
+      return { error: "المعرّف حروفٌ إنجليزيّة صغيرة وأرقام و_ من ٣ إلى ٢٠ — أو اتركه فارغاً لإزالته" };
+    }
+    if ((handle || null) === person.handle) return { error: "المعرّف كما هو" };
+    if (handle) {
+      const taken = await prisma.user.findFirst({ where: { handle, id: { not: userId } }, select: { id: true } });
+      if (taken) return { error: "المعرّف محجوز لحسابٍ آخر" };
+    }
+    await prisma.user.update({ where: { id: userId }, data: { handle: handle || null } });
+    await log(handle ? "HANDLE_CHANGED" : "HANDLE_REMOVED", person.handle);
+  } else if (what === "bio") {
+    if (!person.bio) return { error: "لا نبذة" };
+    await prisma.user.update({ where: { id: userId }, data: { bio: null } });
+    await log("BIO_REMOVED", person.bio.slice(0, 200));
+  } else {
+    return { error: "إجراءٌ غير معروف" };
+  }
+
+  revalidatePath("/admin", "layout");
+  return { ok: "تمّ" };
+}
