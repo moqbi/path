@@ -4,7 +4,7 @@ import { moderateProfile } from "@/app/actions";
 import { Saver } from "../../saver";
 
 /*
-  ملفُّ الحساب بيد المشرف (القاعدة ٤٥٩): الصورةُ والغلافُ يُزالان، والاسمُ والمعرّفُ
+  ملفُّ الحساب بيد المشرف (القاعدة ٤٥٩): الصورةُ والغلافُ يُستبدلان بصورة «مخالفة»، والاسمُ والمعرّفُ
   يُكتبان من جديد، والنبذةُ تُمسح. كلُّ نموذجٍ يقول نتيجته (`Saver`)، والإزالةُ بخانة
   تأكيد — ملفُّ صاحبها يذهب ببكسلاته فلا رجعة.
 */
@@ -53,7 +53,7 @@ export function ProfileTools({
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={`/api/public/avatar/${memberNo}?v=${avatarId}`} alt="" className="size-24 rounded-full border border-line object-cover" />
-              <Remove userId={userId} act="avatar" label="أزل الصورة" sure="أزلها وأحذف ملفّها" />
+              <Remove userId={userId} act="avatar" label="استبدلها بصورة «مخالفة»" sure="احذف الصورة الحاليّة نهائياً" />
             </>
           ) : (
             <p className="text-[12px] text-muted">لا صورة.</p>
@@ -65,7 +65,7 @@ export function ProfileTools({
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={`/api/public/cover/${memberNo}?v=${coverId}`} alt="" className="h-24 w-full max-w-[280px] rounded-xl border border-line object-cover" />
-              <Remove userId={userId} act="cover" label="أزل الغلاف" sure="أزله وأحذف ملفّه" />
+              <Remove userId={userId} act="cover" label="استبدله بغلاف «مخالف»" sure="احذف الغلاف الحاليّ نهائياً" />
             </>
           ) : (
             <p className="text-[12px] text-muted">لا غلاف من رفعه — وغلافُ الثيم الملبوس يبقى.</p>

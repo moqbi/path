@@ -249,6 +249,19 @@ async function write(
 }
 
 /**
+ * صورةُ «مخالفة» مكانَ صورة العرض أو الغلاف (القاعدة ٤٥٩): ملفٌّ ثابتٌ في
+ * `public/moderated` يُنسخ ملفّاً جديداً لصاحب الحساب — `avatarMediaId` و
+ * `coverMediaId` فريدان، فلا يشير حسابان إلى ملفٍّ واحد — فيراه كلُّ عميلٍ
+ * صورةً عاديّة، والجوّالُ القائم بلا تحديث. ويغيّره صاحبُه كما يغيّر صورتَه.
+ */
+export async function storeModerated(ownerId: string, which: "avatar" | "cover") {
+  const { readFile } = await import("node:fs/promises");
+  const path = await import("node:path");
+  const bytes = new Uint8Array(await readFile(path.join(process.cwd(), "public", "moderated", `${which}.webp`)));
+  return write(ownerId, "image/webp", bytes, which === "avatar" ? 320 : 1200, which === "avatar" ? 320 : 520);
+}
+
+/**
  * حذفٌ نهائيّ: الصفّ والكائن معاً.
  *
  * «لا نحتفظ بها» تعني ألّا تبقى في السحابة أيضاً — فالصفّ وحده لو ذهب
