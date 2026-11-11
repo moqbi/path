@@ -9,7 +9,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { createSession, destroySession, hashPassword, requireUser, verifyPassword } from "@/lib/auth";
 import { HEX_COLOR, PALETTE_KEYS, paletteSpec, parsePalette } from "@/lib/theme";
-import { dropMedia, migrateToCloud, storeSiteShot, storeSticker, storeUpload } from "@/lib/media";
+import { dropMedia, migrateToCloud, storeModerated, storeSiteShot, storeSticker, storeUpload } from "@/lib/media";
 import { cloudReady, probeBucket } from "@/lib/storage";
 import { forgetWords } from "@/lib/moderation";
 import { clear, clientIp, hit, TOO_MANY } from "@/lib/rate-limit";
@@ -2455,8 +2455,8 @@ export async function fixAccount(userId: string, _prev: AdminResult, formData: F
  * ولا يملك إلّا الإيقاف. لمن يدير الحسابات (المالك وممنوحُ اللوحة كلّها) ولمن يملك
  * الإشراف — والدرجةُ من الصفّ لا من الجلسة. وحسابُ المالك لا يمسّه غيرُه.
  *
- * الصورةُ والغلافُ يُزالان ولا يُستبدلان: صورةٌ يختارها المشرفُ لوجه غيره ليست صورتَه،
- * والفراغُ يعود إلى رسم الحرف الأوّل. والملفُّ يذهب ببكسلاته (القاعدة ١٠٤). وكلُّ تغييرٍ
+ * الصورةُ والغلافُ يُستبدلان بصورة «مخالفة» (`storeModerated`) — **بقرار المالك**: فراغٌ لا يقول
+ * لصاحبه لماذا ذهبت صورتُه. والمخالفُ يذهب ملفُّه ببكسلاته (القاعدة ١٠٤). وكلُّ تغييرٍ
  * سطرٌ في السجلّ بما كان قبله — فيُعرف ما أُزيل ومن أزاله.
  */
 export async function moderateProfile(userId: string, _prev: AdminResult, formData: FormData): Promise<AdminResult> {
@@ -2481,14 +2481,16 @@ export async function moderateProfile(userId: string, _prev: AdminResult, formDa
 
   if (what === "avatar") {
     if (!person.avatarMediaId) return { error: "لا صورة عرض" };
-    await prisma.user.update({ where: { id: userId }, data: { avatarMediaId: null } });
+    const swap = await storeModerated(userId, "avatar").catch(() => null);
+    await prisma.user.update({ where: { id: userId }, data: { avatarMediaId: swap?.id ?? null } });
     await dropMedia([person.avatarMediaId]).catch(() => {});
     await log("AVATAR_REMOVED", null);
   } else if (what === "cover") {
     if (!person.coverMediaId) return { error: "لا غلاف" };
+    const swap = await storeModerated(userId, "cover").catch(() => null);
     await prisma.user.update({
       where: { id: userId },
-      data: { coverMediaId: null, coverItemId: null, coverX: 50, coverY: 50, coverZoom: 100 },
+      data: { coverMediaId: swap?.id ?? null, coverItemId: null, coverX: 50, coverY: 50, coverZoom: 100 },
     });
     await dropMedia([person.coverMediaId]).catch(() => {});
     await log("COVER_REMOVED", null);
