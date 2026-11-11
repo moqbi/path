@@ -142,15 +142,20 @@ const STICKY_MS = 10 * 60_000;
 const beacons = new Map<string, { lat: number; lng: number; at: number; until: number }>();
 
 /**
- * آخرُ موضعٍ معروف لمن فعّل التنبيه — من فتح التطبيق (`/v1/places/check-in`)
- * ومن الرادار. ساعةٌ ثمّ يُنسى، وفي الذاكرة وحدها: من لم يفعّله لا يُحفظ له
- * موضعٌ أصلاً.
+ * آخرُ موضعٍ معروف لمن فعّل التنبيه — من كلّ عودةٍ إلى التطبيق (`/v1/places/spot`)
+ * ومن فتحه (`/v1/places/check-in`) ومن الرادار (القاعدة ٤٦٠). ثلاثُ ساعاتٍ ثمّ يُنسى
+ * — كانت ساعةً، ففاتت من فتح التطبيقَ قبلها وجوّالُه في جيبه — وفي الذاكرة وحدها:
+ * من لم يفعّله لا يُحفظ له موضعٌ أصلاً.
  */
-const SPOT_MS = 60 * 60_000;
+const SPOT_MS = 3 * 60 * 60_000;
 const spots = new Map<string, { lat: number; lng: number; at: number }>();
-/** تنبيهٌ واحدٌ في الساعة لكلّ مستلم، وإرسالٌ واحدٌ كل نصف ساعة لكلّ فاتح. */
-const RECEIVE_MS = 60 * 60_000;
-const SEND_MS = 30 * 60_000;
+/**
+ * تنبيهٌ واحدٌ في عشرين دقيقة لكلّ مستلم، وإرسالٌ واحدٌ في عشر دقائق لكلّ فاتح
+ * (القاعدة ٤٦٠) — كانا ساعةً ونصفَ ساعة، فمن جرّبها مرّتين لم يصله شيءٌ في الثانية.
+ * ومن لم يصله التنبيهُ فعلاً (هادئ، بلا جهاز، خطأ) لا يُحسب عليه.
+ */
+const RECEIVE_MS = 20 * 60_000;
+const SEND_MS = 10 * 60_000;
 const received = new Map<string, number>();
 const sent = new Map<string, number>();
 
@@ -234,6 +239,11 @@ async function ringAround(userId: string, spot: { lat: number; lng: number }, bl
       title: "فيه أحد قريب منك",
       body: "فاتح «من حولك» الحين — افتحها وشوف مين",
       path: "/nearby",
+      urgent: true,
+    }).then((outcome) => {
+      // سطرٌ لكلّ تنبيه: «ما وصلني» يُجاب عنه من السجلّ (كجرس الصباح — القاعدة ٣٣٩).
+      console.log(`[من حولك] ${userId} ← ${id}: ${outcome}`);
+      if (outcome !== "sent") received.delete(id);
     });
   }
   return still.length;

@@ -111,6 +111,11 @@ export type PushMessage = {
    * موقَّعاً. أندرويد يرسمها بنفسه، وآبل بامتداد خدمة التنبيهات في البناء.
    */
   image?: string | null;
+  /**
+   * تنبيهُ اللحظة (القاعدة ٤٦٠): «فيه أحد قريب منك» بعد ربع ساعة كذبٌ — صاحبُه مشى.
+   * فيُرمى إن لم يصل في عشر دقائق بدل أن يصل متأخّراً حين يفتح الجهازُ الشبكة.
+   */
+  urgent?: boolean;
 };
 
 /**
@@ -172,6 +177,7 @@ export async function push(message: PushMessage): Promise<PushOutcome> {
         data: message.path ? { path: message.path } : {},
         image: pushImageUrl(message.image),
         badge,
+        urgent: message.urgent,
       });
     }
     const expo = user.devices.filter((device) => device.platform !== "huawei");
@@ -181,6 +187,13 @@ export async function push(message: PushMessage): Promise<PushOutcome> {
         to: device.token,
         title: message.title,
         body: message.body,
+        /*
+          «عالية» صراحةً (القاعدة ٤٦٠): الافتراضيُّ عند Expo «default»، وهو على أندرويد
+          أولويّةُ FCM العاديّة — يُؤجَّل في وضع توفير الطاقة حتى يستيقظ الجهاز، فكان
+          التنبيهُ يصل بعد دقائق. وكلُّ ما يمرّ بـ`push()` فعلُ شخصٍ يخصّ صاحبه.
+        */
+        priority: "high",
+        ...(message.urgent ? { ttl: 600 } : null),
         ...SOUNDS[SOUND_OF[message.kind]],
         ...(badge === null ? null : { badge }),
         data: message.path ? { path: message.path } : {},

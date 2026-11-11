@@ -62,11 +62,39 @@ export async function checkCity(): Promise<void> {
   }
 }
 
+/**
+ * آخرُ موضعٍ لتنبيه «من حولك» (القاعدة ٤٦٠) — مع كلّ عودةٍ لا كلَّ نصف ساعة، وبآخر موضعٍ
+ * يعرفه الجهاز بلا قراءةٍ جديدة ولا تحويلٍ إلى مدينة: ثمنُه لا شيء. والخادمُ يحفظه لمن
+ * فعّل التنبيهَ وحده. ودقيقتان بين سؤالين.
+ */
+const SPOT_EVERY = 2 * 60 * 1000;
+let spotAt = 0;
+
+async function pingSpot(): Promise<void> {
+  const now = Date.now();
+  if (now - spotAt < SPOT_EVERY) return;
+  spotAt = now;
+  try {
+    const { status } = await Location.getForegroundPermissionsAsync();
+    if (status !== "granted") return;
+    const here = await Location.getLastKnownPositionAsync({ maxAge: 30 * 60 * 1000 }).catch(() => null);
+    if (!here) return;
+    await api("/v1/places/spot", {
+      method: "POST",
+      body: JSON.stringify({ lat: here.coords.latitude, lng: here.coords.longitude }),
+    });
+  } catch {
+    spotAt = 0;
+  }
+}
+
 /** يُنادى مرّةً عند الدخول، ثمّ مع كل عودةٍ من الخلفيّة. */
 export function watchCity(): () => void {
   void checkCity();
   const sub = AppState.addEventListener("change", (state) => {
-    if (state === "active") void checkCity();
+    if (state !== "active") return;
+    void pingSpot();
+    void checkCity();
   });
   return () => sub.remove();
 }

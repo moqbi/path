@@ -54,6 +54,8 @@ export type HuaweiNotice = {
   data: Record<string, unknown>;
   image?: string | null;
   badge?: number | null;
+  /** يُرمى إن لم يصل في عشر دقائق (القاعدة ٤٦٠). */
+  urgent?: boolean;
 };
 
 /**
@@ -85,6 +87,7 @@ export async function pushHuawei(tokens: string[], notice: HuaweiNotice): Promis
       message: {
         token: batch,
         android: {
+          ...(notice.urgent ? { ttl: "600s" } : null),
           notification: {
             title: notice.title,
             body: notice.body,

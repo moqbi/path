@@ -5,7 +5,7 @@ import { nearbyPlaces, searchPlaces } from "../../lib/places";
 import { checkInCity } from "../../services/moments";
 import { rememberSpot } from "../../services/discover";
 import { landmark } from "../../lib/landmark";
-import { rateLimit } from "../../middleware/rate-limit";
+import { rateLimit, rateLimitUser } from "../../middleware/rate-limit";
 
 /**
  * الأماكن حول المستخدم.
@@ -62,6 +62,18 @@ export const placeRoutes = new Hono()
     if (!parsed.success) return c.json({ places: [], source: "google" });
     const places = await searchPlaces(parsed.data.lat, parsed.data.lng, text);
     return c.json({ places, source: "google" });
+  })
+
+  /*
+    آخرُ موضعٍ لتنبيه «من حولك» (القاعدة ٤٦٠): مع كلّ عودةٍ إلى التطبيق بلا تحويلٍ
+    إلى مدينة — الفتحُ يسأل `check-in` كلَّ نصف ساعةٍ على الأكثر، فكان الموضعُ قديماً
+    أو منسيّاً ساعةَ يفتح أحدٌ الرادار بجانبه. لا يُكتب شيءٌ في القاعدة.
+  */
+  .post("/spot", rateLimitUser(30, 600), async (c) => {
+    const parsed = query.safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) return c.json({ ok: false });
+    await rememberSpot(me(c), parsed.data);
+    return c.json({ ok: true });
   })
 
   /*
