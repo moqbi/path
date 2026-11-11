@@ -31,6 +31,8 @@ export type StoryMoment = {
   placeCity: string | null;
   musicTitle: string | null;
   musicArtist: string | null;
+  /** لحظةُ الفيديو صورتُها غلافُه (القاعدة ٤٣٤)، فيُقال «الفيديو» لا «الصورة». */
+  videoId?: string | null;
   with?: string[];
   createdAt: Date | string;
 };
@@ -105,7 +107,10 @@ export function leadOf(moment: StoryMoment, gender?: Gender): string {
     }
     case "PHOTO": {
       const where = moment.placeName ? ` في ${moment.placeName}` : "";
-      return `${pick(v, "التقطت هذه الصورة", "التقطتِ هذه الصورة", "صورةٌ")}${where}${withThem ? ` مع ${withThem}` : ""}.`;
+      const shot = moment.videoId
+        ? pick(v, "التقطت هذا الفيديو", "التقطتِ هذا الفيديو", "فيديو")
+        : pick(v, "التقطت هذه الصورة", "التقطتِ هذه الصورة", "صورةٌ");
+      return `${shot}${where}${withThem ? ` مع ${withThem}` : ""}.`;
     }
     case "THOUGHT":
       return `${pick(v, "كتبت ما في خاطرك", "كتبتِ ما في خاطركِ", "خاطرةٌ من القلب")}${along(pick(v, "، وكان ", "، وكان ", "، و"))}.`;
