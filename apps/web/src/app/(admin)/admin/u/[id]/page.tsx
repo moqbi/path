@@ -14,6 +14,7 @@ import { PlusGrant } from "../../plus";
 import { CoinsGrant } from "../../coins";
 import { AdminEmail } from "../../email";
 import { FixButton } from "./fix";
+import { ProfileTools } from "./profile-tools";
 import { SITE_URL } from "@/lib/site-url";
 
 export const metadata: Metadata = { title: "حساب · لوحة التحكم" };
@@ -31,7 +32,7 @@ function Section({ title, hint, children, open = true }: { title: string; hint?:
   );
 }
 
-function Row({ label, value }: { label: string; value: React.ReactNode }) {
+function Row({ label, value }: { label: React.ReactNode; value: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3 py-1 text-[12.5px]">
       <span className="shrink-0 text-muted">{label}</span>
@@ -73,6 +74,9 @@ export default async function ModeratedProfile({
       city: true,
       lastCity: true,
       bio: true,
+      role: true,
+      avatarMediaId: true,
+      coverMediaId: true,
       createdAt: true,
       lastSeenAt: true,
       coins: true,
@@ -108,7 +112,7 @@ export default async function ModeratedProfile({
   if (!person) notFound();
 
   const now = new Date();
-  const [tags, purchases, stickerBuys, topUps, grants, plusSent, plusGot, giftsSent, sessions, access, tickets, billing] =
+  const [tags, purchases, stickerBuys, topUps, grants, plusSent, plusGot, giftsSent, sessions, access, tickets, billing, blocked, blockers] =
     await Promise.all([
       prisma.tag.findMany({ orderBy: { sortOrder: "asc" }, select: { id: true, name: true } }),
       prisma.purchase.findMany({
@@ -145,6 +149,19 @@ export default async function ModeratedProfile({
       prisma.accessEvent.findMany({ where: { userId: id }, orderBy: { lastAt: "desc" }, take: 8, select: { ip: true, device: true, firstAt: true, lastAt: true, hits: true } }),
       prisma.supportTicket.findMany({ where: { userId: id }, orderBy: { createdAt: "desc" }, take: 5, select: { id: true, body: true, createdAt: true, reply: true } }).catch(() => [] as { id: string; body: string; createdAt: Date; reply: string | null }[]),
       prisma.billingEvent.findMany({ where: { appUserId: id }, orderBy: { at: "desc" }, take: 10, select: { type: true, at: true } }).catch(() => [] as { type: string; at: Date }[]),
+      /* الحظرُ في الاتجاهين (القاعدة ٢٤): من حظرهم هو، ومن حظروه — بأسمائهم وروابط صفحاتهم. */
+      prisma.block.findMany({
+        where: { blockerId: id },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+        select: { createdAt: true, blocked: { select: { id: true, name: true, memberNo: true } } },
+      }),
+      prisma.block.findMany({
+        where: { blockedId: id },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+        select: { createdAt: true, blocker: { select: { id: true, name: true, memberNo: true } } },
+      }),
     ]);
 
   /*
@@ -269,7 +286,44 @@ export default async function ModeratedProfile({
           <Row label="الحساب" value={person.isOpen ? "مفتوح" : "عادي"} />
           <Row label="دعاه" value={person.invitedBy ? <Link href={`/admin/u/${person.invitedBy.id}`} className="text-clay-ink"><bdi>{person.invitedBy.name}</bdi> · {ar(person.invitedBy.memberNo)}</Link> : "—"} />
           <Row label="تعليقات · قصص" value={`${ar(person._count.comments)} · ${ar(person._count.stories)}`} />
-          <Row label="حظره" value={`${ar(person._count.blocksGot)} حساب`} />
+          <Row label="حظرهم · حظروه" value={`${ar(blocked.length)} · ${ar(person._count.blocksGot)}`} />
+        </Section>
+
+        {person.role !== "ADMIN" || owner ? (
+          <Section
+            title="الصورة والاسم"
+            hint="لصورةٍ أو اسمٍ مخالف: الصورةُ والغلافُ يُزالان ولا يُستبدلان، والاسمُ والمعرّفُ يُكتبان من جديد. كلُّ تغييرٍ سطرٌ في سجلّ الإشراف بما كان قبله."
+            open={false}
+          >
+            <ProfileTools
+              userId={person.id}
+              memberNo={person.memberNo}
+              name={person.name}
+              handle={person.handle}
+              bio={person.bio}
+              avatarId={person.avatarMediaId}
+              coverId={person.coverMediaId}
+            />
+          </Section>
+        ) : null}
+
+        <Section title={`الحظر (${ar(blocked.length)} · ${ar(blockers.length)})`} open={false} hint="من حظرهم هذا الحساب، ومن حظره. والحظرُ في الاتجاهين يقطع الرؤية والتفاعل والمحادثة.">
+          <p className="mb-1 text-[12px] font-semibold">حظرهم</p>
+          {blocked.length === 0 ? <p className="mb-2 text-[12px] text-muted">لا أحد.</p> : blocked.map((row) => (
+            <Row
+              key={row.blocked.id}
+              label={<Link href={`/admin/u/${row.blocked.id}`} className="text-clay-ink"><bdi>{row.blocked.name}</bdi> · {ar(row.blocked.memberNo)}</Link>}
+              value={when(row.createdAt)}
+            />
+          ))}
+          <p className="mb-1 mt-2 text-[12px] font-semibold">حظروه</p>
+          {blockers.length === 0 ? <p className="text-[12px] text-muted">لا أحد.</p> : blockers.map((row) => (
+            <Row
+              key={row.blocker.id}
+              label={<Link href={`/admin/u/${row.blocker.id}`} className="text-clay-ink"><bdi>{row.blocker.name}</bdi> · {ar(row.blocker.memberNo)}</Link>}
+              value={when(row.createdAt)}
+            />
+          ))}
         </Section>
 
         <Section title="الأجهزة والجلسات" hint="الجلسة دخولٌ على جهاز. «انتهت» = خرج بيده أو أُبطلت. والتنبيهات تصل إلى الأجهزة المسجّلة وحدها.">
