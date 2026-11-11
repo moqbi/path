@@ -296,20 +296,47 @@ function Near({ row }: { row: (p: FoundPerson, alias?: boolean) => React.ReactNo
     void (async () => {
       // إذنُ البلوتوث يُطلب أوّلاً وإذنُ الموقع بعد أن يُجاب: نافذتا نظامٍ معاً قد
       // تبتلع آبل إحداهما، فلا يُرى سؤالُ البلوتوث أصلاً.
-      for (let i = 0; beacon && beacon.authorization() === "undetermined" && i < 100; i++) {
+      // ومن منح الموقعَ من قبلُ لا نافذةَ له تُنتظر — كان ينتظر جوابَ البلوتوث حتى ثلاثين ثانية.
+      const had = await Location.getForegroundPermissionsAsync().catch(() => null);
+      for (let i = 0; had?.status !== "granted" && beacon && beacon.authorization() === "undetermined" && i < 100; i++) {
         await new Promise((r) => setTimeout(r, 300));
         if (!alive) return;
       }
-      const { status } = await Location.requestForegroundPermissionsAsync();
+      const { status } = had?.status === "granted" ? had : await Location.requestForegroundPermissionsAsync();
       if (!alive) return;
       if (status !== "granted") {
         setState("denied");
         return;
       }
       setState("on");
-      const beat = async () => {
+      /*
+         الموضعُ يُقرأ وحده والنبضةُ ترسل آخرَه (القاعدة ٤٥٨): كانت كلُّ نبضةٍ تنتظر قراءةً دقيقةً
+         جديدة — ثوانٍ على آبل وحتى عشرين على هواوي — فيمضي الرادارُ فارغاً. فأوّلُ نبضةٍ بآخر
+         موضعٍ معروف في الحال، والقراءةُ المتوازنة تُصحّحه في الخلفيّة. والمدى كيلومتر فلا حاجةَ
+         لدقّة GPS.
+      */
+      let fix: { lat: number; lng: number } | null = null;
+      const known = await Location.getLastKnownPositionAsync({ maxAge: 10 * 60_000 }).catch(() => null);
+      if (known) fix = { lat: known.coords.latitude, lng: known.coords.longitude };
+      let reading = false;
+      const read = async () => {
+        if (reading) return;
+        reading = true;
         try {
-          const here = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+          const here = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          const first = !fix;
+          fix = { lat: here.coords.latitude, lng: here.coords.longitude };
+          if (first && alive) void beat();
+        } catch {
+          // قراءةٌ فاتت: التاليةُ بعد قليل، والنبضةُ ترسل ما عندها.
+        } finally {
+          reading = false;
+        }
+      };
+      const beat = async () => {
+        if (!fix) return;
+        try {
+          const here = { coords: { latitude: fix.lat, longitude: fix.lng } };
           const res = await api<{ people: FoundPerson[]; rang?: number; autoOn?: boolean }>("/v1/circle/nearby", {
             method: "POST",
             body: JSON.stringify({ lat: here.coords.latitude, lng: here.coords.longitude }),
@@ -324,7 +351,11 @@ function Near({ row }: { row: (p: FoundPerson, alias?: boolean) => React.ReactNo
         }
       };
       void beat();
-      timer.current = setInterval(() => void beat(), 4000);
+      void read();
+      timer.current = setInterval(() => {
+        void read();
+        void beat();
+      }, 3000);
     })();
     return () => {
       alive = false;
@@ -371,7 +402,8 @@ function Near({ row }: { row: (p: FoundPerson, alias?: boolean) => React.ReactNo
       if (alive) renew = setTimeout(() => void fresh(), ok ? 5 * 60_000 : 15_000);
     };
     void fresh();
-    const poll = setInterval(() => {
+    // أوّلُ سؤالٍ بعد ثانيةٍ ونصف لا بعد أربع: ما يُلتقط في أوّل لحظةٍ يُرى في أوّل لحظة.
+    const lookup = () => {
       const seen = native.seen();
       if (!seen.length) {
         setBle([]);
@@ -383,10 +415,13 @@ function Near({ row }: { row: (p: FoundPerson, alias?: boolean) => React.ReactNo
       })
         .then((res) => alive && setBle(res.people))
         .catch(() => {});
-    }, 4000);
+    };
+    const early = setTimeout(lookup, 1500);
+    const poll = setInterval(lookup, 2500);
     return () => {
       alive = false;
       if (renew) clearTimeout(renew);
+      clearTimeout(early);
       clearInterval(poll);
       clearInterval(watch);
       native.stop();

@@ -136,7 +136,7 @@ export async function findPeople(userId: string, raw: string) {
  * فيرى كلٌّ صاحبَه. ومن نبّه أحداً يبقى ظاهراً عشر دقائق (`STICKY_MS`) — من فتح
  * التنبيهَ بعد دقيقةٍ يجده وإن أغلق الشاشة.
  */
-const NEAR_METERS = 150;
+const NEAR_METERS = 1000;
 const ALIVE_MS = 45_000;
 const STICKY_MS = 10 * 60_000;
 const beacons = new Map<string, { lat: number; lng: number; at: number; until: number }>();
