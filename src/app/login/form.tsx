@@ -3,49 +3,10 @@
 import { useActionState, useEffect, useState } from "react";
 import { signIn, signUp } from "@/app/actions";
 import { useGoogleLogin } from "./google";
-import { AthrMark, TAGLINE_AR, TAGLINE_EN } from "@/components/brand";
-import { BackIcon } from "@/components/icons";
-import { BASE, asset } from "@/lib/base";
-
-type Phase = "intro" | "leaving" | "form";
-
-/**
- * الدخول على ثلاث مراحل فوق خلفية ثابتة: يدخل الشعار والعبارتان، ثم
- * يغادران بارتفاع وتلاشٍ، ثم تدخل خيارات الدخول من الأسفل. الخلفية لا
- * تتحرّك أبداً — هي التي تربط المراحل الثلاث ببعضها.
- * تُعرض مرة لكل جلسة متصفح حتى لا تتكرر بعد كل خروج.
- */
-function usePhases(): Phase {
-  const [phase, setPhase] = useState<Phase>("intro");
-
-  useEffect(() => {
-    let seen = false;
-    try {
-      seen = sessionStorage.getItem("athr:intro") === "1";
-    } catch {
-      // التصفح الخاص قد يمنع التخزين — تُعرض المقدمة، ولا شيء يتعطّل.
-    }
-    if (seen) {
-      setPhase("form");
-      return;
-    }
-
-    const leave = setTimeout(() => setPhase("leaving"), 2000);
-    const done = setTimeout(() => {
-      setPhase("form");
-      try {
-        sessionStorage.setItem("athr:intro", "1");
-      } catch {}
-    }, 3100);
-
-    return () => {
-      clearTimeout(leave);
-      clearTimeout(done);
-    };
-  }, []);
-
-  return phase;
-}
+import { AthrWordmark, TAGLINE_AR } from "@/components/brand";
+import { BackIcon, CheckIcon } from "@/components/icons";
+import { BASE } from "@/lib/base";
+import { LiveStrip, Orbit, SceneGround } from "./scene";
 
 const PROVIDERS = [
   { key: "apple", label: "Apple", mark: <AppleMark /> },
@@ -63,16 +24,27 @@ const PROVIDER_NOTICE: Record<string, string> = {
   fail: "تعذّر الدخول. حاول مرة ثانية.",
 };
 
-export function LoginForm({
-  photo,
-  deleted = false,
-  verify = "",
-}: {
-  photo: boolean;
-  deleted?: boolean;
-  verify?: string;
-}) {
-  const phase = usePhases();
+const NEED_CONSENT = "ضع علامة الموافقة على الشروط أولاً";
+
+/**
+ * شاشةُ الدخول بهيئة التطبيق (القاعدة ٣٧١ ← ٤٥٧): المدارُ في أعلى الشاشة،
+ * فالاسمُ والعبارة، فالخطُّ الحيّ، فخياراتُ الدخول في لوحٍ زجاجيّ حيث يصل
+ * الإبهام. وعلى سطح المكتب المشهدُ نفسه موسَّعاً: المدارُ والخطُّ في طرف
+ * البداية، واللوحُ في الطرف الآخر.
+ *
+ * والدخولُ الأوّل في الجلسة يُرى بحركته (`ls-enter`)، وما بعده ساكنٌ في مكانه.
+ */
+export function LoginForm({ deleted = false, verify = "" }: { deleted?: boolean; verify?: string }) {
+  const [enter, setEnter] = useState(true);
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("athr:intro") === "1") setEnter(false);
+      else sessionStorage.setItem("athr:intro", "1");
+    } catch {
+      // التصفّح الخاصّ قد يمنع التخزين — تُعرض الحركة، ولا شيء يتعطّل.
+    }
+  }, []);
+
   const [showEmail, setShowEmail] = useState(false);
   /*
      بابان في مكانٍ واحد لا صفحتان: من فتح الشاشة ليُنشئ حساباً لا
@@ -80,6 +52,8 @@ export function LoginForm({
      الإنشاء وحده.
   */
   const [newcomer, setNewcomer] = useState(false);
+  const [agreed, setAgreed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [state, action, pending] = useActionState(signIn, null);
   const [upState, upAction, upPending] = useActionState(signUp, null);
 
@@ -92,7 +66,8 @@ export function LoginForm({
      حساباً بعد — أُرسل رابطٌ — فترك الحقول مفتوحةً يُقرأ «أعِد
      المحاولة» ويُنشئ طلباً ثانياً بالبريد نفسه.
   */
-  const sent = upState?.ok ?? "";
+  const [confirmed, setConfirmed] = useState("");
+  const sent = upState?.ok && upState.ok !== confirmed ? upState.ok : "";
   const [notice, setNotice] = useState<string | null>(
     // العودة إلى هذه الشاشة بعد الحذف تحتاج جملة تؤكد أن ما طُلب قد تمّ.
     deleted ? "حُذف حسابك وكل ما فيه. تسعدنا عودتك متى شئت." : null,
@@ -105,351 +80,265 @@ export function LoginForm({
   // قوقل يُحمَّل عند أوّل عرضٍ لأزرار المزوّدين، ويفتح نافذته عند الضغط.
   const askGoogle = useGoogleLogin(setNotice);
 
-  const introVisible = phase === "intro";
-  const formVisible = phase === "form";
+  function withProvider(key: string) {
+    setNotice(null);
+    // الموافقةُ قبل كلّ باب: المزوّدُ يُنشئ حساباً لمن لا حسابَ له (القاعدة ٢٠٨).
+    if (!agreed) {
+      setError(NEED_CONSENT);
+      return;
+    }
+    setError(null);
+    if (key === "google") {
+      askGoogle();
+      return;
+    }
+    if (key === "tiktok") {
+      // البدءُ والمبادلةُ على الخادم: السرُّ هناك.
+      window.location.href = `${BASE}/api/tiktok/start`;
+      return;
+    }
+    if (key === "snap") {
+      // البدءُ من الخادم: المتحقّقُ والحارسُ يُولَّدان هناك.
+      window.location.href = `${BASE}/api/snap/start`;
+      return;
+    }
+    setNotice("الدخول بحساب آبل يعمل داخل التطبيق. استخدم البريد هنا.");
+  }
+
+  const consent = (
+    <Consent
+      agreed={agreed}
+      onToggle={() => {
+        setAgreed((was) => !was);
+        setError(null);
+      }}
+    />
+  );
+  const shown = error ?? form.error;
+  // النموذجُ الطويل يُذهب الشريطَ على الجوّال، والمدارَ معه على ما دون ٧٦٠.
+  const long = showEmail || Boolean(sent);
 
   return (
-    <div
-      className="screen login-page relative"
-      style={{
-        backgroundImage: photo
-          ? `linear-gradient(180deg,rgba(14,26,36,.35),rgba(14,26,36,.88)), url(${asset("/login-bg.jpg")})`
-          : [
-              "radial-gradient(120% 60% at 85% 18%, rgba(255,196,120,.55), transparent 60%)",
-              "linear-gradient(180deg,#16293a 0%,#2c4055 30%,#7b6a63 62%,#3d3a3a 78%,#171d24 100%)",
-            ].join(","),
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
-    >
-      {/* تلال متراكبة تعطي الخلفية البديلة عمق المشهد الجبلي. */}
-      {photo ? null : (
-        <>
-          <div
-            className="pointer-events-none absolute inset-x-0"
-            style={{
-              bottom: "22%",
-              height: 190,
-              background: "#2b3a48",
-              opacity: 0.55,
-              clipPath: "polygon(0 62%,18% 30%,34% 55%,52% 18%,72% 48%,88% 26%,100% 46%,100% 100%,0 100%)",
-            }}
-          />
-          <div
-            className="pointer-events-none absolute inset-x-0"
-            style={{
-              bottom: 0,
-              height: 300,
-              background: "#1a2029",
-              clipPath: "polygon(0 55%,14% 32%,30% 52%,48% 22%,66% 46%,84% 28%,100% 50%,100% 100%,0 100%)",
-            }}
-          />
-        </>
-      )}
+    <div className={`screen login-page ls-scene${enter ? " ls-enter" : ""}${long ? " ls-long" : ""}`}>
+      <SceneGround />
 
-      {/*
-        على سطح المكتب (من ١٠٢٤) الشاشةُ كلُّها لا هيكلُ هاتف: العلامةُ في طرف
-        البداية بحجمٍ يملأ مكانها، والخياراتُ بطاقةٌ زجاجيّة في الطرف الآخر —
-        عمودٌ بعرض ٤٣٠ في وسط شاشةٍ عريضة كان يُقرأ ويبَ جوّالٍ مُكبَّراً.
-        والجوّالُ كما هو.
-      */}
-      <div className="relative flex flex-1 flex-col justify-between px-6 pb-10 pt-16 lg:mx-auto lg:w-full lg:max-w-[1120px] lg:flex-row lg:items-center lg:justify-between lg:gap-20 lg:px-16 lg:py-0">
-        {/* المقدّمة: تدخل من الأعلى ثم تغادر إلى الأعلى. */}
-        <div
-          className="flex flex-col items-center pt-6 lg:inset-y-0 lg:justify-center lg:pt-0"
-          style={{
-            opacity: introVisible ? 1 : 0,
-            transform: introVisible
-              ? "translateY(0)"
-              : phase === "leaving"
-                ? "translateY(-28px)"
-                : "translateY(-40px)",
-            transition: "opacity 800ms ease, transform 900ms cubic-bezier(.3,0,.2,1)",
-            pointerEvents: "none",
-            /*
-              المقدّمة مرفوعةٌ من السياق دائماً لا عند ظهور النموذج وحده:
-              رفعُها حينئذٍ كان يترك النموذج وحيداً في حاوية
-              `justify-between` فيقفز إلى أعلى الشاشة — وموضعه أسفلها،
-              فوق حشوة `pb-10`.
-            */
-            position: "absolute",
-            insetInline: 0,
-          }}
-        >
-          <AthrMark size={76} />
-          <span
-            className="latin mt-5"
-            style={{ fontSize: 32, fontWeight: 700, color: "#f7f5ef" }}
-          >
-            ATHAR
-          </span>
-          <span className="mt-5 text-[15px] font-medium" style={{ color: "#f0ece4" }}>
-            {TAGLINE_AR}
-          </span>
-          <span
-            dir="ltr"
-            className="latin mt-1.5 text-center text-[10.5px] leading-relaxed"
-            style={{ color: "#b9b2a8", letterSpacing: "0.1em" }}
-          >
-            {TAGLINE_EN}
-          </span>
-        </div>
-
-        {/*
-          العلامة في أعلى الشاشة: الشعار أوّل ما يُرى، والخيارات في
-          أسفلها حيث يصل الإبهام. وهي تظهر مع الخيارات بالحركة نفسها.
-        */}
-        <div
-          className="flex flex-col items-center pt-2 lg:max-w-[520px] lg:flex-1 lg:items-start lg:pt-0"
-          style={{
-            opacity: formVisible ? 1 : 0,
-            transition: "opacity 700ms ease 120ms",
-            pointerEvents: "none",
-          }}
-        >
-          <AthrMark size={96} />
-          <span
-            className="latin mt-3 text-[26px] font-bold lg:mt-6 lg:whitespace-nowrap lg:text-[46px] lg:leading-none lg:tracking-[0.04em]"
-            style={{ color: "#f7f5ef" }}
-          >
-            ATHAR Moments
-          </span>
-          <span className="mt-2 text-[13px] lg:mt-5 lg:text-[24px] lg:font-bold" style={{ color: "#cbc5bb" }}>
-            {TAGLINE_AR}
-          </span>
-          <span
-            dir="ltr"
-            className="latin mt-2 hidden text-[12px] lg:block"
-            style={{ color: "#b9b2a8", letterSpacing: "0.1em" }}
-          >
-            {TAGLINE_EN}
-          </span>
-          <p
-            className="mt-8 hidden max-w-[440px] text-[15px] leading-[1.9] lg:block"
-            style={{ color: "rgba(247,245,239,.78)" }}
-          >
-            دائرةٌ لا تتجاوز ١٥٠ شخصاً تعرفهم فعلاً: لحظاتُك وقصصُك ونوتُك
-            ومحادثاتُك معهم وحدهم — بلا استكشاف عامّ ولا غرباء.
-          </p>
-        </div>
-
-        {/* خيارات الدخول: تدخل من الأسفل بعد مغادرة المقدّمة. */}
-        <div
-          className="mt-auto lg:mt-0 lg:w-[420px] lg:shrink-0 lg:rounded-[28px] lg:border lg:border-white/10 lg:bg-[rgba(14,26,36,.55)] lg:p-9 lg:shadow-[0_30px_80px_rgba(0,0,0,.35)] lg:backdrop-blur-xl"
-          style={{
-            opacity: formVisible ? 1 : 0,
-            transform: formVisible ? "translateY(0)" : "translateY(26px)",
-            transition: "opacity 700ms ease 120ms, transform 800ms cubic-bezier(.2,.8,.3,1) 120ms",
-            pointerEvents: formVisible ? "auto" : "none",
-          }}
-        >
-          <div className="mb-6 hidden lg:block">
-            <h1 className="text-[24px] font-bold" style={{ color: "#f7f5ef", fontFamily: "Tajawal, sans-serif" }}>
-              {showEmail && newcomer ? "أنشئ حسابك" : "أهلاً بك"}
-            </h1>
-            <p className="mt-1 text-[13px]" style={{ color: "rgba(247,245,239,.62)" }}>
-              {showEmail && newcomer ? "دقيقة واحدة وتكون معنا." : "سجّل دخولك لتكمل مع ناسك."}
-            </p>
+      <div className="ls-layout">
+        <div className="ls-side">
+          {/* الشعار أوّل ما يُرى (القاعدة ٧)، والمدارُ حوله. */}
+          <div className="ls-head">
+            <Orbit />
+            <div className="ls-title">
+              <AthrWordmark size={22} color="#f7f5ef" />
+              <p>{TAGLINE_AR}</p>
+            </div>
           </div>
+          <LiveStrip />
+        </div>
 
-          {verify ? (
-            <p
-              role="alert"
-              className="mb-3 rounded-xl px-4 py-3 text-[12.5px] leading-relaxed"
-              style={{ background: "rgba(14,26,36,.6)", color: "#ffb9a4" }}
-            >
-              {verify}
-            </p>
-          ) : null}
-
-          {sent ? (
-            <div className="flex flex-col gap-3 text-center">
-              <p
-                role="status"
-                className="rounded-xl px-4 py-4 text-[13px] leading-relaxed"
-                style={{ background: "rgba(14,26,36,.6)", color: "#e8e2d8" }}
-              >
-                {sent}
-                <br />
-                <span className="text-[11.5px]" style={{ color: "rgba(247,245,239,.62)" }}>
-                  إن لم تجد الرسالة في الوارد فانظر في «البريد غير الهامّ».
-                </span>
+        {/* خيارات الدخول: تصعد من الأسفل بعد الشريط. */}
+        <div className="ls-form">
+          <div className="ls-glass">
+            {verify ? (
+              <p role="alert" className="ls-note" style={{ color: "#ffb9a4" }}>
+                {verify}
               </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setNewcomer(false);
-                  setShowEmail(true);
-                }}
-                className="text-[12.5px] font-semibold"
-                style={{ color: "rgba(247,245,239,.86)" }}
-              >
-                أكّدتُ — سجّل دخولي
-              </button>
-            </div>
-          ) : showEmail ? (
-            <form action={form.action} className="flex flex-col gap-2.5">
-              <button
-                type="button"
-                onClick={() => setShowEmail(false)}
-                className="mb-1 flex items-center gap-1.5 self-start text-[12.5px]"
-                style={{ color: "#b9b2a8" }}
-              >
-                <BackIcon size={15} /> كل الخيارات
-              </button>
+            ) : null}
 
-              {newcomer ? (
-                <input
-                  name="name"
-                  type="text"
-                  autoComplete="name"
-                  required
-                  maxLength={40}
-                  placeholder="اسمك"
-                  className="rounded-xl px-4 text-[14.5px] outline-none"
-                  style={{
-                    height: 52,
-                    background: "rgba(247,245,239,.1)",
-                    border: "1px solid rgba(247,245,239,.22)",
-                    color: "#f7f5ef",
+            {sent ? (
+              <div className="flex flex-col gap-3">
+                <p role="status" className="ls-note text-center" style={{ fontSize: 13, padding: 16 }}>
+                  {sent}
+                  <br />
+                  <span className="text-[11.5px]" style={{ color: "rgba(247,245,239,.62)" }}>
+                    إن لم تجد الرسالة في الوارد فانظر في «البريد غير الهامّ».
+                  </span>
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfirmed(sent);
+                    setNewcomer(false);
+                    setShowEmail(true);
                   }}
-                />
-              ) : null}
-              <input
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                placeholder="البريد"
-                className="rounded-xl px-4 text-[14.5px] outline-none"
-                style={{
-                  height: 52,
-                  background: "rgba(247,245,239,.1)",
-                  border: "1px solid rgba(247,245,239,.22)",
-                  color: "#f7f5ef",
-                }}
-              />
-              <input
-                name="password"
-                type="password"
-                autoComplete={newcomer ? "new-password" : "current-password"}
-                required
-                minLength={newcomer ? 8 : undefined}
-                placeholder={newcomer ? "كلمة المرور — ٨ أحرف فأكثر" : "كلمة المرور"}
-                className="rounded-xl px-4 text-[14.5px] outline-none"
-                style={{
-                  height: 52,
-                  background: "rgba(247,245,239,.1)",
-                  border: "1px solid rgba(247,245,239,.22)",
-                  color: "#f7f5ef",
-                }}
-              />
-              {form.error ? (
-                <p role="alert" className="text-[12.5px] font-medium" style={{ color: "#ff9d84" }}>
-                  {form.error}
-                </p>
-              ) : null}
-
-              <button
-                type="submit"
-                disabled={form.pending}
-                className="brand-gradient mt-2 flex items-center justify-center rounded-xl text-[15.5px] font-bold disabled:opacity-60"
-                style={{ height: 54, color: "var(--color-on-brand)" }}
-              >
-                {form.pending ? "لحظة…" : form.label}
-              </button>
-
-              {/*
-                 ومن نسي كلمته لا يستطيع الدخول ليطلبها، فبابُها هنا —
-                 ولا تُعرض لمن يُنشئ حساباً: لا كلمةَ له بعدُ لينساها.
-              */}
-              {newcomer ? null : (
-                <a
-                  href={`${BASE}/forgot`}
-                  className="mt-1 text-center text-[12.5px] font-medium"
-                  style={{ color: "rgba(247,245,239,.72)" }}
+                  className="ls-link font-semibold"
+                  style={{ color: "rgba(247,245,239,.86)" }}
                 >
-                  نسيت كلمة المرور؟
-                </a>
-              )}
-
-              <button
-                type="button"
-                onClick={() => setNewcomer((was) => !was)}
-                className="mt-1 text-center text-[12.5px] font-semibold"
-                style={{ color: "rgba(247,245,239,.86)" }}
-              >
-                {newcomer ? "عندي حساب — سجّل دخولي" : "ما عندي حساب — أنشئ واحداً"}
-              </button>
-            </form>
-          ) : (
-            <div className="flex flex-col gap-2.5">
-              <div className="flex gap-2.5">
-                {PROVIDERS.map((provider) => (
-                  <button
-                    key={provider.key}
-                    type="button"
-                    aria-label={`المتابعة بحساب ${provider.label}`}
-                    onClick={() => {
-                      setNotice(null);
-                      if (provider.key === "google") {
-                        askGoogle();
-                        return;
-                      }
-                      if (provider.key === "tiktok") {
-                        // البدءُ والمبادلةُ على الخادم: السرُّ هناك.
-                        window.location.href = `${BASE}/api/tiktok/start`;
-                        return;
-                      }
-                      if (provider.key === "snap") {
-                        // البدءُ من الخادم: المتحقّقُ والحارسُ يُولَّدان هناك.
-                        window.location.href = `${BASE}/api/snap/start`;
-                        return;
-                      }
-                      setNotice(
-                        "الدخول بحساب آبل يعمل داخل التطبيق. استخدم البريد هنا.",
-                      );
-                    }}
-                    className="flex flex-1 items-center justify-center rounded-xl transition hover:brightness-90"
-                    style={{
-                      height: 54,
-                      background: "rgba(247,245,239,.94)",
-                      border: "1px solid rgba(247,245,239,.3)",
-                    }}
-                  >
-                    {provider.mark}
-                  </button>
-                ))}
+                  أكّدتُ — سجّل دخولي
+                </button>
               </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setNewcomer(false);
-                  setShowEmail(true);
+            ) : showEmail ? (
+              <form
+                action={form.action}
+                onSubmit={(event) => {
+                  if (agreed) return;
+                  event.preventDefault();
+                  setError(NEED_CONSENT);
                 }}
-                className="brand-gradient mt-1 flex items-center justify-center rounded-xl text-[15px] font-bold"
-                style={{ height: 54, color: "var(--color-on-brand)" }}
+                className="flex flex-col gap-2.5"
               >
-                المتابعة بالبريد
-              </button>
-
-              {notice ? (
-                <p
-                  role="status"
-                  className="mt-1 rounded-xl px-4 py-3 text-[12px] leading-relaxed"
-                  style={{ background: "rgba(14,26,36,.6)", color: "#e8e2d8" }}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEmail(false);
+                    setError(null);
+                  }}
+                  className="mb-1 flex items-center gap-1.5 self-start text-[12.5px]"
+                  style={{ color: "#b9b2a8" }}
                 >
-                  {notice}
-                </p>
-              ) : null}
-            </div>
-          )}
+                  <BackIcon size={15} /> كل الخيارات
+                </button>
+
+                {newcomer ? (
+                  <input
+                    name="name"
+                    type="text"
+                    autoComplete="name"
+                    required
+                    maxLength={40}
+                    placeholder="اسمك"
+                    className="ls-field"
+                  />
+                ) : null}
+                <input name="email" type="email" autoComplete="email" required placeholder="البريد" className="ls-field" />
+                <input
+                  name="password"
+                  type="password"
+                  autoComplete={newcomer ? "new-password" : "current-password"}
+                  required
+                  minLength={newcomer ? 8 : undefined}
+                  placeholder={newcomer ? "كلمة المرور — ٨ أحرف فأكثر" : "كلمة المرور"}
+                  className="ls-field"
+                />
+                {shown ? (
+                  <p role="alert" className="text-[12.5px] font-medium" style={{ color: "#ff9d84" }}>
+                    {shown}
+                  </p>
+                ) : null}
+
+                <button
+                  type="submit"
+                  disabled={form.pending}
+                  className="brand-gradient mt-2 flex items-center justify-center rounded-xl text-[15.5px] font-bold disabled:opacity-60"
+                  style={{ height: 54, color: "var(--color-on-brand)" }}
+                >
+                  {form.pending ? "لحظة…" : form.label}
+                </button>
+
+                {/*
+                   ومن نسي كلمته لا يستطيع الدخول ليطلبها، فبابُها هنا —
+                   ولا تُعرض لمن يُنشئ حساباً: لا كلمةَ له بعدُ لينساها.
+                */}
+                {newcomer ? null : (
+                  <a href={`${BASE}/forgot`} className="ls-link font-medium" style={{ color: "rgba(247,245,239,.72)" }}>
+                    نسيت كلمة المرور؟
+                  </a>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewcomer((was) => !was);
+                    setError(null);
+                  }}
+                  className="ls-link font-semibold"
+                  style={{ color: "rgba(247,245,239,.86)" }}
+                >
+                  {newcomer ? "عندي حساب — سجّل دخولي" : "ما عندي حساب — أنشئ واحداً"}
+                </button>
+                {consent}
+              </form>
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                <div className="flex gap-2.5">
+                  {PROVIDERS.map((provider) => (
+                    <button
+                      key={provider.key}
+                      type="button"
+                      aria-label={`المتابعة بحساب ${provider.label}`}
+                      onClick={() => withProvider(provider.key)}
+                      className="flex flex-1 items-center justify-center rounded-xl transition hover:brightness-90"
+                      style={{
+                        height: 54,
+                        background: "rgba(247,245,239,.94)",
+                        border: "1px solid rgba(247,245,239,.3)",
+                      }}
+                    >
+                      {provider.mark}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewcomer(false);
+                    setShowEmail(true);
+                    setError(null);
+                  }}
+                  className="brand-gradient mt-1 flex items-center justify-center rounded-xl text-[15px] font-bold"
+                  style={{ height: 54, color: "var(--color-on-brand)" }}
+                >
+                  المتابعة بالبريد
+                </button>
+
+                {/* خطأُ المزوّد يُقرأ هنا تحت أزراره (القاعدة ١٦٩). */}
+                {error ? (
+                  <p role="alert" className="text-center text-[12.5px] font-medium" style={{ color: "#ff9d84" }}>
+                    {error}
+                  </p>
+                ) : null}
+
+                {notice ? (
+                  <p role="status" className="ls-note mt-1">
+                    {notice}
+                  </p>
+                ) : null}
+                {consent}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
+
+/**
+ * الموافقةُ على الشروط تحت أبواب الدخول كلّها (القاعدتان ٢٠٧ و٢٠٨) — نسخةُ
+ * الجوّال. والشروطُ والخصوصيةُ على الموقع العامّ في جذر النطاق لا تحت `/app`.
+ */
+function Consent({ agreed, onToggle }: { agreed: boolean; onToggle: () => void }) {
+  return (
+    <label className="mt-1.5 flex cursor-pointer items-start gap-2.5">
+      <input type="checkbox" checked={agreed} onChange={onToggle} className="peer sr-only" />
+      <span
+        aria-hidden="true"
+        className="mt-px flex shrink-0 items-center justify-center rounded-md peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-white"
+        style={{
+          width: 22,
+          height: 22,
+          border: `1.5px solid ${agreed ? "var(--color-clay)" : "rgba(247,245,239,.6)"}`,
+          background: agreed ? "var(--color-clay)" : "transparent",
+          color: "var(--color-on-brand)",
+        }}
+      >
+        {agreed ? <CheckIcon size={14} /> : null}
+      </span>
+      <span className="min-w-0 flex-1 text-[11.5px] leading-[19px]" style={{ color: "rgba(247,245,239,.78)" }}>
+        أوافق على{" "}
+        <a href="/terms" target="_blank" rel="noopener" className="font-bold underline" style={{ color: "#f7f5ef" }}>
+          شروط الاستخدام
+        </a>{" "}
+        و
+        <a href="/privacy" target="_blank" rel="noopener" className="font-bold underline" style={{ color: "#f7f5ef" }}>
+          سياسة الخصوصية
+        </a>
+        ، ولا تسامح مع المحتوى المسيء أو المستخدمين المسيئين.
+      </span>
+    </label>
+  );
+}
+
 
 /* شعارات المزوّدين — أشكال مبسّطة، بلا استعمال علاماتهم الرسمية. */
 function AppleMark() {
