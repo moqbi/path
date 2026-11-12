@@ -85,7 +85,11 @@ async function hwPurchase(productId: string, type: number): Promise<{ done: bool
   if (result.code === HW.CANCEL) return { done: false, cancelled: true, plus: false };
   // مملوكٌ ولم يصل: يُكمل من قائمة المملوك بدل أن يُردّ.
   if (result.code === HW.OWNED) return { done: true, cancelled: false, plus: await hwRecover(type) };
-  if (result.code !== HW.OK || !result.data) throw new Error(hwProblem(result.code));
+  if (result.code !== HW.OK || !result.data) {
+    // نصُّ هواوي مع الرقم: «غيرُ متاح» وحدها لا تقول أيَّ إعدادٍ ناقص عندهم.
+    const why = result.message?.trim();
+    throw new Error(why ? `${hwProblem(result.code)}\n(${result.code}: ${why})` : hwProblem(result.code));
+  }
   const res = await hwDeliver(result.data, type);
   return { done: true, cancelled: false, plus: Boolean(res.plus) };
 }
