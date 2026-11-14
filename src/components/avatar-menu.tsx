@@ -18,6 +18,10 @@ export type WornItem = {
   mediaId: string | null;
   priceCoins: number;
   plusOnly: boolean;
+  /** يُكتسب بالأيّام لا يُشترى — `null` لما يُشترى. */
+  earnedAfterDays?: number | null;
+  /** مُدَدُ الشراء (القاعدة ٤٤ج): صنفٌ بمُددٍ سعرُه المفرد صفر. */
+  plans?: { days: number; priceCoins: number }[];
 } | null;
 
 const KIND_LABEL: Record<string, string> = {
@@ -142,7 +146,13 @@ function ItemSheet({
 }) {
   const [said, setSaid] = useState<{ ok?: string; error?: string } | null>(null);
   const [pending, start] = useTransition();
-  const free = item.priceCoins === 0;
+  /*
+    صنفٌ بمُددٍ سعرُه المفرد صفر (القاعدة ٤٤ج): كان يُقرأ «يُكتسب بالوقت» ويُشترى بلا
+    مدّةٍ فيردّه الخادم «حدّد المدّة». والويبُ لا يبيع ما له مُدَد — يُقال «من التطبيق».
+  */
+  const plans = item.plans ?? [];
+  const timed = plans.length > 0;
+  const free = !timed && (item.earnedAfterDays != null || item.priceCoins === 0);
 
   return (
     <Sheet onClose={onClose} title={KIND_LABEL[item.kind] ?? "صنف"}>
@@ -160,7 +170,13 @@ function ItemSheet({
             {item.plusOnly ? " · لمشتركي آثار+" : ""}
           </p>
           <p className="mt-1 text-[14px] font-semibold text-clay-ink">
-            {item.priceCoins > 0 ? coinText(item.priceCoins) : "يُكتسب بالوقت"}
+            {timed
+              ? `من ${coinText(Math.min(...plans.map((one) => one.priceCoins)))}`
+              : item.earnedAfterDays != null
+                ? `يُكتسب بعد ${item.earnedAfterDays} يوم`
+                : free
+                  ? "يُكتسب بالوقت"
+                  : coinText(item.priceCoins)}
           </p>
         </div>
       </div>
@@ -171,6 +187,10 @@ function ItemSheet({
           style={{ height: 48, background: "var(--color-chip)", color: "var(--color-ink-2)" }}
         >
           {said?.ok ?? "تملكه — البسه من إكسسواراتك"}
+        </p>
+      ) : timed ? (
+        <p className="mt-3 text-center text-[12px] text-muted">
+          له مُدَدٌ بأسعار — يُشترى من متجر التطبيق حيث تُختار المدّة.
         </p>
       ) : free ? (
         <p className="mt-3 text-center text-[12px] text-muted">هذا الصنف يُكتسب بالوقت لا يُشترى.</p>
