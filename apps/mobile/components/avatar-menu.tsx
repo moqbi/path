@@ -8,9 +8,10 @@ import { MediaImage } from "./media-image";
 import { CloseIcon } from "./icons";
 import { api } from "../lib/api";
 import { keys, useStore } from "../lib/queries";
-import { coinText } from "../lib/format";
+import { ar, coinText, daysLabel } from "../lib/format";
 import { colors } from "../theme/tokens";
 import { Sheet } from "./sheet";
+import { Preview } from "./store-grid";
 import { viewPhoto } from "./photo-viewer";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -172,9 +173,28 @@ function ItemSheet({ item, onClose }: { item: NonNullable<WornItem>; onClose: ()
   const store = useStore();
   const client = useQueryClient();
   const [said, setSaid] = useState<{ ok?: string; error?: string } | null>(null);
+  const [planId, setPlanId] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
+
+  /*
+    الصنفُ كما في المتجر لا كما يُرسل مع الملفّ: هناك مُدَدُه وأسعارُها (القاعدة ٤٤ج)
+    وشرطُ اكتسابه. كان يُقرأ `priceCoins` وحده — وصنفٌ بمُددٍ سعرُه المفرد صفر — فيُقال
+    «يُكتسب بالوقت» ويُشترى بلا مدّةٍ فيردّه الخادم «حدّد المدّة».
+  */
+  const full = store.data?.items.find((one) => one.id === item.id) ?? null;
+  const plans = full?.plans ?? [];
+  const plan = plans.find((one) => one.id === planId) ?? plans[0] ?? null;
+  const isPlus = store.data?.isPlus ?? false;
+  const price = (coins: number) => (isPlus ? Math.round(coins * 0.8) : coins);
+  const earned = full ? full.earnedAfterDays !== null : item.priceCoins === 0;
+  const cost = plan ? price(plan.priceCoins) : price(full?.priceCoins ?? item.priceCoins);
 
   const buy = useMutation({
-    mutationFn: () => api<{ ok?: string }>(`/v1/store/${item.id}/buy`, { method: "POST" }),
+    mutationFn: () =>
+      api<{ ok?: string }>(`/v1/store/${item.id}/buy`, {
+        method: "POST",
+        body: JSON.stringify(plan ? { plan: plan.id } : {}),
+      }),
     onSuccess: (data) => {
       setSaid({ ok: data.ok ?? "صار لك — البسه من إكسسواراتك" });
       void client.invalidateQueries({ queryKey: keys.store });
@@ -187,12 +207,15 @@ function ItemSheet({ item, onClose }: { item: NonNullable<WornItem>; onClose: ()
   });
 
   const owned = store.data?.owned.includes(item.id) ?? false;
-  const free = item.priceCoins === 0;
+  // صنفٌ ليس في المتجر (مخفيٌّ أو داخل حزمة) لا يُشترى من هنا.
+  const sold = store.isSuccess && !full;
 
   return (
     <Sheet onClose={onClose} title={KIND_LABEL[item.kind] ?? "صنف"}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 16, paddingHorizontal: 4, paddingVertical: 8 }}>
-        <ItemArt item={item} size={80} radius={16} />
+        <View style={{ width: 80, height: 80, alignItems: "center", justifyContent: "center" }}>
+          {full ? <Preview item={full} /> : <ItemArt item={item} size={72} radius={16} />}
+        </View>
 
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={{ color: colors.ink, fontSize: 16, fontWeight: "700", textAlign: "right" }}>
@@ -202,11 +225,56 @@ function ItemSheet({ item, onClose }: { item: NonNullable<WornItem>; onClose: ()
             {KIND_LABEL[item.kind] ?? "صنف"}
             {item.plusOnly ? " · لمشتركي آثار+" : ""}
           </Text>
-          <Text style={{ color: colors.clayInk, fontSize: 14, fontWeight: "600", marginTop: 4, textAlign: "right" }}>
-            {item.priceCoins > 0 ? coinText(item.priceCoins) : "يُكتسب بالوقت"}
-          </Text>
+          {store.isLoading ? null : (
+            <Text style={{ color: colors.clayInk, fontSize: 14, fontWeight: "600", marginTop: 4, textAlign: "right" }}>
+              {full && full.earnedAfterDays !== null
+                ? `يُكتسب بعد ${ar(full.earnedAfterDays)} يوم`
+                : sold
+                  ? "غير متاح في المتجر الآن"
+                  : plan
+                    ? `${coinText(cost)} · ${daysLabel(plan.days)}`
+                    : earned
+                      ? "يُكتسب بالوقت"
+                      : coinText(cost)}
+            </Text>
+          )}
         </View>
       </View>
+
+      {/* المُدد كما في بطاقة المتجر: المختارةُ ظاهرة، والضغطُ يفتح البقيّة. */}
+      {plans.length > 0 && !owned && !said?.ok && !earned ? (
+        <View style={{ marginTop: 8 }}>
+          <Pressable
+            onPress={() => setPicking((was) => !was)}
+            style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", height: 44, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card }}
+          >
+            <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600", textAlign: "right" }}>
+              المدّة: {plan ? daysLabel(plan.days) : ""}
+            </Text>
+            <Text style={{ color: colors.muted, fontSize: 13 }}>{picking ? "▴" : "▾"}</Text>
+          </Pressable>
+          {picking ? (
+            <View style={{ marginTop: 4, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, overflow: "hidden" }}>
+              {plans.map((one) => {
+                const on = plan?.id === one.id;
+                return (
+                  <Pressable
+                    key={one.id}
+                    onPress={() => {
+                      setPlanId(one.id);
+                      setPicking(false);
+                    }}
+                    style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 14, paddingVertical: 11, backgroundColor: on ? colors.claySoft : "transparent" }}
+                  >
+                    <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: on ? "700" : "500" }}>{daysLabel(one.days)}</Text>
+                    <Text style={{ color: colors.clayInk, fontSize: 13, fontWeight: "600" }}>{coinText(price(one.priceCoins))}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
 
       {owned || said?.ok ? (
         <View style={{ marginTop: 12, height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.chip }}>
@@ -214,7 +282,7 @@ function ItemSheet({ item, onClose }: { item: NonNullable<WornItem>; onClose: ()
             {said?.ok ?? "تملكه — البسه من إكسسواراتك"}
           </Text>
         </View>
-      ) : free ? (
+      ) : store.isLoading || sold ? null : earned ? (
         <Text style={{ color: colors.muted, fontSize: 12, textAlign: "center", marginTop: 12 }}>
           هذا الصنف يُكتسب بالوقت لا يُشترى.
         </Text>
@@ -239,7 +307,7 @@ function ItemSheet({ item, onClose }: { item: NonNullable<WornItem>; onClose: ()
             <Spinner color={colors.onBrand} />
           ) : (
             <Text style={{ color: colors.onBrand, fontSize: 14, fontWeight: "700" }}>
-              {`اشترِ بـ${coinText(item.priceCoins)}`}
+              {plan ? `اشترِ ${daysLabel(plan.days)} بـ${coinText(cost)}` : `اشترِ بـ${coinText(cost)}`}
             </Text>
           )}
         </Pressable>
@@ -275,13 +343,14 @@ function ItemArt({
         height: size,
         borderRadius: radius,
         overflow: "hidden",
-        backgroundColor: firstColor(item.spec, colors.chip),
+        // الرسمُ المرفوع بلا أرضيّةٍ تحته: التدرّجُ الافتراضيّ كهرمانيّ فيُقرأ جزءاً من الصنف.
+        backgroundColor: item.mediaId ? "transparent" : firstColor(item.spec, colors.chip),
       }}
     >
       {item.mediaId ? (
         <MediaImage
           mediaId={item.mediaId}
-          resizeMode={item.kind === "CHARM" ? "contain" : "cover"}
+          resizeMode={item.kind === "CHARM" || item.kind === "FRAME" ? "contain" : "cover"}
           style={{ width: size, height: size }}
         />
       ) : null}

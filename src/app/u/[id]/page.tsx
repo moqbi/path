@@ -43,6 +43,8 @@ const WORN = {
   frameHole: true,
   priceCoins: true,
   plusOnly: true,
+  earnedAfterDays: true,
+  plans: { select: { days: true, priceCoins: true }, orderBy: { days: "asc" } },
 } as const;
 
 /** ملف صديق: مخططه ولحظاته — لا يفتحه إلا من هو في دائرته. */

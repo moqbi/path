@@ -54,6 +54,8 @@ export default async function ProfilePage({
             frameHole: true,
             priceCoins: true,
             plusOnly: true,
+            earnedAfterDays: true,
+            plans: { select: { days: true, priceCoins: true }, orderBy: { days: "asc" } },
           },
         },
         giftedBy: { select: { name: true } },
