@@ -5,6 +5,7 @@
 # والمفتاحُ `EXPO_TOKEN` سرٌّ في إعدادات المستودع لا في الملفّ. والمتغيّراتُ متغيّراتُ
 # ملفّي `.eas/workflows` حرفاً بحرف — `production` بلا معرّف سناب ولا مفتاحٍ تجريبيّ
 # (القاعدة ١٧٢)، ولا يُنشر إليه إلا بقرار المالك (القاعدة ٢٣٩).
+# ولآبل وأندرويد معاً كـ`prod-update.yml` (القاعدة ٤٥٠): ما يُنشر لآبل وحدها لا يصل بناءَ هواوي.
 name: OTA update
 
 on:
@@ -55,4 +56,4 @@ jobs:
           EXPO_PUBLIC_RC_TEST_KEY: ${{ inputs.channel == 'development' && 'test_bPkuVnVXLCekZPeJHkZQtHucNQi' || '' }}
           CHANNEL: ${{ inputs.channel }}
           MESSAGE: ${{ inputs.message }}
-        run: eas update --branch "$CHANNEL" --platform ios --message "$MESSAGE" --non-interactive
+        run: eas update --branch "$CHANNEL" --platform all --message "$MESSAGE" --non-interactive
