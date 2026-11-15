@@ -9,7 +9,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useKeyboardInset } from "../../lib/keyboard";
 import { Text, TextInput } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams } from "expo-router";
 import { MomentCard } from "../../components/moment-card";
 import { ScreenHeader } from "../../components/screen-header";
 import { useComment, useMoment } from "../../lib/queries";
@@ -18,6 +17,7 @@ import { colors } from "../../theme/tokens";
 import { LockIcon, SendIcon, StickerIcon } from "../../components/icons";
 import { StickerPanel } from "../../components/sticker-panel";
 import { DEV_FEATURES } from "../../lib/dev-features";
+import { useRouteId } from "../../lib/pane";
 
 /**
  * صفحة اللحظة: بطاقةٌ واحدة ثمّ حقلُ التعليق.
@@ -30,7 +30,7 @@ import { DEV_FEATURES } from "../../lib/dev-features";
  */
 export default function MomentPage() {
   const me = useSession((state) => state.me);
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const id = useRouteId();
   const moment = useMoment(id);
   const comment = useComment(id);
   const [body, setBody] = useState("");

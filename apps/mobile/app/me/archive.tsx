@@ -1,7 +1,8 @@
 import { Spinner } from "../../components/spinner";
 import { VideoBadge } from "../../components/moment-video";
 import { useMemo } from "react";
-import { View, Pressable, FlatList, useWindowDimensions } from "react-native";
+import { View, Pressable, FlatList } from "react-native";
+import { useGrid } from "../../lib/pane";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
@@ -16,7 +17,6 @@ import { colors } from "../../theme/tokens";
 import { DEV_FEATURES } from "../../lib/dev-features";
 import { GalleryLobby } from "../../components/gallery-lobby";
 
-const COLUMNS = 3;
 const GAP = 6;
 
 /**
@@ -33,8 +33,8 @@ export default function Archive() {
 
 function ArchiveGrid() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const tile = (width - 40 - GAP * (COLUMNS - 1)) / COLUMNS;
+  // ثلاثةٌ على الجوّال، وما يتّسع بمربّعٍ نحو ١٥٠ على الشاشة العريضة (القاعدة ٤٦٤).
+  const { cell: tile, columns: COLUMNS } = useGrid(GAP);
 
   const years = useQuery({
     queryKey: ["archive", "years"],

@@ -10,6 +10,7 @@ import { Spot } from "./spot";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { barBottom } from "./glass-bar";
 import { colors } from "../theme/tokens";
+import { usePaneWidth } from "../lib/pane";
 
 /**
  * زرّ النشر وقائمته المتطايرة — على نمط Path.
@@ -123,7 +124,8 @@ export function ComposerFan() {
   ] as const;
 
   const screen = Dimensions.get("window");
-  const radius = radiusFor(screen.width);
+  // نصفُ القطر من عرض القائمة التي يجلس فيها الزرّ، لا من عرض الآيباد كلّه (القاعدة ٤٦٤).
+  const radius = radiusFor(usePaneWidth());
 
   return (
     <>

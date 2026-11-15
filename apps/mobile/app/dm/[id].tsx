@@ -8,7 +8,7 @@ import { scrolled } from "../../lib/scrolled";
 import { View, FlatList, Pressable } from "react-native";
 import { Text, TextInput } from "../../components/type";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Picker from "expo-image-picker";
 import { Audio, VOICE_PRESET } from "../../lib/av";
@@ -32,6 +32,7 @@ import { useOpenThread } from "../../lib/open-thread";
 import { useSession } from "../../lib/session";
 import { ar } from "../../lib/format";
 import { colors } from "../../theme/tokens";
+import { useRouteId, go } from "../../lib/pane";
 
 type Line = {
   id: string;
@@ -180,7 +181,7 @@ function inner(mine: boolean) {
 }
 
 export default function Conversation() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const id = useRouteId();
   useOpenThread(`/dm/${id}`);
   const me = useSession((s) => s.me);
   const client = useQueryClient();
@@ -495,13 +496,13 @@ export default function Conversation() {
         // صورةُ من أحادثه مكانَ العلامة — **بقرار المالك**: الرأسُ يقول مع من لا في أيّ تطبيق.
         face={
           other ? (
-            <Pressable accessibilityLabel={`ملف ${other.name}`} onPress={() => router.push(`/u/${other.id}` as never)}>
+            <Pressable accessibilityLabel={`ملف ${other.name}`} onPress={() => go(router, `/u/${other.id}` as never)}>
               <Avatar name={other.name} size={32} mediaId={other.avatarMediaId} frame={other.frame} charm={other.charm} />
             </Pressable>
           ) : undefined
         }
         // اسمُ من أحادثه بابُ ملفّه: من فتح محادثةً قد يريد أن يرى صاحبها.
-        onTitlePress={other ? () => router.push(`/u/${other.id}` as never) : undefined}
+        onTitlePress={other ? () => go(router, `/u/${other.id}` as never) : undefined}
       />
 
       {/* يصعد كلُّه بارتفاع الكيبورد (`useKeyboardInset`) لا بحسابٍ يُخطئ بقدر الرأس. */}

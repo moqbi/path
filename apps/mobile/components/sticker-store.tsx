@@ -1,6 +1,7 @@
 import { Spinner } from "./spinner";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import { useGrid } from "../lib/pane";
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Text } from "./type";
@@ -194,7 +195,6 @@ export function PackShelf({
   focus?: string | null;
   onFocused?: () => void;
 }) {
-  const { width: screen } = useWindowDimensions();
   const [open, setOpen] = useState<StickerPack | null>(null);
   useEffect(() => {
     if (!focus) return;
@@ -203,9 +203,9 @@ export function PackShelf({
     setOpen(hit);
     onFocused?.();
   }, [focus, packs]);
-  const tile = Math.round((screen - 40 - 24) / 3.25);
+  const { cell, strip: tile } = useGrid();
   const cards = packs.map((pack) => (
-    <PackCard key={pack.id} pack={pack} isPlus={isPlus} width={strip ? tile : "30.7%"} onPress={() => setOpen(pack)} />
+    <PackCard key={pack.id} pack={pack} isPlus={isPlus} width={strip ? tile : cell} onPress={() => setOpen(pack)} />
   ));
   return (
     <>

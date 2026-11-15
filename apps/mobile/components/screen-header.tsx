@@ -4,6 +4,7 @@ import { Text } from "./type";
 import { useRouter } from "expo-router";
 import Svg, { Path } from "react-native-svg";
 import { AthrMark } from "./brand";
+import { usePaneRoute } from "../lib/pane";
 import { colors } from "../theme/tokens";
 
 /**
@@ -38,6 +39,8 @@ export function ScreenHeader({
     امتدّ إلى أعلى الشاشة واتّصل بها.
   */
   const insets = useSafeAreaInsets();
+  // في لوحة الشاشة العريضة الرجوعُ يرجع في اللوحة، وآخرُه يُغلقها (القاعدة ٤٦٤).
+  const pane = usePaneRoute();
 
   const backButton =
     back !== undefined ? (
@@ -45,7 +48,7 @@ export function ScreenHeader({
         accessibilityRole="button"
         accessibilityLabel="رجوع"
         hitSlop={12}
-        onPress={() => (router.canGoBack() ? router.back() : router.replace(back as never))}
+        onPress={() => (pane ? pane.back() : router.canGoBack() ? router.back() : router.replace(back as never))}
       >
         <BackChevron />
       </Pressable>

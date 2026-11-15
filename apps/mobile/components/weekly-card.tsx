@@ -9,6 +9,7 @@ import { api } from "../lib/api";
 import { ar } from "../lib/format";
 import { getItem, setItem } from "../lib/store";
 import { colors } from "../theme/tokens";
+import { go } from "../lib/pane";
 
 type Person = { id: string; name: string; avatarMediaId: string | null };
 type Weekly = {
@@ -53,7 +54,7 @@ export function WeeklyCard() {
     setClosed(id);
     void setItem(KEY, id!).catch(() => {});
   };
-  const open = (person: Person) => router.push(`/u/${person.id}` as never);
+  const open = (person: Person) => go(router, `/u/${person.id}` as never);
 
   const tiles = [
     { icon: <BookIcon size={15} color={colors.clayInk} />, value: week.circle.moments, label: "لحظة" },
@@ -103,7 +104,7 @@ export function WeeklyCard() {
         {week.topMoment ? (
           <Section icon={<SunIcon size={15} color={colors.ink2} />} title="أكثر لحظة حرّكت الدائرة">
             <Pressable
-              onPress={() => router.push(`/m/${week.topMoment!.id}` as never)}
+              onPress={() => go(router, `/m/${week.topMoment!.id}` as never)}
               style={{ flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 14, backgroundColor: colors.paper, padding: 10 }}
             >
               <Avatar name={week.topMoment.person.name} mediaId={week.topMoment.person.avatarMediaId} size={36} />
