@@ -26,6 +26,8 @@ import { ar, presence } from "../../lib/format";
 import { useSession } from "../../lib/session";
 import { NameTag } from "../../components/name-tag";
 import { colors } from "../../theme/tokens";
+import { go } from "../../lib/pane";
+import { Split } from "../../components/split";
 
 /**
  * الدائرة.
@@ -52,7 +54,7 @@ const ONLINE_GREEN = "#2FB36B";
 const onlineNow = (lastSeenAt: string | null) =>
   Boolean(lastSeenAt) && Date.now() - new Date(lastSeenAt as string).getTime() < 3 * 60_000;
 
-export default function Circle() {
+export function Circle() {
   // ضغطةُ التبويب المفتوح ترجع إلى أعلاه (القاعدة ١٥٧).
   const list = useRef<Pick<FlatList, "scrollToOffset"> | null>(null);
   useTabTop(() => list.current?.scrollToOffset({ offset: 0, animated: true }));
@@ -141,7 +143,7 @@ export default function Circle() {
   /* المحادثة من صفّ الصديق: السحبُ يكشفها مع الإزالة والحظر. */
   const talk = useMutation({
     mutationFn: (id: string) => api<{ id: string }>(`/v1/dm/with/${id}`, { method: "POST" }),
-    onSuccess: (row) => router.push(`/dm/${row.id}` as never),
+    onSuccess: (row) => go(router, `/dm/${row.id}` as never),
     onError: (problem) => chatRefused(problem, null),
   });
 
@@ -250,7 +252,7 @@ export default function Circle() {
                   {/* طلبُه إذنٌ بأن يُرى ملفُّه (القاعدة ٤٤٩): الصورةُ والاسمُ بابٌ إليه، ومنه يُقبل أو يُرفض. */}
                   <Pressable
                     accessibilityLabel={`ملف ${request.requester.name}`}
-                    onPress={() => router.push(`/u/${request.requester.id}` as never)}
+                    onPress={() => go(router, `/u/${request.requester.id}` as never)}
                     style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 10 }}
                   >
                     <Avatar
@@ -337,7 +339,7 @@ export default function Circle() {
             }}
           >
           <Pressable
-            onPress={() => router.push(`/u/${friend.id}` as never)}
+            onPress={() => go(router, `/u/${friend.id}` as never)}
             style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12 }}
           >
             {/* غيرُ المتصل رماديّ والمتصلُ بألوانه — يُقرأ من الصورة قبل السطر (القاعدة ٤٢٦). */}
@@ -448,5 +450,14 @@ export default function Circle() {
         </Sheet>
       ) : null}
     </SafeAreaView>
+  );
+}
+
+/** على الشاشة العريضة القائمةُ ولوحةٌ بجانبها (القاعدة ٤٦٤). */
+export default function CircleTab() {
+  return (
+    <Split host="circle" empty="اختر صديقاً لتفتح ملفّه هنا">
+      <Circle />
+    </Split>
   );
 }

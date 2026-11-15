@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from "expo-router";
-import Timeline from "../(tabs)/index";
+import { Timeline } from "../(tabs)/index";
 
 /**
  * «آثارنا» مع صديقٍ بعينه — شاشةٌ في المكدّس فوق ما فُتحت منه (القاعدة ٣١٤): سحبُ الحافّة

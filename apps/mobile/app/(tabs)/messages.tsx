@@ -26,6 +26,8 @@ import { useSession } from "../../lib/session";
 import { ar, presence, relative } from "../../lib/format";
 import { NameTag } from "../../components/name-tag";
 import { colors } from "../../theme/tokens";
+import { go } from "../../lib/pane";
+import { Split } from "../../components/split";
 
 type Row = {
   id: string;
@@ -86,7 +88,7 @@ function Last({ row, meId }: { row: Row; meId: string }) {
   );
 }
 
-export default function Messages() {
+export function Messages() {
   // ضغطةُ التبويب المفتوح ترجع إلى أعلاه (القاعدة ١٥٧).
   const listRef = useRef<Pick<FlatList, "scrollToOffset"> | null>(null);
   useTabTop(() => listRef.current?.scrollToOffset({ offset: 0, animated: true }));
@@ -179,7 +181,7 @@ export default function Messages() {
     : [];
   const start = useMutation({
     mutationFn: (id: string) => api<{ id: string }>(`/v1/dm/with/${id}`, { method: "POST" }),
-    onSuccess: (row) => router.push(`/dm/${row.id}` as never),
+    onSuccess: (row) => go(router, `/dm/${row.id}` as never),
     onError: (problem) => chatRefused(problem, null),
   });
 
@@ -348,7 +350,7 @@ export default function Messages() {
             }}
           >
           <Pressable
-            onPress={() => router.push(`/dm/${item.id}` as never)}
+            onPress={() => go(router, `/dm/${item.id}` as never)}
             style={{ flexDirection: "row", alignItems: "center", gap: 11, paddingHorizontal: 20, paddingVertical: 11 }}
           >
             <Avatar
@@ -434,5 +436,14 @@ export default function Messages() {
       </Modal>
     </SafeAreaView>
     </>
+  );
+}
+
+/** على الشاشة العريضة القائمةُ ولوحةٌ بجانبها (القاعدة ٤٦٤). */
+export default function MessagesTab() {
+  return (
+    <Split host="messages" empty="اختر محادثةً لتفتحها هنا">
+      <Messages />
+    </Split>
   );
 }

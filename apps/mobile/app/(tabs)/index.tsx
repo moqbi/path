@@ -33,6 +33,7 @@ import { colors } from "../../theme/tokens";
 import { DEV_FEATURES } from "../../lib/dev-features";
 import { SCROLL_CLOCK_H, ScrollClock, clockMinutes } from "../../components/scroll-clock";
 import { useScrollLock } from "../../lib/scroll-lock";
+import { Split } from "../../components/split";
 
 const COVER = COVER_HEIGHT;
 
@@ -55,7 +56,7 @@ const rubber = (dy: number) => (dy <= 0 ? 0 : PULL_MAX * (1 - Math.exp(-dy / 119
 /** ما يدخل الغلافَ من الخيط (القاعدة ٣٣٤): قطعةٌ قصيرة لا عمودٌ بطوله. */
 const COVER_THREAD = 22;
 
-export default function Timeline({ lens }: { lens?: { with: string } } = {}) {
+export function Timeline({ lens }: { lens?: { with: string } } = {}) {
   // المحتوى يمرّ تحت الشريط الزجاجيّ، وآخرُه يُقرأ فوقه (القاعدة ٢٢٨).
   const barSpace = useBarSpace();
   const me = useSession((s) => s.me);
@@ -917,5 +918,14 @@ function Lenses({ view, isPlus, stacked = false }: { view: string; isPlus: boole
         })}
       </View>
     </Spot>
+  );
+}
+
+/** على الشاشة العريضة القائمةُ ولوحةٌ بجانبها (القاعدة ٤٦٤). */
+export default function TimelineTab() {
+  return (
+    <Split host="index" empty="اختر لحظةً لتفتحها هنا">
+      <Timeline />
+    </Split>
   );
 }

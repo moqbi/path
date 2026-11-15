@@ -4,6 +4,7 @@ import { SITE_URL, hasSite } from "@athar/shared";
 import { Text } from "./type";
 import { api } from "../lib/api";
 import { colors } from "../theme/tokens";
+import { go } from "../lib/pane";
 
 type Account = { id: string; memberNo: number; name: string } | null;
 
@@ -30,7 +31,7 @@ export function SupportLine() {
       لمتابعة آخر الأخبار والتواصل مع الدعم داخل التطبيق{" "}
       <Text
         accessibilityRole="link"
-        onPress={() => router.push(`/u/${account.id}` as never)}
+        onPress={() => go(router, `/u/${account.id}` as never)}
         style={{ color: colors.clayInk, fontWeight: "700", writingDirection: "ltr" }}
       >
         {link}

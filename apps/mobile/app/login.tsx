@@ -28,6 +28,7 @@ import { SITE_URL, hasSite } from "@athar/shared";
 import { useSession } from "../lib/session";
 import { BackToParked } from "../components/accounts-sheet";
 import { brandGradient, colors } from "../theme/tokens";
+import { useWide } from "../lib/pane";
 
 /**
  * حركةُ الدخول مرةً واحدة لكل تشغيل.
@@ -101,6 +102,7 @@ export default function Login() {
   const [enter] = useState(() => !introSeen);
   const insets = useSafeAreaInsets();
   const { height: screenHeight } = useWindowDimensions();
+  const wide = useWide();
   const keyboard = useKeyboardHeight();
   const signIn = useSession((s) => s.signIn);
   const adopt = useSession((s) => s.adopt);
@@ -303,10 +305,12 @@ export default function Login() {
           paddingTop: insets.top + 8,
           paddingBottom: typing ? keyboard + 12 : Math.max(insets.bottom, 12) + 8,
           justifyContent: "flex-end",
+          // على الآيباد المشهدُ في طرف البداية واللوحُ في الآخر، كدخول الويب العريض (القاعدة ٤٦٤).
+          ...(wide ? { flexDirection: "row", alignItems: "stretch", paddingHorizontal: 24, gap: 24 } : null),
         }}
       >
-        {typing ? null : (
-          <>
+        {typing && !wide ? null : (
+          <Column wide={wide} grow>
             {/* الشعار أوّل ما يُرى (القاعدة ٧)، والمدارُ حوله. */}
             <View style={{ alignItems: "center" }}>
               {compact ? null : <Orbit enter={enter} />}
@@ -317,13 +321,14 @@ export default function Login() {
                 <Text style={{ marginTop: 4, fontSize: 13.5, fontWeight: "600", color: "#d6dde2" }}>{TAGLINE_AR}</Text>
               </Animated.View>
             </View>
-            {longForm ? <View style={{ flex: 1 }} /> : <LiveStrip enter={enter} />}
-          </>
+            {longForm && !wide ? <View style={{ flex: 1 }} /> : <LiveStrip enter={enter} />}
+          </Column>
         )}
 
         {/* خيارات الدخول: تصعد من الأسفل بعد الشريط. */}
+        <Column wide={wide}>
         <Animated.View
-          style={{ paddingHorizontal: 12, marginTop: 8, opacity: formFade, transform: [{ translateY: formRise }] }}
+          style={{ paddingHorizontal: wide ? 0 : 12, marginTop: 8, opacity: formFade, transform: [{ translateY: formRise }] }}
         >
           <GlassPanel>
           {sent ? (
@@ -528,6 +533,7 @@ export default function Login() {
           )}
           </GlassPanel>
         </Animated.View>
+        </Column>
       </View>
     </View>
   );
@@ -658,5 +664,18 @@ function TikTokMark() {
       <Path d={TIKTOK_PATH} fill="#FE2C55" transform="translate(0.9 0.9)" />
       <Path d={TIKTOK_PATH} fill="#0E1A24" />
     </Svg>
+  );
+}
+
+/**
+ * عمودٌ في دخول الشاشة العريضة (القاعدة ٤٦٤): المشهدُ يملأ ما بقي، واللوحُ بعرض ٤٤٠ في
+ * وسط ارتفاعه. وعلى الجوّال لا شيء — الأبناءُ في عمود الشاشة كما كانوا.
+ */
+function Column({ wide, grow, children }: { wide: boolean; grow?: boolean; children: React.ReactNode }) {
+  if (!wide) return <>{children}</>;
+  return (
+    <View style={grow ? { flex: 1, minWidth: 0, justifyContent: "center" } : { width: 440, justifyContent: "center" }}>
+      {children}
+    </View>
   );
 }

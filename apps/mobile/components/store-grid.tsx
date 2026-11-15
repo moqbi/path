@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { View, Pressable, Modal, useWindowDimensions } from "react-native";
+import { View, Pressable, Modal } from "react-native";
+import { useGrid } from "../lib/pane";
 import { RtlStrip } from "./rtl-strip";
 import { Text } from "./type";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -260,8 +261,8 @@ export function StoreGrid({
 }) {
   const client = useQueryClient();
   // بطاقةُ الصفّ بعرض بطاقة الشبكة تقريباً، ويظهر طرفُ الرابعة فيُعرف أنّه يُمرَّر.
-  const { width: screen } = useWindowDimensions();
-  const stripTile = Math.round((screen - 40 - 24) / 3.25);
+  // مقاسُ البطاقة من عرض ما يُرسم فيه لا من ثلث الشاشة (القاعدة ٤٦٤).
+  const { cell, strip: stripTile } = useGrid();
   const [error, setError] = useState<string | null>(null);
   /* البطاقة المفتوحة: الضغطة تعرض لا تشتري. */
   const [open, setOpen] = useState<StoreItem | null>(null);
@@ -700,7 +701,7 @@ export function StoreGrid({
                 setOpen(item);
               }}
               style={{
-                width: row ? stripTile : "30.7%",
+                width: row ? stripTile : cell,
                 alignItems: "center",
                 gap: 10,
                 paddingTop: 14,

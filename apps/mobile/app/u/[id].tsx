@@ -8,7 +8,7 @@ import { markSeen } from "../../lib/seen";
 import { View, Pressable, Animated } from "react-native";
 import { Text } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ProfileHead } from "../../components/profile-head";
 import { SharedInterests, type FriendInterests } from "../../components/interests-sheet";
@@ -30,6 +30,7 @@ import { useSession } from "../../lib/session";
 import { useStatusNotes } from "../../lib/status-notes";
 import { colors } from "../../theme/tokens";
 import { useScrollLock } from "../../lib/scroll-lock";
+import { go, useRouteId, useReplace } from "../../lib/pane";
 
 type Person = {
   id: string;
@@ -83,7 +84,7 @@ type Person = {
   الملفّ التالي فيتعطّل زرُّ «أضفه» حتى يُغلق التطبيق.
 */
 export default function ProfileScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const id = useRouteId();
   // رابطُ المشاركة (`/u/<رقم العضوية>`) يفتح هذه الشاشة برقمٍ لا بمعرّف
   // (القاعدة ٢٢٥) — يُحلّ إلى المعرّف ثمّ يُستبدل المسار.
   if (/^\d+$/.test(id ?? "")) return <ByNumber memberNo={id} />;
@@ -91,7 +92,7 @@ export default function ProfileScreen() {
 }
 
 function ByNumber({ memberNo }: { memberNo: string }) {
-  const router = useRouter();
+  const replace = useReplace();
   const found = useQuery({
     queryKey: ["user-by-number", memberNo],
     queryFn: () => api<{ id: string }>(`/v1/users/no/${memberNo}`),
@@ -99,8 +100,9 @@ function ByNumber({ memberNo }: { memberNo: string }) {
   });
   const target = found.data?.id;
   useEffect(() => {
-    if (target) router.replace(`/u/${target}` as never);
-  }, [target, router]);
+    if (target) replace(`/u/${target}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target]);
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.ground, alignItems: "center", justifyContent: "center", gap: 10 }}>
       {found.isError ? (
@@ -120,7 +122,7 @@ function Profile() {
   const me = useSession((state) => state.me);
   const client = useQueryClient();
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const id = useRouteId();
 
   const person = useQuery({
     queryKey: keys.user(id),
@@ -173,7 +175,7 @@ function Profile() {
   /** المحادثة تُفتح من هنا: تُنشأ إن لم تكن، ثم نذهب إليها. */
   const talk = useMutation({
     mutationFn: () => api<{ id: string }>(`/v1/dm/with/${id}`, { method: "POST" }),
-    onSuccess: (row) => router.push(`/dm/${row.id}` as never),
+    onSuccess: (row) => go(router, `/dm/${row.id}` as never),
     onError: (problem) => chatRefused(problem, person.data?.person.avatarMediaId ?? null),
   });
   /*

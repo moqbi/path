@@ -20,6 +20,7 @@ import { LinkPreview } from "./link-preview";
 import { colors } from "../theme/tokens";
 import { ar, relative } from "../lib/format";
 import { keys, useAudience, type Moment } from "../lib/queries";
+import { go } from "../lib/pane";
 
 /**
  * من تفاعل: صورته وعليها وجهُه.
@@ -62,7 +63,7 @@ export function Reactors({
           key={reaction.userId}
           accessibilityLabel={`ملف ${reaction.name}`}
           onPress={() =>
-            router.push((reaction.userId === viewerId ? "/me" : `/u/${reaction.userId}`) as never)
+            go(router, (reaction.userId === viewerId ? "/me" : `/u/${reaction.userId}`) as never)
           }
           style={{ width: size, height: size }}
         >
@@ -120,7 +121,7 @@ export function AuthorFaces({ momentId, count }: { momentId: string; count?: num
         <Pressable
           key={user.id}
           accessibilityLabel={reaction ? `${user.name} تفاعل` : `${user.name} شاهد`}
-          onPress={() => router.push(`/u/${user.id}` as never)}
+          onPress={() => go(router, `/u/${user.id}` as never)}
           style={{ width: 32, height: 32 }}
         >
           <View style={{ opacity: reaction ? 1 : 0.38 }}>
@@ -219,7 +220,7 @@ export function CommentList({
         >
           <Pressable
             onPress={() =>
-              router.push((comment.user.id === viewerId ? "/me" : `/u/${comment.user.id}`) as never)
+              go(router, (comment.user.id === viewerId ? "/me" : `/u/${comment.user.id}`) as never)
             }
             // الإطارُ يخرج عن مربّع الصورة، والصفُّ يقصّ ما خرج (يُسحب للحذف).
             style={{ margin: frameBleed(size, comment.user.frame ?? null) }}
@@ -278,7 +279,7 @@ export function CommentList({
                           key={index}
                           suppressHighlighting
                           onPress={() =>
-                            router.push((part.person!.id === viewerId ? "/me" : `/u/${part.person!.id}`) as never)
+                            go(router, (part.person!.id === viewerId ? "/me" : `/u/${part.person!.id}`) as never)
                           }
                           style={{ color: colors.clayInk, fontWeight: "700" }}
                         >
@@ -402,7 +403,7 @@ export function Bubble({
         كان الباقي يختفي بلا أثرٍ يقول إنّ هناك غيرها.
       */}
       {moment._count.comments > moment.comments.length ? (
-        <Pressable onPress={() => router.push(`/m/${moment.id}` as never)} style={{ marginTop: 8 }}>
+        <Pressable onPress={() => go(router, `/m/${moment.id}` as never)} style={{ marginTop: 8 }}>
           <Text style={{ color: colors.clayInk, fontSize: 12, fontWeight: "600" }}>
             كل التعليقات ({ar(moment._count.comments)})
           </Text>

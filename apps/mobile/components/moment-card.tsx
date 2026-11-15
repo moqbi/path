@@ -26,6 +26,7 @@ import { showVisitors } from "./place-visitors";
 import { ar, MONTHS, relative, timeOfDay } from "../lib/format";
 import { useCircle, useRings, type Moment } from "../lib/queries";
 import { openNote, useStatusNotes } from "../lib/status-notes";
+import { go } from "../lib/pane";
 
 /** عمود الصور على محور الخط: نفس ٥٦ التي في الويب (`w-14`). */
 export const SPINE_W = 56;
@@ -244,7 +245,7 @@ export function MomentCard({
           {index > 0 ? " و" : ""}
           <Text
             accessibilityRole="link"
-            onPress={() => router.push((person.id === viewerId ? "/me" : `/u/${person.id}`) as never)}
+            onPress={() => go(router, (person.id === viewerId ? "/me" : `/u/${person.id}`) as never)}
             style={{ color: colors.clayInk, fontWeight: "700" }}
           >
             {person.name}
@@ -254,7 +255,7 @@ export function MomentCard({
     </>
   );
   const open = () => {
-    if (!here) router.push(`/m/${moment.id}` as never);
+    if (!here) go(router, `/m/${moment.id}` as never);
   };
   // الذكرى المُشارَكة بطاقةٌ ولو كان أصلُها سطرَ حدث (القاعدة ٤٣٠): شاركها صاحبُها
   // ليُقرأ ما عاشه، وسطرٌ على الورق بين أسطر اليوم لا يقول إنّها ذكرى.
@@ -281,7 +282,7 @@ export function MomentCard({
         onPress={() => {
           if (freshStory) router.push(`/stories/${moment.author.id}` as never);
           else if (freshNote) openNote(freshNote.id);
-          else router.push((moment.author.id === viewerId ? "/me" : `/u/${moment.author.id}`) as never);
+          else go(router, (moment.author.id === viewerId ? "/me" : `/u/${moment.author.id}`) as never);
         }}
       >
         {/* دوائرُ تنبض حول الصورة للقصّة والنوت سواء — **بقرار المالك** (`PulseRing`). */}
@@ -368,7 +369,7 @@ export function MomentCard({
               <>
                 {linked.before}
                 <Text
-                  onPress={() => router.push(`/u/${linked.id}` as never)}
+                  onPress={() => go(router, `/u/${linked.id}` as never)}
                   style={{ color: colors.clayInk, fontWeight: "700" }}
                 >
                   {linked.name}

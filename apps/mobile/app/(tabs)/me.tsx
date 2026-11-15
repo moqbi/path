@@ -29,6 +29,7 @@ import { ar, dayLabel } from "../../lib/format";
 import { useStatusNotes } from "../../lib/status-notes";
 import { colors } from "../../theme/tokens";
 import { useScrollLock } from "../../lib/scroll-lock";
+import { Split } from "../../components/split";
 
 const COVER = COVER_HEIGHT;
 
@@ -161,7 +162,7 @@ function Action({
  * الرأس ثابت — الغلاف والصورة والأرقام والأزرار — ولحظاتي وحدها تمرّ
  * تحته على الخيط نفسه الذي في «اللحظات».
  */
-export default function Me() {
+export function Me() {
   // المحتوى يمرّ تحت الشريط الزجاجيّ، وآخرُه يُقرأ فوقه (القاعدة ٢٢٨).
   const barSpace = useBarSpace();
   // النوتُ فوق الصورة (القاعدة ٢٦٩).
@@ -444,5 +445,14 @@ export default function Me() {
       </View>
 
     </SafeAreaView>
+  );
+}
+
+/** على الشاشة العريضة القائمةُ ولوحةٌ بجانبها (القاعدة ٤٦٤). */
+export default function MeTab() {
+  return (
+    <Split host="me" empty="اختر لحظةً من لحظاتك لتفتحها هنا">
+      <Me />
+    </Split>
   );
 }

@@ -135,6 +135,9 @@ export function GlassSheet({
           {...pan.panHandlers}
           style={{
             marginHorizontal: 10,
+            // على الآيباد نافذةٌ بعرض جوّال في أسفل الشاشة كنوافذ النظام، لا شريطٌ بعرضها (القاعدة ٤٦٤).
+            width: Math.min(Dimensions.get("window").width - 20, 560),
+            alignSelf: "center",
             marginBottom: Math.max(insets.bottom, 12),
             maxHeight: height * 0.78,
             transform: [{ translateY: drag }, { scale }],

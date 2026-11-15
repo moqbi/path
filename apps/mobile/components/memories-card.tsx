@@ -13,6 +13,7 @@ import { useToday, type MemoryGroup, type Occasion, type ShareAudience } from ".
 import { useCircle, type Moment } from "../lib/queries";
 import { ar, MONTHS } from "../lib/format";
 import { colors } from "../theme/tokens";
+import { go } from "../lib/pane";
 
 /** «٣ أكتوبر ٢٠٢٥» — ميلاديٌّ بالعربية (القاعدة ١١٨). */
 export function dateText(iso: string) {
@@ -140,7 +141,7 @@ function MemoryRow({ moment, onShared }: { moment: Moment; onShared: () => void 
 
   return (
     <View style={{ paddingVertical: 8 }}>
-      <Pressable onPress={() => router.push(`/m/${moment.id}` as never)} style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+      <Pressable onPress={() => go(router, `/m/${moment.id}` as never)} style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
         <View style={{ width: 54, height: 54, borderRadius: 12, overflow: "hidden", backgroundColor: colors.chip, alignItems: "center", justifyContent: "center" }}>
           {moment.mediaId ? (
             <MediaImage mediaId={moment.mediaId} style={{ width: 54, height: 54 }} />
@@ -183,7 +184,7 @@ function OccasionRow({ occasion, moment }: { occasion: Occasion; moment: Moment 
   const router = useRouter();
   return (
     <View style={{ paddingVertical: 8 }}>
-      <Pressable onPress={() => router.push(`/u/${occasion.friend.id}` as never)} style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+      <Pressable onPress={() => go(router, `/u/${occasion.friend.id}` as never)} style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
         <View>
           <Avatar name={occasion.friend.name} size={46} mediaId={occasion.friend.avatarMediaId} />
           <View style={{ position: "absolute", bottom: -2, right: -2, width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center", backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line }}>
@@ -199,7 +200,7 @@ function OccasionRow({ occasion, moment }: { occasion: Occasion; moment: Moment 
       </Pressable>
       {moment ? (
         <Pressable
-          onPress={() => router.push(`/m/${moment.id}` as never)}
+          onPress={() => go(router, `/m/${moment.id}` as never)}
           style={{ marginTop: 8, marginRight: 58, flexDirection: "row", alignItems: "center", gap: 10, padding: 8, borderRadius: 12, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line }}
         >
           {moment.mediaId ? (
