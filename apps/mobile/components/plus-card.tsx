@@ -1,17 +1,64 @@
-import { useEffect, useState } from "react";
-import { View, Pressable } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { AccessibilityInfo, Animated, Easing, View, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { Text } from "./type";
-import { SparkIcon } from "./icons";
+import { CameraIcon, CoinIcon, SparkIcon, StickerIcon, VerifiedIcon } from "./icons";
 import { billingReady, openManage, plans, type Plan } from "../lib/billing";
 import { colors } from "../theme/tokens";
 
-/** سطرُ المزايا المختصر تحت العنوان — والقائمةُ كاملةً في صفحة آثار+. */
-const BRIEF = "١٠٠٠ نقطة شهرياً · صورة عرض متحركة · وسم «داعم» وشارة التوثيق";
+/** أقراصُ المزايا تحت العنوان — النقاط، والصورة المتحركة، وشارة التوثيق، والملصقات، وآثار+ نفسُه.
+ *  والقائمةُ كاملةً بأسمائها في صفحة آثار+ («المزيد»). */
+const PERK_ICONS = [CoinIcon, CameraIcon, VerifiedIcon, StickerIcon, SparkIcon];
+
+/** يطفو في مكانه: صعودٌ ونزولٌ بستّ نقاطٍ متتابعٌ بين الأقراص — على المحرّك الأصليّ، وساكنٌ لمن طلب «قلّل الحركة». */
+function FloatingPerks({ offset }: { offset: number }) {
+  const [still, setStill] = useState(false);
+  const values = useRef(PERK_ICONS.map(() => new Animated.Value(0))).current;
+
+  useEffect(() => {
+    void AccessibilityInfo.isReduceMotionEnabled().then(setStill).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (still) return;
+    const loops = values.map((v, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay((i * 260 + offset) % 1400),
+          Animated.timing(v, { toValue: 1, duration: 1100, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+          Animated.timing(v, { toValue: 0, duration: 1100, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        ]),
+      ),
+    );
+    loops.forEach((l) => l.start());
+    return () => loops.forEach((l) => l.stop());
+  }, [still, values, offset]);
+
+  return (
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 5, paddingTop: 6, marginBottom: 10 }}>
+      {PERK_ICONS.map((Icon, i) => (
+        <Animated.View
+          key={i}
+          style={{
+            width: 26,
+            height: 26,
+            borderRadius: 13,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: colors.goldSoft,
+            transform: [{ translateY: values[i].interpolate({ inputRange: [0, 1], outputRange: [0, -6] }) }],
+          }}
+        >
+          <Icon size={14} color={colors.goldInk} />
+        </Animated.View>
+      ))}
+    </View>
+  );
+}
 
 /**
  * بطاقتا «آثار+ شهري» و«آثار+ سنوي» جنباً إلى جنب أوّلَ «المميز» — **بقرار المالك** (القاعدة ٤٦٥):
- * في كلٍّ العنوانُ، فسطرُ مزايا، فالسعرُ من المتجر ومدّتُه (3.1.2)، ثمّ «اشتراك» يفتح صفحةَ الاشتراك
+ * في كلٍّ العنوانُ، فأقراصُ مزايا تطفو في مكانها (وعلى السنويّ «خصم ١٦٫٧٪»)، فالسعرُ من المتجر ومدّتُه (3.1.2)، ثمّ «اشتراك» يفتح صفحةَ الاشتراك
  * ويبدأ شراءَ باقته (`/subscribe?plan=`) و«المزيد» يفتح صفحةَ مزايا آثار+ كما هي.
  */
 export function PlusCards({ isPlus }: { isPlus: boolean }) {
@@ -47,7 +94,21 @@ export function PlusCards({ isPlus }: { isPlus: boolean }) {
                 {yearly ? "آثار+ سنوي" : "آثار+ شهري"}
               </Text>
             </View>
-            <Text style={{ color: colors.muted, fontSize: 11, lineHeight: 18, marginBottom: 10 }}>{BRIEF}</Text>
+            {yearly ? (
+              <View
+                style={{
+                  alignSelf: "flex-start",
+                  borderRadius: 8,
+                  paddingHorizontal: 7,
+                  paddingVertical: 2,
+                  backgroundColor: colors.clay,
+                  marginBottom: 2,
+                }}
+              >
+                <Text style={{ color: colors.onBrand, fontSize: 10.5, fontWeight: "700" }}>خصم ١٦٫٧٪</Text>
+              </View>
+            ) : null}
+            <FloatingPerks offset={yearly ? 650 : 0} />
 
             {/* السعرُ والمدّةُ معاً (3.1.2) — من المتجر لا من الكود، وبلاه المدّةُ وحدها. */}
             <Text style={{ color: colors.ink, fontSize: 16, fontWeight: "700", writingDirection: "auto" }}>
