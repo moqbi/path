@@ -20,7 +20,7 @@ import { DEV_FEATURES } from "../../lib/dev-features";
 import { useStickers } from "../../lib/stickers";
 import { PackShelf, freshPacks } from "../../components/sticker-store";
 import { openStoreSection } from "../../lib/store-section";
-import { PlusCard } from "../../components/plus-card";
+import { PlusCards } from "../../components/plus-card";
 
 /**
  * عنوان صفٍّ في «المميز» — واللهب رسمٌ لا إيموجي، كبقية أيقونات التطبيق.
@@ -308,7 +308,7 @@ export default function Store() {
           ) : (
             <>
               {/* بطاقةُ «اشتراك آثار+» أوّلَ «المميز» — **بقرار المالك** (القاعدة ٤٦٥). */}
-              {data ? <PlusCard isPlus={data.isPlus} /> : null}
+              {data ? <PlusCards isPlus={data.isPlus} /> : null}
               {/* ترتيبُ «المميز» — **بقرار المالك**: الجديد، فالمحدود، فالتشارمز، فالإطارات، فالثيمات، فالحزم. */}
               {shelf("وصل حديثاً", data?.rows.fresh ?? [], true)}
               {/* مجموعةُ ملصقاتٍ جديدة خبرٌ كالصنف الجديد — صفٌّ تحته في القسم نفسه. */}
