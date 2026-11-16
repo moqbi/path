@@ -45,7 +45,7 @@ pnpm --filter @athar/mobile exec expo start
 يُجرَّب بتحديث قناة `development`، ثمّ يُرفع حارسُه مع البناء القادم. وتحديثُ OTA
 يصل إلى ٠٫١٫٥ وحده (`runtimeVersion` من الإصدار — القاعدة ٢٣٩).
 
-## ٠٫١٫٥ لهواوي (AppGallery) — قيد المراجعة
+## ٠٫١٫٥ لهواوي (AppGallery) — منشور
 
 ملفّ البناء `huawei` في `eas.json` (يمتدّ من `production` وقناتُه `production`، فيصله OTA
 الإصدار نفسه — `platform: all` في `prod-update.yml`). وحدةُ `modules/huawei-hms` تحمل

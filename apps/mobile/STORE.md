@@ -38,13 +38,13 @@
 | البند | القيمة |
 | --- | --- |
 | App Store | **منشور** — الإصدار ٠٫١٫٥ (SDK 58) — ما فيه في `CHANGELOG.md` |
-| AppGallery (هواوي) | **قيد المراجعة** — ٠٫١٫٥ ببناء `huawei`، App ID `119730833`. رُدّت مرّةً لغياب `checkUpdate` (القاعدة ٤٥٥). والاشتراكُ المتجدّد يُطلب من هواوي بالبريد (`BILLING.md`) |
-| Google Play | لم يُرفع |
+| AppGallery (هواوي) | **منشور** — ٠٫١٫٥ ببناء `huawei`، App ID `119730833`. رُدّت مرّةً لغياب `checkUpdate` (القاعدة ٤٥٥) ثمّ قُبلت. والاشتراكُ المتجدّد يُطلب من هواوي بالبريد (`BILLING.md`) |
+| الآيباد | **لم يُبنَ** — الدعمُ في `main` (القاعدة ٤٦٤)، ومعه البناءُ القادم: ٠٫١٫٦ ولقطاتُ آيباد ١٣ بوصة في App Store Connect |
 | `ascAppId` | `6814671198` (في `eas.json` ← `submit.production`) |
 | سياسة الخصوصية | `https://atharmts.com/privacy` |
 | الدعم | `https://atharmts.com/contact` |
 | الشروط (EULA) | `https://atharmts.com/terms` — تُكتب في وصف المتجر نصّاً (القاعدة ١٨٩) |
-| Google Play | لم يُنشر بعد |
+| Google Play | لم يُرفع |
 
 ولا `store.config.json` هنا: البياناتُ تُحرَّر في App Store Connect مباشرةً،
 وملفٌّ يُدفع بـ`eas metadata:push` يكتب فوق ما حُرِّر هناك.
