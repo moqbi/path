@@ -20,6 +20,7 @@ import { DEV_FEATURES } from "../../lib/dev-features";
 import { useStickers } from "../../lib/stickers";
 import { PackShelf, freshPacks } from "../../components/sticker-store";
 import { openStoreSection } from "../../lib/store-section";
+import { PlusCard } from "../../components/plus-card";
 
 /**
  * عنوان صفٍّ في «المميز» — واللهب رسمٌ لا إيموجي، كبقية أيقونات التطبيق.
@@ -306,6 +307,8 @@ export default function Store() {
             grid((data?.items ?? []).filter((item) => item.categoryId === category.id))
           ) : (
             <>
+              {/* بطاقةُ «اشتراك آثار+» أوّلَ «المميز» — **بقرار المالك** (القاعدة ٤٦٥). */}
+              {data ? <PlusCard isPlus={data.isPlus} /> : null}
               {/* ترتيبُ «المميز» — **بقرار المالك**: الجديد، فالمحدود، فالتشارمز، فالإطارات، فالثيمات، فالحزم. */}
               {shelf("وصل حديثاً", data?.rows.fresh ?? [], true)}
               {/* مجموعةُ ملصقاتٍ جديدة خبرٌ كالصنف الجديد — صفٌّ تحته في القسم نفسه. */}
@@ -328,16 +331,6 @@ export default function Store() {
             </>
           )}
 
-          {data && !data.isPlus ? (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 20, borderRadius: 16, borderWidth: 1, borderColor: colors.goldLine, backgroundColor: colors.goldSoft, padding: 16 }}>
-              <View style={{ width: 36, height: 36, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: "#f0e4c8" }}>
-                <SparkIcon size={19} color={colors.gold} />
-              </View>
-              <Text style={{ flex: 1, color: colors.ink2, fontSize: 12, lineHeight: 21 }}>
-                مشتركو <Text style={{ fontWeight: "600", color: colors.goldInk }}>آثار+</Text> يحصلون على ١٠٠٠ نقطة شهرياً وخصم ٢٠٪
-              </Text>
-            </View>
-          ) : null}
 
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingBottom: 24 }}>
             <InfoIcon size={13} color={colors.groundFaint} />
