@@ -596,7 +596,7 @@ async function mentionTargets(userId: string, momentId: string, authorId: string
  * الردود (القاعدة ٤٦٦): من علّق على لحظةٍ يصله تنبيهٌ بكلّ تعليقٍ بعده — لا الكاتبُ نفسُه، ولا
  * صاحبُ اللحظة (وصله «تعليق جديد على لحظتك»)، ولا من أُشير إليه (وصله «أشار إليك»). ولمن ما
  * زال يرى اللحظة وحده (`canSeeMoment` — الحظرُ والجمهورُ فيه): تعليقُ غريبٍ عنه على لحظةٍ لم
- * تُكتب له خبرٌ عمّا لا يراه. أحدثُ خمسين معلّقاً، ولا ينتظره التعليق.
+ * تُكتب له خبرٌ عمّا لا يراه. كلُّ من علّق قبله بلا سقف، ولا ينتظره التعليق.
  */
 async function notifyThread(
   userId: string,
@@ -613,8 +613,6 @@ async function notifyThread(
       where: { momentId, userId: { notIn: [...skip] } },
       select: { userId: true },
       distinct: ["userId"],
-      orderBy: { createdAt: "desc" },
-      take: 50,
     });
     const author = await prisma.user.findUnique({ where: { id: authorId }, select: { name: true } });
     for (const row of rows) {
@@ -622,8 +620,8 @@ async function notifyThread(
       void push({
         userId: row.userId,
         kind: "REPLY",
-        title: `ردّ جديد من ${name}`,
-        body: `على لحظة ${author?.name ?? ""}: ${body.slice(0, 100)}`,
+        title: `تعليق جديد على لحظة ${author?.name ?? ""}`.trim(),
+        body: `${name}: ${body.slice(0, 110)}`,
         path: `/m/${momentId}`,
         image,
       });
@@ -681,12 +679,15 @@ export async function addComment(userId: string, momentId: string, body: string,
     });
   }
   // ومن أُشير إليه يصله تنبيهٌ بالتعليق — وصاحبُ اللحظة وصله تنبيهُ التعليق أعلاه فلا يُقرع مرّتين.
+  const owner = mentionIds.length
+    ? await prisma.user.findUnique({ where: { id: moment.authorId }, select: { name: true } })
+    : null;
   for (const id of mentionIds) {
     if (id === moment.authorId) continue;
     void push({
       userId: id,
       kind: "TAG",
-      title: `${comment.user.name} أشار إليك في تعليق`,
+      title: `${comment.user.name} ذكرك في لحظة ${owner?.name ?? ""}`.trim(),
       body: comment.body.slice(0, 120),
       path: `/m/${momentId}`,
       image: comment.sticker?.mediaId ?? moment.mediaId,
