@@ -622,8 +622,8 @@ async function notifyThread(
       void push({
         userId: row.userId,
         kind: "REPLY",
-        title: `ردّ جديد من ${name}`,
-        body: `على لحظة ${author?.name ?? ""}: ${body.slice(0, 100)}`,
+        title: `تعليق جديد على لحظة ${author?.name ?? ""}`.trim(),
+        body: `${name}: ${body.slice(0, 110)}`,
         path: `/m/${momentId}`,
         image,
       });
@@ -681,12 +681,15 @@ export async function addComment(userId: string, momentId: string, body: string,
     });
   }
   // ومن أُشير إليه يصله تنبيهٌ بالتعليق — وصاحبُ اللحظة وصله تنبيهُ التعليق أعلاه فلا يُقرع مرّتين.
+  const owner = mentionIds.length
+    ? await prisma.user.findUnique({ where: { id: moment.authorId }, select: { name: true } })
+    : null;
   for (const id of mentionIds) {
     if (id === moment.authorId) continue;
     void push({
       userId: id,
       kind: "TAG",
-      title: `${comment.user.name} أشار إليك في تعليق`,
+      title: `${comment.user.name} ذكرك في لحظة ${owner?.name ?? ""}`.trim(),
       body: comment.body.slice(0, 120),
       path: `/m/${momentId}`,
       image: comment.sticker?.mediaId ?? moment.mediaId,
