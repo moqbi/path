@@ -240,7 +240,7 @@ export async function AnalyticsSection() {
       .then((rows) => rows.length);
   const granted = (createdAt: { gte: Date; lt?: Date }) =>
     prisma.moderationLog
-      .findMany({ where: { action: "PLUS_GRANTED", createdAt }, distinct: ["ownerId"], select: { ownerId: true } })
+      .findMany({ where: { action: { in: ["PLUS_GRANTED", "PLUS_SET"] }, createdAt }, distinct: ["ownerId"], select: { ownerId: true } })
       .then((rows) => rows.length);
   // هديةُ آثار+ اشتراكٌ أيضاً (القاعدة ٢٣٤) — كلُّ مُهدى إليه مرّة، بيوم إتمامها.
   const gifted = (doneAt: { gte: Date; lt?: Date }) =>
