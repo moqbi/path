@@ -8,7 +8,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SwipeRow } from "../components/swipe-row";
 import { api } from "../lib/api";
 import { keys } from "../lib/queries";
-import { View, SectionList, Pressable, ScrollView } from "react-native";
+import { View, SectionList, Pressable } from "react-native";
+import { RtlStrip } from "../components/rtl-strip";
 import { Text } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -42,6 +43,7 @@ function go(href: string): string | null {
 const FILTERS = [
   { key: "", label: "الكل" },
   { key: "reactions", label: "التفاعلات" },
+  { key: "comments", label: "التعليقات" },
   { key: "tags", label: "الإشارات" },
   { key: "messages", label: "الرسائل" },
   /*
@@ -53,7 +55,8 @@ const FILTERS = [
 ] as const;
 
 const OF: Record<string, Note["kind"][]> = {
-  reactions: ["REACTION", "COMMENT"],
+  reactions: ["REACTION"],
+  comments: ["COMMENT"],
   tags: ["TAG"],
   messages: ["MESSAGE"],
   athar: ["STORE"],
@@ -199,11 +202,7 @@ export default function Notifications() {
 
       {/* الشرائح خارج منطقة التمرير: تبقى تحت اليد مهما نزلت القائمة. */}
       <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4 }}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ flexDirection: "row", gap: 8 }}
-        >
+        <RtlStrip contentContainerStyle={{ gap: 8 }}>
           {FILTERS.map((one) => {
             const on = filter === one.key;
             return (
@@ -231,7 +230,7 @@ export default function Notifications() {
               </Pressable>
             );
           })}
-        </ScrollView>
+        </RtlStrip>
       </View>
 
       <View style={{ flex: 1 }}>
