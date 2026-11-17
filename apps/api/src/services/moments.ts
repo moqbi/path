@@ -592,6 +592,47 @@ async function mentionTargets(userId: string, momentId: string, authorId: string
   return named.filter((_, index) => seen[index]).map((person) => person.id);
 }
 
+/**
+ * الردود (القاعدة ٤٦٦): من علّق على لحظةٍ يصله تنبيهٌ بكلّ تعليقٍ بعده — لا الكاتبُ نفسُه، ولا
+ * صاحبُ اللحظة (وصله «تعليق جديد على لحظتك»)، ولا من أُشير إليه (وصله «أشار إليك»). ولمن ما
+ * زال يرى اللحظة وحده (`canSeeMoment` — الحظرُ والجمهورُ فيه): تعليقُ غريبٍ عنه على لحظةٍ لم
+ * تُكتب له خبرٌ عمّا لا يراه. أحدثُ خمسين معلّقاً، ولا ينتظره التعليق.
+ */
+async function notifyThread(
+  userId: string,
+  momentId: string,
+  authorId: string,
+  mentionIds: string[],
+  name: string,
+  body: string,
+  image: string | null,
+) {
+  try {
+    const skip = new Set([userId, authorId, ...mentionIds]);
+    const rows = await prisma.comment.findMany({
+      where: { momentId, userId: { notIn: [...skip] } },
+      select: { userId: true },
+      distinct: ["userId"],
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+    const author = await prisma.user.findUnique({ where: { id: authorId }, select: { name: true } });
+    for (const row of rows) {
+      if (!(await canSeeMoment(row.userId, momentId))) continue;
+      void push({
+        userId: row.userId,
+        kind: "REPLY",
+        title: `ردّ جديد من ${name}`,
+        body: `على لحظة ${author?.name ?? ""}: ${body.slice(0, 100)}`,
+        path: `/m/${momentId}`,
+        image,
+      });
+    }
+  } catch (error) {
+    console.error("[الردود]", error);
+  }
+}
+
 export async function addComment(userId: string, momentId: string, body: string, stickerId?: string, mentions: string[] = []) {
   // الملصقُ يحلّ محلّ النصّ، و«ملصق» نصُّه لما لا يرسمه (القاعدة ٢٩١).
   // اللحظةُ أوّلاً: من لا يراها يُقال له «غير موجودة» قبل أيّ سؤالٍ عن الملصق.
@@ -651,6 +692,7 @@ export async function addComment(userId: string, momentId: string, body: string,
       image: comment.sticker?.mediaId ?? moment.mediaId,
     });
   }
+  void notifyThread(userId, momentId, moment.authorId, mentionIds, comment.user.name, comment.body, comment.sticker?.mediaId ?? moment.mediaId);
 
   return { ...comment, mentionIds };
 }

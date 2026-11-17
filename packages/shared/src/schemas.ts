@@ -255,6 +255,8 @@ export const notifyInput = z.object({
   notifyOnTag: z.boolean(),
   notifyReaction: z.boolean(),
   notifyComment: z.boolean(),
+  /** الردود (القاعدة ٤٦٦): اختياريٌّ فنسخةٌ لا تعرفه لا تُطفئه بحفظها. */
+  notifyReplies: z.boolean().optional(),
   notifyStoreNew: z.boolean(),
   notifyStoreDeals: z.boolean(),
   /** اختياريّ: نسخةٌ قديمة لا ترسله فلا يُطفأ بحفظها (كـ`notifyOnTag` في ٨٨ج). */

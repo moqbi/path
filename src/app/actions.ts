@@ -1463,6 +1463,7 @@ export async function saveNotifications(formData: FormData): Promise<void> {
       notifyOnTag: on("notifyOnTag"),
       notifyReaction: on("notifyReaction"),
       notifyComment: on("notifyComment"),
+      notifyReplies: on("notifyReplies"),
       notifyStoreNew: on("notifyStoreNew"),
       notifyStoreDeals: on("notifyStoreDeals"),
       notifyMemories: on("notifyMemories"),

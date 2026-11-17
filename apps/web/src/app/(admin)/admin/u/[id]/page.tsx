@@ -91,6 +91,7 @@ export default async function ModeratedProfile({
       suspendedReason: true,
       notifyDm: true,
       notifyComment: true,
+      notifyReplies: true,
       notifyReaction: true,
       invitedBy: { select: { id: true, name: true, memberNo: true } },
       identities: { select: { provider: true } },
