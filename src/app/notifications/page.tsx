@@ -11,6 +11,7 @@ import { dayLabel } from "@/lib/format";
 const FILTERS = [
   { key: "", label: "الكل" },
   { key: "reactions", label: "التفاعلات" },
+  { key: "comments", label: "التعليقات" },
   { key: "tags", label: "الإشارات" },
   { key: "messages", label: "الرسائل" },
   // «آثار»: ما يأتي من التطبيق لا من صديق — جديدُ المتجر وأخباره.
@@ -18,7 +19,8 @@ const FILTERS = [
 ] as const;
 
 const OF: Record<string, NoteKind[]> = {
-  reactions: ["REACTION", "COMMENT"],
+  reactions: ["REACTION"],
+  comments: ["COMMENT"],
   tags: ["TAG"],
   messages: ["MESSAGE"],
   athar: ["STORE"],
