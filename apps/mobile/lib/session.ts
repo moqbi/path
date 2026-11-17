@@ -76,6 +76,7 @@ export type Me = {
   notifyFriend?: boolean;
   notifyReaction?: boolean;
   notifyComment?: boolean;
+  notifyReplies?: boolean;
   notifyStoreNew?: boolean;
   notifyStoreDeals?: boolean;
   notifyMemories?: boolean;

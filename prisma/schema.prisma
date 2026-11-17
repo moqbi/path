@@ -249,6 +249,8 @@ model User {
   notifyFriend     Boolean   @default(true)
   notifyReaction   Boolean   @default(true)
   notifyComment    Boolean   @default(true)
+  /// الردود: تعليقٌ جديد على لحظةٍ علّقتُ عليها (القاعدة ٤٦٦).
+  notifyReplies    Boolean   @default(true)
   notifyStoreNew   Boolean   @default(true)
   notifyStoreDeals Boolean   @default(true)
   /// الذكريات ومناسبات الصداقة وآثرك السنويّ — جرسُ الصباح (القاعدة ٢٣٥).

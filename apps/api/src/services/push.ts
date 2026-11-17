@@ -21,6 +21,8 @@ export type PushKind =
   | "TAG"
   | "REACTION"
   | "COMMENT"
+  /** تعليقٌ جديد على لحظةٍ علّق عليها صاحبُ التنبيه (القاعدة ٤٦٦). */
+  | "REPLY"
   | "STORE"
   /** منحٌ من الإدارة — يخصّ صاحبه وحده، فلا مفتاحَ يُطفئه (القاعدة ١٩٨). */
   | "GRANT"
@@ -49,6 +51,7 @@ const SOUND_OF: Record<PushKind, keyof typeof SOUNDS> = {
   TAG: "general",
   REACTION: "general",
   COMMENT: "general",
+  REPLY: "general",
   STORE: "athar",
   GRANT: "athar",
   MEMORY: "athar",
@@ -64,6 +67,7 @@ const GATE: Record<PushKind, string | null> = {
   TAG: "notifyOnTag",
   REACTION: "notifyReaction",
   COMMENT: "notifyComment",
+  REPLY: "notifyReplies",
   STORE: "notifyStoreNew",
   GRANT: null,
   MEMORY: "notifyMemories",
@@ -147,6 +151,7 @@ export async function push(message: PushMessage): Promise<PushOutcome> {
         notifyOnTag: true,
         notifyReaction: true,
         notifyComment: true,
+        notifyReplies: true,
         notifyStoreNew: true,
         notifyStoreDeals: true,
         notifyMemories: true,
