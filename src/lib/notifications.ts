@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { inviteLine } from "@/lib/invite-line";
-import { blockedWith } from "@/lib/visibility";
+import { blockedWith, canSeeMoment } from "@/lib/visibility";
 
 export type NoteKind = "REACTION" | "COMMENT" | "TAG" | "FRIEND" | "MESSAGE" | "GIFT" | "STORE";
 
@@ -262,6 +262,15 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
       person: row.user,
       thumb: row.moment.mediaId,
     })),
+    ...(await replies(userId, limit)).map((row) => ({
+      id: `rp-${row.id}`,
+      kind: "COMMENT" as const,
+      at: row.createdAt,
+      text: `تعليق جديد على لحظة ${row.moment.author.name} — ${row.user.name}: ${row.body.slice(0, 40)}`,
+      href: `/m/${row.momentId}`,
+      person: row.user,
+      thumb: row.moment.mediaId,
+    })),
     ...tags.map((row) => ({
       id: `t-${row.id}`,
       kind: "TAG" as const,
@@ -399,4 +408,43 @@ export function grantText(coins: number, note: string | null, invites?: number |
   // مكافأةُ دعوات (القاعدة ٢٤٣) لا منحٌ من الإدارة.
   if (invites) return `دعوت ${invites.toLocaleString("ar-SA")} أصدقاء إلى آثار — لك ${n} نقطة`;
   return `لأنك تستحق! تمّ منحك ${n} نقطة من قبل الإدارة${note ? ` — ${note}` : ""}`;
+}
+
+/**
+ * الردود (القاعدة ٤٦٦): تعليقٌ جديد على لحظةٍ علّقتُ عليها — **بعد تعليقي الأوّل عليها لا قبله** — من
+ * غيري، على لحظةٍ ليست لي (تلك «علّق» أعلاه)، ولم يُشِر إليّ (تلك «أشار إليك»). ولما ما زلتُ أراه وحده.
+ */
+async function replies(userId: string, limit: number) {
+  const since = new Date(Date.now() - NOTE_DAYS * 86_400_000);
+  const rows = await prisma.comment.findMany({
+    where: {
+      userId: { not: userId },
+      createdAt: { gt: since },
+      NOT: { mentionIds: { has: userId } },
+      moment: { authorId: { not: userId }, comments: { some: { userId } } },
+    },
+    select: {
+      id: true,
+      body: true,
+      createdAt: true,
+      momentId: true,
+      moment: { select: { mediaId: true, author: { select: { name: true } } } },
+      user: { select: { id: true, name: true, avatarMediaId: true } },
+    },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+  if (!rows.length) return [];
+  const momentIds = [...new Set(rows.map((row) => row.momentId))];
+  const first = await prisma.comment.groupBy({
+    by: ["momentId"],
+    where: { userId, momentId: { in: momentIds } },
+    _min: { createdAt: true },
+  });
+  const mineAt = new Map(first.map((row) => [row.momentId, row._min.createdAt?.getTime() ?? Infinity]));
+  const visible = new Set<string>();
+  for (const id of momentIds) if (await canSeeMoment(userId, id)) visible.add(id);
+  return rows.filter(
+    (row) => visible.has(row.momentId) && row.createdAt.getTime() > (mineAt.get(row.momentId) ?? Infinity),
+  );
 }
