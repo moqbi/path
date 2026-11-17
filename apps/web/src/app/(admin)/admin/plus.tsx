@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { grantPlus, revokePlus, type AdminResult } from "@/app/actions";
+import { grantPlus, revokePlus, setPlusUntil, type AdminResult } from "@/app/actions";
 import { PLUS_DAYS, PLUS_LABEL } from "@/lib/plus";
 import { untilDay } from "@/lib/format";
 
@@ -30,7 +30,17 @@ export function PlusGrant({
     null,
   );
 
+  const [dateState, runDate, datePending] = useActionState<AdminResult, FormData>(
+    setPlusUntil.bind(null, userId),
+    null,
+  );
+
   const live = until !== null && until > new Date();
+  // التاريخُ يبدأ من نهايته القائمة بتوقيت الرياض، وإلّا بعد شهرٍ من اليوم.
+  const riyadhDay = (at: Date) =>
+    new Date(at.getTime() + 3 * 3_600_000).toISOString().slice(0, 10);
+  const defaultDay = riyadhDay(live ? until : new Date(Date.now() + 30 * 86_400_000));
+  const today = riyadhDay(new Date());
 
   if (!open) {
     return (
@@ -60,15 +70,16 @@ export function PlusGrant({
           <span className="text-[11px] text-faint">ليس مشتركاً</span>
         )}
 
-        {state?.ok ? (
-          <span className="w-full text-[11.5px] font-semibold text-clay-ink">{state.ok}</span>
+        {state?.ok || dateState?.ok ? (
+          <span className="w-full text-[11.5px] font-semibold text-clay-ink">{dateState?.ok ?? state?.ok}</span>
         ) : null}
       </div>
     );
   }
 
   return (
-    <form action={run} className="flex flex-wrap items-end gap-2 border-t border-line px-3 py-2.5">
+    <div className="border-t border-line">
+    <form action={run} className="flex flex-wrap items-end gap-2 px-3 py-2.5">
       <label className="flex flex-col gap-1">
         <span className="text-[10.5px] text-faint">المدّة</span>
         <select
@@ -106,9 +117,8 @@ export function PlusGrant({
       </button>
 
       <p className="w-full text-[11px] leading-relaxed text-muted">
-        {live
-          ? "تُضاف المدّة إلى ما بقي، ولا تمحوه."
-          : "أوّل منحٍ يودع رصيد الشهر أيضاً — ألف نقطة."}
+        {live ? "تُضاف المدّة إلى ما بقي، ولا تمحوه. " : ""}
+        المنحُ بلا نقاط — للنقاط «امنح نقاطاً».
       </p>
 
       {state?.error ? (
@@ -116,6 +126,40 @@ export function PlusGrant({
           {state.error}
         </p>
       ) : null}
+      {state?.ok ? <p className="w-full text-[11.5px] font-semibold text-clay-ink">{state.ok} ✓</p> : null}
     </form>
+
+    {/* أو اليومُ نفسه: يُصحَّح به تمديدٌ تكرّر، ويُقصَّر ولا يُطال إلا بتاريخ. */}
+    <form action={runDate} className="flex flex-wrap items-end gap-2 border-t border-dashed border-line px-3 py-2.5">
+      <label className="flex flex-col gap-1">
+        <span className="text-[10.5px] text-faint">أو حدّد تاريخ النهاية</span>
+        <input
+          type="date"
+          name="until"
+          min={today}
+          defaultValue={defaultDay}
+          required
+          className="h-10 w-[150px] rounded-xl border border-line bg-paper px-2 text-[12px] text-ink outline-none"
+        />
+      </label>
+      <button
+        type="submit"
+        disabled={datePending}
+        className="h-10 shrink-0 rounded-xl px-3.5 text-[12px] font-bold"
+        style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+      >
+        {datePending ? "…" : "اضبط"}
+      </button>
+      <p className="w-full text-[11px] leading-relaxed text-muted">
+        ينتهي آخرَ ذلك اليوم بتوقيت الرياض — يُطيل أو يُقصّر ما قبله.
+      </p>
+      {dateState?.error ? (
+        <p role="alert" className="w-full text-[11.5px]" style={{ color: "var(--color-live)" }}>
+          {dateState.error}
+        </p>
+      ) : null}
+      {dateState?.ok ? <p className="w-full text-[11.5px] font-semibold text-clay-ink">{dateState.ok} ✓</p> : null}
+    </form>
+    </div>
   );
 }

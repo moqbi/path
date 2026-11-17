@@ -422,7 +422,7 @@ export default async function ModeratedProfile({
             <div className="-mx-4 flex flex-col">
               {viewer.canModerate ? <Suspend userId={person.id} until={person.suspendedUntil} reason={person.suspendedReason} /> : null}
               <PlusGrant userId={person.id} until={person.plusUntil} />
-              <CoinsGrant userId={person.id} />
+              <CoinsGrant userId={person.id} balance={person.coins} />
               {owner ? <AdminEmail userId={person.id} current={person.email} /> : null}
               {owner ? (
                 <form action={setOpenAccount.bind(null, person.id, !person.isOpen)} className="flex items-center gap-2 border-t border-line px-4 py-2.5">

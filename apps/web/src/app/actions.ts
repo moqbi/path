@@ -14,7 +14,7 @@ import { cloudReady, probeBucket } from "@/lib/storage";
 import { forgetWords } from "@/lib/moderation";
 import { clear, clientIp, hit, TOO_MANY } from "@/lib/rate-limit";
 import { SUSPEND_HOURS } from "@/lib/suspend";
-import { isPlusDays, PLUS_COINS, PLUS_LABEL } from "@/lib/plus";
+import { isPlusDays, PLUS_LABEL } from "@/lib/plus";
 import { SITE_TEXT, type SiteKey } from "@/lib/site";
 import { ALL_COUNTRIES, BOOK_SKIN_FIELDS, bookSkinOf, bookSpec, COUNTRIES, hallFlatFrom, hallSkinOf } from "@athar/shared";
 
@@ -1787,10 +1787,9 @@ export async function liftSuspension(userId: string): Promise<void> {
  * و**يُمدَّد ولا يُستبدَل**: من بقي له أسبوعان ومُنح شهراً صار له ستّة
  * أسابيع — منحٌ يمسح ما دُفع ثمنه يأخذ أكثر ممّا يعطي.
  *
- * وأوّل منحٍ يودع رصيد الشهر (`PLUS_COINS`) ويختم `plusCreditAt` كما
- * يفعل حدثُ RevenueCat بالضبط (القاعدة ٧٣ب)، فيتولّى الكنسُ الدوريّ
- * ما بعده. ولولا الختم لبقي المُعطى بلا نقاطٍ حتى أوّل فاتورةٍ لا
- * تأتي.
+ * و**بلا نقاط** — **بقرار المالك**: المنحُ هديّةُ الاشتراك وحده، لا رصيدُ
+ * الشهر (`PLUS_COINS`). ولا يُختم `plusCreditAt`، فلا يودع الكنسُ الدوريّ
+ * شيئاً بعده (`dripPlusCredit` يشترط الختم). ومن أراد نقاطاً منحها بيده.
  *
  * والمدّة قائمةٌ مغلقة (`PLUS_DAYS`) لا حقلُ أيام.
  */
@@ -1806,7 +1805,7 @@ export async function grantPlus(
 
   const target = await prisma.user.findUnique({
     where: { id: userId },
-    select: { plusUntil: true, plusCreditAt: true },
+    select: { plusUntil: true },
   });
   if (!target) return { error: "لا يوجد هذا الحساب" };
 
@@ -1814,16 +1813,8 @@ export async function grantPlus(
   const from =
     target.plusUntil && target.plusUntil.getTime() > Date.now() ? target.plusUntil : new Date();
   const until = new Date(from.getTime() + days * 86_400_000);
-  const first = !target.plusCreditAt;
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      isPlus: true,
-      plusUntil: until,
-      ...(first ? { coins: { increment: PLUS_COINS }, plusCreditAt: new Date() } : null),
-    },
-  });
+  await prisma.user.update({ where: { id: userId }, data: { isPlus: true, plusUntil: until } });
 
   await prisma.moderationLog.create({
     data: {
@@ -1837,6 +1828,70 @@ export async function grantPlus(
 
   revalidatePath("/admin", "layout");
   return { ok: `مُنح ${PLUS_LABEL[days]}` };
+}
+
+/**
+ * نهايةُ آثار+ بتاريخٍ يُكتب — **بقرار المالك**: منحٌ تكرّر بزلّة إصبع صار شهرين،
+ * والتمديدُ لا يُنقص. فيُضبط اليومُ نفسه، آخرَه بتوقيت الرياض (٢٣:٥٩ +٣).
+ * لا يُقبل يومٌ مضى — ذاك «أوقف الاشتراك» — ولا أبعدُ من سنتين. وبلا نقاط
+ * كالمنح، ولا يمسّ هديّةً محفوظة (القاعدة ٢٣٤).
+ */
+export async function setPlusUntil(
+  userId: string,
+  _prev: AdminResult,
+  formData: FormData,
+): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  const day = String(formData.get("until") ?? "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { error: "اختر التاريخ" };
+  const until = new Date(`${day}T23:59:59+03:00`);
+  if (Number.isNaN(until.getTime())) return { error: "اختر التاريخ" };
+  if (until.getTime() <= Date.now()) return { error: "التاريخ مضى — للإيقاف استعمل «أوقف الاشتراك»" };
+  if (until.getTime() > Date.now() + 2 * 366 * 86_400_000) return { error: "أبعدُ تاريخٍ سنتان من اليوم" };
+
+  const target = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+  if (!target) return { error: "لا يوجد هذا الحساب" };
+
+  await prisma.user.update({ where: { id: userId }, data: { isPlus: true, plusUntil: until } });
+  await prisma.moderationLog.create({
+    data: { adminId: admin.id, action: "PLUS_SET", targetId: userId, ownerId: userId, snippet: `حتى ${day}` },
+  });
+  revalidatePath("/admin", "layout");
+  return { ok: `صار مشتركاً حتى ${until.toLocaleDateString("ar-SA-u-ca-gregory", { timeZone: "Asia/Riyadh" })}` };
+}
+
+/**
+ * رصيدُ النقاط يُكتب رقماً — **بقرار المالك**: لتصحيح ما أُودع خطأً. لا تنبيهَ ولا
+ * إشعارَ ولا `CoinGrant` (ذاك «لأنك تستحق»)، بل سطرٌ في سجلّ الإشراف بما كان وما صار.
+ */
+export async function setCoins(
+  userId: string,
+  _prev: AdminResult,
+  formData: FormData,
+): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  const coins = digits(formData.get("balance"));
+  if (!Number.isInteger(coins) || coins < 0) return { error: "اكتب الرصيد رقماً، صفراً فأكثر" };
+  if (coins > 10_000_000) return { error: "الرقم كبير" };
+
+  const target = await prisma.user.findUnique({ where: { id: userId }, select: { coins: true } });
+  if (!target) return { error: "لا يوجد هذا الحساب" };
+  if (target.coins === coins) return { ok: "الرصيد كما هو" };
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: userId }, data: { coins } }),
+    prisma.moderationLog.create({
+      data: {
+        adminId: admin.id,
+        action: "COINS_SET",
+        targetId: userId,
+        ownerId: userId,
+        snippet: `${target.coins} ← ${coins}`,
+      },
+    }),
+  ]);
+  revalidatePath("/admin", "layout");
+  return { ok: `صار الرصيد ${coins.toLocaleString("ar-SA")} نقطة` };
 }
 
 /** أقصى ما يُمنح في المرّة الواحدة — زلّةُ إصبعٍ بصفرٍ زائد لا تصير مليوناً. */
