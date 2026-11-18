@@ -309,7 +309,12 @@ export default function Login() {
           paddingBottom: typing ? keyboard + 12 : Math.max(insets.bottom, 12) + 8,
           justifyContent: "flex-end",
           // على الآيباد المشهدُ في طرف البداية واللوحُ في الآخر، كدخول الويب العريض (القاعدة ٤٦٤).
-          ...(wide ? { flexDirection: "row", alignItems: "stretch", paddingLeft: 24 + edge.left, paddingRight: 24 + edge.right, gap: 24 } : null),
+          // كلُّ مفتاحٍ في الحالين: Fabric لا يمحو ما غاب بعد الدوران (القاعدة ٤٧٠).
+          flexDirection: wide ? "row" : "column",
+          alignItems: "stretch",
+          paddingLeft: wide ? 24 + edge.left : 0,
+          paddingRight: wide ? 24 + edge.right : 0,
+          gap: wide ? 24 : 0,
         }}
       >
         {typing && !wide ? null : (

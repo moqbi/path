@@ -52,11 +52,15 @@ export function Split({
       <WidthContext.Provider value={wide ? list : null}>
         <EdgeContext.Provider value={wide ? listEdges : edges}>
           <View
-            style={
-              wide
-                ? { width: list + edges.right, borderEndWidth: 1, borderEndColor: colors.line }
-                : { flex: 1 }
-            }
+            // كلُّ مفتاحٍ مكتوبٌ في الحالين (القاعدة ٤٧٠): Fabric لا يمحو ما غاب من النمط، فكان
+            // عرضُ القائمة الأفقيّ (نحو ٦٠٠) يبقى بعد الرجوع قائماً فتخرج الشاشةُ عن يسارها.
+            style={{
+              width: wide ? list + edges.right : "100%",
+              flexGrow: wide ? 0 : 1,
+              flexShrink: wide ? 0 : 1,
+              borderEndWidth: wide ? 1 : 0,
+              borderEndColor: colors.line,
+            }}
           >
             {children}
           </View>

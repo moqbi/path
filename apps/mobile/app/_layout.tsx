@@ -509,11 +509,16 @@ function App() {
  */
 function SideSafe({ children }: { children: ReactNode }) {
   const insets = useSafeAreaInsets();
-  const edges = useMemo(() => ({ left: insets.left, right: insets.right }), [insets.left, insets.right]);
+  /*
+    **والمحتوى لا يبتعد عن الحافّتين** — **بقرار المالك** (القاعدة ٤٧٠): كان يبتعد بقدر حسّاس
+    الكاميرا (نحو ٦٠) فبقيت العناصرُ في مكانها والفراغُ داخل الشاشة لا خارجها. فالحافّتان
+    صفرٌ والآليّةُ باقيةٌ إن احتيج إليها: ما يُقرأ يبدأ من حشوته المعتادة (١٦–٢٠).
+  */
+  const edges = NO_SIDES;
   const adjusted = useMemo(() => ({ ...insets, top: Math.max(insets.top, 12) }), [insets]);
   return (
     <SafeAreaInsetsContext.Provider value={adjusted}>
-      <SideContext.Provider value={insets.left + insets.right}>
+      <SideContext.Provider value={0}>
         <EdgeContext.Provider value={edges}>{children}</EdgeContext.Provider>
       </SideContext.Provider>
     </SafeAreaInsetsContext.Provider>

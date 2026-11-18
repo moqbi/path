@@ -44,7 +44,10 @@ export const ORIENTATIONS: ("portrait" | "portrait-upside-down" | "landscape-lef
  */
 export function useSheetBox(): Record<string, number | string> {
   const { width, height } = useWindowDimensions();
-  if (!(width > height || width >= 700)) return {};
+  // القائمُ بمفاتيحه كلّها لا `{}`: Fabric لا يمحو ما غاب من النمط بعد الدوران (القاعدة ٤٧٠).
+  if (!(width > height || width >= 700)) {
+    return { width: "100%", alignSelf: "stretch", borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginBottom: 0 };
+  }
   return {
     width: Math.min(width - 32, 520),
     alignSelf: "center",
