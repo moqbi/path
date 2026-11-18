@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useEdges } from "../lib/pane";
 import { Animated, PanResponder, Platform, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import MapView, { Marker, Polygon, type Region } from "react-native-maps";
 import { BlurView } from "expo-blur";
@@ -132,6 +133,7 @@ const coreOf = (count: number) => Math.round(7 + Math.min(9, 2.4 * Math.log2(Mat
  */
 export default function MyMap() {
   const router = useRouter();
+  const edge = useEdges();
   const insets = useSafeAreaInsets();
   const map = useRef<MapView>(null);
   const [year, setYear] = useState<number | null>(null);
@@ -351,7 +353,7 @@ export default function MyMap() {
       )}
 
       {/* الرأسُ يطفو: رجوعٌ في طرف البداية (القاعدة ٣٣٠)، والعنوانُ، و«الكل» يعيد الخريطةَ إلى ما فيه لحظات. */}
-      <View pointerEvents="box-none" style={{ position: "absolute", top: insets.top + 8, left: 14, right: 14, gap: 10 }}>
+      <View pointerEvents="box-none" style={{ position: "absolute", top: insets.top + 8, left: 14 + edge.left, right: 14 + edge.right, gap: 10 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           <RoundGlass label="رجوع" onPress={() => (router.canGoBack() ? router.back() : router.replace("/me" as never))}>
             <BackChevron color={INK} />

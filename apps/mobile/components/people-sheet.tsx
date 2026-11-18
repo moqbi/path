@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ORIENTATIONS } from "../lib/stage";
+import { ORIENTATIONS, useSheetBox } from "../lib/stage";
 import { View, Pressable, FlatList, Modal } from "react-native";
 import { Text, TextInput } from "./type";
 import { Avatar } from "./avatar";
@@ -35,6 +35,8 @@ export function PeopleSheet({
   onToggle: (id: string) => void;
   onClose: () => void;
 }) {
+  // على الشاشة العريضة والمُدارة لوحٌ في الوسط (القاعدة ٤٦٨).
+  const box = useSheetBox();
   const [term, setTerm] = useState("");
   const shown = term.trim()
     ? friends.filter((f) => f.name.includes(term.trim()))
@@ -48,6 +50,7 @@ export function PeopleSheet({
         style={{
           maxHeight: "72%",
           backgroundColor: colors.paper,
+          ...box,
           borderTopLeftRadius: 22,
           borderTopRightRadius: 22,
           paddingTop: 10,

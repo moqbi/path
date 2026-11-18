@@ -1,5 +1,5 @@
 import { Spinner } from "./spinner";
-import { ORIENTATIONS } from "../lib/stage";
+import { ORIENTATIONS, useSheetBox } from "../lib/stage";
 import { useState } from "react";
 import { View, Pressable, Modal } from "react-native";
 import { Text, TextInput } from "./type";
@@ -78,6 +78,8 @@ export function ReportSheet({
   targetId: string;
   onClose: () => void;
 }) {
+  // على الشاشة العريضة والمُدارة لوحٌ في الوسط (القاعدة ٤٦٨).
+  const box = useSheetBox();
   const [reason, setReason] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [said, setSaid] = useState<{ ok?: string; error?: string } | null>(null);
@@ -99,7 +101,7 @@ export function ReportSheet({
     <Modal supportedOrientations={ORIENTATIONS} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: "rgba(14,26,36,.55)" }} onPress={onClose} />
 
-      <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 28, marginBottom: lift }}>
+      <View style={{ ...box, backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 28, marginBottom: lift + (box.marginBottom ? 12 : 0) }}>
         <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={{ color: colors.ink, fontSize: 15.5, fontWeight: "700" }}>إبلاغ</Text>

@@ -1,4 +1,5 @@
 import { Spinner } from "../../components/spinner";
+import { useChromePad, useEdgePad } from "../../lib/pane";
 import { useEffect, useRef, useState } from "react";
 import { usePullLogo } from "../../components/logo-refresh";
 import { useTabTop } from "../../lib/tab-top";
@@ -62,6 +63,8 @@ function Row({
 export default function Store() {
   // ضغطةُ التبويب المفتوح ترجع إلى أعلاه (القاعدة ١٥٧).
   const list = useRef<ScrollViewInstance | null>(null);
+  const chromePad = useChromePad(20);
+  const listPad = useEdgePad(20);
   useTabTop(() => list.current?.scrollTo({ y: 0, animated: true }));
   // المحتوى يمرّ تحت الشريط الزجاجيّ، وآخرُه يُقرأ فوقه (القاعدة ٢٢٨).
   const barSpace = useBarSpace();
@@ -185,7 +188,7 @@ export default function Store() {
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          paddingHorizontal: 20,
+          ...chromePad,
           paddingTop: insets.top + 6,
           paddingBottom: 10,
           backgroundColor: colors.chrome,
@@ -216,7 +219,7 @@ export default function Store() {
 
       {/* شريط التصنيفات: «المميز» أولاً، ثم ما يضيفه المشرف. */}
       <View style={{ paddingTop: 12, paddingBottom: 4 }}>
-        <RtlStrip contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}>
+        <RtlStrip contentContainerStyle={{ ...listPad.pad, gap: 8 }}>
           {/*
             تصنيفُ المشرف الذي يحمل اسمَ نوعٍ («التشارمز») لا يُعرض ثانيةً بجانب
             شريحة النوع نفسها: شريحتان باسمٍ واحد تُقرآن خطأً.
@@ -278,7 +281,7 @@ export default function Store() {
         <View style={{ flex: 1 }}>
         <ScrollView
         ref={list}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: barSpace + 8 }}
+          contentContainerStyle={{ ...listPad.pad, paddingTop: 16, paddingBottom: barSpace + 8 }}
         {...pull.props}
         >
           {stickerTab ? (

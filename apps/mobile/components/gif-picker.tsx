@@ -27,7 +27,7 @@ export function GifPicker({ onPick, onClose }: { onPick: (gif: Gif) => void; onC
   const onScroll = useSheetScroll("gifs");
 
   // عرضُ النافذة (هامشُ ١٠ من كلّ جهة) ناقصاً حشوتَها ثمّ الفواصل.
-  const cell = Math.floor((Math.min(width - 20, 560) - 24 - GAP * (COLUMNS - 1)) / COLUMNS);
+  const cell = Math.floor((Math.min(width - 20, width > height ? 440 : 560) - 24 - GAP * (COLUMNS - 1)) / COLUMNS);
 
   return (
     <GlassSheet icon={<GifIcon size={22} color="#fff" />} title="صور متحركة" onClose={onClose}>

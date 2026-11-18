@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useContentWidth } from "../../../lib/pane";
+import { useContentWidth, useEdges } from "../../../lib/pane";
 import { ORIENTATIONS } from "../../../lib/stage";
 import { VideoBadge } from "../../../components/moment-video";
 import { Animated, Easing, Image, Modal, PanResponder, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
@@ -91,6 +91,7 @@ const SHADOW = { shadowColor: "#3A2A14", shadowOpacity: 0.3, shadowRadius: 14, s
  */
 export default function HallScreen() {
   const { year: raw } = useLocalSearchParams<{ year: string }>();
+  const edge = useEdges();
   const year = Number(raw);
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -346,7 +347,7 @@ export default function HallScreen() {
           صفٌّ واحد يتوسّطه الطرفان (القاعدة ٣٥٨): كان الزرّان كتلةً والعلامةُ كتلةً تُحاذيان بهوامش
           محسوبة، فيُزيحهما مكانُ الحرف في سطره. و«ATHAR» تحت «آثار» خارج الحساب.
         */}
-        <View style={{ position: "absolute", top: insets.top + 30, left: 16, right: 16, height: 32, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+        <View style={{ position: "absolute", top: insets.top + 30, left: 16 + edge.left, right: 16 + edge.right, height: 32, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <Pressable
               accessibilityRole="button"

@@ -30,7 +30,7 @@ import { useSession } from "../../lib/session";
 import { useStatusNotes } from "../../lib/status-notes";
 import { colors } from "../../theme/tokens";
 import { useScrollLock } from "../../lib/scroll-lock";
-import { go, useRouteId, useReplace } from "../../lib/pane";
+import { go, useRouteId, useReplace, useEdgePad } from "../../lib/pane";
 
 type Person = {
   id: string;
@@ -117,6 +117,7 @@ function ByNumber({ memberNo }: { memberNo: string }) {
 function Profile() {
   // المحتوى يمرّ تحت الشريط الزجاجيّ، وآخرُه يُقرأ فوقه (القاعدة ٢٢٨).
   const barSpace = useBarSpace();
+  const listPad = useEdgePad(20);
   // النوتُ فوق الصورة (القاعدة ٢٦٩).
   const statusNotes = useStatusNotes();
   const me = useSession((state) => state.me);
@@ -293,7 +294,7 @@ function Profile() {
             اللحظات تحتاج حشوة الخطّ الزمني نفسها: بدونها تلتصق البطاقات
             بالحافتين ويمشي عمود الصور خارج الخيط، فتُقرأ الصفحة مكسورة.
           */
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: barSpace + 8 }}
+          contentContainerStyle={{ ...listPad.pad, paddingBottom: barSpace + 8 }}
           ListHeaderComponent={<>
               {/*
                 الغلاف طبقةٌ واحدة في كل الشاشات (القاعدة ٧١): صورةٌ ودرعٌ
@@ -301,7 +302,7 @@ function Profile() {
                 بحدٍّ حادّ، فيبدو الملف صفحةً من تطبيقٍ آخر.
               */}
               {/* بمقاس غلاف اللحظات و«أنا» (`COVER_HEIGHT`): كان ١٢٠ فيُقرأ ملفاً أصغر. */}
-              <View style={{ marginHorizontal: -20 }}>
+              <View style={listPad.bleed}>
                 <StretchCover y={scrollY} height={COVER_HEIGHT}>
                   <CoverLayer mediaId={who.coverMediaId} themeMediaId={who.background?.coverMediaId} spec={null} height={COVER_HEIGHT} x={who.coverX} y={who.coverY} zoom={who.coverZoom} />
                 </StretchCover>

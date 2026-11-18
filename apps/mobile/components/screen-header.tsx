@@ -4,7 +4,7 @@ import { Text } from "./type";
 import { useRouter } from "expo-router";
 import Svg, { Path } from "react-native-svg";
 import { AthrMark } from "./brand";
-import { usePaneRoute } from "../lib/pane";
+import { useChromePad, usePaneRoute } from "../lib/pane";
 import { colors } from "../theme/tokens";
 
 /**
@@ -41,6 +41,8 @@ export function ScreenHeader({
   const insets = useSafeAreaInsets();
   // في لوحة الشاشة العريضة الرجوعُ يرجع في اللوحة، وآخرُه يُغلقها (القاعدة ٤٦٤).
   const pane = usePaneRoute();
+  // الرأسُ يصل حافّتَي الآيفون المُدار ومحتواه بعيدٌ عنهما (القاعدة ٤٦٨).
+  const sides = useChromePad(16);
 
   const backButton =
     back !== undefined ? (
@@ -66,7 +68,7 @@ export function ScreenHeader({
         alignItems: "center",
         gap: 10,
         minHeight: 56,
-        paddingHorizontal: 16,
+        ...sides,
         paddingTop: insets.top + 8,
         paddingBottom: 8,
         backgroundColor: colors.chrome,

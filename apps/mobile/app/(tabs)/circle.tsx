@@ -26,7 +26,7 @@ import { ar, presence } from "../../lib/format";
 import { useSession } from "../../lib/session";
 import { NameTag } from "../../components/name-tag";
 import { colors } from "../../theme/tokens";
-import { go } from "../../lib/pane";
+import { go, useEdgePad } from "../../lib/pane";
 import { Split } from "../../components/split";
 
 /**
@@ -57,6 +57,7 @@ const onlineNow = (lastSeenAt: string | null) =>
 export function Circle() {
   // ضغطةُ التبويب المفتوح ترجع إلى أعلاه (القاعدة ١٥٧).
   const list = useRef<Pick<FlatList, "scrollToOffset"> | null>(null);
+  const listPad = useEdgePad(0);
   useTabTop(() => list.current?.scrollToOffset({ offset: 0, animated: true }));
   // المحتوى يمرّ تحت الشريط الزجاجيّ، وآخرُه يُقرأ فوقه (القاعدة ٢٢٨).
   const barSpace = useBarSpace();
@@ -213,7 +214,7 @@ export function Circle() {
         data={sectioned}
         keyExtractor={(item) => item.id}
         scrollEnabled={!swiping}
-        contentContainerStyle={{ paddingBottom: barSpace + 8, flexGrow: 1 }}
+        contentContainerStyle={{ ...listPad.pad, paddingBottom: barSpace + 8, flexGrow: 1 }}
         {...pull.props}
         ListHeaderComponent={
           <>

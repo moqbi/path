@@ -21,6 +21,46 @@ export const WIDE_MIN = 700;
  */
 export const SideContext = createContext(0);
 
+/**
+ * الحافّتان اللتان على هذه الشجرة أن تبتعد عنهما (القاعدة ٤٦٨): ما يُرسم خلفهما يصل
+ * حافّةَ الشاشة — رأسٌ وغلافٌ وخريطة — وما يُقرأ ويُلمس يبتعد عنهما. في الجذر حافّتا
+ * الجهاز، وفي لوحتَي `Split` حافّتُها الخارجيّة وحدها، وفي الشاشة التي حشاها المكدّسُ
+ * (`EdgeScreen` في `_layout.tsx`) صفرٌ ومعه `BleedContext` بما حُشيت به.
+ */
+export type Edges = { left: number; right: number };
+const NO_EDGES: Edges = { left: 0, right: 0 };
+export const EdgeContext = createContext<Edges>(NO_EDGES);
+/** ما حشاه أبٌ من الحافّتين: الرأسُ يخرج إليه بهامشٍ سالب فيصل الحافّة. */
+export const BleedContext = createContext<Edges>(NO_EDGES);
+
+export function useEdges(): Edges {
+  return useContext(EdgeContext);
+}
+
+/**
+ * نمطُ ما يصل الحافّتين ومحتواه بعيدٌ عنهما: رأسٌ داكنٌ أو شريط. `base` حشوتُه المعتادة.
+ */
+export function useChromePad(base: number) {
+  const edge = useContext(EdgeContext);
+  const bleed = useContext(BleedContext);
+  return {
+    marginLeft: -bleed.left,
+    marginRight: -bleed.right,
+    paddingLeft: base + bleed.left + edge.left,
+    paddingRight: base + bleed.right + edge.right,
+  };
+}
+
+/** حشوةُ قائمةٍ تبتعد عن الحافّتين، و`bleed` لغلافٍ فيها يصلهما بهامشٍ سالب. */
+export function useEdgePad(base: number) {
+  const edge = useContext(EdgeContext);
+  return {
+    pad: { paddingLeft: base + edge.left, paddingRight: base + edge.right },
+    bleed: { marginLeft: -(base + edge.left), marginRight: -(base + edge.right) },
+    edge,
+  };
+}
+
 /** عرضُ ما يُرسم فيه التطبيق: النافذةُ بلا هامشَي الحافّتين. */
 export function useContentWidth(): number {
   return useWindowDimensions().width - useContext(SideContext);
@@ -30,9 +70,12 @@ export function useWide(): boolean {
   return useContentWidth() >= WIDE_MIN;
 }
 
-/** عرضُ القائمة: نحو خُمسَي الشاشة، بين ٣٨٠ و٤٨٠ — بطاقةٌ بعرض جوّالٍ كبير. */
+/**
+ * عرضُ القائمة — اللوحةُ اليمنى — أكبرُ من اللوحة: نحو ٥٨٪ بين ٣٨٠ و٧٨٠ — **بقرار المالك**
+ * (القاعدة ٤٦٨). كانت خُمسَين فتُقرأ القائمةُ هامشاً بجانب لوحةٍ فارغة.
+ */
 export function listWidth(screen: number): number {
-  return Math.round(Math.min(480, Math.max(380, screen * 0.4)));
+  return Math.round(Math.min(780, Math.max(380, screen * 0.58)));
 }
 
 /** ما يُفتح في اللوحة: لحظةٌ ومحادثةٌ وملفٌّ — وما سواها شاشةٌ كما كان. */

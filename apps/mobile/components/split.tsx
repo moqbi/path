@@ -1,11 +1,11 @@
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { Platform, View } from "react-native";
 import { useBarSpace } from "./glass-bar";
 import { AthrMark } from "./brand";
 import { Text } from "./type";
 import { TabBackdrop } from "./tab-backdrop";
 import { colors } from "../theme/tokens";
-import { listWidth, useContentWidth, PaneRoute, paneKind, usePaneHost, useWide, WidthContext } from "../lib/pane";
+import { EdgeContext, listWidth, useContentWidth, useEdges, PaneRoute, paneKind, usePaneHost, useWide, WidthContext } from "../lib/pane";
 export { useGrid, usePaneWidth } from "../lib/pane";
 import MomentPage from "../app/m/[id]";
 import Conversation from "../app/dm/[id]";
@@ -13,12 +13,30 @@ import ProfileScreen from "../app/u/[id]";
 
 /**
  * القائمةُ واللوحةُ جنباً إلى جنب على الشاشة العريضة (القاعدة ٤٦٤): القائمةُ في طرف
- * البداية — يميناً — بعرضٍ ثابت، واللوحةُ تملأ ما بقي حتى الحافّة. لا توسيطَ ولا
- * أرضيّةَ حولهما. وعلى الشاشة الضيّقة القائمةُ وحدها كما كانت.
+ * البداية — يميناً — وهي الأعرض (القاعدة ٤٦٨)، واللوحةُ تملأ ما بقي حتى الحافّة. وعلى
+ * الشاشة الضيّقة القائمةُ وحدها كما كانت.
+ *
+ * **والشجرةُ واحدةٌ في الحالين** (القاعدة ٤٦٨): كان الضيّقُ يردّ الأبناءَ عراةً والعريضُ
+ * يلفّهم في عمود، فيُعاد بناءُ القائمة كلّها مع كلّ دوران — وتُرى مشوّهةً ثوانيَ حتى
+ * تُجلب. الآن العمودُ نفسُه يتّسع ويضيق، واللوحةُ أختٌ تُضاف وتُنزع بعده.
+ * **وكلُّ لوحةٍ تبتعد عن حافّتها الخارجيّة وحدها** (`EdgeContext`): القائمةُ عن اليمنى
+ * واللوحةُ عن اليسرى — حسّاسُ الكاميرا في الآيفون المُدار.
  */
-export function Split({ host, empty, children }: { host: string; empty: string; children: ReactNode }) {
+export function Split({
+  host,
+  empty,
+  emptyView,
+  children,
+}: {
+  host: string;
+  empty: string;
+  /** ما يملأ اللوحةَ قبل أن يُختار شيء — المعرضُ والكتاب في «أنا» (القاعدة ٤٦٨). */
+  emptyView?: ReactNode;
+  children: ReactNode;
+}) {
   const wide = useWide();
   const screen = useContentWidth();
+  const edges = useEdges();
   const path = usePaneHost(host, wide);
   /*
     الشريطُ الزجاجيّ في أندرويد يطفو فوق المحتوى بعرض الشاشة (القاعدة ٢٢٨)، فما في اللوحة
@@ -26,26 +44,41 @@ export function Split({ host, empty, children }: { host: string; empty: string; 
     الأعلى ويقيس هامشَه بنفسه، فلا شيء هناك.
   */
   const barSpace = useBarSpace();
-  if (!wide) return <>{children}</>;
   const list = listWidth(screen);
+  const listEdges = useMemo(() => ({ left: 0, right: edges.right }), [edges.right]);
+  const paneEdges = useMemo(() => ({ left: edges.left, right: 0 }), [edges.left]);
   return (
     <View style={{ flex: 1, flexDirection: "row", backgroundColor: colors.ground }}>
-      <WidthContext.Provider value={list}>
-        <View style={{ width: list, borderEndWidth: 1, borderEndColor: colors.line }}>{children}</View>
+      <WidthContext.Provider value={wide ? list : null}>
+        <EdgeContext.Provider value={wide ? listEdges : edges}>
+          <View
+            style={
+              wide
+                ? { width: list + edges.right, borderEndWidth: 1, borderEndColor: colors.line }
+                : { flex: 1 }
+            }
+          >
+            {children}
+          </View>
+        </EdgeContext.Provider>
       </WidthContext.Provider>
-      <WidthContext.Provider value={screen - list}>
-        <View style={{ flex: 1, minWidth: 0, paddingBottom: Platform.OS === "ios" ? 0 : barSpace - 8 }}>
-          {/* صورةُ الثيم تحت اللوحة كما هي تحت القائمة (القاعدة ٢٦١). */}
-          <TabBackdrop />
-          {path ? (
-            <PaneRoute key={path} path={path} host={host}>
-              <PaneScreen path={path} />
-            </PaneRoute>
-          ) : (
-            <Empty text={empty} />
-          )}
-        </View>
-      </WidthContext.Provider>
+      {wide ? (
+        <WidthContext.Provider value={screen - list}>
+          <EdgeContext.Provider value={paneEdges}>
+            <View style={{ flex: 1, minWidth: 0, paddingBottom: Platform.OS === "ios" ? 0 : barSpace - 8 }}>
+              {/* صورةُ الثيم تحت اللوحة كما هي تحت القائمة (القاعدة ٢٦١). */}
+              <TabBackdrop />
+              {path ? (
+                <PaneRoute key={path} path={path} host={host}>
+                  <PaneScreen path={path} />
+                </PaneRoute>
+              ) : (
+                emptyView ?? <Empty text={empty} />
+              )}
+            </View>
+          </EdgeContext.Provider>
+        </WidthContext.Provider>
+      ) : null}
     </View>
   );
 }

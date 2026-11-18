@@ -1,4 +1,5 @@
 import { Spinner } from "../../components/spinner";
+import { useChromePad, useEdgePad } from "../../lib/pane";
 import { BackChevron } from "../../components/screen-header";
 import { MemoriesCard } from "../../components/memories-card";
 import { TabBackdrop } from "../../components/tab-backdrop";
@@ -59,6 +60,8 @@ const COVER_THREAD = 22;
 export function Timeline({ lens }: { lens?: { with: string } } = {}) {
   // المحتوى يمرّ تحت الشريط الزجاجيّ، وآخرُه يُقرأ فوقه (القاعدة ٢٢٨).
   const barSpace = useBarSpace();
+  const chromePad = useChromePad(16);
+  const listPad = useEdgePad(20);
   const me = useSession((s) => s.me);
   const router = useRouter();
   // حشوةُ الحافّة العليا في الرأس الداكن نفسه — انظر `components/screen-header.tsx`.
@@ -280,7 +283,7 @@ export function Timeline({ lens }: { lens?: { with: string } } = {}) {
           alignItems: "center",
           justifyContent: "space-between",
           minHeight: 56,
-          paddingHorizontal: 16,
+          ...chromePad,
           paddingTop: insets.top + 8,
           paddingBottom: 8,
           backgroundColor: colors.chrome,
@@ -615,7 +618,7 @@ export function Timeline({ lens }: { lens?: { with: string } } = {}) {
           onScrollEndDrag={hideClock}
           onMomentumScrollBegin={showClock}
           onMomentumScrollEnd={hideClock}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: barSpace + 70, flexGrow: 1 }}
+          contentContainerStyle={{ ...listPad.pad, paddingBottom: barSpace + 70, flexGrow: 1 }}
           style={{ backgroundColor: colors.ground }}
           // موضعُ رأس القائمة وحده هو ما يأذن للسحب أن يلتقط الإيماءة.
           scrollEventThrottle={16}
