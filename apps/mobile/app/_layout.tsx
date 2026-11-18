@@ -1,6 +1,6 @@
 import { Spinner } from "../components/spinner";
 import { useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
-import { AppState, Appearance, I18nManager, Platform, View, StyleSheet } from "react-native";
+import { AppState, Appearance, I18nManager, Platform, View, StyleSheet, useWindowDimensions } from "react-native";
 import { MediaImage } from "../components/media-image";
 import { enableLegacyHeaderAppearance, Stack, useRouter, useSegments } from "expo-router";
 import * as Notifications from "expo-notifications";
@@ -515,7 +515,10 @@ function SideSafe({ children }: { children: ReactNode }) {
     صفرٌ والآليّةُ باقيةٌ إن احتيج إليها: ما يُقرأ يبدأ من حشوته المعتادة (١٦–٢٠).
   */
   const edges = NO_SIDES;
-  const adjusted = useMemo(() => ({ ...insets, top: Math.max(insets.top, 12) }), [insets]);
+  // والمُدارُ أعلاه ٢٠ لا ١٢ (القاعدة ٤٧١): الشعارُ وأقراصُ الرأس كانت لاصقةً بأعلى الشاشة.
+  const { width, height } = useWindowDimensions();
+  const minTop = width > height ? 20 : 12;
+  const adjusted = useMemo(() => ({ ...insets, top: Math.max(insets.top, minTop) }), [insets, minTop]);
   return (
     <SafeAreaInsetsContext.Provider value={adjusted}>
       <SideContext.Provider value={0}>
