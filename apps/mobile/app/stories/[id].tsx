@@ -27,7 +27,7 @@ import { canSaveMedia, saveMedia } from "../../lib/save-media";
 import { useScreenshot } from "../../lib/screenshot";
 import { api, baseUrl, currentAccess } from "../../lib/api";
 import { storiesQuery } from "../../lib/story-prefetch";
-import { useRings, type StoryRing } from "../../lib/queries";
+import type { StoryRing } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { ar, relative } from "../../lib/format";
 import { colors } from "../../theme/tokens";
@@ -157,10 +157,12 @@ export default function StoryViewer() {
           ? story.trackSeconds * 1000
           : SLIDE_MS;
 
+  // اللوحةُ الجانبيّة في الوضع الأفقيّ تعرض من شاهد دائماً (القاعدة ٤٧٢).
+  const stagedRef = useRef(false);
   const viewers = useQuery({
     queryKey: ["story-viewers", story?.id],
     queryFn: () => api<{ viewers: Viewer[] }>(`/v1/stories/${story!.id}/viewers`),
-    enabled: watching && mine && Boolean(story),
+    enabled: (watching || stagedRef.current) && mine && Boolean(story),
   });
 
   /*
@@ -318,18 +320,15 @@ export default function StoryViewer() {
   // لوحةٌ رأسيّة في وسط الشاشة الأفقيّة (القاعدة ٤٦٨)، والشاشةُ نفسُها في الرأسيّة.
   const screen = useStage();
   /*
-    **المسرح** — **بقرار المالك** (القاعدة ٤٧٢): على الشاشة الأفقيّة ما حول القصّة نسخةٌ
-    مغبّشةٌ منها لا سواد، وعلى الجانبين قصّتا الصديق السابق والتالي من الشريط — الضغطُ
-    عليهما ينقل إليه. ويمينٌ للسابق ويسارٌ للتالي كقراءة العربيّة.
+    **القصّةُ ولوحتُها** — **بقرار المالك** (القاعدة ٤٧٢): على الشاشة الأفقيّة القصّةُ في طرف
+    البداية وما حولها نسخةٌ مغبّشةٌ منها، وما بقي لوحةٌ زجاجيّة: صاحبُها والوجوهُ والتعليق، ولصاحبها
+    من شاهد ظاهراً دائماً. وما يطير من تفاعلٍ وتعليقٍ يطير على القصّة لا في اللوحة.
   */
   const win = useWindowDimensions();
-  const side = (win.width - screen.width) / 2;
-  const staged = win.width > win.height && side >= 120;
-  const rings = useRings();
-  const ringList = rings.data?.rings ?? [];
-  const at = ringList.findIndex((ring) => ring.userId === id);
-  const prevRing = staged && at > 0 ? ringList[at - 1] : null;
-  const nextRing = staged && at >= 0 && at + 1 < ringList.length ? ringList[at + 1] : null;
+  // القصّةُ في طرف البداية بحاشية ٢٤، واللوحةُ فيما بقي إن اتّسع لـ٢٨٠.
+  const panelWidth = win.width - screen.width - 24 * 3;
+  const staged = win.width > win.height && panelWidth >= 280;
+  stagedRef.current = staged;
 
   const drop = useRef(new Animated.Value(0)).current;
   // ما يتغيّر بين رسمٍ ورسم يُقرأ من مرجع: المستجيبُ يُبنى مرّةً واحدة.
@@ -455,7 +454,7 @@ export default function StoryViewer() {
           <View style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, backgroundColor: "rgba(11,18,25,.35)" }} />
         </Animated.View>
       ) : null}
-    <View {...pan.panHandlers} style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+    <View {...pan.panHandlers} style={{ flex: 1, alignItems: staged ? "flex-start" : "center", justifyContent: "center", paddingRight: staged ? 24 : 0, paddingLeft: 0 }}>
     <Animated.View style={[{ width: screen.width, backgroundColor: "#0b1219", overflow: "hidden" }, sink]}>
     <Animated.View style={{ position: "absolute", left: 0, width: screen.width, height: screen.height, top: lift }}>
       {/* المقطع يُشغَّل، والصورة تُرسم بفلترها. و`<Image>` لا يفكّ MP4. */}
@@ -582,7 +581,7 @@ export default function StoryViewer() {
         </View>
       </View>
 
-      {mine ? (
+      {staged ? null : mine ? (
         <View pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, bottom: 0, paddingBottom: insets.bottom }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16 }}>
             {/* العدّادُ بابُ القائمة: من نشر قصّةً يسأل «مَن» قبل «كم». */}
@@ -686,11 +685,119 @@ export default function StoryViewer() {
     </Animated.View>
     </View>
 
-      {prevRing ? (
-        <Neighbor ring={prevRing} side={side} height={screen.height} edge="right" veil={veil} onPress={() => router.replace(`/stories/${prevRing.userId}` as never)} />
-      ) : null}
-      {nextRing ? (
-        <Neighbor ring={nextRing} side={side} height={screen.height} edge="left" veil={veil} onPress={() => router.replace(`/stories/${nextRing.userId}` as never)} />
+      {staged ? (
+        <Animated.View
+          style={{
+            position: "absolute",
+            left: 24,
+            width: panelWidth,
+            top: Math.max(insets.top, 16),
+            bottom: Math.max(16, keyboard + 8),
+            opacity: veil,
+            borderRadius: 24,
+            overflow: "hidden",
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,.14)",
+            backgroundColor: "rgba(14,26,36,.62)",
+            padding: 18,
+            gap: 14,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <Avatar name={story.author.name} size={40} mediaId={story.author.avatarMediaId} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text numberOfLines={1} style={{ color: "#fff", fontSize: 15, fontWeight: "700" }}>{story.author.name}</Text>
+              <Text style={{ color: "rgba(255,255,255,.65)", fontSize: 11.5 }}>
+                {relative(new Date(story.createdAt))} · {ar(index + 1)} من {ar(stories.length)}
+              </Text>
+            </View>
+          </View>
+
+          {mine ? (
+            <>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <EyeIcon size={15} color="rgba(255,255,255,.8)" />
+                <Text style={{ color: "rgba(255,255,255,.85)", fontSize: 12.5, fontWeight: "700" }}>
+                  {story._count.views > 0
+                    ? `شاهدها ${ar(story._count.views)}${story.reactions ? `، تفاعل ${ar(story.reactions)}` : ""}`
+                    : "لم يشاهدها أحد بعد"}
+                </Text>
+              </View>
+              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: 4 }}>
+                {DEV_FEATURES ? <OwnerComments target={{ kind: "story", id: story.id }} /> : null}
+                {(viewers.data?.viewers ?? []).map((person) => (
+                  <View key={person.id} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 5 }}>
+                    <View>
+                      <Avatar name={person.name} size={34} mediaId={person.avatarMediaId} frame={person.frame} charm={person.charm} />
+                      {person.reaction ? (
+                        <View style={{ position: "absolute", bottom: -4, left: -4 }}>
+                          <ReactionGlyph kind={person.reaction} size={18} />
+                        </View>
+                      ) : null}
+                    </View>
+                    <Text numberOfLines={1} style={{ flex: 1, color: "#fff", fontSize: 13, fontWeight: "600" }}>{person.name}</Text>
+                    {person.screenshot ? <ScreenshotIcon size={14} color="#FF7A5A" /> : null}
+                    <Text style={{ color: "rgba(255,255,255,.5)", fontSize: 11 }}>{relative(new Date(person.seenAt))}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                {DEV_FEATURES && canSaveMedia ? (
+                  <Pressable
+                    accessibilityLabel="احفظ القصة في الاستديو"
+                    disabled={saving}
+                    onPress={() => {
+                      setSaving(true);
+                      void saveMedia(story.mediaId, story.media.mime)
+                        .catch((error: Error) => Alert.alert("تعذّر الحفظ", error.message))
+                        .finally(() => setSaving(false));
+                    }}
+                    style={{ flex: 1, height: 40, borderRadius: 12, flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.14)", opacity: saving ? 0.6 : 1 }}
+                  >
+                    <DownloadIcon size={15} color="#fff" />
+                    <Text style={{ color: "#fff", fontSize: 12.5, fontWeight: "700" }}>{saving ? "يجهّزها…" : "احفظ"}</Text>
+                  </Pressable>
+                ) : null}
+                <Pressable
+                  onPress={() => remove.mutate(story.id)}
+                  style={{ flex: 1, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,122,90,.18)" }}
+                >
+                  <Text style={{ color: "#FF7A5A", fontSize: 12.5, fontWeight: "700" }}>احذف القصة</Text>
+                </Pressable>
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={{ flex: 1 }} />
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+                {FACES.map((face) => {
+                  const on = story.myReaction === face;
+                  return (
+                    <Pressable
+                      key={face}
+                      accessibilityLabel={on ? "ارفع التفاعل" : "تفاعل"}
+                      onPress={() => react(face)}
+                      style={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: 26,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: on ? "rgba(246,185,59,.9)" : "rgba(255,255,255,.1)",
+                        transform: [{ scale: on ? 1.08 : 1 }],
+                      }}
+                    >
+                      <ReactionGlyph kind={face} size={38} />
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {DEV_FEATURES ? (
+                <CommentField target={{ kind: "story", id: story.id }} onFocus={() => setTyping(true)} onBlur={() => setTyping(false)} />
+              ) : null}
+            </>
+          )}
+        </Animated.View>
       ) : null}
 
       {watching && mine ? (
@@ -769,52 +876,3 @@ export default function StoryViewer() {
   );
 }
 
-/**
- * قصّةُ الجار على جانب المسرح (القاعدة ٤٧٢): أوّلُ قصّةٍ له أصغرَ وباهتةً واسمُه تحتها.
- * والقائمةُ من الخبيئة نفسها التي تفتح القصّة، فالانتقالُ إليه لا ينتظر.
- */
-function Neighbor({
-  ring,
-  side,
-  height,
-  edge,
-  veil,
-  onPress,
-}: {
-  ring: StoryRing;
-  side: number;
-  height: number;
-  edge: "left" | "right";
-  veil: Animated.AnimatedInterpolation<number>;
-  onPress: () => void;
-}) {
-  const data = useQuery(storiesQuery(ring.userId));
-  const first = data.data?.stories[0];
-  const cardHeight = Math.round(height * 0.66);
-  const cardWidth = Math.min(Math.round((cardHeight * 9) / 16), side - 32);
-  const offset = Math.max(16, Math.round((side - cardWidth) / 2));
-  const photo = first && !first.media.mime.startsWith("video/") ? first.mediaId : null;
-  return (
-    <Animated.View
-      style={{ position: "absolute", top: 0, bottom: 0, [edge]: offset, width: cardWidth, justifyContent: "center", opacity: veil }}
-    >
-      <Pressable accessibilityRole="button" accessibilityLabel={`قصص ${ring.name}`} onPress={onPress} style={{ alignItems: "center", gap: 8 }}>
-        <View style={{ width: cardWidth, height: cardHeight, borderRadius: 16, overflow: "hidden", backgroundColor: "rgba(255,255,255,.08)", opacity: 0.6 }}>
-          {photo ? (
-            <MediaImage mediaId={photo} style={{ width: cardWidth, height: cardHeight }} resizeMode="cover" />
-          ) : (
-            <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-              <Avatar name={ring.name} size={56} mediaId={ring.avatarMediaId} />
-            </View>
-          )}
-        </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, maxWidth: cardWidth }}>
-          <Avatar name={ring.name} size={22} mediaId={ring.avatarMediaId} />
-          <Text numberOfLines={1} style={{ color: "rgba(255,255,255,.85)", fontSize: 12.5, fontWeight: "600", flexShrink: 1 }}>
-            {ring.name}
-          </Text>
-        </View>
-      </Pressable>
-    </Animated.View>
-  );
-}
