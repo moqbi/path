@@ -2,7 +2,7 @@ import { Spinner } from "./spinner";
 import { DEV_FEATURES } from "../lib/dev-features";
 import { CommentField, FloatLayer, OwnerComments } from "./floats";
 import { useEffect, useRef, useState } from "react";
-import { Image, Pressable, View } from "react-native";
+import { Image, Pressable, View, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Text } from "./type";
@@ -100,11 +100,20 @@ function Body({ note }: { note: StatusNote }) {
     },
   });
 
+  /*
+    **بطاقةٌ في الوسط على الشاشة الأفقيّة** — **بقرار المالك** (القاعدة ٤٧٢): لوحٌ يصعد من
+    الأسفل كان يغطّي أكثرَ الشاشة القصيرة. فالنافذةُ في الوسط بعمودين: الفقاعةُ والصورةُ
+    يميناً، والأغنيةُ والوجوهُ والتعليقُ (أو من شاف لصاحبها) يساراً.
+  */
+  const { width, height } = useWindowDimensions();
+  const across = width > height;
+
   return (
     <GlassSheet
       title={mine ? "نوتك" : note.author.name}
       subtitle={relative(new Date(note.createdAt))}
       onClose={close}
+      centered={across}
     >
       {/* `GlassSheet` بلا حشوةٍ لما فيه: كانت الوجوهُ تلتصق بحافّتها السفلى فتُقصّ،
           وشريطُ الأغنية بحافّتيها. والحشوةُ حشوةُ نافذة التفاعل نفسُها. */}
@@ -115,12 +124,14 @@ function Body({ note }: { note: StatusNote }) {
         style={{ flexGrow: 0 }}
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 22 }}
       >
-        <View style={{ alignItems: "center", paddingTop: 4 }}>
+        <View style={{ flexDirection: across ? "row" : "column", alignItems: across ? "center" : "stretch", gap: across ? 24 : 0 }}>
+        <View style={{ alignItems: "center", justifyContent: "center", paddingTop: 4, width: across ? 230 : "100%" }}>
           <NoteBubble size="large" text={note.text} trackTitle={note.trackTitle} trackArtist={note.trackArtist} playing={clip.playing} gif={note.gifId ? { id: note.gifId, w: note.gifW, h: note.gifH } : null} />
           <View style={{ marginTop: 4 }}>
-            <Avatar name={note.author.name} size={72} mediaId={note.author.avatarMediaId} frame={note.author.frame} charm={note.author.charm} />
+            <Avatar name={note.author.name} size={across ? 96 : 72} mediaId={note.author.avatarMediaId} frame={note.author.frame} charm={note.author.charm} />
           </View>
         </View>
+        <View style={{ flexGrow: across ? 1 : 0, flexShrink: 1, flexBasis: across ? 0 : "auto", minWidth: 0 }}>
 
         {note.trackId ? (
           <Pressable
@@ -178,7 +189,7 @@ function Body({ note }: { note: StatusNote }) {
             </View>
           </>
         ) : (
-          <View style={{ flexDirection: "row", justifyContent: "center", gap: 12, marginTop: 16 }}>
+          <View style={{ flexDirection: "row", justifyContent: across ? "flex-start" : "center", gap: 12, marginTop: 16 }}>
             {FACES.map((kind) => {
               const on = note.myReaction === kind;
               return (
@@ -208,6 +219,8 @@ function Body({ note }: { note: StatusNote }) {
             <CommentField target={{ kind: "note", id: note.id }} />
           </View>
         ) : null}
+        </View>
+        </View>
       </SheetScrollView>
       {DEV_FEATURES ? <FloatLayer target={{ kind: "note", id: note.id }} top={0} bottom={0.42} replay={Math.max(0, replay - 1)} /> : null}
       </View>

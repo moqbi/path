@@ -47,6 +47,7 @@ export function GlassSheet({
   onClose,
   children,
   overlay,
+  centered = false,
 }: {
   icon?: React.ReactNode;
   title: string;
@@ -58,6 +59,8 @@ export function GlassSheet({
    * في الجذر، فالجولةُ هناك تُرسم خلفها (القاعدة ٣٢٨).
    */
   overlay?: React.ReactNode;
+  /** بطاقةٌ عريضةٌ في وسط الشاشة لا لوحٌ في أسفلها — النوت على الشاشة الأفقيّة (القاعدة ٤٧٢). */
+  centered?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const drag = useRef(new Animated.Value(0)).current;
@@ -139,9 +142,9 @@ export function GlassSheet({
             marginHorizontal: 10,
             // على الآيباد نافذةٌ بعرض جوّال في أسفل الشاشة كنوافذ النظام، لا شريطٌ بعرضها (القاعدة ٤٦٤).
             // والآيفونُ المُدار أضيق: ٤٤٠ — **بقرار المالك** (القاعدة ٤٦٨): ٥٦٠ على ارتفاع ٣٩٠ تملأ الشاشة.
-            width: Math.min(screenWidth - 20, screenWidth > height ? 440 : 560),
+            width: centered ? Math.min(screenWidth - 80, 720) : Math.min(screenWidth - 20, screenWidth > height ? 440 : 560),
             alignSelf: "center",
-            marginBottom: Math.max(insets.bottom, 12),
+            marginBottom: centered ? 0 : Math.max(insets.bottom, 12),
             maxHeight: height * (screenWidth > height ? 0.86 : 0.78),
             transform: [{ translateY: drag }, { scale }],
             opacity: fade,
@@ -200,6 +203,8 @@ export function GlassSheet({
             <Scrolls.Provider value={report}>{children}</Scrolls.Provider>
           </View>
         </Animated.View>
+        {/* الوسطُ فراغٌ تحتها بقدر ما فوقها، والضغطُ فيه يُغلقها كما فوقها. */}
+        <Pressable style={{ flexGrow: centered ? 1 : 0, flexShrink: 1, flexBasis: 0 }} onPress={close} />
       </KeyboardAvoidingView>
       {overlay}
     </Modal>
