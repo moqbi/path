@@ -1,5 +1,6 @@
 import { useLayoutEffect, useMemo, useRef } from "react";
-import { Modal, Pressable, View, Dimensions, Animated, PanResponder, Platform } from "react-native";
+import { ORIENTATIONS } from "../lib/stage";
+import { Modal, Pressable, View, useWindowDimensions, Animated, PanResponder, Platform } from "react-native";
 import { initialWindowMetrics, useSafeAreaInsets } from "react-native-safe-area-context";
 import { create } from "zustand";
 import { MediaImage } from "./media-image";
@@ -80,7 +81,7 @@ function ViewerBody() {
     top: Math.max(context.top, initialWindowMetrics?.insets.top ?? 0, Platform.OS === "ios" ? 44 : 24),
     bottom: Math.max(context.bottom, initialWindowMetrics?.insets.bottom ?? 0),
   };
-  const screen = Dimensions.get("window");
+  const screen = useWindowDimensions();
   const drag = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(1)).current;
   const panX = useRef(new Animated.Value(0)).current;
@@ -314,7 +315,7 @@ function ViewerBody() {
   const fade = useMemo(() => drag.interpolate({ inputRange: [0, 300], outputRange: [1, 0.3], extrapolate: "clamp" }), [drag]);
 
   return (
-    <Modal visible={open} transparent animationType="fade" onRequestClose={close}>
+    <Modal supportedOrientations={ORIENTATIONS} visible={open} transparent animationType="fade" onRequestClose={close}>
       {/* الأرضيّةُ وحدها تبهت مع السحب، والصورةُ فوقها مصمتة: كانت الصورةُ تحت الشفافيّة نفسها. */}
       <Animated.View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgb(6,12,18)", opacity: fade }} />
       <Animated.View {...pan.panHandlers} style={{ flex: 1 }}>

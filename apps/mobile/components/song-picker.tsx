@@ -1,4 +1,5 @@
 import { Spinner } from "./spinner";
+import { useContentWidth } from "../lib/pane";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, FlatList, Image, PanResponder, Pressable, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -173,7 +174,7 @@ const CLIP_MIN = 3;
  * ثابتٌ من معرّف الأغنية لا موجتُها: المعاينةُ على دِيزر لا عندنا لنقرأها.
  */
 function Trim({ track, onDone, onOther }: { track: Track; onDone: (start: number, full: boolean, seconds: number) => void; onOther: () => void }) {
-  const { width: screen } = useWindowDimensions();
+  const screen = Math.min(useContentWidth(), 600);
   const width = screen - 48;
   const px = width / PREVIEW_SECONDS;
   const [start, setStart] = useState(0);

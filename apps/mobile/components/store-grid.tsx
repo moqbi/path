@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ORIENTATIONS } from "../lib/stage";
 import { View, Pressable, Modal } from "react-native";
 import { useGrid } from "../lib/pane";
 import { RtlStrip } from "./rtl-strip";
@@ -580,7 +581,7 @@ export function StoreGrid({
           */}
           {/* «عرض»: الرسم كاملاً. */}
           {showing && chosen ? (
-            <Modal transparent animationType="fade" onRequestClose={() => setShowing(false)}>
+            <Modal supportedOrientations={ORIENTATIONS} transparent animationType="fade" onRequestClose={() => setShowing(false)}>
               <Pressable
                 onPress={() => setShowing(false)}
                 style={{ flex: 1, backgroundColor: "rgba(14,26,36,.88)", alignItems: "center", justifyContent: "center", padding: 32 }}
@@ -602,7 +603,7 @@ export function StoreGrid({
 
           {/* والنتيجة نافذةٌ تُقرأ، لا سطرٌ في طرف الشاشة. */}
           {said ? (
-            <Modal transparent animationType="fade" onRequestClose={() => setSaid(null)}>
+            <Modal supportedOrientations={ORIENTATIONS} transparent animationType="fade" onRequestClose={() => setSaid(null)}>
               <View style={{ flex: 1, backgroundColor: "rgba(14,26,36,.5)", alignItems: "center", justifyContent: "center", paddingHorizontal: 32 }}>
                 <View style={{ width: "100%", maxWidth: 300, borderRadius: 24, backgroundColor: colors.card, padding: 24 }}>
                   <Text

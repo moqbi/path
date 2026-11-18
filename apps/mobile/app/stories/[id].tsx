@@ -1,6 +1,7 @@
 import { Spinner } from "../../components/spinner";
 import { useEffect, useRef, useState } from "react";
-import { View, Pressable, Alert, Dimensions, ScrollView, Animated, PanResponder } from "react-native";
+import { View, Pressable, Alert, ScrollView, Animated, PanResponder } from "react-native";
+import { useStage } from "../../lib/stage";
 import type { StorySticker, StoryText } from "@athar/shared";
 import { Audio } from "../../lib/av";
 import { StoryTexts } from "../../components/story-texts";
@@ -314,7 +315,8 @@ export default function StoryViewer() {
     return () => clearInterval(tick);
   }, [index, round, paused, span, stories.length, router, story]);
 
-  const screen = Dimensions.get("window");
+  // لوحةٌ رأسيّة في وسط الشاشة الأفقيّة (القاعدة ٤٦٨)، والشاشةُ نفسُها في الرأسيّة.
+  const screen = useStage();
 
   const drop = useRef(new Animated.Value(0)).current;
   // ما يتغيّر بين رسمٍ ورسم يُقرأ من مرجع: المستجيبُ يُبنى مرّةً واحدة.
@@ -673,7 +675,7 @@ export default function StoryViewer() {
               لم يشاهدها أحدٌ من أصدقائك بعد.
             </Text>
           ) : (
-            <ScrollView style={{ maxHeight: Dimensions.get("window").height * 0.5 }}>
+            <ScrollView style={{ maxHeight: screen.height * 0.5 }}>
               {viewers.data!.viewers.map((person) => (
                 <Pressable
                   key={person.id}

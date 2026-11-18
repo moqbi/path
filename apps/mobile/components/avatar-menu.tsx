@@ -1,4 +1,5 @@
 import { Spinner } from "./spinner";
+import { ORIENTATIONS } from "../lib/stage";
 import { useState } from "react";
 import { View, Pressable, Modal } from "react-native";
 import { Text } from "./type";
@@ -111,7 +112,7 @@ export function AvatarMenu({
       ) : null}
 
       {view === "photo" ? (
-        <Modal transparent animationType="fade" onRequestClose={close}>
+        <Modal supportedOrientations={ORIENTATIONS} transparent animationType="fade" onRequestClose={close}>
           <Pressable
             onPress={close}
             style={{

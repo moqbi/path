@@ -1,6 +1,6 @@
 import { Spinner } from "../components/spinner";
 import { useEffect, useRef, useState } from "react";
-import { View, Pressable, Image, Dimensions, PanResponder, type GestureResponderEvent } from "react-native";
+import { View, Pressable, Image, PanResponder, type GestureResponderEvent } from "react-native";
 import { Text } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -11,6 +11,8 @@ import { CloseIcon } from "../components/icons";
 import { keepShot } from "../lib/capture";
 import { ar } from "../lib/format";
 import { StoryVideo } from "../components/story-video";
+import { useStage } from "../lib/stage";
+import { RotateHint } from "../components/rotate-hint";
 import { colors } from "../theme/tokens";
 
 /**
@@ -100,7 +102,10 @@ export default function Camera() {
     return () => clearInterval(tick);
   }, [recording]);
 
-  const screen = Dimensions.get("window");
+  const screen = useStage();
+
+  // آيفون مُدار لا يتّسع للغالق والمعاينة (القاعدة ٤٦٨).
+  if (screen.cramped) return <RotateHint onClose={() => router.back()} />;
 
   if (!permission) {
     return (
@@ -370,7 +375,6 @@ export default function Camera() {
         ) : null}
       </SafeAreaView>
 
-      {screen.width < 1 ? null : null}
     </View>
   );
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AthrMark, AthrWordmark } from "@/components/brand";
 import { lines, siteImage, siteShots, siteStickers, siteText, storeUrl } from "@/lib/site";
 import { ShotsCarousel } from "./shots-carousel";
+import { Devices } from "./devices";
 import { NewFeatures } from "./new-features";
 import { HeroPhone } from "./hero-phone";
 import { PostCard } from "./post-card";
@@ -354,6 +355,9 @@ export default async function LandingPage() {
         </div>
       </section>
 
+      {/* ───────────── الأجهزة المدعومة (القاعدة ٤٦٨) ───────────── */}
+      <Devices text={text} />
+
       {/* ───────────── ليش آثار ───────────── */}
       <section id="why" className="l-wide scroll-mt-20 pt-20">
         <div className="text-center">
@@ -464,9 +468,6 @@ export default async function LandingPage() {
             <p className="mt-1.5 max-w-md text-[13.5px] leading-[1.9] text-muted">{text["download.body"]}</p>
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <StoreButtons ios={ios} android={android} huawei={huawei} />
-              <Link href="/contact" className="l-cta">
-                {text["download.cta"]}
-              </Link>
             </div>
           </div>
         </div>

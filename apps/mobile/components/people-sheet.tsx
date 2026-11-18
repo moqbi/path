@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ORIENTATIONS } from "../lib/stage";
 import { View, Pressable, FlatList, Modal } from "react-native";
 import { Text, TextInput } from "./type";
 import { Avatar } from "./avatar";
@@ -40,7 +41,7 @@ export function PeopleSheet({
     : friends;
 
   return (
-    <Modal transparent animationType="slide" onRequestClose={onClose}>
+    <Modal supportedOrientations={ORIENTATIONS} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: "rgba(14,26,36,.6)" }} onPress={onClose} />
 
       <View

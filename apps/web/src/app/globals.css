@@ -1787,3 +1787,191 @@ h3 {
     animation: none;
   }
 }
+
+/* ── الأجهزة المدعومة (القاعدة ٤٦٨) ──
+   الإطاراتُ من CSS والشاشاتُ لقطاتٌ من التطبيق. الشاشةُ العريضة لوحتان: القائمةُ
+   في طرف البداية (يميناً) — فالصفُّ يتبع اتجاه الصفحة، والقابلُ للطيّ يحمل خطَّ ثنيه. */
+.d-grid {
+  display: grid;
+  gap: 18px;
+}
+@media (min-width: 900px) {
+  .d-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.d-card {
+  min-width: 0;
+  border-radius: 28px;
+  background: var(--color-card);
+  padding: 18px 18px 22px;
+  box-shadow: 0 1px 0 var(--color-line);
+}
+
+.d-stage {
+  position: relative;
+  height: 270px;
+  overflow: hidden;
+  border-radius: 20px;
+  background:
+    radial-gradient(120% 90% at 50% 100%, rgba(246, 185, 59, 0.16), transparent 60%),
+    var(--color-ground);
+}
+
+.d-name {
+  margin-top: 16px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.d-body {
+  margin-top: 4px;
+  font-size: 13.5px;
+  line-height: 1.9;
+  color: var(--color-ink-2);
+}
+
+.d-dev {
+  position: absolute;
+  margin: 0;
+  background: #0e1a24;
+  box-shadow: 0 22px 44px rgba(14, 26, 36, 0.26);
+}
+
+.d-screen {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #fdfcf8;
+}
+
+.d-screen img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.d-split {
+  display: flex;
+  gap: 1.5px;
+  background: #0e1a24;
+}
+
+.d-split > div {
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #fdfcf8;
+}
+
+/* خطُّ الثني في وسط القابل للطيّ مفتوحاً. */
+.d-crease {
+  position: relative;
+}
+.d-crease::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 50%;
+  width: 10px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, transparent, rgba(14, 26, 36, 0.16), transparent);
+  pointer-events: none;
+}
+
+/* آيفون قائماً، وخلفه آيفون مُدار بلوحتيه. */
+.d-phone {
+  width: 112px;
+  height: 236px;
+  padding: 5px;
+  border-radius: 24px;
+}
+.d-phone .d-screen {
+  border-radius: 19px;
+}
+.d-card:first-child .d-phone {
+  top: 22px;
+  inset-inline-start: 14%;
+  z-index: 1;
+}
+.d-phone-land {
+  width: 236px;
+  height: 112px;
+  padding: 5px;
+  border-radius: 24px;
+  bottom: 30px;
+  inset-inline-end: 6%;
+}
+.d-phone-land .d-screen {
+  border-radius: 19px;
+}
+
+/* آيباد أفقيّاً. */
+.d-pad {
+  width: min(300px, 86%);
+  aspect-ratio: 4 / 3;
+  padding: 8px;
+  border-radius: 20px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.d-pad .d-screen {
+  border-radius: 12px;
+}
+
+/* القابلُ للطيّ: مفتوحاً قرابةَ المربّع، ومطويّاً جوّالٌ ضيّق بجانبه. */
+.d-fold {
+  width: 214px;
+  height: 196px;
+  padding: 6px;
+  border-radius: 18px;
+  top: 34px;
+  inset-inline-start: 10%;
+}
+.d-fold .d-screen {
+  border-radius: 12px;
+}
+.d-phone-folded {
+  width: 88px;
+  height: 196px;
+  border-radius: 20px;
+  top: 52px;
+  inset-inline-end: 8%;
+  z-index: 1;
+}
+.d-phone-folded .d-screen {
+  border-radius: 15px;
+}
+
+.d-tag {
+  position: absolute;
+  z-index: 2;
+  border-radius: 999px;
+  background: var(--color-card);
+  padding: 3px 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--color-ink);
+  box-shadow: 0 6px 16px rgba(14, 26, 36, 0.12);
+}
+.d-tag-a {
+  top: 12px;
+  inset-inline-start: 8%;
+}
+.d-tag-b {
+  bottom: 14px;
+  inset-inline-end: 8%;
+}
+.d-tag-c {
+  top: 26px;
+  inset-inline-end: 6%;
+}
+.d-tag-d {
+  bottom: 16px;
+  inset-inline-start: 8%;
+}

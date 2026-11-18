@@ -1,4 +1,5 @@
 import { View, Pressable, Modal } from "react-native";
+import { ORIENTATIONS } from "../lib/stage";
 import { Text } from "./type";
 import { CameraIcon } from "./icons";
 import { colors } from "../theme/tokens";
@@ -30,7 +31,7 @@ export function SourceSheet({
   onClose: () => void;
 }) {
   return (
-    <Modal transparent visible={open} animationType="slide" onRequestClose={onClose}>
+    <Modal supportedOrientations={ORIENTATIONS} transparent visible={open} animationType="slide" onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: "rgba(14,26,36,.55)" }} onPress={onClose} />
 
       <View

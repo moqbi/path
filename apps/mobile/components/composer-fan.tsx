@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { View, Pressable, Image, Animated, Easing, Dimensions } from "react-native";
+import { View, Pressable, Image, Animated, Easing, useWindowDimensions } from "react-native";
 import { Text } from "./type";
 import { useRouter } from "expo-router";
 import { create } from "zustand";
@@ -123,7 +123,7 @@ export function ComposerFan() {
     { key: "wake", label: "صحيت", run: () => { setBusy("wake"); mark.mutate("WAKE"); } },
   ] as const;
 
-  const screen = Dimensions.get("window");
+  const screen = useWindowDimensions();
   // نصفُ القطر من عرض القائمة التي يجلس فيها الزرّ، لا من عرض الآيباد كلّه (القاعدة ٤٦٤).
   const radius = radiusFor(usePaneWidth());
 

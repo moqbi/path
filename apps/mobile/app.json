@@ -4,7 +4,7 @@
     "slug": "athar",
     "scheme": "athar",
     "version": "0.1.5",
-    "orientation": "portrait",
+    "orientation": "default",
     "userInterfaceStyle": "light",
     "ios": {
       "bundleIdentifier": "app.athar.mobile",

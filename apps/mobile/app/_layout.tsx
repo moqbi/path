@@ -1,12 +1,13 @@
 import { Spinner } from "../components/spinner";
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { AppState, Appearance, I18nManager, Platform, View, StyleSheet } from "react-native";
 import { MediaImage } from "../components/media-image";
 import { enableLegacyHeaderAppearance, Stack, useRouter, useSegments } from "expo-router";
 import * as Notifications from "expo-notifications";
 import { onPush, type PushData } from "../lib/push-open";
 import { enablePush } from "../lib/push";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
+import { SideContext } from "../lib/pane";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useFonts } from "expo-font";
 import {
@@ -485,9 +486,29 @@ function App() {
             return false;
           }}
         >
-          <Gate />
+          <SideSafe>
+            <Gate />
+          </SideSafe>
         </View>
       </QueryClientProvider>
     </SafeAreaProvider>
+  );
+}
+
+/**
+ * الآيفونُ المُدار يضع حسّاسَ الكاميرا على حافّةٍ جانبيّة، والآيبادُ لا (القاعدة ٤٦٨).
+ * فالتطبيقُ كلُّه يُرسم داخل هامشَي الحافّتين هنا مرّةً — لا في كلّ شاشة — والشريطان
+ * الجانبيّان بلون الرأس. و`SafeAreaProvider` الداخليّ يقيس من إطاره هو، فما تحته يقرأ
+ * الحافّتين صفراً ولا يُضاعف الهامش؛ والأعلى والأسفل كما كانا.
+ */
+function SideSafe({ children }: { children: ReactNode }) {
+  const insets = useSafeAreaInsets();
+  // شجرةٌ واحدة في الاتجاهين: فرعٌ يتبدّل بالدوران يُعيد بناء التطبيق كلّه فتضيع حالُه.
+  return (
+    <View style={{ flex: 1, paddingLeft: insets.left, paddingRight: insets.right, backgroundColor: colors.night }}>
+      <SafeAreaProvider style={{ flex: 1, direction: "rtl" }}>
+        <SideContext.Provider value={insets.left + insets.right}>{children}</SideContext.Provider>
+      </SafeAreaProvider>
+    </View>
   );
 }

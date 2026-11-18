@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
-import { Platform, View, useWindowDimensions } from "react-native";
+import { Platform, View } from "react-native";
 import { useBarSpace } from "./glass-bar";
 import { AthrMark } from "./brand";
 import { Text } from "./type";
 import { TabBackdrop } from "./tab-backdrop";
 import { colors } from "../theme/tokens";
-import { listWidth, PaneRoute, paneKind, usePaneHost, useWide, WidthContext } from "../lib/pane";
+import { listWidth, useContentWidth, PaneRoute, paneKind, usePaneHost, useWide, WidthContext } from "../lib/pane";
 export { useGrid, usePaneWidth } from "../lib/pane";
 import MomentPage from "../app/m/[id]";
 import Conversation from "../app/dm/[id]";
@@ -18,7 +18,7 @@ import ProfileScreen from "../app/u/[id]";
  */
 export function Split({ host, empty, children }: { host: string; empty: string; children: ReactNode }) {
   const wide = useWide();
-  const screen = useWindowDimensions().width;
+  const screen = useContentWidth();
   const path = usePaneHost(host, wide);
   /*
     الشريطُ الزجاجيّ في أندرويد يطفو فوق المحتوى بعرض الشاشة (القاعدة ٢٢٨)، فما في اللوحة

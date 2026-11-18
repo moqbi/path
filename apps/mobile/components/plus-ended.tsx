@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ORIENTATIONS } from "../lib/stage";
 import { Linking, Modal, Platform, Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Text } from "./type";
@@ -53,7 +54,7 @@ export function PlusEnded() {
   };
 
   return (
-    <Modal transparent animationType="fade" onRequestClose={close}>
+    <Modal supportedOrientations={ORIENTATIONS} transparent animationType="fade" onRequestClose={close}>
       <View style={{ flex: 1, backgroundColor: "rgba(14,26,36,.55)", alignItems: "center", justifyContent: "center", paddingHorizontal: 28 }}>
         <View style={{ width: "100%", maxWidth: 340, borderRadius: 24, backgroundColor: colors.card, padding: 24 }}>
           <View style={{ alignSelf: "center", width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center", backgroundColor: colors.goldSoft }}>

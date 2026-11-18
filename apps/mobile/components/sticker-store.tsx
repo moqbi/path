@@ -5,7 +5,7 @@ import { useGrid } from "../lib/pane";
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Text } from "./type";
-import { Sheet } from "./sheet";
+import { Sheet, sheetInner } from "./sheet";
 import { RtlStrip } from "./rtl-strip";
 import { MediaImage } from "./media-image";
 import { CheckIcon, SparkIcon } from "./icons";
@@ -95,7 +95,8 @@ function PackSheet({ pack, isPlus, onClose }: { pack: StickerPack; isPlus: boole
   const price = pack.priceCoins ?? 0;
   // النقصُ يُقال قبل الضغط (القاعدة ٩٣ب).
   const short = state === "buy" && coins < price;
-  const cell = Math.floor((width - 40 - 3 * 10) / 4);
+  // داخل النافذة لا بعرض الشاشة: على الآيباد والآيفون المُدار عرضُها ٦٠٠ (القاعدة ٤٦٨).
+  const cell = Math.floor((sheetInner(width) - 3 * 10) / 4);
 
   const leave = (to: string) => {
     onClose();

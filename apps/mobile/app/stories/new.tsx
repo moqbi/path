@@ -1,6 +1,8 @@
 import { Spinner } from "../../components/spinner";
 import { useState } from "react";
-import { View, Pressable, ScrollView, Image, Dimensions } from "react-native";
+import { View, Pressable, ScrollView, Image } from "react-native";
+import { useStage } from "../../lib/stage";
+import { RotateHint } from "../../components/rotate-hint";
 import { Text } from "../../components/type";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -109,7 +111,8 @@ export default function NewStory() {
   }
   const [stickerAt, setStickerAt] = useState<number | null>(null);
 
-  const screen = Dimensions.get("window");
+  // لوحةٌ رأسيّة في وسط الشاشة الأفقيّة كما يراها المشاهد (القاعدة ٤٦٨).
+  const screen = useStage();
   /*
     القصّةُ بملء الشاشة، وصاحبُها يقرّب صورتها ويبعدها ويسحبها (القاعدة ٢٩٦) — في نسخة
     التطوير وحدها حتى تُجرَّب.
@@ -224,6 +227,9 @@ export default function NewStory() {
     }
   }
 
+  // آيفون مُدار: لا يتّسع للكاميرا ولا للمحرّر (القاعدة ٤٦٨).
+  if (screen.cramped) return <RotateHint onClose={() => router.back()} />;
+
   // بلا لقطةٍ: الكاميرا نفسها — لا صفحةٌ قبلها (القاعدة ٢٧٠).
   if (!draft) {
     return (
@@ -265,7 +271,8 @@ export default function NewStory() {
   const long = draft.video && draft.seconds > STORY_SECONDS;
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#0b1219" }}>
+    <View style={{ flex: 1, backgroundColor: "#000", alignItems: "center" }}>
+    <View style={{ width: screen.width, height: screen.height, backgroundColor: "#0b1219" }}>
       {/* اللوحةُ بملء الشاشة كما يراها المشاهد — فالنصُّ والملصقُ يقعان حيث وُضعا. */}
       {DEV_FEATURES ? (
         /* طبقةُ الصورة تأخذ ما لم يأخذه نصٌّ ولا ملصقٌ فوقها: سحبٌ وتقريبٌ ونقرتان تُعيدانها. */
@@ -565,6 +572,7 @@ export default function NewStory() {
         />
       ) : null}
 
+    </View>
     </View>
   );
 }

@@ -1,4 +1,6 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useContentWidth } from "../../../lib/pane";
+import { ORIENTATIONS } from "../../../lib/stage";
 import { VideoBadge } from "../../../components/moment-video";
 import { Animated, Easing, Image, Modal, PanResponder, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -92,7 +94,8 @@ export default function HallScreen() {
   const year = Number(raw);
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
+  const { height } = useWindowDimensions();
+  const width = useContentWidth();
   const floorH = 104 + Math.max(insets.bottom, 12);
   const headTop = insets.top + 74;
   const frameTop = headTop + 96;
@@ -839,10 +842,11 @@ function MonthGrid({
   onClose: () => void;
 }) {
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
+  const { height } = useWindowDimensions();
+  const width = useContentWidth();
   const tile = (width - 36 - 16) / 3;
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+    <Modal supportedOrientations={ORIENTATIONS} visible transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <Pressable accessibilityLabel="إغلاق" onPress={onClose} style={{ flex: 1, backgroundColor: "rgba(20,14,6,.45)" }} />
       <View
         style={{
@@ -973,7 +977,8 @@ function HallSheet({
   onOpen: (id: string) => void;
 }) {
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
+  const { height } = useWindowDimensions();
+  const width = useContentWidth();
   const [tab, setTab] = useState<Tab>(first);
   const [hold, setHold] = useState(false);
   /*
@@ -1039,7 +1044,7 @@ function HallSheet({
   ];
 
   return (
-    <Modal visible transparent animationType="none" onRequestClose={close} statusBarTranslucent>
+    <Modal supportedOrientations={ORIENTATIONS} visible transparent animationType="none" onRequestClose={close} statusBarTranslucent>
       <Animated.View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(6,10,14,.6)", opacity: backdrop }}>
         <Pressable accessibilityLabel="إغلاق" onPress={close} style={{ flex: 1 }} />
       </Animated.View>
