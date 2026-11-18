@@ -39,11 +39,11 @@ export function Sheet({
     <Modal transparent animationType={wide ? "fade" : "slide"} supportedOrientations={ORIENTATIONS} onRequestClose={onClose}>
       {/* حقلٌ في النافذة (من دعاك؟) يصعد فوق الكيبورد لا تحته. */}
       <KeyboardAvoidingView
-        style={[{ flex: 1 }, wide ? { alignItems: "center", justifyContent: "center", padding: 16 } : null]}
+        style={{ flex: 1, alignItems: wide ? "center" : "stretch", justifyContent: wide ? "center" : "flex-start", padding: wide ? 16 : 0 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <Pressable
-          style={wide ? { position: "absolute", top: 0, bottom: 0, left: 0, right: 0, backgroundColor: "rgba(14,26,36,.42)" } : { flex: 1, backgroundColor: "rgba(14,26,36,.42)" }}
+          style={wide ? { position: "absolute", top: 0, bottom: 0, left: 0, right: 0, flex: 0, backgroundColor: "rgba(14,26,36,.42)" } : { position: "relative", top: 0, bottom: 0, left: 0, right: 0, flex: 1, backgroundColor: "rgba(14,26,36,.42)" }}
           onPress={onClose}
         />
 
