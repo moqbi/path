@@ -1,6 +1,6 @@
 import { Spinner } from "../../components/spinner";
 import { useEffect, useRef, useState } from "react";
-import { View, Pressable, Alert, ScrollView, Animated, PanResponder } from "react-native";
+import { View, Pressable, Alert, ScrollView, Animated, PanResponder, useWindowDimensions } from "react-native";
 import { useStage } from "../../lib/stage";
 import type { StorySticker, StoryText } from "@athar/shared";
 import { Audio } from "../../lib/av";
@@ -27,7 +27,7 @@ import { canSaveMedia, saveMedia } from "../../lib/save-media";
 import { useScreenshot } from "../../lib/screenshot";
 import { api, baseUrl, currentAccess } from "../../lib/api";
 import { storiesQuery } from "../../lib/story-prefetch";
-import type { StoryRing } from "../../lib/queries";
+import { useRings, type StoryRing } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { ar, relative } from "../../lib/format";
 import { colors } from "../../theme/tokens";
@@ -317,6 +317,19 @@ export default function StoryViewer() {
 
   // لوحةٌ رأسيّة في وسط الشاشة الأفقيّة (القاعدة ٤٦٨)، والشاشةُ نفسُها في الرأسيّة.
   const screen = useStage();
+  /*
+    **المسرح** — **بقرار المالك** (القاعدة ٤٧٢): على الشاشة الأفقيّة ما حول القصّة نسخةٌ
+    مغبّشةٌ منها لا سواد، وعلى الجانبين قصّتا الصديق السابق والتالي من الشريط — الضغطُ
+    عليهما ينقل إليه. ويمينٌ للسابق ويسارٌ للتالي كقراءة العربيّة.
+  */
+  const win = useWindowDimensions();
+  const side = (win.width - screen.width) / 2;
+  const staged = win.width > win.height && side >= 120;
+  const rings = useRings();
+  const ringList = rings.data?.rings ?? [];
+  const at = ringList.findIndex((ring) => ring.userId === id);
+  const prevRing = staged && at > 0 ? ringList[at - 1] : null;
+  const nextRing = staged && at >= 0 && at + 1 < ringList.length ? ringList[at + 1] : null;
 
   const drop = useRef(new Animated.Value(0)).current;
   // ما يتغيّر بين رسمٍ ورسم يُقرأ من مرجع: المستجيبُ يُبنى مرّةً واحدة.
@@ -434,6 +447,14 @@ export default function StoryViewer() {
     <View style={{ flex: 1 }}>
       {/* الأرضيةُ تبهت مع السحب فتنكشف الشاشةُ تحت القصّة. */}
       <Animated.View pointerEvents="none" style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, backgroundColor: "#0b1219", opacity: veil }} />
+      {staged ? (
+        <Animated.View pointerEvents="none" style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, overflow: "hidden", opacity: veil }}>
+          {video ? null : (
+            <MediaImage mediaId={story.mediaId} style={{ width: win.width, height: win.height, opacity: 0.7 }} resizeMode="cover" blurRadius={50} />
+          )}
+          <View style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, backgroundColor: "rgba(11,18,25,.35)" }} />
+        </Animated.View>
+      ) : null}
     <View {...pan.panHandlers} style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
     <Animated.View style={[{ width: screen.width, backgroundColor: "#0b1219", overflow: "hidden" }, sink]}>
     <Animated.View style={{ position: "absolute", left: 0, width: screen.width, height: screen.height, top: lift }}>
@@ -665,6 +686,13 @@ export default function StoryViewer() {
     </Animated.View>
     </View>
 
+      {prevRing ? (
+        <Neighbor ring={prevRing} side={side} height={screen.height} edge="right" veil={veil} onPress={() => router.replace(`/stories/${prevRing.userId}` as never)} />
+      ) : null}
+      {nextRing ? (
+        <Neighbor ring={nextRing} side={side} height={screen.height} edge="left" veil={veil} onPress={() => router.replace(`/stories/${nextRing.userId}` as never)} />
+      ) : null}
+
       {watching && mine ? (
         <Sheet title="من شاهد قصّتك" onClose={() => setWatching(false)}>
           {DEV_FEATURES && story ? <OwnerComments target={{ kind: "story", id: story.id }} light /> : null}
@@ -738,5 +766,55 @@ export default function StoryViewer() {
         </Sheet>
       ) : null}
     </View>
+  );
+}
+
+/**
+ * قصّةُ الجار على جانب المسرح (القاعدة ٤٧٢): أوّلُ قصّةٍ له أصغرَ وباهتةً واسمُه تحتها.
+ * والقائمةُ من الخبيئة نفسها التي تفتح القصّة، فالانتقالُ إليه لا ينتظر.
+ */
+function Neighbor({
+  ring,
+  side,
+  height,
+  edge,
+  veil,
+  onPress,
+}: {
+  ring: StoryRing;
+  side: number;
+  height: number;
+  edge: "left" | "right";
+  veil: Animated.AnimatedInterpolation<number>;
+  onPress: () => void;
+}) {
+  const data = useQuery(storiesQuery(ring.userId));
+  const first = data.data?.stories[0];
+  const cardHeight = Math.round(height * 0.66);
+  const cardWidth = Math.min(Math.round((cardHeight * 9) / 16), side - 32);
+  const offset = Math.max(16, Math.round((side - cardWidth) / 2));
+  const photo = first && !first.media.mime.startsWith("video/") ? first.mediaId : null;
+  return (
+    <Animated.View
+      style={{ position: "absolute", top: 0, bottom: 0, [edge]: offset, width: cardWidth, justifyContent: "center", opacity: veil }}
+    >
+      <Pressable accessibilityRole="button" accessibilityLabel={`قصص ${ring.name}`} onPress={onPress} style={{ alignItems: "center", gap: 8 }}>
+        <View style={{ width: cardWidth, height: cardHeight, borderRadius: 16, overflow: "hidden", backgroundColor: "rgba(255,255,255,.08)", opacity: 0.6 }}>
+          {photo ? (
+            <MediaImage mediaId={photo} style={{ width: cardWidth, height: cardHeight }} resizeMode="cover" />
+          ) : (
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+              <Avatar name={ring.name} size={56} mediaId={ring.avatarMediaId} />
+            </View>
+          )}
+        </View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, maxWidth: cardWidth }}>
+          <Avatar name={ring.name} size={22} mediaId={ring.avatarMediaId} />
+          <Text numberOfLines={1} style={{ color: "rgba(255,255,255,.85)", fontSize: 12.5, fontWeight: "600", flexShrink: 1 }}>
+            {ring.name}
+          </Text>
+        </View>
+      </Pressable>
+    </Animated.View>
   );
 }
