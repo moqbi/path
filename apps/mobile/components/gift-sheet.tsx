@@ -1,6 +1,7 @@
 import { Spinner } from "./spinner";
+import { ORIENTATIONS } from "../lib/stage";
 import { useRef, useState } from "react";
-import { View, Pressable, Modal, ScrollView, PanResponder, Animated, Dimensions } from "react-native";
+import { View, Pressable, Modal, ScrollView, PanResponder, Animated, useWindowDimensions } from "react-native";
 import { RtlStrip } from "./rtl-strip";
 import { Text } from "./type";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -177,7 +178,7 @@ function Sheet({
   */
   const drag = useRef(new Animated.Value(0)).current;
   const atTop = useRef(true);
-  const height = Dimensions.get("window").height;
+  const height = useWindowDimensions().height;
   const dismiss = () =>
     Animated.timing(drag, { toValue: height, duration: 200, useNativeDriver: true }).start(onClose);
   const pan = useRef(
@@ -268,7 +269,7 @@ function Sheet({
   const pickPrice = pick ? price(plan ? { priceCoins: plan.priceCoins } : pick) : 0;
 
   return (
-    <Modal transparent animationType="slide" onRequestClose={onClose}>
+    <Modal supportedOrientations={ORIENTATIONS} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: "rgba(14,26,36,.55)" }} onPress={onClose} />
 
       <Animated.View

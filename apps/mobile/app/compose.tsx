@@ -1,4 +1,5 @@
 import { Spinner } from "../components/spinner";
+import { useContentWidth } from "../lib/pane";
 import { useEffect, useRef, useState } from "react";
 import { useKeyboardInset } from "../lib/keyboard";
 import { View, Pressable, ScrollView, Image, useWindowDimensions, type ScrollViewInstance } from "react-native";
@@ -115,7 +116,10 @@ export default function Compose() {
     setSelected(0);
   };
   const [framing, setFraming] = useState(false);
-  const screenWidth = useWindowDimensions().width;
+  // الصورةُ تُضبط في مربّعٍ يُرى كلُّه: على الآيباد والآيفون المُدار لا يتجاوز ٥٦٠ ولا ارتفاعَ
+  // الشاشة — مربّعٌ أطولُ منها يتنازع وتمريرَها (القاعدة ٤٦٨).
+  const { height: screenHeight } = useWindowDimensions();
+  const screenWidth = Math.min(useContentWidth(), 600, Math.max(280, screenHeight - 100));
   const [asking, setAsking] = useState(false);
   const [withIds, setWithIds] = useState<string[]>([]);
   const [audience, setAudience] = useState("CIRCLE");

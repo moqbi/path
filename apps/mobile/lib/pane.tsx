@@ -14,8 +14,20 @@ import { create } from "zustand";
  */
 export const WIDE_MIN = 700;
 
+/**
+ * ما تأخذه الحافّتان من العرض: آيفون مُدار يضع حسّاسَ الكاميرا على حافّةٍ جانبيّة، فالجذرُ
+ * يترك لها هامشَها (`SideSafe` في `_layout.tsx` — القاعدة ٤٦٨). وكلُّ عرضٍ يُحسب هنا يُنقص
+ * منه، وإلّا بُنيت اللوحتان على عرضٍ أوسع ممّا يُرسم فيه.
+ */
+export const SideContext = createContext(0);
+
+/** عرضُ ما يُرسم فيه التطبيق: النافذةُ بلا هامشَي الحافّتين. */
+export function useContentWidth(): number {
+  return useWindowDimensions().width - useContext(SideContext);
+}
+
 export function useWide(): boolean {
-  return useWindowDimensions().width >= WIDE_MIN;
+  return useContentWidth() >= WIDE_MIN;
 }
 
 /** عرضُ القائمة: نحو خُمسَي الشاشة، بين ٣٨٠ و٤٨٠ — بطاقةٌ بعرض جوّالٍ كبير. */
@@ -124,7 +136,7 @@ export const WidthContext = createContext<number | null>(null);
  * `useWindowDimensions().width` في كلّ ما يحسب مقاسه من العرض (القاعدة ٤٦٤).
  */
 export function usePaneWidth(): number {
-  const window = useWindowDimensions().width;
+  const window = useContentWidth();
   return useContext(WidthContext) ?? window;
 }
 

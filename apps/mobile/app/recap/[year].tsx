@@ -1,4 +1,5 @@
 import { Spinner } from "../../components/spinner";
+import { useContentWidth } from "../../lib/pane";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Image, Pressable, useWindowDimensions, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -54,7 +55,7 @@ export default function RecapScreen() {
   const year = Number(raw);
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const width = useContentWidth();
   const recap = useRecap(year);
   const data = recap.data?.recap ?? null;
 

@@ -1,16 +1,20 @@
 const { withInfoPlist } = require("expo/config-plugins");
 
 /**
- * الآيفون رأسيّ، والآيباد بالاتجاهات الأربعة (القاعدة ٤٦٤).
+ * الآيفون رأسيٌّ وأفقيّ، والآيباد بالاتجاهات الأربعة (القاعدتان ٤٦٤ و٤٦٨).
  *
- * `orientation` في `app.json` واحدٌ للجهازين، و`portrait` فيه يكتب الآيبادَ رأسيّاً
- * أيضاً — وآبل تشترط للآيباد الاتجاهاتِ الأربعة ليعمل في Split View وStage Manager،
- * ومن يضع آيباده أفقيّاً على لوحة مفاتيح يرى التطبيقَ مائلاً. فالمفتاحُ الخاصّ بالآيباد
- * (`~ipad`) يُكتب هنا بعد ما كتبه Expo، والآيفونُ يبقى على `portrait`.
+ * `orientation` في `app.json` صار `default` فلا يقصر الجهازين على اتجاه، والمفتاحان
+ * يُكتبان هنا صراحةً بعد ما كتبه Expo: الآيفونُ قائماً وأفقيّاً في الاتّجاهين بلا المقلوب
+ * (آبل لا تقلب الآيفون ذا الجزيرة)، والآيبادُ بالأربعة — شرطُ Split View وStage Manager.
+ * وما لا يتّسع لشاشةٍ أفقيّة — الكاميرا ومحرّرُ القصّة — يطلب أن يُدار الجوّال (`RotateHint`).
  */
 module.exports = function withOrientations(config) {
   return withInfoPlist(config, (mod) => {
-    mod.modResults.UISupportedInterfaceOrientations = ["UIInterfaceOrientationPortrait"];
+    mod.modResults.UISupportedInterfaceOrientations = [
+      "UIInterfaceOrientationPortrait",
+      "UIInterfaceOrientationLandscapeLeft",
+      "UIInterfaceOrientationLandscapeRight",
+    ];
     mod.modResults["UISupportedInterfaceOrientations~ipad"] = [
       "UIInterfaceOrientationPortrait",
       "UIInterfaceOrientationPortraitUpsideDown",

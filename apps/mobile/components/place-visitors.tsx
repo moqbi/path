@@ -1,6 +1,7 @@
 import { Spinner } from "./spinner";
+import { ORIENTATIONS } from "../lib/stage";
 import { useRef } from "react";
-import { Animated, Dimensions, Modal, PanResponder, Platform, Pressable, ScrollView, View } from "react-native";
+import { Animated, useWindowDimensions, Modal, PanResponder, Platform, Pressable, ScrollView, View } from "react-native";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
@@ -46,7 +47,7 @@ export function PlaceVisitors() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const drag = useRef(new Animated.Value(0)).current;
-  const height = Dimensions.get("window").height;
+  const height = useWindowDimensions().height;
 
   const query = useQuery({
     queryKey: ["visitors", moment?.id],
@@ -106,7 +107,7 @@ export function PlaceVisitors() {
   };
 
   return (
-    <Modal transparent animationType="fade" onRequestClose={close} statusBarTranslucent>
+    <Modal supportedOrientations={ORIENTATIONS} transparent animationType="fade" onRequestClose={close} statusBarTranslucent>
       <Pressable style={{ flex: 1 }} onPress={close} />
 
       <Animated.View

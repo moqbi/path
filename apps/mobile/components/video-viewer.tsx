@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
+import { ORIENTATIONS } from "../lib/stage";
 import { usePathname } from "expo-router";
-import { Animated, AppState, Dimensions, Modal, PanResponder, Pressable, View } from "react-native";
+import { Animated, AppState, useWindowDimensions, Modal, PanResponder, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { create } from "zustand";
@@ -53,7 +54,7 @@ export function VideoViewer() {
 
 function Viewer({ videoId }: { videoId: string }) {
   const insets = useSafeAreaInsets();
-  const { height } = Dimensions.get("window");
+  const { height } = useWindowDimensions();
   const drag = useRef(new Animated.Value(0)).current;
   const close = () => viewVideo(null);
 
@@ -86,7 +87,7 @@ function Viewer({ videoId }: { videoId: string }) {
   const shrink = drag.interpolate({ inputRange: [0, 400], outputRange: [1, 0.85], extrapolate: "clamp" });
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={close} statusBarTranslucent>
+    <Modal supportedOrientations={ORIENTATIONS} visible transparent animationType="fade" onRequestClose={close} statusBarTranslucent>
       <View style={{ flex: 1 }} {...pan.panHandlers}>
         <Animated.View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#000", opacity: fadeBack }} />
         <Animated.View style={{ flex: 1, transform: [{ translateY: drag }, { scale: shrink }] }}>

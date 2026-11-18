@@ -417,6 +417,22 @@ const GROUPS: { title: string; note?: string; fields: { key: string; label: stri
     ],
   },
   {
+    title: "الأجهزة المدعومة",
+    note: "بعد «من داخل التطبيق»: آيفون وآيباد وآيفون القابل للطيّ بلقطاتٍ من التطبيق.",
+    fields: [
+      { key: "devices.badge", label: "الشارة" },
+      { key: "devices.title", label: "العنوان" },
+      { key: "devices.sub", label: "سطرٌ تحته", multiline: true },
+      { key: "devices.iphone.title", label: "آيفون — العنوان" },
+      { key: "devices.iphone.body", label: "آيفون — المتن", multiline: true },
+      { key: "devices.ipad.title", label: "آيباد — العنوان" },
+      { key: "devices.ipad.body", label: "آيباد — المتن", multiline: true },
+      { key: "devices.fold.title", label: "القابل للطيّ — العنوان" },
+      { key: "devices.fold.body", label: "القابل للطيّ — المتن", multiline: true },
+      { key: "devices.note", label: "السطر الأخير" },
+    ],
+  },
+  {
     title: "الخصوصية",
     fields: [
       { key: "privacy.title", label: "العنوان" },
@@ -427,14 +443,13 @@ const GROUPS: { title: string; note?: string; fields: { key: string; label: stri
   },
   {
     title: "التفاعلات والتحميل",
-    note: "آخرُ الصفحة: الوجوه الثمانية، وبجانبها أزرار المتجرين.",
+    note: "آخرُ الصفحة: الوجوه الثمانية، وبجانبها أزرار المتاجر.",
     fields: [
       { key: "react.badge", label: "الشارة فوق الوجوه" },
       { key: "react.title", label: "العنوان" },
       { key: "react.body", label: "المتن", multiline: true },
       { key: "download.title", label: "عنوان التحميل" },
       { key: "download.body", label: "متن التحميل", multiline: true },
-      { key: "download.cta", label: "نصّ الزرّ" },
     ],
   },
   {

@@ -1,4 +1,5 @@
 import { Spinner } from "../../components/spinner";
+import { ORIENTATIONS } from "../../lib/stage";
 import { chatRefused } from "../../lib/dm-closed";
 import { useRef, useState } from "react";
 import { usePullLogo } from "../../components/logo-refresh";
@@ -407,7 +408,7 @@ export function Messages() {
       {pull.overlay}
       </View>
       {/* المفضّلةُ ملأى: نافذةٌ في الوسط تقول الحدَّ وما يُفعل — بلهجتنا. */}
-      <Modal visible={pinFull} transparent animationType="fade" onRequestClose={() => setPinFull(false)}>
+      <Modal supportedOrientations={ORIENTATIONS} visible={pinFull} transparent animationType="fade" onRequestClose={() => setPinFull(false)}>
         <Pressable
           onPress={() => setPinFull(false)}
           style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 32, backgroundColor: "rgba(14,26,36,.55)" }}

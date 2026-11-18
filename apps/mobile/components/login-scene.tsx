@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useContentWidth } from "../lib/pane";
 import { AccessibilityInfo, Animated, Easing, Image, Platform, View, useWindowDimensions } from "react-native";
 import Svg, { Circle, Defs, Ellipse, RadialGradient, Stop } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
@@ -35,7 +36,8 @@ export function useStill(): boolean {
 
 /** الأرضيّة: تدرّجٌ دائريّ من أعلاها ونجومٌ خافتة — شاشةُ الإطلاق بعينها. */
 export function SceneGround() {
-  const { width, height } = useWindowDimensions();
+  const { height } = useWindowDimensions();
+  const width = useContentWidth();
   const stars = useMemo(
     () =>
       Array.from({ length: 28 }, (_, i) => ({

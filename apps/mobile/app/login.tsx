@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { savedInviter } from "../lib/invite-ref";
-import { View, Pressable, Animated, Easing, Keyboard, Platform, useWindowDimensions } from "react-native";
+import { View, Pressable, Animated, Easing, Keyboard, Platform, useWindowDimensions, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text, TextInput } from "../components/type";
 import Svg, { Path } from "react-native-svg";
@@ -254,6 +254,8 @@ export default function Login() {
   */
   const longForm = showEmail || sent !== null;
   const compact = longForm && screenHeight < 760;
+  // آيفون مُدار: ارتفاعٌ نحو ٤٠٠ لا يتّسع للمدار والشريط فوق اللوح (القاعدة ٤٦٨).
+  const short = screenHeight < 520;
 
   async function submit() {
     if (pending) return;
@@ -313,7 +315,7 @@ export default function Login() {
           <Column wide={wide} grow>
             {/* الشعار أوّل ما يُرى (القاعدة ٧)، والمدارُ حوله. */}
             <View style={{ alignItems: "center" }}>
-              {compact ? null : <Orbit enter={enter} />}
+              {compact || short ? null : <Orbit enter={enter} />}
               <Animated.View
                 style={{ alignItems: "center", marginTop: compact ? 12 : -6, opacity: headFade, transform: [{ translateY: headLift }] }}
               >
@@ -321,12 +323,12 @@ export default function Login() {
                 <Text style={{ marginTop: 4, fontSize: 13.5, fontWeight: "600", color: "#d6dde2" }}>{TAGLINE_AR}</Text>
               </Animated.View>
             </View>
-            {longForm && !wide ? <View style={{ flex: 1 }} /> : <LiveStrip enter={enter} />}
+            {longForm && !wide ? <View style={{ flex: 1 }} /> : short ? null : <LiveStrip enter={enter} />}
           </Column>
         )}
 
         {/* خيارات الدخول: تصعد من الأسفل بعد الشريط. */}
-        <Column wide={wide}>
+        <Column wide={wide} scroll={short}>
         <Animated.View
           style={{ paddingHorizontal: wide ? 0 : 12, marginTop: 8, opacity: formFade, transform: [{ translateY: formRise }] }}
         >
@@ -671,8 +673,31 @@ function TikTokMark() {
  * عمودٌ في دخول الشاشة العريضة (القاعدة ٤٦٤): المشهدُ يملأ ما بقي، واللوحُ بعرض ٤٤٠ في
  * وسط ارتفاعه. وعلى الجوّال لا شيء — الأبناءُ في عمود الشاشة كما كانوا.
  */
-function Column({ wide, grow, children }: { wide: boolean; grow?: boolean; children: React.ReactNode }) {
+function Column({
+  wide,
+  grow,
+  scroll,
+  children,
+}: {
+  wide: boolean;
+  grow?: boolean;
+  /** آيفون مُدار: اللوحُ أطولُ من الشاشة فيُمرَّر (القاعدة ٤٦٨). */
+  scroll?: boolean;
+  children: React.ReactNode;
+}) {
   if (!wide) return <>{children}</>;
+  if (scroll && !grow) {
+    return (
+      <ScrollView
+        style={{ width: 440, flexGrow: 0 }}
+        contentContainerStyle={{ flexGrow: 1, justifyContent: "center", paddingVertical: 8 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {children}
+      </ScrollView>
+    );
+  }
   return (
     <View style={grow ? { flex: 1, minWidth: 0, justifyContent: "center" } : { width: 440, justifyContent: "center" }}>
       {children}

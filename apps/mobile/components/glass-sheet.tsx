@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useRef } from "react";
-import { Animated, Dimensions, Easing, KeyboardAvoidingView, Modal, PanResponder, Platform, Pressable, ScrollView, View } from "react-native";
+import { ORIENTATIONS } from "../lib/stage";
+import { Animated, useWindowDimensions, Easing, KeyboardAvoidingView, Modal, PanResponder, Platform, Pressable, ScrollView, View } from "react-native";
 import type { NativeScrollEvent, NativeSyntheticEvent, ScrollViewProps } from "react-native";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -60,7 +61,8 @@ export function GlassSheet({
 }) {
   const insets = useSafeAreaInsets();
   const drag = useRef(new Animated.Value(0)).current;
-  const height = Dimensions.get("window").height;
+  // تتبع الدوران: الآيفونُ المُدار والآيباد (القاعدة ٤٦٨).
+  const { width: screenWidth, height } = useWindowDimensions();
 
   // لا إعادةَ لـ`drag` بعد الإغلاق: النافذةُ تُزال من الشجرة، وإعادتُها إلى
   // الصفر قبل ذلك كانت تُرجعها إلى مكانها لحظةً قبل أن تختفي.
@@ -125,7 +127,7 @@ export function GlassSheet({
   const fade = drag.interpolate({ inputRange: [0, 320], outputRange: [1, 0.6], extrapolate: "clamp" });
 
   return (
-    <Modal transparent animationType="slide" onRequestClose={close} statusBarTranslucent>
+    <Modal supportedOrientations={ORIENTATIONS} transparent animationType="slide" onRequestClose={close} statusBarTranslucent>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         {/* بلا حجابٍ داكن — **بقرار المالك**: النافذةُ طافيةٌ فوق الشاشة كما هي،
             والضغطُ في أيّ مكانٍ خارجها يُغلقها. */}
@@ -136,7 +138,7 @@ export function GlassSheet({
           style={{
             marginHorizontal: 10,
             // على الآيباد نافذةٌ بعرض جوّال في أسفل الشاشة كنوافذ النظام، لا شريطٌ بعرضها (القاعدة ٤٦٤).
-            width: Math.min(Dimensions.get("window").width - 20, 560),
+            width: Math.min(screenWidth - 20, 560),
             alignSelf: "center",
             marginBottom: Math.max(insets.bottom, 12),
             maxHeight: height * 0.78,

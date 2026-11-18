@@ -1,6 +1,6 @@
 import { Spinner } from "./spinner";
 import { useEffect, useRef, useState } from "react";
-import { Dimensions, PanResponder, Pressable, View } from "react-native";
+import { useWindowDimensions, PanResponder, Pressable, View } from "react-native";
 import * as Picker from "expo-image-picker";
 import { Audio } from "../lib/av";
 import { SOUND_SOURCE, STORY_SECONDS } from "@athar/shared";
@@ -202,7 +202,7 @@ function Trimmer({
   end: number;
   onChange: (start: number, end: number) => void;
 }) {
-  const width = Dimensions.get("window").width - 32;
+  const width = useWindowDimensions().width - 32;
   const total = Math.max(1, source.seconds);
   const px = width / total;
   const longest = Math.min(STORY_SECONDS, total);
