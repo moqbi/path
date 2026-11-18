@@ -43,11 +43,17 @@ export function useEdges(): Edges {
 export function useChromePad(base: number) {
   const edge = useContext(EdgeContext);
   const bleed = useContext(BleedContext);
+  /*
+    **والمُدارُ يُبعد الرأسَ ١٦ أخرى** (القاعدة ٤٧١): المحتوى يصل الحافّتين (القاعدة ٤٧٠)،
+    لكنّ الشعارَ وأقراصَ الرأس على حافّة الشاشة نفسها تُقرأ لاصقة.
+  */
+  const { width, height } = useWindowDimensions();
+  const extra = width > height ? 16 : 0;
   return {
     marginLeft: -bleed.left,
     marginRight: -bleed.right,
-    paddingLeft: base + bleed.left + edge.left,
-    paddingRight: base + bleed.right + edge.right,
+    paddingLeft: base + extra + bleed.left + edge.left,
+    paddingRight: base + extra + bleed.right + edge.right,
   };
 }
 
