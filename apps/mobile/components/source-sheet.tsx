@@ -1,5 +1,5 @@
 import { View, Pressable, Modal } from "react-native";
-import { ORIENTATIONS } from "../lib/stage";
+import { ORIENTATIONS, useSheetBox } from "../lib/stage";
 import { Text } from "./type";
 import { CameraIcon } from "./icons";
 import { colors } from "../theme/tokens";
@@ -30,6 +30,8 @@ export function SourceSheet({
   onLibrary: () => void;
   onClose: () => void;
 }) {
+  // على الشاشة العريضة والمُدارة لوحٌ في الوسط (القاعدة ٤٦٨).
+  const box = useSheetBox();
   return (
     <Modal supportedOrientations={ORIENTATIONS} transparent visible={open} animationType="slide" onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: "rgba(14,26,36,.55)" }} onPress={onClose} />
@@ -37,6 +39,7 @@ export function SourceSheet({
       <View
         style={{
           backgroundColor: colors.paper,
+          ...box,
           borderTopLeftRadius: 22,
           borderTopRightRadius: 22,
           paddingHorizontal: 20,

@@ -21,7 +21,7 @@ type Years = { years: { year: number; moments: number }[] };
  * وتحته بابُ القاعة — قاعةٌ لكلّ سنة، تُدخل وتُمشى بالإصبع (`app/me/hall/[year].tsx`).
  * والأقدمُ من ستّة أشهر لغير المشترك قاعاتٌ خلف آثار+ (القاعدة ٢٤٤).
  */
-export function GalleryLobby() {
+export function GalleryLobby({ embedded = false }: { embedded?: boolean } = {}) {
   const router = useRouter();
   const skin = HALL_SKIN;
   const years = useQuery({ queryKey: ["archive", "years"], queryFn: () => api<Years>("/v1/archive/years") });
@@ -45,7 +45,8 @@ export function GalleryLobby() {
 
   return (
     <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.ground }}>
-      <ScreenHeader title="المعرض وكتاب السنة" back="/me" />
+      {/* في لوحة «أنا» على الشاشة العريضة لا رجوع: هي مكانُها (القاعدة ٤٦٨). */}
+      <ScreenHeader title="المعرض وكتاب السنة" back={embedded ? undefined : "/me"} />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 12 }}>
         <Text style={{ color: colors.groundInk, fontSize: 12.5, fontWeight: "800" }}>كتاب السنة</Text>
         {years.isLoading ? <Spinner color={colors.clay} /> : null}

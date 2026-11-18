@@ -28,7 +28,7 @@ import { SITE_URL, hasSite } from "@athar/shared";
 import { useSession } from "../lib/session";
 import { BackToParked } from "../components/accounts-sheet";
 import { brandGradient, colors } from "../theme/tokens";
-import { useWide } from "../lib/pane";
+import { useWide, useEdges } from "../lib/pane";
 
 /**
  * حركةُ الدخول مرةً واحدة لكل تشغيل.
@@ -98,6 +98,7 @@ const FIELD = {
  */
 export default function Login() {
   const router = useRouter();
+  const edge = useEdges();
   const { deleted } = useLocalSearchParams<{ deleted?: string }>();
   const [enter] = useState(() => !introSeen);
   const insets = useSafeAreaInsets();
@@ -308,7 +309,7 @@ export default function Login() {
           paddingBottom: typing ? keyboard + 12 : Math.max(insets.bottom, 12) + 8,
           justifyContent: "flex-end",
           // على الآيباد المشهدُ في طرف البداية واللوحُ في الآخر، كدخول الويب العريض (القاعدة ٤٦٤).
-          ...(wide ? { flexDirection: "row", alignItems: "stretch", paddingHorizontal: 24, gap: 24 } : null),
+          ...(wide ? { flexDirection: "row", alignItems: "stretch", paddingLeft: 24 + edge.left, paddingRight: 24 + edge.right, gap: 24 } : null),
         }}
       >
         {typing && !wide ? null : (

@@ -1,5 +1,5 @@
 import { Spinner } from "./spinner";
-import { ORIENTATIONS } from "../lib/stage";
+import { ORIENTATIONS, useSheetBox } from "../lib/stage";
 import { useRef, useState } from "react";
 import { View, Pressable, Modal, ScrollView, PanResponder, Animated, useWindowDimensions } from "react-native";
 import { RtlStrip } from "./rtl-strip";
@@ -108,6 +108,8 @@ function Sheet({
   friendOwned: string[];
   onClose: () => void;
 }) {
+  // على الشاشة العريضة والمُدارة لوحٌ في الوسط (القاعدة ٤٦٨).
+  const box = useSheetBox();
   const store = useStore();
   const client = useQueryClient();
   const [note, setNote] = useState<{ ok?: string; error?: string } | null>(null);
@@ -274,7 +276,7 @@ function Sheet({
 
       <Animated.View
         {...pan.panHandlers}
-        style={{ maxHeight: "82%", backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28, transform: [{ translateY: drag }] }}
+        style={{ ...box, maxHeight: "82%", backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28, transform: [{ translateY: drag }] }}
       >
         {/* مقبضٌ يقول إنّ النافذة تُسحب. */}
         <View style={{ width: 44, height: 4, borderRadius: 2, backgroundColor: colors.line, alignSelf: "center", marginBottom: 12 }} />

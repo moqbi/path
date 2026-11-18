@@ -1,4 +1,6 @@
 import { Spinner } from "../../components/spinner";
+import { GalleryLobby } from "../../components/gallery-lobby";
+import { useChromePad, useEdgePad } from "../../lib/pane";
 import { useBarSpace } from "../../components/glass-bar";
 import { usePullLogo } from "../../components/logo-refresh";
 import { TabBackdrop } from "../../components/tab-backdrop";
@@ -165,6 +167,8 @@ function Action({
 export function Me() {
   // المحتوى يمرّ تحت الشريط الزجاجيّ، وآخرُه يُقرأ فوقه (القاعدة ٢٢٨).
   const barSpace = useBarSpace();
+  const chromePad = useChromePad(20);
+  const listPad = useEdgePad(0);
   // النوتُ فوق الصورة (القاعدة ٢٦٩).
   const statusNotes = useStatusNotes();
   const { me, signOut } = useSession();
@@ -226,7 +230,7 @@ export function Me() {
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          paddingHorizontal: 20,
+          ...chromePad,
           paddingTop: insets.top + 6,
           paddingBottom: 10,
           backgroundColor: colors.chrome,
@@ -289,20 +293,22 @@ export function Me() {
         sections={days}
         keyExtractor={(item) => item.id}
         stickySectionHeadersEnabled={false}
-        contentContainerStyle={{ paddingBottom: barSpace + 8 }}
+        contentContainerStyle={{ ...listPad.pad, paddingBottom: barSpace + 8 }}
         onScroll={onScroll}
         onScrollBeginDrag={scrolled}
         scrollEventThrottle={16}
         {...pull.props}
         ListHeaderComponent={
           <>
-            <StretchCover y={scrollY} height={COVER}>
-              <CoverLayer mediaId={me.coverMediaId} themeMediaId={me.background?.coverMediaId} spec={me.background?.spec} height={COVER} x={me.coverX} y={me.coverY} zoom={me.coverZoom} />
-            </StretchCover>
+            <View style={listPad.bleed}>
+              <StretchCover y={scrollY} height={COVER}>
+                <CoverLayer mediaId={me.coverMediaId} themeMediaId={me.background?.coverMediaId} spec={me.background?.spec} height={COVER} x={me.coverX} y={me.coverY} zoom={me.coverZoom} />
+              </StretchCover>
+            </View>
             {DEV_FEATURES ? (
               // التعديلُ والإكسسوارات على الغلاف في طرفه الأيسر (القاعدة ٣٢٣): سطرُ الاسم
               // يضيق بالوسم. أقراصٌ داكنة لا شفّافة (القاعدة ٥٧)، والصورةُ في الطرف الآخر.
-              <View style={{ position: "absolute", top: COVER - 48, left: 16, flexDirection: "row", gap: 8, zIndex: 5 }}>
+              <View style={{ position: "absolute", top: COVER - 48, left: 16 + listPad.edge.left, flexDirection: "row", gap: 8, zIndex: 5 }}>
                 <Spot id="me.edit">
                   <Pressable
                     accessibilityLabel="تعديل الملف"
@@ -451,7 +457,13 @@ export function Me() {
 /** على الشاشة العريضة القائمةُ ولوحةٌ بجانبها (القاعدة ٤٦٤). */
 export default function MeTab() {
   return (
-    <Split host="me" empty="اختر لحظةً من لحظاتك لتفتحها هنا">
+    <Split
+      host="me"
+      empty="اختر لحظةً من لحظاتك لتفتحها هنا"
+      // اللوحةُ قبل أن تُفتح لحظة: المعرضُ والكتاب — **بقرار المالك** (القاعدة ٤٦٨). وفي نسخة
+      // المتجر قبلها (`DEV_FEATURES`) الأرشيفُ مكانُه في شاشته.
+      emptyView={DEV_FEATURES ? <GalleryLobby embedded /> : undefined}
+    >
       <Me />
     </Split>
   );

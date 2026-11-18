@@ -17,7 +17,7 @@ import { colors } from "../../theme/tokens";
 import { LockIcon, SendIcon, StickerIcon } from "../../components/icons";
 import { StickerPanel } from "../../components/sticker-panel";
 import { DEV_FEATURES } from "../../lib/dev-features";
-import { useRouteId } from "../../lib/pane";
+import { useRouteId, useEdgePad } from "../../lib/pane";
 
 /**
  * صفحة اللحظة: بطاقةٌ واحدة ثمّ حقلُ التعليق.
@@ -30,6 +30,7 @@ import { useRouteId } from "../../lib/pane";
  */
 export default function MomentPage() {
   const me = useSession((state) => state.me);
+  const listPad = useEdgePad(0);
   const id = useRouteId();
   const moment = useMoment(id);
   const comment = useComment(id);
@@ -87,7 +88,7 @@ export default function MomentPage() {
         onScrollBeginDrag={scrolled}
         style={{ flex: 1 }}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingTop: 12, paddingBottom: 24 }}
+        contentContainerStyle={{ ...listPad.pad, paddingTop: 12, paddingBottom: 24 }}
       >
         {/*
           حشوة الخطّ الزمني نفسها: البطاقة مرسومةٌ على ورقٍ بعمود صورٍ
@@ -128,7 +129,8 @@ export default function MomentPage() {
         <View
           style={{
             gap: 10,
-            paddingHorizontal: 14,
+            paddingLeft: 14 + listPad.edge.left,
+            paddingRight: 14 + listPad.edge.right,
             paddingTop: 10,
             // والكيبورد مفتوحٌ لا حاجة لهامش الشريط السفليّ: الكيبورد يغطّيه.
             paddingBottom: keyboard ? 10 : Math.max(insets.bottom, 12),

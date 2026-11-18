@@ -32,7 +32,7 @@ import { useOpenThread } from "../../lib/open-thread";
 import { useSession } from "../../lib/session";
 import { ar } from "../../lib/format";
 import { colors } from "../../theme/tokens";
-import { useRouteId, go } from "../../lib/pane";
+import { useRouteId, go, useEdgePad } from "../../lib/pane";
 
 type Line = {
   id: string;
@@ -182,6 +182,7 @@ function inner(mine: boolean) {
 
 export default function Conversation() {
   const id = useRouteId();
+  const listPad = useEdgePad(14);
   useOpenThread(`/dm/${id}`);
   const me = useSession((s) => s.me);
   const client = useQueryClient();
@@ -524,7 +525,7 @@ export default function Conversation() {
           }}
           scrollEventThrottle={64}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingHorizontal: 14, paddingVertical: 14, gap: 6 }}
+          contentContainerStyle={{ ...listPad.pad, paddingVertical: 14, gap: 6 }}
           ListEmptyComponent={
             thread.isLoading ? (
               <Spinner style={{ marginTop: 40 }} color={colors.clay} />
@@ -712,7 +713,7 @@ export default function Conversation() {
         />
 
         {/* سطر الإرسال: نصّ، وصورة، وصوت. */}
-        <View style={{ paddingHorizontal: 20, paddingBottom: keyboard ? 10 : Math.max(insets.bottom, 18), paddingTop: 10 }}>
+        <View style={{ paddingLeft: 20 + listPad.edge.left, paddingRight: 20 + listPad.edge.right, paddingBottom: keyboard ? 10 : Math.max(insets.bottom, 18), paddingTop: 10 }}>
           {error ? (
             <Text accessibilityRole="alert" style={{ color: colors.live, fontSize: 11.5, textAlign: "center", marginBottom: 8 }}>
               {error}

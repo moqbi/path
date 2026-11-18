@@ -138,10 +138,11 @@ export function GlassSheet({
           style={{
             marginHorizontal: 10,
             // على الآيباد نافذةٌ بعرض جوّال في أسفل الشاشة كنوافذ النظام، لا شريطٌ بعرضها (القاعدة ٤٦٤).
-            width: Math.min(screenWidth - 20, 560),
+            // والآيفونُ المُدار أضيق: ٤٤٠ — **بقرار المالك** (القاعدة ٤٦٨): ٥٦٠ على ارتفاع ٣٩٠ تملأ الشاشة.
+            width: Math.min(screenWidth - 20, screenWidth > height ? 440 : 560),
             alignSelf: "center",
             marginBottom: Math.max(insets.bottom, 12),
-            maxHeight: height * 0.78,
+            maxHeight: height * (screenWidth > height ? 0.86 : 0.78),
             transform: [{ translateY: drag }, { scale }],
             opacity: fade,
             borderRadius: 30,

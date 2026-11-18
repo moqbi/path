@@ -37,3 +37,19 @@ export const ORIENTATIONS: ("portrait" | "portrait-upside-down" | "landscape-lef
   "landscape-left",
   "landscape-right",
 ];
+
+/**
+ * لوحٌ من الأسفل على الشاشة العريضة والمُدارة (القاعدة ٤٦٨): بعرض ٥٢٠ في الوسط وحوافّه
+ * الأربع مستديرة، لا شريطٌ بعرض الآيباد أو الآيفون المُدار. وعلى الجوّال قائماً لا شيء.
+ */
+export function useSheetBox(): Record<string, number | string> {
+  const { width, height } = useWindowDimensions();
+  if (!(width > height || width >= 700)) return {};
+  return {
+    width: Math.min(width - 32, 520),
+    alignSelf: "center",
+    borderBottomLeftRadius: 22,
+    borderBottomRightRadius: 22,
+    marginBottom: 12,
+  };
+}

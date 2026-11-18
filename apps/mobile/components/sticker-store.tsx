@@ -96,7 +96,7 @@ function PackSheet({ pack, isPlus, onClose }: { pack: StickerPack; isPlus: boole
   // النقصُ يُقال قبل الضغط (القاعدة ٩٣ب).
   const short = state === "buy" && coins < price;
   // داخل النافذة لا بعرض الشاشة: على الآيباد والآيفون المُدار عرضُها ٦٠٠ (القاعدة ٤٦٨).
-  const cell = Math.floor((sheetInner(width) - 3 * 10) / 4);
+  const cell = Math.floor((sheetInner(width, height) - 3 * 10) / 4);
 
   const leave = (to: string) => {
     onClose();

@@ -27,7 +27,7 @@ import { useSession } from "../../lib/session";
 import { ar, presence, relative } from "../../lib/format";
 import { NameTag } from "../../components/name-tag";
 import { colors } from "../../theme/tokens";
-import { go } from "../../lib/pane";
+import { go, useEdgePad } from "../../lib/pane";
 import { Split } from "../../components/split";
 
 type Row = {
@@ -92,6 +92,7 @@ function Last({ row, meId }: { row: Row; meId: string }) {
 export function Messages() {
   // ضغطةُ التبويب المفتوح ترجع إلى أعلاه (القاعدة ١٥٧).
   const listRef = useRef<Pick<FlatList, "scrollToOffset"> | null>(null);
+  const listPad = useEdgePad(0);
   useTabTop(() => listRef.current?.scrollToOffset({ offset: 0, animated: true }));
   const me = useSession((s) => s.me);
   const router = useRouter();
@@ -318,7 +319,7 @@ export function Messages() {
             </View>
           ) : null) ?? undefined}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingTop: 8, paddingBottom: barSpace + 8, flexGrow: 1 }}
+        contentContainerStyle={{ ...listPad.pad, paddingTop: 8, paddingBottom: barSpace + 8, flexGrow: 1 }}
         {...pull.props}
         renderItem={({ item: entry }) => {
           if ("head" in entry) {

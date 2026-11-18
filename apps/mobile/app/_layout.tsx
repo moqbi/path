@@ -1,13 +1,13 @@
 import { Spinner } from "../components/spinner";
-import { useEffect, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { AppState, Appearance, I18nManager, Platform, View, StyleSheet } from "react-native";
 import { MediaImage } from "../components/media-image";
 import { enableLegacyHeaderAppearance, Stack, useRouter, useSegments } from "expo-router";
 import * as Notifications from "expo-notifications";
 import { onPush, type PushData } from "../lib/push-open";
 import { enablePush } from "../lib/push";
-import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
-import { SideContext } from "../lib/pane";
+import { SafeAreaInsetsContext, SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
+import { BleedContext, EdgeContext, SideContext, useEdges } from "../lib/pane";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useFonts } from "expo-font";
 import {
@@ -347,6 +347,8 @@ function Gate() {
     <Stack
       // مفتاحُ الثيم: تبديلُه يُعيد بناء المكدّس بألوانه الجديدة.
       key={skin}
+      // الشاشةُ العاديّة تُحشى بحافّتَي الآيفون المُدار (القاعدة ٤٦٨).
+      screenLayout={({ route, children }) => <EdgeScreen route={route}>{children}</EdgeScreen>}
       screenOptions={{
         headerShown: false,
         /*
@@ -497,18 +499,59 @@ function App() {
 
 /**
  * الآيفونُ المُدار يضع حسّاسَ الكاميرا على حافّةٍ جانبيّة، والآيبادُ لا (القاعدة ٤٦٨).
- * فالتطبيقُ كلُّه يُرسم داخل هامشَي الحافّتين هنا مرّةً — لا في كلّ شاشة — والشريطان
- * الجانبيّان بلون الرأس. و`SafeAreaProvider` الداخليّ يقيس من إطاره هو، فما تحته يقرأ
- * الحافّتين صفراً ولا يُضاعف الهامش؛ والأعلى والأسفل كما كانا.
+ * **لا هامشَ حول التطبيق كلّه** — **بقرار المالك**: شريطان بلون الرأس على الجانبين كانا
+ * يُقرآن فراغاً في كلّ شاشةٍ وحول الخريطة. فالخلفيّاتُ والرؤوسُ والأغلفةُ والخرائطُ تصل
+ * الحافّة، وما يُقرأ ويُلمس يبتعد عنها: الحافّتان في `EdgeContext`، والشاشةُ العاديّة
+ * تُحشى بهما في المكدّس (`EdgeScreen`)، وما يرسم نفسَه بملء الشاشة يقرؤهما بنفسه.
+ * **والأعلى ١٢ على الأقلّ**: آبل تُخفي شريطَ الحالة في الآيفون المُدار فيصير الهامشُ
+ * صفراً، فكان الرأسُ لاصقاً بأعلى الشاشة وأقراصُه تُقرأ أكبرَ منه.
+ * والشجرةُ واحدةٌ في الاتجاهين: فرعٌ يتبدّل بالدوران يُعيد بناء التطبيق فتضيع حالُه.
  */
 function SideSafe({ children }: { children: ReactNode }) {
   const insets = useSafeAreaInsets();
-  // شجرةٌ واحدة في الاتجاهين: فرعٌ يتبدّل بالدوران يُعيد بناء التطبيق كلّه فتضيع حالُه.
+  const edges = useMemo(() => ({ left: insets.left, right: insets.right }), [insets.left, insets.right]);
+  const adjusted = useMemo(() => ({ ...insets, top: Math.max(insets.top, 12) }), [insets]);
   return (
-    <View style={{ flex: 1, paddingLeft: insets.left, paddingRight: insets.right, backgroundColor: colors.night }}>
-      <SafeAreaProvider style={{ flex: 1, direction: "rtl" }}>
-        <SideContext.Provider value={insets.left + insets.right}>{children}</SideContext.Provider>
-      </SafeAreaProvider>
-    </View>
+    <SafeAreaInsetsContext.Provider value={adjusted}>
+      <SideContext.Provider value={insets.left + insets.right}>
+        <EdgeContext.Provider value={edges}>{children}</EdgeContext.Provider>
+      </SideContext.Provider>
+    </SafeAreaInsetsContext.Provider>
   );
 }
+
+/**
+ * ما يرسم نفسَه بملء الشاشة ويبتعد عن الحافّتين بنفسه (القاعدة ٤٦٨) — وما سواه يُحشى
+ * هنا بهما، ورأسُه يخرج إليهما بهامشٍ سالب (`BleedContext`).
+ */
+const FULL_BLEED = new Set([
+  "(tabs)",
+  "u/[id]",
+  "m/[id]",
+  "dm/[id]",
+  "together/[id]",
+  "map",
+  "me/hall/[year]",
+  "login",
+  "interests",
+  "note/new",
+  "recap/[year]",
+  "stories/[id]",
+  "stories/new",
+  "camera",
+]);
+
+function EdgeScreen({ route, children }: { route: { name: string }; children: ReactNode }) {
+  const edges = useEdges();
+  const full = FULL_BLEED.has(route.name);
+  return (
+    <BleedContext.Provider value={full ? NO_SIDES : edges}>
+      <EdgeContext.Provider value={full ? edges : NO_SIDES}>
+        <View style={{ flex: 1, paddingLeft: full ? 0 : edges.left, paddingRight: full ? 0 : edges.right }}>
+          {children}
+        </View>
+      </EdgeContext.Provider>
+    </BleedContext.Provider>
+  );
+}
+const NO_SIDES = { left: 0, right: 0 };
