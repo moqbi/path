@@ -20,7 +20,7 @@ import {
   loadProviders,
 } from "../lib/providers";
 import { AthrWordmark, TAGLINE_AR } from "../components/brand";
-import { GlassPanel, LiveStrip, Orbit, SCENE_GROUND, SceneGround } from "../components/login-scene";
+import { GlassPanel, LiveStrip, ORBIT_BOX, Orbit, SCENE_GROUND, SceneGround } from "../components/login-scene";
 import { BackIcon, CheckIcon } from "../components/icons";
 import { api } from "../lib/api";
 import { openIn } from "../lib/browse";
@@ -102,8 +102,13 @@ export default function Login() {
   const { deleted } = useLocalSearchParams<{ deleted?: string }>();
   const [enter] = useState(() => !introSeen);
   const insets = useSafeAreaInsets();
-  const { height: screenHeight } = useWindowDimensions();
-  const wide = useWide();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const roomy = useWide();
+  /*
+    **والمُدارُ عمودان كالآيباد** — **بقرار المالك** (القاعدة ٤٧٣): المدارُ وتحته الخطُّ الحيّ
+    في طرف البداية، والمزوّدون والبريد في الطرف الآخر — لا لوحٌ وحده بلا مشهد.
+  */
+  const wide = roomy || screenWidth > screenHeight;
   const keyboard = useKeyboardHeight();
   const signIn = useSession((s) => s.signIn);
   const adopt = useSession((s) => s.adopt);
@@ -321,15 +326,24 @@ export default function Login() {
           <Column wide={wide} grow>
             {/* الشعار أوّل ما يُرى (القاعدة ٧)، والمدارُ حوله. */}
             <View style={{ alignItems: "center" }}>
-              {compact || short ? null : <Orbit enter={enter} />}
+              {compact && !wide ? null : short ? (
+                // المدارُ أصغرُ في المُدار فيتّسع الخطُّ الحيّ تحته (يُرسم من ١٢٠).
+                <View style={{ width: ORBIT_BOX * 0.78, height: ORBIT_BOX * 0.78, alignItems: "center", justifyContent: "center" }}>
+                  <View style={{ transform: [{ scale: 0.78 }] }}>
+                    <Orbit enter={enter} />
+                  </View>
+                </View>
+              ) : (
+                <Orbit enter={enter} />
+              )}
               <Animated.View
-                style={{ alignItems: "center", marginTop: compact ? 12 : -6, opacity: headFade, transform: [{ translateY: headLift }] }}
+                style={{ alignItems: "center", marginTop: compact && !wide ? 12 : -6, opacity: headFade, transform: [{ translateY: headLift }] }}
               >
                 <AthrWordmark size={22} color="#f7f5ef" />
                 <Text style={{ marginTop: 4, fontSize: 13.5, fontWeight: "600", color: "#d6dde2" }}>{TAGLINE_AR}</Text>
               </Animated.View>
             </View>
-            {longForm && !wide ? <View style={{ flex: 1 }} /> : short ? null : <LiveStrip enter={enter} />}
+            {longForm && !wide ? <View style={{ flex: 1 }} /> : <LiveStrip enter={enter} />}
           </Column>
         )}
 
@@ -691,11 +705,14 @@ function Column({
   scroll?: boolean;
   children: React.ReactNode;
 }) {
+  const { width } = useWindowDimensions();
+  // آيفون مُدار أضيقُ من الآيباد: اللوحُ نصفُ العرض على الأكثر.
+  const PANEL = Math.min(440, Math.round(width * 0.48));
   if (!wide) return <>{children}</>;
   if (scroll && !grow) {
     return (
       <ScrollView
-        style={{ width: 440, flexGrow: 0 }}
+        style={{ width: PANEL, flexGrow: 0 }}
         contentContainerStyle={{ flexGrow: 1, justifyContent: "center", paddingVertical: 8 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -705,7 +722,7 @@ function Column({
     );
   }
   return (
-    <View style={grow ? { flex: 1, minWidth: 0, justifyContent: "center" } : { width: 440, justifyContent: "center" }}>
+    <View style={grow ? { flex: 1, minWidth: 0, justifyContent: "center" } : { width: PANEL, justifyContent: "center" }}>
       {children}
     </View>
   );
