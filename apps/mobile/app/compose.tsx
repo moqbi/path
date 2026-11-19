@@ -20,7 +20,7 @@ import { VideoWindowBar, VideoWindowPreview } from "../components/video-window";
 import { maybeAskToRate } from "../lib/rate";
 import { useCircle } from "../lib/queries";
 import { useSession } from "../lib/session";
-import { MOMENT_PHOTOS_MAX, MOMENT_VIDEO_SECONDS, STORY_VIDEO_SOURCE, POLL_DAYS, POLL_DAYS_DEFAULT, POLL_OPTION_MAX } from "@athar/shared";
+import { fullRatio, MOMENT_PHOTOS_MAX, MOMENT_VIDEO_SECONDS, STORY_VIDEO_SOURCE, POLL_DAYS, POLL_DAYS_DEFAULT, POLL_OPTION_MAX } from "@athar/shared";
 import { DEV_FEATURES } from "../lib/dev-features";
 import { ar } from "../lib/format";
 import { appleNearby, appleSearch } from "../lib/apple-places";
@@ -81,6 +81,11 @@ export default function Compose() {
     استطلاعُ المشرف على خاطرته (القاعدة ٢٨٩): السؤالُ نصُّها، وخياران إلى أربعة.
     `null` = بلا استطلاع.
   */
+  /*
+    مشتركُ آثار+ (القاعدة ٤٧٤): صورُه تُرفع بجودةٍ عالية، والمحرّرُ بنسبة الصورة الأولى لا مربّعاً
+    — كما ستُرى في البطاقة. وما خرج عن ٣:٤ و٢:١ وحده يُضبط موضعُه بالسحب.
+  */
+  const plus = useSession((state) => Boolean(state.me?.isPlus));
   const canPoll = useSession((state) => Boolean(state.me?.canGroups)) && kind === "THOUGHT";
   const [poll, setPoll] = useState<string[] | null>(null);
   const [pollDays, setPollDays] = useState<number>(POLL_DAYS_DEFAULT);
@@ -120,6 +125,8 @@ export default function Compose() {
   // الشاشة — مربّعٌ أطولُ منها يتنازع وتمريرَها (القاعدة ٤٦٨).
   const { height: screenHeight } = useWindowDimensions();
   const screenWidth = Math.min(useContentWidth(), 600, Math.max(280, screenHeight - 100));
+  // مقطعُ لحظة آثار+ بنسبته كما سيُرى (القاعدة ٤٧٤)، وغيرُه مربّع.
+  const clipHeight = (screenWidth - 40) / ((plus && clip ? fullRatio(clip.width, clip.height) : null) ?? 1);
   const [asking, setAsking] = useState(false);
   const [withIds, setWithIds] = useState<string[]>([]);
   const [audience, setAudience] = useState("CIRCLE");
@@ -391,12 +398,12 @@ export default function Compose() {
           ? await uploadMomentVideo(clip.uri, clip.mime, clip.start, clip, clip.seconds > MOMENT_VIDEO_SECONDS ? clip.length : undefined)
           : undefined;
       const mediaId = picture && !videoId
-        ? await uploadFile(picture.uri, picture.mime, "MOMENT", picture)
+        ? await uploadFile(picture.uri, picture.mime, "MOMENT", picture, plus)
         : undefined;
       // واحدةً بعد أخرى لا معاً: خمسُ رفعاتٍ على شبكة جوّالٍ تتزاحم فتبطؤ كلُّها.
       const photos: string[] = [];
       if (mediaId && kind === "PHOTO") {
-        for (const one of extras) photos.push(await uploadFile(one.uri, one.mime, "MOMENT", one));
+        for (const one of extras) photos.push(await uploadFile(one.uri, one.mime, "MOMENT", one, plus));
       }
 
       // بابٌ واحد لكل الأنواع، والأغنية رابطٌ فيه لا مساراً على حدة.
@@ -414,7 +421,8 @@ export default function Compose() {
           photos: photos.length ? photos : undefined,
           photoPositions: photos.length ? extras.map((one) => posOf(one.uri)) : undefined,
           // مربّعٌ مقصوصٌ بموضعه في الملفّ (القاعدة ٣٦٤).
-          square: mediaId && DEV_FEATURES ? true : undefined,
+          // ولمشترك آثار+ لا قصّ: الخادمُ يتجاهله ويحفظها بنسبتها (القاعدة ٤٧٤).
+          square: mediaId && DEV_FEATURES && !plus ? true : undefined,
           musicUrl: kind === "MUSIC" ? musicUrl.trim() : undefined,
           poll: poll ? poll.map((option) => option.trim()).filter(Boolean) : undefined,
           pollDays: poll ? pollDays : undefined,
@@ -496,14 +504,14 @@ export default function Compose() {
               {clip ? (
                 // المقطعُ بإطار البطاقة نفسه، يدور في النافذة المختارة (القاعدة ٤٣٤).
                 <View style={{ marginBottom: 10, gap: 10 }}>
-                  <View style={{ width: screenWidth - 40, height: screenWidth - 40, borderRadius: 16, overflow: "hidden", backgroundColor: "#0E1A24" }}>
+                  <View style={{ width: screenWidth - 40, height: clipHeight, borderRadius: 16, overflow: "hidden", backgroundColor: "#0E1A24" }}>
                     <VideoWindowPreview
                       key={clip.uri}
                       uri={clip.uri}
                       start={clip.start}
                       length={clip.length}
                       width={screenWidth - 40}
-                      height={screenWidth - 40}
+                      height={clipHeight}
                       cover
                     />
                     <Pressable
@@ -544,6 +552,7 @@ export default function Compose() {
                       setPositions((now) => ({ ...now, [uri]: value }));
                     }}
                     frameWidth={screenWidth - 40}
+                    ratio={plus ? fullRatio(picture.width, picture.height) : null}
                     onActive={setFraming}
                   />
                 </View>

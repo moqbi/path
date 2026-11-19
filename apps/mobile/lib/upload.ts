@@ -15,6 +15,13 @@ export type Purpose = "AVATAR" | "COVER" | "MOMENT" | "STORY" | "MESSAGE" | "VOI
 const MAX_SIDE = 1600;
 
 /**
+ * وصورةُ لحظةٍ لمشترك آثار+ بجودتها العالية (القاعدة ٤٧٤): ٢٥٦٠ على الأطول وJPEG بـ٠٫٩٢،
+ * والخادمُ يكتبها ٢٠٤٨ بـWebP ٨٨. ما يخرج من الجوّال أكبرُ ممّا يُحفظ، فلا يُضغط مرّتين
+ * إلى ما دون ما يُعرض. وحدُّها `LIMITS.plusImage`.
+ */
+const PLUS_SIDE = 2560;
+
+/**
  * الصورة تُصغَّر وتُضغط على الجهاز قبل أن تخرج.
  *
  * صورةُ آيفون حديث ٤٨ ميغابكسل وأربعةُ ميغابايت وأكثر، وحدُّ الصورة على
@@ -29,6 +36,7 @@ export async function shrink(
   uri: string,
   mime: string,
   size: { width: number; height: number },
+  plus = false,
 ): Promise<{ uri: string; mime: string; width: number; height: number }> {
   if (!mime.startsWith("image/") || mime === "image/gif" || mime === "image/webp") {
     return { uri, mime, ...size };
@@ -36,13 +44,14 @@ export async function shrink(
 
   const context = ImageManipulator.manipulate(uri);
   const side = Math.max(size.width, size.height);
+  const limit = plus ? PLUS_SIDE : MAX_SIDE;
   // الأبعادُ مجهولةٌ (صفر) لا تُصغَّر: تحجيمٌ أعمى يكبّر الصغيرة. تُضغط وحدها.
-  if (side > MAX_SIDE) {
-    if (size.height > size.width) context.resize({ height: MAX_SIDE });
-    else context.resize({ width: MAX_SIDE });
+  if (side > limit) {
+    if (size.height > size.width) context.resize({ height: limit });
+    else context.resize({ width: limit });
   }
   const image = await context.renderAsync();
-  const out = await image.saveAsync({ compress: 0.82, format: SaveFormat.JPEG });
+  const out = await image.saveAsync({ compress: plus ? 0.92 : 0.82, format: SaveFormat.JPEG });
   return { uri: out.uri, mime: "image/jpeg", width: out.width, height: out.height };
 }
 
@@ -51,8 +60,10 @@ export async function uploadFile(
   mime: string,
   purpose: Purpose,
   size: { width: number; height: number } = { width: 0, height: 0 },
+  /** صورةُ لحظةٍ لمشترك آثار+ — تُرفع بجودتها العالية (القاعدة ٤٧٤). */
+  plus = false,
 ): Promise<string> {
-  const ready = await shrink(uri, mime, size).catch(() => ({ uri, mime, ...size }));
+  const ready = await shrink(uri, mime, size, plus && purpose === "MOMENT").catch(() => ({ uri, mime, ...size }));
   return (await send(ready.uri, ready.mime, purpose, { width: ready.width, height: ready.height })).mediaId;
 }
 

@@ -154,9 +154,14 @@ async function ownMedia(userId: string, mediaId: string) {
 export async function createMoment(userId: string, input: MomentInput) {
   const me = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, city: true },
+    select: { id: true, city: true, isPlus: true },
   });
   if (!me) throw notFound("لا يوجد هذا الحساب");
+  /*
+    لحظةُ آثار+ بنسبتها لا مربّعة (القاعدة ٤٧٤): لا يُقصّ ملفُّها، وتُرسم بنسبة صورتها
+    (`fullRatio`) — وحالُ صاحبها ساعةَ النشر تُكتب `fullFrame` فلا تنكمش بعد انتهاء اشتراكه.
+  */
+  const full = me.isPlus && input.kind === "PHOTO";
 
   const text = input.text?.trim() || null;
   if (!text && input.kind === "THOUGHT") throw badRequest("اكتب شيئاً");
@@ -207,7 +212,7 @@ export async function createMoment(userId: string, input: MomentInput) {
     });
     if (!video) throw notFound("الملف غير موجود");
     videoId = video.id;
-    posterId = await posterFor(userId, video.id);
+    posterId = await posterFor(userId, video.id, full);
   }
   const mediaId = videoId ? posterId : input.mediaId ? await ownMedia(userId, input.mediaId) : null;
   /*
@@ -241,7 +246,7 @@ export async function createMoment(userId: string, input: MomentInput) {
     فيصير الموضعُ الوسطَ. وما لم يُقصّ يبقى بموضعه يُقصّ عند العرض.
   */
   const squared = new Set<string>();
-  if (input.square && kind === "PHOTO" && mediaId && !videoId) {
+  if (input.square && !full && kind === "PHOTO" && mediaId && !videoId) {
     const jobs = [
       { id: mediaId, x: input.photoX ?? 50, y: input.photoY ?? 50 },
       ...extra.map((id) => {
@@ -260,6 +265,7 @@ export async function createMoment(userId: string, input: MomentInput) {
       text,
       mediaId,
       videoId,
+      fullFrame: full && kind === "PHOTO" && Boolean(mediaId),
       photoX: mediaId ? (squared.has(mediaId) ? 50 : (input.photoX ?? null)) : null,
       photoY: mediaId ? (squared.has(mediaId) ? 50 : (input.photoY ?? null)) : null,
       photos: extra.length

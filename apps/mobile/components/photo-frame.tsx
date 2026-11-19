@@ -35,6 +35,7 @@ export function PhotoFrameEditor({
   value,
   onChange,
   frameWidth,
+  ratio,
   onActive,
 }: {
   uri: string;
@@ -43,10 +44,12 @@ export function PhotoFrameEditor({
   value: Pos;
   onChange: (next: Pos) => void;
   frameWidth: number;
+  /** نسبةُ إطار لحظة آثار+ (القاعدة ٤٧٤) — وبلاها نسبةُ البطاقة. */
+  ratio?: number | null;
   /** سحبٌ جارٍ: الشاشةُ توقف تمريرها — تمريرُ آبل يأخذ السحبة قبل الإطار (القاعدة ١٤٠). */
   onActive?: (active: boolean) => void;
 }) {
-  const frameHeight = frameWidth / PHOTO_RATIO;
+  const frameHeight = frameWidth / (ratio ?? PHOTO_RATIO);
   const extra = spare(frameWidth, frameHeight, width || frameWidth, height || frameHeight);
   const latest = useRef({ value, extra, onChange, onActive });
   latest.current = { value, extra, onChange, onActive };

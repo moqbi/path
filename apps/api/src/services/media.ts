@@ -2,7 +2,7 @@ import { prisma } from "@athar/db";
 import { cloudReady, deleteObjects, getObject, putObject } from "@athar/storage";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
-import { squareCrop, videoPoster } from "../lib/process";
+import { processImage, squareCrop, videoPoster } from "../lib/process";
 
 /**
  * حذفٌ لا يُبقي أثراً.
@@ -131,7 +131,7 @@ export async function squareMomentPhoto(id: string, x: number, y: number): Promi
  * ملفٌّ مستقلٌّ لصاحبه يُكتب `Moment.mediaId`. والفشلُ `null` — لحظةٌ بمقطعٍ بلا
  * غلاف خيرٌ من مقطعٍ لا يُنشر، والسطرُ في السجلّ يقول السبب.
  */
-export async function posterFor(ownerId: string, videoId: string): Promise<string | null> {
+export async function posterFor(ownerId: string, videoId: string, full = false): Promise<string | null> {
   try {
     const video = await prisma.media.findUnique({ where: { id: videoId }, select: { key: true, bytes: true } });
     if (!video) return null;
@@ -145,7 +145,8 @@ export async function posterFor(ownerId: string, videoId: string): Promise<strin
     else return null;
 
     const frame = await videoPoster(input, "mp4");
-    const out = await squareCrop(frame, 50, 50);
+    // ولحظةُ آثار+ غلافُها بنسبة مقطعها لا مربّعاً (القاعدة ٤٧٤).
+    const out = full ? await processImage(frame, "image/jpeg", { side: 2048, quality: 88 }) : await squareCrop(frame, 50, 50);
     if (cloudReady()) {
       const key = `${ownerId}/${randomUUID()}.${EXT[out.mime] ?? "bin"}`;
       await putObject(key, out.bytes, out.mime);

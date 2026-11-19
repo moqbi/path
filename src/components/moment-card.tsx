@@ -22,7 +22,7 @@ import { MomentBar } from "@/components/moment-bar";
 import { Poll } from "@/components/poll";
 import { AthrMark } from "@/components/brand";
 import { Photo } from "@/components/photo";
-import { PHOTO_RATIO } from "@/lib/photo";
+import { momentRatio, PHOTO_RATIO } from "@/lib/photo";
 import { mapsUrl } from "@/lib/maps";
 import { PlaceLink } from "@/components/place-link";
 import { Reactors } from "@/components/reactions";
@@ -577,11 +577,11 @@ export function MomentCard({
             <>
               {moment.videoId ? (
                 <div className="mt-2.5">
-                  <MomentVideo videoId={moment.videoId} posterId={moment.mediaId} />
+                  <MomentVideo videoId={moment.videoId} posterId={moment.mediaId} ratio={momentRatio(moment)} />
                 </div>
               ) : moment.mediaId ? (
                 <div className="mt-2.5">
-                  <Photo mediaId={moment.mediaId} rounded x={moment.photoX ?? 50} y={moment.photoY ?? 50} more={moment.photos?.map((photo) => photo.mediaId)} morePos={moment.photos?.map((photo) => ({ x: photo.x ?? 50, y: photo.y ?? 50 }))} />
+                  <Photo mediaId={moment.mediaId} ratio={momentRatio(moment)} rounded x={moment.photoX ?? 50} y={moment.photoY ?? 50} more={moment.photos?.map((photo) => photo.mediaId)} morePos={moment.photos?.map((photo) => ({ x: photo.x ?? 50, y: photo.y ?? 50 }))} />
                 </div>
               ) : null}
               <Bubble moment={moment} viewerId={viewerId} moderate={moderate} trial={trial} />
@@ -596,12 +596,12 @@ export function MomentCard({
   // الصورةُ في أعلى البطاقة وزرُّ التفاعل في ركنها فوقها، بإطار المحرّر وموضعه.
   const media = moment.videoId ? (
     <div className="px-3 pt-3">
-      <MomentVideo videoId={moment.videoId} posterId={moment.mediaId} />
+      <MomentVideo videoId={moment.videoId} posterId={moment.mediaId} ratio={momentRatio(moment)} />
     </div>
   ) : moment.mediaId ? (
     // حشوةٌ لا هامش: هامشُ أوّل ابنٍ ينهار عبر أبيه فيُزيح البطاقة كلّها.
     <div className="px-3 pt-3">
-      <Photo mediaId={moment.mediaId} rounded x={moment.photoX ?? 50} y={moment.photoY ?? 50} more={moment.photos?.map((photo) => photo.mediaId)} morePos={moment.photos?.map((photo) => ({ x: photo.x ?? 50, y: photo.y ?? 50 }))} />
+      <Photo mediaId={moment.mediaId} ratio={momentRatio(moment)} rounded x={moment.photoX ?? 50} y={moment.photoY ?? 50} more={moment.photos?.map((photo) => photo.mediaId)} morePos={moment.photos?.map((photo) => ({ x: photo.x ?? 50, y: photo.y ?? 50 }))} />
     </div>
   ) : moment.imageSpec ? (
     <div className="px-3 pt-3">

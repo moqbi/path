@@ -12,7 +12,7 @@ import { PHOTO_RATIO } from "@/lib/photo";
  * (القاعدة ٤٣٧) بـ«×» وEscape والسحب إلى أسفل. والبطاقةُ قد تجلس داخل رابط اللحظة (القاعدة ٢٨)،
  * فالحاويةُ توقف الصعود، والنافذةُ على جسد الصفحة (القاعدة ٩٢).
  */
-export function MomentVideo({ videoId, posterId }: { videoId: string; posterId: string | null }) {
+export function MomentVideo({ videoId, posterId, ratio = PHOTO_RATIO }: { videoId: string; posterId: string | null; ratio?: number }) {
   const [open, setOpen] = useState(false);
   const poster = posterId ? `${BASE}/api/media/${posterId}` : undefined;
   const swipe = useSwipeDown(() => setOpen(false));
@@ -25,7 +25,7 @@ export function MomentVideo({ videoId, posterId }: { videoId: string; posterId: 
   return (
     <div
       className="relative w-full overflow-hidden rounded-2xl bg-[#0E1A24]"
-      style={{ aspectRatio: PHOTO_RATIO }}
+      style={{ aspectRatio: ratio }}
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();

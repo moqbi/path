@@ -14,7 +14,10 @@ export function MomentVideo({
   videoId,
   posterId,
   style,
+  ratio,
 }: {
+  /** نسبةُ إطار لحظة آثار+ (القاعدة ٤٧٤) — نسبةُ مقطعها، وبلاها نسبةُ البطاقة. */
+  ratio?: number | null;
   videoId: string;
   posterId: string | null;
   style?: StyleProp<ViewStyle>;
@@ -23,7 +26,7 @@ export function MomentVideo({
     <Pressable
       accessibilityLabel="شغّل المقطع"
       onPress={() => viewVideo(videoId)}
-      style={[{ width: "100%", aspectRatio: PHOTO_RATIO, borderRadius: 14, overflow: "hidden", backgroundColor: "#0E1A24" }, style]}
+      style={[{ width: "100%", aspectRatio: ratio ?? PHOTO_RATIO, borderRadius: 14, overflow: "hidden", backgroundColor: "#0E1A24" }, style]}
     >
       {posterId ? <MediaImage mediaId={posterId} style={{ width: "100%", height: "100%" }} /> : null}
       <View pointerEvents="none" style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, alignItems: "center", justifyContent: "center" }}>

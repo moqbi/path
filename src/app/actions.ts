@@ -497,6 +497,8 @@ export async function postSimple(formData: FormData): Promise<void> {
       kind: posted as MomentKind,
       text: text || null,
       mediaId,
+      // لحظةُ آثار+ بنسبة صورتها (القاعدة ٤٧٤) — بحال صاحبها ساعةَ النشر.
+      fullFrame: Boolean(user.isPlus && mediaId && posted === "PHOTO"),
       // موضعُ الصورة في إطار البطاقة كما ضبطه صاحبُها بالسحب (٠–١٠٠).
       photoX: mediaId ? percent(formData.get("photoX")) : null,
       photoY: mediaId ? percent(formData.get("photoY")) : null,

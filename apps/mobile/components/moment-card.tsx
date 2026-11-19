@@ -472,9 +472,10 @@ export function MomentCard({
             extra={
               <>
                 {moment.videoId ? (
-                  <MomentVideo videoId={moment.videoId} posterId={moment.mediaId} style={{ marginTop: 10 }} />
+                  <MomentVideo videoId={moment.videoId} posterId={moment.mediaId} ratio={moment.ratio} style={{ marginTop: 10 }} />
                 ) : moment.mediaId && moment.morePhotos?.length ? (
                   <PhotoCarousel
+                    ratio={moment.ratio}
                     ids={[moment.mediaId, ...moment.morePhotos]}
                     position={{ x: moment.photoX ?? 50, y: moment.photoY ?? 50 }}
                     positions={[{ x: moment.photoX ?? 50, y: moment.photoY ?? 50 }, ...(moment.morePhotoPos ?? [])]}
@@ -485,7 +486,7 @@ export function MomentCard({
                     <MediaImage
                       mediaId={moment.mediaId}
                       position={{ x: moment.photoX ?? 50, y: moment.photoY ?? 50 }}
-                      style={{ width: "100%", aspectRatio: PHOTO_RATIO, borderRadius: 14, marginTop: 10 }}
+                      style={{ width: "100%", aspectRatio: moment.ratio ?? PHOTO_RATIO, borderRadius: 14, marginTop: 10 }}
                     />
                   </Pressable>
                 ) : null}
@@ -506,10 +507,11 @@ export function MomentCard({
   */
   const media = moment.videoId ? (
     // مقطعُ اللحظة في إطار صورتها (القاعدة ٤٣٤).
-    <MomentVideo videoId={moment.videoId} posterId={moment.mediaId} style={{ marginTop: 12, marginHorizontal: 12, width: undefined, alignSelf: "stretch" }} />
+    <MomentVideo videoId={moment.videoId} posterId={moment.mediaId} ratio={moment.ratio} style={{ marginTop: 12, marginHorizontal: 12, width: undefined, alignSelf: "stretch" }} />
   ) : moment.mediaId && moment.morePhotos?.length ? (
     // خمسُ صورٍ تُقلَّب يميناً ويساراً (القاعدة ٣٤٣).
     <PhotoCarousel
+      ratio={moment.ratio}
       ids={[moment.mediaId, ...moment.morePhotos]}
       position={{ x: moment.photoX ?? 50, y: moment.photoY ?? 50 }}
       positions={[{ x: moment.photoX ?? 50, y: moment.photoY ?? 50 }, ...(moment.morePhotoPos ?? [])]}
@@ -524,7 +526,7 @@ export function MomentCard({
       <MediaImage
         mediaId={moment.mediaId}
         position={{ x: moment.photoX ?? 50, y: moment.photoY ?? 50 }}
-        style={{ width: "100%", aspectRatio: PHOTO_RATIO }}
+        style={{ width: "100%", aspectRatio: moment.ratio ?? PHOTO_RATIO }}
       />
     </Pressable>
   ) : moment.imageSpec ? (

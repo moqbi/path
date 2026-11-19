@@ -35,6 +35,8 @@ export const momentShape = {
   // «خاصة»: من يرى اللحظة يُقال له إنّها لم تُوجَّه إلى الدائرة كلّها.
   audience: true,
   media: { select: { width: true, height: true } },
+  // لحظةُ آثار+ بنسبة ملفّها (القاعدة ٤٧٤).
+  fullFrame: true,
   lat: true,
   lng: true,
   createdAt: true,

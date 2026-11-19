@@ -616,6 +616,9 @@ model Moment {
   /// والكتابُ والمعرضُ والخريطةُ صورةً كما هي.
   videoId String?       @unique
   video   Media?        @relation("MomentVideo", fields: [videoId], references: [id], onDelete: SetNull)
+  /// لحظةُ آثار+ (القاعدة ٤٧٤): صورتُها ومقطعُها بنسبتهما لا مربّعَين، وبجودةٍ عالية.
+  /// يُكتب عند النشر بحال صاحبها يومئذٍ، فلا تنكمش لحظاتُه إن انتهى اشتراكُه.
+  fullFrame Boolean @default(false)
 
   /// الجمهور: الدائرة كلها، أو تصنيف منها، أو أشخاص بأعيانهم.
   audience        Audience     @default(CIRCLE)
