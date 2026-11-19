@@ -47,6 +47,11 @@ type Rule = { mimes: readonly string[]; max: number };
  * لحظةٍ واحدة، والإطارُ في البطاقة بعرض الشاشة لا أكثر، والفتحُ الكامل يحتملها.
  */
 const MOMENT_IMAGE = { side: 1280, quality: 72 };
+/**
+ * ولمشترك آثار+ جودةٌ عالية (القاعدة ٤٧٤): ٢٠٤٨ على الأطول وWebP بـ٨٨ — صورةٌ تُفتح بملء
+ * شاشة آيباد فلا تُرى مغبّشة. والمقطعُ بضلعٍ قصيرٍ ١٠٨٠ (`compressStoryVideo` ← `plus`).
+ */
+const MOMENT_IMAGE_PLUS = { side: 2048, quality: 88 };
 
 const RULES: Record<PresignInput["purpose"], Rule> = {
   AVATAR: { mimes: [...MIME.image, ...MIME.animated], max: LIMITS.animated },
@@ -62,10 +67,16 @@ const RULES: Record<PresignInput["purpose"], Rule> = {
 };
 
 /** حدُّ الحجم لهذا الغرض وهذا النوع: صورةُ القصّة لا تأخذ حدَّ مصدر المقطع. */
-function maxFor(purpose: PresignInput["purpose"], mime: string): number {
+function maxFor(purpose: PresignInput["purpose"], mime: string, plus = false): number {
   if (purpose === "STORY" && mime.startsWith("image/")) return LIMITS.video;
-  if (purpose === "MOMENT" && mime.startsWith("image/")) return LIMITS.image;
+  if (purpose === "MOMENT" && mime.startsWith("image/")) return plus ? LIMITS.plusImage : LIMITS.image;
   return RULES[purpose].max;
+}
+
+/** مشتركُ آثار+ الآن — لحدّ صورة اللحظة وجودتها وحدهما (القاعدة ٤٧٤). */
+async function plusNow(userId: string): Promise<boolean> {
+  const row = await prisma.user.findUnique({ where: { id: userId }, select: { isPlus: true } });
+  return Boolean(row?.isPlus);
 }
 
 /** امتدادٌ يُشتقّ من النوع — ليُقرأ المفتاح في لوحة السحابة. */
@@ -103,7 +114,8 @@ export async function presign(userId: string, input: PresignInput) {
   const rule = RULES[input.purpose];
   const mime = baseMime(input.mime);
   if (!rule.mimes.includes(mime)) throw badRequest("صيغة غير مدعومة");
-  if (input.bytes > maxFor(input.purpose, mime)) throw badRequest("الملف كبير");
+  const plus = input.purpose === "MOMENT" && input.bytes > LIMITS.image ? await plusNow(userId) : false;
+  if (input.bytes > maxFor(input.purpose, mime, plus)) throw badRequest("الملف كبير");
 
   // الصورة المتحركة ميزة اشتراك، وصورة العرض وحدها تقبلها.
   if ((MIME.animated as readonly string[]).includes(mime) && input.purpose !== "AVATAR") {
@@ -222,7 +234,8 @@ export async function commit(userId: string, mediaId: string, options: { start?:
   const head = await headObject(media.key);
   if (!head) throw badRequest("لم يصل الملف");
   if (head.bytes === 0) throw await reject(media.id, media.key, "الملف فارغ");
-  if (head.bytes > maxFor(purpose, media.mime)) throw await reject(media.id, media.key, "الملف كبير");
+  const plus = purpose === "MOMENT" ? await plusNow(userId) : false;
+  if (head.bytes > maxFor(purpose, media.mime, plus)) throw await reject(media.id, media.key, "الملف كبير");
 
   // يُنزَّل كاملاً: البصمة من أوّله، والمعالجة والمدّة من كلّه. والحدّ
   // فُحص قبل التنزيل، فلا يُجرّ إلى الذاكرة ما يتجاوزه.
@@ -230,7 +243,7 @@ export async function commit(userId: string, mediaId: string, options: { start?:
   if (!response.ok) throw await reject(media.id, media.key, "لم يصل الملف");
   const bytes = new Uint8Array(await response.arrayBuffer());
 
-  return accept(userId, { id: media.id, key: media.key, mime: media.mime }, purpose, bytes, options);
+  return accept(userId, { id: media.id, key: media.key, mime: media.mime }, purpose, bytes, { ...options, plus });
 }
 
 /**
@@ -262,7 +275,7 @@ async function accept(
   media: { id: string; key: string; mime: string },
   purpose: PresignInput["purpose"],
   bytes: Uint8Array,
-  options: { start?: number; look?: VideoLook | null; length?: number },
+  options: { start?: number; look?: VideoLook | null; length?: number; plus?: boolean },
 ) {
   const rule = RULES[purpose];
   const real = sniff(bytes);
@@ -305,7 +318,7 @@ async function accept(
     throw await reject(media.id, media.key, "الملف كبير");
   }
 
-  const shaped = await shape(media.id, media.key, actual, purpose, moving, bytes, options.start ?? 0, options.look ?? null, options.length);
+  const shaped = await shape(media.id, media.key, actual, purpose, moving, bytes, options.start ?? 0, options.look ?? null, options.length, options.plus ?? false);
 
   const ready = await prisma.media.update({
     where: { id: media.id },
@@ -332,6 +345,7 @@ async function shape(
   start = 0,
   look: VideoLook | null = null,
   length?: number,
+  plus = false,
 ): Promise<{ mime: string; width: number; height: number; seconds?: number; peaks?: number[] }> {
   // صندوقُ `chnl` الذي يكتبه آبل ٢٦ ولا يقرؤه ffmpeg 6 يُطمس، ويُكتب الملفُّ المصحَّح مكان الأصل
   // فيقرؤه كلُّ مشغّلٍ بعده (القاعدة ٤٠٣). يسري على الصوت والمقطع: الكاميرا تكتبه أيضاً.
@@ -370,7 +384,7 @@ async function shape(
       const out =
         purpose === "AVATAR"
           ? await squareAvatar(bytes, mime, AVATAR_SIDE)
-          : await processImage(bytes, mime, purpose === "MOMENT" ? MOMENT_IMAGE : {});
+          : await processImage(bytes, mime, purpose === "MOMENT" ? (plus ? MOMENT_IMAGE_PLUS : MOMENT_IMAGE) : {});
       // المفتاح يحمل امتداد الأصل؛ والنوع يُقدَّم من الصفّ لا من الامتداد.
       await putObject(key, out.bytes, out.mime);
       return { mime: out.mime, width: out.width, height: out.height };
@@ -411,7 +425,7 @@ async function shape(
     const cap = purpose === "STORY" ? STORY_SECONDS : MOMENT_VIDEO_SECONDS;
     let out: Awaited<ReturnType<typeof compressStoryVideo>> | null = null;
     try {
-      out = await compressStoryVideo(bytes, EXT[mime] ?? "bin", start, Math.min(cap, Math.max(1, length ?? cap)), purpose === "STORY" ? look : null);
+      out = await compressStoryVideo(bytes, EXT[mime] ?? "bin", start, Math.min(cap, Math.max(1, length ?? cap)), purpose === "STORY" ? look : null, plus && purpose === "MOMENT");
     } catch (problem) {
       if (!(problem instanceof NoFfmpeg)) throw await reject(mediaId, key, "تعذّرت قراءة المقطع");
       // بلا ffmpeg يبقى الطريقُ القديم: المصدرُ نفسه بحدّه ومدّته، والسطرُ ليُثبَّت.

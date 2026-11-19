@@ -1,4 +1,5 @@
 import { prisma, type MomentKind } from "@athar/db";
+import { fullRatio } from "@athar/shared";
 import { forbidden, notFound } from "../lib/errors";
 import { blockedWith, moderatorReach, visibleWhere } from "./visibility";
 
@@ -28,6 +29,9 @@ const shape = {
   mediaId: true,
   // مقطعُ اللحظة و`mediaId` غلافُه (القاعدة ٤٣٤).
   videoId: true,
+  // لحظةُ آثار+ بنسبتها (القاعدة ٤٧٤) — تُسطَّح `ratio` من أبعاد صورتها أو غلاف مقطعها.
+  fullFrame: true,
+  media: { select: { width: true, height: true } },
   // الصورُ بعد الأولى (القاعدة ٣٤٣) — تُسطَّح `morePhotos`.
   photos: { select: { mediaId: true, x: true, y: true }, orderBy: { position: "asc" } },
   commentsLocked: true,
@@ -108,9 +112,14 @@ const shape = {
  * شخصاً لا غلافاً حوله. التسطيح هنا مرّةً أوفر من تكراره في كل شاشة.
  */
 function flatten<T extends Row>(row: T, viewerId: string) {
-  const { tags, reactions, photos, ...rest } = row;
+  const { tags, reactions, photos, fullFrame, media, ...rest } = row;
   return {
     ...rest,
+    /*
+      نسبةُ إطار الصورة والمقطع (القاعدة ٤٧٤): لحظةُ آثار+ بنسبة ملفّها، وغيرُها `null` فيبقى
+      المربّع. وجوّالٌ قديمٌ لا يقرؤها يرسمها مربّعاً بموضعها — الوسط، فملفُّها لم يُقصّ.
+    */
+    ratio: fullFrame ? fullRatio(media?.width, media?.height) : null,
     morePhotos: (photos ?? []).map((photo) => photo.mediaId),
     // موضعُ كلٍّ منها (القاعدة ٣٤٨) — حقلٌ موازٍ فلا يتغيّر شكلُ `morePhotos` على جوّالٍ قديم.
     morePhotoPos: (photos ?? []).map((photo) => ({ x: photo.x ?? 50, y: photo.y ?? 50 })),
@@ -126,6 +135,8 @@ function flatten<T extends Row>(row: T, viewerId: string) {
 }
 
 type Row = {
+  fullFrame?: boolean;
+  media?: { width: number | null; height: number | null } | null;
   photos?: { mediaId: string; x?: number; y?: number }[];
   tags: { user: { id: string; name: string } }[];
   reactions: { userId: string; kind: string; emoji: string | null; user: { name: string; avatarMediaId: string | null } }[];

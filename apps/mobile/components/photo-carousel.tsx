@@ -22,7 +22,10 @@ export function PhotoCarousel({
   positions,
   style,
   radius = 14,
+  ratio,
 }: {
+  /** نسبةُ إطار لحظة آثار+ (القاعدة ٤٧٤) — نسبةُ أولاها، وبلاها نسبةُ البطاقة. */
+  ratio?: number | null;
   ids: string[];
   position?: { x: number; y: number };
   /** موضعُ كلّ صورةٍ كما ضبطه صاحبُها (القاعدة ٣٤٨) — وبلاه الأولى بـ`position` وما بعدها الوسط. */
@@ -95,7 +98,7 @@ export function PhotoCarousel({
   return (
     <View
       onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
-      style={[{ width: "100%", aspectRatio: PHOTO_RATIO, borderRadius: radius, overflow: "hidden" }, style]}
+      style={[{ width: "100%", aspectRatio: ratio ?? PHOTO_RATIO, borderRadius: radius, overflow: "hidden" }, style]}
       {...pan.panHandlers}
     >
       {width

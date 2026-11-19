@@ -22,7 +22,10 @@ export function Photo({
   y = 50,
   more = [],
   morePos = [],
+  ratio = PHOTO_RATIO,
 }: {
+  /** نسبةُ الإطار — نسبةُ ملفّ لحظة آثار+ (القاعدة ٤٧٤)، وإلّا نسبةُ البطاقة. */
+  ratio?: number;
   /** الصورُ بعد الأولى — تُقلَّب يميناً ويساراً (القاعدة ٣٤٣). */
   more?: string[];
   /** موضعُ كلٍّ منها كما ضبطه صاحبُها (القاعدة ٣٤٨). */
@@ -100,7 +103,7 @@ export function Photo({
                   loading={at === 0 ? undefined : "lazy"}
                   style={{
                     width: "100%",
-                    ...(height ? { height } : { aspectRatio: PHOTO_RATIO }),
+                    ...(height ? { height } : { aspectRatio: ratio }),
                     display: "block",
                     objectFit: "cover",
                     objectPosition: at === 0 ? `${x}% ${y}%` : `${morePos[at - 1]?.x ?? 50}% ${morePos[at - 1]?.y ?? 50}%`,
@@ -142,7 +145,7 @@ export function Photo({
           alt=""
           style={{
             width: "100%",
-            ...(height ? { height } : { aspectRatio: PHOTO_RATIO }),
+            ...(height ? { height } : { aspectRatio: ratio }),
             display: "block",
             objectFit: "cover",
             objectPosition: `${x}% ${y}%`,

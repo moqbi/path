@@ -27,6 +27,12 @@ const PERKS = [
     icon: <TagPill tag={SUPPORTER_TAG} size={10} />,
   },
   {
+    // جودةُ اللحظة ونسبتُها (القاعدة ٤٧٤).
+    title: "صور وفيديو بجودة عالية",
+    body: "لحظاتك تظهر بحجمها الكامل لا مقصوصة مربعاً · فيديو ١٠٨٠",
+    icon: <CameraIcon size={18} />,
+  },
+  {
     title: "تفاعل بأي إيموجي",
     body: "الخمسة الأساسية تبقى للجميع · لك كل كيبوردك",
     icon: <span className="text-[17px] leading-none">😊</span>,

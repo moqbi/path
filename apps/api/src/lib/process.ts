@@ -359,13 +359,16 @@ export async function compressStoryVideo(
   start: number,
   length: number,
   look: VideoLook | null = null,
+  /** مقطعُ لحظةٍ لمشترك آثار+ (القاعدة ٤٧٤): ضلعٌ قصيرٌ ١٠٨٠ بجودةٍ أعلى — عشرون ثانيةً منه دون ١٤ ميغا. */
+  plus = false,
 ): Promise<{ bytes: Uint8Array; seconds: number; width: number; height: number }> {
   const folder = await mkdtemp(join(tmpdir(), "athr-"));
   const source = join(folder, `in.${extension}`);
   const out = join(folder, "out.mp4");
   try {
     await writeFile(source, input);
-    const scale = "scale='if(gt(iw,ih),-2,min(720,iw))':'if(gt(iw,ih),min(720,ih),-2)',fps=30";
+    const short = plus ? 1080 : 720;
+    const scale = `scale='if(gt(iw,ih),-2,min(${short},iw))':'if(gt(iw,ih),min(${short},ih),-2)',fps=30`;
     /*
       الفلترُ يُطبع في المقطع (القاعدة ٤٠٧): مصفوفةُ الألوان نفسُها التي يرسمها Skia في المعاينة
       تصير جدولَ ألوانٍ ثلاثيّاً (`lut3d`) — خطّيٌّ بقصٍّ في طرفيه فيُطابقها بلا تقريبٍ يُرى —
@@ -394,9 +397,9 @@ export async function compressStoryVideo(
       "-t", length.toFixed(2),
       "-map", look ? "[v]" : "0:v:0", "-map", "0:a?",
       ...graph,
-      "-c:v", "libx264", "-preset", "veryfast", "-crf", "27",
-      "-maxrate", "2200k", "-bufsize", "4400k", "-pix_fmt", "yuv420p",
-      "-c:a", "aac", "-b:a", "96k", "-ac", "2",
+      "-c:v", "libx264", "-preset", "veryfast", "-crf", plus ? "22" : "27",
+      "-maxrate", plus ? "5000k" : "2200k", "-bufsize", plus ? "10000k" : "4400k", "-pix_fmt", "yuv420p",
+      "-c:a", "aac", "-b:a", plus ? "128k" : "96k", "-ac", "2",
       // بلا بيانات الالتقاط (القاعدة ٤٣٤): ffmpeg ينسخها افتراضاً، وفيها موضعُ التصوير.
       "-map_metadata", "-1",
       "-movflags", "+faststart",

@@ -22,6 +22,12 @@ export const PERKS = [
     icon: <TagPill tag={SUPPORTER_TAG} size={10} />,
   },
   {
+    // جودةُ اللحظة ونسبتُها (القاعدة ٤٧٤) — بقرار المالك.
+    title: "صور وفيديو بجودة عالية",
+    body: "لحظاتك تظهر بحجمها الكامل لا مقصوصة مربعاً · فيديو ١٠٨٠",
+    icon: <CameraIcon size={18} color={colors.gold} />,
+  },
+  {
     title: "تفاعل بأي إيموجي",
     body: "الخمسة الأساسية تبقى للجميع · لك كل كيبوردك",
     icon: <Text style={{ fontSize: 17 }}>😊</Text>,

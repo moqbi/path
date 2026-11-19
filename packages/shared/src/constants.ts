@@ -65,6 +65,19 @@ export const STORY_VIDEO_SOURCE = { seconds: 600, bytes: 150_000_000 } as const;
  */
 export const MOMENT_VIDEO_SECONDS = 20;
 
+/**
+ * نسبةُ إطار لحظة آثار+ (القاعدة ٤٧٤): الصورةُ والمقطعُ بنسبتهما لا مربّعَين — بين ٣:٤ قائمةً
+ * (نسبةُ كاميرا الجوّال، فتُرى كاملةً) و٢:١ عرضاً. وما خرج عنهما وحده يُقصّ بموضعه:
+ * لقطةُ شاشةٍ بطول ثلاث شاشات تبتلع الخطّ الزمنيّ.
+ */
+export const FULL_RATIO = { min: 3 / 4, max: 2 } as const;
+
+/** نسبةُ الإطار من أبعاد الملفّ — `null` حين لا تُعرف فيبقى المربّع. */
+export function fullRatio(width: number | null | undefined, height: number | null | undefined): number | null {
+  if (!width || !height) return null;
+  return Math.min(FULL_RATIO.max, Math.max(FULL_RATIO.min, width / height));
+}
+
 /** صورةُ العرض مربّعٌ بهذا الضلع (القاعدة ٢٤٨) — أكبرُ ما تُعرض فيه. */
 export const AVATAR_SIDE = 320;
 
@@ -95,6 +108,8 @@ export const MESSAGE_KEEP_DAYS = 30;
 /** حدود الملفات بالبايت. تُفحص في العميل وتُعاد على الخادم. */
 export const LIMITS = {
   image: 1_500_000,
+  /** صورةُ لحظةٍ لمشترك آثار+ بجودتها العالية (القاعدة ٤٧٤): ٢٥٦٠ على الأطول بـJPEG ٠٫٩٢. */
+  plusImage: 8_000_000,
   animated: 3_000_000,
   /** دقيقتا آثار+ (القاعدة ٩٥) بأعلى ما سجّلته نسخةُ المتجر (≈٣٢٠ كيلوبت) ≈ ٤٫٨ ميغا (القاعدة ٤٢١). */
   audio: 6_000_000,
