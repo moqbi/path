@@ -91,4 +91,35 @@ export const groupRoutes = new Hono()
 
   .delete("/messages/:id", zValidator("param", byId), async (c) =>
     c.json(await groups.removeMessage(me(c), c.req.valid("param").id)),
+  )
+
+  // تعديلُ رسالتك (القاعدة ٤٧٥).
+  .patch(
+    "/messages/:id",
+    requireActive,
+    zValidator("param", byId),
+    zValidator("json", z.object({ body: z.string().trim().min(1).max(2000) })),
+    async (c) => c.json(await groups.edit(me(c), c.req.valid("param").id, c.req.valid("json").body)),
+  )
+
+  // الرتبةُ والكتمُ (القاعدة ٤٧٥) — والصلاحيةُ في الخدمة بالرتبة.
+  .put(
+    "/:id/members/:userId/role",
+    requireActive,
+    zValidator("param", z.object({ id: cuid, userId: cuid })),
+    zValidator("json", z.object({ role: z.enum(["ADMIN", "MODERATOR", "MEMBER"]) })),
+    async (c) => {
+      const { id, userId } = c.req.valid("param");
+      return c.json(await groups.setRole(me(c), id, userId, c.req.valid("json").role));
+    },
+  )
+  .put(
+    "/:id/members/:userId/mute",
+    requireActive,
+    zValidator("param", z.object({ id: cuid, userId: cuid })),
+    zValidator("json", z.object({ muted: z.boolean() })),
+    async (c) => {
+      const { id, userId } = c.req.valid("param");
+      return c.json(await groups.setMuted(me(c), id, userId, c.req.valid("json").muted));
+    },
   );

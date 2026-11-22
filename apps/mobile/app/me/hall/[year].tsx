@@ -97,15 +97,22 @@ export default function HallScreen() {
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const width = useContentWidth();
-  const floorH = 104 + Math.max(insets.bottom, 12);
-  const headTop = insets.top + 74;
-  const frameTop = headTop + 96;
+  /*
+    الوضعُ الأفقيّ (القاعدة ٤٧٥): الشاشةُ أقصرُ من أن تحمل اللافتةَ واللوحةَ والبطاقةَ والأرضَ فوق
+    بعضها — كانت البطاقةُ والأسطوانةُ تُقصّان من أسفل. فاللافتةُ سطرٌ واحد، والأرضُ أقصر، وبطاقةُ
+    الشرح بجانب اللوحة لا تحتها، والجارتان أبعدُ فتُطلّان من خلف البطاقة.
+  */
+  const wide = width > height;
+  const floorH = wide ? 70 + Math.max(insets.bottom, 8) : 104 + Math.max(insets.bottom, 12);
+  const headTop = insets.top + (wide ? 66 : 74);
+  const frameTop = headTop + (wide ? 34 : 96);
+  const placardW = wide ? Math.min(230, Math.round(width * 0.26)) : 0;
   // اللوحةُ بما يتّسع له الجدار: شاشةٌ قصيرة تصغّرها ولا تدفع البطاقةَ تحت الأرض.
-  const room = height - frameTop - floorH - 124;
-  const W = Math.round(Math.max(150, Math.min(250, width * 0.62, room / 1.25)));
+  const room = height - frameTop - floorH - (wide ? 26 : 124);
+  const W = Math.round(Math.max(wide ? 110 : 150, Math.min(250, width * 0.62, room / 1.25)));
   const H = Math.round(W * 1.25);
   // الجارتان تُطلّان من الحافّتين: يُرى أنّ الجدارَ يمتدّ.
-  const STEP = W + 44;
+  const STEP = wide ? W + placardW + 64 : W + 44;
 
   const hall = useQuery({ queryKey: ["hall", year], queryFn: () => loadHall(year), enabled: Number.isInteger(year) });
   // ثوبُ القاعة الملبوس من المتجر (القاعدة ٣٤٨)، وبلاه الكلاسيكيّة.
@@ -312,7 +319,17 @@ export default function HallScreen() {
 
         {/* لافتةُ الشهر: اسمُ الجدار، ثمّ لمن هو، ثمّ كم فيه. */}
         <View pointerEvents="none" style={{ position: "absolute", top: headTop, left: 0, right: 0, alignItems: "center", gap: 4 }}>
-          {wallMonth !== null ? (
+          {wallMonth !== null && wide ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Text face="display" style={{ color: skin.sign.ink, fontSize: 19, fontWeight: "800", lineHeight: 26 }}>
+                جدار {MONTHS[wallMonth]}
+              </Text>
+              <LockIcon size={11} color={skin.sign.muted} />
+              <Text style={{ color: skin.sign.muted, fontSize: 12, fontWeight: "700" }}>
+                خاص بك · {ar(wallCount)} لحظة
+              </Text>
+            </View>
+          ) : wallMonth !== null ? (
             <>
               <Text face="display" style={{ color: skin.sign.ink, fontSize: 30, fontWeight: "800", lineHeight: 40 }}>
                 جدار {MONTHS[wallMonth]}
@@ -338,7 +355,13 @@ export default function HallScreen() {
           <EchoRise key={piece.id} echo={piece.echo} width={width} w={W} top={frameTop + H * 0.78} rise={H * 0.9} />
         ) : null}
 
-        <View style={{ position: "absolute", top: frameTop + H + 22, left: 24, right: 24, alignItems: "center" }}>
+        <View
+          style={
+            wide
+              ? { position: "absolute", top: frameTop, left: Math.max(16, (width - W) / 2 - placardW - 30), width: placardW, minHeight: H, justifyContent: "center" }
+              : { position: "absolute", top: frameTop + H + 22, left: 24, right: 24, alignItems: "center" }
+          }
+        >
           {piece ? <Placard skin={skin} moment={piece} onEcho={() => setDetail({ moment: piece, tab: "echo" })} /> : null}
         </View>
 

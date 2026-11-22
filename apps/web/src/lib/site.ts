@@ -167,6 +167,14 @@ export const siteImage = cache(async function siteImage(key: string): Promise<st
   return row?.mediaId ?? null;
 });
 
+/** صورٌ عامّة بمفاتيحها دفعةً واحدة — ما لم يُرفع لا يُذكر. */
+export const siteImages = cache(async function siteImages(keys: readonly string[]): Promise<Record<string, string>> {
+  const rows = await prisma.siteImage
+    .findMany({ where: { key: { in: [...keys] } }, select: { key: true, mediaId: true } })
+    .catch(() => []);
+  return Object.fromEntries(rows.map((row) => [row.key, row.mediaId]));
+});
+
 /** الروابط الظاهرة، مرتّبة — للموقع وللتطبيق سواء. */
 export const socialLinks = cache(async function socialLinks() {
   return prisma.socialLink

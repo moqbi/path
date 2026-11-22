@@ -40,7 +40,7 @@ const WORN = {
   kind: true,
   spec: true,
   mediaId: true,
-  frameHole: true,
+  frameHole: true, fit: true,
   priceCoins: true,
   plusOnly: true,
   earnedAfterDays: true,

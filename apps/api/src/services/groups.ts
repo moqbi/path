@@ -25,8 +25,8 @@ const PERSON = {
   isPlus: true,
   tag: { select: { name: true, bg: true, fg: true } },
   avatarMediaId: true,
-  frame: { select: { spec: true, mediaId: true, frameHole: true } },
-  charm: { select: { spec: true, mediaId: true } },
+  frame: { select: { spec: true, mediaId: true, frameHole: true, fit: true } },
+  charm: { select: { spec: true, mediaId: true, fit: true } },
 } as const;
 
 const MESSAGE = {
@@ -37,6 +37,7 @@ const MESSAGE = {
   senderId: true,
   createdAt: true,
   system: true,
+  editedAt: true,
   sender: { select: PERSON },
 } as const;
 
@@ -57,10 +58,51 @@ async function requireRunner(userId: string) {
 async function seat(userId: string, groupId: string) {
   const row = await prisma.chatGroupMember.findUnique({
     where: { groupId_userId: { groupId, userId } },
-    select: { lastReadAt: true, joinedAt: true },
+    select: { lastReadAt: true, joinedAt: true, muted: true },
   });
   if (!row) throw notFound("المجموعة غير موجودة");
   return row;
+}
+
+/**
+ * رتبُ المجموعة (القاعدة ٤٧٥) — **بقرار المالك**: مشرفُ الموقع ٤، ومالكُها (مُنشئُها) ٣،
+ * والمديرُ ٢، والمشرفُ ١، والعضوُ ٠. ولا يمسّ أحدٌ من هو في رتبته أو فوقه: المالكُ على الكلّ،
+ * والمديرُ على المشرفين والأعضاء، والمشرفُ على الأعضاء. و−١ لمن ليس فيها.
+ */
+export type Rank = -1 | 0 | 1 | 2 | 3 | 4;
+export type RoleName = "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER";
+const ROLE_RANK = { ADMIN: 2, MODERATOR: 1, MEMBER: 0 } as const;
+
+async function rankIn(groupId: string, userId: string): Promise<Rank> {
+  const [group, member, staff] = await Promise.all([
+    prisma.chatGroup.findUnique({ where: { id: groupId }, select: { createdById: true } }),
+    prisma.chatGroupMember.findUnique({
+      where: { groupId_userId: { groupId, userId } },
+      select: { role: true },
+    }),
+    canRunGroups(userId),
+  ]);
+  if (!group) throw notFound("المجموعة غير موجودة");
+  if (staff) return 4;
+  if (!member) return -1;
+  if (group.createdById === userId) return 3;
+  return ROLE_RANK[member.role];
+}
+
+/** الفاعلُ فوق الهدف وفي الرتبة المطلوبة — وإلّا «ليس لك». */
+async function above(actorId: string, groupId: string, targetId: string, least: Rank) {
+  const [actor, target] = await Promise.all([rankIn(groupId, actorId), rankIn(groupId, targetId)]);
+  if (actor < 0) throw notFound("المجموعة غير موجودة");
+  if (target < 0) throw notFound("ليس عضواً في المجموعة");
+  if (actor < least || actor <= target) throw forbidden("ليس لك هذا على هذا العضو");
+  return { actor, target };
+}
+
+async function requireRank(userId: string, groupId: string, least: Rank) {
+  const rank = await rankIn(groupId, userId);
+  if (rank < 0) throw notFound("المجموعة غير موجودة");
+  if (rank < least) throw forbidden(least >= 3 ? "هذا لمالك المجموعة" : "هذا لمديري المجموعة");
+  return rank;
 }
 
 function cleanName(name: string) {
@@ -166,10 +208,11 @@ export async function thread(
       name: true,
       photoMediaId: true,
       createdById: true,
-      members: { select: { user: { select: PERSON } }, orderBy: { joinedAt: "asc" } },
+      members: { select: { role: true, muted: true, user: { select: PERSON } }, orderBy: { joinedAt: "asc" } },
     },
   });
   if (!group) throw notFound("المجموعة غير موجودة");
+  const rank = await rankIn(groupId, userId);
 
   // العضوُ الجديد يقرأ من يوم انضمامه لا أرشيفَ ما قبله (القاعدة ٢٤٢).
   const rows = await prisma.groupMessage.findMany({
@@ -187,8 +230,15 @@ export async function thread(
     id: group.id,
     name: group.name,
     photoMediaId: group.photoMediaId,
-    members: group.members.map((row) => row.user),
-    canManage: await canRunGroups(userId),
+    // الرتبةُ والكتمُ مع كلّ عضو (القاعدة ٤٧٥) — والجوّالُ القديم يقرأ الشخصَ وحده.
+    members: group.members.map((row) => ({
+      ...row.user,
+      role: (row.user.id === group.createdById ? "OWNER" : row.role) as RoleName,
+      muted: row.muted,
+    })),
+    ownerId: group.createdById,
+    myRank: rank,
+    canManage: rank >= 2,
     messages: [...page].reverse(),
     nextCursor: more ? page.at(-1)?.id : undefined,
   };
@@ -199,7 +249,8 @@ export async function send(
   groupId: string,
   input: { kind: "TEXT" | "PHOTO"; body?: string; mediaId?: string },
 ) {
-  await seat(userId, groupId);
+  const mine = await seat(userId, groupId);
+  if (mine.muted) throw forbidden("أنت مكتوم في هذه المجموعة");
 
   let body = "";
   let mediaId: string | null = null;
@@ -269,16 +320,60 @@ export async function removeMessage(userId: string, messageId: string) {
   });
   if (!message) throw notFound("الرسالة غير موجودة");
   await seat(userId, message.groupId);
-  if (message.senderId !== userId && !(await canRunGroups(userId))) {
-    throw forbidden("تحذف رسائلك وحدها");
+  // رسالتُك، أو رسالةُ من دونك وأنت مشرفٌ فما فوق (القاعدة ٤٧٥).
+  if (message.senderId !== userId) {
+    const [actor, sender] = await Promise.all([rankIn(message.groupId, userId), rankIn(message.groupId, message.senderId)]);
+    if (actor < 1 || actor <= sender) throw forbidden("تحذف رسائلك وحدها");
   }
   await prisma.groupMessage.delete({ where: { id: message.id } });
   if (message.mediaId) await dropMedia([message.mediaId]);
   return { ok: true, groupId: message.groupId };
 }
 
+/** تعديلُ رسالة: لكاتبها وحده ونصّاً لا سطرَ حدث، و«عُدّلت» يبقى (القاعدة ٣٥). */
+export async function edit(userId: string, messageId: string, body: string) {
+  const message = await prisma.groupMessage.findUnique({
+    where: { id: messageId },
+    select: { id: true, groupId: true, senderId: true, kind: true, system: true },
+  });
+  if (!message) throw notFound("الرسالة غير موجودة");
+  const mine = await seat(userId, message.groupId);
+  if (message.senderId !== userId || message.system) throw forbidden("تعدّل رسائلك وحدها");
+  if (message.kind !== "TEXT") throw badRequest("النصّ وحده يُعدَّل");
+  if (mine.muted) throw forbidden("أنت مكتوم في هذه المجموعة");
+  const clean = body.trim().slice(0, 2000);
+  if (!clean) throw badRequest("اكتب شيئاً");
+  await guard(clean);
+  const updated = await prisma.groupMessage.update({
+    where: { id: messageId },
+    data: { body: clean, editedAt: new Date() },
+    select: MESSAGE,
+  });
+  return { message: updated, groupId: message.groupId };
+}
+
+/**
+ * رتبةُ العضو (القاعدة ٤٧٥): المالكُ يجعل مديراً أو مشرفاً أو يُعيده عضواً، والمديرُ يجعل
+ * مشرفاً أو يُعيده — كلٌّ على من دونه وحده. ويُكتب سطرُ حدثٍ يقرؤه الجميع.
+ */
+export async function setRole(userId: string, groupId: string, memberId: string, role: "ADMIN" | "MODERATOR" | "MEMBER") {
+  const { actor } = await above(userId, groupId, memberId, 2);
+  if (role === "ADMIN" && actor < 3) throw forbidden("المديرُ يعيّنه المالك");
+  await prisma.chatGroupMember.update({ where: { groupId_userId: { groupId, userId: memberId } }, data: { role } });
+  await eventLines(userId, groupId, [memberId], role === "MEMBER" ? "demoted" : role === "ADMIN" ? "admin" : "moderator");
+  return { ok: true };
+}
+
+/** الكتم: من دونك لا يكتب حتى يُرفع — المشرفُ فما فوق (القاعدة ٤٧٥). */
+export async function setMuted(userId: string, groupId: string, memberId: string, muted: boolean) {
+  await above(userId, groupId, memberId, 1);
+  await prisma.chatGroupMember.update({ where: { groupId_userId: { groupId, userId: memberId } }, data: { muted } });
+  await eventLines(userId, groupId, [memberId], muted ? "muted" : "unmuted");
+  return { ok: true };
+}
+
 export async function rename(userId: string, groupId: string, name: string) {
-  await requireRunner(userId);
+  await requireRank(userId, groupId, 2);
   const clean = cleanName(name);
   await guard(clean);
   await prisma.chatGroup.update({ where: { id: groupId }, data: { name: clean } });
@@ -290,7 +385,7 @@ export async function rename(userId: string, groupId: string, name: string) {
  * غيرُها، والسابقةُ تذهب ببكسلاتها (القاعدة ١٠٤). و`null` يُزيلها.
  */
 export async function setPhoto(userId: string, groupId: string, mediaId: string | null) {
-  await requireRunner(userId);
+  await requireRank(userId, groupId, 2);
   const group = await prisma.chatGroup.findUnique({ where: { id: groupId }, select: { photoMediaId: true } });
   if (!group) throw notFound("المجموعة غير موجودة");
   if (mediaId) {
@@ -308,7 +403,7 @@ export async function setPhoto(userId: string, groupId: string, mediaId: string 
 }
 
 export async function addMembers(userId: string, groupId: string, ids: string[]) {
-  await requireRunner(userId);
+  await requireRank(userId, groupId, 2);
   const group = await prisma.chatGroup.findUnique({
     where: { id: groupId },
     select: { _count: { select: { members: true } } },
@@ -346,7 +441,7 @@ async function eventLines(
   actorId: string,
   groupId: string,
   targetIds: string[],
-  what: "added" | "removed" | "left",
+  what: "added" | "removed" | "left" | "admin" | "moderator" | "demoted" | "muted" | "unmuted",
 ) {
   if (targetIds.length === 0) return;
   const people = await prisma.user.findMany({
@@ -360,20 +455,36 @@ async function eventLines(
       groupId,
       senderId: actorId,
       system: true,
-      body:
-        what === "left"
-          ? `${actor} غادر المجموعة`
-          : what === "added"
-            ? `${actor} أضاف ${name.get(id) ?? "عضواً"}`
-            : `${actor} أزال ${name.get(id) ?? "عضواً"} من المجموعة`,
+      body: lineOf(what, actor, name.get(id) ?? "عضواً"),
     })),
   });
   await prisma.chatGroup.update({ where: { id: groupId }, data: { updatedAt: new Date() } });
 }
 
-/** إخراجُ عضو: المشرف يُخرج غيره، وكلُّ عضوٍ يغادر بنفسه. */
+function lineOf(what: string, actor: string, target: string): string {
+  switch (what) {
+    case "left":
+      return `${actor} غادر المجموعة`;
+    case "added":
+      return `${actor} أضاف ${target}`;
+    case "admin":
+      return `${actor} جعل ${target} مديراً`;
+    case "moderator":
+      return `${actor} جعل ${target} مشرفاً`;
+    case "demoted":
+      return `${actor} أعاد ${target} عضواً`;
+    case "muted":
+      return `${actor} كتم ${target}`;
+    case "unmuted":
+      return `${actor} رفع الكتم عن ${target}`;
+    default:
+      return `${actor} أزال ${target} من المجموعة`;
+  }
+}
+
+/** إخراجُ عضو: من فوقه بالرتبة (المشرفُ فما فوق)، وكلُّ عضوٍ يغادر بنفسه (القاعدة ٤٧٥). */
 export async function removeMember(userId: string, groupId: string, memberId: string) {
-  if (memberId !== userId) await requireRunner(userId);
+  if (memberId !== userId) await above(userId, groupId, memberId, 1);
   else await seat(userId, groupId);
   const gone = await prisma.chatGroupMember.deleteMany({ where: { groupId, userId: memberId } });
   if (gone.count > 0) {
@@ -384,7 +495,7 @@ export async function removeMember(userId: string, groupId: string, memberId: st
 
 /** حذفُ المجموعة كلّها — بصور رسائلها (القاعدة ١٠٤). */
 export async function remove(userId: string, groupId: string) {
-  await requireRunner(userId);
+  await requireRank(userId, groupId, 3);
   const files = await prisma.groupMessage.findMany({
     where: { groupId, mediaId: { not: null } },
     select: { mediaId: true },
@@ -404,7 +515,13 @@ export async function remove(userId: string, groupId: string) {
  * تُحوَّل. وللمشرف وحده، فلا ينقض منعَ البحث عن الناس (القاعدة ٢٠).
  */
 export async function candidates(userId: string, query: string) {
-  await requireRunner(userId);
+  // مشرفُ الموقع، أو مالكُ مجموعةٍ أو مديرُها — من يملك أن يُضيف (القاعدة ٤٧٥).
+  if (!(await canRunGroups(userId))) {
+    const manages = await prisma.chatGroupMember.count({
+      where: { userId, OR: [{ role: "ADMIN" }, { group: { createdById: userId } }] },
+    });
+    if (manages === 0) throw forbidden("هذا للمشرف");
+  }
   const latin = query.replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
   const numbers = [...new Set(latin.split(/[\s,،]+/).filter((part) => /^\d{1,9}$/.test(part)).map(Number))].slice(0, 50);
   if (numbers.length === 0) return { people: [], missing: [] };

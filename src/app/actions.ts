@@ -1743,7 +1743,7 @@ export async function momentAudience(momentId: string): Promise<AudienceView | {
     id: true,
     name: true,
     avatarMediaId: true,
-    frame: { select: { spec: true, mediaId: true, frameHole: true } },
+    frame: { select: { spec: true, mediaId: true, frameHole: true, fit: true } },
   } as const;
   const [views, reactions] = await Promise.all([
     prisma.view.findMany({
@@ -2111,7 +2111,7 @@ export async function sendGroupPhoto(groupId: string, formData: FormData): Promi
   return { ok: "أُرسلت" };
 }
 
-/** حذف محادثة: يحذفها للطرفين — لا نصف حذف يبقي نسخة عند الآخر بلا علمه. */
+/** حذف محادثة: لصاحبه وحده (القاعدة ٤٧٥) — تبقى عند الآخر، ورسالةٌ بعدها تُعيدها بأرشيفها. */
 export async function deleteConversation(conversationId: string): Promise<void> {
   const user = await requireUser();
 
@@ -2122,7 +2122,19 @@ export async function deleteConversation(conversationId: string): Promise<void> 
   if (!conversation) return;
   if (conversation.aId !== user.id && conversation.bId !== user.id) throw new Error("غير مصرح");
 
-  await prisma.conversation.delete({ where: { id: conversationId } });
+  // لصاحبه وحده (القاعدة ٤٧٥): تُخفى عنه وتبقى عند الآخر، ورسالةٌ بعدها تُعيدها بأرشيفها.
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.conversation.update({
+      where: { id: conversationId },
+      data: conversation.aId === user.id ? { aHiddenAt: now } : { bHiddenAt: now },
+    }),
+    prisma.message.updateMany({
+      where: { conversationId, senderId: { not: user.id }, readAt: null },
+      data: { readAt: now, deliveredAt: now },
+    }),
+    prisma.conversationPin.deleteMany({ where: { userId: user.id, conversationId } }),
+  ]);
   revalidatePath("/messages");
 }
 

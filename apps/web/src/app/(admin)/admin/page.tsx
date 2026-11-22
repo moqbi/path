@@ -35,11 +35,13 @@ import { itemPaint, ScreenHeader, TagPill } from "@/components/ui";
 import { Saver } from "./saver";
 import { AdminEmail } from "./email";
 import { SitePanel } from "./site";
+import { FitEditor, GradientFrame } from "./fit-editor";
 import { TOPIC_LABEL } from "@/lib/topics";
 import { Suspend } from "./suspend";
 import { PlusGrant } from "./plus";
 import { CoinsGrant } from "./coins";
-import { SITE_TEXT, siteText, siteImage, type SiteKey } from "@/lib/site";
+import { SITE_TEXT, siteText, siteImage, siteImages, type SiteKey } from "@/lib/site";
+import { DEVICE_SLOTS } from "@/lib/device-slots";
 import { ItemImage } from "./item-image";
 import { BookImages, HallImages, ItemCover, ItemPromo } from "./item-cover";
 import { BundleItems } from "./bundle";
@@ -1567,6 +1569,22 @@ export default async function AdminPage({
                             mime={item.media?.mime ?? null}
                             hole={item.frameHole}
                           />
+                          {/* الضبطُ على الصورة والإطارُ الملوّن (القاعدة ٤٧٥). */}
+                          {(item.kind === "FRAME" || item.kind === "CHARM") && item.mediaId ? (
+                            <FitEditor
+                              itemId={item.id}
+                              kind={item.kind}
+                              item={{ spec: item.spec, mediaId: item.mediaId, frameHole: item.frameHole, fit: item.fit }}
+                              me={{ name: user.name, avatarMediaId: user.avatarMediaId }}
+                            />
+                          ) : null}
+                          {item.kind === "FRAME" ? (
+                            <GradientFrame
+                              itemId={item.id}
+                              spec={item.spec}
+                              me={{ name: user.name, avatarMediaId: user.avatarMediaId }}
+                            />
+                          ) : null}
                           </>
                           )}
                           {item.kind === "BOOK" ? (
@@ -1917,6 +1935,7 @@ export default async function AdminPage({
             text={site}
             defaults={SITE_TEXT as unknown as Record<string, string>}
             heroMediaId={heroMediaId}
+            devices={section === "site" ? await siteImages(DEVICE_SLOTS.map((slot) => slot.key)) : {}}
             links={socials}
             shots={shots}
           />

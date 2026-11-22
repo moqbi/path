@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { ORIENTATIONS } from "../lib/stage";
 import { usePathname } from "expo-router";
 import { Animated, AppState, useWindowDimensions, Modal, PanResponder, Pressable, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { create } from "zustand";
 import { CloseIcon } from "./icons";
@@ -52,7 +52,22 @@ export function VideoViewer() {
   return <Viewer key={session} videoId={videoId} />;
 }
 
+/**
+ * النافذةُ تقيس حوافّ الجهاز بنفسها (`SafeAreaProvider` داخلها): الجذرُ يُصفّر الجانبين في الوضع
+ * الأفقيّ (القاعدة ٤٧٠)، فكانت أدواتُ التشغيل في أعلى المقطع — الصوتُ والسمّاعةُ والتكبير — خلف
+ * الساعة والشبكة قائماً وخلف حسّاس الكاميرا مُداراً. فالمقطعُ يُرسم داخل الحوافّ وتحت زرّ الإغلاق.
+ */
 function Viewer({ videoId }: { videoId: string }) {
+  return (
+    <Modal supportedOrientations={ORIENTATIONS} visible transparent animationType="fade" onRequestClose={() => viewVideo(null)} statusBarTranslucent>
+      <SafeAreaProvider>
+        <Inner videoId={videoId} />
+      </SafeAreaProvider>
+    </Modal>
+  );
+}
+
+function Inner({ videoId }: { videoId: string }) {
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const drag = useRef(new Animated.Value(0)).current;
@@ -87,21 +102,28 @@ function Viewer({ videoId }: { videoId: string }) {
   const shrink = drag.interpolate({ inputRange: [0, 400], outputRange: [1, 0.85], extrapolate: "clamp" });
 
   return (
-    <Modal supportedOrientations={ORIENTATIONS} visible transparent animationType="fade" onRequestClose={close} statusBarTranslucent>
       <View style={{ flex: 1 }} {...pan.panHandlers}>
         <Animated.View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#000", opacity: fadeBack }} />
-        <Animated.View style={{ flex: 1, transform: [{ translateY: drag }, { scale: shrink }] }}>
+        <Animated.View
+          style={{
+            flex: 1,
+            marginTop: insets.top + 56,
+            marginBottom: insets.bottom,
+            marginLeft: insets.left,
+            marginRight: insets.right,
+            transform: [{ translateY: drag }, { scale: shrink }],
+          }}
+        >
           <VideoView player={player} style={{ flex: 1 }} contentFit="contain" nativeControls />
         </Animated.View>
         <Pressable
           accessibilityLabel="أغلق"
           onPress={close}
           hitSlop={12}
-          style={{ position: "absolute", top: insets.top + 10, right: 16, width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,.55)" }}
+          style={{ position: "absolute", top: insets.top + 10, right: 16 + insets.right, width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,.55)" }}
         >
           <CloseIcon size={18} color="#fff" />
         </Pressable>
       </View>
-    </Modal>
   );
 }

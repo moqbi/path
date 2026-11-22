@@ -1,6 +1,7 @@
 import { Spinner } from "../../../components/spinner";
 import { VideoBadge } from "../../../components/moment-video";
 import { createContext, useContext, useState } from "react";
+import { StudioPanel } from "../book-studio";
 import { View, FlatList, Pressable, Alert, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -57,7 +58,9 @@ function daysOf(book: Book): Day[] {
 export default function YearBook() {
   const router = useRouter();
   const { year } = useLocalSearchParams<{ year: string }>();
-  const { height } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  // الوضعُ الأفقيّ (القاعدة ٤٧٥): الكتابُ يساراً وتجهيزُه يميناً، لا الكتابُ بعرض الشاشة كلّها.
+  const side = width > height && width >= 640;
   const [saving, setSaving] = useState(false);
 
   const book = useQuery({
@@ -115,14 +118,14 @@ export default function YearBook() {
           data ? (
             <View style={{ flexDirection: "row", gap: 8 }}>
             {/* تجهيزُ الكتاب (القاعدة ٣٧٨): لغير المشترك يفتح الشاشةَ نفسها مقفلةً بدعوة. */}
-            <Pressable
+            {side ? null : <Pressable
               onPress={() => router.push(`/me/book-studio?year=${year}` as never)}
               accessibilityLabel="تجهيز الكتاب"
               style={{ height: 34, paddingHorizontal: 12, borderRadius: 17, flexDirection: "row", gap: 5, backgroundColor: "rgba(255,255,255,.12)", alignItems: "center", justifyContent: "center" }}
             >
               <SparkIcon size={12} color="#F6B93B" />
               <Text style={{ color: "#F6B93B", fontSize: 12.5, fontWeight: "700" }}>تجهيز</Text>
-            </Pressable>
+            </Pressable>}
             <Pressable
               onPress={download}
               disabled={saving}
@@ -142,8 +145,15 @@ export default function YearBook() {
       {!data ? (
         <Spinner style={{ marginTop: 40 }} color={colors.clay} />
       ) : (
+        <View style={{ flex: 1, flexDirection: "row" }}>
+        {side ? (
+          <View style={{ width: Math.min(400, Math.round(width * 0.42)), backgroundColor: colors.ground }}>
+            <StudioPanel year={String(year)} embedded />
+          </View>
+        ) : null}
         <Pal.Provider value={pal}>
         <FlatList
+          style={{ flex: 1 }}
           data={pages}
           keyExtractor={(page, i) => (page.type === "day" ? page.day.day : page.type === "intro" ? `intro-${page.ids.join("-")}` : `${page.type}-${i}`)}
           contentContainerStyle={{ padding: 20, gap: 22, direction: "rtl" }}
@@ -174,6 +184,7 @@ export default function YearBook() {
           )}
         />
         </Pal.Provider>
+        </View>
       )}
     </SafeAreaView>
   );

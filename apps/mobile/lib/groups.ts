@@ -7,9 +7,17 @@ export type GroupPerson = {
   isPlus?: boolean;
   tag?: { name: string; bg: string; fg: string } | null;
   avatarMediaId: string | null;
-  frame: { spec: string; mediaId: string | null; frameHole?: number | null } | null;
-  charm: { spec: string; mediaId: string | null } | null;
+  frame: { spec: string; mediaId: string | null; frameHole?: number | null; fit?: string | null } | null;
+  charm: { spec: string; mediaId: string | null; fit?: string | null } | null;
+  /** رتبتُه وكتمُه في المجموعة (القاعدة ٤٧٥) — خادمٌ أقدم لا يرسلهما. */
+  role?: GroupRole;
+  muted?: boolean;
 };
+
+export type GroupRole = "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER";
+
+/** رتبُ المجموعة بالأرقام كالخادم: مشرفُ الموقع ٤، والمالكُ ٣، والمديرُ ٢، والمشرفُ ١. */
+export const RANK: Record<GroupRole, number> = { OWNER: 3, ADMIN: 2, MODERATOR: 1, MEMBER: 0 };
 
 export type GroupLine = {
   id: string;
@@ -21,6 +29,8 @@ export type GroupLine = {
   sender: GroupPerson;
   /** سطرُ حدث: «فلان أضاف فلان» — يُرسم في الوسط لا فقاعةً (القاعدة ٢٦٤). خادمٌ قديم بلاه. */
   system?: boolean;
+  /** «عُدّلت» (القاعدة ٤٧٥). */
+  editedAt?: string | null;
 };
 
 export type GroupRow = {
@@ -40,5 +50,8 @@ export type GroupThread = {
   photoMediaId?: string | null;
   members: GroupPerson[];
   canManage: boolean;
+  ownerId?: string | null;
+  /** رتبتي (القاعدة ٤٧٥) — خادمٌ أقدم: من `canManage`. */
+  myRank?: number;
   messages: GroupLine[];
 };

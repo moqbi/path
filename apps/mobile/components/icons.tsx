@@ -486,3 +486,20 @@ export const LogoutIcon = ({ size = 20, color = "currentColor" }: Props) => (
     <Path d="M16.5 8.5L20 12l-3.5 3.5" />
   </Svg>
 );
+
+/**
+ * تاجُ رتب المجموعة (القاعدة ٤٧٥): المالكُ مملوءٌ بلون اللمسة، والمديرُ مملوءٌ بلونٍ آخر،
+ * والمشرفُ مفرَّغٌ بحدّه وحده.
+ */
+export const CrownIcon = ({ size = 16, color = "currentColor", hollow = false }: Props & { hollow?: boolean }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24">
+    <Path
+      d="M3.5 8.5 8 12l4-6.5 4 6.5 4.5-3.5L19 18H5L3.5 8.5Z"
+      fill={hollow ? "none" : color}
+      stroke={color}
+      strokeWidth={1.7}
+      strokeLinejoin="round"
+    />
+    <Path d="M5.5 20.5h13" stroke={color} strokeWidth={1.7} strokeLinecap="round" />
+  </Svg>
+);

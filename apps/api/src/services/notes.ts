@@ -32,8 +32,8 @@ const AUTHOR = {
   id: true,
   name: true,
   avatarMediaId: true,
-  frame: { select: { spec: true, mediaId: true, frameHole: true } },
-  charm: { select: { spec: true, mediaId: true } },
+  frame: { select: { spec: true, mediaId: true, frameHole: true, fit: true } },
+  charm: { select: { spec: true, mediaId: true, fit: true } },
 } as const;
 
 const NOTE = {

@@ -1,4 +1,5 @@
 import type { SiteKey } from "@/lib/site";
+import type { DeviceKey } from "@/lib/device-slots";
 
 /*
   «الأجهزة المدعومة» (القاعدة ٤٦٨): آيفون قائماً ومُداراً، وآيباد، وآيفون القابل للطيّ —
@@ -15,6 +16,16 @@ function Shot({ src, alt }: { src: string; alt: string }) {
   return <img src={`/shots/${src}.webp`} alt={alt} loading="lazy" decoding="async" />;
 }
 
+/** صورةٌ رفعها المشرف لهذه الشاشة (القاعدة ٤٧٥) تملؤها بدل اللقطة المرسومة. */
+function Uploaded({ mediaId }: { mediaId: string }) {
+  return (
+    <div className="d-screen">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={`/api/site-media/${mediaId}`} alt="" loading="lazy" decoding="async" />
+    </div>
+  );
+}
+
 /** لوحتان: القائمةُ يميناً بعرضها، واللوحةُ تملأ ما بقي. */
 function Split({ list, pane, listShare, crease }: { list: string; pane: string; listShare: string; crease?: boolean }) {
   return (
@@ -29,7 +40,9 @@ function Split({ list, pane, listShare, crease }: { list: string; pane: string; 
   );
 }
 
-export function Devices({ text }: { text: Text }) {
+export function Devices({ text, images }: { text: Text; images: Partial<Record<DeviceKey, string>> }) {
+  const pic = (key: DeviceKey, fallback: React.ReactNode) =>
+    images[key] ? <Uploaded mediaId={images[key]} /> : fallback;
   return (
     <section id="devices" className="l-wide scroll-mt-20 pt-20">
       <div className="text-center">
@@ -42,12 +55,15 @@ export function Devices({ text }: { text: Text }) {
         <article className="d-card">
           <div className="d-stage" aria-hidden>
             <figure className="d-dev d-phone">
-              <div className="d-screen">
-                <Shot src="timeline" alt="" />
-              </div>
+              {pic(
+                "device.iphone",
+                <div className="d-screen">
+                  <Shot src="timeline" alt="" />
+                </div>,
+              )}
             </figure>
             <figure className="d-dev d-phone-land">
-              <Split list="timeline" pane="profile" listShare="46%" />
+              {pic("device.iphone.land", <Split list="timeline" pane="profile" listShare="46%" />)}
             </figure>
             <span className="d-tag d-tag-a">قائماً</span>
             <span className="d-tag d-tag-b">مُداراً</span>
@@ -59,7 +75,7 @@ export function Devices({ text }: { text: Text }) {
         <article className="d-card">
           <div className="d-stage" aria-hidden>
             <figure className="d-dev d-pad">
-              <Split list="timeline" pane="circle" listShare="40%" />
+              {pic("device.ipad", <Split list="timeline" pane="circle" listShare="40%" />)}
             </figure>
           </div>
           <h3 className="d-name">{text["devices.ipad.title"]}</h3>
@@ -69,12 +85,16 @@ export function Devices({ text }: { text: Text }) {
         <article className="d-card">
           <div className="d-stage" aria-hidden>
             <figure className="d-dev d-fold">
-              <Split list="circle" pane="notes" listShare="50%" crease />
+              {pic("device.fold.open", <Split list="circle" pane="notes" listShare="50%" crease />)}
             </figure>
-            <figure className="d-dev d-phone d-phone-folded">
-              <div className="d-screen">
-                <Shot src="hero" alt="" />
-              </div>
+            {/* مطويّاً: كتابٌ مغلق — أعرضُ من الجوّال وأقصر (نحو ٢:٣)، ومفصلُه على حافّته. */}
+            <figure className="d-dev d-folded">
+              {pic(
+                "device.fold.closed",
+                <div className="d-screen">
+                  <Shot src="timeline" alt="" />
+                </div>,
+              )}
             </figure>
             <span className="d-tag d-tag-c">مطويّاً</span>
             <span className="d-tag d-tag-d">مفتوحاً</span>

@@ -1,4 +1,5 @@
 import { View, type StyleProp, type ViewStyle } from "react-native";
+import { parseFit } from "@athar/shared";
 import { Text } from "./type";
 import { MediaImage } from "./media-image";
 import { initial } from "../lib/format";
@@ -16,7 +17,7 @@ function tintFor(name: string): string {
   return TINTS[sum % TINTS.length];
 }
 
-export type Charm = { spec: string; mediaId: string | null } | null | undefined;
+export type Charm = { spec: string; mediaId: string | null; fit?: string | null } | null | undefined;
 
 /**
  * الإطار الملبوس كاملاً لا `spec` وحده: كان يُمرَّر نصّ التدرّج فقط،
@@ -24,7 +25,7 @@ export type Charm = { spec: string; mediaId: string | null } | null | undefined;
  * نسخةُ `Frame` في `src/components/ui.tsx` حرفاً بحرف.
  */
 export type Frame =
-  | { spec: string; mediaId: string | null; frameHole?: number | null }
+  | { spec: string; mediaId: string | null; frameHole?: number | null; fit?: string | null }
   | null
   | undefined;
 
@@ -111,8 +112,18 @@ const CHARM_RATIO = 0.5;
  * وتُرسم **فوق الإطار** (`zIndex`): إطارٌ بجناحين يمتدّ خارج الصورة
  * لا يغطّيها.
  */
-function charmSeat(size: number, badge: number): { left: number; top: number } {
-  return { left: Math.round(-badge * 0.3), top: Math.round(size - badge * 0.8) };
+function charmSeat(
+  size: number,
+  base: number,
+  badge: number = base,
+  fit: { x: number; y: number } = { x: 0, y: 0 },
+): { left: number; top: number } {
+  // المقعدُ من مقاسها الأصليّ، والمقاسُ المضبوط يكبر حول مركزه، ثمّ إزاحةُ اللوحة (القاعدة ٤٧٥).
+  const grow = (badge - base) / 2;
+  return {
+    left: Math.round(-base * 0.3 - grow + (fit.x / 100) * base),
+    top: Math.round(size - base * 0.8 - grow + (fit.y / 100) * base),
+  };
 }
 
 export function Avatar({
@@ -153,8 +164,12 @@ export function Avatar({
     : 0;
   const inner = size - pad * 2;
   // الرسمُ يُكبَّر بمقلوب فراغه ويُوسَّط على الوجه، فجناحاه يخرجان عنه.
-  const art = Math.round(size * zoom);
+  // ثمّ ضبطُ اللوحة (القاعدة ٤٧٥): مقاسٌ فوق ما يحسبه الفراغ، وإزاحةٌ من قطر الصورة.
+  const fit = parseFit(frame?.fit);
+  const art = Math.round(size * zoom * (fit.s / 100));
   const artOff = Math.round((size - art) / 2);
+  const artX = artOff + Math.round((fit.x / 100) * art);
+  const artY = artOff + Math.round((fit.y / 100) * art);
 
   return (
     <View
@@ -200,7 +215,7 @@ export function Avatar({
       {painted && frame?.mediaId ? (
         <View
           pointerEvents="none"
-          style={{ position: "absolute", left: artOff, top: artOff, width: art, height: art }}
+          style={{ position: "absolute", left: artX, top: artY, width: art, height: art }}
         >
           <MediaImage
             mediaId={frame.mediaId}
@@ -220,7 +235,9 @@ export function Avatar({
  * و`contain` كي يُرى كاملاً لا مقصوصاً ليملأ مربّعاً.
  */
 function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }) {
-  const badge = Math.round(size * CHARM_RATIO);
+  const fit = parseFit(charm.fit);
+  const base = Math.round(size * CHARM_RATIO);
+  const badge = Math.round(base * (fit.s / 100));
 
   return (
     <View
@@ -230,7 +247,7 @@ function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }
         width: badge,
         height: badge,
         // يسارَ الصورة وأغلبُها خارجها، وفوق الإطار (القاعدة ٥٩).
-        ...charmSeat(size, badge),
+        ...charmSeat(size, base, badge, fit),
         zIndex: 2,
         alignItems: "center",
         justifyContent: "center",

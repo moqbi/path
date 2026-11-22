@@ -15,6 +15,7 @@ import { SiteShots } from "./site-shots";
 import { CameraIcon, CloseIcon } from "@/components/icons";
 import { SocialIcon } from "@/components/social";
 import { PLATFORMS } from "@/lib/platforms";
+import { DEVICE_SLOTS } from "@/lib/device-slots";
 
 const FIELD =
   "w-full rounded-xl border border-line bg-paper px-3 text-[13px] text-ink outline-none placeholder:text-faint";
@@ -154,6 +155,60 @@ function HeroImage({ mediaId }: { mediaId: string | null }) {
           {error}
         </p>
       ) : null}
+    </div>
+  );
+}
+
+/** صورةُ شاشةٍ في «الأجهزة المدعومة» (القاعدة ٤٧٥): تُرفع وتُنزع كصورة الرأس. */
+function DeviceImage({ slot, mediaId }: { slot: (typeof DEVICE_SLOTS)[number]; mediaId: string | null }) {
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <div className="flex gap-3 rounded-2xl border border-line bg-card p-3">
+      <div
+        className="h-24 w-16 shrink-0 rounded-lg border border-line"
+        style={{
+          background: mediaId
+            ? `top / cover no-repeat url(/api/site-media/${mediaId})`
+            : "linear-gradient(160deg,#0e1a24,#2a3540)",
+        }}
+      />
+      <div className="min-w-0 flex-1">
+        <p className="text-[12px] font-bold">{slot.label}</p>
+        <p className="mb-2 text-[10.5px] leading-relaxed text-faint">{slot.hint}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <ImagePicker
+            label={slot.label}
+            maxSize={1600}
+            onError={setError}
+            onPicked={async (file, width, height) => {
+              const body = new FormData();
+              body.append("image", file);
+              body.append("width", String(width));
+              body.append("height", String(height));
+              await setSiteImage(slot.key, body);
+            }}
+            className="flex h-9 items-center gap-1.5 rounded-xl border border-line px-3 text-[11.5px] font-semibold"
+          >
+            <CameraIcon size={14} />
+            {mediaId ? "بدّلها" : "ارفع صورة"}
+          </ImagePicker>
+          {mediaId ? (
+            <button
+              type="button"
+              onClick={() => void clearSiteImage(slot.key)}
+              className="flex h-9 items-center gap-1 rounded-xl border border-line px-2.5 text-[11.5px] font-semibold text-muted"
+            >
+              <CloseIcon size={12} />
+              انزعها
+            </button>
+          ) : null}
+        </div>
+        {error ? (
+          <p role="alert" className="mt-1.5 text-[11px]" style={{ color: "var(--color-live)" }}>
+            {error}
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -467,12 +522,14 @@ export function SitePanel({
   text,
   defaults,
   heroMediaId,
+  devices,
   links,
   shots,
 }: {
   text: Record<string, string>;
   defaults: Record<string, string>;
   heroMediaId: string | null;
+  devices: Record<string, string>;
   links: { id: string; platform: string; url: string; sortOrder: number; hidden: boolean }[];
   shots: { id: string; label: string; mediaId: string; sortOrder: number; hidden: boolean }[];
 }) {
@@ -488,6 +545,19 @@ export function SitePanel({
       <HeroImage mediaId={heroMediaId} />
 
       <SiteShots shots={shots} />
+
+      <section className="mb-6">
+        <h3 className="mb-1 text-[13px] font-bold text-clay-ink">صور «الأجهزة المدعومة»</h3>
+        <p className="mb-2 text-[11px] leading-relaxed text-faint">
+          الشاشةُ داخل كلّ جهازٍ في الصفحة. الصورةُ تملأ شاشته وتُقصّ من أسفلها إن طالت، وبلا
+          صورةٍ تبقى اللقطاتُ المرسومة.
+        </p>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {DEVICE_SLOTS.map((slot) => (
+            <DeviceImage key={slot.key} slot={slot} mediaId={devices[slot.key] ?? null} />
+          ))}
+        </div>
+      </section>
 
       {GROUPS.map((group) => (
         <section key={group.title} className="mb-6">

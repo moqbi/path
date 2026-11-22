@@ -30,8 +30,8 @@ const PERSON = {
   // وضعُ التخفّي — يُقرأ ليُحجب به الحضور ثمّ يُحذف من الردّ (`maskPresence`).
   hideOnline: true,
   avatarMediaId: true,
-  frame: { select: { spec: true, mediaId: true, frameHole: true } },
-  charm: { select: { spec: true, mediaId: true } },
+  frame: { select: { spec: true, mediaId: true, frameHole: true, fit: true } },
+  charm: { select: { spec: true, mediaId: true, fit: true } },
   tag: { select: { name: true, bg: true, fg: true } },
 } as const;
 
@@ -93,6 +93,9 @@ export async function list(userId: string) {
     select: {
       id: true,
       updatedAt: true,
+      aId: true,
+      aHiddenAt: true,
+      bHiddenAt: true,
       a: { select: PERSON },
       b: { select: PERSON },
       messages: { select: MESSAGE, orderBy: { createdAt: "desc" }, take: 1 },
@@ -104,7 +107,7 @@ export async function list(userId: string) {
     orderBy: { updatedAt: "desc" },
   });
 
-  const conversations = rows.map((row) => ({
+  const conversations = rows.filter((row) => !hiddenFor(row, userId, row.messages[0]?.createdAt)).map((row) => ({
     id: row.id,
     updatedAt: row.updatedAt,
     other: row.a.id === userId ? row.b : row.a,
@@ -360,11 +363,36 @@ export async function removeMessage(userId: string, messageId: string) {
   return { to: otherSide(conversation, userId), conversationId: conversation.id };
 }
 
-/** حذف محادثة: للطرفين — لا نصف حذفٍ يبقي نسخةً عند الآخر بلا علمه. */
+/**
+ * حذفُ المحادثة لصاحبه وحده — **بقرار المالك** (القاعدة ٤٧٥)، ونقضاً لـ«للطرفين»: كانت تختفي
+ * من قائمة الآخر بلا علمه. الآن تُختم مخفيّةً عنه، وما لم يُقرأ يُقرأ، ومفضّلتُه تُفكّ. ورسالةٌ
+ * بعد الختم — منه أو من الآخر — تُعيدها بأرشيفها، والأرشيفُ يُكنس بعد شهرٍ كما كان.
+ */
 export async function remove(userId: string, conversationId: string) {
   const conversation = await mine(userId, conversationId);
-  await prisma.conversation.delete({ where: { id: conversationId } });
-  return { ok: true, to: otherSide(conversation, userId), conversationId };
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.conversation.update({
+      where: { id: conversationId },
+      data: conversation.aId === userId ? { aHiddenAt: now } : { bHiddenAt: now },
+    }),
+    prisma.message.updateMany({
+      where: { conversationId, senderId: { not: userId }, readAt: null },
+      data: { readAt: now, deliveredAt: now },
+    }),
+    prisma.conversationPin.deleteMany({ where: { userId, conversationId } }),
+  ]);
+  return { ok: true, conversationId };
+}
+
+/** مخفيّةٌ عن هذا الطرف ما دامت لم تصل رسالةٌ بعد حذفه. */
+export function hiddenFor(
+  row: { aId: string; aHiddenAt: Date | null; bHiddenAt: Date | null },
+  userId: string,
+  last: Date | undefined,
+): boolean {
+  const at = row.aId === userId ? row.aHiddenAt : row.bHiddenAt;
+  return Boolean(at && (!last || last <= at));
 }
 
 /** «قُرئت»: والقراءة تستلزم التسليم فيُكتبان معاً. */

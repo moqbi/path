@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { AthrMark, AthrWordmark } from "@/components/brand";
-import { lines, siteImage, siteShots, siteStickers, siteText, storeUrl } from "@/lib/site";
+import { lines, siteImage, siteImages, siteShots, siteStickers, siteText, storeUrl } from "@/lib/site";
 import { ShotsCarousel } from "./shots-carousel";
 import { Devices } from "./devices";
+import { DEVICE_SLOTS } from "@/lib/device-slots";
 import { NewFeatures } from "./new-features";
 import { HeroPhone } from "./hero-phone";
 import { PostCard } from "./post-card";
@@ -246,6 +247,7 @@ function Stamp({ text, href }: { text: string; href?: string }) {
 export default async function LandingPage() {
   const text = await siteText();
   const hero = await siteImage("hero");
+  const deviceImages = await siteImages(DEVICE_SLOTS.map((slot) => slot.key));
   // اللقطاتُ من اللوحة، وبلا صفٍّ فيها الثلاثُ الأصليّة (`DEFAULT_SHOTS`).
   const shots = await siteShots();
   const ios = storeUrl(text["store.ios"]);
@@ -356,7 +358,7 @@ export default async function LandingPage() {
       </section>
 
       {/* ───────────── الأجهزة المدعومة (القاعدة ٤٦٨) ───────────── */}
-      <Devices text={text} />
+      <Devices text={text} images={deviceImages} />
 
       {/* ───────────── ليش آثار ───────────── */}
       <section id="why" className="l-wide scroll-mt-20 pt-20">

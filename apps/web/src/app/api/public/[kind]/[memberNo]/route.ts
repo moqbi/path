@@ -42,7 +42,7 @@ export async function GET(
       avatarMediaId: true,
       coverMediaId: true,
       frame: { select: { mediaId: true } },
-      charm: { select: { mediaId: true } },
+      charm: { select: { mediaId: true, fit: true } },
     },
   });
   const mediaId =

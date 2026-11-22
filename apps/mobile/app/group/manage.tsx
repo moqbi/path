@@ -7,7 +7,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Avatar } from "../../components/avatar";
 import { ScreenHeader } from "../../components/screen-header";
-import { CameraIcon, CloseIcon, PlusIcon } from "../../components/icons";
+import { CameraIcon, CloseIcon, CrownIcon, MuteIcon, PlusIcon, UserMinusIcon } from "../../components/icons";
+import { SwipeRow } from "../../components/swipe-row";
 import * as Picker from "expo-image-picker";
 import { GroupFace } from "../../components/group-face";
 import { uploadFile } from "../../lib/upload";
@@ -16,10 +17,23 @@ import { keys, useCircle } from "../../lib/queries";
 import { useAddFriend } from "../../lib/add-friend";
 import { useSession } from "../../lib/session";
 import { ar } from "../../lib/format";
-import type { GroupPerson, GroupThread } from "../../lib/groups";
+import { RANK, type GroupPerson, type GroupRole, type GroupThread } from "../../lib/groups";
 import { colors } from "../../theme/tokens";
 
 const NAME_MAX = 60;
+
+/** لونُ تاج المدير — غيرُ لون اللمسة الذي للمالك (القاعدة ٤٧٥). */
+const ADMIN_CROWN = "#4E8FD8";
+
+/** تاجُ الرتبة بجانب الاسم: المالكُ باللمسة، والمديرُ بلونٍ آخر، والمشرفُ مفرَّغ. */
+export function RoleCrown({ role, size = 15 }: { role?: GroupRole; size?: number }) {
+  if (role === "OWNER") return <CrownIcon size={size} color={colors.clay} />;
+  if (role === "ADMIN") return <CrownIcon size={size} color={ADMIN_CROWN} />;
+  if (role === "MODERATOR") return <CrownIcon size={size} color={colors.groundInk} hollow />;
+  return null;
+}
+
+const ROLE_LABEL: Record<GroupRole, string> = { OWNER: "المالك", ADMIN: "مدير", MODERATOR: "مشرف", MEMBER: "" };
 
 /** صفُّ شخصٍ: صورةٌ واسمٌ ورقمُ عضويّة، وفعلٌ في طرفه. */
 function PersonRow({ person, action, onOpen }: { person: GroupPerson; action?: React.ReactNode; onOpen?: () => void }) {
@@ -27,10 +41,18 @@ function PersonRow({ person, action, onOpen }: { person: GroupPerson; action?: R
     <Pressable disabled={!onOpen} onPress={onOpen} style={{ flexDirection: "row", alignItems: "center", gap: 11, paddingVertical: 9 }}>
       <Avatar name={person.name} size={38} mediaId={person.avatarMediaId} frame={person.frame} charm={person.charm} />
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text numberOfLines={1} style={{ color: colors.groundInk, fontSize: 14, fontWeight: "600", writingDirection: "auto" }}>
-          {person.name}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Text numberOfLines={1} style={{ flexShrink: 1, color: colors.groundInk, fontSize: 14, fontWeight: "600", writingDirection: "auto" }}>
+            {person.name}
+          </Text>
+          <RoleCrown role={person.role} />
+          {person.muted ? <MuteIcon size={14} color={colors.groundInk} /> : null}
+        </View>
+        <Text style={{ color: colors.groundInk, fontSize: 11 }}>
+          #{ar(person.memberNo)}
+          {person.role && person.role !== "MEMBER" ? ` · ${ROLE_LABEL[person.role]}` : ""}
+          {person.muted ? " · مكتوم" : ""}
         </Text>
-        <Text style={{ color: colors.groundInk, fontSize: 11 }}>#{ar(person.memberNo)}</Text>
       </View>
       {action}
     </Pressable>
@@ -204,6 +226,26 @@ export default function ManageGroup() {
     onError: fail,
   });
 
+  // الرتبةُ والكتم (القاعدة ٤٧٥) — والخادمُ يفحص من فوق من.
+  const setRole = useMutation({
+    mutationFn: (input: { userId: string; role: "ADMIN" | "MODERATOR" | "MEMBER" }) =>
+      api(`/v1/groups/${id}/members/${input.userId}/role`, { method: "PUT", body: JSON.stringify({ role: input.role }) }),
+    onSuccess: () => {
+      setError(null);
+      void client.invalidateQueries({ queryKey: keys.group(id ?? "new") });
+    },
+    onError: fail,
+  });
+  const setMuted = useMutation({
+    mutationFn: (input: { userId: string; muted: boolean }) =>
+      api(`/v1/groups/${id}/members/${input.userId}/mute`, { method: "PUT", body: JSON.stringify({ muted: input.muted }) }),
+    onSuccess: () => {
+      setError(null);
+      void client.invalidateQueries({ queryKey: keys.group(id ?? "new") });
+    },
+    onError: fail,
+  });
+
   const destroy = useMutation({
     mutationFn: () => api(`/v1/groups/${id}`, { method: "DELETE" }),
     onSuccess: () => {
@@ -223,6 +265,9 @@ export default function ManageGroup() {
   }
 
   const members = group.data?.members ?? [];
+  // رتبتي ورتبةُ كلّ عضو (القاعدة ٤٧٥): لا يمسّ أحدٌ من هو في رتبته أو فوقه.
+  const myRank = group.data?.myRank ?? (group.data?.canManage ? 4 : 0);
+  const rankOf = (person: GroupPerson) => (person.role ? RANK[person.role] : person.id === group.data?.ownerId ? 3 : 0);
   const nameChanged = editing && name.trim() !== (group.data?.name ?? "");
 
   return (
@@ -310,15 +355,19 @@ export default function ManageGroup() {
             <Text style={{ color: colors.groundInk, fontSize: 12, fontWeight: "700", marginBottom: 4 }}>
               الأعضاء ({ar(members.length)})
             </Text>
-            {members.map((person) => (
-              <PersonRow
-                key={person.id}
-                person={person}
-                onOpen={person.id !== me?.id ? () => router.push(`/u/${person.id}` as never) : undefined}
-                action={
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                    {/* أعضاءُ المجموعة يُضيف بعضُهم بعضاً (القاعدة ٢٨٠) — طلبٌ يُقبل أو يُترك. */}
-                    {person.id !== me?.id && !friendIds.has(person.id) ? (
+            {members.length > 1 && myRank >= 1 ? (
+              <Text style={{ color: colors.groundInk, fontSize: 11, marginBottom: 6 }}>
+                اسحب العضو من اليسار إلى اليمين: إخراجٌ وكتمٌ ورتبة.
+              </Text>
+            ) : null}
+            {members.map((person) => {
+              const row = (
+                <PersonRow
+                  person={person}
+                  onOpen={person.id !== me?.id ? () => router.push(`/u/${person.id}` as never) : undefined}
+                  action={
+                    /* أعضاءُ المجموعة يُضيف بعضُهم بعضاً (القاعدة ٢٨٠) — طلبٌ يُقبل أو يُترك. */
+                    person.id !== me?.id && !friendIds.has(person.id) ? (
                       <Pressable
                         disabled={Boolean(done[person.id]) || (befriend.isPending && befriend.variables === person.id)}
                         onPress={() => befriend.mutate(person.id)}
@@ -338,23 +387,59 @@ export default function ManageGroup() {
                           {done[person.id] === "friend" ? "صديقك" : done[person.id] ? "أُرسل" : "أضف"}
                         </Text>
                       </Pressable>
-                    ) : null}
-                  {canManage && person.id !== me?.id ? (
-                    <Round
-                      label={`أخرج ${person.name}`}
-                      tone="remove"
-                      onPress={() =>
-                        Alert.alert(`إخراج ${person.name}؟`, undefined, [
-                          { text: "إلغاء", style: "cancel" },
-                          { text: "أخرج", style: "destructive", onPress: () => removeMember.mutate(person.id) },
-                        ])
-                      }
-                    />
-                  ) : null}
-                  </View>
-                }
-              />
-            ))}
+                    ) : null
+                  }
+                />
+              );
+              const target = rankOf(person);
+              // من فوقه وحده (القاعدة ٤٧٥): المشرفُ فما فوق يُخرج ويكتم، والمديرُ يعيّن المشرف، والمالكُ المدير.
+              if (person.id === me?.id || myRank < 1 || myRank <= target) return <View key={person.id}>{row}</View>;
+              const moderator = person.role === "MODERATOR";
+              const admin = person.role === "ADMIN";
+              return (
+                <SwipeRow
+                  key={person.id}
+                  width={60}
+                  radius={14}
+                  surface={colors.groundSolid}
+                  onSwiping={() => undefined}
+                  confirmLabel={`أخرج ${person.name}`}
+                  onDelete={() =>
+                    Alert.alert(`إخراج ${person.name}؟`, undefined, [
+                      { text: "إلغاء", style: "cancel" },
+                      { text: "أخرج", style: "destructive", onPress: () => removeMember.mutate(person.id) },
+                    ])
+                  }
+                  onSecond={() => setMuted.mutate({ userId: person.id, muted: !person.muted })}
+                  secondLabel={person.muted ? `ارفع الكتم عن ${person.name}` : `اكتم ${person.name}`}
+                  secondTint={colors.night}
+                  lead={
+                    myRank >= 2 && !admin
+                      ? {
+                          label: moderator ? `أزل الإشراف عن ${person.name}` : `اجعل ${person.name} مشرفاً`,
+                          run: () => setRole.mutate({ userId: person.id, role: moderator ? "MEMBER" : "MODERATOR" }),
+                        }
+                      : undefined
+                  }
+                  extra={
+                    myRank >= 3
+                      ? {
+                          label: admin ? `أزل الإدارة عن ${person.name}` : `اجعل ${person.name} مديراً`,
+                          run: () => setRole.mutate({ userId: person.id, role: admin ? "MEMBER" : "ADMIN" }),
+                        }
+                      : undefined
+                  }
+                  icons={{
+                    delete: <UserMinusIcon size={22} color="#fff" />,
+                    second: <MuteIcon size={22} color={person.muted ? colors.clay : "#fff"} />,
+                    lead: moderator ? <CloseIcon size={18} color={colors.onBrand} /> : <CrownIcon size={22} color={colors.onBrand} hollow />,
+                    extra: admin ? <CloseIcon size={18} color={colors.night} /> : <CrownIcon size={22} color={ADMIN_CROWN} />,
+                  }}
+                >
+                  <View style={{ paddingHorizontal: 4 }}>{row}</View>
+                </SwipeRow>
+              );
+            })}
             {addError ? <Text style={{ color: colors.live, fontSize: 12, marginTop: 4 }}>{addError}</Text> : null}
           </View>
         ) : null}
@@ -485,7 +570,7 @@ export default function ManageGroup() {
               <Text style={{ color: colors.onBrand, fontSize: 14.5, fontWeight: "700" }}>أنشئ المجموعة</Text>
             )}
           </Pressable>
-        ) : canManage ? (
+        ) : myRank >= 3 ? (
           <Pressable
             onPress={() =>
               Alert.alert("حذف المجموعة؟", "تُحذف رسائلها عند الجميع.", [

@@ -15,8 +15,8 @@ const PERSON = {
   isPlus: true,
   tag: { select: { name: true, bg: true, fg: true } },
   avatarMediaId: true,
-  frame: { select: { spec: true, mediaId: true, frameHole: true } },
-  charm: { select: { spec: true, mediaId: true } },
+  frame: { select: { spec: true, mediaId: true, frameHole: true, fit: true } },
+  charm: { select: { spec: true, mediaId: true, fit: true } },
 } as const;
 
 const MESSAGE = {
@@ -35,7 +35,7 @@ const MESSAGE = {
 export async function seat(userId: string, groupId: string) {
   const row = await prisma.chatGroupMember.findUnique({
     where: { groupId_userId: { groupId, userId } },
-    select: { lastReadAt: true, joinedAt: true },
+    select: { lastReadAt: true, joinedAt: true, muted: true },
   });
   if (!row) throw new Error("المجموعة غير موجودة");
   return row;
@@ -122,7 +122,8 @@ export async function sendToGroup(
   groupId: string,
   input: { kind: "TEXT"; body: string } | { kind: "PHOTO"; mediaId: string },
 ) {
-  await seat(userId, groupId);
+  // المكتومُ لا يكتب من الويب كما لا يكتب من التطبيق (القاعدة ٤٧٥).
+  if ((await seat(userId, groupId)).muted) throw new Error("أنت مكتوم في هذه المجموعة");
   let body = "";
   let mediaId: string | null = null;
   if (input.kind === "TEXT") {
