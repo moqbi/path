@@ -1924,27 +1924,36 @@ h3 {
   border-radius: 12px;
 }
 
-/* القابلُ للطيّ: مفتوحاً قرابةَ المربّع، ومطويّاً جوّالٌ ضيّق بجانبه. */
+/*
+  القابلُ للطيّ كتابٌ يُفتح (القاعدة ٤٧٥): مفتوحاً أعرضُ من ارتفاعه بنسبة ٤:٣ تقريباً
+  وخطُّ ثنيه في وسطه، ومطويّاً جوّالٌ أعرضُ من الجوّال وأقصرُ — نحو ٢:٣ — ومفصلُه
+  سميكٌ على حافّةٍ واحدة. كان مطويّاً شريطاً ضيّقاً طويلاً (٨٨×١٩٦) يُقرأ جوّالاً آخر.
+*/
 .d-fold {
-  width: 214px;
-  height: 196px;
+  width: 226px;
+  height: 166px;
   padding: 6px;
   border-radius: 18px;
-  top: 34px;
-  inset-inline-start: 10%;
+  top: 40px;
+  inset-inline-start: 8%;
 }
 .d-fold .d-screen {
   border-radius: 12px;
 }
-.d-phone-folded {
-  width: 88px;
-  height: 196px;
+.d-folded {
+  width: 116px;
+  height: 172px;
+  padding: 5px 5px 5px 9px;
   border-radius: 20px;
-  top: 52px;
-  inset-inline-end: 8%;
+  top: 58px;
+  inset-inline-end: 7%;
   z-index: 1;
+  /* المفصلُ: حافّةٌ أسمك على الجانب الأيسر حيث تنطوي الشاشة. */
+  box-shadow:
+    inset 9px 0 0 #2a3540,
+    0 18px 40px rgba(14, 26, 36, 0.28);
 }
-.d-phone-folded .d-screen {
+.d-folded .d-screen {
   border-radius: 15px;
 }
 

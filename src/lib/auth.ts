@@ -226,9 +226,9 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
       frameId: true,
       backgroundId: true,
       charmId: true,
-      frame: { select: { spec: true, mediaId: true, frameHole: true } },
+      frame: { select: { spec: true, mediaId: true, frameHole: true, fit: true } },
       background: { select: { spec: true, mediaId: true, palette: true, coverMediaId: true } },
-      charm: { select: { spec: true, mediaId: true } },
+      charm: { select: { spec: true, mediaId: true, fit: true } },
       tag: { select: { name: true, bg: true, fg: true } },
     },
   });

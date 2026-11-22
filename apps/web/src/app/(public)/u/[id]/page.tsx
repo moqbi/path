@@ -46,8 +46,8 @@ async function findPerson(raw: string) {
       coverY: true,
       coverZoom: true,
       tag: { select: { name: true, bg: true, fg: true } },
-      frame: { select: { spec: true, mediaId: true, frameHole: true } },
-      charm: { select: { spec: true, mediaId: true } },
+      frame: { select: { spec: true, mediaId: true, frameHole: true, fit: true } },
+      charm: { select: { spec: true, mediaId: true, fit: true } },
     },
   });
 }

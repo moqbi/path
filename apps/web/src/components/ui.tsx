@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { parseFit } from "@athar/shared";
 import { SUPPORTER_TAG } from "@athar/shared";
 import { initial } from "@/lib/format";
 import { VerifiedIcon } from "@/components/icons";
@@ -21,7 +22,7 @@ function tintFor(name: string): string {
  * التشارم: شعارٌ صغير يجلس أسفل يسار صورة العرض أينما ظهرت الصورة.
  * صورةٌ إن رُفعت، وتدرّجٌ إن لم تُرفع — كبقية أصناف المتجر.
  */
-export type Charm = { spec: string; mediaId: string | null } | null | undefined;
+export type Charm = { spec: string; mediaId: string | null; fit?: string | null } | null | undefined;
 
 /**
  * الإطار الملبوس: صورةٌ إن رُفعت، وتدرّجٌ إن لم تُرفع — كالتشارم وكبقية
@@ -33,7 +34,7 @@ export type Charm = { spec: string; mediaId: string | null } | null | undefined;
  * `spec` وحده لا يُترجَم أصلاً.
  */
 export type Frame =
-  | { spec: string; mediaId: string | null; frameHole?: number | null }
+  | { spec: string; mediaId: string | null; frameHole?: number | null; fit?: string | null }
   | null
   | undefined;
 
@@ -188,8 +189,9 @@ export function Avatar({
           data-frame="1"
           className="pointer-events-none absolute block"
           style={{
-            // الرسمُ يُكبَّر بمقلوب فراغه الأوسط، ويُوسَّط على الوجه.
-            inset: `${((1 - frameZoom(frame)) / 2) * 100}%`,
+            // الرسمُ يُكبَّر بمقلوب فراغه الأوسط، ويُوسَّط على الوجه — ثمّ ضبطُ اللوحة (القاعدة ٤٧٥).
+            inset: `${((1 - frameZoom(frame) * (parseFit(frame.fit).s / 100)) / 2) * 100}%`,
+            transform: `translate(${parseFit(frame.fit).x}%, ${parseFit(frame.fit).y}%)`,
             backgroundImage: `url(/api/media/${frame.mediaId})`,
             backgroundSize: "contain",
             backgroundPosition: "center",
@@ -227,8 +229,18 @@ const CHARM_RATIO = 0.5;
  * وتُرسم **فوق الإطار** (`zIndex`): إطارٌ بجناحين يمتدّ خارج الصورة
  * لا يغطّيها.
  */
-function charmSeat(size: number, badge: number): { left: number; top: number } {
-  return { left: -badge * 0.3, top: size - badge * 0.8 };
+function charmSeat(
+  size: number,
+  base: number,
+  badge: number = base,
+  fit: { x: number; y: number } = { x: 0, y: 0 },
+): { left: number; top: number } {
+  // المقعدُ من مقاسها الأصليّ، والمقاسُ المضبوط يكبر حول مركزه، ثمّ إزاحةُ اللوحة (القاعدة ٤٧٥).
+  const grow = (badge - base) / 2;
+  return {
+    left: -base * 0.3 - grow + (fit.x / 100) * base,
+    top: size - base * 0.8 - grow + (fit.y / 100) * base,
+  };
 }
 
 function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }) {
@@ -238,7 +250,8 @@ function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }
    * و٠٫٥٢ من قبل بقيت تُقرأ صغيرة بجانب الصورة الأكبر.
    * ولذلك `contain`: الشعار يُرى كاملاً، لا مقصوصاً ليملأ مربّعاً.
    */
-  const badge = Math.round(size * CHARM_RATIO);
+  const fit = parseFit(charm.fit);
+  const badge = Math.round(size * CHARM_RATIO * (fit.s / 100));
   if (badge < 12) return null;
 
   const paint = charm.mediaId
@@ -259,7 +272,7 @@ function CharmBadge({ charm, size }: { charm: NonNullable<Charm>; size: number }
         width: badge,
         height: badge,
         // يسارَ الصورة وأغلبُها خارجها، وفوق الإطار (القاعدة ٥٩).
-        ...charmSeat(size, badge),
+        ...charmSeat(size, Math.round(size * CHARM_RATIO), badge, fit),
         zIndex: 2,
         // ظلٌّ خفيف يفصلها عن الصورة تحتها بلا حلقةٍ تحيط بها.
         filter: "drop-shadow(0 2px 4px rgba(14,26,36,.35))",

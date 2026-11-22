@@ -90,8 +90,8 @@ export default async function TimelinePage({
             id: true,
             name: true,
             avatarMediaId: true,
-            frame: { select: { spec: true, mediaId: true, frameHole: true } },
-            charm: { select: { spec: true, mediaId: true } },
+            frame: { select: { spec: true, mediaId: true, frameHole: true, fit: true } },
+            charm: { select: { spec: true, mediaId: true, fit: true } },
           },
         })
       : null;
@@ -106,8 +106,8 @@ export default async function TimelinePage({
             id: true,
             name: true,
             avatarMediaId: true,
-            frame: { select: { spec: true, mediaId: true, frameHole: true } },
-            charm: { select: { spec: true, mediaId: true } },
+            frame: { select: { spec: true, mediaId: true, frameHole: true, fit: true } },
+            charm: { select: { spec: true, mediaId: true, fit: true } },
           },
           orderBy: { name: "asc" },
         })

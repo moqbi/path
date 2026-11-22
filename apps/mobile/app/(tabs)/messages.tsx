@@ -346,9 +346,10 @@ export function Messages() {
             confirmLabel="حذف المحادثة"
             onSecond={() => pin(item)}
             secondLabel={item.pinned ? "شيلها من المفضّلة" : "أضفها للمفضّلة"}
+            secondTint={colors.clay}
             icons={{
               delete: <TrashIcon size={22} color="#fff" />,
-              second: <StarIcon size={22} color={item.pinned ? colors.gold : "#fff"} />,
+              second: <StarIcon size={22} color={colors.onBrand} />,
             }}
           >
           <Pressable

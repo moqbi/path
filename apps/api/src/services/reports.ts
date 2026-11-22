@@ -60,11 +60,23 @@ async function subject(target: Target, targetId: string) {
         conversation: { select: { aId: true, bId: true } },
       },
     });
-    return row
+    if (row) {
+      return {
+        ownerId: row.senderId,
+        snippet: row.body || null,
+        chat: { id: row.conversationId, at: row.createdAt, people: [row.conversation.aId, row.conversation.bId], group: false },
+      };
+    }
+    // ورسالةُ المجموعة بالهدف نفسه (القاعدة ٤٧٥): يُبلغ عنها عضوُها وحده، وسياقُها منها.
+    const inGroup = await prisma.groupMessage.findUnique({
+      where: { id: targetId },
+      select: { senderId: true, body: true, groupId: true, createdAt: true, system: true, group: { select: { members: { select: { userId: true } } } } },
+    });
+    return inGroup && !inGroup.system
       ? {
-          ownerId: row.senderId,
-          snippet: row.body || null,
-          chat: { id: row.conversationId, at: row.createdAt, people: [row.conversation.aId, row.conversation.bId] },
+          ownerId: inGroup.senderId,
+          snippet: inGroup.body || null,
+          chat: { id: inGroup.groupId, at: inGroup.createdAt, people: inGroup.group.members.map((m) => m.userId), group: true },
         }
       : null;
   }
@@ -82,7 +94,8 @@ const AROUND = 10;
  * وهذه لا. ويُنسخ مرّةً عند البلاغ: المحادثات تُكنس بعد ثلاثين يوماً،
  * وما يأتي بعد البلاغ ليس ممّا أُبلغ عنه.
  */
-async function messageContext(chat: { id: string; at: Date }, targetId: string) {
+async function messageContext(chat: { id: string; at: Date; group: boolean }, targetId: string) {
+  if (chat.group) return groupContext(chat, targetId);
   const pick = {
     id: true,
     senderId: true,
@@ -109,6 +122,46 @@ async function messageContext(chat: { id: string; at: Date }, targetId: string) 
   const rows = [...before.reverse(), ...after];
   return {
     messages: rows.map((row) => ({
+      id: row.id,
+      senderId: row.senderId,
+      name: row.sender.name,
+      memberNo: row.sender.memberNo,
+      body: row.body.slice(0, 2000),
+      kind: row.kind,
+      at: row.createdAt.toISOString(),
+      edited: Boolean(row.editedAt),
+      reported: row.id === targetId,
+    })),
+  };
+}
+
+/** سياقُ رسالة المجموعة — كالخاصّ: عشرٌ قبلها وعشرٌ بعدها منها. */
+async function groupContext(chat: { id: string; at: Date }, targetId: string) {
+  const pick = {
+    id: true,
+    senderId: true,
+    body: true,
+    kind: true,
+    createdAt: true,
+    editedAt: true,
+    sender: { select: { name: true, memberNo: true } },
+  } as const;
+  const [before, after] = await Promise.all([
+    prisma.groupMessage.findMany({
+      where: { groupId: chat.id, createdAt: { lte: chat.at }, id: { not: targetId } },
+      orderBy: { createdAt: "desc" },
+      take: AROUND,
+      select: pick,
+    }),
+    prisma.groupMessage.findMany({
+      where: { groupId: chat.id, createdAt: { gte: chat.at } },
+      orderBy: { createdAt: "asc" },
+      take: AROUND + 1,
+      select: pick,
+    }),
+  ]);
+  return {
+    messages: [...before.reverse(), ...after].map((row) => ({
       id: row.id,
       senderId: row.senderId,
       name: row.sender.name,
@@ -232,8 +285,11 @@ export async function decide(
       await prisma.story.deleteMany({ where: { id: report.targetId } });
       if (gone) await dropMedia([gone.mediaId, gone.audioMediaId].filter((id): id is string => Boolean(id)));
     } else if (report.target === "MESSAGE") {
-      const gone = await prisma.message.findUnique({ where: { id: report.targetId }, select: { mediaId: true } });
+      const gone =
+        (await prisma.message.findUnique({ where: { id: report.targetId }, select: { mediaId: true } })) ??
+        (await prisma.groupMessage.findUnique({ where: { id: report.targetId }, select: { mediaId: true } }));
       await prisma.message.deleteMany({ where: { id: report.targetId } });
+      await prisma.groupMessage.deleteMany({ where: { id: report.targetId } });
       if (gone?.mediaId) await dropMedia([gone.mediaId]);
     } else if (report.target === "COMMENT") {
       await prisma.comment.deleteMany({ where: { id: report.targetId } });

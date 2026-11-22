@@ -69,8 +69,9 @@ export const dmRoutes = new Hono()
   )
 
   .delete("/:id", zValidator("param", byId), async (c) => {
+    // لصاحبه وحده (القاعدة ٤٧٥): الطرفُ الآخر لا يُخبَر فلا تختفي عنده.
     const result = await dm.remove(me(c), c.req.valid("param").id);
-    pushBoth(me(c), result.to, "conversation:gone", { conversationId: result.conversationId });
+    pushBoth(me(c), me(c), "conversation:gone", { conversationId: result.conversationId });
     return c.json({ ok: true });
   });
 

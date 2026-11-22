@@ -21,7 +21,7 @@ const ITEM = {
   spec: true,
   mediaId: true,
   /** فراغُ الإطار الأوسط: الوجه يجلس فيه لا في مربّع الرسم. */
-  frameHole: true,
+  frameHole: true, fit: true,
   plusOnly: true,
   earnedAfterDays: true,
   limited: true,

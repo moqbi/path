@@ -666,8 +666,8 @@ export async function addComment(userId: string, momentId: string, body: string,
           avatarMediaId: true,
           tag: { select: { name: true, bg: true, fg: true } },
           // الإطارُ والتشارم مع صورة المعلّق كما في كلّ مكانٍ تظهر فيه صورته.
-          frame: { select: { spec: true, mediaId: true, frameHole: true } },
-          charm: { select: { spec: true, mediaId: true } },
+          frame: { select: { spec: true, mediaId: true, frameHole: true, fit: true } },
+          charm: { select: { spec: true, mediaId: true, fit: true } },
         },
       },
     },
@@ -781,7 +781,7 @@ export async function audience(userId: string, momentId: string) {
     name: true,
     avatarMediaId: true,
     // بلا تشارم: ركنُ الوجه هنا لشارة التفاعل (القاعدة ٤٧).
-    frame: { select: { spec: true, mediaId: true, frameHole: true } },
+    frame: { select: { spec: true, mediaId: true, frameHole: true, fit: true } },
   } as const;
 
   const [views, reactions] = await Promise.all([

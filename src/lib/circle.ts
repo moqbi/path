@@ -164,8 +164,8 @@ export async function suggestions(userId: string, limit = 12): Promise<Suggestio
       city: true,
       isPlus: true,
       avatarMediaId: true,
-      frame: { select: { spec: true, mediaId: true, frameHole: true } },
-      charm: { select: { spec: true, mediaId: true } },
+      frame: { select: { spec: true, mediaId: true, frameHole: true, fit: true } },
+      charm: { select: { spec: true, mediaId: true, fit: true } },
       tag: { select: { name: true, bg: true, fg: true } },
     },
   });

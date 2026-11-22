@@ -16,8 +16,8 @@ const CARD = {
   isOpen: true,
   isPlus: true,
   avatarMediaId: true,
-  frame: { select: { id: true, name: true, kind: true, spec: true, mediaId: true, frameHole: true, priceCoins: true, plusOnly: true } },
-  charm: { select: { id: true, name: true, kind: true, spec: true, mediaId: true, priceCoins: true, plusOnly: true } },
+  frame: { select: { id: true, name: true, kind: true, spec: true, mediaId: true, frameHole: true, fit: true, priceCoins: true, plusOnly: true } },
+  charm: { select: { id: true, name: true, kind: true, spec: true, mediaId: true, fit: true, priceCoins: true, plusOnly: true } },
   tag: { select: { name: true, bg: true, fg: true } },
 } as const;
 

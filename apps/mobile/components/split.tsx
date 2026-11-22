@@ -60,6 +60,8 @@ export function Split({
               flexShrink: wide ? 0 : 1,
               borderEndWidth: wide ? 1 : 0,
               borderEndColor: colors.line,
+              // غلافُ اللحظات يكبر بالسحب (القاعدة ٣٤٢) فيعبر إلى اللوحة المجاورة — يُقصّ بحدّ القائمة.
+              overflow: wide ? "hidden" : "visible",
             }}
           >
             {children}

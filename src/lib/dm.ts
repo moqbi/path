@@ -38,8 +38,8 @@ const PERSON = {
   // وضعُ التخفّي — يُقرأ ليُحجب به الحضورُ ثمّ يُحذف (`maskPresence`).
   hideOnline: true,
   avatarMediaId: true,
-  frame: { select: { spec: true, mediaId: true, frameHole: true } },
-  charm: { select: { spec: true, mediaId: true } },
+  frame: { select: { spec: true, mediaId: true, frameHole: true, fit: true } },
+  charm: { select: { spec: true, mediaId: true, fit: true } },
   tag: { select: { name: true, bg: true, fg: true } },
 } as const;
 
@@ -50,6 +50,9 @@ export async function conversationsFor(userId: string) {
     select: {
       id: true,
       updatedAt: true,
+      aId: true,
+      aHiddenAt: true,
+      bHiddenAt: true,
       a: { select: PERSON },
       b: { select: PERSON },
       messages: {
@@ -74,7 +77,13 @@ export async function conversationsFor(userId: string) {
     orderBy: { updatedAt: "desc" },
   });
 
-  return rows.map((row) => {
+  // ما حذفه صاحبُه يُخفى عنه حتى تصل رسالةٌ بعد الحذف (القاعدة ٤٧٥) — نسخةُ `hiddenFor` في الخادم.
+  const visible = rows.filter((row) => {
+    const at = row.aId === userId ? row.aHiddenAt : row.bHiddenAt;
+    const last = row.messages[0]?.createdAt;
+    return !(at && (!last || last <= at));
+  });
+  return visible.map((row) => {
     const other = maskPresence(row.a.id === userId ? row.b : row.a);
     const last = row.messages[0] ?? null;
     return {

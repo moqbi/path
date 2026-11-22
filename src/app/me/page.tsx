@@ -51,7 +51,7 @@ export default async function ProfilePage({
             kind: true,
             mediaId: true,
             promoMediaId: true,
-            frameHole: true,
+            frameHole: true, fit: true,
             priceCoins: true,
             plusOnly: true,
             earnedAfterDays: true,

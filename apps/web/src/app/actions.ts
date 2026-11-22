@@ -16,7 +16,7 @@ import { clear, clientIp, hit, TOO_MANY } from "@/lib/rate-limit";
 import { SUSPEND_HOURS } from "@/lib/suspend";
 import { isPlusDays, PLUS_LABEL } from "@/lib/plus";
 import { SITE_TEXT, type SiteKey } from "@/lib/site";
-import { ALL_COUNTRIES, BOOK_SKIN_FIELDS, bookSkinOf, bookSpec, COUNTRIES, hallFlatFrom, hallSkinOf } from "@athar/shared";
+import { formatFit, ALL_COUNTRIES, BOOK_SKIN_FIELDS, bookSkinOf, bookSpec, COUNTRIES, hallFlatFrom, hallSkinOf } from "@athar/shared";
 
 /*
   إجراءات اللوحة، منقولةٌ كما هي من `src/app/actions.ts` في الويب الحالي:
@@ -908,13 +908,40 @@ export async function setItemImage(itemId: string, formData: FormData): Promise<
   const raw = Number(formData.get("hole"));
   const hole = Number.isFinite(raw) && raw >= 20 && raw <= 99 ? Math.round(raw) : null;
 
+  /*
+    إطارٌ ملوّن يُرسم في المتصفّح صورةً شفّافة (القاعدة ٤٧٥) ويحمل تدرّجه نصّاً معه: يبقى
+    `spec` لما يرسم اللونَ وحده. وضبطُ الصورة السابقة لا يصحّ على صورةٍ جديدة فيُمحى.
+  */
+  const spec = String(formData.get("spec") ?? "").trim();
+  const before = await prisma.storeItem.findUnique({ where: { id: itemId }, select: { mediaId: true } });
   await prisma.storeItem.update({
     where: { id: itemId },
-    data: { mediaId: media.id, frameHole: hole },
+    data: {
+      mediaId: media.id,
+      frameHole: hole,
+      fit: null,
+      ...(spec && /^(conic|linear|radial)-gradient\([^;{}<>]{1,600}\)$/.test(spec) ? { spec } : {}),
+    },
   });
+  // والسابقةُ تذهب ببكسلاتها (القاعدة ١٠٤).
+  if (before?.mediaId && before.mediaId !== media.id) await dropMedia([before.mediaId]);
   revalidatePath("/admin", "layout");
   revalidatePath("/store");
   revalidatePath("/");
+}
+
+/**
+ * ضبطُ الإطار أو التشارم على الصورة (القاعدة ٤٧٥): إزاحةٌ ومقاس يُكتبان «x,y,s» —
+ * `parseFit` يحصرهما في حدودهما، فقيمةٌ مزوّرة لا تُخرج الرسمَ عن الشاشة.
+ */
+export async function setItemFit(itemId: string, fit: { x: number; y: number; s: number }): Promise<string | null> {
+  await requireAdmin("store");
+  const item = await prisma.storeItem.findUnique({ where: { id: itemId }, select: { kind: true } });
+  if (!item || (item.kind !== "FRAME" && item.kind !== "CHARM")) return "الصنف غير موجود";
+  await prisma.storeItem.update({ where: { id: itemId }, data: { fit: formatFit(fit) } });
+  revalidatePath("/admin", "layout");
+  revalidatePath("/store");
+  return null;
 }
 
 /** فراغُ الإطار باليد — حين يُخطئ القياسُ الآليّ أو لا يُحفظ. */
@@ -1250,8 +1277,12 @@ export async function decideReport(
       await prisma.story.deleteMany({ where: { id: report.targetId } });
       if (gone) await dropMedia([gone.mediaId, gone.audioMediaId].filter((id): id is string => Boolean(id)));
     } else if (report.target === "MESSAGE") {
-      const gone = await prisma.message.findUnique({ where: { id: report.targetId }, select: { mediaId: true } });
+      // ورسالةُ المجموعة بالهدف نفسه (القاعدة ٤٧٥).
+      const gone =
+        (await prisma.message.findUnique({ where: { id: report.targetId }, select: { mediaId: true } })) ??
+        (await prisma.groupMessage.findUnique({ where: { id: report.targetId }, select: { mediaId: true } }));
       await prisma.message.deleteMany({ where: { id: report.targetId } });
+      await prisma.groupMessage.deleteMany({ where: { id: report.targetId } });
       if (gone?.mediaId) await dropMedia([gone.mediaId]);
     } else if (report.target === "COMMENT") {
       await prisma.comment.deleteMany({ where: { id: report.targetId } });

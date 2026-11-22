@@ -29,6 +29,7 @@ export function SwipeRow({
   onSwiping,
   icons,
   tint,
+  secondTint,
   start = 0,
   inside,
   children,
@@ -45,6 +46,8 @@ export function SwipeRow({
   start?: number;
   /** لونُ الفعل الأوّل — قلمُ التعديل بلون اللمسة لا بالمرجانيّ (القاعدة ٣١٩). */
   tint?: string;
+  /** أرضُ زرّ الفعل الثاني — `night` افتراضاً، واللمسةُ في نجمة المفضّلة (`messages.tsx`). */
+  secondTint?: string;
   onDelete: () => void | Promise<void>;
   confirmLabel?: string;
   /** فعلٌ ثانٍ يظهر بجانب الأول — الحظر مثلاً بجانب الإزالة. */
@@ -212,7 +215,7 @@ export function SwipeRow({
             disabled={busy}
             onPress={() => fire(second.run)}
             accessibilityLabel={second.label}
-            style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 8, backgroundColor: inside ? "transparent" : colors.night, opacity: busy ? 0.6 : 1 }}
+            style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 8, backgroundColor: inside ? "transparent" : secondTint ?? colors.night, opacity: busy ? 0.6 : 1 }}
           >
             {icons?.second ?? <Text style={{ color: "#f7f5ef", fontSize: 13, fontWeight: "700" }}>{second.label}</Text>}
           </Pressable>

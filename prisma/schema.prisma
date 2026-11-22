@@ -833,6 +833,10 @@ model StoreItem {
   /// الصورة. والفراغ الأوسط هو ما يجب أن يطابق الوجه، فمنه يُحسب كم
   /// يُكبَّر الرسم. يُقاس من الصورة عند رفعها ويُصحَّح باليد.
   frameHole       Int?
+  /// ضبطُ الإطار والتشارم على الصورة من اللوحة (القاعدة ٤٧٥): «x,y,s» —
+  /// الإزاحةُ نسبةٌ من مقاس الصورة (الإطار) أو مقاس التشارم، والمقاسُ ٪.
+  /// فارغٌ = كما كان. يُقرأ بـ`parseFit` في `packages/shared` و`src/lib/fit.ts`.
+  fit             String?
   /// غلافٌ يأتي مع الثيم: من اشتراه لبس غلافَه، وله أن يغيّره بعدها.
   /// صورتان لا واحدة — الثيم يملأ الخلفية، والغلاف يجلس في رأس الشاشة.
   coverMediaId    String?       @unique
@@ -999,6 +1003,10 @@ model Conversation {
   bId       String
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
+  /// حذفُ المحادثة لطرفه وحده (القاعدة ٤٧٥): تُخفى عنه حتى تصل رسالةٌ بعد هذا الختم،
+  /// فتعود بأرشيفها كلّه. ولا تختفي عند الآخر. والكنسُ بعد شهرٍ كما هو.
+  aHiddenAt DateTime?
+  bHiddenAt DateTime?
 
   a        User              @relation("ConversationA", fields: [aId], references: [id], onDelete: Cascade)
   b        User              @relation("ConversationB", fields: [bId], references: [id], onDelete: Cascade)
@@ -1072,12 +1080,22 @@ model ChatGroup {
   @@index([updatedAt])
 }
 
+enum GroupRole {
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
 model ChatGroupMember {
   groupId    String
   userId     String
   /// ما بعده لم يُقرأ — ختمٌ واحد للعضو لا إيصالٌ لكل رسالة.
   lastReadAt DateTime @default(now())
   joinedAt   DateTime @default(now())
+  /// رتبتُه في المجموعة (القاعدة ٤٧٥): المالكُ مُنشئُها (`createdById`) لا عمود، وهذه
+  /// للمدير والمشرف والعضو. ومكتومٌ لا يكتب حتى يُرفع كتمُه.
+  role       GroupRole @default(MEMBER)
+  muted      Boolean   @default(false)
 
   group ChatGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
   user  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1098,6 +1116,8 @@ model GroupMessage {
   /// سطرُ حدثٍ لا رسالة (القاعدة ٢٦٤): «فلان أضاف فلان»، «فلان أزال فلان» —
   /// يُرسم في وسط المحادثة على أرضيتها لا فقاعةً، و`senderId` من فعله.
   system    Boolean     @default(false)
+  /// «عُدّلت» يبقى ظاهراً كالخاصّ (القاعدة ٣٥).
+  editedAt  DateTime?
   createdAt DateTime    @default(now())
 
   group  ChatGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)

@@ -51,9 +51,31 @@ function hint(id: BookSection, book: Book): string {
  * يرى ما يُفتح قبل أن يشترك، والخادمُ يردّ الحفظ لا الشاشة.
  */
 export default function BookStudio() {
+  const { year } = useLocalSearchParams<{ year: string }>();
+  return (
+    <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: colors.ground }}>
+      <ScreenHeader
+        title={`تجهيز كتاب ${ar(Number(year))}`}
+        back={`/me/book/${year}`}
+        right={
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#F6B93B", borderRadius: 14, paddingHorizontal: 10, height: 26 }}>
+            <SparkIcon size={11} color="#3a2700" />
+            <Text style={{ color: "#3a2700", fontSize: 11.5, fontWeight: "800" }}>آثار+</Text>
+          </View>
+        }
+      />
+      <StudioPanel year={year} />
+    </SafeAreaView>
+  );
+}
+
+/**
+ * جسمُ «تجهيز الكتاب» — شاشةً وحده، وعموداً بجانب الكتاب في الوضع الأفقيّ (القاعدة ٤٧٥): الكتابُ
+ * يساراً والتجهيزُ يميناً، و«احفظ» يُبقيه مكانه ويُعيد رسم الكتاب بما اختير بدل أن يرجع.
+ */
+export function StudioPanel({ year, embedded = false }: { year: string; embedded?: boolean }) {
   const router = useRouter();
   const client = useQueryClient();
-  const { year } = useLocalSearchParams<{ year: string }>();
   const book = useQuery({
     queryKey: ["archive", "book", year],
     queryFn: () => api<Book>(`/v1/archive/book/${year}`),
@@ -86,7 +108,8 @@ export default function BookStudio() {
       // والغلافُ من المتجر يُقرأ ثوبُه من جديد: الكتابُ يرسمه من `coverSkin`.
       client.setQueryData<Book>(["archive", "book", year], (old) => (old ? { ...old, prefs } : old));
       void client.invalidateQueries({ queryKey: ["archive", "book", year] });
-      router.back();
+      if (embedded) Alert.alert("انحفظ", "كتابك على يسارك بما اخترت");
+      else router.back();
     } catch (problem) {
       Alert.alert("ما انحفظ", problem instanceof Error ? problem.message : "حاول مرة ثانية");
     } finally {
@@ -95,17 +118,7 @@ export default function BookStudio() {
   };
 
   return (
-    <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: colors.ground }}>
-      <ScreenHeader
-        title={`تجهيز كتاب ${ar(Number(year))}`}
-        back={`/me/book/${year}`}
-        right={
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#F6B93B", borderRadius: 14, paddingHorizontal: 10, height: 26 }}>
-            <SparkIcon size={11} color="#3a2700" />
-            <Text style={{ color: "#3a2700", fontSize: 11.5, fontWeight: "800" }}>آثار+</Text>
-          </View>
-        }
-      />
+    <View style={{ flex: 1 }}>
       {!data || !draft ? (
         <Spinner style={{ marginTop: 40 }} color={colors.clay} />
       ) : (
@@ -272,7 +285,7 @@ export default function BookStudio() {
           ) : null}
         </>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
