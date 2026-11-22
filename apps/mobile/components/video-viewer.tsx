@@ -14,15 +14,25 @@ import { stopClip } from "../lib/status-notes";
  * أسفل يُغلقه وهو يتبع الإصبع. مركّبٌ في الجذر لا في البطاقة (القاعدة ١٣٧): جدُّ البطاقة
  * «اسحب للتحديث» يلتقط السحبة قبله. وأدواتُ التشغيل أدواتُ النظام نفسه (`nativeControls`).
  */
-const useVideo = create<{ videoId: string | null; session: number }>(() => ({ videoId: null, session: 0 }));
+/*
+  الإغلاقُ يُخفي النافذةَ ولا يُنزلها (القاعدة ٤٧٦): نافذةُ آبل تُنزَل وهي ظاهرة — وأكثرُ ذلك مع
+  الدوران — فيبقى حاجبُها الشفّاف فوق التطبيق فلا يستجيب لشيء. فـ`shown` يطفئها، ونزولُ المكوّن
+  بعد `onDismiss` (ومهلةٌ لأندرويد الذي لا يناديه).
+*/
+const useVideo = create<{ videoId: string | null; shown: boolean; session: number }>(() => ({ videoId: null, shown: false, session: 0 }));
 
 export const viewVideo = (videoId: string | null) =>
-  useVideo.setState((state) => ({ videoId, session: videoId ? state.session + 1 : state.session }));
+  useVideo.setState((state) =>
+    videoId ? { videoId, shown: true, session: state.session + 1 } : state.shown ? { shown: false } : {},
+  );
+
+const unmount = (session: number) =>
+  useVideo.setState((state) => (state.session === session && !state.shown ? { videoId: null } : {}));
 
 const DISMISS = 110;
 
 export function VideoViewer() {
-  const { videoId, session } = useVideo();
+  const { videoId, shown, session } = useVideo();
   /*
     المقطعُ لا يبقى يُسمع خارج مكانه (القاعدة ٤٣٨): تبديلُ التبويب أو الشاشة، أو خروجُ التطبيق
     إلى الخلفيّة، يُغلقه — والإغلاقُ يُنزل المشغّلَ فيقف صوتُه.
@@ -34,8 +44,8 @@ export function VideoViewer() {
     opened.current = path;
   }, [videoId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (videoId && path !== opened.current) viewVideo(null);
-  }, [path, videoId]);
+    if (shown && path !== opened.current) viewVideo(null);
+  }, [path, shown]);
   // ومقطعُ أغنية النوت مثلُه: لا يبقى يُسمع في تبويبٍ آخر.
   useEffect(() => {
     void stopClip();
@@ -48,8 +58,14 @@ export function VideoViewer() {
     });
     return () => sub.remove();
   }, []);
+  // أندرويد لا ينادي `onDismiss`، فالنزولُ بعد حركة الإغلاق.
+  useEffect(() => {
+    if (shown || !videoId) return;
+    const t = setTimeout(() => unmount(session), 600);
+    return () => clearTimeout(t);
+  }, [shown, videoId, session]);
   if (!videoId) return null;
-  return <Viewer key={session} videoId={videoId} />;
+  return <Viewer key={session} videoId={videoId} shown={shown} session={session} />;
 }
 
 /**
@@ -57,17 +73,25 @@ export function VideoViewer() {
  * الأفقيّ (القاعدة ٤٧٠)، فكانت أدواتُ التشغيل في أعلى المقطع — الصوتُ والسمّاعةُ والتكبير — خلف
  * الساعة والشبكة قائماً وخلف حسّاس الكاميرا مُداراً. فالمقطعُ يُرسم داخل الحوافّ وتحت زرّ الإغلاق.
  */
-function Viewer({ videoId }: { videoId: string }) {
+function Viewer({ videoId, shown, session }: { videoId: string; shown: boolean; session: number }) {
   return (
-    <Modal supportedOrientations={ORIENTATIONS} visible transparent animationType="fade" onRequestClose={() => viewVideo(null)} statusBarTranslucent>
+    <Modal
+      supportedOrientations={ORIENTATIONS}
+      visible={shown}
+      transparent
+      animationType="fade"
+      onRequestClose={() => viewVideo(null)}
+      onDismiss={() => unmount(session)}
+      statusBarTranslucent
+    >
       <SafeAreaProvider>
-        <Inner videoId={videoId} />
+        <Inner videoId={videoId} shown={shown} />
       </SafeAreaProvider>
     </Modal>
   );
 }
 
-function Inner({ videoId }: { videoId: string }) {
+function Inner({ videoId, shown }: { videoId: string; shown: boolean }) {
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const drag = useRef(new Animated.Value(0)).current;
@@ -81,6 +105,10 @@ function Inner({ videoId }: { videoId: string }) {
     made.loop = false;
     made.play();
   });
+  // الإغلاقُ يُوقف الصوتَ في الحال لا حين تنزل النافذة.
+  useEffect(() => {
+    if (!shown) player.pause();
+  }, [shown, player]);
 
   const pan = useRef(
     PanResponder.create({
@@ -114,7 +142,18 @@ function Inner({ videoId }: { videoId: string }) {
             transform: [{ translateY: drag }, { scale: shrink }],
           }}
         >
-          <VideoView player={player} style={{ flex: 1 }} contentFit="contain" nativeControls />
+          <VideoView
+            player={player}
+            style={{ flex: 1 }}
+            contentFit="contain"
+            nativeControls
+            /*
+              لا ملءَ شاشةٍ أصليّ ولا صورةً في صورة: النافذةُ بملء الشاشة أصلاً، وشاشةُ آبل الكاملة
+              تُقدَّم فوق نافذتنا — فإن أُغلقت هذه تحتها، أو دار الجهازُ وهي فوقها، بقيت معلّقةً.
+            */
+            fullscreenOptions={{ enable: false }}
+            allowsPictureInPicture={false}
+          />
         </Animated.View>
         <Pressable
           accessibilityLabel="أغلق"
