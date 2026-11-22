@@ -327,6 +327,8 @@ export async function removeMessage(userId: string, messageId: string) {
   }
   await prisma.groupMessage.delete({ where: { id: message.id } });
   if (message.mediaId) await dropMedia([message.mediaId]);
+  // حذفُ رسالة غيرك أمرٌ إداريّ فيُقال للجميع (القاعدة ٤٧٥)، وحذفُ رسالتك لا.
+  if (message.senderId !== userId) await eventLines(userId, message.groupId, [message.senderId], "deleted");
   return { ok: true, groupId: message.groupId };
 }
 
@@ -376,7 +378,9 @@ export async function rename(userId: string, groupId: string, name: string) {
   await requireRank(userId, groupId, 2);
   const clean = cleanName(name);
   await guard(clean);
+  const before = await prisma.chatGroup.findUnique({ where: { id: groupId }, select: { name: true } });
   await prisma.chatGroup.update({ where: { id: groupId }, data: { name: clean } });
+  if (before && before.name !== clean) await adminLine(userId, groupId, (actor) => `قام ${actor} بتغيير اسم المجموعة إلى «${clean}»`);
   return { ok: true };
 }
 
@@ -399,6 +403,9 @@ export async function setPhoto(userId: string, groupId: string, mediaId: string 
   if (group.photoMediaId === mediaId) return { photoMediaId: mediaId };
   await prisma.chatGroup.update({ where: { id: groupId }, data: { photoMediaId: mediaId } });
   if (group.photoMediaId) await dropMedia([group.photoMediaId]);
+  await adminLine(userId, groupId, (actor) =>
+    mediaId ? `قام ${actor} بتغيير صورة المجموعة` : `قام ${actor} بإزالة صورة المجموعة`,
+  );
   return { photoMediaId: mediaId };
 }
 
@@ -441,7 +448,7 @@ async function eventLines(
   actorId: string,
   groupId: string,
   targetIds: string[],
-  what: "added" | "removed" | "left" | "admin" | "moderator" | "demoted" | "muted" | "unmuted",
+  what: "added" | "removed" | "left" | "admin" | "moderator" | "demoted" | "muted" | "unmuted" | "deleted",
 ) {
   if (targetIds.length === 0) return;
   const people = await prisma.user.findMany({
@@ -462,24 +469,36 @@ async function eventLines(
 }
 
 function lineOf(what: string, actor: string, target: string): string {
+  // بصيغة «قام فلان بـ…» — **بقرار المالك** (القاعدة ٤٧٥): كلُّ أمرٍ إداريٍّ سطرٌ على أرضية المجموعة.
   switch (what) {
     case "left":
       return `${actor} غادر المجموعة`;
     case "added":
-      return `${actor} أضاف ${target}`;
+      return `قام ${actor} بإضافة ${target}`;
     case "admin":
-      return `${actor} جعل ${target} مديراً`;
+      return `قام ${actor} بتعيين ${target} مديراً`;
     case "moderator":
-      return `${actor} جعل ${target} مشرفاً`;
+      return `قام ${actor} بتعيين ${target} مشرفاً`;
     case "demoted":
-      return `${actor} أعاد ${target} عضواً`;
+      return `قام ${actor} بإزالة رتبة ${target}`;
     case "muted":
-      return `${actor} كتم ${target}`;
+      return `قام ${actor} بكتم ${target}`;
     case "unmuted":
-      return `${actor} رفع الكتم عن ${target}`;
+      return `قام ${actor} برفع الكتم عن ${target}`;
+    case "deleted":
+      return `قام ${actor} بحذف رسالة ${target}`;
     default:
-      return `${actor} أزال ${target} من المجموعة`;
+      return `قام ${actor} بإزالة ${target} من المجموعة`;
   }
+}
+
+/** سطرُ أمرٍ إداريٍّ لا هدفَ له من الأعضاء — اسمُ المجموعة وصورتُها (القاعدة ٤٧٥). */
+async function adminLine(actorId: string, groupId: string, body: (actor: string) => string) {
+  const actor = await prisma.user.findUnique({ where: { id: actorId }, select: { name: true } });
+  await prisma.groupMessage.create({
+    data: { groupId, senderId: actorId, system: true, body: body(actor?.name ?? "المشرف") },
+  });
+  await prisma.chatGroup.update({ where: { id: groupId }, data: { updatedAt: new Date() } });
 }
 
 /** إخراجُ عضو: من فوقه بالرتبة (المشرفُ فما فوق)، وكلُّ عضوٍ يغادر بنفسه (القاعدة ٤٧٥). */
