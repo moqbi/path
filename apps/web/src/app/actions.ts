@@ -2610,3 +2610,52 @@ export async function moderateProfile(userId: string, _prev: AdminResult, formDa
   revalidatePath("/admin", "layout");
   return { ok: "تمّ" };
 }
+
+/**
+ * بحثُ سطر الأوامر في اللوحة (القاعدة ٤٧٧): حساباتٌ برقم العضوية تماماً أو بالمعرّف أو بجزءٍ
+ * من الاسم والبريد، وأصنافُ المتجر بجزءٍ من اسمها. قراءةٌ لا فعل — كلُّ نتيجةٍ بابٌ إلى صفحتها
+ * حيث يُفعل ما يُفعل بإجراءاته ودرجته. والحساباتُ لمن له اللوحة كلّها، والأصنافُ لممنوح المتجر.
+ */
+export async function adminFind(raw: string): Promise<{
+  people: { id: string; memberNo: number; name: string; email: string | null; isPlus: boolean }[];
+  items: { id: string; name: string; kind: string; hidden: boolean }[];
+}> {
+  const user = await requireUser();
+  const row = await prisma.user.findUnique({ where: { id: user.id }, select: { role: true, adminScope: true } });
+  const all = row?.role === "ADMIN" || row?.adminScope === "ALL";
+  const store = all || row?.adminScope === "STORE";
+  const text = raw.trim().slice(0, 60);
+  if (!text || (!all && !store)) return { people: [], items: [] };
+
+  const latin = text.replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
+  const number = /^\d+$/.test(latin) ? Number(latin) : null;
+  const handle = text.replace(/^@/, "").toLowerCase();
+
+  const [people, items] = await Promise.all([
+    all
+      ? prisma.user.findMany({
+          where: number
+            ? { memberNo: number }
+            : {
+                OR: [
+                  { name: { contains: text, mode: "insensitive" } },
+                  { email: { contains: text, mode: "insensitive" } },
+                  { handle: { equals: handle } },
+                ],
+              },
+          orderBy: { memberNo: "asc" },
+          take: 6,
+          select: { id: true, memberNo: true, name: true, email: true, isPlus: true },
+        })
+      : Promise.resolve([]),
+    store && !number
+      ? prisma.storeItem.findMany({
+          where: { name: { contains: text, mode: "insensitive" } },
+          orderBy: { sortOrder: "asc" },
+          take: 6,
+          select: { id: true, name: true, kind: true, hidden: true },
+        })
+      : Promise.resolve([]),
+  ]);
+  return { people, items };
+}

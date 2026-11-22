@@ -57,6 +57,8 @@ import { BroadcastsSection } from "./broadcasts";
 import { OccasionsSection } from "./occasions";
 import { InterestsSection } from "./interests";
 import { AnalyticsSection } from "./analytics";
+import { HomeSection } from "./home";
+import { CommandBar } from "./command-bar";
 
 const FIELD =
   "rounded-xl border border-line bg-card px-4 text-[13.5px] text-ink outline-none focus:border-clay";
@@ -606,6 +608,8 @@ const LOG_ACTION: Record<string, string> = {
 };
 
 const SECTIONS = [
+  // غرفةُ العمليات أوّلاً: ما ينتظر قراراً قبل الأقسام (القاعدة ٤٧٧).
+  { key: "home", label: "الرئيسيّة", store: false },
   { key: "analytics", label: "التحليلات", store: false },
   { key: "tags", label: "الوسوم", store: false },
   { key: "users", label: "الحسابات", store: false },
@@ -626,9 +630,9 @@ const SECTIONS = [
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ s?: string; v?: string; q?: string; k?: string }>;
+  searchParams: Promise<{ s?: string; v?: string; q?: string; k?: string; open?: string }>;
 }) {
-  const { s: raw, v, q, k } = await searchParams;
+  const { s: raw, v, q, k, open } = await searchParams;
   const view = v === "cats" || v === "packs" || v === "collections" || v === "invites" ? v : "items";
   const user = await currentUser();
   if (!user) redirect("/login");
@@ -837,7 +841,12 @@ export default async function AdminPage({
           select: { id: true, name: true, kind: true },
         })
       : [];
-  const kindTab = STORE_KINDS.find((one) => one.key === k) ?? STORE_KINDS[0];
+  // صنفٌ فُتح من سطر الأوامر يفتح شريحةَ نوعه وبطاقتَه.
+  const openItem = open ? items.find((item) => item.id === open) : undefined;
+  const kindTab =
+    STORE_KINDS.find((one) => one.key === k) ??
+    (openItem ? STORE_KINDS.find((one) => (one.kinds as readonly string[]).includes(openItem.kind)) : undefined) ??
+    STORE_KINDS[0];
   const kindItems = items.filter((item) => (kindTab.kinds as readonly string[]).includes(item.kind));
   const kindCount = (tab: (typeof STORE_KINDS)[number]) =>
     items.filter((item) => (tab.kinds as readonly string[]).includes(item.kind)).length;
@@ -879,7 +888,7 @@ export default async function AdminPage({
 
       <main className="scroll-area admin-main px-5 py-5">
         {/* على قسم التحليلات أرقامُه تحلّ محلّ هذا الصفّ (القاعدة ٣٠٧). */}
-        <div className={`admin-stats mb-6 grid-cols-4 gap-2 ${section === "analytics" ? "hidden" : "grid"}`}>
+        <div className={`admin-stats mb-6 grid-cols-4 gap-2 ${section === "analytics" || section === "home" ? "hidden" : "grid"}`}>
           {[
             { value: userCount, label: "مستخدم" },
             { value: items.length, label: "صنف" },
@@ -920,6 +929,8 @@ export default async function AdminPage({
         </nav>
 
         <div className="admin-section min-w-0">
+        <CommandBar sections={sections.map((item) => ({ key: item.key, label: item.label }))} />
+        {section === "home" ? <HomeSection /> : null}
         {section === "tags" ? (
         <>
         <h2 className="mb-1 text-[15px] font-bold">الوسوم</h2>
@@ -1529,7 +1540,12 @@ export default async function AdminPage({
                 ) : (
                   <div className="flex flex-col gap-2">
                     {group.items.map((item) => (
-                      <details key={item.id} className="rounded-2xl border border-line bg-card">
+                      <details
+                        key={item.id}
+                        id={`item-${item.id}`}
+                        open={item.id === open || undefined}
+                        className="scroll-mt-20 rounded-2xl border border-line bg-card"
+                      >
                         <summary className="flex cursor-pointer list-none items-center gap-3 p-3">
                           <span className="h-11 w-11 shrink-0 rounded-full" style={itemPaint(item)} />
                           <div className="min-w-0 grow">
