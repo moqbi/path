@@ -167,46 +167,132 @@ async function renderRing(stops: Stop[], thickness: number): Promise<Blob> {
   );
 }
 
-export function GradientFrame({
+/**
+ * محرّرُ الإطار الواحد (القاعدة ٤٧٦) — **بقرار المالك**: كان ضبطُ الإطار على الصورة والإطارُ الملوّن
+ * بطاقتين بمعاينتين، فتغييرُ السماكة لا يُرى على الضبط ولا الضبطُ على السماكة. الآن معاينةٌ واحدة
+ * تُسحب، وتحتها الألوانُ والسماكةُ والمقاس، و«احفظ» واحد: إن تغيّرت الألوانُ أو السماكة رُسمت
+ * الحلقةُ صورةً (`setItemImage` يمحو الضبط) ثمّ كُتب الضبطُ فوقها (`setItemFit`).
+ *
+ * والحلقةُ قبل الحفظ تُرسم في المعاينة كما سيرسمها `Avatar` بعده: فراغُها من سماكتها، والرسمُ
+ * مكبَّرٌ بمقلوبه (`frameZoom`)، ثمّ المقاسُ والإزاحة.
+ */
+export function FrameEditor({
   itemId,
-  spec,
+  item,
   me,
 }: {
   itemId: string;
-  spec: string;
+  item: { spec: string; mediaId: string | null; frameHole: number | null; fit: string | null };
   me: { name: string; avatarMediaId: string | null };
 }) {
-  const [stops, setStops] = useState<Stop[]>(() => stopsOf(spec));
-  const [thickness, setThickness] = useState(14);
+  const [stops, setStops] = useState<Stop[]>(() => stopsOf(item.spec));
+  // سماكةُ حلقةٍ رُسمت هنا تُقرأ من فراغها المحفوظ، فيبدأ المحرّرُ بها لا بالافتراض.
+  const [thickness, setThickness] = useState(() => {
+    if (!item.frameHole || !/^conic-gradient/.test(item.spec)) return 14;
+    const t = Math.round((1 - (item.frameHole * SIDE) / (2 * (SIDE / 2 - 2) * 100)) * 100);
+    return Math.min(30, Math.max(6, t));
+  });
+  // بلا صورةٍ محفوظة فالمعاينةُ حلقةٌ من البداية، والحفظُ يرسمها.
+  const [ringDirty, setRingDirty] = useState(!item.mediaId);
+  const [fit, setFit] = useState<Fit>(() => parseFit(item.fit));
   const [note, setNote] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const conic = conicOf(stops);
-  const ring = `radial-gradient(farthest-side, transparent calc(100% - ${thickness}% - 1px), #000 calc(100% - ${thickness}%))`;
+  const drag = useRef<{ x: number; y: number; fit: Fit } | null>(null);
 
+  const ringHole = Math.round(((SIDE / 2 - 2) * (1 - thickness / 100) * 2 * 100) / SIDE);
+  const hole = ringDirty ? ringHole : item.frameHole;
+  const zoom = hole && hole >= 20 && hole <= 99 ? (100 / hole) * 0.95 : 1;
+  const art = PREVIEW * zoom * (fit.s / 100);
+  const unit = art / 100;
+  const clamp = (v: number) => Math.max(-FIT_LIMITS.offset, Math.min(FIT_LIMITS.offset, v));
+  const value = `${Math.round(fit.x)},${Math.round(fit.y)},${Math.round(fit.s)}`;
+  const worn = { spec: item.spec, mediaId: item.mediaId, frameHole: item.frameHole, fit: value };
+  const conic = conicOf(stops);
+  // الحلقةُ في اللوحة: حافّتُها الخارجيّة ٢٥٤ من ٢٥٦، والداخليّةُ بسماكتها.
+  const edge = ((SIDE / 2 - 2) / (SIDE / 2)) * 100;
+  const ring = `radial-gradient(farthest-side, transparent calc(${edge * (1 - thickness / 100)}% - 0.5px), #000 ${edge * (1 - thickness / 100)}%, #000 calc(${edge}% - 0.5px), transparent ${edge}%)`;
+
+  const ringEdit = (next: () => void) => {
+    next();
+    setRingDirty(true);
+    setNote(null);
+  };
   const update = (index: number, patch: Partial<Stop>) =>
-    setStops(stops.map((stop, i) => (i === index ? { ...stop, ...patch } : stop)));
+    ringEdit(() => setStops(stops.map((stop, i) => (i === index ? { ...stop, ...patch } : stop))));
+
+  const save = () =>
+    start(async () => {
+      try {
+        if (ringDirty) {
+          const blob = await renderRing(stops, thickness);
+          const data = new FormData();
+          data.set("image", new File([blob], "frame.png", { type: "image/png" }));
+          data.set("width", String(SIDE));
+          data.set("height", String(SIDE));
+          // الوجهُ يجلس في الفراغ الأوسط: قطرُه ÷ عرضُ اللوحة.
+          data.set("hole", String(ringHole));
+          data.set("spec", conic);
+          await setItemImage(itemId, data);
+        }
+        const error = await setItemFit(itemId, fit);
+        if (error) return setNote(error);
+        setRingDirty(false);
+        setNote(ringDirty ? "تمّ الحفظ — الإطار صورةٌ بضبطه" : "تمّ الحفظ");
+      } catch (error) {
+        setNote(error instanceof Error ? error.message : "تعذّر الحفظ");
+      }
+    });
 
   return (
     <div className="mt-3 rounded-2xl border border-line bg-card p-3">
-      <p className="text-[12px] font-bold">إطار ملوّن</p>
+      <p className="text-[12px] font-bold">الإطار على الصورة</p>
       <p className="mb-3 text-[11px] leading-relaxed text-faint">
-        ألوانٌ لكلٍّ منها زاويته حول الصورة (٠ أعلاها، ٩٠ يمينها، ١٨٠ أسفلها). «احفظ» يرسم الحلقةَ
-        صورةً تُرى في كل مكان — المتجرِ والملفّ و«مشاهدة الإطار» — لا لوناً يملأ البطاقة.
+        اسحب الإطار يميناً ويساراً وأعلى وأسفل، وغيّر ألوانه وسماكته ومقاسه — كلُّها على المعاينة نفسها، وهي
+        صورتُك كما تُرسم في التطبيق. «احفظ» يحفظ الكلَّ معاً.
       </p>
 
-      <div className="mb-3 flex justify-center">
-        <div className="relative" style={{ width: 168, height: 168 }}>
-          <div className="absolute rounded-full" style={{ inset: 14, overflow: "hidden" }}>
-            <Avatar name={me.name} size={140} mediaId={me.avatarMediaId} />
+      <div
+        className="relative mx-auto flex touch-none select-none items-center justify-center overflow-hidden rounded-2xl"
+        style={{ width: "100%", maxWidth: PREVIEW * 1.9, height: PREVIEW * 1.6, background: "var(--color-ground)", cursor: "grab" }}
+        onPointerDown={(event) => {
+          event.currentTarget.setPointerCapture(event.pointerId);
+          drag.current = { x: event.clientX, y: event.clientY, fit };
+        }}
+        onPointerMove={(event) => {
+          const from = drag.current;
+          if (!from) return;
+          setFit({
+            ...from.fit,
+            x: clamp(from.fit.x + (event.clientX - from.x) / unit),
+            y: clamp(from.fit.y + (event.clientY - from.y) / unit),
+          });
+        }}
+        onPointerUp={() => (drag.current = null)}
+        onPointerCancel={() => (drag.current = null)}
+      >
+        {ringDirty || !item.mediaId ? (
+          <div className="relative" style={{ width: PREVIEW, height: PREVIEW }}>
+            <Avatar name={me.name} size={PREVIEW} mediaId={me.avatarMediaId} />
+            <div
+              className="pointer-events-none absolute rounded-full"
+              style={{
+                width: art,
+                height: art,
+                left: (PREVIEW - art) / 2,
+                top: (PREVIEW - art) / 2,
+                transform: `translate(${fit.x}%, ${fit.y}%)`,
+                background: conic,
+                WebkitMask: ring,
+                mask: ring,
+              }}
+            />
           </div>
-          <div
-            className="pointer-events-none absolute inset-0 rounded-full"
-            style={{ background: conic, WebkitMask: ring, mask: ring }}
-          />
-        </div>
+        ) : (
+          <Avatar name={me.name} size={PREVIEW} mediaId={me.avatarMediaId} frame={worn} />
+        )}
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="mt-3 flex flex-col gap-2">
         {stops.map((stop, index) => (
           <div key={index} className="flex items-center gap-2">
             <input
@@ -229,7 +315,7 @@ export function GradientFrame({
             {stops.length > 2 ? (
               <button
                 type="button"
-                onClick={() => setStops(stops.filter((_, i) => i !== index))}
+                onClick={() => ringEdit(() => setStops(stops.filter((_, i) => i !== index)))}
                 className="h-8 w-8 rounded-lg border border-line text-[13px] text-muted"
                 aria-label="احذف اللون"
               >
@@ -238,53 +324,79 @@ export function GradientFrame({
             ) : null}
           </div>
         ))}
-      </div>
-
-      <div className="mt-2 flex flex-wrap items-center gap-2">
         {stops.length < 8 ? (
           <button
             type="button"
-            onClick={() => setStops([...stops, { color: "#7A4A3E", angle: Math.min(359, (stops.at(-1)?.angle ?? 0) + 45) }])}
-            className="h-9 rounded-xl border border-line px-3 text-[12px] font-semibold"
+            onClick={() =>
+              ringEdit(() =>
+                setStops([...stops, { color: "#7A4A3E", angle: Math.min(359, (stops.at(-1)?.angle ?? 0) + 45) }]),
+              )
+            }
+            className="h-9 self-start rounded-xl border border-line px-3 text-[12px] font-semibold"
           >
             + لون
           </button>
         ) : null}
-        <label className="flex grow items-center gap-2 text-[11.5px] text-muted">
-          السماكة
-          <input type="range" min={6} max={30} value={thickness} onChange={(e) => setThickness(Number(e.target.value))} className="min-w-0 grow" />
-        </label>
       </div>
 
-      <div className="mt-3 flex items-center gap-2">
+      <label className="mt-3 flex items-center gap-2 text-[11.5px] text-muted">
+        <span className="w-24 shrink-0">السماكة — {thickness}٪</span>
+        <input
+          type="range"
+          min={6}
+          max={30}
+          value={thickness}
+          onChange={(event) => ringEdit(() => setThickness(Number(event.target.value)))}
+          className="min-w-0 grow"
+        />
+      </label>
+      <label className="mt-2 flex items-center gap-2 text-[11.5px] text-muted">
+        <span className="w-24 shrink-0">المقاس — {Math.round(fit.s)}٪</span>
+        <input
+          type="range"
+          min={FIT_LIMITS.minScale}
+          max={FIT_LIMITS.maxScale}
+          value={fit.s}
+          onChange={(event) => setFit({ ...fit, s: Number(event.target.value) })}
+          className="min-w-0 grow"
+        />
+      </label>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <button
           type="button"
           disabled={pending}
-          onClick={() =>
-            start(async () => {
-              try {
-                const blob = await renderRing(stops, thickness);
-                const data = new FormData();
-                data.set("image", new File([blob], "frame.png", { type: "image/png" }));
-                data.set("width", String(SIDE));
-                data.set("height", String(SIDE));
-                // الوجهُ يجلس في الفراغ الأوسط: قطرُه ÷ عرضُ اللوحة.
-                data.set("hole", String(Math.round(((SIDE / 2 - 2) * (1 - thickness / 100) * 2 * 100) / SIDE)));
-                data.set("spec", conicOf(stops));
-                await setItemImage(itemId, data);
-                setNote("تمّ الحفظ — الإطار الآن صورة");
-              } catch (error) {
-                setNote(error instanceof Error ? error.message : "تعذّر الحفظ");
-              }
-            })
-          }
+          onClick={save}
           className="h-10 rounded-xl px-4 text-[12.5px] font-bold text-white"
           style={{ background: "var(--color-clay)", opacity: pending ? 0.6 : 1 }}
         >
-          احفظ الإطار
+          احفظ
         </button>
+        <button
+          type="button"
+          onClick={() => setFit({ x: 0, y: 0, s: 100 })}
+          className="h-10 rounded-xl border border-line px-3 text-[12px] font-semibold text-muted"
+        >
+          أعِد الموضع
+        </button>
+        {ringDirty && item.mediaId ? (
+          <button
+            type="button"
+            onClick={() => {
+              setRingDirty(false);
+              setStops(stopsOf(item.spec));
+              setNote(null);
+            }}
+            className="h-10 rounded-xl border border-line px-3 text-[12px] font-semibold text-muted"
+          >
+            ارجع إلى الصورة المحفوظة
+          </button>
+        ) : null}
         {note ? <span className="text-[11.5px] text-muted">{note}</span> : null}
       </div>
+      {ringDirty && item.mediaId ? (
+        <p className="mt-2 text-[11px] text-faint">الحفظُ يستبدل صورةَ الإطار المرفوعة بهذه الحلقة.</p>
+      ) : null}
     </div>
   );
 }

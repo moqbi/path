@@ -35,7 +35,7 @@ import { itemPaint, ScreenHeader, TagPill } from "@/components/ui";
 import { Saver } from "./saver";
 import { AdminEmail } from "./email";
 import { SitePanel } from "./site";
-import { FitEditor, GradientFrame } from "./fit-editor";
+import { FitEditor, FrameEditor } from "./fit-editor";
 import { TOPIC_LABEL } from "@/lib/topics";
 import { Suspend } from "./suspend";
 import { PlusGrant } from "./plus";
@@ -1569,19 +1569,20 @@ export default async function AdminPage({
                             mime={item.media?.mime ?? null}
                             hole={item.frameHole}
                           />
-                          {/* الضبطُ على الصورة والإطارُ الملوّن (القاعدة ٤٧٥). */}
-                          {(item.kind === "FRAME" || item.kind === "CHARM") && item.mediaId ? (
-                            <FitEditor
+                          {/* الإطارُ: الضبطُ والألوانُ في معاينةٍ واحدة (القاعدة ٤٧٦)، والتشارمُ ضبطُه وحده. */}
+                          {item.kind === "FRAME" ? (
+                            <FrameEditor
+                              key={item.mediaId ?? "none"}
                               itemId={item.id}
-                              kind={item.kind}
                               item={{ spec: item.spec, mediaId: item.mediaId, frameHole: item.frameHole, fit: item.fit }}
                               me={{ name: user.name, avatarMediaId: user.avatarMediaId }}
                             />
                           ) : null}
-                          {item.kind === "FRAME" ? (
-                            <GradientFrame
+                          {item.kind === "CHARM" && item.mediaId ? (
+                            <FitEditor
                               itemId={item.id}
-                              spec={item.spec}
+                              kind="CHARM"
+                              item={{ spec: item.spec, mediaId: item.mediaId, frameHole: item.frameHole, fit: item.fit }}
                               me={{ name: user.name, avatarMediaId: user.avatarMediaId }}
                             />
                           ) : null}
