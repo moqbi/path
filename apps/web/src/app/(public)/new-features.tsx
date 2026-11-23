@@ -77,7 +77,7 @@ function Gallery() {
           <span className="n-canvas" style={{ background: "linear-gradient(160deg,#1f3b4d,#5b8aa6 60%,#f6d58b)" }} />
         </span>
         <span className="n-frame n-frame-side">
-          <span className="n-canvas n-canvas-text">صحيت ٦:٣٠</span>
+          <span className="n-canvas n-canvas-text">😌 رايق</span>
         </span>
       </div>
       <span className="n-floor" />
