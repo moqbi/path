@@ -1007,7 +1007,12 @@ function HallSheet({
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const width = useContentWidth();
-  const [tab, setTab] = useState<Tab>(first);
+  /*
+    على الشاشة الأفقيّة (الآيفون المُدار والآيباد والقابل للطيّ) عمودان — **بقرار المالك**: اللوحةُ
+    وبطاقتُها يميناً، والتفاعلاتُ والتعليقاتُ يساراً. نافذةٌ بعرض الشاشة تُري شريحةً واحدةً وتترك نصفَها فارغاً.
+  */
+  const wide = width > height;
+  const [tab, setTab] = useState<Tab>(wide && first === "art" ? "echo" : first);
   const [hold, setHold] = useState(false);
   /*
     تمريرُ آبل الأصليّ يلتقط السحبةَ الأفقيّة أيضاً ويُلغي ما تحتها، فيُطفأ في شريحة اللوحة ما دام
@@ -1065,8 +1070,10 @@ function HallSheet({
   const backdrop = useMemo(() => drag.interpolate({ inputRange: [0, height], outputRange: [1, 0], extrapolate: "clamp" }), [drag, height]);
 
   const when = riyadh(moment.createdAt);
+  // تدويرٌ والنافذةُ مفتوحةٌ على «اللوحة» لا يُفرغ العمودَ الأيسر: اللوحةُ نفسُها يميناً.
+  const listTab: Tab = tab === "art" ? "echo" : tab;
   const tabs: { key: Tab; label: string }[] = [
-    { key: "art", label: "اللوحة" },
+    ...(wide ? [] : [{ key: "art" as Tab, label: "اللوحة" }]),
     { key: "echo", label: reactionCount ? `التفاعلات ${ar(reactionCount)}` : "التفاعلات" },
     { key: "comments", label: commentCount ? `التعليقات ${ar(commentCount)}` : "التعليقات" },
   ];
@@ -1117,18 +1124,70 @@ function HallSheet({
           </View>
         </View>
 
-        <View style={{ flexDirection: "row", paddingHorizontal: 18, marginTop: 14, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,.1)" }}>
-          {tabs.map((one) => {
-            const on = one.key === tab;
-            return (
-              <Pressable key={one.key} onPress={() => pick(one.key)} style={{ flex: 1, alignItems: "center", paddingVertical: 11 }}>
-                <Text style={{ color: on ? "#fff" : "rgba(255,255,255,.55)", fontSize: 13.5, fontWeight: on ? "800" : "600" }}>{one.label}</Text>
-                <View style={{ position: "absolute", bottom: -1, height: 2.5, width: "70%", borderRadius: 2, backgroundColor: on ? skin.accent.bg : "transparent" }} />
-              </Pressable>
-            );
-          })}
-        </View>
+        {wide ? null : (
+          <View style={{ flexDirection: "row", paddingHorizontal: 18, marginTop: 14, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,.1)" }}>
+            {tabs.map((one) => {
+              const on = one.key === tab;
+              return (
+                <Pressable key={one.key} onPress={() => pick(one.key)} style={{ flex: 1, alignItems: "center", paddingVertical: 11 }}>
+                  <Text style={{ color: on ? "#fff" : "rgba(255,255,255,.55)", fontSize: 13.5, fontWeight: on ? "800" : "600" }}>{one.label}</Text>
+                  <View style={{ position: "absolute", bottom: -1, height: 2.5, width: "70%", borderRadius: 2, backgroundColor: on ? skin.accent.bg : "transparent" }} />
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
 
+        {wide ? (
+          <View style={{ flex: 1, flexDirection: "row" }}>
+            <ScrollView
+              style={{ flex: 1 }}
+              scrollEnabled={!hold}
+              contentContainerStyle={{ padding: 18, paddingBottom: insets.bottom + 30, alignItems: "center" }}
+            >
+              <View style={{ alignItems: "center", gap: 18 }}>
+                <View style={{ padding: 18, borderRadius: 18, backgroundColor: skin.wall, alignItems: "center" }}>
+                  <DetailPiece skin={skin} frameImage={frameImage} moment={moment} w={Math.min(250, (width / 2) * 0.62, Math.max(110, (height * 0.9 - 150) / 1.3))} onHold={setHold} />
+                </View>
+                <Placard skin={skin} moment={moment} onEcho={() => pick("echo")} />
+                <Pressable
+                  onPress={() => onOpen(moment.id)}
+                  style={{ height: 46, paddingHorizontal: 26, borderRadius: 23, justifyContent: "center", backgroundColor: skin.accent.bg }}
+                >
+                  <Text style={{ color: skin.accent.ink, fontSize: 14.5, fontWeight: "800" }}>افتح اللحظة</Text>
+                </Pressable>
+              </View>
+            </ScrollView>
+            <View style={{ width: 1, backgroundColor: "rgba(255,255,255,.1)" }} />
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: "row", paddingHorizontal: 18, marginTop: 6, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,.1)" }}>
+                {tabs.map((one) => {
+                  const on = one.key === listTab;
+                  return (
+                    <Pressable key={one.key} onPress={() => pick(one.key)} style={{ flex: 1, alignItems: "center", paddingVertical: 11 }}>
+                      <Text style={{ color: on ? "#fff" : "rgba(255,255,255,.55)", fontSize: 13.5, fontWeight: on ? "800" : "600" }}>{one.label}</Text>
+                      <View style={{ position: "absolute", bottom: -1, height: 2.5, width: "70%", borderRadius: 2, backgroundColor: on ? skin.accent.bg : "transparent" }} />
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <ScrollView
+                key={listTab}
+                onScroll={(event) => {
+                  atTop.current = event.nativeEvent.contentOffset.y <= 2;
+                }}
+                scrollEventThrottle={16}
+                contentContainerStyle={{ padding: 18, paddingBottom: insets.bottom + 30, gap: 14 }}
+              >
+                {listTab === "echo" ? (
+                  <ReactionList skin={skin} rows={reactions} loading={full.isLoading} />
+                ) : (
+                  <CommentList rows={comments} loading={full.isLoading} />
+                )}
+              </ScrollView>
+            </View>
+          </View>
+        ) : (
         <ScrollView
           key={tab}
           scrollEnabled={!hold && (tab !== "art" || overflows)}
@@ -1162,6 +1221,7 @@ function HallSheet({
             <CommentList rows={comments} loading={full.isLoading} />
           )}
         </ScrollView>
+        )}
       </Animated.View>
     </Modal>
   );
