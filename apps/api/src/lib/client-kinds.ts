@@ -12,6 +12,9 @@ import type { Context } from "hono";
 const SINCE: Record<string, number> = {
   AVATAR_CHANGED: 2,
   COINS_GRANTED: 2,
+  // المودُ والسؤال (القاعدة ٤٨٤).
+  MOOD: 3,
+  QUESTION: 3,
 };
 
 export function unknownKinds(c: Context) {

@@ -41,8 +41,12 @@ export const refreshInput = z.object({
 });
 
 export const momentInput = z.object({
-  kind: z.enum(["PHOTO", "THOUGHT", "PLACE", "MUSIC"]),
+  kind: z.enum(["PHOTO", "THOUGHT", "PLACE", "MUSIC", "MOOD", "QUESTION"]),
   text: z.string().trim().max(MOMENT_TEXT_MAX).optional(),
+  /** المودُ لـ`MOOD` (القاعدة ٤٨٤) — من `Mood` لا نصٌّ يُكتب. */
+  moodId: z.string().trim().min(1).max(40).optional(),
+  /** «الإجاباتُ لي وحدي» لـ`QUESTION`. */
+  answersPrivate: z.boolean().optional(),
   mediaId: cuid.optional(),
   /** موضعُ الصورة في إطار البطاقة، بالمئة — يُضبط بالسحب قبل النشر. */
   photoX: z.number().int().min(0).max(100).optional(),
@@ -100,7 +104,7 @@ export const momentEditInput = z.object({ text: z.string().trim().max(MOMENT_TEX
 export const commentEditInput = z.object({ body: z.string().trim().min(1).max(500) });
 
 export const reactionInput = z.object({
-  kind: z.enum(["SMILE", "LAUGH", "GASP", "SAD", "LOVE", "CAMERA", "CHAT", "PIN", "SLEEPY", "CUSTOM"]),
+  kind: z.enum(["SMILE", "LAUGH", "GASP", "SAD", "LOVE", "CAMERA", "CHAT", "PIN", "CUSTOM"]),
   emoji: z.string().max(8).optional(),
 });
 
@@ -210,8 +214,6 @@ export type LoginInput = z.infer<typeof loginInput>;
 export type MomentInput = z.infer<typeof momentInput>;
 export type PresignInput = z.infer<typeof presignInput>;
 export type StorySticker = z.infer<typeof storySticker>;
-
-export const markInput = z.object({ kind: z.enum(["SLEEP", "WAKE"]) });
 
 export const profileInput = z.object({
   name: z.string().trim().min(1, "الاسم مطلوب").max(40),

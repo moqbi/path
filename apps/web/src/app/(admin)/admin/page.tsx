@@ -61,6 +61,7 @@ import { StickersSection } from "./stickers";
 import { BroadcastsSection } from "./broadcasts";
 import { OccasionsSection } from "./occasions";
 import { InterestsSection } from "./interests";
+import { MoodsSection } from "./moods";
 import { AnalyticsSection } from "./analytics";
 import { HomeSection } from "./home";
 import { CommandBar } from "./command-bar";
@@ -712,6 +713,7 @@ const SECTIONS = [
   { key: "stickers", label: "الملصقات", store: true, group: "content", icon: "sticker" },
   { key: "broadcasts", label: "التنبيهات", store: false, group: "content", icon: "bell" },
   { key: "occasions", label: "المناسبات", store: false, group: "content", icon: "calendar" },
+  { key: "moods", label: "المودات", store: false, group: "content", icon: "mood" },
   { key: "interests", label: "الاهتمامات", store: false, group: "content", icon: "spark" },
   { key: "words", label: "الكلمات", store: false, group: "content", icon: "words" },
   { key: "site", label: "الموقع", store: false, group: "site", icon: "globe" },
@@ -730,6 +732,7 @@ const NAV_ICON: Record<string, string> = {
   sticker: "M20 12a8 8 0 1 1-8-8h8zM20 12h-5a3 3 0 0 1-3-3V4",
   bell: "M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9zM10 20a2 2 0 0 0 4 0",
   calendar: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4",
+  mood: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8.5 14.5c.9 1.2 2.1 1.8 3.5 1.8s2.6-.6 3.5-1.8M9 9.5v.5M15 9.5v.5",
   spark: "M12 3l2.2 6.8L21 12l-6.8 2.2L12 21l-2.2-6.8L3 12l6.8-2.2z",
   words: "M4 6h16M4 12h10M4 18h7M17 15l4 4M21 15l-4 4",
   globe: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18",
@@ -2587,6 +2590,7 @@ export default async function AdminPage({
         {section === "stickers" ? <StickersSection /> : null}
         {section === "broadcasts" ? <BroadcastsSection /> : null}
         {section === "occasions" ? <OccasionsSection /> : null}
+        {section === "moods" ? <MoodsSection /> : null}
         {section === "interests" ? <InterestsSection /> : null}
 
         {section === "words" ? (

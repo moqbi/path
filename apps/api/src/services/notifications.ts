@@ -482,7 +482,8 @@ async function replies(userId: string, limit: number) {
       userId: { not: userId },
       createdAt: { gt: since },
       NOT: { mentionIds: { has: userId } },
-      moment: { authorId: { not: userId }, comments: { some: { userId } } },
+      // إجاباتُ سؤالٍ لصاحبه وحده ليست ردوداً تُقرأ (القاعدة ٤٨٤).
+      moment: { authorId: { not: userId }, answersPrivate: false, comments: { some: { userId } } },
     },
     select: {
       id: true,

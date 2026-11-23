@@ -66,10 +66,10 @@ export const SITE_TEXT = {
   "post.music.tags": "ما تسمعه الآن\nنوت فوق صورتك\nموسيقى القصة",
   "post.place.title": "موقع",
   "post.place.tags": "من حولك\nمع مين؟\nمن كان هنا",
-  "post.sleep.title": "نوم",
-  "post.sleep.tags": "لحظة بلا نص\nتصبحون على خير",
-  "post.wake.title": "صحيت",
-  "post.wake.tags": "ساعتها خبرها\nصباح الخير",
+  "post.mood.title": "مود",
+  "post.mood.tags": "وجهٌ وعبارة\nلوحة بصورة المود",
+  "post.question.title": "سؤال",
+  "post.question.tags": "اسأل دائرتك\nالإجابات لك وحدك",
 
   // ── ليش آثار ──
   "why.title": "ليش آثار؟",

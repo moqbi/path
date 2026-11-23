@@ -17,8 +17,8 @@ const SAMPLES: Record<string, { who: string; time: string; text: string; faces: 
   photo: { who: "فهد", time: "٥:٤٥ م", text: "غروب الكورنيش 🌅", faces: ["love", "camera", "gasp"] },
   music: { who: "سارة", time: "١١:٠٢ ص", text: "تسمع «ريحة الحبايب» — ماجد المدني", faces: ["love", "smile"] },
   place: { who: "خالد", time: "٩:٣٠ ص", text: "في مقهى عقل · الرياض", faces: ["pin", "smile", "chat"] },
-  sleep: { who: "ريم", time: "١١:٣٠ م", text: "نامت — تصبحون على خير", faces: ["smile", "love"] },
-  wake: { who: "نورة", time: "٦:١٥ ص", text: "صحت الساعة ٦:١٥ ص", faces: ["laugh", "smile"] },
+  mood: { who: "ريم", time: "٩:٤٠ م", text: "مودها: رايقة 😌 — الجو اليوم يجنن", faces: ["smile", "love"] },
+  question: { who: "نورة", time: "٦:١٥ م", text: "سألت: وين أحلى قهوة بالرياض؟ — ١٢ إجابة", faces: ["laugh", "smile"] },
 };
 
 export function PostCard({ kind, title, tags, delay }: { kind: string; title: string; tags: string[]; delay: number }) {

@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { View, Pressable, Image, Animated, Easing, useWindowDimensions } from "react-native";
 import { Text } from "./type";
 import { useRouter } from "expo-router";
 import { create } from "zustand";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "../lib/api";
+import { openMoodSheet, openQuestionSheet } from "./mood-sheet";
 import { playClose, playOpen } from "../lib/sound";
 import { Spot } from "./spot";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -58,7 +57,7 @@ const EDGE = 10;
  *
  * ٢٤٦ مكتوبةً تعمل على ٣٧٥ فما فوق، وتخرج على شاشةٍ ٣٢٠: أدنى الأصناف
  * زاويتُه ٤° فيمشي أفقياً بمقدار القطر كلّه تقريباً، فيقع نصفُه خارج
- * الحافة اليسرى — وهو «صحيت»، فيُضغط على فراغ. قيست فعلاً على ٣٢٠×٥٦٨.
+ * الحافة اليسرى — وهو آخرُ الأصناف، فيُضغط على فراغ. قيست فعلاً على ٣٢٠×٥٦٨.
  *
  * والحدّ من العرض وحده: أعلى الأصناف عند ٨٨° يرتفع بمقدار القطر، وهو
  * أقصرُ من أقصر شاشةٍ ندعمها (٥٦٨) بفارقٍ مريح.
@@ -73,8 +72,8 @@ const ART = {
   photo: require("../assets/composer/photo.png"),
   place: require("../assets/composer/place.png"),
   music: require("../assets/composer/music.png"),
-  sleep: require("../assets/composer/sleep.png"),
-  wake: require("../assets/composer/wake.png"),
+  mood: require("../assets/composer/mood.png"),
+  question: require("../assets/composer/question.png"),
 };
 
 /**
@@ -87,22 +86,10 @@ export function ComposerFan() {
   // فوق الشريط الزجاجيّ العائم لا فوق حافّة الشاشة (القاعدة ٢٢٨).
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const client = useQueryClient();
   const open = useFan((state) => state.open);
   const setOpen = (next: boolean | ((was: boolean) => boolean)) =>
     useFan.setState({ open: typeof next === "function" ? next(useFan.getState().open) : next });
-  const [busy, setBusy] = useState<string | null>(null);
   const progress = useRef(new Animated.Value(0)).current;
-
-  const mark = useMutation({
-    mutationFn: (kind: "SLEEP" | "WAKE") =>
-      api("/v1/moments/mark", { method: "POST", body: JSON.stringify({ kind }) }),
-    onSettled: () => {
-      setBusy(null);
-      void client.invalidateQueries({ queryKey: ["feed"] });
-      void client.invalidateQueries({ queryKey: ["me", "moments"] });
-    },
-  });
 
   useEffect(() => {
     Animated.timing(progress, {
@@ -118,9 +105,9 @@ export function ComposerFan() {
     { key: "photo", label: "صورة · فيديو", run: () => router.push("/compose?kind=PHOTO" as never) },
     { key: "place", label: "مكان", run: () => router.push("/compose?kind=PLACE" as never) },
     { key: "music", label: "أغنية", run: () => router.push("/compose?kind=MUSIC" as never) },
-    { key: "sleep", label: "نوم", run: () => { setBusy("sleep"); mark.mutate("SLEEP"); } },
-    // النوم والصحو طرفا اليوم، فيجلسان متجاورين في طرف القوس.
-    { key: "wake", label: "صحيت", run: () => { setBusy("wake"); mark.mutate("WAKE"); } },
+    // «مود» و«سؤال» مكانَ النوم والصحو (القاعدة ٤٨٤): نافذتان في الجذر لا شاشتان.
+    { key: "mood", label: "مود", run: openMoodSheet },
+    { key: "question", label: "سؤال", run: openQuestionSheet },
   ] as const;
 
   const screen = useWindowDimensions();
@@ -183,7 +170,6 @@ export function ComposerFan() {
               <Spot id={`fan.${item.key}`}>
               <Pressable
                 accessibilityLabel={item.label}
-                disabled={busy !== null}
                 onPress={() => {
                   setOpen(false);
                   item.run();
@@ -204,7 +190,7 @@ export function ComposerFan() {
                 {/* الرسم صورةٌ لا خطّ: تُستبدل من `assets/composer` وحدها. */}
                 <Image
                   source={ART[item.key]}
-                  style={{ width: ICON, height: ICON, opacity: busy === item.key ? 0.45 : 1 }}
+                  style={{ width: ICON, height: ICON }}
                   resizeMode="contain"
                 />
               </Pressable>

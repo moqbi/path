@@ -25,7 +25,7 @@ import {
   BookIcon, CalendarIcon, ExitIcon, GearIcon, MapIcon, GiftIcon, PencilIcon, SparkIcon, StarIcon, WithIcon,
 } from "../../components/icons";
 import { api } from "../../lib/api";
-import { keys, type Moment } from "../../lib/queries";
+import { keys, usePagedMoments, type Moment } from "../../lib/queries";
 import { useSession } from "../../lib/session";
 import { ar, dayLabel } from "../../lib/format";
 import { useStatusNotes } from "../../lib/status-notes";
@@ -180,10 +180,8 @@ export function Me() {
     queryKey: ["me", "stats"],
     queryFn: () => api<{ moments: number; friends: number; sent: number; got: number }>("/v1/me/stats"),
   });
-  const mine = useQuery({
-    queryKey: ["me", "moments"],
-    queryFn: () => api<{ moments: Moment[] }>("/v1/me/moments?limit=40"),
-  });
+  // بصفحاتٍ لا صفحةً واحدة: كان ما قبل الأربعين لا يُحمَّل مهما نزل صاحبُه.
+  const mine = usePagedMoments(["me", "moments"], "/v1/me/moments");
 
   /*
     السحبُ من أعلى يمدّ الغلاف ويُحدّث فعلاً — كاللحظات: صاحبُ الجلسة
@@ -208,14 +206,14 @@ export function Me() {
 
   const days = useMemo(() => {
     const out: { title: string; data: Moment[] }[] = [];
-    for (const moment of mine.data?.moments ?? []) {
+    for (const moment of mine.moments) {
       const label = dayLabel(new Date(moment.createdAt));
       const last = out.at(-1);
       if (last && last.title === label) last.data.push(moment);
       else out.push({ title: label, data: [moment] });
     }
     return out;
-  }, [mine.data]);
+  }, [mine.moments]);
 
   if (!me) return null;
 
@@ -421,6 +419,9 @@ export function Me() {
             </View>
           </>
         }
+        onEndReachedThreshold={0.6}
+        onEndReached={mine.more}
+        ListFooterComponent={mine.loadingMore ? <Spinner style={{ marginVertical: 16 }} color={colors.clay} /> : undefined}
         renderSectionHeader={({ section }) => (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20, paddingVertical: 16 }}>
             <View style={{ width: SPINE_W, alignItems: "center", justifyContent: "center", alignSelf: "stretch" }}>

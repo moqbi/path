@@ -214,7 +214,7 @@ function FeatureIcon({ children }: { children: React.ReactNode }) {
   `public/composer`) كما في التطبيق — استبدالُ الملفّ يغيّرها هنا أيضاً.
 */
 const REACTIONS = ["smile", "love", "laugh", "gasp", "sad", "camera", "chat", "pin"] as const;
-const POSTS = ["write", "photo", "music", "place", "sleep", "wake"] as const;
+const POSTS = ["write", "photo", "music", "place", "mood", "question"] as const;
 
 /** خاتمٌ يدور: نصٌّ على دائرة، وفي وسطه العلامة. */
 function Stamp({ text, href }: { text: string; href?: string }) {

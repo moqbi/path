@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { MoodSheet } from "@/components/mood-sheet";
 import "./globals.css";
 import { TAGLINE_AR, TAGLINE_EN } from "@/components/brand";
 import { currentUser } from "@/lib/auth";
@@ -73,6 +74,8 @@ export default async function RootLayout({
       {user && canTryStickers(user) ? <OfflineBanner /> : null}
       {/* بطاقةُ الإعلان عند الفتح (القاعدتان ٢٦٧ و٣٣٥). */}
       {user ? <OpeningPromo coins={user.coins} isPlus={user.isPlus} /> : null}
+      {/* «مود» و«سؤال» نافذتان في الجذر يفتحهما قوسُ النشر (القاعدة ٤٨٤). */}
+      {user ? <MoodSheet /> : null}
       {children}
     </div>
   );

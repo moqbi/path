@@ -4,7 +4,6 @@ import {
   commentInput,
   cuid,
   momentEditInput,
-  markInput,
   momentInput,
   pageQuery,
   pollVoteInput,
@@ -63,12 +62,6 @@ export const momentRoutes = new Hono()
 
   .post("/", zValidator("json", momentInput), async (c) =>
     c.json(await moments.createMoment(me(c), c.req.valid("json")), 201),
-  )
-
-  /** أغنيةٌ برابطها — العنوان يُقرأ من الرابط لا يُكتب. */
-  /** «نمت» و«صحيت»: بلا متنٍ وبلا جمهورٍ يُختار. */
-  .post("/mark", zValidator("json", markInput), async (c) =>
-    c.json(await moments.postMark(me(c), c.req.valid("json").kind), 201),
   )
 
   /** ما مرّ على الشاشة من الخطّ الزمنيّ، دفعةً واحدة. */

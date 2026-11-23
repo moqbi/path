@@ -521,6 +521,7 @@ export async function sweepOrphans(): Promise<number> {
       storeBookEnd: { is: null },
       sticker: { is: null },
       broadcast: { is: null },
+      mood: { is: null },
       siteImage: { is: null },
       siteShot: { is: null },
     },

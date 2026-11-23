@@ -34,7 +34,7 @@ const MARK = SITE_URL
 /** رسمُ التفاعل من الموقع كالشعار — وبلا نطاقٍ تُكتب الجملةُ وحدها. */
 const GLYPH: Record<string, string> = {
   SMILE: "smile", LAUGH: "laugh", GASP: "gasp", SAD: "sad", LOVE: "love",
-  CAMERA: "camera", CHAT: "chat", PIN: "pin", SLEEPY: "sleepy",
+  CAMERA: "camera", CHAT: "chat", PIN: "pin",
 };
 function glyph(top: { kind: string; emoji: string | null } | null | undefined): string {
   if (!top) return "";

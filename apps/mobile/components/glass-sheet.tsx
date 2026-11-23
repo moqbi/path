@@ -48,6 +48,7 @@ export function GlassSheet({
   children,
   overlay,
   centered = false,
+  width,
 }: {
   icon?: React.ReactNode;
   title: string;
@@ -61,6 +62,8 @@ export function GlassSheet({
   overlay?: React.ReactNode;
   /** بطاقةٌ عريضةٌ في وسط الشاشة لا لوحٌ في أسفلها — النوت على الشاشة الأفقيّة (القاعدة ٤٧٢). */
   centered?: boolean;
+  /** عرضٌ بعينه للبطاقة المتوسّطة — نافذتا «مود» و«سؤال» (القاعدة ٤٨٤): أنيقةٌ لا بعرض الشاشة. */
+  width?: number;
 }) {
   const insets = useSafeAreaInsets();
   const drag = useRef(new Animated.Value(0)).current;
@@ -142,7 +145,7 @@ export function GlassSheet({
             marginHorizontal: 10,
             // على الآيباد نافذةٌ بعرض جوّال في أسفل الشاشة كنوافذ النظام، لا شريطٌ بعرضها (القاعدة ٤٦٤).
             // والآيفونُ المُدار أضيق: ٤٤٠ — **بقرار المالك** (القاعدة ٤٦٨): ٥٦٠ على ارتفاع ٣٩٠ تملأ الشاشة.
-            width: centered ? Math.min(screenWidth - 80, 720) : Math.min(screenWidth - 20, screenWidth > height ? 440 : 560),
+            width: width ? Math.min(screenWidth - 32, width) : centered ? Math.min(screenWidth - 80, 720) : Math.min(screenWidth - 20, screenWidth > height ? 440 : 560),
             alignSelf: "center",
             marginBottom: centered ? 0 : Math.max(insets.bottom, 12),
             maxHeight: height * (screenWidth > height ? 0.86 : 0.78),

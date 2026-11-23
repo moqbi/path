@@ -21,7 +21,7 @@ import { GiftButton } from "../../components/gift-sheet";
 import { BellPlusIcon, MessageIcon, StarIcon, WithIcon } from "../../components/icons";
 import { DEV_FEATURES } from "../../lib/dev-features";
 import { api } from "../../lib/api";
-import { keys, useRings, useTogether, type Moment } from "../../lib/queries";
+import { keys, usePagedMoments, useRings, useTogether, type Moment } from "../../lib/queries";
 import { showToast } from "../../components/accounts-sheet";
 import { ar } from "../../lib/format";
 import { Spot } from "../../components/spot";
@@ -190,16 +190,12 @@ function Profile() {
   */
   const moderating = Boolean(me?.canModerate) && person.data?.friend === false;
 
-  const moments = useQuery({
-    queryKey: [...keys.userMoments(id), moderating],
-    queryFn: () =>
-      api<{ moments: Moment[] }>(
-        moderating
-          ? `/v1/moderation/users/${id}/moments?limit=20`
-          : `/v1/users/${id}/moments?limit=20`,
-      ),
-    enabled: !!person.data,
-  });
+  // بصفحاتٍ لا عشرين وحدها: ما قبلها يُجلب ببلوغ آخر القائمة.
+  const moments = usePagedMoments(
+    [...keys.userMoments(id), moderating],
+    moderating ? `/v1/moderation/users/${id}/moments` : `/v1/users/${id}/moments`,
+    !!person.data,
+  );
 
   const who = person.data?.person;
   // الطلبُ من الخادم لا من الضغطة وحدها (القاعدة ٣٧٩): ملفٌّ يُفتح ثانيةً يقرأ ما أُرسل.
@@ -221,7 +217,7 @@ function Profile() {
   const ring = fresh && who ? rings.data?.rings.find((r) => r.userId === who.id) ?? null : null;
   const [tab, setTab] = useState<"moments" | "together">("moments");
   const together = useTogether(fresh && tab === "together" ? id ?? "" : "");
-  const list = tab === "together" ? together.data?.moments ?? [] : moments.data?.moments ?? [];
+  const list = tab === "together" ? together.data?.moments ?? [] : moments.moments;
   const listLoading = tab === "together" ? together.isLoading : moments.isLoading;
 
   // السحبُ من أعلى يمدّ الغلاف ويُعيد جلب الملف ولحظاته — كاللحظات و«أنا».
@@ -273,6 +269,11 @@ function Profile() {
         {...pull.props}
           data={list}
           keyExtractor={(item) => item.id}
+          onEndReachedThreshold={0.6}
+          onEndReached={() => {
+            if (tab === "moments") moments.more();
+          }}
+          ListFooterComponent={tab === "moments" && moments.loadingMore ? <Spinner style={{ marginVertical: 16 }} color={colors.clay} /> : undefined}
           onViewableItemsChanged={onViewable}
           viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
           /*

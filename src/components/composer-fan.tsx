@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { openQuick } from "@/components/mood-sheet";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { postSleep, postWake } from "@/app/actions";
 import { playClose, playOpen } from "@/lib/sound";
 import { asset } from "@/lib/base";
 
@@ -55,9 +55,7 @@ export function ComposerFan({ mode = "bar" }: { mode?: "bar" | "rail" }) {
     else playClose();
     setOpen(next);
   }
-  const [busy, setBusy] = useState<string | null>(null);
   // إجراءات الخادم التي تعيد التوجيه يجب أن تُستدعى داخل انتقال.
-  const [, start] = useTransition();
 
   // بطاقةُ الترحيب تفتح القوس من خطوة «انشر أوّل لحظة» (القاعدة ٢٤٦).
   useEffect(() => {
@@ -109,24 +107,18 @@ export function ComposerFan({ mode = "bar" }: { mode?: "bar" | "rail" }) {
       src: asset("/composer/music.png"),
       run: () => router.push("/compose?kind=MUSIC"),
     },
+    // «مود» و«سؤال» مكانَ النوم والصحو (القاعدة ٤٨٤).
     {
-      key: "sleep",
-      label: "نوم",
-      src: asset("/composer/sleep.png"),
-      run: () => {
-        setBusy("sleep");
-        start(() => void postSleep());
-      },
+      key: "mood",
+      label: "مود",
+      src: asset("/composer/mood.png"),
+      run: () => openQuick("MOOD"),
     },
-    // النوم والصحو طرفا اليوم، فيجلسان متجاورين في طرف القوس.
     {
-      key: "wake",
-      label: "صحيت",
-      src: asset("/composer/wake.png"),
-      run: () => {
-        setBusy("wake");
-        start(() => void postWake());
-      },
+      key: "question",
+      label: "سؤال",
+      src: asset("/composer/question.png"),
+      run: () => openQuick("QUESTION"),
     },
   ];
 
@@ -171,7 +163,6 @@ export function ComposerFan({ mode = "bar" }: { mode?: "bar" | "rail" }) {
                 type="button"
                 tabIndex={open ? 0 : -1}
                 aria-hidden={!open}
-                disabled={busy !== null}
                 onClick={() => {
                   toggle(false);
                   item.run();
@@ -214,7 +205,6 @@ export function ComposerFan({ mode = "bar" }: { mode?: "bar" | "rail" }) {
                     backgroundSize: "contain",
                     backgroundPosition: "center",
                     backgroundRepeat: "no-repeat",
-                    opacity: busy === item.key ? 0.45 : 1,
                   }}
                 />
               </button>

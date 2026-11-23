@@ -87,7 +87,35 @@ export const momentShape = {
     take: 3,
   },
   _count: { select: { views: true, comments: true } },
+  // المود (القاعدة ٤٨٤): وجهُه واسمُه ولونُه وصورتُه.
+  mood: { select: { id: true, emoji: true, name: true, color: true, mediaId: true } },
+  answersPrivate: true,
 } as const;
+
+/**
+ * إجاباتُ «سؤالٍ لي وحدي» (القاعدة ٤٨٤) شرطٌ في الاستعلام لا في الشاشة — نسخةُ
+ * `answersFor` في الخادم: لصاحب السؤال كلُّها، ولغيره ما كتبه أو أُشير إليه فيه.
+ */
+export function answersFor(userId: string) {
+  return {
+    OR: [
+      { moment: { answersPrivate: false } },
+      { moment: { authorId: userId } },
+      { userId },
+      { mentionIds: { has: userId } },
+    ],
+  };
+}
+
+/** `momentShape` بتعليقاتٍ مصفّاةٍ لقارئها. */
+export function shapeFor(userId: string) {
+  // والعددُ بالشرط نفسه: عددُ إجاباتٍ لا يراها القارئ خبرٌ عنها.
+  return {
+    ...momentShape,
+    comments: { ...momentShape.comments, where: answersFor(userId) },
+    _count: { select: { views: true, comments: { where: answersFor(userId) } } },
+  };
+}
 
 export type FeedMoment = Awaited<ReturnType<typeof timeline>>[number];
 
@@ -95,7 +123,7 @@ export type FeedMoment = Awaited<ReturnType<typeof timeline>>[number];
 export async function timeline(userId: string) {
   return prisma.moment.findMany({
     where: await visibleWhere(userId),
-    select: momentShape,
+    select: shapeFor(userId),
     orderBy: { createdAt: "desc" },
     take: 60,
   });
@@ -106,7 +134,7 @@ export async function privateTimeline(userId: string) {
   const where = await visibleWhere(userId);
   return prisma.moment.findMany({
     where: { ...where, audience: { not: "CIRCLE" } },
-    select: momentShape,
+    select: shapeFor(userId),
     orderBy: { createdAt: "desc" },
     take: 60,
   });
@@ -116,7 +144,7 @@ export async function circleCount(userId: string): Promise<number> {
   return (await circleIds(userId)).length;
 }
 
-export async function momentById(id: string) {
+export async function momentById(id: string, viewerId: string) {
   return prisma.moment.findUnique({
     where: { id },
     select: {
@@ -126,7 +154,8 @@ export async function momentById(id: string) {
         ويقول «اقرأ ٧ تعليقات أخرى» — فكانت الصفحةُ تفتح على الثلاثة
         نفسها، لأنّ الشكلَ المشترك يأخذ ثلاثةً لا غير.
       */
-      comments: { ...momentShape.comments, take: 100 },
+      comments: { ...momentShape.comments, where: answersFor(viewerId), take: 100 },
+      _count: { select: { views: true, comments: { where: answersFor(viewerId) } } },
       views: {
         select: { user: { select: { id: true, name: true } }, seenAt: true },
         orderBy: { seenAt: "desc" },

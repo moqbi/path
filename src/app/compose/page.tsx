@@ -17,7 +17,7 @@ export default async function ComposePage({
   if (!user) redirect("/login");
 
   const { kind } = await searchParams;
-  // النوم وحده يُنشر من قائمة الزائد مباشرة بلا شاشة.
+  // «مود» و«سؤال» نافذتان لا صفحة (القاعدة ٤٨٤) — رابطٌ قديمٌ إليهما يرجع إلى الخطّ.
   if (!KINDS.includes(kind as Kind)) redirect("/");
 
   const ids = await circleIds(user.id);

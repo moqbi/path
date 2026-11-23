@@ -2762,3 +2762,96 @@ export async function setItemExclusiveTag(itemId: string, _prev: AdminResult, fo
   revalidatePath("/admin", "layout");
   return { ok: tag ? `صار حصرياً لوسم «${tag.name}»` : "عاد يُباع في المتجر" };
 }
+
+// ───────────────────────── المودات (القاعدة ٤٨٤) ─────────────────────────
+
+function readMood(
+  formData: FormData,
+): { error: string } | { emoji: string; name: string; color: string; sortOrder: number | null; hidden: boolean } {
+  const emoji = String(formData.get("emoji") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  const color = String(formData.get("color") ?? "").trim();
+  if (!name || name.length > 24) return { error: "اسم المود من ١ إلى ٢٤ حرفاً" };
+  if (!emoji || [...emoji].length > 4) return { error: "اكتب إيموجي واحداً للمود" };
+  if (!/^#[0-9a-f]{6}$/i.test(color)) return { error: "اللون بصيغة #RRGGBB" };
+  const raw = String(formData.get("sortOrder") ?? "")
+    .trim()
+    .replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
+  const order = raw === "" ? null : Number(raw);
+  return {
+    emoji,
+    name,
+    color,
+    sortOrder: order !== null && Number.isFinite(order) ? Math.max(0, Math.min(999, Math.round(order))) : null,
+    hidden: formData.get("hidden") === "on",
+  };
+}
+
+export async function createMood(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  await requireAdmin();
+  const input = readMood(formData);
+  if ("error" in input) return input;
+  const last = await prisma.mood.aggregate({ _max: { sortOrder: true } });
+  await prisma.mood.create({
+    data: { ...input, sortOrder: input.sortOrder ?? (last._max.sortOrder ?? -1) + 1 },
+  });
+  revalidatePath("/admin", "layout");
+  return { ok: "أُضيف المود — ارفع صورته من بطاقته" };
+}
+
+export async function updateMood(id: string, _prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  await requireAdmin();
+  const input = readMood(formData);
+  if ("error" in input) return input;
+  const { sortOrder, ...rest } = input;
+  const saved = await prisma.mood.updateMany({
+    where: { id },
+    data: { ...rest, ...(sortOrder === null ? {} : { sortOrder }) },
+  });
+  if (saved.count === 0) return { error: "المود غير موجود" };
+  revalidatePath("/admin", "layout");
+  return { ok: "تمّ الحفظ" };
+}
+
+/**
+ * المودُ المستعمَل لا يُحذف بل يُخفى: لحظاتٌ نُشرت به تبقى تقرأ وجهَه واسمَه. وغيرُ
+ * المستعمَل يُحذف وصورتُه تذهب ببكسلاتها (القاعدة ١٠٤).
+ */
+export async function deleteMood(id: string, _prev: AdminResult, _formData: FormData): Promise<AdminResult> {
+  await requireAdmin();
+  const mood = await prisma.mood.findUnique({
+    where: { id },
+    select: { mediaId: true, _count: { select: { moments: true } } },
+  });
+  if (!mood) return { error: "المود غير موجود" };
+  if (mood._count.moments > 0) {
+    await prisma.mood.update({ where: { id }, data: { hidden: true } });
+    revalidatePath("/admin", "layout");
+    return { ok: "المود مستعمَل في لحظات — أُخفي ولم يُحذف" };
+  }
+  await prisma.mood.delete({ where: { id } });
+  if (mood.mediaId) await dropMedia([mood.mediaId]).catch(() => {});
+  revalidatePath("/admin", "layout");
+  return { ok: "حُذف المود" };
+}
+
+/** صورةُ المود: تملأ لوحتَه في الخطّ الزمنيّ. والسابقةُ تذهب ببكسلاتها. */
+export async function setMoodImage(id: string, formData: FormData): Promise<void> {
+  const admin = await requireAdmin();
+  const { file, width, height } = picture(formData);
+  const before = await prisma.mood.findUnique({ where: { id }, select: { mediaId: true } });
+  if (!before) throw new Error("المود غير موجود");
+  const media = await storeUpload(admin.id, file, width, height);
+  await prisma.mood.update({ where: { id }, data: { mediaId: media.id } });
+  if (before.mediaId) await dropMedia([before.mediaId]).catch(() => {});
+  revalidatePath("/admin", "layout");
+}
+
+export async function clearMoodImage(id: string): Promise<void> {
+  await requireAdmin();
+  const before = await prisma.mood.findUnique({ where: { id }, select: { mediaId: true } });
+  if (!before?.mediaId) return;
+  await prisma.mood.update({ where: { id }, data: { mediaId: null } });
+  await dropMedia([before.mediaId]).catch(() => {});
+  revalidatePath("/admin", "layout");
+}

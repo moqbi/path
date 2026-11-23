@@ -422,7 +422,8 @@ async function replies(userId: string, limit: number) {
       userId: { not: userId },
       createdAt: { gt: since },
       NOT: { mentionIds: { has: userId } },
-      moment: { authorId: { not: userId }, comments: { some: { userId } } },
+      // «الإجابات لي وحدي» (القاعدة ٤٨٤): إجابةُ غيري ليست لي.
+      moment: { authorId: { not: userId }, answersPrivate: false, comments: { some: { userId } } },
     },
     select: {
       id: true,

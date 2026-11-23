@@ -94,7 +94,7 @@ async function qualifiedBy(inviterId?: string) {
         AND EXISTS (
           SELECT 1 FROM "Moment" m
           WHERE m."authorId" = u."id"
-            AND m."kind"::text IN ('PHOTO', 'PLACE', 'THOUGHT', 'MUSIC', 'SLEEP', 'WAKE')
+            AND m."kind"::text IN ('PHOTO', 'PLACE', 'THOUGHT', 'MUSIC', 'SLEEP', 'WAKE', 'MOOD', 'QUESTION')
         )
     )
     SELECT inviter."id", COUNT(DISTINCT i.device) AS n, inviter."inviteRewards" AS given

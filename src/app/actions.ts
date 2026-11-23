@@ -385,6 +385,8 @@ async function attachViewers(momentId: string, viewers: string[]): Promise<void>
 
 /** حدّ نصّ اللحظة — نفس حدّ الشاشة، فلا يقصّ الخادم ما سمحت به. */
 const TEXT_MAX = 250;
+/** حدّ عبارة المود — `MOOD_TEXT_MAX` في `packages/shared` (القاعدة ٤٨٤). */
+const MOOD_TEXT_MAX = 60;
 
 /** النبذة سطرٌ يُقرأ تحت الاسم لا فقرة — والرقم نفسه في الشاشة. */
 const BIO_MAX = 100;
@@ -515,25 +517,52 @@ export async function postSimple(formData: FormData): Promise<void> {
   redirect("/");
 }
 
-/** «نام» — بلا نص وبلا إشارة: النوم لا يكون «مع» أحد. */
-export async function postSleep(): Promise<void> {
+/**
+ * «مود» (القاعدة ٤٨٤): وجهٌ من مودات اللوحة وعبارةٌ اختياريّة — نسخةُ باب الخادم
+ * (`createMoment`) في شروطه. للدائرة كلّها، كالخاطرة بلا جمهورٍ مختار.
+ */
+export async function postMood(formData: FormData): Promise<string | null> {
   const user = await requireUser();
-  await prisma.moment.create({ data: { authorId: user.id, kind: "SLEEP" } });
+  const moodId = String(formData.get("moodId") ?? "");
+  const mood = moodId ? await prisma.mood.findFirst({ where: { id: moodId, hidden: false }, select: { id: true } }) : null;
+  if (!mood) return "اختر مودك";
+  const text = String(formData.get("text") ?? "").trim();
+  if (text.length > MOOD_TEXT_MAX) return `العبارة ${MOOD_TEXT_MAX} حرفاً على الأكثر`;
+  try {
+    await guard(text);
+  } catch (problem) {
+    return problem instanceof Error ? problem.message : "تعذّر النشر";
+  }
+  await prisma.moment.create({ data: { authorId: user.id, kind: "MOOD", moodId: mood.id, text: text || null } });
   revalidatePath("/");
-  redirect("/");
+  return null;
 }
 
-/**
- * «صحيت»: لحظةٌ بلا متن — ساعتها هي خبرها.
- *
- * لا نكتب الوقت نصّاً: `createdAt` يحمله، والعرض يقرأه منه. نصٌّ مكتوب
- * يتجمّد حين يتغيّر تنسيق الساعة أو منطقتها، والطابع لا يتجمّد.
- */
-export async function postWake(): Promise<void> {
+/** المودات الظاهرة لنافذة «مود» — يقرؤها كلُّ داخل، والإدارةُ من اللوحة. */
+export async function listMoods(): Promise<{ id: string; emoji: string; name: string; color: string; mediaId: string | null }[]> {
+  await requireUser();
+  return prisma.mood.findMany({
+    where: { hidden: false },
+    orderBy: { sortOrder: "asc" },
+    select: { id: true, emoji: true, name: true, color: true, mediaId: true },
+  });
+}
+
+/** «سؤال»: إجاباتُه تعليقاتُه، و«الإجابات لي وحدي» يحصرها في صاحبه وكاتب كلٍّ منها. */
+export async function postQuestion(formData: FormData): Promise<string | null> {
   const user = await requireUser();
-  await prisma.moment.create({ data: { authorId: user.id, kind: "WAKE" } });
+  const text = String(formData.get("text") ?? "").trim().slice(0, TEXT_MAX);
+  if (!text) return "اكتب سؤالك";
+  try {
+    await guard(text);
+  } catch (problem) {
+    return problem instanceof Error ? problem.message : "تعذّر النشر";
+  }
+  await prisma.moment.create({
+    data: { authorId: user.id, kind: "QUESTION", text, answersPrivate: formData.get("private") === "on" },
+  });
   revalidatePath("/");
-  redirect("/");
+  return null;
 }
 
 const placeInput = z.object({
@@ -1624,14 +1653,8 @@ export async function react(momentId: string, kind: string, emoji?: string): Pro
   // الإيموجي الحر ميزة اشتراك؛ الوجوه الخمسة مفتوحة للجميع دائماً.
   if (kind === "CUSTOM" && !user.isPlus) throw new Error("الإيموجي الحر لمشتركي آثار+");
 
-  // وجه النوم للحظات النوم وحدها — والفحص هنا لا في إخفاء الزر.
-  if (kind === "SLEEPY") {
-    const moment = await prisma.moment.findUnique({
-      where: { id: momentId },
-      select: { kind: true },
-    });
-    if (moment?.kind !== "SLEEP") throw new Error("وجه النوم للحظات النوم");
-  }
+  // وجهُ النوم ذهب مع «نمت» (القاعدة ٤٨٤) — والفحصُ هنا لا في إخفاء الزرّ.
+  if (kind === "SLEEPY") throw new Error("هذا التفاعل لم يعد متاحاً");
 
   const existing = await prisma.reaction.findUnique({
     where: { momentId_userId: { momentId, userId: user.id } },
@@ -1790,8 +1813,17 @@ export async function setCommentsLock(momentId: string, locked: boolean): Promis
   return {};
 }
 
-async function mentionTargets(userId: string, momentId: string, authorId: string, body: string, wanted: string[]) {
+async function mentionTargets(
+  userId: string,
+  momentId: string,
+  authorId: string,
+  body: string,
+  wanted: string[],
+  answersPrivate = false,
+) {
   if (!wanted.length) return [];
+  // سؤالٌ إجاباتُه لصاحبه: لا يُشار فيه إلا إلى صاحبه، وإلّا قرأ المُشارُ إليه إجابةً ليست له.
+  if (answersPrivate && userId !== authorId) wanted = wanted.filter((id) => id === authorId);
   const commenters = await prisma.comment.findMany({
     where: { momentId, userId: { in: wanted } },
     select: { userId: true },
@@ -1825,7 +1857,7 @@ export async function addComment(momentId: string, formData: FormData): Promise<
   const wantedIds = stickerId
     ? []
     : String(formData.get("mentions") ?? "").split(",").filter((id) => /^c[a-z0-9]{20,32}$/.test(id)).slice(0, 10);
-  const mentionIds = await mentionTargets(user.id, momentId, moment.authorId, text, wantedIds);
+  const mentionIds = await mentionTargets(user.id, momentId, moment.authorId, text, wantedIds, moment.answersPrivate);
   await prisma.comment.create({ data: { momentId, userId: user.id, body: text, stickerId, mentionIds } });
   revalidatePath("/");
   revalidatePath(`/m/${momentId}`);
@@ -1907,7 +1939,7 @@ async function assertCanInteract(userId: string, momentId: string) {
   const reach = !(await canSeeMoment(userId, momentId)) && (await moderatorReach(userId, momentId));
   const moment = await prisma.moment.findUnique({
     where: { id: momentId },
-    select: { authorId: true, commentsLocked: true },
+    select: { authorId: true, commentsLocked: true, answersPrivate: true },
   });
   if (!moment) throw new Error("اللحظة غير موجودة");
   if (!reach && !(await canInteract(userId, moment.authorId))) {

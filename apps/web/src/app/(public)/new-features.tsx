@@ -110,7 +110,7 @@ function Stickers({ stickers }: { stickers: string[] }) {
   // ملصقاتٌ حقيقيّة من اللوحة (القاعدة ٤١٧)، وبلاها رسومُ التطبيق.
   const art = stickers.length
     ? stickers.map((id) => `/api/site-media/${id}`)
-    : ["/reactions/love.png", "/composer/music.png", "/reactions/laugh.png", "/composer/wake.png", "/reactions/smile.png", "/composer/place.png"];
+    : ["/reactions/love.png", "/composer/music.png", "/reactions/laugh.png", "/composer/mood.png", "/reactions/smile.png", "/composer/place.png"];
   return (
     <div className="n-stickers" aria-hidden>
       {art.map((src, i) => (

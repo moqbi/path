@@ -29,8 +29,8 @@ const ICONS = [
   require("../assets/launch/write.png"),
   require("../assets/launch/music.png"),
   require("../assets/launch/place.png"),
-  require("../assets/launch/morning.png"),
-  require("../assets/launch/sleep.png"),
+  require("../assets/launch/mood.png"),
+  require("../assets/launch/question.png"),
 ];
 const MARK_RATIO = 905 / 1203;
 

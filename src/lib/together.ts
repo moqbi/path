@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import type { MomentKind } from "@/generated/prisma/client";
-import { momentShape } from "@/lib/feed";
+import { shapeFor } from "@/lib/feed";
 import { visibleWhere } from "@/lib/visibility";
 
 /** ما جمعهما بالإشارة وحدها — لا التفاعلُ ولا التعليق (بقرار المالك). */
@@ -28,7 +28,7 @@ export async function togetherMoments(viewerId: string, friendId: string) {
     where: {
       AND: [visible, { OR: [involves(viewerId, friendId), involves(friendId, viewerId)] }, { kind: { in: TOGETHER_KINDS } }],
     },
-    select: momentShape,
+    select: shapeFor(viewerId),
     orderBy: { createdAt: "desc" },
     take: 80,
   });

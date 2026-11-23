@@ -30,7 +30,7 @@ export default async function MomentPage({
   const user = await currentUser();
   if (!user) redirect("/login");
 
-  const moment = await momentById(id);
+  const moment = await momentById(id, user.id);
   if (!moment) notFound();
 
   // شرطُ الرؤية نفسه (القاعدة ٢٣) لا الصداقةُ وحدها — كانت لحظةٌ خاصّة تُفتح
