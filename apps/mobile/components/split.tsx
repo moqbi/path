@@ -1,6 +1,6 @@
 import { useMemo, type ReactNode } from "react";
-import { Platform, View } from "react-native";
-import { useBarSpace } from "./glass-bar";
+import { View } from "react-native";
+import { NATIVE_TABS, useBarSpace } from "./glass-bar";
 import { AthrMark } from "./brand";
 import { Text } from "./type";
 import { TabBackdrop } from "./tab-backdrop";
@@ -71,7 +71,7 @@ export function Split({
       {wide ? (
         <WidthContext.Provider value={screen - list}>
           <EdgeContext.Provider value={paneEdges}>
-            <View style={{ flex: 1, minWidth: 0, paddingBottom: Platform.OS === "ios" ? 0 : barSpace - 8 }}>
+            <View style={{ flex: 1, minWidth: 0, paddingBottom: NATIVE_TABS ? 0 : barSpace - 8 }}>
               {/* صورةُ الثيم تحت اللوحة كما هي تحت القائمة (القاعدة ٢٦١). */}
               <TabBackdrop />
               {path ? (

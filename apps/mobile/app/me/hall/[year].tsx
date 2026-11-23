@@ -100,19 +100,19 @@ export default function HallScreen() {
   /*
     الوضعُ الأفقيّ (القاعدة ٤٧٥): الشاشةُ أقصرُ من أن تحمل اللافتةَ واللوحةَ والبطاقةَ والأرضَ فوق
     بعضها — كانت البطاقةُ والأسطوانةُ تُقصّان من أسفل. فاللافتةُ سطرٌ واحد، والأرضُ أقصر، وبطاقةُ
-    الشرح بجانب اللوحة لا تحتها، والجارتان أبعدُ فتُطلّان من خلف البطاقة.
+    الشرح **تحت اللوحة سطراً واحداً** (`compact`) — **بقرار المالك**: كانت بجانبها فتقع فوق
+    الجارة المُطلّة وتُقرأ نافذةً على لحظةٍ أخرى.
   */
   const wide = width > height;
   const floorH = wide ? 70 + Math.max(insets.bottom, 8) : 104 + Math.max(insets.bottom, 12);
   const headTop = insets.top + (wide ? 66 : 74);
   const frameTop = headTop + (wide ? 34 : 96);
-  const placardW = wide ? Math.min(230, Math.round(width * 0.26)) : 0;
   // اللوحةُ بما يتّسع له الجدار: شاشةٌ قصيرة تصغّرها ولا تدفع البطاقةَ تحت الأرض.
-  const room = height - frameTop - floorH - (wide ? 26 : 124);
-  const W = Math.round(Math.max(wide ? 110 : 150, Math.min(250, width * 0.62, room / 1.25)));
+  const room = height - frameTop - floorH - (wide ? 62 : 124);
+  const W = Math.round(Math.max(wide ? 100 : 150, Math.min(250, width * 0.62, room / 1.25)));
   const H = Math.round(W * 1.25);
   // الجارتان تُطلّان من الحافّتين: يُرى أنّ الجدارَ يمتدّ.
-  const STEP = wide ? W + placardW + 64 : W + 44;
+  const STEP = wide ? W + 90 : W + 44;
 
   const hall = useQuery({ queryKey: ["hall", year], queryFn: () => loadHall(year), enabled: Number.isInteger(year) });
   // ثوبُ القاعة الملبوس من المتجر (القاعدة ٣٤٨)، وبلاه الكلاسيكيّة.
@@ -356,13 +356,9 @@ export default function HallScreen() {
         ) : null}
 
         <View
-          style={
-            wide
-              ? { position: "absolute", top: frameTop, left: Math.max(16, (width - W) / 2 - placardW - 30), width: placardW, minHeight: H, justifyContent: "center" }
-              : { position: "absolute", top: frameTop + H + 22, left: 24, right: 24, alignItems: "center" }
-          }
+          style={{ position: "absolute", top: frameTop + H + (wide ? 12 : 22), left: 24, right: 24, alignItems: "center" }}
         >
-          {piece ? <Placard skin={skin} moment={piece} onEcho={() => setDetail({ moment: piece, tab: "echo" })} /> : null}
+          {piece ? <Placard skin={skin} moment={piece} compact={wide} onEcho={() => setDetail({ moment: piece, tab: "echo" })} /> : null}
         </View>
 
         {/* أعلى الجدار: العلامةُ يساراً، والرجوعُ و«عرض اللحظات» يميناً. */}
@@ -787,9 +783,10 @@ function Floor({
  * نصُّ الصورة وعنوانُ الأغنية — مرّةً واحدة، ثمّ خطٌّ، ثمّ صداها: وجوهُ من تفاعل متراكبة
  * وعددُها والتعليقات، والضغطُ عليه يفتح النافذة على التفاعلات.
  */
-function Placard({ skin, moment, onEcho }: { skin: HallSkin; moment: ArchiveMoment; onEcho?: () => void }) {
+function Placard({ skin, moment, onEcho, compact = false }: { skin: HallSkin; moment: ArchiveMoment; onEcho?: () => void; compact?: boolean }) {
   const when = riyadh(moment.createdAt);
-  const line = moment.kind === "PHOTO" ? moment.text : moment.kind === "MUSIC" ? momentLine(moment) : null;
+  // سطرٌ واحد في الوضع الأفقيّ: الساعةُ والتاريخ ثمّ الصدى بجانبهما، بلا نصّ اللحظة — يُقرأ في نافذتها.
+  const line = compact ? null : moment.kind === "PHOTO" ? moment.text : moment.kind === "MUSIC" ? momentLine(moment) : null;
   const echo = moment.echo;
   return (
     <View
@@ -797,11 +794,12 @@ function Placard({ skin, moment, onEcho }: { skin: HallSkin; moment: ArchiveMome
         backgroundColor: skin.placard.bg,
         borderRadius: 12,
         paddingHorizontal: 16,
-        paddingVertical: 10,
-        minWidth: 220,
-        maxWidth: 290,
+        paddingVertical: compact ? 7 : 10,
+        minWidth: compact ? 0 : 220,
+        maxWidth: compact ? 420 : 290,
+        flexDirection: compact ? "row" : "column",
         alignItems: "center",
-        gap: 7,
+        gap: compact ? 10 : 7,
         borderWidth: 1,
         borderColor: "rgba(0,0,0,.05)",
         ...SOFT,
@@ -827,7 +825,13 @@ function Placard({ skin, moment, onEcho }: { skin: HallSkin; moment: ArchiveMome
       ) : null}
       {echo && (echo.reactions || echo.comments) ? (
         <>
-          <View style={{ alignSelf: "stretch", height: 1, backgroundColor: skin.placard.muted, opacity: 0.22 }} />
+          <View
+            style={
+              compact
+                ? { width: 1, height: 16, backgroundColor: skin.placard.muted, opacity: 0.4 }
+                : { alignSelf: "stretch", height: 1, backgroundColor: skin.placard.muted, opacity: 0.22 }
+            }
+          />
           <Pressable onPress={onEcho} hitSlop={10} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             {/* متجاورةً لا متراكبة: كانت كلُّ واحدةٍ تغطّي حافّةَ ما قبلها فيُقرأ الوجهُ مقصوصاً. */}
             <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>

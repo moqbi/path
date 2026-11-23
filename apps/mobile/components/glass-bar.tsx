@@ -30,6 +30,13 @@ const LENS_WIDEN = 40;
 /** خصائصُ الشريط كما يمرّرها `Tabs` — من النوع نفسه لا من حزمةٍ لا نعتمد عليها مباشرةً. */
 type BarProps = Parameters<NonNullable<React.ComponentProps<typeof Tabs>["tabBar"]>>[0];
 
+/**
+ * شريطُ آبل الأصليّ على الآيفون وحده (القاعدة ٢٦١)، والزجاجيُّ المرسوم على الآيباد وأندرويد والويب:
+ * آيباد ١٨ فما بعده يرسم شريطَ `UITabBarController` في أعلى الشاشة. ثابتٌ لا يتبع الدوران —
+ * شجرةُ التبويبات لا تتبدّل وهي مركّبة (القاعدة ٤٦٨).
+ */
+export const NATIVE_TABS = Platform.OS === "ios" && !Platform.isPad;
+
 /** ما يتركه المحتوى في أسفله ليُقرأ آخرُه فوق الشريط لا تحته. */
 export function useBarSpace() {
   const insets = useSafeAreaInsets();
@@ -437,10 +444,13 @@ export function GlassBar({ state, emitter, navigateToTab }: BarProps) {
   return (
     <View
       pointerEvents="box-none"
-      style={{ position: "absolute", left: 14, right: 14, bottom: barBottom(insets.bottom) }}
+      style={{ position: "absolute", left: 14, right: 14, bottom: barBottom(insets.bottom), alignItems: "center" }}
     >
       <View
         style={{
+          // على الشاشة العريضة قرصٌ في الوسط لا شريطٌ بعرضها: خمسُ أيقوناتٍ على ألف نقطةٍ تتباعد حتى لا تُقرأ صفّاً.
+          width: "100%",
+          maxWidth: 520,
           height: PILL,
           borderRadius: PILL / 2,
           // الظلُّ على الغلاف لا على الزجاج: `overflow: hidden` يقصّه.
