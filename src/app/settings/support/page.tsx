@@ -5,7 +5,6 @@ import { ScreenHeader } from "@/components/ui";
 import { InfoIcon } from "@/components/icons";
 import { ar } from "@/lib/format";
 import { TicketForm } from "./form";
-import Link from "next/link";
 
 /**
  * الدعم الفني: رسالةٌ تُكتب هنا وتُقرأ هنا.
@@ -40,7 +39,7 @@ export default async function SupportPage() {
           نظامُ التذاكر (القاعدة ٤٨٠): الرسائلُ وردودُها في «تذاكري» لا تحت النموذج —
           كانت تتكدّس هنا حتى يضيع النموذجُ نفسه.
         */}
-        <Link
+        <a
           href="/tickets"
           className="flex items-center gap-3 rounded-2xl border border-line bg-card p-4"
         >
@@ -55,7 +54,7 @@ export default async function SupportPage() {
           <span className="text-[18px] text-faint" aria-hidden>
             ‹
           </span>
-        </Link>
+        </a>
 
         <p className="flex items-center justify-center gap-2 py-6 text-center text-[11px] leading-relaxed text-faint">
           <InfoIcon size={13} />

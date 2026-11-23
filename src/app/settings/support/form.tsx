@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 import { openTicket } from "@/app/actions";
 import { FilesField } from "@/components/files-field";
@@ -79,9 +78,9 @@ export function TicketForm() {
           <p className="font-bold text-clay-ink">{state.ok}</p>
           <p className="text-muted">
             يمكنك متابعة طلبك من خلال نظام التذاكر.{" "}
-            <Link href="/tickets" className="font-bold text-clay-ink underline-offset-2 hover:underline">
+            <a href="/tickets" className="font-bold text-clay-ink underline-offset-2 hover:underline">
               تذاكري
-            </Link>
+            </a>
           </p>
         </div>
       ) : null}

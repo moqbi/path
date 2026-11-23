@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { ContactForm } from "./form";
 import { DocSection, PageBody, PageHero } from "@/components/page-shell";
-import { SITE_URL, hasSite } from "@athar/shared";
-import { siteText } from "@/lib/site";
 
 export const metadata: Metadata = { title: "تواصل معنا · آثار مومنتس" };
 
@@ -20,12 +18,6 @@ function Icon({ children }: { children: React.ReactNode }) {
  * الصفحة جاء ليكتب.
  */
 export default async function ContactPage() {
-  // حسابُ الدعم والأخبار (القاعدة ٢٢١) — رقمُه من اللوحة، والأرقامُ العربيّة تُحوَّل.
-  const text = await siteText();
-  const digits = text["support.member"].replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660)).trim();
-  const supportNo = /^\d{1,9}$/.test(digits) ? digits : null;
-  const supportPath = supportNo ? `/u/${supportNo}` : null;
-
   return (
     <>
       <PageHero
@@ -41,18 +33,6 @@ export default async function ContactPage() {
               اكتب رسالتك
             </h2>
             <ContactForm />
-            {/*
-              خاتمةُ النموذج: صفحةُ حساب الدعم، ومنها «افتح في التطبيق» —
-              فيُضاف ويُراسَل بلا انتظار قبول (القاعدة ٢٢١).
-            */}
-            {supportPath ? (
-              <p className="mt-4 text-[13px] leading-relaxed text-muted">
-                لمتابعة آخر الأخبار والتواصل مع الدعم داخل التطبيق{" "}
-                <a href={supportPath} dir="ltr" className="font-bold text-clay-ink underline-offset-2 hover:underline">
-                  {hasSite() ? `${SITE_URL.replace(/\/+$/, "")}${supportPath}` : supportPath}
-                </a>
-              </p>
-            ) : null}
           </section>
 
           <div className="flex flex-col gap-4">
@@ -84,6 +64,29 @@ export default async function ContactPage() {
                 نقرأ كل ما يصل، وما يخصّ بلاغاً عن محتوى يُعالَج أوّلاً. ومن هنا يكتب
                 من لا حساب له — أو من حُذف حسابه فلم يبقَ له باب.
               </p>
+            </DocSection>
+
+            {/* نظامُ التذاكر (القاعدة ٤٨٠): كلُّ رسالةٍ طلبٌ برقمه وحاله، ويُتابَع من هنا. */}
+            <DocSection
+              icon={
+                <Icon>
+                  <path d="M4 7.5A1.5 1.5 0 0 1 5.5 6h13A1.5 1.5 0 0 1 20 7.5v2a2.5 2.5 0 0 0 0 5v2a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 16.5v-2a2.5 2.5 0 0 0 0-5Z" />
+                  <path d="M14 6v12" strokeDasharray="2 2.2" />
+                </Icon>
+              }
+              title="نظام التذاكر"
+            >
+              <p>
+                كلُّ رسالةٍ تصلنا من التطبيق طلبٌ برقمه: تتابع حاله وتقرأ ردودنا وتعلّق عليها
+                بحسابك في آثار.
+              </p>
+              <a
+                href="/tickets"
+                className="brand-gradient mt-3 flex items-center justify-center rounded-xl text-[14px] font-bold"
+                style={{ height: 44, color: "var(--color-on-brand)" }}
+              >
+                افتح نظام التذاكر
+              </a>
             </DocSection>
           </div>
         </div>

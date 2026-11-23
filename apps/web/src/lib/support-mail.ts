@@ -36,20 +36,26 @@ export async function tellSupport(input: {
   from: string;
   body: string;
   replyTo?: string | null;
+  /** التذكرة (القاعدة ٤٨٠): رقمُها في العنوان، وزرُّ اللوحة يفتحها هي. */
+  ticket?: { id: string; number: number; comment?: boolean };
 }): Promise<void> {
   const inbox = process.env.SUPPORT_EMAIL;
   if (!inbox) return;
 
   await sendMail({
     to: inbox,
-    subject: `رسالة دعم جديدة — ${input.from}`,
+    subject: input.ticket
+      ? `${input.ticket.comment ? "تعليق على" : "تذكرة"} #${input.ticket.number} — ${input.from}`
+      : `رسالة دعم جديدة — ${input.from}`,
     text: `${input.from}${input.replyTo ? ` <${input.replyTo}>` : ""}\n\n${input.body}`,
     html: letterHtml({
-      title: "رسالة دعم جديدة",
+      title: input.ticket
+        ? `${input.ticket.comment ? "تعليقٌ جديد على التذكرة" : "تذكرة جديدة"} #${input.ticket.number}`
+        : "رسالة دعم جديدة",
       intro: `من: ${esc(input.from)}${input.replyTo ? ` (${esc(input.replyTo)})` : ""}<br><br>${paragraph(input.body)}`,
       button: "افتح اللوحة",
-      url: `${process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? ""}/admin?s=support`,
-      note: "الردّ يُكتب من اللوحة، ومنها يصل صاحبَه.",
+      url: `${process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? ""}/admin?s=support${input.ticket ? `&open=${input.ticket.id}#ticket-${input.ticket.id}` : ""}`,
+      note: "الردّ يُكتب من اللوحة، ومنها يصل صاحبَه بالبريد والتنبيه — الردُّ على هذه الرسالة لا يصله.",
     }),
   }).catch(() => false);
 }

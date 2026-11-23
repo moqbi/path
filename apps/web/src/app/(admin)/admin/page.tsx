@@ -5,6 +5,9 @@ import { prisma } from "@/lib/db";
 import {
   grantCoinsToTag,
   setTicketState,
+  editTicketReply,
+  deleteTicketReply,
+  deleteTicket,
   createCategory,
   createStoreItem,
   createTag,
@@ -33,6 +36,7 @@ import {
 } from "@/app/actions";
 import { itemPaint, ScreenHeader, TagPill } from "@/components/ui";
 import { Saver } from "./saver";
+import { ConfirmDelete } from "./confirm-delete";
 import { AdminEmail } from "./email";
 import { SitePanel } from "./site";
 import { FitEditor, FrameEditor } from "./fit-editor";
@@ -164,6 +168,21 @@ function Check({ name, label, on }: { name: string; label: string; on?: boolean 
 }
 
 /** شارة صغيرة تصف الصنف بكلمة: نوعه، أو حصريّته، أو محدوديّته. */
+/**
+ * تصنيفاتُ الدعم (القاعدة ٤٨٠): النوعُ (`?v=`) ثمّ الحال (`?f=open|closed`) — الشكاوى
+ * وحدها والاقتراحاتُ وحدها، وفي كلٍّ المفتوحةُ أو المغلقة. وتذكرةٌ فُتحت برابطٍ (`open`)
+ * تُعرض أيّاً كان تصنيفُها: زرُّ «افتح اللوحة» في البريد لا يقع على قائمةٍ لا تحملها.
+ */
+const TICKET_TOPICS = ["complaint", "suggestion", "report", "careers", "beta", "other"] as const;
+function ticketWhere(v: string | undefined, f: string | undefined, open: string | undefined) {
+  if (open) return { id: open };
+  const topic = (TICKET_TOPICS as readonly string[]).includes(v ?? "") ? v : null;
+  return {
+    ...(topic === "other" ? { OR: [{ topic: null }, { topic: { notIn: ["complaint", "suggestion", "report", "careers", "beta"] } }] } : topic ? { topic } : {}),
+    closed: f === "closed",
+  };
+}
+
 function Chip({
   children,
   gold = false,
@@ -631,9 +650,9 @@ const SECTIONS = [
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ s?: string; v?: string; q?: string; k?: string; open?: string; m?: string }>;
+  searchParams: Promise<{ s?: string; v?: string; q?: string; k?: string; open?: string; m?: string; f?: string }>;
 }) {
-  const { s: raw, v, q, k, open, m } = await searchParams;
+  const { s: raw, v, q, k, open, m, f } = await searchParams;
   const view = v === "cats" || v === "packs" || v === "collections" || v === "invites" ? v : "items";
   const user = await currentUser();
   if (!user) redirect("/login");
@@ -737,8 +756,9 @@ export default async function AdminPage({
     // والدعم (`REPORTS`) يقرؤهما — كان القسمان يظهران له فارغين.
     scope === "ALL" || scope === "REPORTS"
       ? prisma.supportTicket.findMany({
+          where: ticketWhere(v, f, open),
           orderBy: [{ closed: "asc" }, { lastAt: "desc" }],
-          take: 60,
+          take: 100,
           include: {
             user: { select: { name: true, memberNo: true, email: true } },
             files: { select: { id: true, name: true, mime: true, size: true } },
@@ -843,6 +863,23 @@ export default async function AdminPage({
           select: { id: true, name: true, kind: true },
         })
       : [];
+  // عددُ كلّ تصنيفٍ في الدعم بحاله — للشرائح.
+  const ticketCounts =
+    section === "support"
+      ? await prisma.supportTicket.groupBy({ by: ["topic", "closed"], _count: { _all: true } })
+      : [];
+  const ticketTopic = (TICKET_TOPICS as readonly string[]).includes(v ?? "") ? v! : "all";
+  const ticketCount = (topic: string, closed: boolean) =>
+    ticketCounts
+      .filter((row) => row.closed === closed)
+      .filter((row) =>
+        topic === "all"
+          ? true
+          : topic === "other"
+            ? !row.topic || !["complaint", "suggestion", "report", "careers", "beta"].includes(row.topic)
+            : row.topic === topic,
+      )
+      .reduce((sum, row) => sum + row._count._all, 0);
   // صنفٌ فُتح من سطر الأوامر يفتح شريحةَ نوعه وبطاقتَه.
   const openItem = open ? items.find((item) => item.id === open) : undefined;
   const kindTab =
@@ -2104,12 +2141,71 @@ export default async function AdminPage({
             <h2 className="mb-1 text-[15px] font-bold">الدعم</h2>
             <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
               تذاكر «الدعم وتواصل معنا». الردّ يصل صاحبَها بريداً من صندوق الدعم وتنبيهاً في التطبيق،
-              ويعلّق عليه من «تذاكري». «أغلق» يُبقي له أن يعيد فتحها بتعليق، و«أغلق نهائياً» لا يُكتب فيها بعده.
+              ويعلّق عليه من «تذاكري». «أغلق» يُبقي له أن يعيد فتحها بتعليق، و«أغلق نهائياً» لا يُكتب فيها بعده،
+              و«حذف التذكرة» يمحوها من كلّ مكان.
             </p>
+
+            {/* التصنيفات (القاعدة ٤٨٠): النوعُ ثمّ الحال، وعددُ كلٍّ بجانبه. */}
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {[
+                { key: "all", label: "الكل" },
+                { key: "complaint", label: "الشكاوى" },
+                { key: "suggestion", label: "الاقتراحات" },
+                { key: "report", label: "البلاغات" },
+                { key: "careers", label: "الوظائف" },
+                { key: "beta", label: "فريق التجربة" },
+                { key: "other", label: "أخرى" },
+              ].map((tab) => {
+                const on = !open && ticketTopic === tab.key;
+                const waiting = ticketCount(tab.key, false);
+                return (
+                  <Link
+                    key={tab.key}
+                    href={`/admin?s=support${tab.key === "all" ? "" : `&v=${tab.key}`}${f === "closed" ? "&f=closed" : ""}`}
+                    className="rounded-full border px-3 py-1.5 text-[12px] font-semibold"
+                    style={
+                      on
+                        ? { background: "var(--color-ink)", borderColor: "var(--color-ink)", color: "var(--color-card)" }
+                        : { borderColor: "var(--color-line)", background: "var(--color-card)", color: "var(--color-ink-2)" }
+                    }
+                  >
+                    {tab.label}
+                    {waiting ? <span className="ms-1 text-[10.5px]" style={{ color: on ? "var(--color-clay)" : "var(--color-live)" }}>{ar(waiting)}</span> : null}
+                  </Link>
+                );
+              })}
+            </div>
+            <div className="mb-4 flex gap-1.5">
+              {[
+                { key: "open", label: "مفتوحة", closed: false },
+                { key: "closed", label: "مغلقة", closed: true },
+              ].map((tab) => {
+                const on = !open && (f === "closed") === tab.closed;
+                return (
+                  <Link
+                    key={tab.key}
+                    href={`/admin?s=support${ticketTopic === "all" ? "" : `&v=${ticketTopic}`}${tab.closed ? "&f=closed" : ""}`}
+                    className="grow rounded-xl border py-2 text-center text-[12.5px] font-bold"
+                    style={
+                      on
+                        ? { background: "var(--color-gold-soft)", borderColor: "var(--color-clay)", color: "var(--color-clay-ink)" }
+                        : { borderColor: "var(--color-line)", background: "var(--color-card)", color: "var(--color-muted)" }
+                    }
+                  >
+                    {tab.label} ({ar(ticketCount(ticketTopic, tab.closed))})
+                  </Link>
+                );
+              })}
+            </div>
+            {open ? (
+              <Link href="/admin?s=support" className="mb-3 inline-block text-[12px] font-semibold text-clay-ink">
+                ← كلّ التذاكر
+              </Link>
+            ) : null}
 
             {tickets.length === 0 ? (
               <p className="rounded-2xl border border-line bg-card px-4 py-6 text-center text-[12.5px] text-muted">
-                لا رسائل.
+                لا تذاكر هنا.
               </p>
             ) : (
               <div className="mb-7 flex flex-col gap-2.5">
@@ -2220,12 +2316,39 @@ export default async function AdminPage({
                                   : { background: "var(--color-paper)", borderColor: "var(--color-line)" }
                               }
                             >
-                              <p className="mb-1 text-[10.5px] font-bold text-muted">
-                                {message.fromStaff ? "ردّ الفريق" : "تعليق صاحبها"} · {relative(message.createdAt)}
-                              </p>
+                              <div className="mb-1 flex items-center gap-2">
+                                <p className="grow text-[10.5px] font-bold text-muted">
+                                  {message.fromStaff ? "ردّ الفريق" : "تعليق صاحبها"} · {relative(message.createdAt)}
+                                </p>
+                                {message.fromStaff ? (
+                                  <ConfirmDelete run={deleteTicketReply.bind(null, message.id)} label="حذف الردّ" />
+                                ) : null}
+                              </div>
                               <p dir="auto" className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-ink">
                                 {message.body}
                               </p>
+                              {/* تعديلُ ردّ الفريق: النصُّ يتغيّر في التذكرة، وما خرج بريداً لا يُسحب. */}
+                              {message.fromStaff ? (
+                                <details className="mt-2">
+                                  <summary className="cursor-pointer list-none text-[11.5px] font-semibold text-clay-ink">تعديل</summary>
+                                  <Saver action={editTicketReply.bind(null, message.id)} className="mt-2 flex flex-col gap-2">
+                                    <textarea
+                                      name="body"
+                                      rows={3}
+                                      maxLength={1200}
+                                      defaultValue={message.body}
+                                      className={`resize-none py-2.5 ${FIELD}`}
+                                    />
+                                    <button
+                                      type="submit"
+                                      className="rounded-xl text-[12.5px] font-bold"
+                                      style={{ height: 40, background: "var(--color-ink)", color: "var(--color-card)" }}
+                                    >
+                                      احفظ التعديل
+                                    </button>
+                                  </Saver>
+                                </details>
+                              ) : null}
                             </div>
                           ))}
                         </div>
@@ -2276,6 +2399,9 @@ export default async function AdminPage({
                             </button>
                           </form>
                         ) : null}
+                      </div>
+                      <div className="pt-2">
+                        <ConfirmDelete run={deleteTicket.bind(null, ticket.id)} label="حذف التذكرة" wide />
                       </div>
                     </div>
                   </details>
