@@ -1,0 +1,42 @@
+# بناءٌ لمحاكي آبل على GitHub — لـAppetize وأمثاله (أجهزةٌ سحابيّة تطلب ‎.app‎ مضغوطاً).
+# `eas build --local` على جهاز ماك من GitHub لا يُحسب من بناءات Expo المجّانيّة، ولا توقيعَ
+# فيه: بناءُ المحاكي لا يُوقَّع. والناتجُ `athar-simulator.tar.gz` يُرفع كما هو.
+# يُشغَّل باليد من تبويب Actions، والملفُّ في «Artifacts» أسفل صفحة التشغيل.
+name: Simulator build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      # أحدثُ Xcode على الجهاز: SDK 58 لا يُبنى بما قبله.
+      - name: Xcode
+        run: |
+          latest=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          echo "Using $latest"
+          sudo xcode-select -s "$latest"
+          xcodebuild -version
+      - run: pnpm install --frozen-lockfile
+      - name: Install eas-cli
+        working-directory: ${{ runner.temp }}
+        run: npm install --global eas-cli@latest
+      - name: Build
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_LOCAL_BUILD_SKIP_CLEANUP: "1"
+        run: eas build --platform ios --profile simulator --local --non-interactive --output "$GITHUB_WORKSPACE/athar-simulator.tar.gz"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: athar-simulator
+          path: athar-simulator.tar.gz
+          retention-days: 14

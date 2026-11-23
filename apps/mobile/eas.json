@@ -21,6 +21,14 @@
       },
       "channel": "development"
     },
+    "simulator": {
+      "extends": "development",
+      "developmentClient": false,
+      "ios": {
+        "simulator": true
+      },
+      "channel": "development"
+    },
     "preview": {
       "distribution": "internal",
       "env": {
