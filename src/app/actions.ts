@@ -2239,7 +2239,7 @@ export async function giftItem(
       select: { name: true, isPlus: true },
     }),
   ]);
-  if (!item || !friend || item.hidden) return { error: "الصنف غير موجود" };
+  if (!item || !friend || item.hidden || item.exclusiveTagId) return { error: "الصنف غير موجود" };
   if (item.earnedAfterDays !== null) return { error: "هذا الصنف يُكتسب بالوقت، لا يُهدى" };
   if (item.plusOnly && !friend.isPlus) return { error: `${friend.name} ليس مشتركاً في آثار+` };
 
@@ -2332,7 +2332,7 @@ async function buyItem(itemId: string): Promise<void> {
     مباشرةً، فإخفاؤه من الشاشة ليس منعاً. و«غير موجود» لا «مخفيّ» —
     وجودُه ليس ممّا يُخبَر به.
   */
-  if (item.hidden) throw new Error("الصنف غير موجود");
+  if (item.hidden || item.exclusiveTagId) throw new Error("الصنف غير موجود");
   if (item.plusOnly && !user.isPlus) throw new Error("هذا الصنف لمشتركي آثار+");
 
   if (item.earnedAfterDays !== null) {
@@ -2413,10 +2413,19 @@ export async function buyNow(itemId: string): Promise<{ ok?: string; error?: str
 export async function equip(itemId: string): Promise<void> {
   const user = await requireUser();
 
-  const purchase = await prisma.purchase.findUnique({
+  const bought = await prisma.purchase.findUnique({
     where: { userId_itemId: { userId: user.id, itemId } },
     include: { item: { select: { kind: true } } },
   });
+  // وتشارمُ الوسم يلبسه حاملُ الوسم بلا شراء (القاعدة ٤٧٩) — كالخادم.
+  const purchase =
+    bought ??
+    (await prisma.storeItem
+      .findFirst({
+        where: { id: itemId, exclusiveTag: { users: { some: { id: user.id } } } },
+        select: { kind: true },
+      })
+      .then((item) => (item ? { expiresAt: null, item } : null)));
   if (!purchase) throw new Error("لا تملك هذا الصنف");
   // ما انتهت مدّتُه لا يُعدّ مملوكاً (القاعدة ٤٤ج)، والحزمةُ لا تُلبَس (٤٤ب).
   if (purchase.expiresAt && purchase.expiresAt <= new Date()) throw new Error("انتهت مدّة هذا الصنف");

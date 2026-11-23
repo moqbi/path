@@ -56,6 +56,7 @@ export default async function ProfilePage({
             plusOnly: true,
             earnedAfterDays: true,
             plans: { select: { days: true, priceCoins: true }, orderBy: { days: "asc" } },
+            exclusiveTag: { select: { name: true, bg: true, fg: true } },
           },
         },
         giftedBy: { select: { name: true } },
@@ -75,6 +76,24 @@ export default async function ProfilePage({
     const last = days.at(-1);
     if (last && last.label === label) last.items.push(moment);
     else days.push({ label, items: [moment] });
+  }
+
+  /*
+    وتشارمُ وسمك مملوكٌ ما دمت تحمل الوسم (القاعدة ٤٧٩) — يُضاف إلى ما اشتريت بشكله،
+    فيُلبَس من الإكسسوارات ويُرى على صورتك.
+  */
+  if (user.tag) {
+    const exclusive = await prisma.storeItem.findMany({
+      where: { exclusiveTag: { users: { some: { id: user.id } } }, id: { notIn: purchases.map((row) => row.item.id) } },
+      orderBy: { sortOrder: "asc" },
+      select: {
+        id: true, name: true, spec: true, kind: true, mediaId: true, promoMediaId: true,
+        frameHole: true, fit: true, priceCoins: true, plusOnly: true, earnedAfterDays: true,
+        plans: { select: { days: true, priceCoins: true }, orderBy: { days: "asc" } },
+        exclusiveTag: { select: { name: true, bg: true, fg: true } },
+      },
+    });
+    purchases.unshift(...exclusive.map((item) => ({ item, giftedBy: null })));
   }
 
   // ما تلبسه أنت: يُقرأ من مشترياتك بمعرّفه الملبوس.

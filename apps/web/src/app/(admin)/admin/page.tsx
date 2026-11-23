@@ -36,6 +36,7 @@ import { Saver } from "./saver";
 import { AdminEmail } from "./email";
 import { SitePanel } from "./site";
 import { FitEditor, FrameEditor } from "./fit-editor";
+import { setItemExclusiveTag } from "@/app/actions";
 import { TOPIC_LABEL } from "@/lib/topics";
 import { Suspend } from "./suspend";
 import { PlusGrant } from "./plus";
@@ -630,9 +631,9 @@ const SECTIONS = [
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ s?: string; v?: string; q?: string; k?: string; open?: string }>;
+  searchParams: Promise<{ s?: string; v?: string; q?: string; k?: string; open?: string; m?: string }>;
 }) {
-  const { s: raw, v, q, k, open } = await searchParams;
+  const { s: raw, v, q, k, open, m } = await searchParams;
   const view = v === "cats" || v === "packs" || v === "collections" || v === "invites" ? v : "items";
   const user = await currentUser();
   if (!user) redirect("/login");
@@ -1556,6 +1557,9 @@ export default async function AdminPage({
                               {item.limited ? <Chip live>محدودة</Chip> : null}
                               {item.hidden ? <Chip>مخفيّ</Chip> : null}
                               {item.promoAt ? <Chip live>إعلان</Chip> : null}
+                              {item.exclusiveTagId ? (
+                                <Chip gold>حصري لـ{tags.find((tag) => tag.id === item.exclusiveTagId)?.name ?? "وسم"}</Chip>
+                              ) : null}
                             </p>
                             <p className="truncate text-[11.5px] text-muted">
                               {item.earnedAfterDays
@@ -1615,6 +1619,40 @@ export default async function AdminPage({
                           {/* مُدَدُ الشراء — للإطار والتشارم والثيم. والمجموعةُ في النموذج تحت. */}
                           {item.kind !== "BUNDLE" ? <ItemPlans itemId={item.id} /> : null}
                           <ItemHideAt itemId={item.id} />
+                          {/* تشارمٌ حصريٌّ لوسم (القاعدة ٤٧٩). */}
+                          {item.kind === "CHARM" ? (
+                            <Saver
+                              action={setItemExclusiveTag.bind(null, item.id)}
+                              className="mt-3 flex flex-col gap-2 rounded-2xl border border-line bg-card p-3"
+                            >
+                              <p className="text-[12px] font-bold">حصري لوسم</p>
+                              <p className="text-[11px] leading-relaxed text-faint">
+                                الحصريُّ لا يُباع ولا يُهدى ولا يُعرض في المتجر: يلبسه من يحمل الوسم من إكسسواراته،
+                                ومن ضغط صورةَ لابسه رأى «هذا التشارم خاص لـ» واسمَ الوسم. ويُنزع ممّن نُزع منه الوسم.
+                              </p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <select
+                                  name="tagId"
+                                  defaultValue={item.exclusiveTagId ?? ""}
+                                  className="h-10 min-w-0 grow rounded-xl border border-line bg-card px-3 text-[13px]"
+                                >
+                                  <option value="">لا — يُباع في المتجر</option>
+                                  {tags.map((tag) => (
+                                    <option key={tag.id} value={tag.id}>
+                                      {tag.name} ({ar(tag._count.users)})
+                                    </option>
+                                  ))}
+                                </select>
+                                <button
+                                  type="submit"
+                                  className="h-10 rounded-xl px-4 text-[12.5px] font-bold"
+                                  style={{ background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+                                >
+                                  احفظ
+                                </button>
+                              </div>
+                            </Saver>
+                          ) : null}
                           <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
                             الثيم يُلبَس خلفيةً للتطبيق، والتشارم شعاراً تحت صورة العرض،
                             والإطار حلقةً حولها. التشارم والإطار يُحفظان PNG بشفافيتهما.
@@ -2301,7 +2339,7 @@ export default async function AdminPage({
           </>
         ) : null}
 
-        {section === "analytics" ? <AnalyticsSection /> : null}
+        {section === "analytics" ? <AnalyticsSection month={m} /> : null}
         {section === "stickers" ? <StickersSection /> : null}
         {section === "broadcasts" ? <BroadcastsSection /> : null}
         {section === "occasions" ? <OccasionsSection /> : null}

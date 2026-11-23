@@ -2659,3 +2659,20 @@ export async function adminFind(raw: string): Promise<{
   ]);
   return { people, items };
 }
+
+/**
+ * تشارمٌ حصريٌّ لوسم (القاعدة ٤٧٩): يُختار الوسم أو «لا أحد». الحصريُّ يخرج من المتجر —
+ * لا يُشترى ولا يُهدى — ويلبسه حاملُ الوسم من إكسسواراته، ومن رآه على صورةٍ قيل له لمن هو.
+ */
+export async function setItemExclusiveTag(itemId: string, _prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  await requireAdmin("store");
+  const item = await prisma.storeItem.findUnique({ where: { id: itemId }, select: { kind: true } });
+  if (!item) return { error: "الصنف غير موجود" };
+  if (item.kind !== "CHARM") return { error: "الحصريُّ للتشارمز وحدها" };
+  const raw = String(formData.get("tagId") ?? "");
+  const tag = raw ? await prisma.tag.findUnique({ where: { id: raw }, select: { id: true, name: true } }) : null;
+  if (raw && !tag) return { error: "الوسم غير موجود" };
+  await prisma.storeItem.update({ where: { id: itemId }, data: { exclusiveTagId: tag?.id ?? null } });
+  revalidatePath("/admin", "layout");
+  return { ok: tag ? `صار حصرياً لوسم «${tag.name}»` : "عاد يُباع في المتجر" };
+}
