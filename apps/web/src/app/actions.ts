@@ -173,6 +173,9 @@ function specFor(kind: string, palette: string | null, spec: string, hall?: stri
   return colors ? paletteSpec(colors) : spec;
 }
 
+/** رسمُ صنفٍ بلا صورةٍ ولا ألوان: تدرّجُ العلامة. */
+const DEFAULT_SPEC = "linear-gradient(135deg,#f6b93b,#ff7a5a)";
+
 /** نتيجة نموذج في اللوحة: رسالة تُعرض في الشاشة بدل استثناء يكسرها. */
 export type AdminResult = { ok?: string; error?: string } | null;
 
@@ -180,10 +183,11 @@ const storeItemInput = z.object({
   kind: z.enum(["FRAME", "BACKGROUND", "THEME", "CHARM", "BUNDLE", "GALLERY", "BOOK"]),
   name: z.string().trim().min(1, "اكتب الاسم").max(40),
   priceCoins: z.coerce.number().int().min(0).max(1_000_000),
-  spec: z.string().trim().min(1, "اكتب تدرّج CSS").max(1000),
+  /** التدرّجُ حقلٌ مخفيّ (القاعدة ٤٨٣) — وغيابُه يُبقي ما كان، أو يرسم تدرّجَ العلامة لجديد. */
+  spec: z.string().trim().max(1000).optional(),
   plusOnly: z.coerce.boolean(),
   earnedAfterDays: z.coerce.number().int().min(0).max(3650).optional(),
-  /** التصنيف اختياري: صنفٌ بلا تصنيف يظهر في «المميز» وحده. */
+  /** التصنيفُ ذهب من النموذج (القاعدة ٤٨٣): غيابُه لا يمسّ ما كان على الصنف. */
   categoryId: z.string().trim().optional(),
   limited: z.coerce.boolean(),
   hidden: z.coerce.boolean(),
@@ -271,7 +275,7 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
       name,
       // الأسعار تُدخَل بالريال وتُخزَّن بالهللات، فلا تدخل كسور عشرية القاعدة.
       priceCoins,
-      spec: specFor(kind, palette, spec, hallSkin, bookSkin),
+      spec: specFor(kind, palette, spec || DEFAULT_SPEC, hallSkin, bookSkin),
       plusOnly,
       earnedAfterDays: earnedAfterDays && earnedAfterDays > 0 ? earnedAfterDays : null,
       categoryId: categoryId || null,
@@ -332,7 +336,7 @@ export async function updateStoreItem(
   const bookSkin = readBook(formData, kind);
   const collection = await readCollection(formData, kind);
   if (collection.error) return { error: collection.error };
-  const was = await prisma.storeItem.findUnique({ where: { id: itemId }, select: { promoAt: true, exclusiveTagId: true } });
+  const was = await prisma.storeItem.findUnique({ where: { id: itemId }, select: { promoAt: true, exclusiveTagId: true, spec: true } });
   const promo = readPromo(formData, was?.promoAt ?? null);
   await prisma.storeItem.update({
     where: { id: itemId },
@@ -342,10 +346,10 @@ export async function updateStoreItem(
       kind,
       name,
       priceCoins,
-      spec: specFor(kind, palette, spec, hallSkin, bookSkin),
+      spec: specFor(kind, palette, spec || was?.spec || DEFAULT_SPEC, hallSkin, bookSkin),
       plusOnly,
       earnedAfterDays: earnedAfterDays && earnedAfterDays > 0 ? earnedAfterDays : null,
-      categoryId: categoryId || null,
+      ...(formData.has("categoryId") ? { categoryId: categoryId || null } : {}),
       limited,
       hidden,
       palette,
@@ -638,7 +642,6 @@ const tagInput = z.object({
   name: z.string().trim().min(1, "اكتب اسم الوسم").max(20),
   bg: z.string().trim().regex(HEX_COLOR, "لون الخلفية بصيغة #rrggbb"),
   fg: z.string().trim().regex(HEX_COLOR, "لون النص بصيغة #rrggbb"),
-  autoForPlus: z.coerce.boolean(),
 });
 
 function readTag(formData: FormData) {
@@ -648,16 +651,6 @@ function readTag(formData: FormData) {
     // الفحص يفرّق، فتُوحَّد قبله.
     bg: String(formData.get("bg") ?? "").toLowerCase(),
     fg: String(formData.get("fg") ?? "").toLowerCase(),
-    autoForPlus: formData.get("autoForPlus") === "on",
-  });
-}
-
-/** وسم واحد فقط يُمنح تلقائياً للمشتركين، وإلا تنازع وسمان على الاسم نفسه. */
-async function keepSingleAuto(tagId: string, autoForPlus: boolean) {
-  if (!autoForPlus) return;
-  await prisma.tag.updateMany({
-    where: { id: { not: tagId }, autoForPlus: true },
-    data: { autoForPlus: false },
   });
 }
 
@@ -669,7 +662,6 @@ export async function createTag(_prev: AdminResult, formData: FormData): Promise
   const data = parsed.data;
   const last = await prisma.tag.findFirst({ orderBy: { sortOrder: "desc" }, select: { sortOrder: true } });
   const tag = await prisma.tag.create({ data: { ...data, sortOrder: (last?.sortOrder ?? 0) + 1 } });
-  await keepSingleAuto(tag.id, data.autoForPlus);
   revalidateTags();
   return { ok: `أُضيف وسم «${data.name}»` };
 }
@@ -684,7 +676,6 @@ export async function updateTag(
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
 
   await prisma.tag.update({ where: { id: tagId }, data: parsed.data });
-  await keepSingleAuto(tagId, parsed.data.autoForPlus);
   revalidateTags();
   return { ok: "حُفظ" };
 }

@@ -40,7 +40,7 @@ export async function tellSupport(input: {
         : "رسالة دعم جديدة",
       intro: `من: ${escapeHtml(input.from)}${input.replyTo ? ` (${escapeHtml(input.replyTo)})` : ""}<br><br>${escapeHtml(input.body).replace(/\n/g, "<br>")}`,
       button: "افتح اللوحة",
-      url: `${process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? ""}/admin?s=support${input.ticket ? `&open=${input.ticket.id}#ticket-${input.ticket.id}` : ""}`,
+      url: `${process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? ""}/admin?s=inbox${input.ticket ? `&open=${input.ticket.id}#ticket-${input.ticket.id}` : ""}`,
       note: "الردّ يُكتب من اللوحة، ومنها يصل صاحبَه بالبريد والتنبيه — الردُّ على هذه الرسالة لا يصله.",
     }),
   }).catch(() => false);

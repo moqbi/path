@@ -49,7 +49,7 @@ function Delta({ now, before }: { now: number; before: number }) {
   const change = Math.round(((now - before) / before) * 100);
   const up = change >= 0;
   return (
-    <span className="text-[11px] font-semibold" style={{ color: up ? "#2f7d4f" : "#b4443a" }}>
+    <span className="text-[11px] font-semibold" style={{ color: up ? "#3fc07e" : "#ff8f74" }}>
       {up ? "▲" : "▼"} {ar(Math.abs(change))}٪ <span className="font-normal text-muted">عن أمس</span>
     </span>
   );
@@ -179,7 +179,7 @@ export async function HomeSection() {
       who: first.reported ? first.reported.name : "حسابٌ محذوف",
       what: REPORT_LABEL[first.target] ?? "بلاغ",
       line: `${first.snippet ? `«${first.snippet}» — ` : ""}${first.reason}${count > 1 ? ` · ${ar(count)} بلاغات` : ""}`,
-      href: "/admin?s=reports",
+      href: "/admin?s=inbox&v=reports",
       act: "احسم",
       at: first.createdAt,
     })),
@@ -191,7 +191,7 @@ export async function HomeSection() {
         who: ticket.user?.name ?? ticket.name ?? "زائر",
         what: ticket.topic === "beta" ? "فريق التجارب" : ticket.topic === "careers" ? "طلب وظيفة" : "رسالة دعم",
         line: ticket.body,
-        href: "/admin?s=support",
+        href: `/admin?s=inbox&open=${ticket.id}`,
         act: side ? "افتح" : "ردّ",
         at: ticket.createdAt,
       };
@@ -200,9 +200,19 @@ export async function HomeSection() {
 
   const shown = needs.slice(0, 12);
 
+  const hour = new Date(Date.now() + OFFSET).getUTCHours();
   return (
     <>
-      <div className="mb-5 grid grid-cols-2 gap-2 lg:grid-cols-4">
+      <header className="mb-4">
+        <h1 className="text-[24px] font-extrabold" style={{ fontFamily: "var(--font-display)" }}>
+          {hour < 12 ? "صباح الخير" : "مساء الخير"}
+        </h1>
+        <p className="text-[12.5px] text-muted">
+          ملخّص اليوم بتوقيت الرياض —{" "}
+          {new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-arab", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Riyadh" }).format(new Date())}
+        </p>
+      </header>
+      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="نشطون اليوم" value={ar(activeToday)}>
           <Delta now={activeToday} before={activeYesterday} />
           <Spark values={series} color="#F6B93B" />
@@ -217,7 +227,7 @@ export async function HomeSection() {
         </Kpi>
         <Kpi label="نقاطٌ بيعت · ٧ أيام" value={ar(coins)}>
           {coinsPrev ? (
-            <span className="text-[11px] font-semibold" style={{ color: coins >= coinsPrev ? "#2f7d4f" : "#b4443a" }}>
+            <span className="text-[11px] font-semibold" style={{ color: coins >= coinsPrev ? "#3fc07e" : "#ff8f74" }}>
               {coins >= coinsPrev ? "▲" : "▼"} {ar(Math.abs(Math.round(((coins - coinsPrev) / coinsPrev) * 100)))}٪{" "}
               <span className="font-normal text-muted">عن الأسبوع قبله</span>
             </span>
@@ -271,8 +281,7 @@ export async function HomeSection() {
         {needs.length > shown.length ? (
           <p className="border-t border-line px-4 py-2 text-[11.5px] text-muted">
             و{ar(needs.length - shown.length)} غيرها في{" "}
-            <Link href="/admin?s=reports" className="font-semibold text-clay-ink">البلاغات</Link> و{" "}
-            <Link href="/admin?s=support" className="font-semibold text-clay-ink">الدعم</Link>.
+            <Link href="/admin?s=inbox" className="font-semibold text-clay-ink">الصندوق</Link>.
           </p>
         ) : null}
       </section>

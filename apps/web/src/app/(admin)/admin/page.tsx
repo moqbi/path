@@ -90,16 +90,6 @@ function Color({ name, label, value }: { name: string; label: string; value: str
 const SELECT =
   "w-full rounded-xl border border-line bg-card px-3 text-[13.5px] text-ink outline-none focus:border-clay";
 
-const KINDS = [
-  { value: "FRAME", label: "إطار" },
-  { value: "THEME", label: "ثيم" },
-  { value: "CHARM", label: "تشارم" },
-  { value: "BACKGROUND", label: "خلفية" },
-  { value: "BUNDLE", label: "حزمة" },
-  { value: "GALLERY", label: "معرض" },
-  { value: "BOOK", label: "تصميم كتاب" },
-] as const;
-
 const KIND_LABEL: Record<string, string> = {
   FRAME: "إطار",
   THEME: "ثيم",
@@ -139,13 +129,15 @@ function Field({
   label,
   hint,
   children,
+  className = "",
 }: {
   label: string;
   hint?: string;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <label className="flex min-w-0 grow flex-col gap-1">
+    <label className={`flex min-w-0 grow flex-col gap-1 ${className}`}>
       <span className="px-1 text-[11.5px] font-semibold text-muted">{label}</span>
       {children}
       {hint ? <span className="px-1 text-[10.5px] text-faint">{hint}</span> : null}
@@ -181,6 +173,98 @@ function ticketWhere(v: string | undefined, f: string | undefined, open: string 
     ...(topic === "other" ? { OR: [{ topic: null }, { topic: { notIn: ["complaint", "suggestion", "report", "careers", "beta"] } }] } : topic ? { topic } : {}),
     closed: f === "closed",
   };
+}
+
+/**
+ * «الصندوق» (القاعدة ٤٨٣): الدعمُ والبلاغاتُ قسمٌ واحدٌ بقوائم — بلاغاتُ المحتوى (لحظاتٌ
+ * وتعليقاتٌ ورسائلُ وقصص) أوّلاً لأنّها تنتظر حكماً، ثمّ تذاكرُ الدعم بأنواعها — ومفتوحةٌ أو
+ * مغلقة. وعددُ ما ينتظر بجانب كلّ قائمة.
+ */
+function InboxTabs({
+  v,
+  f,
+  open,
+  topic,
+  count,
+  reportsOpen,
+  reportsClosed,
+}: {
+  v?: string;
+  f?: string;
+  open?: string;
+  topic: string;
+  count: (topic: string, closed: boolean) => number;
+  reportsOpen: number;
+  reportsClosed: number;
+}) {
+  const onReports = v === "reports";
+  const closed = f === "closed";
+  const lists = [
+    { key: "reports", label: "بلاغات المحتوى", waiting: reportsOpen, hot: true },
+    { key: "all", label: "كلّ التذاكر", waiting: count("all", false) },
+    { key: "complaint", label: "الشكاوى", waiting: count("complaint", false) },
+    { key: "suggestion", label: "الاقتراحات", waiting: count("suggestion", false) },
+    { key: "report", label: "بلاغات التواصل", waiting: count("report", false) },
+    { key: "careers", label: "الوظائف", waiting: count("careers", false) },
+    { key: "beta", label: "فريق التجربة", waiting: count("beta", false) },
+    { key: "other", label: "أخرى", waiting: count("other", false) },
+  ];
+  const href = (list: string, isClosed: boolean) =>
+    `/admin?s=inbox${list === "all" ? "" : `&v=${list}`}${isClosed ? "&f=closed" : ""}`;
+  const current = onReports ? "reports" : topic;
+  return (
+    <div className="inbox-head mb-4">
+      <div className="mb-3 flex items-end gap-3">
+        <div className="min-w-0 grow">
+          <h2 className="text-[20px] font-extrabold" style={{ fontFamily: "var(--font-display)" }}>
+            الصندوق
+          </h2>
+          <p className="text-[12px] text-muted">
+            {onReports
+              ? "كلُّ بلاغٍ يُقرأ بيد. «احذف» يمسح المحتوى ويُبقي البلاغ سجلّاً فيبقى تكرارُ المخالفة مرئياً."
+              : "الردُّ يصل صاحبَه بريداً من صندوق الدعم وتنبيهاً في التطبيق. «أغلق» يُبقي له أن يعيد فتحها، و«أغلق نهائياً» لا يُكتب فيها بعده."}
+          </p>
+        </div>
+      </div>
+      <nav className="no-bar mb-2 flex gap-1.5 overflow-x-auto" aria-label="قوائم الصندوق">
+        {lists.map((list) => {
+          const on = !open && current === list.key;
+          return (
+            <Link
+              key={list.key}
+              href={href(list.key, closed)}
+              aria-current={on ? "page" : undefined}
+              className="inbox-tab shrink-0 rounded-full border px-3 py-1.5 text-[12px] font-semibold"
+            >
+              {list.label}
+              {list.waiting ? (
+                <span className={`inbox-count ms-1.5 ${list.hot ? "hot" : ""}`}>{ar(list.waiting)}</span>
+              ) : null}
+            </Link>
+          );
+        })}
+      </nav>
+      <div className="flex gap-1.5">
+        {[
+          { label: "مفتوحة", closed: false },
+          { label: "مغلقة", closed: true },
+        ].map((tab) => {
+          const on = !open && closed === tab.closed;
+          const n = onReports ? (tab.closed ? reportsClosed : reportsOpen) : count(topic, tab.closed);
+          return (
+            <Link
+              key={tab.label}
+              href={href(current, tab.closed)}
+              aria-current={on ? "page" : undefined}
+              className="inbox-state grow rounded-xl border py-2 text-center text-[12.5px] font-bold"
+            >
+              {tab.label} ({ar(n)})
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function Chip({
@@ -231,50 +315,26 @@ const PALETTE_FIELDS = [
  * ألوانٍ تكفي — البقية تُشتقّ منها فلا يُسأل المشرف عن درجاتِ لونٍ واحد.
  */
 /**
- * النوعُ في نموذج الصنف: من أنواع التبويب وحدها — الثيمُ والخلفيّةُ (نوعُه القديم)
- * بابٌ واحد، وغيرُهما نوعٌ واحدٌ يُكتب ولا يُختار. فلا يصير التشارمُ إطاراً بزلّة
- * قائمةٍ وحقولُ نوعه الأوّل معه.
+ * النوعُ في نموذج الصنف نوعُ التبويب، يُكتب ولا يُختار — فلا يصير التشارمُ إطاراً
+ * بزلّة قائمة. و«خلفية» لا تُنشأ بعد اليوم (القاعدة ٤٨٣)، وما كان منها يبقى بنوعه.
  */
-function KindField({ kinds, value }: { kinds: readonly string[]; value: string }) {
-  const options = KINDS.filter((kind) => kinds.includes(kind.value));
-  if (options.length < 2) {
-    return (
-      <Field label="النوع">
-        <input type="hidden" name="kind" value={value} />
-        <span className="flex items-center text-[13.5px] font-semibold" style={{ height: 46 }}>
-          {KIND_LABEL[value] ?? value}
-        </span>
-      </Field>
-    );
-  }
+function KindField({ value }: { kinds?: readonly string[]; value: string }) {
   return (
     <Field label="النوع">
-      <select name="kind" defaultValue={value} className={SELECT} style={{ height: 46 }}>
-        {options.map((kind) => (
-          <option key={kind.value} value={kind.value}>
-            {kind.label}
-          </option>
-        ))}
-      </select>
+      <input type="hidden" name="kind" value={value} />
+      <span className="flex items-center text-[13.5px] font-semibold" style={{ height: 46 }}>
+        {KIND_LABEL[value] ?? value}
+      </span>
     </Field>
   );
 }
 
 /**
- * التدرّجُ رسمُ ما لا صورةَ له. والحزمةُ تُرسم ممّا فيها وصورةُ إعلانها، والثيمُ
- * بألوانٍ من ألوانه — فيبقى الحقلُ مخفيّاً لهما بقيمته: الإجراءُ يشترطه.
+ * التدرّجُ لا يُكتب باليد بعد اليوم (القاعدة ٤٨٣): الإطارُ والتشارمُ صورة، والثيمُ والمعرضُ
+ * والكتابُ يُرسمون من ألوانهم. فيبقى الحقلُ مخفيّاً بقيمته — رسمُ ما لم تُرفع صورتُه.
  */
-function SpecField({ kind, value }: { kind: string; value: string }) {
-  // والمعرضُ يُرسم من ثوبه (`specFor` في الإجراء) فلا يُكتب له تدرّج.
-  if (kind === "BUNDLE" || kind === "GALLERY" || kind === "BOOK") return <input type="hidden" name="spec" value={value} />;
-  return (
-    <Field
-      label="تدرّج CSS"
-      hint={kind === "THEME" ? "يُرسم إن لم تُرفع صورة — والثيمُ بألوانٍ يُرسم من ألوانه وحدها" : "يُرسم إن لم تُرفع صورة"}
-    >
-      <input name="spec" required dir="ltr" defaultValue={value} className={FIELD} style={{ height: 46 }} />
-    </Field>
-  );
+function SpecField({ value }: { kind?: string; value: string }) {
+  return <input type="hidden" name="spec" value={value} />;
 }
 
 /**
@@ -627,25 +687,74 @@ const LOG_ACTION: Record<string, string> = {
   BIO_REMOVED: "مسح نبذة",
 };
 
+/*
+  أقسامُ اللوحة مجموعاتٌ في عمودٍ جانبيّ داكن (غرفةُ المراقبة — القاعدة ٤٨٣): ما ينتظر
+  قراراً أوّلاً، ثمّ الناس، ثمّ ما يُعرض فيهم، ثمّ الموقع.
+*/
+const NAV_GROUPS = [
+  { key: "top", label: "" },
+  { key: "people", label: "الناس" },
+  { key: "content", label: "المحتوى" },
+  { key: "site", label: "الموقع" },
+] as const;
+
 const SECTIONS = [
   // غرفةُ العمليات أوّلاً: ما ينتظر قراراً قبل الأقسام (القاعدة ٤٧٧).
-  { key: "home", label: "الرئيسيّة", store: false },
-  { key: "analytics", label: "التحليلات", store: false },
-  { key: "tags", label: "الوسوم", store: false },
-  { key: "users", label: "الحسابات", store: false },
-  { key: "store", label: "المتجر", store: true },
-  { key: "stickers", label: "الملصقات", store: true },
-  { key: "broadcasts", label: "التنبيهات", store: false },
-  { key: "occasions", label: "المناسبات", store: false },
-  { key: "interests", label: "الاهتمامات", store: false },
-  { key: "site", label: "الموقع", store: false },
-  { key: "team", label: "الصلاحيات", store: false, owner: true },
-  { key: "files", label: "الملفات", store: false, owner: true },
-  { key: "vacant", label: "العضويات المحذوفة", store: false, owner: true },
-  { key: "support", label: "الدعم", store: false, reports: true },
-  { key: "reports", label: "البلاغات", store: false, reports: true },
-  { key: "words", label: "الكلمات", store: false },
+  { key: "home", label: "الرئيسيّة", store: false, group: "top", icon: "home" },
+  { key: "analytics", label: "التحليلات", store: false, group: "top", icon: "chart" },
+  // الدعمُ والبلاغاتُ صندوقٌ واحدٌ بقوائم (القاعدة ٤٨٣).
+  { key: "inbox", label: "الصندوق", store: false, reports: true, group: "people", icon: "inbox" },
+  { key: "users", label: "الحسابات", store: false, group: "people", icon: "users" },
+  { key: "tags", label: "الوسوم", store: false, group: "people", icon: "tag" },
+  { key: "team", label: "الصلاحيات", store: false, owner: true, group: "people", icon: "shield" },
+  { key: "vacant", label: "العضويات المحذوفة", store: false, owner: true, group: "people", icon: "badge" },
+  { key: "store", label: "المتجر", store: true, group: "content", icon: "store" },
+  { key: "stickers", label: "الملصقات", store: true, group: "content", icon: "sticker" },
+  { key: "broadcasts", label: "التنبيهات", store: false, group: "content", icon: "bell" },
+  { key: "occasions", label: "المناسبات", store: false, group: "content", icon: "calendar" },
+  { key: "interests", label: "الاهتمامات", store: false, group: "content", icon: "spark" },
+  { key: "words", label: "الكلمات", store: false, group: "content", icon: "words" },
+  { key: "site", label: "الموقع", store: false, group: "site", icon: "globe" },
+  { key: "files", label: "الملفات", store: false, owner: true, group: "site", icon: "file" },
 ] as const;
+
+const NAV_ICON: Record<string, string> = {
+  home: "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
+  chart: "M4 20V10M10 20V4M16 20v-7M22 20H2",
+  inbox: "M3 13l3-8h12l3 8v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM3 13h5l1 3h6l1-3h5",
+  users: "M9 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20c.8-3.6 3.5-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.6c2 .7 3.2 2.5 3.6 5.4",
+  tag: "M3 12V4h8l10 10-8 8zM7.5 7.2v2.6",
+  shield: "M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z",
+  badge: "M4 5h16v14H4zM8 10h8M8 14h5",
+  store: "M4 9h16l-1 11H5zM8 9V7a4 4 0 0 1 8 0v2",
+  sticker: "M20 12a8 8 0 1 1-8-8h8zM20 12h-5a3 3 0 0 1-3-3V4",
+  bell: "M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9zM10 20a2 2 0 0 0 4 0",
+  calendar: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4",
+  spark: "M12 3l2.2 6.8L21 12l-6.8 2.2L12 21l-2.2-6.8L3 12l6.8-2.2z",
+  words: "M4 6h16M4 12h10M4 18h7M17 15l4 4M21 15l-4 4",
+  globe: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18",
+  file: "M6 3h8l4 4v14H6zM14 3v4h4",
+  out: "M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10",
+};
+
+function NavIcon({ name }: { name: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={18}
+      height={18}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="shrink-0"
+    >
+      <path d={NAV_ICON[name] ?? NAV_ICON.home} />
+    </svg>
+  );
+}
 
 export default async function AdminPage({
   searchParams,
@@ -653,6 +762,15 @@ export default async function AdminPage({
   searchParams: Promise<{ s?: string; v?: string; q?: string; k?: string; open?: string; m?: string; f?: string }>;
 }) {
   const { s: raw, v, q, k, open, m, f } = await searchParams;
+  // «الدعم» و«البلاغات» صارا «الصندوق» (القاعدة ٤٨٣) — والروابطُ القديمة لا تنكسر.
+  if (raw === "support" || raw === "reports") {
+    const keep = new URLSearchParams({ s: "inbox" });
+    if (raw === "reports") keep.set("v", "reports");
+    else if (v) keep.set("v", v);
+    if (f) keep.set("f", f);
+    if (open) keep.set("open", open);
+    redirect(`/admin?${keep.toString()}`);
+  }
   const view = v === "cats" || v === "packs" || v === "collections" || v === "invites" ? v : "items";
   const user = await currentUser();
   if (!user) redirect("/login");
@@ -856,6 +974,13 @@ export default async function AdminPage({
       : Promise.resolve([]),
   ]);
 
+  // شارةُ الصندوق في العمود: بلاغاتٌ تنتظر حكماً وتذاكرُ مفتوحة.
+  const inboxWaiting =
+    scope === "ALL" || scope === "REPORTS"
+      ? (await prisma.report.count({ where: { state: "OPEN" } })) +
+        (await prisma.supportTicket.count({ where: { closed: false } }))
+      : 0;
+
   const collections =
     section === "store"
       ? await prisma.storeCollection.findMany({
@@ -865,7 +990,7 @@ export default async function AdminPage({
       : [];
   // عددُ كلّ تصنيفٍ في الدعم بحاله — للشرائح.
   const ticketCounts =
-    section === "support"
+    section === "inbox"
       ? await prisma.supportTicket.groupBy({ by: ["topic", "closed"], _count: { _all: true } })
       : [];
   const ticketTopic = (TICKET_TOPICS as readonly string[]).includes(v ?? "") ? v! : "all";
@@ -880,6 +1005,8 @@ export default async function AdminPage({
             : row.topic === topic,
       )
       .reduce((sum, row) => sum + row._count._all, 0);
+  // البلاغاتُ في الصندوق بحالها كالتذاكر: المفتوحةُ ما ينتظر حكماً.
+  const shownReports = reports.filter((one) => (f === "closed" ? one.state !== "OPEN" : one.state === "OPEN"));
   // صنفٌ فُتح من سطر الأوامر يفتح شريحةَ نوعه وبطاقتَه.
   const openItem = open ? items.find((item) => item.id === open) : undefined;
   const kindTab =
@@ -944,27 +1071,44 @@ export default async function AdminPage({
           ))}
         </div>
 
-        {/* أقسام بدل جدارٍ واحد: قسمٌ في الشاشة لا ثلاثة فوق بعضها. */}
-        {/* وعلى الشاشة العريضة عمودٌ جانبيّ ثابت (`.admin-nav`). */}
-        <nav className="admin-nav no-bar mb-5 flex gap-2 overflow-x-auto">
-          {sections.map((item) => {
-            const on = section === item.key;
+        {/* غرفةُ المراقبة (القاعدة ٤٨٣): مجموعاتٌ بأيقوناتها، وشارةُ ما ينتظر على الصندوق. */}
+        <nav className="admin-nav no-bar mb-5 flex gap-2 overflow-x-auto" aria-label="أقسام اللوحة">
+          <span className="admin-logo">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/athr-mark.png" alt="" aria-hidden />
+            آثار
+          </span>
+          {NAV_GROUPS.map((group) => {
+            const list = sections.filter((item) => item.group === group.key);
+            if (list.length === 0) return null;
             return (
-              <Link
-                key={item.key}
-                href={`/admin?s=${item.key}`}
-                aria-current={on ? "page" : undefined}
-                className="shrink-0 rounded-full px-4 py-2 text-[12.5px] font-semibold"
-                style={{
-                  background: on ? "var(--color-clay)" : "var(--color-card)",
-                  color: on ? "var(--color-on-brand)" : "var(--color-ink-2)",
-                  border: `1px solid ${on ? "var(--color-clay)" : "var(--color-line)"}`,
-                }}
-              >
-                {item.label}
-              </Link>
+              <div key={group.key} className="admin-group">
+                {group.label ? <span className="admin-group-label">{group.label}</span> : null}
+                {list.map((item) => {
+                  const on = section === item.key;
+                  const badge = item.key === "inbox" ? inboxWaiting : 0;
+                  return (
+                    <Link
+                      key={item.key}
+                      href={`/admin?s=${item.key}`}
+                      aria-current={on ? "page" : undefined}
+                      className="admin-link"
+                    >
+                      <NavIcon name={item.icon} />
+                      <span className="truncate">{item.label}</span>
+                      {badge ? <span className="admin-badge">{ar(badge)}</span> : null}
+                    </Link>
+                  );
+                })}
+              </div>
             );
           })}
+          <form action={signOut} className="admin-out">
+            <button type="submit" className="admin-link">
+              <NavIcon name="out" />
+              <span>خروج</span>
+            </button>
+          </form>
         </nav>
 
         <div className="admin-section min-w-0">
@@ -974,9 +1118,8 @@ export default async function AdminPage({
         <>
         <h2 className="mb-1 text-[15px] font-bold">الوسوم</h2>
         <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
-          الوسم كلمة تظهر بجانب الاسم بلونين تختارهما. وسمٌ واحد يمكن أن يُمنح
-          تلقائياً لكل مشترك في آثار+ — يُقرأ من الاشتراك ولا يُكتب على الحساب،
-          فينتهي بانتهائه.
+          الوسم كلمة تظهر بجانب الاسم بلونين تختارهما، ويُمنح من صفّ الحساب. ووسمُ
+          «داعم» لمشتركي آثار+ يُرسم من الاشتراك نفسه فلا يُضاف هنا.
         </p>
 
         <Saver action={createTag} className="mb-4 flex flex-col gap-2.5">
@@ -994,10 +1137,6 @@ export default async function AdminPage({
             <Color name="bg" label="خلفية" value="#f6b93b" />
             <Color name="fg" label="نص" value="#3b2a05" />
           </div>
-          <label className="flex items-center gap-2.5 px-1 text-[13px]">
-            <input name="autoForPlus" type="checkbox" className="h-4 w-4 accent-[#f6b93b]" />
-            يُمنح تلقائياً لمشتركي آثار+
-          </label>
           <button
             type="submit"
             className="brand-gradient rounded-xl text-[14px] font-bold"
@@ -1018,7 +1157,6 @@ export default async function AdminPage({
               <summary className="flex cursor-pointer list-none items-center gap-3 p-3">
                 <TagPill tag={tag} size={12} />
                 <span className="grow text-[11.5px] text-muted">
-                  {tag.autoForPlus ? "تلقائي لمشتركي آثار+ · " : null}
                   {ar(tag._count.users)} حساب
                 </span>
                 <span className="text-[12px] font-semibold text-clay-ink">تعديل</span>
@@ -1040,15 +1178,6 @@ export default async function AdminPage({
                   <Color name="bg" label="خلفية" value={tag.bg} />
                   <Color name="fg" label="نص" value={tag.fg} />
                 </div>
-                <label className="flex items-center gap-2.5 px-1 text-[13px]">
-                  <input
-                    name="autoForPlus"
-                    type="checkbox"
-                    defaultChecked={tag.autoForPlus}
-                    className="h-4 w-4 accent-[#f6b93b]"
-                  />
-                  يُمنح تلقائياً لمشتركي آثار+
-                </label>
                 <div className="flex gap-2.5">
                   <button
                     type="submit"
@@ -1523,16 +1652,6 @@ export default async function AdminPage({
                   ) : null}
                 </div>
 
-                <Field label="التصنيف">
-                  <select name="categoryId" defaultValue="" className={SELECT} style={{ height: 46 }}>
-                    <option value="">بلا تصنيف</option>
-                    {categories.map((row) => (
-                      <option key={row.id} value={row.id}>
-                        {row.name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
 
                 {kindTab.key !== "BUNDLE" ? (
                   <Field label="المجموعة" hint={`مجموعات ${kindTab.label} والمختلطة وحدها`}>
@@ -1558,7 +1677,7 @@ export default async function AdminPage({
                   <Check name="hidden" label="مخفيّ عن المتجر — ومن اشتراه يبقى له" />
                   <Check name="promo" label="بطاقة إعلان — تظهر لكل مستخدم مرّةً عند فتح التطبيق" />
                 </div>
-                <Field label="سطر بطاقة الإعلان (اختياري)">
+                <Field label="سطر بطاقة الإعلان (اختياري)" className="promo-line">
                   <input name="promoText" maxLength={140} placeholder="مثال: إطار رمضان وصل — لفترة محدودة" className={FIELD} style={{ height: 46 }} />
                 </Field>
 
@@ -1803,21 +1922,6 @@ export default async function AdminPage({
                           </div>
 
                           <div className="flex gap-2.5">
-                            <Field label="التصنيف">
-                              <select
-                                name="categoryId"
-                                defaultValue={item.categoryId ?? ""}
-                                className={SELECT}
-                                style={{ height: 46 }}
-                              >
-                                <option value="">بلا تصنيف</option>
-                                {categories.map((row) => (
-                                  <option key={row.id} value={row.id}>
-                                    {row.name}
-                                  </option>
-                                ))}
-                              </select>
-                            </Field>
                             <Field label="الترتيب">
                               <input
                                 name="sortOrder"
@@ -1865,7 +1969,7 @@ export default async function AdminPage({
                             <Check name="hidden" label="مخفيّ عن المتجر" on={item.hidden} />
                             <Check name="promo" label="بطاقة إعلان عند فتح التطبيق" on={item.promoAt !== null} />
                           </div>
-                          <Field label="سطر بطاقة الإعلان (اختياري)">
+                          <Field label="سطر بطاقة الإعلان (اختياري)" className="promo-line">
                             <input name="promoText" maxLength={140} defaultValue={item.promoText ?? ""} className={FIELD} style={{ height: 46 }} />
                           </Field>
 
@@ -2136,69 +2240,21 @@ export default async function AdminPage({
         {section === "files" ? <Files /> : null}
         {section === "vacant" ? <Vacant /> : null}
 
-        {section === "support" ? (
+        {section === "inbox" ? (
+          <InboxTabs
+            v={v}
+            f={f}
+            open={open}
+            topic={ticketTopic}
+            count={ticketCount}
+            reportsOpen={reports.filter((one) => one.state === "OPEN").length}
+            reportsClosed={reports.filter((one) => one.state !== "OPEN").length}
+          />
+        ) : null}
+        {section === "inbox" && v !== "reports" ? (
           <>
-            <h2 className="mb-1 text-[15px] font-bold">الدعم</h2>
-            <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
-              تذاكر «الدعم وتواصل معنا». الردّ يصل صاحبَها بريداً من صندوق الدعم وتنبيهاً في التطبيق،
-              ويعلّق عليه من «تذاكري». «أغلق» يُبقي له أن يعيد فتحها بتعليق، و«أغلق نهائياً» لا يُكتب فيها بعده،
-              و«حذف التذكرة» يمحوها من كلّ مكان.
-            </p>
-
-            {/* التصنيفات (القاعدة ٤٨٠): النوعُ ثمّ الحال، وعددُ كلٍّ بجانبه. */}
-            <div className="mb-2 flex flex-wrap gap-1.5">
-              {[
-                { key: "all", label: "الكل" },
-                { key: "complaint", label: "الشكاوى" },
-                { key: "suggestion", label: "الاقتراحات" },
-                { key: "report", label: "البلاغات" },
-                { key: "careers", label: "الوظائف" },
-                { key: "beta", label: "فريق التجربة" },
-                { key: "other", label: "أخرى" },
-              ].map((tab) => {
-                const on = !open && ticketTopic === tab.key;
-                const waiting = ticketCount(tab.key, false);
-                return (
-                  <Link
-                    key={tab.key}
-                    href={`/admin?s=support${tab.key === "all" ? "" : `&v=${tab.key}`}${f === "closed" ? "&f=closed" : ""}`}
-                    className="rounded-full border px-3 py-1.5 text-[12px] font-semibold"
-                    style={
-                      on
-                        ? { background: "var(--color-ink)", borderColor: "var(--color-ink)", color: "var(--color-card)" }
-                        : { borderColor: "var(--color-line)", background: "var(--color-card)", color: "var(--color-ink-2)" }
-                    }
-                  >
-                    {tab.label}
-                    {waiting ? <span className="ms-1 text-[10.5px]" style={{ color: on ? "var(--color-clay)" : "var(--color-live)" }}>{ar(waiting)}</span> : null}
-                  </Link>
-                );
-              })}
-            </div>
-            <div className="mb-4 flex gap-1.5">
-              {[
-                { key: "open", label: "مفتوحة", closed: false },
-                { key: "closed", label: "مغلقة", closed: true },
-              ].map((tab) => {
-                const on = !open && (f === "closed") === tab.closed;
-                return (
-                  <Link
-                    key={tab.key}
-                    href={`/admin?s=support${ticketTopic === "all" ? "" : `&v=${ticketTopic}`}${tab.closed ? "&f=closed" : ""}`}
-                    className="grow rounded-xl border py-2 text-center text-[12.5px] font-bold"
-                    style={
-                      on
-                        ? { background: "var(--color-gold-soft)", borderColor: "var(--color-clay)", color: "var(--color-clay-ink)" }
-                        : { borderColor: "var(--color-line)", background: "var(--color-card)", color: "var(--color-muted)" }
-                    }
-                  >
-                    {tab.label} ({ar(ticketCount(ticketTopic, tab.closed))})
-                  </Link>
-                );
-              })}
-            </div>
             {open ? (
-              <Link href="/admin?s=support" className="mb-3 inline-block text-[12px] font-semibold text-clay-ink">
+              <Link href="/admin?s=inbox" className="mb-3 inline-block text-[12px] font-semibold text-clay-ink">
                 ← كلّ التذاكر
               </Link>
             ) : null}
@@ -2410,22 +2466,16 @@ export default async function AdminPage({
             )}
           </>
         ) : null}
-        {section === "reports" ? (
+        {section === "inbox" && v === "reports" ? (
           <>
-            <h2 className="mb-1 text-[15px] font-bold">البلاغات</h2>
-            <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
-              كل بلاغ يُقرأ بيد. و«احذف» يمسح اللحظة أو القصة أو الرسالة ويُبقي
-              البلاغ سجلّاً — فتكرار المخالفة من حسابٍ واحد يبقى مرئياً. والمتن
-              محفوظٌ هنا وقت البلاغ، فما حُذف قبل قراءته يُقرأ.
-            </p>
 
-            {reports.length === 0 ? (
+            {shownReports.length === 0 ? (
               <p className="rounded-2xl border border-line bg-card p-5 text-center text-[12.5px] text-muted">
                 لا بلاغات.
               </p>
             ) : (
               <div className="mb-7 flex flex-col gap-2.5">
-                {reports.map((report) => (
+                {shownReports.map((report) => (
                   <div key={report.id} className="rounded-2xl border border-line bg-card p-3.5">
                     <div className="mb-2 flex flex-wrap items-center gap-2">
                       <Chip live={report.state === "OPEN"} gold={report.state === "REMOVED"}>
