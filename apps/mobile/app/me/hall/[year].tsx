@@ -155,6 +155,19 @@ export default function HallScreen() {
     pos.value = start * STEP;
   }, [slots.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /*
+    الدورانُ يُغيّر عرضَ الخطوة، والموضعُ ما زال بالخطوة القديمة — فتقع الحاليّةُ خارج الشاشة
+    ولا يُرى إلا جدارٌ فارغ. فيُعاد إلى موضع الحاليّة بالخطوة الجديدة ساعةَ تتبدّل.
+  */
+  const lastStep = useRef(STEP);
+  useLayoutEffect(() => {
+    if (lastStep.current === STEP) return;
+    lastStep.current = STEP;
+    cancelAnimation(pos);
+    pos.value = nav.index * STEP;
+    setSettled(nav.index);
+  }, [STEP]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const go = useCallback(
     (to: number) => {
       const target = Math.max(0, Math.min(nav.count - 1, to));
@@ -1084,7 +1097,7 @@ function HallSheet({
         <Pressable accessibilityLabel="إغلاق" onPress={close} style={{ flex: 1 }} />
       </Animated.View>
       <Animated.View
-        {...pan.panHandlers}
+        {...(wide ? {} : pan.panHandlers)}
         style={{
           position: "absolute",
           left: 0,
@@ -1102,8 +1115,13 @@ function HallSheet({
           elevation: 24,
         }}
       >
+        {/*
+          على الشاشة الأفقيّة يُسحب الرأسُ وحده: عمودان يُمرَّران لا يجلسان تحت مستجيبٍ يلتقط
+          السحبةَ النازلة — كان أحدُهما يُغلق النافذةَ بدل أن يُمرَّر، والمستجيبُ يحجب تمريرَ آبل الأصليّ.
+        */}
+        <View {...(wide ? pan.panHandlers : {})}>
         <View style={{ width: 42, height: 5, borderRadius: 3, backgroundColor: "rgba(255,255,255,.28)", alignSelf: "center", marginTop: 10 }} />
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 18, paddingTop: 12 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 18, paddingTop: 12, paddingBottom: wide ? 10 : 0 }}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="رجوع إلى القاعة"
@@ -1122,6 +1140,7 @@ function HallSheet({
               {moment.placeName ? ` · ${moment.placeName}` : ""}
             </Text>
           </View>
+        </View>
         </View>
 
         {wide ? null : (
