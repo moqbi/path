@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { createSession } from "@/lib/auth";
+import { SITE_URL, hasSite } from "@athar/shared";
 
 /**
  * بابُ الجوّال إلى نظام التذاكر (القاعدة ٤٨٠): رمزٌ لمرّةٍ واحدة بدقيقتين يصدره الخادم
@@ -9,7 +10,12 @@ import { createSession } from "@/lib/auth";
  * ومسارٌ لا صفحة: الكوكي لا تُكتب أثناء رسم مكوّن خادم.
  */
 export async function GET(request: NextRequest) {
-  const to = (path: string) => NextResponse.redirect(new URL(path, request.url));
+  /*
+    الوجهةُ على النطاق العامّ لا على عنوان الطلب: خلف Caddy يرى الموقعُ نفسَه
+    `localhost:3001`، فكان التحويلُ يُرسل المتصفّحَ المدمج إلى هناك.
+  */
+  const base = hasSite() ? SITE_URL.replace(/\/+$/, "") : request.nextUrl.origin;
+  const to = (path: string) => NextResponse.redirect(`${base}${path}`);
   const token = request.nextUrl.searchParams.get("token") ?? "";
   const ticket = request.nextUrl.searchParams.get("to") ?? "";
   if (!token) return to("/tickets");
