@@ -33,7 +33,9 @@ export type PushKind =
   /** صديقٌ اختاره صاحبُه نزّل قصّةً أو نوتاً (القاعدة ٣١٩) — الاختيارُ هو المفتاح. */
   | "STORY"
   /** تنبيهُ المشرف لكلّ مستخدم (القاعدة ٣٦٣) — خبرٌ من التطبيق نفسه، والوضعُ الهادئ يسري عليه. */
-  | "NEWS";
+  | "NEWS"
+  /** ردُّ الدعم على تذكرة صاحبه (القاعدة ٤٨٠) — يخصّه وحده، فلا مفتاحَ يُطفئه. */
+  | "SUPPORT";
 
 /**
  * صوتُ كلّ نوعٍ وقناتُه على أندرويد (القاعدة ٢٥٣): عامٌّ لما يفعله الأصدقاء،
@@ -58,6 +60,7 @@ const SOUND_OF: Record<PushKind, keyof typeof SOUNDS> = {
   NEARBY: "general",
   STORY: "general",
   NEWS: "athar",
+  SUPPORT: "athar",
 };
 
 /** أيُّ حقلٍ في `User` يحرس هذا النوع. */
@@ -74,6 +77,7 @@ const GATE: Record<PushKind, string | null> = {
   NEARBY: "notifyNearby",
   STORY: null,
   NEWS: null,
+  SUPPORT: null,
 };
 
 /**

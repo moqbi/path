@@ -86,6 +86,28 @@ export async function sendMail(letter: Letter): Promise<boolean> {
 }
 
 /**
+ * بريدُ الدعم من صندوقه نفسه (القاعدة ٤٨٠): ردُّ الموظّف يخرج من `SUPPORT_EMAIL` عبر
+ * Zoho (`SUPPORT_SMTP_*` — المنفذ ٥٨٧ بـSTARTTLS وكلمةُ مرور تطبيقٍ من Zoho) لا من
+ * `noreply` في بريفو: من ضغط «ردّ» في بريده يصل ردُّه إلى صندوق الدعم لا إلى عنوانٍ
+ * لا يقرؤه أحد. وبلا ضبطٍ يخرج من بريفو كما كان، فلا يضيع ردّ.
+ */
+export async function sendSupportMail(letter: Letter): Promise<boolean> {
+  const from = process.env.SUPPORT_EMAIL;
+  const host = process.env.SUPPORT_SMTP_HOST;
+  const user = process.env.SUPPORT_SMTP_USER ?? from;
+  const pass = process.env.SUPPORT_SMTP_PASS;
+  if (from && host && user && pass) {
+    const sent = await sendSmtp(
+      { to: letter.to, fromEmail: from, fromName: "دعم آثار مومنتس", subject: letter.subject, html: letter.html, text: letter.text },
+      { host, user, pass, port: Number(process.env.SUPPORT_SMTP_PORT ?? 587) },
+    );
+    if (sent) return true;
+    console.error("[mail] تعذّر الإرسال من صندوق الدعم — يُعاد من بريفو");
+  }
+  return sendMail(letter);
+}
+
+/**
  * يهرّب ما كتبه غيرُنا قبل أن يدخل قالب الرسالة. الاسمُ يكتبه الزائر عند
  * التسجيل والرسالةُ تخرج إلى عنوانٍ يكتبه هو أيضاً — فاسمٌ فيه وسومٌ كان
  * يجعل بابَ التسجيل يرسل صفحةً من صنعه بتوقيعنا إلى من شاء.

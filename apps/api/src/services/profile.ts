@@ -1,5 +1,6 @@
+import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "@athar/db";
-import { BIO_MAX, INTERESTS_MAX, INTERESTS_MIN, cleanInterests, type NotifyInput } from "@athar/shared";
+import { BIO_MAX, INTERESTS_MAX, INTERESTS_MIN, appUrl, cleanInterests, hasSite, type NotifyInput } from "@athar/shared";
 import { interestCatalog } from "./interests";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { dropMedia } from "./media";
@@ -502,26 +503,69 @@ const TOPIC_LABEL: Record<string, string> = {
   beta: "فريق التجربة",
 };
 
-/** رسائلي إلى الدعم وردودها. */
+/** رسائلي إلى الدعم وردودها — ومعها رقمُ التذكرة وحالُها (القاعدة ٤٨٠). */
 export async function tickets(userId: string) {
   const rows = await prisma.supportTicket.findMany({
     where: { userId },
-    orderBy: { createdAt: "desc" },
+    orderBy: { lastAt: "desc" },
     take: 30,
     select: {
       id: true,
+      number: true,
       body: true,
       topic: true,
       reply: true,
       repliedAt: true,
       closed: true,
+      lockedAt: true,
+      lastAt: true,
       createdAt: true,
       _count: { select: { files: true } },
+      messages: { orderBy: { createdAt: "desc" }, take: 1, select: { fromStaff: true } },
     },
   });
   return {
-    tickets: rows.map(({ _count, ...row }) => ({ ...row, files: _count.files })),
+    tickets: rows.map(({ _count, messages, ...row }) => ({
+      ...row,
+      files: _count.files,
+      state: ticketState(row.closed, row.lockedAt, messages[0]?.fromStaff ?? null),
+    })),
+    open: rows.filter((row) => !row.closed).length,
   };
+}
+
+/**
+ * حالُ التذكرة كما تُقرأ (القاعدة ٤٨٠): مغلقةٌ نهائياً، أو مغلقة، أو رُدّ عليها
+ * (آخرُ سطرٍ من الموظّف — فالدورُ لصاحبها)، أو قيد المراجعة.
+ */
+function ticketState(closed: boolean, lockedAt: Date | null, lastFromStaff: boolean | null) {
+  if (lockedAt) return "locked" as const;
+  if (closed) return "closed" as const;
+  return lastFromStaff ? ("answered" as const) : ("open" as const);
+}
+
+/**
+ * بابُ نظام التذاكر من الجوّال (القاعدة ٤٨٠): رمزٌ لمرّةٍ واحدة يُستهلك في
+ * `/tickets/enter` على الويب فيفتح جلسةً هناك ويمضي إلى التذكرة. دقيقتان عمرُه:
+ * يُطلب ساعةَ الضغط ويُفتح في المتصفّح المدمج في الحال. ومجزَّأً يُخزَّن (القاعدة ١١٩ب).
+ */
+export async function ticketsLink(userId: string, ticketId?: string | null) {
+  if (!hasSite()) throw badRequest("نظام التذاكر غير متاح الآن");
+  if (ticketId) {
+    const own = await prisma.supportTicket.findFirst({ where: { id: ticketId, userId }, select: { id: true } });
+    if (!own) throw notFound("غير موجودة");
+  }
+  const token = randomBytes(32).toString("base64url");
+  await prisma.emailToken.create({
+    data: {
+      userId,
+      kind: "WEB",
+      tokenHash: createHash("sha256").update(token).digest("hex"),
+      expiresAt: new Date(Date.now() + 2 * 60_000),
+    },
+  });
+  const to = ticketId ? `&to=${encodeURIComponent(ticketId)}` : "";
+  return { url: appUrl(`/tickets/enter?token=${token}${to}`) };
 }
 
 /**
@@ -567,8 +611,9 @@ export async function openTicket(
     from: `${row?.name ?? "مستخدم"} (#${row?.memberNo ?? "?"})${topic ? ` — ${TOPIC_LABEL[topic]}` : ""}`,
     body: read.files.length ? `${text}\n\n[${read.files.length} مرفق — في اللوحة]` : text,
     replyTo: row?.email ?? null,
+    ticket: { id: ticket.id, number: ticket.number },
   });
-  return { ok: "وصلتنا رسالتك — نردّ عليك هنا" };
+  return { ok: "تم إرسال رسالتك", id: ticket.id, number: ticket.number };
 }
 
 /**

@@ -129,6 +129,13 @@ export const profileRoutes = new Hono()
   /** الدعم داخل التطبيق: الرسالة تُحفظ والردّ يُقرأ في مكانه. */
   .get("/support", async (c) => c.json(await profile.tickets(me(c))))
 
+  /** رابطُ نظام التذاكر في الويب لمرّةٍ واحدة (القاعدة ٤٨٠) — يُطلب ساعةَ الضغط. */
+  .post(
+    "/support/link",
+    zValidator("json", z.object({ ticketId: z.string().max(40).optional() })),
+    async (c) => c.json(await profile.ticketsLink(me(c), c.req.valid("json").ticketId ?? null)),
+  )
+
   /*
     الرسالة بسببها ومرفقاتها: `multipart/form-data` (نصٌّ وسببٌ وحتى ثلاث صور)،
     و`json` يبقى لنسخةٍ قديمة من التطبيق ما زالت ترسل النصَّ وحده.

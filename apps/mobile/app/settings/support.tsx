@@ -1,5 +1,6 @@
 import { Spinner } from "../../components/spinner";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useLocalSearchParams } from "expo-router";
 import { View, Pressable, ScrollView, Image } from "react-native";
 import * as Picker from "expo-image-picker";
 import { Text, TextInput } from "../../components/type";
@@ -7,21 +8,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ScreenHeader } from "../../components/screen-header";
-import { SupportLine } from "../../components/support-line";
 import { CameraIcon, CloseIcon, InfoIcon } from "../../components/icons";
 import { api } from "../../lib/api";
-import { relative } from "../../lib/format";
+import { openIn } from "../../lib/browse";
+import { Sheet } from "../../components/sheet";
 import { shrink } from "../../lib/upload";
 import { brandGradient, colors } from "../../theme/tokens";
 
 type Ticket = {
   id: string;
-  body: string;
-  topic: string | null;
-  files?: number;
-  reply: string | null;
   closed: boolean;
-  createdAt: string;
 };
 
 /**
@@ -57,6 +53,39 @@ export default function Support() {
   const [open, setOpen] = useState(false);
   const [files, setFiles] = useState<Picked[]>([]);
   const [said, setSaid] = useState<{ ok?: string; error?: string } | null>(null);
+  /** نافذةُ «تم إرسال رسالتك» برقم الطلب (القاعدة ٤٨٠). */
+  const [sent, setSent] = useState<{ id: string; number: number } | null>(null);
+  const [opening, setOpening] = useState(false);
+
+  /*
+    نظامُ التذاكر في الويب يُفتح في المتصفّح المدمج بجلسةٍ تُفتح له: رابطٌ لمرّةٍ واحدة
+    يُطلب ساعةَ الضغط (`/v1/me/support/link`)، فلا كلمةَ مرورٍ تُكتب في الطريق.
+  */
+  async function openTickets(ticketId?: string) {
+    if (opening) return;
+    setOpening(true);
+    try {
+      const { url } = await api<{ url: string }>("/v1/me/support/link", {
+        method: "POST",
+        body: JSON.stringify(ticketId ? { ticketId } : {}),
+      });
+      await openIn(url);
+      void client.invalidateQueries({ queryKey: ["support"] });
+    } catch (problem) {
+      setSaid({ error: problem instanceof Error ? problem.message : "تعذّر فتح التذاكر" });
+    } finally {
+      setOpening(false);
+    }
+  }
+
+  // جرسُ ردّ الدعم يفتح هذه الشاشة بمعرّف التذكرة — فتُفتح هي مرّةً.
+  const { ticket: pushed } = useLocalSearchParams<{ ticket?: string }>();
+  const handled = useRef<string | null>(null);
+  useEffect(() => {
+    if (!pushed || handled.current === pushed) return;
+    handled.current = pushed;
+    void openTickets(pushed);
+  }, [pushed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const tickets = useQuery({
     queryKey: ["support"],
@@ -76,14 +105,15 @@ export default function Support() {
           type: file.mime,
         } as unknown as Blob);
       });
-      return api("/v1/me/support", { method: "POST", body: form });
+      return api<{ ok: string; id?: string; number?: number }>("/v1/me/support", { method: "POST", body: form });
     },
-    onSuccess: async () => {
+    onSuccess: async (result) => {
       // يُفرَّغ الحقل بعد الإرسال حتى لا تُرسل الرسالة مرتين بالغلط.
       setBody("");
       setTopic(null);
       setFiles([]);
-      setSaid({ ok: "وصلتنا رسالتك" });
+      if (result?.id && result.number) setSent({ id: result.id, number: result.number });
+      else setSaid({ ok: "وصلتنا رسالتك" });
       await client.invalidateQueries({ queryKey: ["support"] });
     },
     onError: (problem) =>
@@ -131,7 +161,7 @@ export default function Support() {
             كيف نقدر نساعدك؟
           </Text>
           <Text style={{ color: colors.muted, fontSize: 11.5, lineHeight: 19, marginBottom: 12, textAlign: "right" }}>
-            اكتب مشكلتك أو اقتراحك أو بلاغك، ونردّ عليك في هذه الصفحة نفسها.
+            اكتب مشكلتك أو اقتراحك أو بلاغك، وتابع الردَّ عليه في «تذاكري».
           </Text>
 
           {/* سببُ التواصل: قائمةٌ تنسدل تحت الحقل — ثلاثةُ أسطرٍ لا نافذةٌ فوق نافذة. */}
@@ -234,61 +264,27 @@ export default function Support() {
               {said.ok}
             </Text>
           ) : null}
-          <SupportLine />
         </View>
 
-        {rows.length > 0 ? (
-          <>
-            <Text style={{ color: colors.faint, fontSize: 11.5, fontWeight: "600", marginBottom: 8, textAlign: "right" }}>
-              رسائلك
+        {/*
+          نظامُ التذاكر (القاعدة ٤٨٠): الرسائلُ وردودُها في «تذاكري» على الويب لا تحت النموذج —
+          كانت تتكدّس هنا حتى يضيع النموذج. ونسخةٌ قديمة من الخادم بلا رقمٍ تبقى بلا الباب.
+        */}
+        <Pressable
+          onPress={() => void openTickets()}
+          disabled={opening}
+          style={{ flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, padding: 16, opacity: opening ? 0.6 : 1 }}
+        >
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "700", textAlign: "right" }}>تذاكري</Text>
+            <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 2, textAlign: "right" }}>
+              {rows.length === 0
+                ? "تابع طلباتك وردودنا عليها"
+                : `${rows.length.toLocaleString("ar-SA")} طلب، ${rows.filter((row) => !row.closed).length.toLocaleString("ar-SA")} مفتوح`}
             </Text>
-
-            <View style={{ gap: 10 }}>
-              {rows.map((ticket) => (
-                <View key={ticket.id} style={{ borderRadius: 16, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, padding: 16 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                    <View
-                      style={{
-                        borderRadius: 999,
-                        paddingHorizontal: 10,
-                        paddingVertical: 4,
-                        backgroundColor: ticket.reply ? colors.claySoft : colors.chip,
-                      }}
-                    >
-                      <Text style={{ color: ticket.reply ? colors.clayInk : colors.muted, fontSize: 10, fontWeight: "700" }}>
-                        {ticket.closed ? "مغلقة" : ticket.reply ? "رُدّ عليها" : "بانتظار الردّ"}
-                      </Text>
-                    </View>
-                    {ticket.topic && TOPIC_LABEL[ticket.topic] ? (
-                      <Text style={{ color: colors.ink2, fontSize: 10.5, fontWeight: "600" }}>
-                        {TOPIC_LABEL[ticket.topic]}
-                      </Text>
-                    ) : null}
-                    <Text style={{ color: colors.faint, fontSize: 10.5 }}>
-                      {relative(new Date(ticket.createdAt))}
-                      {ticket.files ? ` · ${ticket.files} صورة` : ""}
-                    </Text>
-                  </View>
-
-                  <Text style={{ color: colors.ink, fontSize: 13, lineHeight: 22, textAlign: "right" }}>
-                    {ticket.body}
-                  </Text>
-
-                  {ticket.reply ? (
-                    <View style={{ marginTop: 12, borderRadius: 12, backgroundColor: colors.chip, padding: 12 }}>
-                      <Text style={{ color: colors.clayInk, fontSize: 10.5, fontWeight: "700", marginBottom: 4, textAlign: "right" }}>
-                        ردّ آثار
-                      </Text>
-                      <Text style={{ color: colors.ink2, fontSize: 12.5, lineHeight: 21, textAlign: "right" }}>
-                        {ticket.reply}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-              ))}
-            </View>
-          </>
-        ) : null}
+          </View>
+          {opening ? <Spinner color={colors.muted} /> : <Text style={{ color: colors.faint, fontSize: 18 }}>‹</Text>}
+        </Pressable>
 
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 24 }}>
           <InfoIcon size={13} color={colors.faint} />
@@ -297,6 +293,37 @@ export default function Support() {
           </Text>
         </View>
       </ScrollView>
+
+      {sent ? (
+        <Sheet title="تم إرسال رسالتك" onClose={() => setSent(null)}>
+          <Text style={{ color: colors.ink, fontSize: 15, fontWeight: "700", textAlign: "center", marginBottom: 6 }}>
+            طلب رقم {sent.number.toLocaleString("ar-SA")}
+          </Text>
+          <Text style={{ color: colors.muted, fontSize: 12.5, lineHeight: 21, textAlign: "center", marginBottom: 16 }}>
+            وصلتنا رسالتك ونردّ عليك خلال يوم عمل — يصلك الردُّ تنبيهاً وعلى بريدك.{"\n"}يمكنك متابعة طلبك من خلال نظام التذاكر.
+          </Text>
+          <Pressable
+            onPress={() => {
+              const id = sent.id;
+              // نافذةٌ فوق نافذة لا تُرى في آبل (القاعدة ١٢٦): تُغلق ثمّ يُفتح المتصفّح.
+              setSent(null);
+              setTimeout(() => void openTickets(id), 350);
+            }}
+          >
+            <LinearGradient
+              colors={[brandGradient[0], brandGradient[1]]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center" }}
+            >
+              <Text style={{ color: colors.onBrand, fontSize: 14, fontWeight: "700" }}>نظام التذاكر</Text>
+            </LinearGradient>
+          </Pressable>
+          <Pressable onPress={() => setSent(null)} style={{ height: 44, alignItems: "center", justifyContent: "center", marginTop: 6 }}>
+            <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "600" }}>حسناً</Text>
+          </Pressable>
+        </Sheet>
+      ) : null}
     </SafeAreaView>
   );
 }

@@ -13,12 +13,12 @@ import { escapeHtml, letterHtml, sendMail } from "@/lib/mail";
  * و**عمرٌ قصيرٌ لإعادة الضبط** (ساعة) وأطولُ للتأكيد (يوم): الأوّل
  * يفتح الحساب لمن يملكه، والثاني يقول «هذا عنواني».
  */
-const LIFE = { VERIFY: 24 * 60 * 60 * 1000, RESET: 60 * 60 * 1000 } as const;
+const LIFE = { VERIFY: 24 * 60 * 60 * 1000, RESET: 60 * 60 * 1000, WEB: 2 * 60 * 1000 } as const;
 
 /** أقلُّ ما بين رسالتين للحساب الواحد — كي لا يصير البابُ مِرشّة بريد. */
 const COOLDOWN = 60 * 1000;
 
-type Kind = "VERIFY" | "RESET";
+type Kind = "VERIFY" | "RESET" | "WEB";
 
 function digest(token: string): string {
   return createHash("sha256").update(token).digest("hex");
