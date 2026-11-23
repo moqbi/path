@@ -6,10 +6,14 @@ name: Simulator build
 
 on:
   workflow_dispatch:
+    inputs:
+      runner:
+        description: "جهاز ماك (macos-26 لـXcode أحدث — حزمةُ iOS 27 تُزيل إطارَ التوافق على الآيفون القابل للطيّ)"
+        default: macos-latest
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: ${{ inputs.runner || 'macos-latest' }}
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4

@@ -1,5 +1,6 @@
-import { Platform, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { MediaImage } from "./media-image";
+import { NATIVE_TABS } from "./glass-bar";
 import { useSession } from "../lib/session";
 import { veil } from "../theme/tokens";
 
@@ -13,7 +14,7 @@ import { veil } from "../theme/tokens";
  */
 export function TabBackdrop() {
   const mediaId = useSession((state) => state.me?.background?.mediaId ?? null);
-  if (Platform.OS !== "ios" || !mediaId) return null;
+  if (!NATIVE_TABS || !mediaId) return null;
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       <MediaImage mediaId={mediaId} style={StyleSheet.absoluteFill} />

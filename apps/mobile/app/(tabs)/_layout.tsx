@@ -2,7 +2,7 @@ import { Platform } from "react-native";
 import { Tabs } from "expo-router";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 
-import { GlassBar, useAppBadge } from "../../components/glass-bar";
+import { GlassBar, NATIVE_TABS, useAppBadge } from "../../components/glass-bar";
 import { ar } from "../../lib/format";
 import { colors } from "../../theme/tokens";
 import { useSession } from "../../lib/session";
@@ -30,7 +30,11 @@ export default function TabsLayout() {
   // «أنا» صورةُ صاحبها كما كانت في الشريط الزجاجيّ (القاعدة ٢٢٨).
   const avatar = useTabAvatar(useSession((state) => state.me?.avatarMediaId));
 
-  if (Platform.OS === "ios") {
+  /*
+    وعلى الآيباد الشريطُ الزجاجيّ في الأسفل لا شريطُ آبل: آيباد ١٨ فما بعده يرفع شريطَ
+    `UITabBarController` إلى أعلى الشاشة ولا خيارَ يُنزله — والتطبيقُ تُلمس تبويباتُه بالإبهام.
+  */
+  if (NATIVE_TABS) {
     return (
       <NativeTabs
         backBehavior="history"
