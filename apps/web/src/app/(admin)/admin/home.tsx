@@ -136,7 +136,11 @@ export async function HomeSection() {
         },
       }),
       prisma.supportTicket.findMany({
-        where: { closed: false, reply: null },
+        // ما ينتظر الفريق: لم يُردّ عليها، أو علّق صاحبُها بعد آخر ردّ (القاعدة ٤٨٠).
+        where: {
+          closed: false,
+          OR: [{ repliedAt: null }, { lastAt: { gt: prisma.supportTicket.fields.repliedAt } }],
+        },
         orderBy: { createdAt: "desc" },
         take: 30,
         select: {

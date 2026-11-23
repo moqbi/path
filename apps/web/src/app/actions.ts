@@ -16,7 +16,7 @@ import { clear, clientIp, hit, TOO_MANY } from "@/lib/rate-limit";
 import { SUSPEND_HOURS } from "@/lib/suspend";
 import { isPlusDays, PLUS_LABEL } from "@/lib/plus";
 import { SITE_TEXT, type SiteKey } from "@/lib/site";
-import { formatFit, ALL_COUNTRIES, BOOK_SKIN_FIELDS, bookSkinOf, bookSpec, COUNTRIES, hallFlatFrom, hallSkinOf } from "@athar/shared";
+import { appUrl, formatFit, ALL_COUNTRIES, BOOK_SKIN_FIELDS, bookSkinOf, bookSpec, COUNTRIES, hallFlatFrom, hallSkinOf } from "@athar/shared";
 
 /*
   إجراءات اللوحة، منقولةٌ كما هي من `src/app/actions.ts` في الويب الحالي:
@@ -851,58 +851,76 @@ async function requireModerator() {
 // ───────────────────────────── الدعم الفني ─────────────────────────────
 
 /**
- * الدعم داخل التطبيق لا بريدٌ خارجه.
- *
- * الرسالة تُحفظ في القاعدة ويقرؤها المشرف في اللوحة ويردّ عليها، ويقرأ
- * صاحبها الردّ في مكانه — بريدٌ في صفحة «تواصل معنا» يعني رسالةً تخرج من
- * التطبيق فلا يعرف أحد أوصلت أم لا.
+ * ردُّ الموظّف على التذكرة (القاعدة ٤٨٠): سطرٌ جديد في محادثتها لا تعديلٌ لردٍّ سابق،
+ * ويصل صاحبَها بريداً بقالب آثار من صندوق الدعم (Zoho) وجرساً في التطبيق (كنسُ الخادم
+ * ← `pushTicketReplies`). و`reply` يُكتب بآخر ردّ لنسخٍ قديمة من التطبيق تقرؤه وحده.
+ * والمغلقةُ نهائياً لا يُردّ فيها حتى تُعاد.
  */
-export async function openTicket(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
-  const user = await requireUser();
-  const body = String(formData.get("body") ?? "").trim().slice(0, 1200);
-  if (body.length < 5) return { error: "اكتب رسالتك" };
-
-  // رسالةٌ مفتوحة واحدة تكفي: تكرارها يُغرق اللوحة ولا يُسرّع الردّ.
-  const open = await prisma.supportTicket.count({ where: { userId: user.id, closed: false } });
-  if (open >= 3) return { error: "عندك رسائل مفتوحة — انتظر الردّ عليها" };
-
-  await prisma.supportTicket.create({ data: { userId: user.id, body } });
-  void tellSupport({ from: `${user.name} (#${user.memberNo})`, body });
-  revalidatePath("/settings/support");
-  revalidatePath("/admin", "layout");
-  return { ok: "وصلتنا رسالتك — نردّ عليك هنا" };
-}
-
 export async function replyTicket(
   ticketId: string,
   _prev: AdminResult,
   formData: FormData,
 ): Promise<AdminResult> {
-  await requireAdmin("reports");
+  const admin = await requireAdmin("reports");
   const reply = String(formData.get("reply") ?? "").trim().slice(0, 1200);
   if (reply.length < 2) return { error: "اكتب الردّ" };
 
-  const ticket = await prisma.supportTicket.update({
+  const ticket = await prisma.supportTicket.findUnique({
     where: { id: ticketId },
-    data: { reply, repliedAt: new Date() },
-    select: { email: true, name: true, body: true, userId: true },
+    select: {
+      id: true,
+      number: true,
+      email: true,
+      name: true,
+      body: true,
+      userId: true,
+      lockedAt: true,
+      user: { select: { name: true, email: true } },
+    },
   });
+  if (!ticket) return { error: "غير موجودة" };
+  if (ticket.lockedAt) return { error: "التذكرة مغلقة نهائياً — أعد فتحها أولاً" };
 
-  // من كتب من الموقع بلا حساب لا شاشةَ له، فالردّ يذهب إلى بريده.
-  if (!ticket.userId && ticket.email) {
-    void mailReply({ to: ticket.email, name: ticket.name, question: ticket.body, reply });
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.ticketMessage.create({ data: { ticketId, fromStaff: true, staffId: admin.id, body: reply } }),
+    prisma.supportTicket.update({
+      where: { id: ticketId },
+      data: { reply, repliedAt: now, lastAt: now },
+    }),
+  ]);
+
+  // البريدُ لكلّ من له بريد: من كتب من الموقع، ومن له حسابٌ ببريد — ومعه رابطُ تذكرته.
+  const to = ticket.email ?? ticket.user?.email ?? null;
+  if (to) {
+    void mailReply({
+      to,
+      name: ticket.user?.name ?? ticket.name,
+      number: ticket.number,
+      question: ticket.body,
+      reply,
+      url: ticket.userId ? appUrl(`/tickets/${ticket.id}`) || null : null,
+    });
   }
 
   revalidatePath("/admin", "layout");
-  revalidatePath("/settings/support");
-  return { ok: "أُرسل الردّ" };
+  return { ok: to ? "أُرسل الردّ — وصل بريدَه وتنبيهاً في التطبيق" : "أُرسل الردّ — يصله تنبيهاً في التطبيق" };
 }
 
-export async function closeTicket(ticketId: string): Promise<void> {
+/**
+ * إغلاقُ التذكرة: «أغلق» يعني أنّ المسألة انتهت ويبقى لصاحبها أن يعيد فتحها بتعليق،
+ * و«أغلق نهائياً» لا يُكتب فيها بعده — و«أعد فتحها» يرفع الاثنين (القاعدة ٤٨٠).
+ */
+export async function setTicketState(ticketId: string, to: "close" | "lock" | "reopen"): Promise<void> {
   await requireAdmin("reports");
-  await prisma.supportTicket.update({ where: { id: ticketId }, data: { closed: true } });
+  const data =
+    to === "close"
+      ? { closed: true }
+      : to === "lock"
+        ? { closed: true, lockedAt: new Date() }
+        : { closed: false, lockedAt: null };
+  await prisma.supportTicket.update({ where: { id: ticketId }, data });
   revalidatePath("/admin", "layout");
-  revalidatePath("/settings/support");
 }
 
 export async function setItemImage(itemId: string, formData: FormData): Promise<void> {

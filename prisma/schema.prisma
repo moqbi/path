@@ -1357,11 +1357,37 @@ model SupportTicket {
   repliedAt DateTime?
   closed    Boolean      @default(false)
 
+  /// رقمُ التذكرة كما يُقال ويُكتب («طلب رقم ١٢»، القاعدة ٤٨٠) — متسلسلةٌ لا حساب.
+  number   Int             @unique @default(autoincrement())
+  /// إغلاقٌ نهائيّ: لا يعلّق صاحبُها بعده ولا يفتحها.
+  lockedAt DateTime?
+  /// آخرُ حركةٍ فيها — رسالةٌ أو ردٌّ أو تعليق — للترتيب.
+  lastAt   DateTime        @default(now())
+  /// المحادثةُ بعد الرسالة الأولى: ردودُ الموظّف وتعليقاتُ صاحبها.
+  messages TicketMessage[]
+
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
   @@index([closed, createdAt])
   @@index([email, createdAt])
+}
+
+/// سطرٌ في تذكرة الدعم بعد رسالتها الأولى (القاعدة ٤٨٠): ردُّ موظّفٍ أو تعليقُ صاحبها.
+model TicketMessage {
+  id        String        @id @default(cuid())
+  ticketId  String
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  fromStaff Boolean
+  /// من ردّ من الموظّفين — نصٌّ لا علاقة: حسابٌ يُحذف لا يمحو سجلّ ردّه.
+  staffId   String?
+  body      String
+  /// جرسُ الردّ لصاحبها يقرعه كنسُ الخادم ويختمه قبل الإرسال (القاعدة ١٧٧).
+  pushedAt  DateTime?
+  createdAt DateTime      @default(now())
+
+  @@index([ticketId, createdAt])
+  @@index([fromStaff, pushedAt])
 }
 
 /// مرفقُ رسالة دعمٍ أو طلبِ وظيفة.
@@ -1594,6 +1620,8 @@ model BillingEvent {
 enum EmailTokenKind {
   VERIFY
   RESET
+  /// بابُ الجوّال إلى نظام التذاكر في الويب (القاعدة ٤٨٠): دقيقتان ومرّةً واحدة.
+  WEB
 }
 
 /**

@@ -4,7 +4,7 @@ import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
   grantCoinsToTag,
-  closeTicket,
+  setTicketState,
   createCategory,
   createStoreItem,
   createTag,
@@ -737,11 +737,12 @@ export default async function AdminPage({
     // والدعم (`REPORTS`) يقرؤهما — كان القسمان يظهران له فارغين.
     scope === "ALL" || scope === "REPORTS"
       ? prisma.supportTicket.findMany({
-          orderBy: [{ closed: "asc" }, { createdAt: "desc" }],
+          orderBy: [{ closed: "asc" }, { lastAt: "desc" }],
           take: 60,
           include: {
-            user: { select: { name: true, memberNo: true } },
+            user: { select: { name: true, memberNo: true, email: true } },
             files: { select: { id: true, name: true, mime: true, size: true } },
+            messages: { orderBy: { createdAt: "asc" }, select: { id: true, fromStaff: true, body: true, createdAt: true } },
           },
         })
       : Promise.resolve([]),
@@ -2102,8 +2103,8 @@ export default async function AdminPage({
           <>
             <h2 className="mb-1 text-[15px] font-bold">الدعم</h2>
             <p className="mb-3 text-[11.5px] leading-relaxed text-muted">
-              رسائل المستخدمين من «الدعم وتواصل معنا». الردّ يظهر لصاحب الرسالة
-              في الصفحة نفسها، والإغلاق يعني أنّ المسألة انتهت.
+              تذاكر «الدعم وتواصل معنا». الردّ يصل صاحبَها بريداً من صندوق الدعم وتنبيهاً في التطبيق،
+              ويعلّق عليه من «تذاكري». «أغلق» يُبقي له أن يعيد فتحها بتعليق، و«أغلق نهائياً» لا يُكتب فيها بعده.
             </p>
 
             {tickets.length === 0 ? (
@@ -2115,12 +2116,14 @@ export default async function AdminPage({
                 {tickets.map((ticket) => (
                   <details
                     key={ticket.id}
+                    id={`ticket-${ticket.id}`}
                     className="rounded-2xl border border-line bg-card"
-                    open={!ticket.closed && !ticket.reply}
+                    open={open === ticket.id || (!ticket.closed && ticket.messages.at(-1)?.fromStaff !== true)}
                   >
                     <summary className="flex cursor-pointer list-none items-center gap-2 p-3.5">
                       <span className="min-w-0 grow">
                         <span dir="auto" className="flex items-center gap-1.5 truncate text-[13px] font-semibold">
+                          <span className="text-faint">#{ar(ticket.number)}</span>
                           {ticket.user?.name ?? ticket.name ?? "زائر"}
                           {ticket.user ? null : <Chip gold>من الموقع</Chip>}
                           {ticket.topic && TOPIC_LABEL[ticket.topic] ? (
@@ -2129,7 +2132,17 @@ export default async function AdminPage({
                             </Chip>
                           ) : null}
                           {ticket.files.length ? <Chip>{ar(ticket.files.length)} مرفق</Chip> : null}
-                          {ticket.closed ? <Chip>مغلقة</Chip> : ticket.reply ? <Chip>رُدّ</Chip> : <Chip live>جديدة</Chip>}
+                          {ticket.lockedAt ? (
+                            <Chip>مغلقة نهائياً</Chip>
+                          ) : ticket.closed ? (
+                            <Chip>مغلقة</Chip>
+                          ) : ticket.messages.at(-1)?.fromStaff ? (
+                            <Chip>رُدّ</Chip>
+                          ) : ticket.messages.length ? (
+                            <Chip live>تعليق جديد</Chip>
+                          ) : (
+                            <Chip live>جديدة</Chip>
+                          )}
                         </span>
                         <span className="mt-0.5 block truncate text-[11.5px] text-muted">
                           {ticket.body}
@@ -2145,10 +2158,12 @@ export default async function AdminPage({
                         رسالةُ الموقع بلا حساب، فلا مكان يقرأ فيه صاحبها
                         الردّ — بريده هو الطريق الوحيد إليه، فيُعرض هنا.
                       */}
-                      {ticket.user ? null : (
+                      {ticket.email ?? ticket.user?.email ? (
                         <p dir="ltr" className="mb-2 text-[11.5px] font-semibold text-clay-ink">
-                          {ticket.email}
+                          {ticket.email ?? ticket.user?.email}
                         </p>
+                      ) : (
+                        <p className="mb-2 text-[11px] text-faint">بلا بريد — يصله الردُّ تنبيهاً في التطبيق وحده.</p>
                       )}
 
                       <p dir="auto" className="mb-3 whitespace-pre-wrap text-[12.5px] leading-relaxed text-ink">
@@ -2192,39 +2207,76 @@ export default async function AdminPage({
                         </div>
                       ) : null}
 
-                      <Saver action={replyTicket.bind(null, ticket.id)} className="flex flex-col gap-2">
-                        <textarea
-                          name="reply"
-                          rows={3}
-                          maxLength={1200}
-                          defaultValue={ticket.reply ?? ""}
-                          placeholder="اكتب الردّ…"
-                          className={`resize-none py-2.5 ${FIELD}`}
-                        />
-                        <button
-                          type="submit"
-                          className="rounded-xl text-[13px] font-bold"
-                          style={{
-                            height: 44,
-                            background: "var(--color-clay)",
-                            color: "var(--color-on-brand)",
-                          }}
-                        >
-                          {ticket.reply ? "حدّث الردّ" : "أرسل الردّ"}
-                        </button>
-                      </Saver>
+                      {/* المحادثة بعد الرسالة الأولى (القاعدة ٤٨٠): ردودُ الفريق وتعليقاتُ صاحبها بترتيبها. */}
+                      {ticket.messages.length ? (
+                        <div className="mb-3 flex flex-col gap-2">
+                          {ticket.messages.map((message) => (
+                            <div
+                              key={message.id}
+                              className="rounded-xl border p-3"
+                              style={
+                                message.fromStaff
+                                  ? { background: "var(--color-clay-soft)", borderColor: "var(--color-clay)" }
+                                  : { background: "var(--color-paper)", borderColor: "var(--color-line)" }
+                              }
+                            >
+                              <p className="mb-1 text-[10.5px] font-bold text-muted">
+                                {message.fromStaff ? "ردّ الفريق" : "تعليق صاحبها"} · {relative(message.createdAt)}
+                              </p>
+                              <p dir="auto" className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-ink">
+                                {message.body}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
 
-                      {ticket.closed ? null : (
-                        <form action={closeTicket.bind(null, ticket.id)} className="pt-2.5">
+                      {ticket.lockedAt ? null : (
+                        <Saver action={replyTicket.bind(null, ticket.id)} className="flex flex-col gap-2">
+                          <textarea
+                            name="reply"
+                            rows={3}
+                            maxLength={1200}
+                            placeholder="اكتب الردّ… يصل بريدَه وتنبيهاً في التطبيق"
+                            className={`resize-none py-2.5 ${FIELD}`}
+                          />
                           <button
                             type="submit"
-                            className="w-full rounded-xl border border-line text-[12.5px] font-semibold text-muted"
-                            style={{ height: 42 }}
+                            className="rounded-xl text-[13px] font-bold"
+                            style={{
+                              height: 44,
+                              background: "var(--color-clay)",
+                              color: "var(--color-on-brand)",
+                            }}
                           >
-                            أغلق الرسالة
+                            أرسل الردّ
                           </button>
-                        </form>
+                        </Saver>
                       )}
+
+                      <div className="flex gap-2 pt-2.5">
+                        {ticket.closed ? null : (
+                          <form action={setTicketState.bind(null, ticket.id, "close")} className="grow">
+                            <button type="submit" className="w-full rounded-xl border border-line text-[12.5px] font-semibold text-muted" style={{ height: 42 }}>
+                              أغلق
+                            </button>
+                          </form>
+                        )}
+                        {ticket.lockedAt ? null : (
+                          <form action={setTicketState.bind(null, ticket.id, "lock")} className="grow">
+                            <button type="submit" className="w-full rounded-xl border border-line text-[12.5px] font-semibold" style={{ height: 42, color: "var(--color-live)" }}>
+                              أغلق نهائياً
+                            </button>
+                          </form>
+                        )}
+                        {ticket.closed || ticket.lockedAt ? (
+                          <form action={setTicketState.bind(null, ticket.id, "reopen")} className="grow">
+                            <button type="submit" className="w-full rounded-xl border border-line text-[12.5px] font-semibold text-clay-ink" style={{ height: 42 }}>
+                              أعد فتحها
+                            </button>
+                          </form>
+                        ) : null}
+                      </div>
                     </div>
                   </details>
                 ))}

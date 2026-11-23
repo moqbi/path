@@ -70,11 +70,14 @@ export type SmtpLetter = {
   text: string;
 };
 
-export async function sendSmtp(letter: SmtpLetter): Promise<boolean> {
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  const port = Number(process.env.SMTP_PORT ?? 587);
+/** خادمٌ غيرُ بريفو — صندوقُ الدعم على Zoho (القاعدة ٤٨٠). وبلاه بيئةُ `SMTP_*`. */
+export type SmtpServer = { host?: string; user?: string; pass?: string; port?: number };
+
+export async function sendSmtp(letter: SmtpLetter, server: SmtpServer = {}): Promise<boolean> {
+  const host = server.host ?? process.env.SMTP_HOST;
+  const user = server.user ?? process.env.SMTP_USER;
+  const pass = server.pass ?? process.env.SMTP_PASS;
+  const port = server.port ?? Number(process.env.SMTP_PORT ?? 587);
   if (!host || !user || !pass) return false;
 
   let socket: Socket | TLSSocket = netConnect({ host, port });

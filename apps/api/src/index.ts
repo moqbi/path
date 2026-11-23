@@ -48,6 +48,7 @@ import { searchRoutes } from "./routes/v1/search";
 import { broadcastRoutes } from "./routes/v1/broadcasts";
 import { linkRoutes } from "./routes/v1/links";
 import { sendBroadcasts } from "./services/broadcasts";
+import { pushTicketReplies } from "./services/ticket-replies";
 import { sweep as sweepNotes } from "./services/notes";
 import { sweepPendingSignups } from "./services/auth";
 import { UNVERIFIED_MINUTES } from "@athar/shared";
@@ -140,6 +141,8 @@ setInterval(
    ينتظر أن يرى التنبيه على جواله، وخمسُ دقائق تُقرأ «ما وصل».
 */
 setInterval(() => void sendBroadcasts().catch((error) => console.error("✗ تنبيه المشرف", error)), 60_000).unref();
+// ردودُ الدعم من اللوحة جرسٌ لأصحابها (القاعدة ٤٨٠) — كلَّ دقيقة.
+setInterval(() => void pushTicketReplies().catch((error) => console.error("✗ جرس ردّ الدعم", error)), 60_000).unref();
 
 /*
    وانتهاءُ آثار+ كل خمس دقائق: منحُ اللوحة ونزعُها لا يصلهما حدثٌ من
