@@ -194,6 +194,8 @@ async function derive(userId: string, limit: number): Promise<Note[]> {
     prisma.storeItem.findMany({
       where: {
         hidden: false,
+        // والحصريُّ لوسمٍ ليس جديداً في المتجر (القاعدة ٤٧٩).
+        exclusiveTagId: null,
         earnedAfterDays: null,
         // ثوبُ القاعة لا يُخبَر عنه بعد: يُباع في نسخة التطوير وحدها (القاعدة ٣٤٨).
         kind: { notIn: ["GALLERY", "BOOK"] },

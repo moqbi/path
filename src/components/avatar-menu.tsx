@@ -3,7 +3,7 @@
 import { ZoomImage } from "@/components/zoom-image";
 import { useEffect, useState, useTransition } from "react";
 import { buyNow } from "@/app/actions";
-import { Avatar, itemPaint, type Charm, type Frame } from "@/components/ui";
+import { Avatar, itemPaint, TagPill, type Charm, type Frame } from "@/components/ui";
 import { CloseIcon } from "@/components/icons";
 import { Portal, Sheet } from "@/components/sheet";
 import { coinText } from "@/lib/format";
@@ -22,6 +22,8 @@ export type WornItem = {
   earnedAfterDays?: number | null;
   /** مُدَدُ الشراء (القاعدة ٤٤ج): صنفٌ بمُددٍ سعرُه المفرد صفر. */
   plans?: { days: number; priceCoins: number }[];
+  /** تشارمٌ حصريٌّ لوسم (القاعدة ٤٧٩) — لا يُباع، ويُقال لمن رآه لمن هو. */
+  exclusiveTag?: { name: string; bg: string; fg: string } | null;
 } | null;
 
 const KIND_LABEL: Record<string, string> = {
@@ -169,6 +171,12 @@ function ItemSheet({
             {KIND_LABEL[item.kind] ?? "صنف"}
             {item.plusOnly ? " · لمشتركي آثار+" : ""}
           </p>
+          {item.exclusiveTag ? (
+            <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[13.5px] font-semibold text-ink-2">
+              {item.kind === "CHARM" ? "هذا التشارم خاص لـ" : "هذا الصنف خاص لـ"}
+              <TagPill tag={item.exclusiveTag} size={12} />
+            </p>
+          ) : (
           <p className="mt-1 text-[14px] font-semibold text-clay-ink">
             {timed
               ? `من ${coinText(Math.min(...plans.map((one) => one.priceCoins)))}`
@@ -178,10 +186,13 @@ function ItemSheet({
                   ? "يُكتسب بالوقت"
                   : coinText(item.priceCoins)}
           </p>
+          )}
         </div>
       </div>
 
-      {owned || said?.ok ? (
+      {item.exclusiveTag && !owned ? (
+        <p className="mt-3 text-center text-[12px] text-muted">لا يُباع في المتجر — يلبسه من يحمل هذا الوسم.</p>
+      ) : owned || said?.ok ? (
         <p
           className="mt-3 flex items-center justify-center rounded-xl text-[13.5px] font-semibold"
           style={{ height: 48, background: "var(--color-chip)", color: "var(--color-ink-2)" }}

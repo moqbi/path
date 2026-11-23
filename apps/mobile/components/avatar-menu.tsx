@@ -13,6 +13,7 @@ import { ar, coinText, daysLabel } from "../lib/format";
 import { colors } from "../theme/tokens";
 import { Sheet } from "./sheet";
 import { Preview } from "./store-grid";
+import { TagPill } from "./name-tag";
 import { viewPhoto } from "./photo-viewer";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -25,6 +26,8 @@ export type WornItem = {
   mediaId: string | null;
   priceCoins: number;
   plusOnly: boolean;
+  /** تشارمٌ حصريٌّ لوسم (القاعدة ٤٧٩) — لا يُباع، ويُقال لمن رآه لمن هو. */
+  exclusiveTag?: { name: string; bg: string; fg: string } | null;
 } | null;
 
 const KIND_LABEL: Record<string, string> = {
@@ -226,7 +229,14 @@ function ItemSheet({ item, onClose }: { item: NonNullable<WornItem>; onClose: ()
             {KIND_LABEL[item.kind] ?? "صنف"}
             {item.plusOnly ? " · لمشتركي آثار+" : ""}
           </Text>
-          {store.isLoading ? null : (
+          {item.exclusiveTag ? (
+            <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+              <Text style={{ color: colors.ink2, fontSize: 13.5, fontWeight: "600", textAlign: "right" }}>
+                {KIND_LABEL[item.kind] === "تشارم" ? "هذا التشارم خاص لـ" : "هذا الصنف خاص لـ"}
+              </Text>
+              <TagPill tag={item.exclusiveTag} size={12} />
+            </View>
+          ) : store.isLoading ? null : (
             <Text style={{ color: colors.clayInk, fontSize: 14, fontWeight: "600", marginTop: 4, textAlign: "right" }}>
               {full && full.earnedAfterDays !== null
                 ? `يُكتسب بعد ${ar(full.earnedAfterDays)} يوم`
@@ -277,7 +287,11 @@ function ItemSheet({ item, onClose }: { item: NonNullable<WornItem>; onClose: ()
         </View>
       ) : null}
 
-      {owned || said?.ok ? (
+      {item.exclusiveTag ? (
+        <Text style={{ color: colors.muted, fontSize: 12, textAlign: "center", marginTop: 12 }}>
+          لا يُباع في المتجر — يلبسه من يحمل هذا الوسم.
+        </Text>
+      ) : owned || said?.ok ? (
         <View style={{ marginTop: 12, height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.chip }}>
           <Text style={{ color: colors.ink2, fontSize: 13.5, fontWeight: "600" }}>
             {said?.ok ?? "تملكه — البسه من إكسسواراتك"}

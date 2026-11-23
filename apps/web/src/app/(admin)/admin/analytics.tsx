@@ -1,8 +1,14 @@
+import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { ar, riyals } from "@/lib/format";
 
 /*
   لوحةُ التحليلات (القاعدة ٣٠٧): من يستعمل التطبيق، وكم يعود، وماذا يفعل.
+
+  **والفترةُ تُختار في أعلاها** (القاعدة ٤٧٨): شهرٌ بعينه أو «الكل»، والأرقامُ والجداولُ والرسومُ
+  كلُّها تتبعها — الشهرُ بأيّامه ويُقارن بالشهر قبله، والكلُّ بشهوره. و«الآن» وحده لا يتبعها.
+  **وما مُنح من اللوحة لا يُحسب**: النقاطُ من شراء المتجر وحده (`source = STORE`)، وآثار+ لمن دفع
+  أو أُهدي إليه بمال — منحُ اللوحة ليس اشتراكاً.
 
   «النشطون» من `lastSeenAt` للأرقام الكبيرة — آخرُ ظهورٍ صادقٌ منذ اليوم الأوّل —
   ومن `DailyActive` للخطّ الزمنيّ: `lastSeenAt` يقول آخرَ مرّة لا أيّامَ الحضور.
@@ -33,19 +39,6 @@ const OWN_KINDS = ["PHOTO", "PLACE", "THOUGHT", "MUSIC", "SLEEP", "WAKE"] as con
 function pct(part: number, whole: number): string {
   if (!whole) return "—";
   return `${ar(Math.round((part / whole) * 100))}٪`;
-}
-
-/** الفرقُ عن الأسبوع الماضي: سهمٌ ونسبة، والرمادي حين لا أساسَ يُقاس عليه. */
-function Delta({ now, before }: { now: number; before: number }) {
-  if (!before) return <span className="text-[11px] text-muted">لا مقارنة</span>;
-  const change = Math.round(((now - before) / before) * 100);
-  const up = change >= 0;
-  return (
-    <span className="text-[11px] font-semibold" style={{ color: up ? "#2f7d4f" : "#b4443a" }}>
-      {up ? "▲" : "▼"} {ar(Math.abs(change))}٪
-      <span className="font-normal text-muted"> عن الفترة نفسها من الأسبوع الماضي</span>
-    </span>
-  );
 }
 
 function Tile({
@@ -133,162 +126,237 @@ function Bars({
   );
 }
 
-export async function AnalyticsSection() {
-  const now = Date.now();
-  const today = riyadhMidnight(now);
-  const since30 = new Date(today.getTime() - 29 * DAY);
-  const ago = (days: number) => new Date(now - days * DAY);
-  // السبتُ الأخير بتوقيت الرياض: `getUTCDay` على الوقت المُزاح يومُ الرياض (السبت ٦).
-  const sinceSaturday = (new Date(now + OFFSET).getUTCDay() + 1) % 7;
-  const weekDay = new Date(today.getTime() - sinceSaturday * DAY);
-  const weekStart = new Date(weekDay.getTime() - OFFSET);
-  const week = { gte: weekStart };
-  // المدّةُ نفسها من الأسبوع الماضي: من سبته إلى مثل هذه الساعة.
-  const lastWeek = { gte: new Date(weekStart.getTime() - 7 * DAY), lt: ago(7) };
-  const lastWeekFull = { gte: new Date(weekStart.getTime() - 7 * DAY), lt: weekStart };
-  const lastWeekDay = new Date(weekDay.getTime() - 7 * DAY);
-  const yesterdayLastWeek = new Date(today.getTime() - 7 * DAY);
-  const bought = (when: object) => ({ source: "STORE", createdAt: when });
+const MONTHS = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
 
-  const [
-    total, newWeek, newLastWeek, dau, wau, wauBefore, mau, plus,
-    cohort, cohortBack, daily, signups, weekly, sources, platforms, liveStories, liveNotes,
-    activity, packs, coinsNow, coinsBefore, buyers,
-  ] = await Promise.all([
-    prisma.user.count(),
-    prisma.user.count({ where: { createdAt: week } }),
-    prisma.user.count({ where: { createdAt: lastWeek } }),
-    prisma.user.count({ where: { lastSeenAt: { gte: ago(1) } } }),
-    prisma.user.count({ where: { lastSeenAt: week } }),
+type Span = { gte: Date; lt: Date };
+type Period = {
+  key: string;
+  label: string;
+  span: Span;
+  /** المدّةُ نفسها من الشهر قبله — لا مقارنةَ لـ«الكل». */
+  prev: Span | null;
+  /** أوّلُ يومٍ وآخرُه بتوقيت الرياض كما في `DailyActive.day`. */
+  firstDay: Date;
+  lastDay: Date;
+  /** الرسومُ بالأيّام للشهر وبالشهور للكل. */
+  monthly: boolean;
+};
+
+/** بدايةُ شهر الرياض بالتوقيت العالميّ. */
+const monthStartOf = (y: number, m: number) => new Date(Date.UTC(y, m, 1) - OFFSET);
+
+/** «٢٠٢٦-١١» → الفترة، وما سواه «الكل». */
+function periodOf(key: string | undefined, first: Date, now: number): Period {
+  const match = key?.match(/^(\d{4})-(\d{2})$/);
+  if (match) {
+    const y = Number(match[1]);
+    const m = Number(match[2]) - 1;
+    const from = monthStartOf(y, m);
+    const end = monthStartOf(y, m + 1);
+    if (from.getTime() <= now) {
+      const to = new Date(Math.min(end.getTime(), now));
+      const prevFrom = monthStartOf(y, m - 1);
+      return {
+        key: key!,
+        label: `${MONTHS[m]} ${ar(y)}`,
+        span: { gte: from, lt: to },
+        prev: { gte: prevFrom, lt: new Date(Math.min(prevFrom.getTime() + (to.getTime() - from.getTime()), from.getTime())) },
+        firstDay: new Date(Date.UTC(y, m, 1)),
+        lastDay: riyadhMidnight(to.getTime() - 1),
+        monthly: false,
+      };
+    }
+  }
+  return {
+    key: "all",
+    label: "الكل",
+    span: { gte: first, lt: new Date(now) },
+    prev: null,
+    firstDay: riyadhMidnight(first.getTime()),
+    lastDay: riyadhMidnight(now),
+    monthly: true,
+  };
+}
+
+/** الشهورُ من أوّل حسابٍ إلى هذا الشهر، الأحدثُ أوّلاً. */
+function monthsSince(first: Date, now: number): { key: string; label: string }[] {
+  const a = new Date(first.getTime() + OFFSET);
+  const b = new Date(now + OFFSET);
+  const out: { key: string; label: string }[] = [];
+  for (let y = b.getUTCFullYear(), m = b.getUTCMonth(); y > a.getUTCFullYear() || (y === a.getUTCFullYear() && m >= a.getUTCMonth()); ) {
+    out.push({ key: `${y}-${String(m + 1).padStart(2, "0")}`, label: `${MONTHS[m]} ${ar(y)}` });
+    if (--m < 0) {
+      m = 11;
+      y -= 1;
+    }
+    if (out.length > 120) break;
+  }
+  return out;
+}
+
+function Change({ now, before }: { now: number; before: number | null }) {
+  if (before === null) return null;
+  if (!before) return <span className="text-[11px] text-muted">لا مقارنة</span>;
+  const change = Math.round(((now - before) / before) * 100);
+  const up = change >= 0;
+  return (
+    <span className="text-[11px] font-semibold" style={{ color: up ? "#2f7d4f" : "#b4443a" }}>
+      {up ? "▲" : "▼"} {ar(Math.abs(change))}٪
+      <span className="font-normal text-muted"> عن المدّة نفسها من الشهر قبله</span>
+    </span>
+  );
+}
+
+/*
+  من يُعدّ مشتركاً: من له حدثُ فوترةٍ من المتجر، أو أُهدي إليه آثار+ بمال (القاعدة ٢٣٤). ومن جاءه
+  من اللوحة وحدها خارجُه — المنحُ لا يُحسب في الإحصاءات.
+*/
+
+export async function AnalyticsSection({ month }: { month?: string }) {
+  const now = Date.now();
+  const firstUser = await prisma.user.findFirst({ orderBy: { createdAt: "asc" }, select: { createdAt: true } });
+  const first = firstUser?.createdAt ?? new Date(now);
+  // بلا اختيارٍ فالشهرُ الجاري.
+  const nowR = new Date(now + OFFSET);
+  const current = `${nowR.getUTCFullYear()}-${String(nowR.getUTCMonth() + 1).padStart(2, "0")}`;
+  const period = periodOf(month ?? current, first, now);
+  const months = monthsSince(first, now);
+  const { span, prev } = period;
+  const ago = (days: number) => new Date(now - days * DAY);
+  const bought = (when: Span) => ({ source: "STORE", createdAt: when });
+
+  const distinctActive = (from: Date, to: Date) =>
     prisma.$queryRaw<{ n: number }[]>`
       SELECT COUNT(DISTINCT "userId")::int AS n FROM "DailyActive"
-      WHERE "day" >= ${lastWeekDay}::date AND "day" <= ${yesterdayLastWeek}::date`,
-    prisma.user.count({ where: { lastSeenAt: { gte: ago(30) } } }),
-    prisma.user.count({ where: { isPlus: true, plusUntil: { gt: new Date(now) } } }),
-    // العودة: من سجّل الأسبوعَ الماضي (السبت إلى الجمعة)، كم منهم ظهر هذا الأسبوع.
-    prisma.user.count({ where: { createdAt: lastWeekFull } }),
-    prisma.user.count({ where: { createdAt: lastWeekFull, lastSeenAt: week } }),
-    prisma.$queryRaw<{ day: Date; n: number }[]>`
-      SELECT "day", COUNT(*)::int AS n FROM "DailyActive"
-      WHERE "day" >= ${since30}::date GROUP BY "day"`,
-    prisma.$queryRaw<{ day: Date; n: number }[]>`
-      SELECT (("createdAt" + interval '3 hours')::date) AS day, COUNT(*)::int AS n FROM "User"
-      WHERE "createdAt" >= ${new Date(since30.getTime() - OFFSET)} GROUP BY 1`,
-    // النشطون في كل أسبوعٍ من الثمانية الأخيرة — من السبت، وكلُّ حسابٍ مرّةً في أسبوعه.
-    prisma.$queryRaw<{ w: number; n: number }[]>`
-      SELECT ((${weekDay}::date + 6 - "day") / 7)::int AS w, COUNT(DISTINCT "userId")::int AS n
-      FROM "DailyActive" WHERE "day" >= ${weekDay}::date - 49 GROUP BY 1`,
+      WHERE "day" >= ${from}::date AND "day" <= ${to}::date`.then((rows) => rows[0]?.n ?? 0);
+  const prevDays = prev ? [riyadhMidnight(prev.gte.getTime()), riyadhMidnight(prev.lt.getTime() - 1)] : null;
+
+  const [
+    totalAtEnd, newUsers, newBefore, active, activeBefore, dailyAvg, cohort, cohortBack, sources, platforms,
+    dau, mau, payingNow, liveStories, liveNotes,
+  ] = await Promise.all([
+    prisma.user.count({ where: { createdAt: { lt: span.lt } } }),
+    prisma.user.count({ where: { createdAt: span } }),
+    prev ? prisma.user.count({ where: { createdAt: prev } }) : Promise.resolve(null),
+    distinctActive(period.firstDay, period.lastDay),
+    prevDays ? distinctActive(prevDays[0]!, prevDays[1]!) : Promise.resolve(null),
+    prisma.$queryRaw<{ n: number }[]>`
+      SELECT COALESCE(AVG(c), 0)::float AS n FROM (
+        SELECT COUNT(*) AS c FROM "DailyActive"
+        WHERE "day" >= ${period.firstDay}::date AND "day" <= ${period.lastDay}::date GROUP BY "day"
+      ) t`.then((rows) => rows[0]?.n ?? 0),
+    prisma.user.count({ where: { createdAt: span } }),
+    // العودة: من سجّل في الفترة وظهر بعد أسبوعٍ من تسجيله.
+    prisma.$queryRaw<{ n: number }[]>`
+      SELECT COUNT(*)::int AS n FROM "User" u
+      WHERE u."createdAt" >= ${span.gte} AND u."createdAt" < ${span.lt}
+        AND EXISTS (SELECT 1 FROM "DailyActive" d WHERE d."userId" = u."id"
+                    AND d."day" >= ((u."createdAt" + interval '3 hours')::date + 7))`.then((rows) => rows[0]?.n ?? 0),
     prisma.$queryRaw<{ source: string; n: number }[]>`
       SELECT "source", COUNT(DISTINCT "userId")::int AS n FROM "DailyActive"
-      WHERE "day" >= ${weekDay}::date GROUP BY 1`,
+      WHERE "day" >= ${period.firstDay}::date AND "day" <= ${period.lastDay}::date GROUP BY 1`,
     prisma.$queryRaw<{ platform: string; n: number }[]>`
       SELECT "platform", COUNT(DISTINCT "userId")::int AS n FROM "DeviceToken" GROUP BY 1`,
+    prisma.user.count({ where: { lastSeenAt: { gte: ago(1) } } }),
+    prisma.user.count({ where: { lastSeenAt: { gte: ago(30) } } }),
+    prisma.$queryRaw<{ n: number }[]>`
+      SELECT COUNT(*)::int AS n FROM "User" u
+      WHERE u."isPlus" AND u."plusUntil" > ${new Date(now)} AND (EXISTS (SELECT 1 FROM "BillingEvent" b WHERE b."appUserId" = u."id" AND b."type" <> 'NON_RENEWING_PURCHASE')
+        OR EXISTS (SELECT 1 FROM "PlusGift" g WHERE g."recipientId" = u."id" AND g."status" = 'DONE'))`.then((rows) => rows[0]?.n ?? 0),
     prisma.story.count({ where: { expiresAt: { gt: new Date(now) } } }),
     prisma.statusNote.count({ where: { expiresAt: { gt: new Date(now) } } }),
-    Promise.all(
-      (
-        [
-          ["لحظات", (when: object) => prisma.moment.count({ where: { createdAt: when, kind: { in: [...OWN_KINDS] } } })],
-          ["تفاعلات", (when: object) => prisma.reaction.count({ where: { createdAt: when } })],
-          ["تعليقات", (when: object) => prisma.comment.count({ where: { createdAt: when } })],
-          ["رسائل", (when: object) => prisma.message.count({ where: { createdAt: when } })],
-          ["مشتريات المتجر", (when: object) => prisma.purchase.count({ where: { createdAt: when } })],
-          ["صداقات جديدة", (when: object) => prisma.friendship.count({ where: { acceptedAt: when, follow: false } })],
-        ] as const
-      ).map(async ([label, count]) => ({
-        label,
-        now: await count(week),
-        before: await count(lastWeek),
-      })),
-    ),
-    /*
-      شراءُ النقاط: ما أودعه حدثُ المتجر وحده (`source = STORE`) — لا منحُ اللوحة ولا
-      رصيدُ آثار+. والمبلغُ ما دفعه المشتري قبل حصّة آبل، بعملة شرائه.
-    */
-    prisma.coinPack.findMany({
-      orderBy: [{ sortOrder: "asc" }, { coins: "asc" }],
-      select: { id: true, name: true, coins: true, hidden: true },
-    }),
-    prisma.coinTopUp.groupBy({
-      by: ["packId"],
-      where: bought(week),
-      _count: { _all: true },
-      _sum: { coins: true, paidHalalas: true },
-    }),
-    prisma.coinTopUp.groupBy({
-      by: ["packId"],
-      where: bought(lastWeek),
-      _count: { _all: true },
-      _sum: { coins: true, paidHalalas: true },
-    }),
-    prisma.coinTopUp.findMany({ where: bought(week), distinct: ["userId"], select: { userId: true } }),
   ]);
 
-  // آثار+ هذا الشهر: من أوّله بتوقيت الرياض، ويُقارن بالمدّة نفسها من الشهر الماضي.
-  const riyadhNow = new Date(now + OFFSET);
-  const monthStart = new Date(Date.UTC(riyadhNow.getUTCFullYear(), riyadhNow.getUTCMonth(), 1) - OFFSET);
-  const lastMonthStart = new Date(Date.UTC(riyadhNow.getUTCFullYear(), riyadhNow.getUTCMonth() - 1, 1) - OFFSET);
-  const month = { gte: monthStart };
-  const lastMonth = {
-    gte: lastMonthStart,
-    lt: new Date(Math.min(lastMonthStart.getTime() + (now - monthStart.getTime()), monthStart.getTime())),
-  };
-  // المشتركون من المتجر حسابٌ لا حدث: من اشترى ثمّ أعاد الشراء يُعدّ مرّة.
-  const subscribers = (type: string, at: { gte: Date; lt?: Date }) =>
+  const subscribers = (type: string, at: Span) =>
     prisma.billingEvent
       .findMany({ where: { type, at }, distinct: ["appUserId"], select: { appUserId: true } })
       .then((rows) => rows.length);
-  const granted = (createdAt: { gte: Date; lt?: Date }) =>
-    prisma.moderationLog
-      .findMany({ where: { action: { in: ["PLUS_GRANTED", "PLUS_SET"] }, createdAt }, distinct: ["ownerId"], select: { ownerId: true } })
-      .then((rows) => rows.length);
-  // هديةُ آثار+ اشتراكٌ أيضاً (القاعدة ٢٣٤) — كلُّ مُهدى إليه مرّة، بيوم إتمامها.
-  const gifted = (doneAt: { gte: Date; lt?: Date }) =>
+  const gifted = (doneAt: Span) =>
     prisma.plusGift
       .findMany({ where: { status: "DONE", doneAt }, distinct: ["recipientId"], select: { recipientId: true } })
       .then((rows) => rows.length);
-  const [giftsNow, giftsBefore, giftedLive] = await Promise.all([
-    gifted(month),
-    gifted(lastMonth),
-    prisma.user.count({ where: { isPlus: true, plusGiftUntil: { gt: new Date(now) } } }),
-  ]);
-  const [subsNow, subsBefore, renewals, grantsNow, grantsBefore, endedNow, endedBefore] = await Promise.all([
-    subscribers("INITIAL_PURCHASE", month),
-    subscribers("INITIAL_PURCHASE", lastMonth),
-    subscribers("RENEWAL", month),
-    granted(month),
-    granted(lastMonth),
-    prisma.user.count({ where: { plusEndedAt: month } }),
-    prisma.user.count({ where: { plusEndedAt: lastMonth } }),
-  ]);
+  const ended = (at: Span) =>
+    prisma.$queryRaw<{ n: number }[]>`
+      SELECT COUNT(*)::int AS n FROM "User" u
+      WHERE u."plusEndedAt" >= ${at.gte} AND u."plusEndedAt" < ${at.lt} AND (EXISTS (SELECT 1 FROM "BillingEvent" b WHERE b."appUserId" = u."id" AND b."type" <> 'NON_RENEWING_PURCHASE')
+        OR EXISTS (SELECT 1 FROM "PlusGift" g WHERE g."recipientId" = u."id" AND g."status" = 'DONE'))`.then((rows) => rows[0]?.n ?? 0);
+  const activityOf = (when: Span) =>
+    Promise.all([
+      prisma.moment.count({ where: { createdAt: when, kind: { in: [...OWN_KINDS] } } }),
+      prisma.reaction.count({ where: { createdAt: when } }),
+      prisma.comment.count({ where: { createdAt: when } }),
+      prisma.message.count({ where: { createdAt: when } }),
+      prisma.story.count({ where: { createdAt: when } }),
+      prisma.purchase.count({ where: { createdAt: when } }),
+      prisma.friendship.count({ where: { acceptedAt: when, follow: false } }),
+    ]);
+  const ACTIVITY = ["لحظات", "تفاعلات", "تعليقات", "رسائل", "قصص", "مشتريات المتجر", "صداقات جديدة"];
 
-  const series = (rows: { day: Date; n: number }[]) => {
-    const byDay = new Map(rows.map((row) => [keyOf(new Date(row.day)), row.n]));
-    return Array.from({ length: 30 }, (_, i) => {
-      const day = new Date(since30.getTime() + i * DAY);
-      return { label: dayMonth(day), tip: dayMonth(day), value: byDay.get(keyOf(day)) ?? 0 };
-    });
+  const [subsNow, subsBefore, giftsNow, giftsBefore, renewals, endedNow, endedBefore, actNow, actBefore, packs, coinsNow, coinsBefore, buyers] =
+    await Promise.all([
+      subscribers("INITIAL_PURCHASE", span),
+      prev ? subscribers("INITIAL_PURCHASE", prev) : Promise.resolve(null),
+      gifted(span),
+      prev ? gifted(prev) : Promise.resolve(null),
+      subscribers("RENEWAL", span),
+      ended(span),
+      prev ? ended(prev) : Promise.resolve(null),
+      activityOf(span),
+      prev ? activityOf(prev) : Promise.resolve(null),
+      /*
+        شراءُ النقاط: ما أودعه حدثُ المتجر وحده (`source = STORE`) — لا منحُ اللوحة ولا
+        رصيدُ آثار+. والمبلغُ ما دفعه المشتري قبل حصّة آبل، بعملة شرائه.
+      */
+      prisma.coinPack.findMany({
+        orderBy: [{ sortOrder: "asc" }, { coins: "asc" }],
+        select: { id: true, name: true, coins: true, hidden: true },
+      }),
+      prisma.coinTopUp.groupBy({ by: ["packId"], where: bought(span), _count: { _all: true }, _sum: { coins: true, paidHalalas: true } }),
+      prev
+        ? prisma.coinTopUp.groupBy({ by: ["packId"], where: bought(prev), _count: { _all: true }, _sum: { coins: true, paidHalalas: true } })
+        : Promise.resolve([]),
+      prisma.coinTopUp.findMany({ where: bought(span), distinct: ["userId"], select: { userId: true } }),
+    ]);
+
+  // الرسوم: أيّامُ الشهر، أو شهورُ الكل.
+  const fmt = period.monthly ? "YYYY-MM" : "YYYY-MM-DD";
+  const [daily, signups, coinSeries] = await Promise.all([
+    period.monthly
+      ? prisma.$queryRaw<{ k: string; n: number }[]>`
+          SELECT to_char("day", 'YYYY-MM') AS k, COUNT(DISTINCT "userId")::int AS n
+          FROM "DailyActive" WHERE "day" >= ${period.firstDay}::date AND "day" <= ${period.lastDay}::date GROUP BY 1`
+      : prisma.$queryRaw<{ k: string; n: number }[]>`
+          SELECT to_char("day", 'YYYY-MM-DD') AS k, COUNT(*)::int AS n
+          FROM "DailyActive" WHERE "day" >= ${period.firstDay}::date AND "day" <= ${period.lastDay}::date GROUP BY 1`,
+    prisma.$queryRaw<{ k: string; n: number }[]>`
+      SELECT to_char(("createdAt" + interval '3 hours'), ${fmt}) AS k, COUNT(*)::int AS n
+      FROM "User" WHERE "createdAt" >= ${span.gte} AND "createdAt" < ${span.lt} GROUP BY 1`,
+    prisma.$queryRaw<{ k: string; n: number }[]>`
+      SELECT to_char(("createdAt" + interval '3 hours'), ${fmt}) AS k, COALESCE(SUM("coins"), 0)::int AS n
+      FROM "CoinTopUp" WHERE "source" = 'STORE' AND "createdAt" >= ${span.gte} AND "createdAt" < ${span.lt} GROUP BY 1`,
+  ]);
+  const slots: { k: string; label: string; tip: string }[] = period.monthly
+    ? [...months].reverse().map((one) => ({ k: one.key, label: one.label.split(" ")[0]!.slice(0, 3), tip: one.label }))
+    : Array.from(
+        { length: Math.round((period.lastDay.getTime() - period.firstDay.getTime()) / DAY) + 1 },
+        (_, i) => {
+          const day = new Date(period.firstDay.getTime() + i * DAY);
+          return { k: keyOf(day), label: ar(day.getUTCDate()), tip: dayMonth(day) };
+        },
+      );
+  const seriesOf = (rows: { k: string; n: number }[]) => {
+    const byKey = new Map(rows.map((row) => [row.k, row.n]));
+    return slots.map((slot) => ({ label: slot.label, tip: slot.tip, value: byKey.get(slot.k) ?? 0 }));
   };
-  const weeks = Array.from({ length: 8 }, (_, i) => {
-    const back = 7 - i;
-    const value = weekly.find((row) => row.w === back)?.n ?? 0;
-    const from = dayMonth(new Date(weekDay.getTime() - back * 7 * DAY));
-    return {
-      label: back === 0 ? "هذا" : from,
-      tip: back === 0 ? `هذا الأسبوع (من السبت ${from})` : `أسبوع السبت ${from}`,
-      value,
-    };
-  });
+  const unitName = period.monthly ? "شهر" : "يوم";
+
   const source = (name: string) => sources.find((row) => row.source === name)?.n ?? 0;
   const platform = (name: string) => platforms.find((row) => row.platform === name)?.n ?? 0;
 
   type Sale = { count: number; coins: number; paid: number };
   const tally = (rows: typeof coinsNow) => {
     const byPack = new Map<string | null, Sale>(
-      rows.map((row) => [
-        row.packId,
-        { count: row._count._all, coins: row._sum.coins ?? 0, paid: row._sum.paidHalalas ?? 0 },
-      ]),
+      rows.map((row) => [row.packId, { count: row._count._all, coins: row._sum.coins ?? 0, paid: row._sum.paidHalalas ?? 0 }]),
     );
     const sum = [...byPack.values()].reduce(
       (all, one) => ({ count: all.count + one.count, coins: all.coins + one.coins, paid: all.paid + one.paid }),
@@ -299,7 +367,6 @@ export async function AnalyticsSection() {
   const salesNow = tally(coinsNow);
   const salesBefore = tally(coinsBefore);
   const EMPTY: Sale = { count: 0, coins: 0, paid: 0 };
-  // الظاهرةُ كلُّها ولو لم تُبع، والمخفيّةُ إن بيعت، وباقةٌ حُذفت بعد بيعها سطرٌ وحده.
   const packRows = [
     ...packs
       .filter((pack) => !pack.hidden || salesNow.byPack.has(pack.id) || salesBefore.byPack.has(pack.id))
@@ -311,84 +378,89 @@ export async function AnalyticsSection() {
         before: salesBefore.byPack.get(pack.id) ?? EMPTY,
       })),
     ...(salesNow.byPack.has(null) || salesBefore.byPack.has(null)
-      ? [{
-          key: "gone",
-          name: "باقة محذوفة",
-          coins: 0,
-          now: salesNow.byPack.get(null) ?? EMPTY,
-          before: salesBefore.byPack.get(null) ?? EMPTY,
-        }]
+      ? [{ key: "gone", name: "باقة محذوفة", coins: 0, now: salesNow.byPack.get(null) ?? EMPTY, before: salesBefore.byPack.get(null) ?? EMPTY }]
       : []),
   ];
+  const inPeriod = period.key === "all" ? "منذ البداية" : `في ${period.label}`;
 
   return (
     <div className="flex flex-col gap-5">
-      <p className="text-[12px] text-muted">
-        هذا الأسبوع من السبت {dayMonth(weekDay)} حتى الآن، ويُقارن بالفترة نفسها من الأسبوع الماضي.
-      </p>
+      {/* الفترة: كلُّ ما تحتها يتبعها (القاعدة ٤٧٨). */}
+      <nav aria-label="الفترة" className="no-bar -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
+        {[{ key: "all", label: "الكل" }, ...months].map((one) => {
+          const on = one.key === period.key;
+          return (
+            <Link
+              key={one.key}
+              href={`/admin?s=analytics&m=${one.key}`}
+              aria-current={on ? "page" : undefined}
+              className="shrink-0 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold"
+              style={{
+                background: on ? "var(--color-chrome)" : "var(--color-card)",
+                color: on ? "#fff" : "var(--color-ink-2)",
+                border: `1px solid ${on ? "var(--color-chrome)" : "var(--color-line)"}`,
+              }}
+            >
+              {one.label}
+            </Link>
+          );
+        })}
+      </nav>
 
       <section>
-        <h2 className="mb-2.5 text-[15px] font-bold">المستخدمون</h2>
+        <h2 className="mb-2.5 text-[15px] font-bold">الآن</h2>
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-          <Tile label="كل المستخدمين" value={ar(total)} hint={`${pct(plus, total)} منهم مشتركون في آثار+`} />
-          <Tile label="مستخدمون جدد هذا الأسبوع" value={ar(newWeek)} hint={`${ar(newLastWeek)} في الفترة نفسها الماضية`}>
-            <Delta now={newWeek} before={newLastWeek} />
+          <Tile label="نشطون آخر ٢٤ ساعة" value={ar(dau)} />
+          <Tile label="نشطون آخر ٣٠ يوماً" value={ar(mau)} hint={`الالتصاق ${pct(dau, mau)} (يومي ÷ شهري)`} />
+          <Tile label="مشتركون يدفعون الآن" value={ar(payingNow)} hint="من المتجر أو بهدية — بلا منح اللوحة" />
+          <Tile label="قصص ونوت حيّة" value={`${ar(liveStories)} · ${ar(liveNotes)}`} hint="قصة · نوت" />
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-2.5 text-[15px] font-bold">المستخدمون {inPeriod}</h2>
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          <Tile label={period.key === "all" ? "كل المستخدمين" : "المستخدمون في آخر الفترة"} value={ar(totalAtEnd)} />
+          <Tile label="مستخدمون جدد" value={ar(newUsers)}>
+            <Change now={newUsers} before={newBefore} />
           </Tile>
-          <Tile label="نشطون هذا الأسبوع" value={ar(wau)} hint={`${pct(wau, total)} من الكل`}>
-            <Delta now={wau} before={wauBefore[0]?.n ?? 0} />
+          <Tile label="نشطون" value={ar(active)} hint={`${pct(active, totalAtEnd)} من المستخدمين`}>
+            <Change now={active} before={activeBefore} />
           </Tile>
-          <Tile label="نشطون آخر ٢٤ ساعة" value={ar(dau)} hint={`${pct(dau, total)} من الكل`} />
-          <Tile label="نشطون آخر ٣٠ يوماً" value={ar(mau)} hint={`${pct(mau, total)} من الكل`} />
+          <Tile label="متوسّط النشطين يومياً" value={ar(Math.round(dailyAvg))} hint={`${pct(Math.round(dailyAvg), active)} من نشطي الفترة كلَّ يوم`} />
+          <Tile label="العودة بعد أسبوع" value={pct(cohortBack, cohort)} hint={`${ar(cohortBack)} من ${ar(cohort)} سجّلوا وظهروا بعد أسبوعٍ من تسجيلهم`} />
           <Tile
-            label="الالتصاق (يومي ÷ شهري)"
-            value={pct(dau, mau)}
-            hint="كم من نشطي الشهر يفتحه كل يوم"
-          />
-          <Tile
-            label="العودة بعد أسبوع"
-            value={pct(cohortBack, cohort)}
-            hint={`${ar(cohortBack)} من ${ar(cohort)} سجّلوا الأسبوع الماضي وظهروا هذا الأسبوع`}
-          />
-          <Tile
-            label="من أين نشطوا هذا الأسبوع"
+            label="من أين نشطوا"
             value={`${ar(source("app"))} تطبيق`}
-            hint={`${ar(source("web"))} ويب · أجهزة: ${ar(platform("ios"))} آيفون، ${ar(platform("android"))} أندرويد`}
+            hint={`${ar(source("web"))} ويب · أجهزة: ${ar(platform("ios"))} آيفون، ${ar(platform("android"))} أندرويد، ${ar(platform("huawei"))} هواوي`}
           />
         </div>
       </section>
 
       <section>
-        <h2 className="mb-2.5 text-[15px] font-bold">آثار+ هذا الشهر</h2>
-        <p className="mb-2.5 text-[12px] text-muted">
-          من {dayMonth(new Date(monthStart.getTime() + OFFSET))} حتى الآن، ويُقارن بالمدّة نفسها من الشهر الماضي.
-        </p>
-        <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
-          <Tile
-            label="مشتركون جدد"
-            value={ar(subsNow + giftsNow)}
-            hint={`${ar(subsNow)} من المتجر و${ar(giftsNow)} هدية من صديق — كلُّ حسابٍ مرّة`}
-          >
-            <Delta now={subsNow + giftsNow} before={subsBefore + giftsBefore} />
+        <h2 className="mb-2.5 text-[15px] font-bold">آثار+ {inPeriod}</h2>
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          <Tile label="مشتركون جدد" value={ar(subsNow + giftsNow)} hint={`${ar(subsNow)} من المتجر و${ar(giftsNow)} هدية من صديق — كلُّ حسابٍ مرّة`}>
+            <Change now={subsNow + giftsNow} before={subsBefore === null ? null : subsBefore + (giftsBefore ?? 0)} />
           </Tile>
-          <Tile label="جدّدوا" value={ar(renewals)} hint="تجديدٌ تلقائيّ هذا الشهر" />
-          <Tile label="مُنحوا من اللوحة" value={ar(grantsNow)}>
-            <Delta now={grantsNow} before={grantsBefore} />
+          <Tile label="تجديدات" value={ar(renewals)} hint="تجديدٌ تلقائيّ — كلُّ حسابٍ مرّة" />
+          <Tile label="انتهى اشتراكهم" value={ar(endedNow)}>
+            <Change now={endedNow} before={endedBefore} />
           </Tile>
-          <Tile label="انتهى اشتراكهم" value={ar(endedNow)} hint={`${ar(endedBefore)} في الفترة نفسها الماضية`} />
-          <Tile label="مشتركون الآن" value={ar(plus)} hint={`${pct(plus, total)} من الكل، منهم ${ar(giftedLive)} بهدية`} />
+          <Tile label="مشتركون يدفعون الآن" value={ar(payingNow)} hint="منحُ اللوحة لا يُحسب" />
         </div>
       </section>
 
       <section>
-        <h2 className="mb-2.5 text-[15px] font-bold">شراء النقاط هذا الأسبوع</h2>
+        <h2 className="mb-2.5 text-[15px] font-bold">شراء النقاط {inPeriod}</h2>
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           <Tile label="عمليات الشراء" value={ar(salesNow.sum.count)}>
-            <Delta now={salesNow.sum.count} before={salesBefore.sum.count} />
+            <Change now={salesNow.sum.count} before={prev ? salesBefore.sum.count : null} />
           </Tile>
           <Tile label="المشترون" value={ar(buyers.length)} hint="كلُّ حسابٍ مرّةً مهما اشترى" />
-          <Tile label="النقاط المُشتراة" value={ar(salesNow.sum.coins)} />
-          <Tile label="المدفوع" value={riyals(salesNow.sum.paid)} hint="قبل حصّة آبل">
-            <Delta now={salesNow.sum.paid} before={salesBefore.sum.paid} />
+          <Tile label="النقاط المُشتراة" value={ar(salesNow.sum.coins)} hint="منحُ اللوحة ورصيدُ آثار+ لا يُحسبان" />
+          <Tile label="المدفوع" value={riyals(salesNow.sum.paid)} hint="قبل حصّة المتجر">
+            <Change now={salesNow.sum.paid} before={prev ? salesBefore.sum.paid : null} />
           </Tile>
         </div>
         <figure className="mt-3 overflow-x-auto rounded-2xl border border-line bg-card px-4 py-3.5">
@@ -400,7 +472,7 @@ export async function AnalyticsSection() {
                 <th className="py-1 text-start font-normal">العمليات</th>
                 <th className="py-1 text-start font-normal">النقاط</th>
                 <th className="py-1 text-start font-normal">المدفوع</th>
-                <th className="py-1 text-start font-normal">الماضي</th>
+                {prev ? <th className="py-1 text-start font-normal">الشهر قبله</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -408,7 +480,6 @@ export async function AnalyticsSection() {
                 <tr key={row.key} className="border-t border-line">
                   <td className="py-1.5">
                     {row.name}
-                    {/* «٥٠٠ نقطة · ٥٠٠ نقطة» حين يكون العددُ في الاسم نفسه. */}
                     {row.coins && !row.name.includes(ar(row.coins)) && !row.name.includes(String(row.coins)) ? (
                       <span className="text-muted"> · {ar(row.coins)} نقطة</span>
                     ) : null}
@@ -416,7 +487,7 @@ export async function AnalyticsSection() {
                   <td className="py-1.5 font-bold">{ar(row.now.count)}</td>
                   <td className="py-1.5">{ar(row.now.coins)}</td>
                   <td className="py-1.5">{riyals(row.now.paid)}</td>
-                  <td className="py-1.5 text-muted">{ar(row.before.count)}</td>
+                  {prev ? <td className="py-1.5 text-muted">{ar(row.before.count)}</td> : null}
                 </tr>
               ))}
               {packRows.length === 0 ? (
@@ -429,7 +500,7 @@ export async function AnalyticsSection() {
                 <td className="py-1.5">{ar(salesNow.sum.count)}</td>
                 <td className="py-1.5">{ar(salesNow.sum.coins)}</td>
                 <td className="py-1.5">{riyals(salesNow.sum.paid)}</td>
-                <td className="py-1.5 font-normal text-muted">{ar(salesBefore.sum.count)}</td>
+                {prev ? <td className="py-1.5 font-normal text-muted">{ar(salesBefore.sum.count)}</td> : null}
               </tr>
             </tbody>
           </table>
@@ -437,54 +508,77 @@ export async function AnalyticsSection() {
       </section>
 
       <section className="grid gap-3 lg:grid-cols-2">
-        <Bars title="النشطون يومياً — آخر ٣٠ يوماً" rows={series(daily)} unit="مستخدم" />
-        <Bars title="التسجيلات يومياً — آخر ٣٠ يوماً" rows={series(signups)} unit="تسجيل" />
-        <Bars title="النشطون أسبوعياً (من السبت) — آخر ٨ أسابيع" rows={weeks} unit="مستخدم" every={1} peak="أسبوع" />
+        <Bars
+          title={period.monthly ? "النشطون شهرياً" : `النشطون يومياً — ${period.label}`}
+          rows={seriesOf(daily)}
+          unit="مستخدم"
+          every={period.monthly ? 1 : 3}
+          peak={unitName}
+        />
+        <Bars
+          title={period.monthly ? "التسجيلات شهرياً" : `التسجيلات يومياً — ${period.label}`}
+          rows={seriesOf(signups)}
+          unit="تسجيل"
+          every={period.monthly ? 1 : 3}
+          peak={unitName}
+        />
+        <Bars
+          title={period.monthly ? "النقاط المُشتراة شهرياً" : `النقاط المُشتراة يومياً — ${period.label}`}
+          rows={seriesOf(coinSeries)}
+          unit="نقطة"
+          every={period.monthly ? 1 : 3}
+          peak={unitName}
+        />
         <figure className="rounded-2xl border border-line bg-card px-4 py-3.5">
-          <figcaption className="mb-2 text-[13px] font-bold">النشاط هذا الأسبوع</figcaption>
+          <figcaption className="mb-2 text-[13px] font-bold">النشاط {inPeriod}</figcaption>
           <table className="w-full text-[12.5px]">
             <thead>
               <tr className="text-[11px] text-muted">
                 <th className="py-1 text-start font-normal">الفعل</th>
-                <th className="py-1 text-start font-normal">هذا الأسبوع</th>
-                <th className="py-1 text-start font-normal">الماضي</th>
-                <th className="py-1 text-start font-normal">التغيّر</th>
+                <th className="py-1 text-start font-normal">{period.key === "all" ? "الكل" : "الشهر"}</th>
+                {actBefore ? (
+                  <>
+                    <th className="py-1 text-start font-normal">قبله</th>
+                    <th className="py-1 text-start font-normal">التغيّر</th>
+                  </>
+                ) : null}
               </tr>
             </thead>
             <tbody>
-              {activity.map((row) => (
-                <tr key={row.label} className="border-t border-line">
-                  <td className="py-1.5">{row.label}</td>
-                  <td className="py-1.5 font-bold">{ar(row.now)}</td>
-                  <td className="py-1.5 text-muted">{ar(row.before)}</td>
-                  <td className="py-1.5">
-                    {row.before ? (
-                      <span style={{ color: row.now >= row.before ? "#2f7d4f" : "#b4443a" }}>
-                        {row.now >= row.before ? "▲" : "▼"}{" "}
-                        {ar(Math.abs(Math.round(((row.now - row.before) / row.before) * 100)))}٪
-                      </span>
-                    ) : (
-                      <span className="text-muted">—</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              <tr className="border-t border-line">
-                <td className="py-1.5">قصص ونوت حيّة الآن</td>
-                <td className="py-1.5 font-bold" colSpan={3}>
-                  {ar(liveStories)} قصة · {ar(liveNotes)} نوت
-                </td>
-              </tr>
+              {ACTIVITY.map((label, i) => {
+                const a = actNow[i] ?? 0;
+                const b = actBefore ? (actBefore[i] ?? 0) : null;
+                return (
+                  <tr key={label} className="border-t border-line">
+                    <td className="py-1.5">{label}</td>
+                    <td className="py-1.5 font-bold">{ar(a)}</td>
+                    {b !== null ? (
+                      <>
+                        <td className="py-1.5 text-muted">{ar(b)}</td>
+                        <td className="py-1.5">
+                          {b ? (
+                            <span style={{ color: a >= b ? "#2f7d4f" : "#b4443a" }}>
+                              {a >= b ? "▲" : "▼"} {ar(Math.abs(Math.round(((a - b) / b) * 100)))}٪
+                            </span>
+                          ) : (
+                            <span className="text-muted">—</span>
+                          )}
+                        </td>
+                      </>
+                    ) : null}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </figure>
       </section>
 
       <p className="text-[11px] leading-relaxed text-muted">
-        «نشط» من فتح التطبيق أو الموقع وهو داخلٌ بحسابه. الأيّامُ بتوقيت الرياض. وما قبل
-        بدء سجلّ الأيّام تقريبٌ من آثارٍ مؤكَّدة (الدخول والكتابة)، فأعمدتُه قد تكون أقصر
-        من الحقيقة. والمدفوعُ بعملة الشراء قبل حصّة آبل، وهو وأرقامُ آثار+ تشمل مشتريات الاختبار (Sandbox)
-        ما دامت مفتوحةً على الخادم.
+        «نشط» من فتح التطبيق أو الموقع وهو داخلٌ بحسابه. الأيّامُ والشهورُ بتوقيت الرياض، والشهرُ الجاري
+        يُقارن بالمدّة نفسها من الشهر قبله. منحُ اللوحة لا يُحسب: لا النقاطُ الممنوحة ولا آثار+ الممنوح.
+        وما قبل بدء سجلّ الأيّام تقريبٌ، فأعمدتُه قد تكون أقصر من الحقيقة. والمدفوعُ بعملة الشراء قبل حصّة
+        المتجر، ويشمل مشتريات الاختبار (Sandbox) ما دامت مفتوحةً على الخادم.
       </p>
     </div>
   );

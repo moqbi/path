@@ -45,6 +45,8 @@ const WORN = {
   plusOnly: true,
   earnedAfterDays: true,
   plans: { select: { days: true, priceCoins: true }, orderBy: { days: "asc" } },
+  // تشارمُ الوسم يُقال لمن رآه لمن هو (القاعدة ٤٧٩).
+  exclusiveTag: { select: { name: true, bg: true, fg: true } },
 } as const;
 
 /** ملف صديق: مخططه ولحظاته — لا يفتحه إلا من هو في دائرته. */

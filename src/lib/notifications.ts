@@ -152,6 +152,7 @@ export async function notifications(userId: string, limit = 40): Promise<Note[]>
     prisma.storeItem.findMany({
       where: {
         hidden: false,
+        exclusiveTagId: null,
         earnedAfterDays: null,
         // ثوبُ القاعة لا يُخبَر عنه بعد: يُباع في نسخة التطوير وحدها (القاعدة ٣٤٨).
         kind: { notIn: ["GALLERY", "BOOK"] },

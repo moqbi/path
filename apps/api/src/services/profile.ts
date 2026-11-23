@@ -69,7 +69,7 @@ export async function me(userId: string) {
       dmOpen: true,
       dmGroupId: true,
       frame: { select: { id: true, name: true, kind: true, spec: true, mediaId: true, frameHole: true, fit: true, priceCoins: true, plusOnly: true } },
-      charm: { select: { id: true, name: true, kind: true, spec: true, mediaId: true, fit: true, priceCoins: true, plusOnly: true } },
+      charm: { select: { id: true, name: true, kind: true, spec: true, mediaId: true, fit: true, priceCoins: true, plusOnly: true, exclusiveTag: { select: { name: true, bg: true, fg: true } } } },
       background: { select: { id: true, spec: true, mediaId: true, palette: true, coverMediaId: true } },
       tag: { select: { name: true, bg: true, fg: true } },
     },

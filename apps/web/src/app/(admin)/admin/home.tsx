@@ -109,7 +109,14 @@ export async function HomeSection() {
       prisma.moment.count({
         where: { createdAt: { gte: yesterdayStart, lt: yesterdaySameTime }, kind: { in: [...OWN_KINDS] } },
       }),
-      prisma.user.count({ where: { isPlus: true, plusUntil: { gt: new Date(now) } } }),
+      // من دفع أو أُهدي إليه بمال — منحُ اللوحة لا يُحسب (القاعدة ٤٧٨).
+      prisma.$queryRaw<{ n: number }[]>`
+        SELECT COUNT(*)::int AS n FROM "User" u
+        WHERE u."isPlus" AND u."plusUntil" > ${new Date(now)}
+          AND (EXISTS (SELECT 1 FROM "BillingEvent" b WHERE b."appUserId" = u."id" AND b."type" <> 'NON_RENEWING_PURCHASE')
+            OR EXISTS (SELECT 1 FROM "PlusGift" g WHERE g."recipientId" = u."id" AND g."status" = 'DONE'))`.then(
+        (rows) => rows[0]?.n ?? 0,
+      ),
       prisma.coinTopUp.aggregate({ where: { source: "STORE", createdAt: { gte: week } }, _sum: { coins: true } }),
       prisma.coinTopUp.aggregate({
         where: { source: "STORE", createdAt: { gte: lastWeek, lt: week } },
@@ -199,7 +206,7 @@ export async function HomeSection() {
         <Kpi label="لحظاتٌ اليوم" value={ar(momentsToday)}>
           <Delta now={momentsToday} before={momentsYesterday} />
         </Kpi>
-        <Kpi label="مشتركو آثار+" value={ar(plusNow)}>
+        <Kpi label="مشتركون يدفعون" value={ar(plusNow)}>
           <Link href="/admin?s=analytics" className="text-[11px] font-semibold text-clay-ink">
             التفاصيل في التحليلات
           </Link>

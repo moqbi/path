@@ -23,7 +23,7 @@ const PERSON = {
   // الصنف الملبوس يُقرأ كاملاً: من ضغط صورةً وأعجبه إطارُها يرى اسمه
   // وسعره من مكانه، فلا يبحث عنه في المتجر.
   frame: { select: { id: true, name: true, kind: true, spec: true, mediaId: true, frameHole: true, fit: true, priceCoins: true, plusOnly: true } },
-  charm: { select: { id: true, name: true, kind: true, spec: true, mediaId: true, fit: true, priceCoins: true, plusOnly: true } },
+  charm: { select: { id: true, name: true, kind: true, spec: true, mediaId: true, fit: true, priceCoins: true, plusOnly: true, exclusiveTag: { select: { name: true, bg: true, fg: true } } } },
   tag: { select: { name: true, bg: true, fg: true } },
 } as const;
 

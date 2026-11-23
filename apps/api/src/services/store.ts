@@ -96,7 +96,7 @@ export async function promo(userId: string, known: Known = { gallery: false, boo
     floor,
   );
   const item = await prisma.storeItem.findFirst({
-    where: { hidden: false, promoAt: { gt: after }, ...UNKNOWN(known) },
+    where: { hidden: false, exclusiveTagId: null, promoAt: { gt: after }, ...UNKNOWN(known) },
     orderBy: { promoAt: "desc" },
     select: { ...ITEM, promoText: true, promoAt: true },
   });
@@ -157,7 +157,8 @@ export async function storefront(userId: string, known: Known = { gallery: false
     }),
     // والمخفيّ لا يُعرض: يُرفع ويُنزل بلا حذفٍ يُضيع ما اشتراه أحد.
     prisma.storeItem.findMany({
-      where: { hidden: false, ...UNKNOWN(known) },
+      // والحصريُّ لوسمٍ لا يُعرض (القاعدة ٤٧٩): لا يُشترى، يلبسه حاملُ الوسم.
+      where: { hidden: false, exclusiveTagId: null, ...UNKNOWN(known) },
       orderBy: { sortOrder: "asc" },
       select: ITEM,
     }),
@@ -247,17 +248,34 @@ export async function storefront(userId: string, known: Known = { gallery: false
 
 /** ما يملكه صاحب الحساب — منه تُلبَس الإكسسوارات. */
 export async function myItems(userId: string, known: Known = { gallery: false, book: false }) {
-  const rows = await prisma.purchase.findMany({
-    where: { userId, ...ACTIVE(), item: UNKNOWN(known) },
-    orderBy: { createdAt: "desc" },
-    select: {
-      createdAt: true,
-      expiresAt: true,
-      item: { select: ITEM },
-      giftedBy: { select: { id: true, name: true } },
-    },
-  });
-  return rows;
+  const [rows, me] = await Promise.all([
+    prisma.purchase.findMany({
+      where: { userId, ...ACTIVE(), item: UNKNOWN(known) },
+      orderBy: { createdAt: "desc" },
+      select: {
+        createdAt: true,
+        expiresAt: true,
+        item: { select: ITEM },
+        giftedBy: { select: { id: true, name: true } },
+      },
+    }),
+    prisma.user.findUnique({ where: { id: userId }, select: { tagId: true } }),
+  ]);
+  /*
+    وتشارمُ وسمه يُعدّ مملوكاً ما دام يحمل الوسم (القاعدة ٤٧٩) — صفٌّ بشكل الشراء بلا شراء،
+    فيظهر في إكسسواراته ويُلبَس منها. ويذهب منها حين يُنزع الوسم.
+  */
+  const exclusive = me?.tagId
+    ? await prisma.storeItem.findMany({
+        where: { exclusiveTagId: me.tagId, id: { notIn: rows.map((row) => row.item.id) } },
+        orderBy: { sortOrder: "asc" },
+        select: { ...ITEM, createdAt: true },
+      })
+    : [];
+  return [
+    ...exclusive.map(({ createdAt, ...item }) => ({ createdAt, expiresAt: null, item, giftedBy: null })),
+    ...rows,
+  ];
 }
 
 // ───────────────────────────── الشراء واللبس ─────────────────────────────
@@ -282,7 +300,7 @@ const priceFor = (item: { priceCoins: number }, isPlus: boolean) =>
  */
 async function bundleContents(bundleId: string) {
   const rows = await prisma.bundleItem.findMany({
-    where: { bundleId, item: { hidden: false } },
+    where: { bundleId, item: { hidden: false, exclusiveTagId: null } },
     select: { item: { select: { id: true } } },
   });
   return rows.map((row) => row.item);
@@ -322,7 +340,7 @@ export async function buy(userId: string, itemId: string, planId?: string) {
   if (!me) throw notFound("لا يوجد هذا الحساب");
   if (!item) throw notFound("الصنف غير موجود");
   // والمخفيّ لا يُشترى ولو عُرف معرّفه، و«غير موجود» لا «مخفيّ».
-  if (item.hidden) throw notFound("الصنف غير موجود");
+  if (item.hidden || item.exclusiveTagId) throw notFound("الصنف غير موجود");
   if (item.plusOnly && !me.isPlus) throw forbidden("هذا الصنف لمشتركي آثار+");
 
   if (item.earnedAfterDays !== null) {
@@ -400,7 +418,7 @@ export async function gift(userId: string, itemId: string, toUserId: string, pla
     prisma.storeItem.findUnique({ where: { id: itemId } }),
     prisma.user.findUnique({ where: { id: toUserId }, select: { name: true, isPlus: true } }),
   ]);
-  if (!me || !item || !friend || item.hidden) throw notFound("الصنف غير موجود");
+  if (!me || !item || !friend || item.hidden || item.exclusiveTagId) throw notFound("الصنف غير موجود");
   if (item.earnedAfterDays !== null) throw badRequest("هذا الصنف يُكتسب بالوقت، لا يُهدى");
   if (item.plusOnly && !friend.isPlus) throw badRequest(`${friend.name} ليس مشتركاً في آثار+`);
 
@@ -464,10 +482,19 @@ export async function gift(userId: string, itemId: string, toUserId: string, pla
 
 /** اللبس: ما لا تملكه لا تلبسه. */
 export async function equip(userId: string, itemId: string) {
-  const purchase = await prisma.purchase.findUnique({
+  const bought = await prisma.purchase.findUnique({
     where: { userId_itemId: { userId, itemId } },
     select: { expiresAt: true, item: { select: { kind: true } } },
   });
+  // وتشارمُ الوسم يلبسه حاملُ الوسم بلا شراء (القاعدة ٤٧٩).
+  const purchase =
+    bought ??
+    (await prisma.storeItem
+      .findFirst({
+        where: { id: itemId, exclusiveTag: { users: { some: { id: userId } } } },
+        select: { kind: true },
+      })
+      .then((item) => (item ? { expiresAt: null, item } : null)));
   if (!purchase) throw forbidden("لا تملك هذا الصنف");
   if (purchase.expiresAt && purchase.expiresAt <= new Date()) throw forbidden("انتهت مدّة هذا الصنف");
   // الحزمةُ لا تُلبَس (القاعدة ٤٤ب): كانت تُكتب في `backgroundId` فيُلبَس ثيمٌ لا وجود له.
@@ -631,6 +658,16 @@ export async function expireRentals(): Promise<number> {
       stripped += 1;
     }
   }
+  /*
+    وتشارمُ الوسم يُنزع ممّن نُزع منه وسمُه (القاعدة ٤٧٩) — إلّا من اشتراه قبل أن يصير حصريّاً.
+  */
+  stripped += await prisma.$executeRaw`
+    UPDATE "User" u SET "charmId" = NULL
+    FROM "StoreItem" i
+    WHERE u."charmId" = i."id" AND i."exclusiveTagId" IS NOT NULL
+      AND u."tagId" IS DISTINCT FROM i."exclusiveTagId"
+      AND NOT EXISTS (SELECT 1 FROM "Purchase" p WHERE p."userId" = u."id" AND p."itemId" = i."id"
+                      AND (p."expiresAt" IS NULL OR p."expiresAt" > NOW()))`;
   if (stripped > 0) console.log(`↓ نُزع ${stripped} صنفاً انتهت مدّته`);
   return stripped;
 }
