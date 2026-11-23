@@ -16,7 +16,7 @@ import { blockedWith, circleIds } from "./visibility";
  * و**آثار+ «أرشيفٌ بلا نهاية»** (وعدُ قائمة المزايا): غيرُ المشترك يرى آخر
  * ستّة أشهر، والأقدمُ باقٍ في القاعدة يعود بالاشتراك — لا يُحذف شيء.
  */
-const KINDS = ["PHOTO", "PLACE", "THOUGHT", "MUSIC", "SLEEP", "WAKE", "CITY"] as const;
+const KINDS = ["PHOTO", "PLACE", "THOUGHT", "MUSIC", "SLEEP", "WAKE", "CITY", "MOOD", "QUESTION"] as const;
 export const FREE_ARCHIVE_DAYS = 183;
 
 const select = {
@@ -33,6 +33,8 @@ const select = {
   videoId: true,
   photoX: true,
   photoY: true,
+  // المودُ (القاعدة ٤٨٤): اسمُه وإيموجيه في الأرشيف والكتاب.
+  mood: { select: { emoji: true, name: true } },
   createdAt: true,
 } as const;
 
@@ -185,7 +187,7 @@ export async function years(userId: string) {
     SELECT EXTRACT(YEAR FROM "createdAt" + interval '3 hours')::int AS year, COUNT(*) AS n
     FROM "Moment"
     WHERE "authorId" = ${userId}
-      AND "kind"::text IN ('PHOTO', 'PLACE', 'THOUGHT', 'MUSIC', 'SLEEP', 'WAKE', 'CITY')
+      AND "kind"::text IN ('PHOTO', 'PLACE', 'THOUGHT', 'MUSIC', 'SLEEP', 'WAKE', 'CITY', 'MOOD', 'QUESTION')
       AND (NOT ${free} OR "createdAt" >= LEAST(
         date_trunc('year', "createdAt" + interval '3 hours') + interval '1 year' - interval '3 hours',
         ${now}::timestamp
@@ -393,6 +395,7 @@ function headline(moment: {
   placeName: string | null;
   placeCity: string | null;
   musicTitle: string | null;
+  mood?: { emoji: string; name: string } | null;
 }): string {
   const short = (value: string) => (value.length > 60 ? `${value.slice(0, 59)}…` : value);
   switch (moment.kind) {
@@ -406,6 +409,10 @@ function headline(moment: {
       return "نمت";
     case "WAKE":
       return "صحيت";
+    case "MOOD":
+      return moment.mood ? `${moment.mood.emoji} ${moment.mood.name}` : "مود";
+    case "QUESTION":
+      return moment.text ? short(moment.text) : "سؤال";
     case "PHOTO":
       return moment.text ? short(moment.text) : "صورة";
     default:

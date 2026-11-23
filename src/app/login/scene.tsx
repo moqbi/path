@@ -29,7 +29,7 @@ export function SceneGround() {
   );
 }
 
-const SATS = ["write", "photo", "music", "place", "sleep", "morning"];
+const SATS = ["write", "photo", "music", "place", "mood", "question"];
 
 /**
  * المدار: الشعار في مركزه، والرسومُ الستّ على دائرةٍ تدور دورةً كلّ ٢٦
@@ -67,9 +67,9 @@ const ROWS: Row[] = [
   { kind: "event", icon: "place", name: "خالد", what: "وصل إلى جدة" },
   { kind: "card", initial: "س", tint: "#5a7fa8", who: "سارة · مع ريم", photo: true, react: 1 },
   { kind: "event", icon: "music", name: "فيصل", what: "يسمع أغنية الآن" },
-  { kind: "event", icon: "morning", name: "ريم", what: "صحت ٦:٣٠ ص" },
+  { kind: "event", icon: "mood", name: "ريم", what: "مودها: رايقة 😌" },
   { kind: "card", initial: "م", tint: "#6a8a6a", who: "محمد · في مقهى الحيّ", text: "أوّل مرّة أجرّب هالمكان، يستاهل", react: 2 },
-  { kind: "event", icon: "sleep", name: "نايف", what: "نام" },
+  { kind: "event", icon: "question", name: "نايف", what: "سأل: وين أحلى قهوة بالرياض؟" },
 ];
 
 function Rows() {

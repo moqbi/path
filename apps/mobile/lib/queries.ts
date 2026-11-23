@@ -76,6 +76,10 @@ export type Moment = {
   /** خياراتُ استطلاع المشرف (القاعدة ٢٨٩) — اختياريٌّ لخادمٍ أقدم. */
   pollOptions?: string[];
   pollEndsAt?: string | null;
+  /** المود (القاعدة ٤٨٤) — خادمٌ قديم لا يرسله. */
+  mood?: { id: string; emoji: string; name: string; color: string; mediaId: string | null } | null;
+  /** سؤالٌ إجاباتُه لصاحبه ولكاتب كلٍّ منها وحدهما. */
+  answersPrivate?: boolean;
   createdAt: string;
   author: Person;
   tags: { id: string; name: string }[];
@@ -121,6 +125,43 @@ type Page = { moments: Moment[]; nextCursor?: string };
  * المؤشّر لا الرقم: لحظةٌ تُنشر أثناء التصفّح تزيح كل شيء صفحةً، فيتكرّر
  * ما قُرئ ويسقط ما لم يُقرأ.
  */
+/**
+ * لحظاتُ ملفٍّ بصفحاتٍ بمؤشّر — «أنا» وملفُّ الصديق. كانت صفحةً واحدة (٤٠ ثمّ ٢٠)
+ * فلا يُحمَّل ما قبلها مهما نزل صاحبُها. `more()` يجلب التالية ببلوغ آخر القائمة،
+ * والمكرّرُ بين صفحتين يُطوى بمعرّفه.
+ */
+export function usePagedMoments(queryKey: readonly unknown[], path: string, enabled = true) {
+  const query = useInfiniteQuery({
+    queryKey,
+    enabled,
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ limit: "20" });
+      if (pageParam) params.set("cursor", pageParam);
+      return api<Page>(`${path}?${params}`);
+    },
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+  });
+  const seen = new Set<string>();
+  const moments: Moment[] = [];
+  for (const page of query.data?.pages ?? []) {
+    for (const moment of page.moments) {
+      if (seen.has(moment.id)) continue;
+      seen.add(moment.id);
+      moments.push(moment);
+    }
+  }
+  return {
+    moments,
+    isLoading: query.isLoading,
+    loadingMore: query.isFetchingNextPage,
+    refetch: query.refetch,
+    more: () => {
+      if (query.hasNextPage && !query.isFetchingNextPage) void query.fetchNextPage();
+    },
+  };
+}
+
 export function useFeed(view: "" | "private" = "") {
   return useInfiniteQuery({
     queryKey: keys.feed(view),

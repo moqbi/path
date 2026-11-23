@@ -31,6 +31,7 @@ import { VideoViewer } from "../components/video-viewer";
 import { PlaceVisitors } from "../components/place-visitors";
 import { ReactSheet } from "../components/react-sheet";
 import { EditSheet } from "../components/edit-sheet";
+import { MoodSheet } from "../components/mood-sheet";
 import { AddSheet, openAddSheet } from "../components/add-sheet";
 import { SearchSheet } from "../components/search-sheet";
 import { InterestsSheet } from "../components/interests-sheet";
@@ -396,6 +397,7 @@ function Gate() {
     {/* ولوحةُ التفاعل نافذةٌ زجاجيّة كذلك (القاعدة ٢٤٧). */}
     <ReactSheet />
     <EditSheet />
+    <MoodSheet />
     <AddSheet />
     <SearchSheet />
     <InterestsSheet />

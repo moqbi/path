@@ -36,7 +36,7 @@ const SCREENS = [
     src: "/shots/profile.webp",
     label: "الملف",
     alt: "الملف الشخصي في آثار مومنتس",
-    a: { icon: "/composer/wake.png", title: "لك معانا ٤ أشهر", sub: "عضوية رقم ٤٢" },
+    a: { icon: "/composer/mood.png", title: "لك معانا ٤ أشهر", sub: "عضوية رقم ٤٢" },
     b: { icon: "/reactions/smile.png", title: "كتاب سنتك جاهز", sub: "لحظاتك يوماً بيوم" },
   },
 ] as const;

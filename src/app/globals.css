@@ -255,6 +255,16 @@ h3 {
 
 /* ظهور الوجوه في شريط التفاعل — نبضة قصيرة من الأسفل. */
 /* النافذةُ الزجاجيّة تصعد من أسفل (القاعدة ٢٤٧) — وفيها `translateX` موضعُها. */
+@keyframes athr-glass-pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
 @keyframes athr-glass-up {
   from {
     opacity: 0;

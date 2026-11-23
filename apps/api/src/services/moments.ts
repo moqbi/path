@@ -1,6 +1,6 @@
 import { prisma } from "@athar/db";
 import { recordCity } from "./city";
-import { POLL_DAYS_DEFAULT, type MomentInput } from "@athar/shared";
+import { MOOD_TEXT_MAX, POLL_DAYS_DEFAULT, type MomentInput } from "@athar/shared";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { reverseGeocode } from "../lib/places";
 import { expandMusicUrl, pickMusicUrl, resolveTrack } from "../lib/music-link";
@@ -165,6 +165,19 @@ export async function createMoment(userId: string, input: MomentInput) {
 
   const text = input.text?.trim() || null;
   if (!text && input.kind === "THOUGHT") throw badRequest("اكتب شيئاً");
+  /*
+    المودُ والسؤال (القاعدة ٤٨٤): المودُ من قائمة اللوحة ظاهرٌ لا يُكتب، وعبارتُه سطر؛
+    والسؤالُ نصُّه، وإجاباتُه تعليقاتُه — وقد تكون لصاحبه وحده.
+  */
+  let moodId: string | null = null;
+  if (input.kind === "MOOD") {
+    if (!input.moodId) throw badRequest("اختر مودك");
+    const mood = await prisma.mood.findFirst({ where: { id: input.moodId, hidden: false }, select: { id: true } });
+    if (!mood) throw notFound("المود غير موجود");
+    moodId = mood.id;
+    if (text && text.length > MOOD_TEXT_MAX) throw badRequest(`العبارة ${MOOD_TEXT_MAX} حرفاً على الأكثر`);
+  }
+  if (input.kind === "QUESTION" && !text) throw badRequest("اكتب سؤالك");
   // الفلترة قبل الكتابة: ما يُمنع يقف عند صاحبه لا بعد أن يراه الناس.
   // واسمُ المكان نصٌّ يرسله الجهاز وإن اختير من قائمة، فيُفحص معه.
   /*
@@ -291,6 +304,8 @@ export async function createMoment(userId: string, input: MomentInput) {
       musicTitle: track?.title ?? null,
       musicArtist: track?.artist ?? null,
       musicThumb: track?.thumb ?? null,
+      moodId,
+      answersPrivate: input.kind === "QUESTION" && input.answersPrivate === true,
       pollOptions: poll,
       // نسخةٌ قبل المدّة لا ترسلها، فتأخذ الافتراضيّ (القاعدة ٢٩٠).
       pollEndsAt: poll.length
@@ -360,20 +375,6 @@ export async function checkInCity(userId: string, lat: number, lng: number, devi
     airport: place.airport ?? device.airport ?? null,
   });
   return { city, wrote };
-}
-
-/**
- * «نمت» و«صحيت»: لحظةٌ بلا متن — ساعتها هي خبرها.
- *
- * لا يُكتب الوقت نصّاً: `createdAt` يحمله والعرض يقرأه منه. نصٌّ مكتوب
- * يتجمّد حين يتغيّر تنسيق الساعة أو منطقتها، والطابع لا يتجمّد.
- */
-export async function postMark(userId: string, kind: "SLEEP" | "WAKE") {
-  const moment = await prisma.moment.create({
-    data: { authorId: userId, kind },
-    select: { id: true },
-  });
-  return { id: moment.id };
 }
 
 /**
@@ -447,7 +448,7 @@ async function assertCanInteract(userId: string, momentId: string) {
 
   const moment = await prisma.moment.findUnique({
     where: { id: momentId },
-    select: { authorId: true, kind: true, commentsLocked: true, mediaId: true },
+    select: { authorId: true, kind: true, commentsLocked: true, mediaId: true, answersPrivate: true },
   });
   if (!moment) throw notFound("اللحظة غير موجودة");
   if (!reach && !(await canInteract(userId, moment.authorId))) {
@@ -478,9 +479,8 @@ export async function react(
     if (!input.emoji) throw badRequest("اختر رمزاً");
   }
 
-  if (input.kind === "SLEEPY" && moment.kind !== "SLEEP") {
-    throw badRequest("وجه النوم للحظات النوم");
-  }
+  // وجهُ النوم ذهب مع «نمت» من قوس النشر (القاعدة ٤٨٤): نسخةٌ قديمة ترسله تُردّ.
+  if (input.kind === "SLEEPY") throw badRequest("هذا التفاعل لم يعد متاحاً");
 
   const emoji = input.kind === "CUSTOM" ? (input.emoji ?? null) : null;
   const existing = await prisma.reaction.findUnique({
@@ -582,13 +582,24 @@ export async function votePoll(userId: string, momentId: string, choice: number)
  * غيرهم، والطلبُ يُرسَل بيد — ولا نفسُك، ولمن يرى اللحظة: إشارةٌ إلى من لا يراها تخبره
  * بما لم يُكتب له. والاسمُ مكتوبٌ في النصّ بعد «@»، فما مُحي منه لا يُشار إليه.
  */
-async function mentionTargets(userId: string, momentId: string, authorId: string, body: string, wanted: string[]) {
+async function mentionTargets(
+  userId: string,
+  momentId: string,
+  authorId: string,
+  body: string,
+  wanted: string[],
+  answersPrivate = false,
+) {
   if (!wanted.length) return [];
-  const commenters = await prisma.comment.findMany({
-    where: { momentId, userId: { in: wanted } },
-    select: { userId: true },
-    distinct: ["userId"],
-  });
+  // «الإجاباتُ لي وحدي» (القاعدة ٤٨٤): المجيبُ لا يعرف غيرَه من المجيبين، فلا يُشير إلا إلى صاحب السؤال.
+  const commenters =
+    answersPrivate && userId !== authorId
+      ? []
+      : await prisma.comment.findMany({
+          where: { momentId, userId: { in: wanted } },
+          select: { userId: true },
+          distinct: ["userId"],
+        });
   const allowed = new Set([authorId, ...commenters.map((row) => row.userId)]);
   const ids = [...new Set(wanted)].filter((id) => id !== userId && allowed.has(id));
   if (!ids.length) return [];
@@ -650,7 +661,9 @@ export async function addComment(userId: string, momentId: string, body: string,
   await guard(body);
 
   const text = body.trim().slice(0, 500);
-  const mentionIds = sticker ? [] : await mentionTargets(userId, momentId, moment.authorId, text, mentions);
+  const mentionIds = sticker
+    ? []
+    : await mentionTargets(userId, momentId, moment.authorId, text, mentions, moment.answersPrivate);
   const comment = await prisma.comment.create({
     data: { momentId, userId, body: text, stickerId: sticker, mentionIds },
     select: {
@@ -699,7 +712,10 @@ export async function addComment(userId: string, momentId: string, body: string,
       image: comment.sticker?.mediaId ?? moment.mediaId,
     });
   }
-  void notifyThread(userId, momentId, moment.authorId, mentionIds, comment.user.name, comment.body, comment.sticker?.mediaId ?? moment.mediaId);
+  // إجابةٌ لصاحب السؤال وحده لا تُقرع لغيره من المجيبين (القاعدة ٤٨٤).
+  if (!moment.answersPrivate) {
+    void notifyThread(userId, momentId, moment.authorId, mentionIds, comment.user.name, comment.body, comment.sticker?.mediaId ?? moment.mediaId);
+  }
 
   return { ...comment, mentionIds };
 }

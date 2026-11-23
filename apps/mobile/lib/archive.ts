@@ -20,6 +20,8 @@ export type ArchiveMoment = {
   morePhotos?: string[];
   morePhotoPos?: { x: number; y: number }[];
   echo?: HallEcho;
+  /** المود (القاعدة ٤٨٤) — خادمٌ قديم لا يرسله. */
+  mood?: { emoji: string; name: string } | null;
 };
 
 /** صدى اللحظة في القاعة: كم تفاعلاً وتعليقاً، وأحدثُ من تفاعل بوجهه. */
@@ -118,6 +120,8 @@ export function momentLine(moment: ArchiveMoment): string {
       return "نمت";
     case "WAKE":
       return "صحيت";
+    case "MOOD":
+      return [moment.mood ? `${moment.mood.emoji} ${moment.mood.name}` : "مود", moment.text].filter(Boolean).join(" — ");
     default:
       return moment.text ?? "";
   }

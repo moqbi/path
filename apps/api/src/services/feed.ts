@@ -45,6 +45,9 @@ const shape = {
   editedAt: true,
   // «خاصة»: من يرى اللحظة يُقال له إنّها لم تُوجَّه إلى الدائرة كلّها.
   audience: true,
+  // المودُ (القاعدة ٤٨٤) بإيموجيه واسمه ولونه وصورته، و«الإجاباتُ لي وحدي» للسؤال.
+  mood: { select: { id: true, emoji: true, name: true, color: true, mediaId: true } },
+  answersPrivate: true,
   createdAt: true,
   author: {
     select: {
@@ -104,6 +107,32 @@ const shape = {
   },
   _count: { select: { views: true, comments: true, reactions: true } },
 } as const;
+
+/**
+ * التعليقاتُ التي يقرؤها القارئ (القاعدة ٤٨٤): كلُّها، إلّا على سؤالٍ «إجاباتُه لصاحبه وحده» —
+ * فهناك يقرأ صاحبُ السؤال الكلَّ، وكلُّ مجيبٍ ما كتبه هو وما أُشير إليه فيه. شرطٌ في
+ * الاستعلام لا تصفيةٌ بعده: لا تخرج إجابةٌ من الخادم إلى من لا يقرؤها.
+ */
+export function answersFor(userId: string) {
+  return {
+    OR: [
+      { moment: { answersPrivate: false } },
+      { moment: { authorId: userId } },
+      { userId },
+      { mentionIds: { has: userId } },
+    ],
+  };
+}
+
+/** شكلُ اللحظة لقارئٍ بعينه — تعليقاتُها بشرط `answersFor`. */
+function shapeFor(userId: string) {
+  // والعددُ بالشرط نفسه: «اقرأ ٣ تعليقات أخرى» على سؤالٍ لصاحبه وحده عددُ ما لا يراه القارئ.
+  return {
+    ...shape,
+    comments: { ...shape.comments, where: answersFor(userId) },
+    _count: { select: { views: true, reactions: true, comments: { where: answersFor(userId) } } },
+  };
+}
 
 /**
  * يُسطّح ما ورد متداخلاً من Prisma.
@@ -200,7 +229,7 @@ export async function timeline(userId: string, options: { cursor?: string; limit
 
   const rows = await prisma.moment.findMany({
     where: { AND: [where, known(hide)] },
-    select: shape,
+    select: shapeFor(userId),
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: options.limit + 1,
     ...cursorOf(options.cursor),
@@ -215,7 +244,7 @@ export async function privateTimeline(userId: string, options: { cursor?: string
 
   const rows = await prisma.moment.findMany({
     where: { AND: [where, { audience: { not: "CIRCLE" } }, known(hide)] },
-    select: shape,
+    select: shapeFor(userId),
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: options.limit + 1,
     ...cursorOf(options.cursor),
@@ -269,7 +298,7 @@ export async function togetherTimeline(userId: string, friendId: string) {
     where: {
       AND: [visible, { OR: [involves(userId, friendId), involves(friendId, userId)] }, { kind: { in: TOGETHER_KINDS } }],
     },
-    select: shape,
+    select: shapeFor(userId),
     orderBy: { createdAt: "desc" },
     take: 80,
   });
@@ -297,11 +326,13 @@ export async function momentById(userId: string, momentId: string) {
       ...shape,
       comments: {
         select: shape.comments.select,
+        where: answersFor(userId),
         orderBy: { createdAt: "asc" },
         take: 100,
       },
       // لحظةٌ واحدة تحمل تفاعلاتِها كلَّها: صفُّ الخطّ يجلبها حين يبلغ الإصبعُ آخرَه (القاعدة ٤٥٠).
       reactions: { ...shape.reactions, take: 1000 },
+      _count: { select: { views: true, reactions: true, comments: { where: answersFor(userId) } } },
     },
   });
   if (!moment) throw notFound("اللحظة غير موجودة");
@@ -319,7 +350,7 @@ export async function momentsByIds(userId: string, ids: string[]) {
   const where = await visibleWhere(userId);
   const rows = await prisma.moment.findMany({
     where: { AND: [where, { id: { in: ids } }] },
-    select: shape,
+    select: shapeFor(userId),
   });
   const order = new Map(ids.map((id, index) => [id, index]));
   return (await ownReactions(rows, userId))
@@ -368,7 +399,7 @@ export async function momentsOf(
 
   const rows = await prisma.moment.findMany({
     where: { AND: [where, { authorId }, known(hide)] },
-    select: shape,
+    select: shapeFor(userId),
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: options.limit + 1,
     ...cursorOf(options.cursor),
@@ -394,7 +425,7 @@ export async function moderatedMomentsOf(
 ) {
   const rows = await prisma.moment.findMany({
     where: { authorId },
-    select: shape,
+    select: shapeFor(viewerId),
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: options.limit + 1,
     ...cursorOf(options.cursor),

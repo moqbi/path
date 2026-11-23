@@ -34,6 +34,10 @@ enum MomentKind {
   /// «غيّر صورته» — تُكتب حين يبدّل صاحبُها صورةَ عرضه، ومعها نسخةٌ منها.
   AVATAR_CHANGED
   COINS_GRANTED
+  /// «مودي: مروّق» (القاعدة ٤٨٤) — المودُ من `Mood` والعبارةُ الاختياريّة في `text`.
+  MOOD
+  /// «يسأل دائرته» — السؤالُ في `text`، والإجاباتُ تعليقاتُه (القاعدة ٤٨٤).
+  QUESTION
 }
 
 enum UserRole {
@@ -641,6 +645,12 @@ model Moment {
   /// تعديلُ صاحبها نصَّها (القاعدة ٣١٩) — «عُدّلت» يُرى للجميع.
   editedAt    DateTime?
 
+  /// المودُ لـ`MOOD` (القاعدة ٤٨٤). يُخفى المودُ ولا يُحذف وعليه لحظات.
+  moodId         String?
+  mood           Mood?   @relation(fields: [moodId], references: [id], onDelete: SetNull)
+  /// «الإجاباتُ لي وحدي» في `QUESTION`: تعليقاتُها لصاحبها ولكاتب كلٍّ منها وحده.
+  answersPrivate Boolean @default(false)
+
   createdAt DateTime @default(now())
 
   author    User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
@@ -1170,6 +1180,22 @@ model InterestGroup {
 
 /// اهتمامٌ داخل تصنيفه. يُحفظ معرّفُه في `User.interests`، فحذفُه يُبقي المعرّفَ
 /// في مصفوفات أصحابه ويُتجاهل عند القراءة — ولا يُعاد استعمالُه لمعنىً آخر.
+/// المودُ في «وش مودك؟» (القاعدة ٤٨٤): إيموجي الكيبورد واسمٌ وصورةٌ تملأ البطاقة،
+/// يُضاف ويُعدَّل ويُرتَّب ويُخفى من اللوحة. وبلا صورةٍ يُرسم بلونه.
+model Mood {
+  id        String   @id @default(cuid())
+  emoji     String
+  name      String
+  /// لونٌ احتياطيّ حين لا صورة (`#RRGGBB`).
+  color     String   @default("#F6B93B")
+  mediaId   String?  @unique
+  media     Media?   @relation("MoodMedia", fields: [mediaId], references: [id], onDelete: SetNull)
+  sortOrder Int      @default(0)
+  hidden    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  moments   Moment[]
+}
+
 model Interest {
   id        String        @id
   groupId   String
@@ -1320,6 +1346,7 @@ model Media {
   storeBookEnd   StoreItem?    @relation("StoreItemBookEnd")
   sticker        Sticker?      @relation("StickerMedia")
   broadcast      Broadcast?    @relation("BroadcastMedia")
+  mood           Mood?         @relation("MoodMedia")
 
   /// صورةُ موقعٍ عامّة إن كانت — الرأس مثلاً.
   siteImage SiteImage? @relation("SiteImage")

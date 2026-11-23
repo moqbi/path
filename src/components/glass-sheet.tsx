@@ -18,6 +18,8 @@ export function GlassSheet({
   onClose,
   keep = false,
   children,
+  centered = false,
+  width = 440,
 }: {
   title: string;
   subtitle?: string;
@@ -25,7 +27,12 @@ export function GlassSheet({
   /** ما دام فيها ما يضيع (تعليقٌ نصفُ مكتوب) لا تُغلقها ضغطةٌ خارجها. */
   keep?: boolean;
   children: React.ReactNode;
+  /** في وسط الشاشة لا في أسفلها — نافذتا «مود» و«سؤال» (القاعدة ٤٨٤). */
+  centered?: boolean;
+  /** أقصى العرض: أنيقةٌ لا بعرض الشاشة، وعلى الشاشة العريضة عمودان. */
+  width?: number;
 }) {
+  const base = centered ? "translate(-50%, -50%)" : "translateX(-50%)";
   const box = useRef<HTMLDivElement>(null);
   const head = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
@@ -71,12 +78,12 @@ export function GlassSheet({
     const paint = (value: number, animate: boolean) => {
       const shrink = 1 - Math.min(value, 320) / 4000;
       sheet.style.transition = animate ? "transform 220ms cubic-bezier(.4,0,1,1), opacity 220ms" : "none";
-      sheet.style.transform = `translateX(-50%) translateY(${value}px) scale(${shrink})`;
+      sheet.style.transform = `${base} translateY(${value}px) scale(${shrink})`;
       sheet.style.opacity = String(1 - Math.min(value, 320) / 800);
     };
     const reset = () => {
       sheet.style.transition = "transform 260ms cubic-bezier(.2,1.3,.4,1), opacity 200ms";
-      sheet.style.transform = "translateX(-50%)";
+      sheet.style.transform = base;
       sheet.style.opacity = "1";
     };
     const start = (event: PointerEvent) => {
@@ -141,6 +148,7 @@ export function GlassSheet({
       sheet.removeEventListener("pointerup", end);
       sheet.removeEventListener("pointercancel", end);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sheetEl]);
 
   return (
@@ -164,11 +172,11 @@ export function GlassSheet({
         className="fixed z-50 overflow-hidden"
         style={{
           left: "50%",
-          bottom: 12,
-          transform: "translateX(-50%)",
-          width: "calc(100% - 20px)",
-          maxWidth: 440,
-          maxHeight: "78vh",
+          ...(centered ? { top: "50%" } : { bottom: 12 }),
+          transform: base,
+          width: centered ? "calc(100% - 32px)" : "calc(100% - 20px)",
+          maxWidth: width,
+          maxHeight: centered ? "88vh" : "78vh",
           display: "flex",
           flexDirection: "column",
           borderRadius: 30,
@@ -179,7 +187,9 @@ export function GlassSheet({
           boxShadow: "0 10px 40px rgba(0,0,0,.38)",
           color: "#fff",
           // `backwards` لا `both`: ما يبقى بعد الحركة يكتب فوق `transform` الذي يرسمه السحب.
-          animation: "athr-glass-up 260ms cubic-bezier(.2,1.2,.4,1) backwards",
+          animation: centered
+            ? "athr-glass-pop 240ms cubic-bezier(.2,1.2,.4,1) backwards"
+            : "athr-glass-up 260ms cubic-bezier(.2,1.2,.4,1) backwards",
         }}
       >
         <div ref={head} className="shrink-0 cursor-grab select-none" style={{ touchAction: "none" }}>

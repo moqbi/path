@@ -10,6 +10,8 @@ export const CIRCLE_CAP = 150;
 
 /** حدّ نصّ اللحظة بالحروف. */
 export const MOMENT_TEXT_MAX = 250;
+/** عبارةُ المود (القاعدة ٤٨٤): سطرٌ تحت الوجه لا فقرة. */
+export const MOOD_TEXT_MAX = 60;
 
 /** صورُ لحظة الصور: خمسٌ على الأكثر تُقلَّب يميناً ويساراً (القاعدة ٣٤٣). */
 export const MOMENT_PHOTOS_MAX = 5;

@@ -34,6 +34,8 @@ import { NoteMark, type StripNote } from "@/components/circle-strip";
 import { ar, relative, timeOfDay } from "@/lib/format";
 import type { FeedMoment } from "@/lib/feed";
 import { MomentVideo } from "@/components/moment-video";
+import { asset } from "@/lib/base";
+import { MoodArt } from "@/components/mood-art";
 
 /** بعد هذا العدد تُفتح اللحظة لقراءة بقية التعليقات، وقبله لا داعي. */
 const INLINE_COMMENTS = 3;
@@ -594,7 +596,9 @@ export function MomentCard({
 
   // ما له متن — صورة أو خاطرة — يبقى في بطاقته.
   // الصورةُ في أعلى البطاقة وزرُّ التفاعل في ركنها فوقها، بإطار المحرّر وموضعه.
-  const media = moment.videoId ? (
+  const media = kind === "MOOD" && moment.mood ? (
+    <MoodArt mood={moment.mood} text={moment.text} />
+  ) : moment.videoId ? (
     <div className="px-3 pt-3">
       <MomentVideo videoId={moment.videoId} posterId={moment.mediaId} ratio={momentRatio(moment)} />
     </div>
@@ -612,13 +616,20 @@ export function MomentCard({
   const body = (
     <>
       {/* بلا صورةٍ يبدأ النصّ من أعلى البطاقة بجانب الزرّ، ومعها يأتي تحتها. */}
-      <div className={media ? "px-4 pt-3" : "min-h-[50px] pl-[52px] pr-4 pt-3.5"}>
+      <div className={kind === "MOOD" && media ? "px-4 empty:hidden [&:not(:empty)]:pt-3" : media ? "px-4 pt-3" : "min-h-[50px] pl-[52px] pr-4 pt-3.5"}>
         {moment.memoryOf ? <MemoryTag at={moment.memoryOf} /> : null}
+        {kind === "QUESTION" ? (
+          <p className="mb-1.5 flex items-center gap-1.5 text-[12px] font-bold text-clay-ink">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={asset("/composer/question.png")} alt="" className="h-[18px] w-[18px] object-contain" />
+            سؤال لدائرته
+          </p>
+        ) : null}
         {memoryEvent ? (
           <div className="mb-2 flex gap-2.5">
             <EventLine moment={moment} withNames={withNames} viewerId={viewerId} onCard />
           </div>
-        ) : moment.recapYear && moment.text ? (
+        ) : kind === "MOOD" ? null : moment.recapYear && moment.text ? (
           <RecapBlock text={moment.text} />
         ) : moment.text ? (
           <p dir="auto" className="mb-2 text-[13.5px] leading-relaxed text-ink">
@@ -627,6 +638,27 @@ export function MomentCard({
           </p>
         ) : null}
         {moment.recapYear ? null : <LinkPreview text={moment.text} className="mb-2" />}
+        {kind === "QUESTION" ? (
+          <div className="mb-2 flex flex-col items-start gap-1.5">
+            {moment.answersPrivate ? (
+              <p className="text-[11.5px] text-muted">
+                {moment.author.id === viewerId ? "الإجابات لك وحدك" : "إجابتك يراها صاحب السؤال وحده"}
+              </p>
+            ) : null}
+            {moment.commentsLocked ? null : (
+              <Link
+                href={`/m/${moment.id}`}
+                className="rounded-full border border-clay bg-clay-soft px-3.5 py-1.5 text-[12.5px] font-bold text-clay-ink"
+              >
+                {moment.author.id === viewerId
+                  ? moment._count.comments
+                    ? `${ar(moment._count.comments)} إجابة`
+                    : "ما فيه إجابات بعد"
+                  : "أضف إجابتك"}
+              </Link>
+            )}
+          </div>
+        ) : null}
         {moment.pollOptions.length ? (
           <Poll momentId={moment.id} options={moment.pollOptions} endsAt={moment.pollEndsAt} author={moment.author.id === viewerId} />
         ) : null}
@@ -711,3 +743,4 @@ export function MomentCard({
     </Row>
   );
 }
+

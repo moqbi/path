@@ -5,7 +5,7 @@ import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { circleIds, mutualCount } from "@/lib/circle";
 import { blockedWith, visibleWhere } from "@/lib/visibility";
-import { momentShape } from "@/lib/feed";
+import { shapeFor } from "@/lib/feed";
 import {
   acceptFriend,
   ignoreFriend,
@@ -157,7 +157,7 @@ export default async function FriendProfilePage({
         : followsMe
           ? { AND: [await visibleWhere(viewer.id), { authorId: id }] }
           : { authorId: id, audience: "CIRCLE" },
-      select: momentShape,
+      select: shapeFor(viewer.id),
       orderBy: { createdAt: "desc" },
       take: 40,
     }),

@@ -16,17 +16,16 @@ const SOURCES: Record<string, number> = {
   CAMERA: require("../assets/reactions/camera.png"),
   CHAT: require("../assets/reactions/chat.png"),
   PIN: require("../assets/reactions/pin.png"),
-  SLEEPY: require("../assets/reactions/sleepy.png"),
 };
 
 /**
  * التفاعلاتُ العامّة: الوجوهُ الخمسة ثمّ الكاميرا والفقاعة والدبّوس (القاعدة ٢٥٧) —
- * والدبّوسُ لما يُقال لمن وصل مدينةً أخرى. ويُزاد وجهُ النوم للحظات النوم وحدها.
+ * والدبّوسُ لما يُقال لمن وصل مدينةً أخرى.
  */
 const OPEN_FACES = ["SMILE", "LAUGH", "GASP", "SAD", "LOVE", "CAMERA", "CHAT", "PIN"] as const;
 
-export const facesFor = (kind?: string): readonly string[] =>
-  kind === "SLEEP" ? [...OPEN_FACES, "SLEEPY"] : OPEN_FACES;
+// وجهُ النوم ذهب مع «نمت» (القاعدة ٤٨٤): الوجوهُ نفسُها على كلّ لحظة، والقديمُ منه يُرسم وجهاً أوّل.
+export const facesFor = (_kind?: string): readonly string[] => OPEN_FACES;
 
 /**
  * الإيموجي الحرّ لمشتركي آثار+ — قائمتُه في `lib/emoji.ts`.

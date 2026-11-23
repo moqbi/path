@@ -182,6 +182,8 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
       storeBookEnd: { select: { id: true } },
       sticker: { select: { id: true } },
       broadcast: { select: { id: true } },
+      // صورةُ المود للجميع (القاعدة ٤٨٤).
+      mood: { select: { id: true } },
       avatarOf: { select: { id: true } },
       coverOf: { select: { id: true } },
       moment: { select: { id: true } },
@@ -214,7 +216,7 @@ export async function canSeeMedia(userId: string, mediaId: string): Promise<bool
   if (!media) return false;
   if (media.ownerId === userId) return true;
   // والملصقُ للجميع كصورة الصنف (القاعدة ٢٩١).
-  if (media.storeItem || media.storePromo || media.storeCover || media.storeHallWall || media.storeHallFloor || media.storeHallFrame || media.storeBookPaper || media.storeBookEnd || media.sticker || media.broadcast) return true;
+  if (media.storeItem || media.storePromo || media.storeCover || media.storeHallWall || media.storeHallFloor || media.storeHallFrame || media.storeBookPaper || media.storeBookEnd || media.sticker || media.broadcast || media.mood) return true;
 
   if (media.messageOf) {
     const { aId, bId } = media.messageOf.conversation;

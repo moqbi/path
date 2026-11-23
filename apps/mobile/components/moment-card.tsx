@@ -1,6 +1,6 @@
 import { PulseRing } from "./pulse-ring";
 import { mentionPeople } from "../lib/mentions";
-import { View, Pressable, Image } from "react-native";
+import { View, Pressable, Image, type StyleProp, type ViewStyle } from "react-native";
 import { Text } from "./type";
 import { useRouter } from "expo-router";
 import { Avatar, firstColor } from "./avatar";
@@ -14,6 +14,8 @@ import { openEdit } from "./edit-sheet";
 import { DEV_FEATURES } from "../lib/dev-features";
 import { PencilIcon, CameraIcon, TagIcon, PinIcon, PlayIcon, WithIcon, SunIcon, MoonIcon, PlaneIcon, GiftIcon, SparkIcon, PrivateIcon, ClockIcon } from "./icons";
 import { MomentBar } from "./moment-bar";
+import { openReactSheet } from "./react-sheet";
+import { LinearGradient } from "expo-linear-gradient";
 import { Poll } from "./poll";
 import { SelectableText } from "./selectable-text";
 import { LinkPreview } from "./link-preview";
@@ -505,7 +507,9 @@ export function MomentCard({
     إطارٍ بنسبة المحرّر (`PHOTO_RATIO`) وبالموضع الذي ضبطه صاحبُها، فما رآه
     قبل النشر هو ما تراه دائرته.
   */
-  const media = moment.videoId ? (
+  const media = moment.kind === "MOOD" && moment.mood ? (
+    <MoodArt mood={moment.mood} text={moment.text} />
+  ) : moment.videoId ? (
     // مقطعُ اللحظة في إطار صورتها (القاعدة ٤٣٤).
     <MomentVideo videoId={moment.videoId} posterId={moment.mediaId} ratio={moment.ratio} style={{ marginTop: 12, marginHorizontal: 12, width: undefined, alignSelf: "stretch" }} />
   ) : moment.mediaId && moment.morePhotos?.length ? (
@@ -561,7 +565,10 @@ export function MomentCard({
       <Pressable
         onPress={open}
         style={
-          media
+          // لوحةُ المود تحمل نصّها: بلا «مع» ولا ذكرى لا حشوةَ تحتها تُرى شريطاً فارغاً.
+          moment.kind === "MOOD" && media && !withNames.length && !moment.memoryOf
+            ? { paddingHorizontal: 14 }
+            : media
             ? { paddingHorizontal: 14, paddingTop: 10, minHeight: editable ? 40 : undefined }
             : { paddingRight: 14, paddingLeft: 52, paddingTop: 14, minHeight: 50 }
         }
@@ -575,7 +582,13 @@ export function MomentCard({
             </Text>
           </View>
         ) : null}
-        {memoryEvent ? null : moment.recapYear && moment.text ? (
+        {moment.kind === "QUESTION" ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
+            <Image source={QUESTION_ART} style={{ width: 18, height: 18 }} resizeMode="contain" />
+            <Text style={{ color: colors.clayInk, fontSize: 12, fontWeight: "700" }}>سؤال لدائرته</Text>
+          </View>
+        ) : null}
+        {memoryEvent || moment.kind === "MOOD" ? null : moment.recapYear && moment.text ? (
           <RecapBlock text={moment.text} />
         ) : moment.text ? (
           DEV_FEATURES ? (
@@ -596,6 +609,24 @@ export function MomentCard({
           )
         ) : null}
         {moment.recapYear ? null : <LinkPreview text={moment.text} />}
+        {moment.kind === "QUESTION" ? (
+          <QuestionAsk
+            moment={moment}
+            viewerId={viewerId}
+            onAnswer={() =>
+              openReactSheet({
+                momentId: moment.id,
+                momentKind: moment.kind,
+                mine: mineReaction,
+                isPlus,
+                author: moment.author.id === viewerId,
+                moderate: moderate && moment.author.id !== viewerId,
+                locked: moment.commentsLocked ?? false,
+                people: mentionPeople(moment, viewerId),
+              })
+            }
+          />
+        ) : null}
         {moment.pollOptions?.length ? (
           <Poll momentId={moment.id} options={moment.pollOptions} endsAt={moment.pollEndsAt} author={moment.author.id === viewerId} />
         ) : null}
@@ -704,6 +735,87 @@ export function MomentCard({
           }
         />
       </View>
+    </View>
+  );
+}
+
+const QUESTION_ART = require("../assets/composer/question.png");
+
+/**
+ * لوحةُ المود (القاعدة ٤٨٤): صورةُ المود تملأ أعلى البطاقة من حافّةٍ إلى حافّة،
+ * وفوقها حجابٌ بلون شريط الثيم (`colors.night`) يشتدّ نحو الأسفل فيُقرأ الوجهُ
+ * والاسمُ والعبارة على أيّ صورة. وبلا صورةٍ لونُ المود نفسُه.
+ */
+export function MoodArt({
+  mood,
+  text,
+  style,
+}: {
+  mood: NonNullable<Moment["mood"]>;
+  text: string | null;
+  /** معاينةُ نافذة النشر: بحوافٍّ مستديرة ونسبةٍ أعرض. */
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <View style={[{ width: "100%", aspectRatio: 1.25, maxHeight: 380, backgroundColor: mood.color, overflow: "hidden" }, style]}>
+      {mood.mediaId ? (
+        <MediaImage mediaId={mood.mediaId} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
+      ) : null}
+      <LinearGradient
+        colors={[`${colors.night}1F`, `${colors.night}66`, `${colors.night}D9`]}
+        locations={[0, 0.45, 1]}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+      />
+      <View style={{ flex: 1, justifyContent: "flex-end", padding: 18, gap: 4 }}>
+        <Text style={{ fontSize: 54, lineHeight: 64 }}>{mood.emoji}</Text>
+        <Text style={{ color: "#fff", fontSize: 12, fontWeight: "600", opacity: 0.85 }}>مودي اليوم</Text>
+        <Text style={{ color: "#fff", fontSize: 24, fontWeight: "800", textShadowColor: "rgba(0,0,0,.35)", textShadowRadius: 6 }}>
+          {mood.name}
+        </Text>
+        {text ? (
+          <Text style={{ color: "#fff", fontSize: 14.5, lineHeight: 23, marginTop: 2, textShadowColor: "rgba(0,0,0,.35)", textShadowRadius: 6 }}>
+            {text}
+          </Text>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+/** «أضف إجابتك»: الإجاباتُ تعليقاتُ اللحظة، والزرُّ يفتح حقلها (القاعدة ٤٨٤). */
+function QuestionAsk({ moment, viewerId, onAnswer }: { moment: Moment; viewerId: string; onAnswer: () => void }) {
+  const mine = moment.author.id === viewerId;
+  const count = moment._count.comments;
+  return (
+    <View style={{ gap: 6, marginBottom: 8 }}>
+      {moment.answersPrivate ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+          <PrivateIcon size={12} color={colors.muted} />
+          <Text style={{ color: colors.muted, fontSize: 11.5 }}>
+            {mine ? "الإجابات لك وحدك" : "إجابتك يراها صاحب السؤال وحده"}
+          </Text>
+        </View>
+      ) : null}
+      {moment.commentsLocked ? null : (
+        <Pressable
+          accessibilityRole="button"
+          onPress={onAnswer}
+          style={{
+            alignSelf: "flex-start",
+            paddingHorizontal: 14,
+            height: 34,
+            borderRadius: 17,
+            justifyContent: "center",
+            backgroundColor: colors.claySoft,
+            borderWidth: 1,
+            borderColor: colors.clay,
+          }}
+        >
+          <Text style={{ color: colors.clayInk, fontSize: 12.5, fontWeight: "700" }}>
+            {mine ? (count ? `${ar(count)} إجابة` : "ما فيه إجابات بعد") : "أضف إجابتك"}
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }

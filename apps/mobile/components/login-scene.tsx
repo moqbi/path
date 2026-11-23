@@ -72,8 +72,8 @@ const SATS = [
   require("../assets/launch/photo.png"),
   require("../assets/launch/music.png"),
   require("../assets/launch/place.png"),
-  require("../assets/launch/sleep.png"),
-  require("../assets/launch/morning.png"),
+  require("../assets/launch/question.png"),
+  require("../assets/launch/mood.png"),
 ];
 
 const RADIUS = 76;
@@ -231,9 +231,9 @@ const ROWS: Row[] = [
   { kind: "event", icon: require("../assets/launch/place.png"), name: "خالد", what: "وصل إلى جدة" },
   { kind: "card", initial: "س", tint: "#5a7fa8", who: "سارة · مع ريم", photo: true, react: 1 },
   { kind: "event", icon: require("../assets/launch/music.png"), name: "فيصل", what: "يسمع أغنية الآن" },
-  { kind: "event", icon: require("../assets/launch/morning.png"), name: "ريم", what: "صحت ٦:٣٠ ص" },
+  { kind: "event", icon: require("../assets/launch/mood.png"), name: "ريم", what: "مودها: رايقة 😌" },
   { kind: "card", initial: "م", tint: "#6a8a6a", who: "محمد · في مقهى الحيّ", text: "أوّل مرّة أجرّب هالمكان، يستاهل", react: 2 },
-  { kind: "event", icon: require("../assets/launch/sleep.png"), name: "نايف", what: "نام" },
+  { kind: "event", icon: require("../assets/launch/question.png"), name: "نايف", what: "سأل: وين أحلى قهوة بالرياض؟" },
 ];
 
 const AV = 36;

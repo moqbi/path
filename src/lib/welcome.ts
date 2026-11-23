@@ -27,7 +27,7 @@ export async function welcome(userId: string) {
     circleIds(userId),
     supportAccount(),
     prisma.moment.count({
-      where: { authorId: userId, kind: { in: ["PHOTO", "PLACE", "THOUGHT", "MUSIC", "SLEEP", "WAKE"] } },
+      where: { authorId: userId, kind: { in: ["PHOTO", "PLACE", "THOUGHT", "MUSIC", "SLEEP", "WAKE", "MOOD", "QUESTION"] } },
     }),
   ]);
   const own = support && support.id !== userId ? support : null;

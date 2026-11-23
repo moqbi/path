@@ -33,6 +33,8 @@ export type StoryMoment = {
   musicArtist: string | null;
   /** لحظةُ الفيديو صورتُها غلافُه (القاعدة ٤٣٤)، فيُقال «الفيديو» لا «الصورة». */
   videoId?: string | null;
+  /** مودُ `MOOD` (القاعدة ٤٨٤) — يُقرأ اسمُه. */
+  mood?: { name: string } | null;
   with?: string[];
   createdAt: Date | string;
 };
@@ -120,6 +122,10 @@ export function leadOf(moment: StoryMoment, gender?: Gender): string {
       return `${pick(v, "نمت", "نمتِ", "النومُ")} الساعة ${clock(moment.createdAt)}.`;
     case "WAKE":
       return `${pick(v, "صحيت", "صحيتِ", "الصحوُ")} الساعة ${clock(moment.createdAt)}.`;
+    case "MOOD":
+      return `${pick(v, "كان مودك", "كان مودكِ", "المودُ")}: ${moment.mood?.name ?? "—"}${along("، و")}.`;
+    case "QUESTION":
+      return `${pick(v, "سألت دائرتك", "سألتِ دائرتكِ", "سؤالٌ للدائرة")}.`;
     default:
       return "";
   }

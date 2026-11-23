@@ -37,6 +37,15 @@ export const siteRoutes = new Hono()
   .get("/app-version", async (c) => c.json(await appVersion()))
 
   /** قائمةُ الاهتمامات كما ضُبطت في اللوحة (القاعدة ٣٧٥). */
+  /** مودات «وش مودك؟» الظاهرة بترتيبها (القاعدة ٤٨٤) — تُدار من اللوحة. */
+  .get("/moods", async (c) => {
+    const moods = await prisma.mood.findMany({
+      where: { hidden: false },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      select: { id: true, emoji: true, name: true, color: true, mediaId: true },
+    });
+    return c.json({ moods });
+  })
   .get("/interests", async (c) => {
     const { groups } = await interestCatalog();
     return c.json({ groups });

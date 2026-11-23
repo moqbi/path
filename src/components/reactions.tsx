@@ -22,21 +22,14 @@ export const REACTION_SRC: Record<string, string> = {
   CAMERA: asset("/reactions/camera.png"),
   CHAT: asset("/reactions/chat.png"),
   PIN: asset("/reactions/pin.png"),
-  SLEEPY: asset("/reactions/sleepy.png"),
 };
 
-/** الوجوه العامة، ثم النوم — يُعرض لكل اللحظات وهو الأنسب للحظة نوم. */
 // والكاميرا والفقاعة والدبّوس بعد الوجوه الخمسة على كل لحظة (القاعدة ٢٥٧).
 const OPEN_FACES = ["SMILE", "LAUGH", "GASP", "SAD", "LOVE", "CAMERA", "CHAT", "PIN"] as const;
 
-/**
- * الوجوه المعروضة للحظة.
- *
- * وجه النوم للحظات النوم وحدها: «تصبح على خير» على صورة قهوة لا معنى
- * لها، ووجودُ خيارٍ لا يُستعمل يُضعف بقية الخيارات.
- */
-export function facesFor(momentKind?: string): readonly string[] {
-  return momentKind === "SLEEP" ? [...OPEN_FACES, "SLEEPY"] : OPEN_FACES;
+/** الوجوه المعروضة للحظة — نفسُها على كلّ لحظة: وجهُ النوم ذهب مع «نمت» (القاعدة ٤٨٤). */
+export function facesFor(_momentKind?: string): readonly string[] {
+  return OPEN_FACES;
 }
 
 export const FACES = OPEN_FACES;
