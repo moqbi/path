@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "@athar/db";
-import { BIO_MAX, INTERESTS_MAX, INTERESTS_MIN, appUrl, cleanInterests, hasSite, type NotifyInput } from "@athar/shared";
+import { BIO_MAX, INTERESTS_MAX, INTERESTS_MIN, SITE_URL, cleanInterests, hasSite, type NotifyInput } from "@athar/shared";
 import { interestCatalog } from "./interests";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { dropMedia } from "./media";
@@ -565,7 +565,7 @@ export async function ticketsLink(userId: string, ticketId?: string | null) {
     },
   });
   const to = ticketId ? `&to=${encodeURIComponent(ticketId)}` : "";
-  return { url: appUrl(`/tickets/enter?token=${token}${to}`) };
+  return { url: `${SITE_URL.replace(/\/+$/, "")}/tickets/enter?token=${token}${to}` };
 }
 
 /**

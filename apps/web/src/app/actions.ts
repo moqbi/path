@@ -10,13 +10,13 @@ import { prisma } from "@/lib/db";
 import { createSession, destroySession, hashPassword, requireUser, verifyPassword } from "@/lib/auth";
 import { HEX_COLOR, PALETTE_KEYS, paletteSpec, parsePalette } from "@/lib/theme";
 import { dropMedia, migrateToCloud, storeModerated, storeSiteShot, storeSticker, storeUpload } from "@/lib/media";
-import { cloudReady, probeBucket } from "@/lib/storage";
+import { cloudReady, deleteObjects, probeBucket } from "@/lib/storage";
 import { forgetWords } from "@/lib/moderation";
 import { clear, clientIp, hit, TOO_MANY } from "@/lib/rate-limit";
 import { SUSPEND_HOURS } from "@/lib/suspend";
 import { isPlusDays, PLUS_LABEL } from "@/lib/plus";
 import { SITE_TEXT, type SiteKey } from "@/lib/site";
-import { appUrl, formatFit, ALL_COUNTRIES, BOOK_SKIN_FIELDS, bookSkinOf, bookSpec, COUNTRIES, hallFlatFrom, hallSkinOf } from "@athar/shared";
+import { SITE_URL, hasSite, formatFit, ALL_COUNTRIES, BOOK_SKIN_FIELDS, bookSkinOf, bookSpec, COUNTRIES, hallFlatFrom, hallSkinOf } from "@athar/shared";
 
 /*
   إجراءات اللوحة، منقولةٌ كما هي من `src/app/actions.ts` في الويب الحالي:
@@ -899,7 +899,7 @@ export async function replyTicket(
       number: ticket.number,
       question: ticket.body,
       reply,
-      url: ticket.userId ? appUrl(`/tickets/${ticket.id}`) || null : null,
+      url: ticket.userId && hasSite() ? `${SITE_URL.replace(/\/+$/, "")}/tickets/${ticket.id}` : null,
     });
   }
 
@@ -921,6 +921,64 @@ export async function setTicketState(ticketId: string, to: "close" | "lock" | "r
         : { closed: false, lockedAt: null };
   await prisma.supportTicket.update({ where: { id: ticketId }, data });
   revalidatePath("/admin", "layout");
+}
+
+/** يُعيد حقلَي الردّ القديمين (`reply`/`repliedAt`) إلى آخر ردٍّ باقٍ — تقرؤهما نسخٌ قديمة من التطبيق. */
+async function syncLegacyReply(ticketId: string) {
+  const last = await prisma.ticketMessage.findFirst({
+    where: { ticketId, fromStaff: true },
+    orderBy: { createdAt: "desc" },
+    select: { body: true, createdAt: true },
+  });
+  await prisma.supportTicket.update({
+    where: { id: ticketId },
+    data: { reply: last?.body ?? null, repliedAt: last?.createdAt ?? null },
+  });
+}
+
+/**
+ * تعديلُ ردّ الفريق (القاعدة ٤٨٠) — النصُّ في التذكرة يتغيّر، وما خرج بريداً وتنبيهاً
+ * لا يُسحب. وردُّ الفريق وحده: تعليقُ صاحبها كلامُه لا يُعدَّل عنه.
+ */
+export async function editTicketReply(messageId: string, _prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  await requireAdmin("reports");
+  const body = String(formData.get("body") ?? "").trim().slice(0, 1200);
+  if (body.length < 2) return { error: "اكتب الردّ" };
+  const row = await prisma.ticketMessage.findUnique({ where: { id: messageId }, select: { ticketId: true, fromStaff: true } });
+  if (!row?.fromStaff) return { error: "غير موجود" };
+  await prisma.ticketMessage.update({ where: { id: messageId }, data: { body } });
+  await syncLegacyReply(row.ticketId);
+  revalidatePath("/admin", "layout");
+  revalidatePath(`/tickets/${row.ticketId}`);
+  return { ok: "عُدّل الردّ" };
+}
+
+/** حذفُ ردٍّ من التذكرة — يختفي من صفحة صاحبها، وما وصله بريداً يبقى في بريده. */
+export async function deleteTicketReply(messageId: string): Promise<AdminResult> {
+  await requireAdmin("reports");
+  const row = await prisma.ticketMessage.findUnique({ where: { id: messageId }, select: { ticketId: true, fromStaff: true } });
+  if (!row?.fromStaff) return { error: "غير موجود" };
+  await prisma.ticketMessage.delete({ where: { id: messageId } });
+  await syncLegacyReply(row.ticketId);
+  revalidatePath("/admin", "layout");
+  revalidatePath(`/tickets/${row.ticketId}`);
+  return { ok: "حُذف الردّ" };
+}
+
+/**
+ * حذفُ التذكرة من كلّ مكان: صفُّها ورسائلُها ومرفقاتُها في القاعدة (`Cascade`)، وبكسلاتُ
+ * مرفقاتها في السحابة قبلها (القاعدة ١٠٤) — فتختفي من اللوحة و«تذاكري» والتطبيق معاً.
+ */
+export async function deleteTicket(ticketId: string): Promise<AdminResult> {
+  await requireAdmin("reports");
+  const files = await prisma.ticketFile.findMany({ where: { ticketId }, select: { key: true } });
+  const keys = files.map((file) => file.key).filter((key): key is string => !!key);
+  if (keys.length) await deleteObjects(keys).catch(() => {});
+  const gone = await prisma.supportTicket.deleteMany({ where: { id: ticketId } });
+  if (!gone.count) return { error: "غير موجودة" };
+  revalidatePath("/admin", "layout");
+  revalidatePath("/tickets");
+  return { ok: "حُذفت التذكرة" };
 }
 
 export async function setItemImage(itemId: string, formData: FormData): Promise<void> {

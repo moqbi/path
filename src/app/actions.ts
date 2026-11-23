@@ -4,7 +4,6 @@ import { MOMENT_PHOTOS_MAX } from "@/lib/photo";
 import { clear, clientIp, hit, TOO_MANY } from "@/lib/rate-limit";
 import { recordCity } from "@/lib/city";
 import { cityInput } from "@/lib/city-input";
-import { canComment } from "@/lib/tickets";
 import { revalidatePath } from "next/cache";
 import { BETA_DEVICES, CONTACT_REASONS, TOPIC_LABEL } from "@/lib/topics";
 import { readTicketFiles, saveTicketFiles } from "@/lib/ticket-files";
@@ -1137,48 +1136,7 @@ export async function openTicket(_prev: AdminResult, formData: FormData): Promis
     ticket: { id: ticket.id, number: ticket.number },
   });
   revalidatePath("/settings/support");
-  revalidatePath("/tickets");
   return { ok: `تم إرسال رسالتك — طلب رقم ${ar(ticket.number)}` };
-}
-
-/**
- * تعليقُ صاحب التذكرة (القاعدة ٤٨٠): بعد ردّ الموظّف وحده — الدورُ له حين يكون آخرُ
- * سطرٍ من الموظّف — فلا تُغرَق التذكرةُ بسطورٍ لم يُردّ عليها. والمغلقةُ تُفتح بتعليقه،
- * والمغلقةُ نهائياً لا يُكتب فيها شيء.
- */
-export async function commentTicket(ticketId: string, _prev: AdminResult, formData: FormData): Promise<AdminResult> {
-  const user = await requireUser();
-  const body = String(formData.get("body") ?? "").trim().slice(0, 1200);
-  if (body.length < 2) return { error: "اكتب تعليقك" };
-
-  const ticket = await prisma.supportTicket.findFirst({
-    where: { id: ticketId, userId: user.id },
-    select: {
-      id: true,
-      number: true,
-      closed: true,
-      lockedAt: true,
-      messages: { orderBy: { createdAt: "desc" }, take: 1, select: { fromStaff: true } },
-    },
-  });
-  if (!ticket) return { error: "غير موجودة" };
-  const can = canComment(ticket.lockedAt, ticket.closed, ticket.messages[0]?.fromStaff ?? null);
-  if (!can.ok) return { error: can.why };
-
-  const now = new Date();
-  await prisma.$transaction([
-    prisma.ticketMessage.create({ data: { ticketId, fromStaff: false, body } }),
-    prisma.supportTicket.update({ where: { id: ticketId }, data: { closed: false, lastAt: now } }),
-  ]);
-  void tellSupport({
-    from: `${user.name} (#${user.memberNo})`,
-    body,
-    replyTo: user.email,
-    ticket: { id: ticket.id, number: ticket.number, comment: true },
-  });
-  revalidatePath(`/tickets/${ticketId}`);
-  revalidatePath("/tickets");
-  return { ok: ticket.closed ? "أُعيد فتح طلبك — نردّ عليك قريباً" : "أُرسل تعليقك" };
 }
 
 /**
