@@ -1432,6 +1432,22 @@ export default async function AdminPage({
               <Saver action={createStoreItem} className="flex flex-col gap-3 border-t border-line p-3.5">
                 <KindField kinds={kindTab.kinds} value={kindTab.key} />
 
+                {kindTab.key === "CHARM" && tags.length > 0 ? (
+                  <Field
+                    label="حصري لوسم"
+                    hint="يُختار هنا لا بعد الحفظ: الحصريُّ لا يدخل المتجر ولا يُعلَن عنه بتنبيه"
+                  >
+                    <select name="exclusiveTagId" defaultValue="" className={SELECT} style={{ height: 46 }}>
+                      <option value="">لا — يُباع في المتجر</option>
+                      {tags.map((tag) => (
+                        <option key={tag.id} value={tag.id}>
+                          {tag.name} ({ar(tag._count.users)})
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                ) : null}
+
                 <Field label="الاسم">
                   <input
                     name="name"

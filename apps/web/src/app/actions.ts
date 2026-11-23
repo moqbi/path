@@ -252,6 +252,12 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
   const bookSkin = readBook(formData, kind);
   const collection = await readCollection(formData, kind);
   if (collection.error) return { error: collection.error };
+  // الحصريُّ لوسم يُختار مع الإنشاء (القاعدة ٤٧٩): لو اختير بعده لالتقطه كنسُ الإعلان قبله.
+  const exclusiveRaw = kind === "CHARM" ? String(formData.get("exclusiveTagId") ?? "") : "";
+  const exclusive = exclusiveRaw
+    ? await prisma.tag.findUnique({ where: { id: exclusiveRaw }, select: { id: true } })
+    : null;
+  if (exclusiveRaw && !exclusive) return { error: "الوسم غير موجود" };
 
   /*
     الأحدثُ أوّلاً — بقرار المالك: كان يأخذ آخرَ ترتيب فيظهر في آخر المتجر.
@@ -274,7 +280,9 @@ export async function createStoreItem(_prev: AdminResult, formData: FormData): P
       palette,
       hallSkin,
       bookSkin,
-      ...readPromo(formData, null),
+      ...(exclusive
+        ? { exclusiveTagId: exclusive.id, announcedAt: new Date(), promoAt: null }
+        : readPromo(formData, null)),
       collectionId: collection.id ?? null,
       sortOrder: 0,
     },
@@ -324,11 +332,13 @@ export async function updateStoreItem(
   const bookSkin = readBook(formData, kind);
   const collection = await readCollection(formData, kind);
   if (collection.error) return { error: collection.error };
-  const was = await prisma.storeItem.findUnique({ where: { id: itemId }, select: { promoAt: true } });
+  const was = await prisma.storeItem.findUnique({ where: { id: itemId }, select: { promoAt: true, exclusiveTagId: true } });
+  const promo = readPromo(formData, was?.promoAt ?? null);
   await prisma.storeItem.update({
     where: { id: itemId },
     data: {
-      ...readPromo(formData, was?.promoAt ?? null),
+      // الحصريُّ لا بطاقةَ إعلانٍ له (القاعدة ٤٧٩).
+      ...(was?.exclusiveTagId ? { ...promo, promoAt: null } : promo),
       kind,
       name,
       priceCoins,
@@ -2666,13 +2676,22 @@ export async function adminFind(raw: string): Promise<{
  */
 export async function setItemExclusiveTag(itemId: string, _prev: AdminResult, formData: FormData): Promise<AdminResult> {
   await requireAdmin("store");
-  const item = await prisma.storeItem.findUnique({ where: { id: itemId }, select: { kind: true } });
+  const item = await prisma.storeItem.findUnique({ where: { id: itemId }, select: { kind: true, announcedAt: true } });
   if (!item) return { error: "الصنف غير موجود" };
   if (item.kind !== "CHARM") return { error: "الحصريُّ للتشارمز وحدها" };
   const raw = String(formData.get("tagId") ?? "");
   const tag = raw ? await prisma.tag.findUnique({ where: { id: raw }, select: { id: true, name: true } }) : null;
   if (raw && !tag) return { error: "الوسم غير موجود" };
-  await prisma.storeItem.update({ where: { id: itemId }, data: { exclusiveTagId: tag?.id ?? null } });
+  /*
+    الحصريُّ لا جرسَ له ولا بطاقةَ إعلان (القاعدة ٤٧٩): يُختم إعلانُه فلا يلتقطه الكنس — ولا
+    بعد أن يعود يُباع: صنفٌ قديمٌ يقرع جرسَ «جديد» كذبٌ — وتُطفأ بطاقتُه.
+  */
+  await prisma.storeItem.update({
+    where: { id: itemId },
+    data: tag
+      ? { exclusiveTagId: tag.id, announcedAt: item.announcedAt ?? new Date(), promoAt: null }
+      : { exclusiveTagId: null, announcedAt: item.announcedAt ?? new Date() },
+  });
   revalidatePath("/admin", "layout");
   return { ok: tag ? `صار حصرياً لوسم «${tag.name}»` : "عاد يُباع في المتجر" };
 }
