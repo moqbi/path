@@ -227,66 +227,245 @@ h3 {
 }
 
 /*
- * لوحة التحكم على الكمبيوتر بعرض المتصفّح — **بقرار المالك**: على الجوّال
- * تبقى هيكلَ الهاتف كما هي، وعلى الشاشة العريضة تنفرد: الرأسُ بعرضها،
- * والأقسامُ عمودٌ جانبيّ ثابت بدل شرائحَ تُمرَّر أفقياً، والمحتوى يملأ ما
- * بقي بحدٍّ يُقرأ. والأرقامُ الأربعة فوق المحتوى لا فوق العمود.
- * وما هو قراءةٌ لا جدول — الدخولُ وملفُّ الحساب — يبقى عموداً في الوسط
- * (`.admin-narrow`): نموذجٌ من حقلين بعرض الشاشة يُقرأ فراغاً.
+ * لوحة التحكم: «غرفة المراقبة» — **بقرار المالك** (القاعدة ٤٨٣)، من خمسة تصاميم
+ * حيّة. داكنةٌ كلُّها: الرموزُ نفسُها تُعاد تحت `.admin-shell` فيلبس كلُّ قسمٍ —
+ * البطاقاتُ والحقولُ والشرائح — الثوبَ الداكن بلا لمس أقسامه. والكهرمانيّ يُقرأ
+ * نصّاً على الداكن فلا حاجةَ إلى `clay-ink` المعتم هنا.
  */
+.admin-shell {
+  color-scheme: dark;
+  --color-paper: #0b1620;
+  --color-card: #0f1f2b;
+  --color-chip: #16293a;
+  --color-ink: #e8eef2;
+  --color-ink-2: #b9c6cf;
+  --color-muted: #8ca0ad;
+  --color-faint: #6d8291;
+  --color-line: #1c2f3e;
+  --color-ground: #0b1620;
+  --color-ground-ink: #e8eef2;
+  --color-ground-ink-2: #b9c6cf;
+  --color-ground-muted: #8ca0ad;
+  --color-ground-faint: #6d8291;
+  --color-ground-line: #1c2f3e;
+  --color-clay-ink: #f6b93b;
+  --color-clay-soft: #2a2410;
+  --color-gold-ink: #f6b93b;
+  --color-gold-soft: #2a2410;
+  --color-gold-line: #5a4716;
+  --color-live: #ff7a5a;
+  --color-live-soft: #3a1f18;
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+body:has(.admin-shell) {
+  background: #0b1620;
+}
+
+.admin-shell input,
+.admin-shell select,
+.admin-shell textarea {
+  color-scheme: dark;
+}
+
+/* العمود: على الجوّال شريطٌ يُمرَّر أفقياً، وعلى الكمبيوتر عمودٌ بمجموعاته. */
+.admin-logo,
+.admin-group-label,
+.admin-out {
+  display: none;
+}
+
+.admin-group {
+  display: contents;
+}
+
+.admin-link {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background: var(--color-card);
+  padding: 7px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-ink-2);
+  transition: background 0.15s, color 0.15s;
+}
+
+.admin-link[aria-current] {
+  background: #1a3144;
+  border-color: #2a4357;
+  color: #fff;
+}
+
+.admin-badge {
+  display: inline-flex;
+  min-width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--color-live);
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* شرائحُ الصندوق: القائمةُ المفتوحة فاتحةٌ على الداكن، وعددُ البلاغات مرجانيّ. */
+.inbox-tab,
+.inbox-state {
+  border-color: var(--color-line);
+  background: var(--color-card);
+  color: var(--color-ink-2);
+}
+
+.inbox-tab[aria-current] {
+  border-color: var(--color-ink);
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.inbox-state[aria-current] {
+  border-color: var(--color-clay);
+  background: var(--color-gold-soft);
+  color: var(--color-clay);
+}
+
+.inbox-count {
+  font-size: 10.5px;
+  color: var(--color-clay);
+}
+
+.inbox-count.hot {
+  color: var(--color-live);
+}
+
+.inbox-tab[aria-current] .inbox-count {
+  color: #a8730f;
+}
+
+/* سطرُ بطاقة الإعلان يظهر مع علامتها وحدها (القاعدة ٤٨٣). */
+form .promo-line {
+  display: none;
+}
+
+form:has(input[name="promo"]:checked) .promo-line {
+  display: flex;
+}
+
 @media (min-width: 1024px) {
   .admin-shell {
     max-width: none;
     box-shadow: none;
   }
 
+  /* العمودُ يحمل العلامةَ والخروج، فرأسُ الشاشة فوقه تكرار. */
+  .admin-shell .screen:has(.admin-nav) > :first-child {
+    display: none;
+  }
+
   .admin-main {
     display: grid;
-    grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-columns: 236px minmax(0, 1fr);
     grid-template-areas:
       "nav stats"
       "nav section";
     grid-template-rows: auto 1fr;
     align-items: start;
-    column-gap: 32px;
-    padding: 28px max(32px, calc((100% - 1240px) / 2));
+    column-gap: 28px;
+    padding: 0 max(28px, calc((100% - 1400px) / 2)) 28px 28px;
   }
 
   .admin-stats {
     grid-area: stats;
+    margin-top: 24px;
   }
 
   .admin-section {
     grid-area: section;
+    padding-top: 24px;
   }
 
   .admin-nav {
     grid-area: nav;
     position: sticky;
     top: 0;
+    height: 100dvh;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
     margin: 0;
-    overflow: visible;
-    padding: 8px;
-    border: 1px solid var(--color-line);
-    border-radius: 18px;
-    background: var(--color-card);
+    overflow-y: auto;
+    padding: 18px 12px;
+    border-inline-start: 1px solid var(--color-line);
+    background: #0e1a24;
   }
 
-  .admin-nav > a {
-    border-radius: 12px !important;
-    padding: 10px 14px !important;
-    font-size: 13.5px !important;
-    border-color: transparent !important;
+  .admin-logo {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 2px 10px 16px;
+    font-family: var(--font-display);
+    font-size: 19px;
+    font-weight: 800;
+    color: #fff;
   }
 
-  .admin-nav > a:not([aria-current]) {
-    background: transparent !important;
+  .admin-logo img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
   }
 
-  .admin-nav > a:not([aria-current]):hover {
-    background: var(--color-paper) !important;
+  .admin-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .admin-group-label {
+    display: block;
+    padding: 14px 10px 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    color: var(--color-faint);
+  }
+
+  .admin-link {
+    display: flex;
+    width: 100%;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    padding: 9px 10px;
+    font-size: 13.5px;
+    color: var(--color-ink-2);
+  }
+
+  .admin-link:hover {
+    background: #15283a;
+  }
+
+  .admin-link[aria-current] {
+    background: #1a3144;
+    color: #fff;
+    box-shadow: inset -3px 0 0 var(--color-clay);
+  }
+
+  .admin-link .admin-badge {
+    margin-inline-start: auto;
+  }
+
+  .admin-out {
+    display: block;
+    margin-top: auto;
+    padding-top: 16px;
   }
 
   .admin-narrow > * {

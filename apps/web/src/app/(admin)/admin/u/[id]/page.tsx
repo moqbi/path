@@ -113,7 +113,7 @@ export default async function ModeratedProfile({
   if (!person) notFound();
 
   const now = new Date();
-  const [tags, purchases, stickerBuys, topUps, grants, plusSent, plusGot, giftsSent, sessions, access, tickets, billing, blocked, blockers] =
+  const [tags, purchases, stickerBuys, topUps, grants, plusSent, plusGot, giftsSent, sessions, access, tickets, billing, blocked, blockers, friendRows] =
     await Promise.all([
       prisma.tag.findMany({ orderBy: { sortOrder: "asc" }, select: { id: true, name: true } }),
       prisma.purchase.findMany({
@@ -163,7 +163,20 @@ export default async function ModeratedProfile({
         take: 100,
         select: { createdAt: true, blocker: { select: { id: true, name: true, memberNo: true } } },
       }),
+      /* أصدقاؤه (القاعدة ٤٨٣): من يستعيد حسابَه بلا بريدٍ يُثبت ملكيّتَه بذكر أسماءٍ في دائرته —
+         والمشرفُ يقابلها هنا. الصداقةُ المقبولة وحدها، لا المتابعةُ (القاعدة ٢٦٣). */
+      prisma.friendship.findMany({
+        where: { status: "ACCEPTED", follow: false, OR: [{ requesterId: id }, { addresseeId: id }] },
+        select: {
+          requesterId: true, acceptedAt: true, createdAt: true,
+          requester: { select: { id: true, name: true, handle: true, memberNo: true } },
+          addressee: { select: { id: true, name: true, handle: true, memberNo: true } },
+        },
+      }),
     ]);
+  const friends = friendRows
+    .map((row) => ({ who: row.requesterId === id ? row.addressee : row.requester, since: row.acceptedAt ?? row.createdAt }))
+    .sort((a, b) => a.who.name.localeCompare(b.who.name, "ar"));
 
   /*
     الجلساتُ عائلات (القاعدة ٤٢٨): كلُّ دخولٍ عائلةٌ تُدوَّر توكناتُها. الحيّةُ ما فيها توكنٌ
@@ -208,10 +221,9 @@ export default async function ModeratedProfile({
   if (access.length === 0)
     problems.push({ text: "لم يصل إلى الخادم طلبٌ موثَّقٌ منه بعد — إن قال «network request failed» فالطلبُ لا يخرج من جهازه أو شبكته", tell: "يجرّب شبكةً أخرى (واي فاي/بيانات)، ويطفئ VPN أو حاجب الإعلانات، ويحدّث التطبيق" });
   if (person._count.reportsAgainst > 0)
-    problems.push({ text: `بلاغات عليه: ${ar(person._count.reportsAgainst)}`, link: { href: "/admin?s=reports", label: "افتح البلاغات" } });
+    problems.push({ text: `بلاغات عليه: ${ar(person._count.reportsAgainst)}`, link: { href: "/admin?s=inbox&v=reports", label: "افتح البلاغات" } });
   const chatHref = SITE_URL ? `${SITE_URL}/app/u/${person.id}` : null;
 
-  const friends = person._count.friendshipsSent + person._count.friendshipsReceived;
   const plusLive = person.isPlus && person.plusUntil && person.plusUntil > now;
 
   const { linked, crowded } = await linkedAccounts(id);
@@ -236,7 +248,7 @@ export default async function ModeratedProfile({
             {[
               ["الرصيد", coinText(person.coins)],
               ["لحظات", ar(person._count.moments)],
-              ["أصدقاء", ar(friends)],
+              ["أصدقاء", ar(friends.length)],
               ["دعا", ar(person._count.invitees)],
             ].map(([label, value]) => (
               <div key={label} className="rounded-xl py-2" style={{ background: "var(--color-chip)" }}>
@@ -323,6 +335,25 @@ export default async function ModeratedProfile({
               key={row.blocker.id}
               label={<Link href={`/admin/u/${row.blocker.id}`} className="text-clay-ink"><bdi>{row.blocker.name}</bdi> · {ar(row.blocker.memberNo)}</Link>}
               value={when(row.createdAt)}
+            />
+          ))}
+        </Section>
+
+        <Section
+          title={`الأصدقاء (${ar(friends.length)})`}
+          open={false}
+          hint="للتحقّق من ملكيّة الحساب: من فقد بريدَه يذكر أسماءً في دائرته، فتُقابَل هنا. بالترتيب الأبجديّ، ومعها الرقمُ والمعرّف ومنذ متى."
+        >
+          {friends.length === 0 ? <p className="text-[12px] text-muted">لا أصدقاء.</p> : friends.map(({ who, since }) => (
+            <Row
+              key={who.id}
+              label={
+                <Link href={`/admin/u/${who.id}`} className="text-clay-ink">
+                  <bdi>{who.name}</bdi> · {ar(who.memberNo)}
+                  {who.handle ? <span className="text-muted"> · <bdi dir="ltr">@{who.handle}</bdi></span> : null}
+                </Link>
+              }
+              value={when(since)}
             />
           ))}
         </Section>
@@ -503,7 +534,7 @@ export default async function ModeratedProfile({
         </section>
 
         <Link
-          href="/admin?s=reports"
+          href="/admin?s=inbox&v=reports"
           className="mt-6 block text-center text-[12.5px] font-semibold text-clay-ink"
         >
           إلى البلاغات
