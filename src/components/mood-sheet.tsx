@@ -159,7 +159,7 @@ function MoodBody({ close }: { close: () => void }) {
   );
 
   return (
-    <GlassSheet title="وش مودك؟" subtitle="يظهر لدائرتك لوحةً بصورة المود" onClose={close} keep={text.length > 0} centered width={wide ? 720 : 400}>
+    <GlassSheet title="وش مودك؟" subtitle="شارك مودك مع دائرتك" onClose={close} keep={text.length > 0} centered width={wide ? 720 : 400}>
       <Layout wide={wide} preview={preview} controls={controls} />
     </GlassSheet>
   );

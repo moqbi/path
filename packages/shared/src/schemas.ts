@@ -239,6 +239,8 @@ export const privacyInput = z.object({
    * ولا يُكتب إلا إن أُرسل.
    */
   hideOnline: z.boolean().optional(),
+  /** «أظهرني في من زار الموقع» (القاعدة ٤٨٥) — اختياريٌّ لنسخٍ لا ترسله. */
+  showInVisitors: z.boolean().optional(),
   /**
    * من يراسلني على الخاص (القاعدة ٣٨٥): `dmOpen` مطفأً لا أحد، ومفتوحاً الدائرةُ كلّها أو
    * `dmGroupId`. اختياريّان لنسخٍ قديمة لا ترسلهما، ولا يُكتبان إلا إن أُرسل `dmOpen`.

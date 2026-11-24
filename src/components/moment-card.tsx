@@ -427,7 +427,7 @@ export function EventLine({
         {mapsUrl(moment) ? (
           <PlaceLink
             url={mapsUrl(moment)}
-            visitors={moment.author.id === viewerId ? { momentId: moment.id, place: moment.placeName! } : undefined}
+            visitors={{ momentId: moment.id, place: moment.placeName! }}
             className="font-bold text-clay-ink hover:underline"
           >
             {moment.placeName}
@@ -669,7 +669,7 @@ export function MomentCard({
           <p dir="auto" className="mb-2 text-[12px]">
             <PlaceLink
               url={mapsUrl(moment)}
-              visitors={moment.author.id === viewerId ? { momentId: moment.id, place: moment.placeName } : undefined}
+              visitors={{ momentId: moment.id, place: moment.placeName }}
               className="flex items-center gap-1.5 font-semibold text-clay-ink hover:underline"
             >
               <PinIcon size={12} />

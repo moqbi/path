@@ -114,7 +114,7 @@ export default async function MomentPage({
                     {/* يفتح الخرائط (القاعدة ٢١١). */}
                     <PlaceLink
                       url={mapsUrl(moment)}
-                      visitors={moment.author.id === user.id ? { momentId: moment.id, place: moment.placeName } : undefined}
+                      visitors={{ momentId: moment.id, place: moment.placeName }}
                       className="flex items-center gap-1.5 font-semibold text-clay-ink hover:underline"
                     >
                       <PinIcon size={13} />

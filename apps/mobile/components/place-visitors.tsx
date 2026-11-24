@@ -1,10 +1,10 @@
 import { Spinner } from "./spinner";
 import { ORIENTATIONS } from "../lib/stage";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Animated, useWindowDimensions, Modal, PanResponder, Platform, Pressable, ScrollView, View } from "react-native";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { create } from "zustand";
 import { Text } from "./type";
@@ -18,7 +18,10 @@ import { colors } from "../theme/tokens";
 import type { Moment, Person } from "../lib/queries";
 
 /**
- * «من كان هنا» — نافذةٌ زجاجيّة لصاحب لحظة المكان وحده (القاعدة ٢٣٠).
+ * «من كان هنا» — نافذةٌ زجاجيّة لمن يرى لحظة المكان (القاعدة ٢٣٠، ووسّعتها ٤٨٥).
+ *
+ * ومن اللوحة تُفتح (`open`): كلُّ من زار المكان في ٢٤ ساعة بوجهه، صديقاً أو غريباً،
+ * والغريبُ بزرّ «أضف».
  *
  * أصدقاؤه الذين زاروا المكان نفسه في عشرة أيامٍ بأسمائهم، وغيرُهم عددٌ بلا
  * أسماء لا يُقال تحت خمسة. والخرائطُ زرٌّ فيها: الضغطةُ كانت تفتحها لصاحب
@@ -27,10 +30,21 @@ import type { Moment, Person } from "../lib/queries";
  * وتُركَّب في الجذر كنافذة الصورة (القاعدة ١٣٧): داخل البطاقة جدُّها «اسحب
  * للتحديث» فيأخذ سحبتها.
  */
+type Visitor = Person & {
+  momentId?: string;
+  visitedAt: string;
+  /** في الوضع المفتوح وحده (القاعدة ٤٨٥). */
+  friend?: boolean;
+  requested?: boolean;
+  asking?: boolean;
+};
+
 type Visitors = {
   place: string;
   days: number;
-  friends: (Person & { momentId: string; visitedAt: string })[];
+  hours?: number;
+  open?: boolean;
+  friends: Visitor[];
   others: number | null;
 };
 
@@ -100,6 +114,8 @@ export function PlaceVisitors() {
   const friends = data?.friends ?? [];
   const days = ar(data?.days ?? 10);
   const empty = data && friends.length === 0 && !data.others;
+  const open = Boolean(data?.open);
+  const subtitle = open ? `من كان هنا خلال ${ar(data?.hours ?? 24)} ساعة` : `من كان هنا خلال ${days} أيام`;
 
   const visit = (id: string) => {
     close();
@@ -166,7 +182,7 @@ export function PlaceVisitors() {
                 {moment.placeName}
               </Text>
               <Text style={{ color: "rgba(255,255,255,.62)", fontSize: 12, marginTop: 2 }}>
-                {`من كان هنا خلال ${days} أيام`}
+                {subtitle}
               </Text>
             </View>
             <Pressable
@@ -193,17 +209,17 @@ export function PlaceVisitors() {
               <View style={{ alignItems: "center", paddingVertical: 22, paddingHorizontal: 20, gap: 6 }}>
                 <WithIcon size={22} color="rgba(255,255,255,.55)" />
                 <Text style={{ color: "#fff", fontSize: 14, fontWeight: "600", textAlign: "center" }}>
-                  ما زاره أحدٌ من دائرتك مؤخّراً
+                  {open ? "ما زاره أحدٌ اليوم" : "ما زاره أحدٌ من دائرتك مؤخّراً"}
                 </Text>
                 <Text style={{ color: "rgba(255,255,255,.55)", fontSize: 12, textAlign: "center" }}>
-                  {`أوّلُ من يزوره منهم خلال ${days} أيام يظهر هنا`}
+                  {open ? "أوّلُ من ينشر منه لحظةً خلال ٢٤ ساعة يظهر هنا" : `أوّلُ من يزوره منهم خلال ${days} أيام يظهر هنا`}
                 </Text>
               </View>
             ) : (
               <>
                 {friends.length > 0 ? (
                   <Text style={{ color: "rgba(255,255,255,.55)", fontSize: 11.5, fontWeight: "700", marginHorizontal: 8, marginBottom: 4 }}>
-                    {`من دائرتك · ${ar(friends.length)}`}
+                    {open ? `زاروه · ${ar(friends.length)}` : `من دائرتك · ${ar(friends.length)}`}
                   </Text>
                 ) : null}
                 {friends.map((person) => (
@@ -238,6 +254,7 @@ export function PlaceVisitors() {
                         {`زاره ${relative(new Date(person.visitedAt))}`}
                       </Text>
                     </View>
+                    {open && !person.friend ? <AddButton person={person} momentId={moment.id} /> : null}
                   </Pressable>
                 ))}
 
@@ -293,5 +310,53 @@ export function PlaceVisitors() {
         </View>
       </Animated.View>
     </Modal>
+  );
+}
+
+/** «أضف» للغريب في الوضع المفتوح (القاعدة ٤٨٥): طلبٌ يقبله صاحبُه (القاعدة ٢٠)، وطلبُه إليك يُقبل بها. */
+function AddButton({ person, momentId }: { person: Visitor; momentId: string }) {
+  const client = useQueryClient();
+  const [state, setState] = useState<"idle" | "busy" | "sent" | "friends" | "error">(
+    person.requested ? "sent" : "idle",
+  );
+  const done = state === "sent" || state === "friends";
+  const label =
+    state === "friends" ? "صديقك" : state === "sent" ? "أُرسل" : state === "error" ? "أعد" : person.asking ? "اقبل" : "أضف";
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${label} ${person.name}`}
+      disabled={done || state === "busy"}
+      hitSlop={6}
+      onPress={async () => {
+        setState("busy");
+        try {
+          const result = await api<{ status: "PENDING" | "ACCEPTED" }>(`/v1/circle/${person.id}/request`, { method: "POST" });
+          setState(result.status === "ACCEPTED" ? "friends" : "sent");
+          void client.invalidateQueries({ queryKey: ["visitors", momentId] });
+          void client.invalidateQueries({ queryKey: ["circle"] });
+        } catch {
+          setState("error");
+        }
+      }}
+      style={({ pressed }) => ({
+        minWidth: 64,
+        height: 32,
+        paddingHorizontal: 14,
+        borderRadius: 16,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: done ? "rgba(255,255,255,.12)" : pressed ? colors.clayInk : colors.clay,
+      })}
+    >
+      {state === "busy" ? (
+        <Spinner size="small" color={colors.onBrand} />
+      ) : (
+        <Text style={{ color: done ? "rgba(255,255,255,.75)" : colors.onBrand, fontSize: 12.5, fontWeight: "800" }}>
+          {label}
+        </Text>
+      )}
+    </Pressable>
   );
 }

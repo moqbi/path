@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { ar } from "@/lib/format";
+import { setVisitorsOpen } from "@/app/actions";
+import { Saver } from "./saver";
 
 /*
   الرئيسيّة: غرفةُ العمليات (القاعدة ٤٧٧) — **بقرار المالك**، من خمسة تصاميم عُرضت عليه.
@@ -13,7 +15,7 @@ import { ar } from "@/lib/format";
 
 const DAY = 86_400_000;
 const OFFSET = 3 * 3_600_000;
-const OWN_KINDS = ["PHOTO", "PLACE", "THOUGHT", "MUSIC", "SLEEP", "WAKE"] as const;
+const OWN_KINDS = ["PHOTO", "PLACE", "THOUGHT", "MUSIC", "MOOD", "QUESTION", "SLEEP", "WAKE"] as const;
 const SPARK_DAYS = 14;
 
 /** منتصفُ ليل يوم الرياض بالتوقيت العالميّ — ما يُكتب في `DailyActive.day`. */
@@ -201,6 +203,7 @@ export async function HomeSection() {
   const shown = needs.slice(0, 12);
 
   const hour = new Date(Date.now() + OFFSET).getUTCHours();
+  const visitorsOn = (await prisma.siteText.findUnique({ where: { key: "visitors.open" } }).catch(() => null))?.value === "1";
   return (
     <>
       <header className="mb-4">
@@ -236,6 +239,8 @@ export async function HomeSection() {
           )}
         </Kpi>
       </div>
+
+      <VisitorsSwitch open={visitorsOn} />
 
       <section className="overflow-hidden rounded-2xl border border-line bg-card">
         <h2 className="flex items-center justify-between border-b border-line px-4 py-3 text-[15px] font-bold">
@@ -286,5 +291,43 @@ export async function HomeSection() {
         ) : null}
       </section>
     </>
+  );
+}
+
+/**
+ * «من كان هنا» مفتوحة (القاعدة ٤٨٥) — **بقرار المالك**: مفتاحٌ في الرئيسيّة يبدّل اسمَ المكان
+ * في اللحظة من «أصدقاؤك في ١٠ أيام» إلى «كلُّ من زاره في ٢٤ ساعة بزرّ إضافة»، ويُظهر في خصوصيّة
+ * التطبيق «إظهاري في من زار الموقع». الإطفاءُ يُرجع الاثنين.
+ */
+function VisitorsSwitch({ open }: { open: boolean }) {
+  return (
+    <section className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-card px-4 py-3.5">
+      <div className="min-w-0 grow">
+        <h2 className="flex items-center gap-2 text-[14.5px] font-bold">
+          من زار الموقع — مفتوحة للجميع
+          <span
+            className="rounded-full px-2 text-[11px] font-bold"
+            style={open ? { background: "#3fc07e", color: "#0e1a24" } : { background: "var(--color-ground)", color: "var(--color-muted)" }}
+          >
+            {open ? "مفعّلة" : "مطفأة"}
+          </span>
+        </h2>
+        <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted">
+          {open
+            ? "اسمُ المكان في أيّ لحظة يُظهر كلَّ من زاره خلال ٢٤ ساعة، صديقاً أو غيره، بزرّ إضافة. ومن أطفأ «إظهاري» في خصوصيّته لا يظهر."
+            : "مطفأةً: أصدقاءُ القارئ الذين زاروا المكان خلال ١٠ أيام، وغيرُهم عددٌ بلا أسماء. وتفعيلُها يُظهر مفتاحَ «إظهاري في من زار الموقع» في خصوصيّة التطبيق."}
+        </p>
+      </div>
+      <Saver action={setVisitorsOpen}>
+        <input type="hidden" name="open" value={open ? "0" : "1"} />
+        <button
+          type="submit"
+          className="h-10 rounded-xl px-4 text-[13px] font-bold"
+          style={open ? { border: "1px solid var(--color-line)" } : { background: "var(--color-clay)", color: "var(--color-on-brand)" }}
+        >
+          {open ? "أطفئها" : "فعّلها"}
+        </button>
+      </Saver>
+    </section>
   );
 }

@@ -191,7 +191,7 @@ function MoodBody() {
     <GlassSheet
       icon={<Image source={MOOD_ART} style={{ width: 26, height: 26 }} resizeMode="contain" />}
       title="وش مودك؟"
-      subtitle="يظهر لدائرتك لوحةً بصورة المود"
+      subtitle="شارك مودك مع دائرتك"
       onClose={close}
       centered
       width={sheetWidth}
