@@ -8,6 +8,7 @@ import {
   type AudioRecorder,
   type AudioStatus,
 } from "expo-audio";
+import { Platform } from "react-native";
 
 /**
  * قشرةٌ بشكل `expo-av` فوق `expo-audio` (القاعدة ٣٩٨).
@@ -136,6 +137,20 @@ async function createAsync(
   return { sound };
 }
 
+/** نسخةُ `createRecordingOptions` في expo-audio: المشتركُ ثمّ إعدادُ المنصّة فوقه. */
+function flatten(options: typeof RecordingPresets.HIGH_QUALITY) {
+  const common = {
+    extension: options.extension,
+    sampleRate: options.sampleRate,
+    numberOfChannels: options.numberOfChannels,
+    bitRate: options.bitRate,
+    isMeteringEnabled: options.isMeteringEnabled ?? false,
+  };
+  if (Platform.OS === "ios") return { ...common, ...options.ios } as unknown as typeof options;
+  if (Platform.OS === "android") return { ...common, ...options.android } as unknown as typeof options;
+  return { ...common, ...options.web } as unknown as typeof options;
+}
+
 class Recording {
   constructor(private readonly recorder: AudioRecorder) {}
 
@@ -148,8 +163,14 @@ class Recording {
   }
 
   static async createAsync(options: typeof RecordingPresets.HIGH_QUALITY): Promise<{ recording: Recording }> {
-    const recorder = new AudioModule.AudioRecorder(options);
-    await recorder.prepareToRecordAsync();
+    /*
+      الجهةُ الأصليّة تقرأ الإعدادَ مسطّحاً: `outputFormat` و`audioQuality` في أعلاه لا
+      تحت `ios`. و`useAudioRecorder` يسطّحه، والبانيّ وحده لا — فكان التسجيلُ بلا صيغة
+      (PCM خام، نحو خمسة ميغا في الدقيقة) ويُردّ «الملف كبير» بعد دقيقة.
+    */
+    const recorder = new AudioModule.AudioRecorder(flatten(options));
+    // وهذا يُسطّحه بنفسه (رقعةُ expo-audio على النموذج)، فيأخذ الإعدادَ كما هو.
+    await recorder.prepareToRecordAsync(options);
     recorder.record();
     return { recording: new Recording(recorder) };
   }
