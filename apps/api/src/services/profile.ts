@@ -1,3 +1,4 @@
+import { visitorsOpen } from "./place-visitors";
 import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "@athar/db";
 import { BIO_MAX, INTERESTS_MAX, INTERESTS_MIN, SITE_URL, cleanInterests, hasSite, type NotifyInput } from "@athar/shared";
@@ -50,6 +51,7 @@ export async function me(userId: string) {
       passwordHash: true,
       shareLocation: true,
       hideOnline: true,
+      showInVisitors: true,
       gender: true,
       notifyOnTag: true,
       notifyDm: true,
@@ -88,6 +90,8 @@ export async function me(userId: string) {
     canModerate: user.role === "ADMIN" || user.canModerate,
     // إنشاءُ المجموعات وإدارتُها (القاعدة ٢١٥).
     canGroups: user.role === "ADMIN" || user.adminScope === "ALL",
+    // «من كان هنا» مفتوحةٌ من اللوحة (القاعدة ٤٨٥) — بها يظهر مفتاحُ «أظهرني» في الخصوصية.
+    visitorsOpen: await visitorsOpen(),
   };
 }
 
@@ -180,6 +184,7 @@ export async function savePrivacy(
     shareLocation: boolean;
     notifyOnTag?: boolean;
     hideOnline?: boolean;
+    showInVisitors?: boolean;
     dmOpen?: boolean;
     dmGroupId?: string | null;
   },
@@ -207,6 +212,8 @@ export async function savePrivacy(
       // التنبيهات، فكتابتُه افتراضاً تطفئه في كل حفظٍ للخصوصية.
       ...(input.notifyOnTag === undefined ? {} : { notifyOnTag: input.notifyOnTag }),
       ...(input.hideOnline === undefined ? {} : { hideOnline: input.hideOnline }),
+      // «أظهرني في من زار الموقع» (القاعدة ٤٨٥) — لا يُكتب إلا إن أُرسل.
+      ...(input.showInVisitors === undefined ? {} : { showInVisitors: input.showInVisitors }),
       // من يراسلني (القاعدة ٣٨٥) — لا يُكتب إلا إن أُرسل، فنسخةٌ قديمة لا تفتحه بحفظها.
       ...(input.dmOpen === undefined ? {} : { dmOpen: input.dmOpen, dmGroupId: input.dmOpen ? pick(input.dmGroupId) : null }),
     },

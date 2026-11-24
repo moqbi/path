@@ -64,6 +64,10 @@ export type Me = {
   shareLocation: boolean;
   /** وضعُ التخفّي لمشتركي آثار+ (القاعدة ٢٥١). نسخةُ خادمٍ قديمة لا ترسله. */
   hideOnline?: boolean;
+  /** «أظهرني في من زار الموقع» (القاعدة ٤٨٥). */
+  showInVisitors?: boolean;
+  /** «من كان هنا» مفتوحةٌ من اللوحة — بها يظهر المفتاحُ أعلاه. نسخةُ خادمٍ قديمة لا ترسله. */
+  visitorsOpen?: boolean;
   /** صيغةُ خطاب الكتاب (القاعدة ٢٦٠): فارغٌ = مذكّر كما كان. نسخةُ خادمٍ قديمة لا ترسله. */
   gender?: "MALE" | "FEMALE" | "UNSPECIFIED" | null;
   notifyOnTag: boolean;

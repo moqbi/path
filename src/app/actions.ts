@@ -1436,6 +1436,8 @@ export async function savePrivacy(formData: FormData): Promise<void> {
       shareLocation: formData.get("shareLocation") === "on",
       // وضعُ التخفّي لمشتركي آثار+ وحدهم (القاعدة ٢٥١): يُفحص هنا لا في الشاشة.
       hideOnline: formData.get("hideOnline") === "on" && user.isPlus,
+      // «أظهرني في من زار الموقع» (القاعدة ٤٨٥): لا يُكتب إلا والحقلُ في النموذج.
+      ...(formData.has("showInVisitorsField") ? { showInVisitors: formData.get("showInVisitors") === "on" } : {}),
       // من يراسلني (القاعدة ٣٨٥): «off» لا أحد، ومعرّفُ تصنيفٍ يملكه، وفراغٌ الدائرةُ كلّها.
       // ونموذجٌ بلا الحقل لا يمسّه.
       ...(formData.has("dmChoice")

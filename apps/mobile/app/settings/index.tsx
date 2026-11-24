@@ -53,6 +53,8 @@ export default function Settings() {
   const [place, setPlace] = useState(me?.shareLocation !== false);
   // وضعُ التخفّي — مطفأٌ افتراضاً، ولمشتركي آثار+ وحدهم (القاعدة ٢٥١).
   const [hidden, setHidden] = useState(Boolean(me?.hideOnline && me?.isPlus));
+  // «أظهرني في من زار الموقع» (القاعدة ٤٨٥) — مفعّلٌ افتراضاً، ولا يظهر إلا والخاصيّةُ مفتوحةٌ من اللوحة.
+  const [visible, setVisible] = useState(me?.showInVisitors !== false);
   // من يراسلني (القاعدة ٣٨٥): مطفأً لا أحد، ومفتوحاً الدائرةُ كلّها أو تصنيف.
   const [dmOpen, setDmOpen] = useState(me?.dmOpen !== false);
   const [dmGroup, setDmGroup] = useState<string | null>(me?.dmGroupId ?? null);
@@ -70,6 +72,7 @@ export default function Settings() {
           interactGroupId: interact,
           shareLocation: place,
           hideOnline: hidden,
+          ...(me?.visitorsOpen ? { showInVisitors: visible } : {}),
           dmOpen,
           dmGroupId: dmOpen ? dmGroup : null,
           // وإشعارُ الإشارة يُحفظ من «التنبيهات»، فلا يُرسل من هنا.
@@ -183,6 +186,17 @@ export default function Settings() {
                 setHidden(next);
               }}
             />
+            {me.visitorsOpen ? (
+              <>
+                <View style={{ height: 1, backgroundColor: colors.line, marginHorizontal: 16 }} />
+                <Toggle
+                  title="إظهاري في من زار الموقع"
+                  note={visible ? "من يفتح مكاناً زرته اليوم يرى وجهك واسمك" : "لا تظهر لأحد في «من كان هنا»"}
+                  value={visible}
+                  onChange={setVisible}
+                />
+              </>
+            ) : null}
           </View>
 
           <Pressable onPress={() => { setSaid(null); save.mutate(); }} disabled={save.isPending}>

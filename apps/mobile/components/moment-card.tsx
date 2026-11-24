@@ -379,12 +379,12 @@ export function MomentCard({
                 {linked.after}
               </>
             ) : moment.kind === "PLACE" && moment.placeName ? (
-              /* اسمُ المكان يفتح الخرائط (القاعدة ٢١١)، وبقيّةُ السطر تفتح اللحظة. */
+              /* اسمُ المكان يفتح «من كان هنا» وفيها الخرائط (القاعدة ٤٨٥)، وبقيّةُ السطر تفتح اللحظة. */
               <>
                 {"في "}
                 <Text
                   accessibilityRole="link"
-                  onPress={() => (moment.author.id === viewerId ? showVisitors(moment) : void openMaps(moment))}
+                  onPress={() => showVisitors(moment)}
                   style={{ color: colors.clayInk, fontWeight: "700" }}
                 >
                   {moment.placeName}
@@ -636,10 +636,8 @@ export function MomentCard({
         {moment.placeName ? (
           <Pressable
             accessibilityRole="link"
-            accessibilityLabel={
-              moment.author.id === viewerId ? `من كان في ${moment.placeName}` : `افتح ${moment.placeName} في الخرائط`
-            }
-            onPress={() => (moment.author.id === viewerId ? showVisitors(moment) : void openMaps(moment))}
+            accessibilityLabel={`من كان في ${moment.placeName}`}
+            onPress={() => showVisitors(moment)}
             hitSlop={6}
             style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 8, alignSelf: "flex-start" }}
           >

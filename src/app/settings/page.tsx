@@ -12,6 +12,7 @@ import { ChangePassword } from "@/app/settings/password";
 import { Notifications } from "@/app/settings/notifications";
 import { VerifyEmail } from "@/app/settings/verify-email";
 import { ar } from "@/lib/format";
+import { visitorsOpen } from "@/lib/place-visitors";
 
 /**
  * الإعدادات والخصوصية: شاشةٌ واحدة بأقسامٍ تُفتح.
@@ -25,6 +26,7 @@ export default async function SettingsPage() {
   const user = await currentUser();
   if (!user) redirect("/login");
 
+  const visitorsOn = await visitorsOpen();
   const [groups, settings, blocked] = await Promise.all([
     prisma.friendGroup.findMany({
       where: { ownerId: user.id },
@@ -40,6 +42,7 @@ export default async function SettingsPage() {
         interactGroupId: true,
         shareLocation: true,
         hideOnline: true,
+        showInVisitors: true,
         dmOpen: true,
         dmGroupId: true,
         notifyOnTag: true,
@@ -220,6 +223,25 @@ export default async function SettingsPage() {
               </span>
               <IncognitoBox initial={settings?.hideOnline === true} isPlus={user.isPlus} />
             </label>
+
+            {/* «إظهاري في من زار الموقع» (القاعدة ٤٨٥) — يظهر ما دامت الخاصيّةُ مفتوحةً من اللوحة. */}
+            {visitorsOn ? (
+              <label className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-card p-4">
+                <input type="hidden" name="showInVisitorsField" value="1" />
+                <span className="min-w-0 grow">
+                  <span className="block text-[13.5px] font-semibold">إظهاري في من زار الموقع</span>
+                  <span className="mt-0.5 block text-[11.5px] text-muted">
+                    من يفتح مكاناً زرته اليوم يرى وجهك واسمك
+                  </span>
+                </span>
+                <input
+                  name="showInVisitors"
+                  type="checkbox"
+                  defaultChecked={settings?.showInVisitors !== false}
+                  className="h-6 w-6 shrink-0 accent-[#f6b93b]"
+                />
+              </label>
+            ) : null}
 
             <button
               type="submit"

@@ -2855,3 +2855,26 @@ export async function clearMoodImage(id: string): Promise<void> {
   await dropMedia([before.mediaId]).catch(() => {});
   revalidatePath("/admin", "layout");
 }
+
+// ───────────────────────── «من كان هنا» مفتوحة (القاعدة ٤٨٥) ─────────────────────────
+
+/**
+ * مفتاحُ «من كان هنا» في الرئيسيّة — **بقرار المالك**: مفعّلاً يرى قارئُ لحظة المكان كلَّ من
+ * زاره في ٢٤ ساعة صديقاً أو غريباً، ومطفأً يعود الوضعُ كما كان. صفٌّ في `SiteText` يقرؤه
+ * الخادمُ والويب نصف دقيقةٍ في الذاكرة، والإطفاءُ حذفُه.
+ */
+export async function setVisitorsOpen(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
+  await requireAdmin();
+  const on = formData.get("open") === "1";
+  if (on) {
+    await prisma.siteText.upsert({
+      where: { key: "visitors.open" },
+      create: { key: "visitors.open", value: "1" },
+      update: { value: "1" },
+    });
+  } else {
+    await prisma.siteText.deleteMany({ where: { key: "visitors.open" } });
+  }
+  revalidatePath("/admin", "layout");
+  return { ok: on ? "فُعّلت — من زار المكان اليوم يظهر للجميع" : "أُطفئت — عاد الوضع كما كان" };
+}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { momentVisitors } from "@/app/actions";
+import { momentVisitors, requestFriend } from "@/app/actions";
 import type { VisitorsView } from "@/lib/place-visitors";
 import { Portal } from "@/components/sheet";
 import { useSwipeDown } from "@/components/nav";
@@ -50,6 +50,7 @@ export function PlaceVisitors({
   const days = ar(data?.days ?? 10);
   const friends = data?.friends ?? [];
   const empty = data && friends.length === 0 && !data.others;
+  const open = Boolean(data?.open);
 
   return (
     <Portal>
@@ -84,7 +85,7 @@ export function PlaceVisitors({
             </span>
             <div className="min-w-0 grow">
               <p dir="auto" className="truncate text-[17px] font-bold">{place}</p>
-              <p className="mt-0.5 text-[12px]" style={{ color: MUTED }}>{`من كان هنا خلال ${days} أيام`}</p>
+              <p className="mt-0.5 text-[12px]" style={{ color: MUTED }}>{open ? `من كان هنا خلال ${ar(data?.hours ?? 24)} ساعة` : `من كان هنا خلال ${days} أيام`}</p>
             </div>
             <button
               type="button"
@@ -107,39 +108,41 @@ export function PlaceVisitors({
             ) : empty ? (
               <div className="flex flex-col items-center gap-1.5 px-5 py-5 text-center">
                 <span style={{ color: "rgba(255,255,255,.55)" }}><WithIcon size={22} /></span>
-                <p className="text-[14px] font-semibold">ما زاره أحدٌ من دائرتك مؤخّراً</p>
+                <p className="text-[14px] font-semibold">{open ? "ما زاره أحدٌ اليوم" : "ما زاره أحدٌ من دائرتك مؤخّراً"}</p>
                 <p className="text-[12px]" style={{ color: "rgba(255,255,255,.55)" }}>
-                  {`أوّلُ من يزوره منهم خلال ${days} أيام يظهر هنا`}
+                  {open ? "أوّلُ من ينشر منه لحظةً خلال ٢٤ ساعة يظهر هنا" : `أوّلُ من يزوره منهم خلال ${days} أيام يظهر هنا`}
                 </p>
               </div>
             ) : (
               <>
                 {friends.length > 0 ? (
                   <p className="mx-2 mb-1 text-[11.5px] font-bold" style={{ color: "rgba(255,255,255,.55)" }}>
-                    {`من دائرتك · ${ar(friends.length)}`}
+                    {open ? `زاروه · ${ar(friends.length)}` : `من دائرتك · ${ar(friends.length)}`}
                   </p>
                 ) : null}
                 {friends.map((person) => (
-                  <button
-                    key={person.id}
-                    type="button"
-                    onClick={() => {
-                      onClose();
-                      router.push(`/u/${person.id}`);
-                    }}
-                    className="flex w-full items-center gap-3 rounded-[18px] px-2 py-2.5 text-right transition-colors hover:bg-white/10"
-                  >
-                    <Avatar name={person.name} size={42} mediaId={person.avatarMediaId} frame={person.frame} charm={person.charm} />
-                    <span className="min-w-0 grow">
-                      <span className="flex items-center gap-1.5">
-                        <span dir="auto" className="truncate text-[14.5px] font-bold">{person.name}</span>
-                        <NameTag isPlus={person.isPlus} tag={person.tag} size={10} />
+                  <div key={person.id} className="flex items-center gap-2 rounded-[18px] transition-colors hover:bg-white/10">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        router.push(`/u/${person.id}`);
+                      }}
+                      className="flex min-w-0 grow items-center gap-3 px-2 py-2.5 text-right"
+                    >
+                      <Avatar name={person.name} size={42} mediaId={person.avatarMediaId} frame={person.frame} charm={person.charm} />
+                      <span className="min-w-0 grow">
+                        <span className="flex items-center gap-1.5">
+                          <span dir="auto" className="truncate text-[14.5px] font-bold">{person.name}</span>
+                          <NameTag isPlus={person.isPlus} tag={person.tag} size={10} />
+                        </span>
+                        <span className="mt-0.5 block text-[12px]" style={{ color: MUTED }}>
+                          {`زاره ${relative(new Date(person.visitedAt))}`}
+                        </span>
                       </span>
-                      <span className="mt-0.5 block text-[12px]" style={{ color: MUTED }}>
-                        {`زاره ${relative(new Date(person.visitedAt))}`}
-                      </span>
-                    </span>
-                  </button>
+                    </button>
+                    {open && !person.friend ? <AddButton person={person} /> : null}
+                  </div>
                 ))}
 
                 {/* والباقون عددٌ بلا أسماء، ولا يُقال تحت خمسة. */}
@@ -175,5 +178,38 @@ export function PlaceVisitors({
         </div>
       </div>
     </Portal>
+  );
+}
+
+type Visitor = VisitorsView["friends"][number];
+
+/** «أضف» للغريب في الوضع المفتوح (القاعدة ٤٨٥) — `requestFriend` نفسه، وطلبُه إليك يُقبل بها. */
+function AddButton({ person }: { person: Visitor }) {
+  const [state, setState] = useState<"idle" | "busy" | "sent" | "error">(person.requested ? "sent" : "idle");
+  const done = state === "sent";
+  const label = done ? (person.asking ? "صديقك" : "أُرسل") : state === "error" ? "أعد" : person.asking ? "اقبل" : "أضف";
+  return (
+    <button
+      type="button"
+      disabled={done || state === "busy"}
+      aria-label={`${label} ${person.name}`}
+      onClick={async () => {
+        setState("busy");
+        try {
+          await requestFriend(person.id);
+          setState("sent");
+        } catch {
+          setState("error");
+        }
+      }}
+      className="me-2 h-8 min-w-16 shrink-0 rounded-full px-3.5 text-[12.5px] font-extrabold"
+      style={
+        done
+          ? { background: "rgba(255,255,255,.12)", color: "rgba(255,255,255,.75)" }
+          : { background: "var(--color-clay)", color: "var(--color-on-brand)" }
+      }
+    >
+      {state === "busy" ? "…" : label}
+    </button>
   );
 }
