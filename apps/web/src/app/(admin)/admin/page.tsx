@@ -62,6 +62,7 @@ import { BroadcastsSection } from "./broadcasts";
 import { OccasionsSection } from "./occasions";
 import { InterestsSection } from "./interests";
 import { MoodsSection } from "./moods";
+import { BlogSection } from "./blog";
 import { AnalyticsSection } from "./analytics";
 import { HomeSection } from "./home";
 import { CommandBar } from "./command-bar";
@@ -265,6 +266,15 @@ function InboxTabs({
         })}
       </div>
     </div>
+  );
+}
+
+/** سهمُ ما يُطوى: يدور حين يُفتح (`.admin-fold[open]` في `globals.css`). */
+function FoldChevron() {
+  return (
+    <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="fold-chevron shrink-0 text-muted" aria-hidden>
+      <path d="M6 9l6 6 6-6" />
+    </svg>
   );
 }
 
@@ -562,6 +572,7 @@ function StaffRow({
     role: string;
     adminScope: string;
     canModerate: boolean;
+    canBlog: boolean;
   };
 }) {
   return (
@@ -585,6 +596,7 @@ function StaffRow({
             </Chip>
           ) : null}
           {person.canModerate ? <Chip live>إشراف</Chip> : null}
+          {person.canBlog ? <Chip>المدونة</Chip> : null}
         </p>
         <p dir="ltr" className="truncate text-right text-[11px] text-faint">
           {person.email}
@@ -602,6 +614,16 @@ function StaffRow({
           className="h-4 w-4 accent-[var(--color-clay)]"
         />
         إشراف
+      </label>
+      {/* و«المدونة» ثالثةٌ مستقلّة (القاعدة ٤٩٠): من يكتب الشروح لا يحتاج اللوحة. */}
+      <label className="flex shrink-0 items-center gap-1.5 text-[11.5px] font-semibold text-muted">
+        <input
+          type="checkbox"
+          name="blog"
+          defaultChecked={person.canBlog}
+          className="h-4 w-4 accent-[var(--color-clay)]"
+        />
+        المدونة
       </label>
       <select
         name="scope"
@@ -717,6 +739,8 @@ const SECTIONS = [
   { key: "interests", label: "الاهتمامات", store: false, group: "content", icon: "spark" },
   { key: "words", label: "الكلمات", store: false, group: "content", icon: "words" },
   { key: "site", label: "الموقع", store: false, group: "site", icon: "globe" },
+  // المدونةُ لممنوحها وحده أيضاً (القاعدة ٤٩٠) — بلا مدىً في اللوحة.
+  { key: "blog", label: "المدونة", store: false, blog: true, group: "site", icon: "pen" },
   { key: "files", label: "الملفات", store: false, owner: true, group: "site", icon: "file" },
 ] as const;
 
@@ -737,6 +761,7 @@ const NAV_ICON: Record<string, string> = {
   words: "M4 6h16M4 12h10M4 18h7M17 15l4 4M21 15l-4 4",
   globe: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18",
   file: "M6 3h8l4 4v14H6zM14 3v4h4",
+  pen: "M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10zM14 7l3 3",
   out: "M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10",
 };
 
@@ -789,7 +814,7 @@ export default async function AdminPage({
     ولا يُحوّل غيرُ المشرف إلى صفحةٍ أخرى: الويب لوحةٌ لا تطبيق، وتحويله
     إلى `/login` يردّه الدخولُ القائم إلى هنا فتدور الصفحة على نفسها.
   */
-  if (scope === "NONE") {
+  if (scope === "NONE" && !user.canBlog) {
     return (
       <div className="screen">
         <ScreenHeader title="لوحة التحكم" mark />
@@ -810,6 +835,7 @@ export default async function AdminPage({
   const sections = SECTIONS.filter(
     (item) =>
       (scope === "ALL" ||
+        ("blog" in item && item.blog && user.canBlog) ||
         (scope === "STORE" && item.store) ||
         (scope === "REPORTS" && "reports" in item && item.reports)) &&
       (!("owner" in item && item.owner) || owner),
@@ -918,12 +944,12 @@ export default async function AdminPage({
     scope === "ALL"
       ? prisma.user.findMany({
           where: {
-            OR: [{ role: "ADMIN" }, { adminScope: { not: "NONE" } }, { canModerate: true }],
+            OR: [{ role: "ADMIN" }, { adminScope: { not: "NONE" } }, { canModerate: true }, { canBlog: true }],
           },
           orderBy: { memberNo: "asc" },
           select: {
             id: true, memberNo: true, name: true, email: true,
-            role: true, adminScope: true, canModerate: true,
+            role: true, adminScope: true, canModerate: true, canBlog: true,
           },
         })
       : Promise.resolve([]),
@@ -965,6 +991,7 @@ export default async function AdminPage({
             role: true,
             adminScope: true,
             canModerate: true,
+            canBlog: true,
           },
         })
       : Promise.resolve([]),
@@ -1057,7 +1084,7 @@ export default async function AdminPage({
 
       <main className="scroll-area admin-main px-5 py-5">
         {/* على قسم التحليلات أرقامُه تحلّ محلّ هذا الصفّ (القاعدة ٣٠٧). */}
-        <div className={`admin-stats mb-6 grid-cols-4 gap-2 ${section === "analytics" || section === "home" ? "hidden" : "grid"}`}>
+        <div className={`admin-stats mb-6 grid-cols-4 gap-2 ${section === "analytics" || section === "home" || section === "blog" ? "hidden" : "grid"}`}>
           {[
             { value: userCount, label: "مستخدم" },
             { value: items.length, label: "صنف" },
@@ -1115,7 +1142,7 @@ export default async function AdminPage({
         </nav>
 
         <div className="admin-section min-w-0">
-        <CommandBar sections={sections.map((item) => ({ key: item.key, label: item.label }))} />
+        {scope !== "NONE" ? <CommandBar sections={sections.map((item) => ({ key: item.key, label: item.label }))} /> : null}
         {section === "home" ? <HomeSection /> : null}
         {section === "tags" ? (
         <>
@@ -1699,16 +1726,27 @@ export default async function AdminPage({
             </details>
 
             {groups.map((group) => (
-              <section key={group.id} className="mb-6">
-                <div className="mb-2 flex items-center justify-between gap-3 border-b border-line px-1 pb-2">
+              /*
+                كلُّ مجموعةٍ مطويّةٌ حتى تُفتح — **بقرار المالك**: الأصنافُ كلُّها مفتوحةً جدارٌ
+                يُمرَّر طويلاً. وتُفتح وحدها حين يُطلب صنفٌ فيها (`?open=`).
+              */
+              <details
+                key={group.id}
+                className="admin-fold mb-3"
+                open={group.items.some((item) => item.id === open) || undefined}
+              >
+                <summary className="mb-2 flex cursor-pointer list-none items-center justify-between gap-3 rounded-2xl border border-line bg-card px-3.5 py-3">
                   <h2 className="flex items-center gap-2 text-[14px] font-bold">
                     <span className="h-4 w-1 rounded-full" style={{ background: "var(--color-clay)" }} />
                     {group.name}
                   </h2>
-                  <span className="rounded-full bg-paper px-2.5 py-0.5 text-[11px] font-semibold text-muted">
-                    {ar(group.items.length)} صنف
+                  <span className="flex items-center gap-2">
+                    <span className="rounded-full bg-paper px-2.5 py-0.5 text-[11px] font-semibold text-muted">
+                      {ar(group.items.length)} صنف
+                    </span>
+                    <FoldChevron />
                   </span>
-                </div>
+                </summary>
 
                 {group.items.length === 0 ? (
                   <p className="rounded-2xl border border-dashed border-line px-4 py-5 text-center text-[12px] text-muted">
@@ -2008,7 +2046,7 @@ export default async function AdminPage({
                     ))}
                   </div>
                 )}
-              </section>
+              </details>
             ))}
           </>
         ) : (
@@ -2273,7 +2311,7 @@ export default async function AdminPage({
                     key={ticket.id}
                     id={`ticket-${ticket.id}`}
                     className="rounded-2xl border border-line bg-card"
-                    open={open === ticket.id || (!ticket.closed && ticket.messages.at(-1)?.fromStaff !== true)}
+                    open={open === ticket.id}
                   >
                     <summary className="flex cursor-pointer list-none items-center gap-2 p-3.5">
                       <span className="min-w-0 grow">
@@ -2479,7 +2517,9 @@ export default async function AdminPage({
             ) : (
               <div className="mb-7 flex flex-col gap-2.5">
                 {shownReports.map((report) => (
-                  <div key={report.id} className="rounded-2xl border border-line bg-card p-3.5">
+                  <details key={report.id} className="rounded-2xl border border-line bg-card">
+                    {/* مطويّةٌ حتى تُفتح — **بقرار المالك**: السطرُ يقول ما هي، والضغطةُ تُري التفاصيلَ والحكم. */}
+                    <summary className="cursor-pointer list-none p-3.5">
                     <div className="mb-2 flex flex-wrap items-center gap-2">
                       <Chip live={report.state === "OPEN"} gold={report.state === "REMOVED"}>
                         {REPORT_STATE[report.state] ?? report.state}
@@ -2495,6 +2535,8 @@ export default async function AdminPage({
                         ? ` · على ${report.reported.name} (${ar(report.reported.memberNo)})`
                         : ""}
                     </p>
+                    </summary>
+                    <div className="border-t border-line px-3.5 pb-3.5">
 
                     {report.snippet ? (
                       <p className="mt-2 rounded-xl px-3 py-2 text-[12.5px] leading-relaxed" style={{ background: "var(--color-chip)" }}>
@@ -2541,7 +2583,8 @@ export default async function AdminPage({
                         حُسم {report.handledAt ? relative(report.handledAt) : ""}
                       </p>
                     )}
-                  </div>
+                    </div>
+                  </details>
                 ))}
               </div>
             )}
@@ -2591,6 +2634,9 @@ export default async function AdminPage({
         {section === "broadcasts" ? <BroadcastsSection /> : null}
         {section === "occasions" ? <OccasionsSection /> : null}
         {section === "moods" ? <MoodsSection /> : null}
+        {section === "blog" ? (
+          <BlogSection userId={user.id} all={scope === "ALL"} open={open} />
+        ) : null}
         {section === "interests" ? <InterestsSection /> : null}
 
         {section === "words" ? (

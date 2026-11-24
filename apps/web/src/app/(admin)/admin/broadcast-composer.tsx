@@ -12,12 +12,13 @@ const FIELD =
  * والنافذةُ كما تُفتح بضغطه. والصورةُ تُحفظ في الحالة لا تُرفع ساعةَ تُختار —
  * تنبيهٌ لم يُرسل لا يترك ملفّاً بلا صاحب.
  */
-export function BroadcastComposer() {
+export function BroadcastComposer({ articles }: { articles: { id: string; title: string }[] }) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [cardTitle, setCardTitle] = useState("");
   const [cardBody, setCardBody] = useState("");
   const [momentLink, setMomentLink] = useState("");
+  const [articleId, setArticleId] = useState("");
   const [target, setTarget] = useState<Target>("none");
   const [image, setImage] = useState<{ file: Blob; width: number; height: number; url: string } | null>(null);
   const [said, setSaid] = useState<{ ok: boolean; text: string } | null>(null);
@@ -37,6 +38,7 @@ export function BroadcastComposer() {
       data.set("cardBody", cardBody);
       data.set("target", target);
       data.set("momentLink", momentLink);
+      data.set("articleId", articleId);
       if (image) {
         data.set("image", image.file);
         data.set("width", String(image.width));
@@ -51,6 +53,7 @@ export function BroadcastComposer() {
       setCardTitle("");
       setCardBody("");
       setMomentLink("");
+      setArticleId("");
       setTarget("none");
       setImage(null);
     });
@@ -107,6 +110,22 @@ export function BroadcastComposer() {
             يفتح الشاشةَ داخل التطبيق لا في المتصفّح. واللحظةُ تُفتح لمن يراها وحده.
           </span>
         </label>
+        {target === "article" ? (
+          <label className="flex flex-col gap-1.5 text-[12px] font-semibold text-muted">
+            المقال
+            <select value={articleId} onChange={(e) => setArticleId(e.target.value)} className={FIELD}>
+              <option value="">اختر مقالاً منشوراً</option>
+              {articles.map((one) => (
+                <option key={one.id} value={one.id}>
+                  {one.title}
+                </option>
+              ))}
+            </select>
+            <span className="text-[11px] font-normal leading-relaxed">
+              يُفتح في متصفّحٍ داخل التطبيق (القاعدة ٦٢) — والمقالُ المنشور وحده يظهر هنا.
+            </span>
+          </label>
+        ) : null}
         {target === "moment" ? (
           <label className="flex flex-col gap-1.5 text-[12px] font-semibold text-muted">
             رابط اللحظة
@@ -191,7 +210,7 @@ export function BroadcastComposer() {
   );
 }
 
-type Target = "none" | "plus" | "coins" | "store" | "moment";
+type Target = "none" | "plus" | "coins" | "store" | "moment" | "article";
 
 /** زرُّ النافذة (القاعدة ٤٠٨): شاشاتٌ في التطبيق من قائمةٍ مغلقة، أو لحظة. وعناوينُها كما يرسمها الجوّال. */
 const TARGETS: Record<Target, { option: string; button: string }> = {
@@ -200,6 +219,7 @@ const TARGETS: Record<Target, { option: string; button: string }> = {
   coins: { option: "شحن النقاط", button: "اشحن نقاطك" },
   store: { option: "المتجر", button: "افتح المتجر" },
   moment: { option: "لحظة", button: "عرض التفاصيل" },
+  article: { option: "مقال في المدونة", button: "اقرأ المقال" },
 };
 
 /** نسبةُ الصورة في النافذة كما يرسمها الجوّال: بين ٠٫٧ و٢. */

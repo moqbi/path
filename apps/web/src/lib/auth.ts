@@ -126,6 +126,8 @@ export type SessionUser = {
   adminScope: "NONE" | "STORE" | "REPORTS" | "ALL";
   /// صلاحية الإشراف على المحتوى — مستقلّةٌ عن اللوحة، والمالك يملكها دائماً.
   canModerate: boolean;
+  /// الكتابةُ في المدونة (القاعدة ٤٩٠): المالكُ وممنوحُ اللوحة كلّها، ومن مُنحها وحدها.
+  canBlog: boolean;
   /// إيقافٌ مؤقّت قائم — `null` يشمل إيقافاً انقضى.
   suspendedUntil: Date | null;
   suspendedReason: string | null;
@@ -169,6 +171,7 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
       role: true,
       adminScope: true,
       canModerate: true,
+      canBlog: true,
       suspendedUntil: true,
       suspendedReason: true,
       avatarMediaId: true,
@@ -208,6 +211,7 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
     role: user.role,
     adminScope: user.adminScope,
     canModerate: user.role === "ADMIN" || user.canModerate,
+    canBlog: user.role === "ADMIN" || user.adminScope === "ALL" || user.canBlog,
     // انقضى = غير موقوف: التاريخ يبقى في الصفّ ولا يُقرأ حظراً.
     suspendedUntil:
       user.suspendedUntil && user.suspendedUntil > new Date() ? user.suspendedUntil : null,

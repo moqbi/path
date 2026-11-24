@@ -14,6 +14,13 @@ export async function BroadcastsSection() {
     take: 20,
     select: { id: true, title: true, body: true, cardTitle: true, mediaId: true, momentId: true, createdAt: true, pushedAt: true, sentCount: true },
   });
+  // مقالاتُ المدونة المنشورة لزرّ «اقرأ المقال» (القاعدة ٤٩٠).
+  const articles = await prisma.blogPost.findMany({
+    where: { published: true },
+    orderBy: { publishedAt: "desc" },
+    take: 100,
+    select: { id: true, title: true },
+  });
 
   return (
     <>
@@ -24,7 +31,7 @@ export async function BroadcastsSection() {
         ولا تراجع بعد الإرسال.
       </p>
 
-      <BroadcastComposer />
+      <BroadcastComposer articles={articles} />
 
       <h3 className="mb-2 mt-6 text-[13.5px] font-bold">ما أُرسل</h3>
       {recent.length === 0 ? (

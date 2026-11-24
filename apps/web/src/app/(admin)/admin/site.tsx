@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, type ReactNode } from "react";
 import {
   clearSiteImage,
   createSocialLink,
@@ -518,6 +518,27 @@ const GROUPS: { title: string; note?: string; fields: { key: string; label: stri
   },
 ];
 
+/** قسمٌ يُطوى: عنوانُه وما فيه في سطر، والضغطةُ تفتحه وتغلقه. */
+function Fold({ title, meta, children }: { title: string; meta?: string; children: ReactNode }) {
+  return (
+    <details className="admin-fold mb-2.5 rounded-2xl border border-line bg-card">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-3">
+        <span className="flex items-center gap-2 text-[13.5px] font-bold">
+          <span className="h-4 w-1 rounded-full" style={{ background: "var(--color-clay)" }} />
+          {title}
+        </span>
+        <span className="flex shrink-0 items-center gap-2">
+          {meta ? <span className="rounded-full bg-paper px-2.5 py-0.5 text-[11px] font-semibold text-muted">{meta}</span> : null}
+          <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="fold-chevron text-muted" aria-hidden>
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </span>
+      </summary>
+      <div className="border-t border-line p-3">{children}</div>
+    </details>
+  );
+}
+
 export function SitePanel({
   text,
   defaults,
@@ -542,12 +563,19 @@ export function SitePanel({
         يتجمّد الموقع على نسخةٍ قديمة.
       </p>
 
-      <HeroImage mediaId={heroMediaId} />
+      {/*
+        كلُّ قسمٍ قائمةٌ تُطوى — **بقرار المالك** (القاعدة ٤٨٩): الصفحةُ كانت جداراً بستّين
+        حقلاً تُمرَّر كلُّها لتبلغ واحداً. والسطرُ يقول ما فيه وكم عُدّل منه.
+      */}
+      <Fold title="صورة الرأس" meta={heroMediaId ? "مرفوعة" : "الافتراضية"}>
+        <HeroImage mediaId={heroMediaId} />
+      </Fold>
 
-      <SiteShots shots={shots} />
+      <Fold title="لقطات من داخل التطبيق" meta={`${shots.length} لقطة`}>
+        <SiteShots shots={shots} />
+      </Fold>
 
-      <section className="mb-6">
-        <h3 className="mb-1 text-[13px] font-bold text-clay-ink">صور «الأجهزة المدعومة»</h3>
+      <Fold title="صور «الأجهزة المدعومة»" meta={`${Object.keys(devices).length} من ${DEVICE_SLOTS.length}`}>
         <p className="mb-2 text-[11px] leading-relaxed text-faint">
           الشاشةُ داخل كلّ جهازٍ في الصفحة. الصورةُ تملأ شاشته وتُقصّ من أسفلها إن طالت، وبلا
           صورةٍ تبقى اللقطاتُ المرسومة.
@@ -557,43 +585,50 @@ export function SitePanel({
             <DeviceImage key={slot.key} slot={slot} mediaId={devices[slot.key] ?? null} />
           ))}
         </div>
-      </section>
+      </Fold>
 
-      {GROUPS.map((group) => (
-        <section key={group.title} className="mb-6">
-          <h3 className="mb-1 text-[13px] font-bold text-clay-ink">{group.title}</h3>
-          {group.note ? <p className="mb-2 text-[11px] text-faint">{group.note}</p> : null}
-          <div className="flex flex-col gap-2">
-            {group.fields.map((field) => (
-              <TextField
-                key={field.key}
-                siteKey={field.key}
-                label={field.label}
-                note={field.note}
-                multiline={field.multiline}
-                value={text[field.key] ?? ""}
-                changed={text[field.key] !== defaults[field.key]}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+      {GROUPS.map((group) => {
+        const edited = group.fields.filter((field) => text[field.key] !== defaults[field.key]).length;
+        return (
+          <Fold
+            key={group.title}
+            title={group.title}
+            meta={edited ? `${edited} مُعدّل من ${group.fields.length}` : `${group.fields.length} حقل`}
+          >
+            {group.note ? <p className="mb-2 text-[11px] text-faint">{group.note}</p> : null}
+            <div className="flex flex-col gap-2">
+              {group.fields.map((field) => (
+                <TextField
+                  key={field.key}
+                  siteKey={field.key}
+                  label={field.label}
+                  note={field.note}
+                  multiline={field.multiline}
+                  value={text[field.key] ?? ""}
+                  changed={text[field.key] !== defaults[field.key]}
+                />
+              ))}
+            </div>
+          </Fold>
+        );
+      })}
 
-      <h3 className="mb-1 text-[13px] font-bold text-clay-ink">تابعنا</h3>
-      <p className="mb-2 text-[11px] leading-relaxed text-faint">
-        تظهر في ذيل الموقع وفي شاشة الخصوصية بالتطبيق معاً — مكانٌ واحد
-        يُدار منه الاثنان. و«مخفيّ» يُبقي الصفّ ولا يعرضه.
-      </p>
-      <NewSocial />
-      <div className="mb-7 flex flex-col gap-2">
-        {links.length === 0 ? (
-          <p className="rounded-2xl border border-line bg-card p-5 text-center text-[12.5px] text-muted">
-            لا روابط بعد.
-          </p>
-        ) : (
-          links.map((link) => <SocialRow key={link.id} link={link} />)
-        )}
-      </div>
+      <Fold title="تابعنا" meta={`${links.length} رابط`}>
+        <p className="mb-2 text-[11px] leading-relaxed text-faint">
+          تظهر في ذيل الموقع وفي شاشة الخصوصية بالتطبيق معاً — مكانٌ واحد
+          يُدار منه الاثنان. و«مخفيّ» يُبقي الصفّ ولا يعرضه.
+        </p>
+        <NewSocial />
+        <div className="flex flex-col gap-2">
+          {links.length === 0 ? (
+            <p className="rounded-2xl border border-line bg-card p-5 text-center text-[12.5px] text-muted">
+              لا روابط بعد.
+            </p>
+          ) : (
+            links.map((link) => <SocialRow key={link.id} link={link} />)
+          )}
+        </div>
+      </Fold>
     </>
   );
 }

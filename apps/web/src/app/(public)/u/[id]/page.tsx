@@ -145,7 +145,7 @@ export default async function SharedProfile({ params }: Props) {
   const qr = SITE_URL ? <MemberQr url={`${SITE_URL}/u/${person.memberNo}`} name={person.name} /> : null;
 
   return (
-    <article className="mx-auto max-w-[520px] pb-10">
+    <article className="share-page mx-auto max-w-[520px] pb-10">
       <MemberFlip
         back={qr}
         front={
@@ -274,16 +274,12 @@ export default async function SharedProfile({ params }: Props) {
           </div>
 
           {/*
-            الدعوةُ بالرابط وحده (القاعدة ٢٤٣): التطبيقُ يحفظ صاحبَ هذا الرابط
-            حين يُفتح به — والمتجرُ لا يحمل الرابط معه، فمن نزّله للتوّ يعود إليه
-            مرّةً قبل أن يسجّل. والمتصفّحُ يحفظه بكوكي في `/app/i/<رقم>`.
+            الدعوةُ بالرابط وحده (القاعدة ٢٤٣): التطبيقُ يحفظ صاحبَ هذا الرابط حين يُفتح
+            به — والمتجرُ لا يحمله، فمن نزّله للتوّ يعود إليه مرّةً قبل أن يسجّل.
+            ولا «سجّل من المتصفح» — **بقرار المالك** (القاعدة ٤٨٩): رابطُ المشاركة بابٌ إلى التطبيق.
           */}
           <p className="mt-4 text-[11.5px] leading-relaxed text-muted">
-            بعد التنزيل ارجع لهذا الرابط واضغط «افتح الملف في التطبيق» قبل ما تسجّل — أو{" "}
-            <a href={`/app/i/${person.memberNo}`} className="font-semibold text-clay-ink underline">
-              سجّل من المتصفح
-            </a>
-            .
+            بعد التنزيل ارجع لهذا الرابط واضغط «افتح الملف في التطبيق» قبل ما تسجّل.
           </p>
         </div>
       </div>
