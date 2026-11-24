@@ -25,6 +25,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         { siteShot: { isNot: null } },
         // ملصقُ مجموعةٍ ظاهرة: صورُها للجميع أصلاً (القاعدة ٢٩١) — لبطاقة الهبوط (القاعدة ٤١٧).
         { sticker: { pack: { hidden: false } } },
+        // صورُ المدونة (القاعدة ٤٩٠): غلافُ المقال وصورُ متنه — صفحاتٌ عامّة.
+        { blogCover: { isNot: null } },
+        { blogImage: { isNot: null } },
       ],
     },
     select: { mime: true, key: true, bytes: true },

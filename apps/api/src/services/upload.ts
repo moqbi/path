@@ -522,6 +522,8 @@ export async function sweepOrphans(): Promise<number> {
       sticker: { is: null },
       broadcast: { is: null },
       mood: { is: null },
+      blogCover: { is: null },
+      blogImage: { is: null },
       siteImage: { is: null },
       siteShot: { is: null },
     },

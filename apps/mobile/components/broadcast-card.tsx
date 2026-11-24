@@ -6,9 +6,10 @@ import { Text } from "./type";
 import { MediaImage } from "./media-image";
 import { Spinner } from "./spinner";
 import { api } from "../lib/api";
+import { openIn } from "../lib/browse";
 import { colors } from "../theme/tokens";
 
-type Card = { id: string; cardTitle: string; cardBody: string; mediaId: string | null; momentId?: string | null; link?: string | null };
+type Card = { id: string; cardTitle: string; cardBody: string; mediaId: string | null; momentId?: string | null; link?: string | null; article?: { title: string; url: string } | null };
 
 /**
  * زرُّ النافذة يفتح شاشةً في التطبيق (القاعدة ٤٠٨) — قائمةٌ مغلقة يكتبها الخادم، فما لا
@@ -111,6 +112,19 @@ export function BroadcastCard() {
             style={{ marginHorizontal: 18, marginBottom: 14, height: 46, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
           >
             <Text style={{ color: colors.onBrand, fontSize: 14.5, fontWeight: "700" }}>{SCREENS[card.link].label}</Text>
+          </Pressable>
+        ) : null}
+        {/* مقالُ المدونة (القاعدة ٤٩٠): يُفتح في المتصفّح المدمج (القاعدة ٦٢) — الموقعُ لا التطبيق. */}
+        {card?.article ? (
+          <Pressable
+            onPress={() => {
+              const url = card.article!.url;
+              close();
+              void openIn(url);
+            }}
+            style={{ marginHorizontal: 18, marginBottom: 14, height: 46, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: colors.clay }}
+          >
+            <Text style={{ color: colors.onBrand, fontSize: 14.5, fontWeight: "700" }}>اقرأ المقال</Text>
           </Pressable>
         ) : null}
         {card?.momentId ? (

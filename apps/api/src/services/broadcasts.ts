@@ -1,4 +1,5 @@
 import { prisma } from "@athar/db";
+import { SITE_URL } from "@athar/shared";
 import { broadcast } from "./push";
 import { canSeeMoment } from "./visibility";
 
@@ -47,5 +48,20 @@ export async function broadcastCard(id: string, viewerId: string) {
   });
   if (!row) return null;
   const momentId = row.momentId && (await canSeeMoment(viewerId, row.momentId)) ? row.momentId : null;
-  return { ...row, momentId };
+  /*
+    ومقالُ المدونة (القاعدة ٤٩٠) يُحفظ `blog:<معرّفه>` ويُرسل رابطاً حيّاً: الرابطُ يُبنى من
+    رابطه اليوم، ومقالٌ أُخفي أو حُذف يغيب زرُّه. و`link` نفسُه لا يُرسل بهذه القيمة: جوّالٌ
+    قديم يقرأ `link` من قائمته المغلقة فلا يعرفها ولا يرسم شيئاً.
+  */
+  let article: { title: string; url: string } | null = null;
+  if (row.link?.startsWith("blog:")) {
+    const post = SITE_URL
+      ? await prisma.blogPost.findFirst({
+          where: { id: row.link.slice(5), published: true },
+          select: { title: true, slug: true },
+        })
+      : null;
+    if (post) article = { title: post.title, url: `${SITE_URL}/blog/${encodeURIComponent(post.slug)}` };
+  }
+  return { ...row, link: article ? null : row.link, momentId, article };
 }

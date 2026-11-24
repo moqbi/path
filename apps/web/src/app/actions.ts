@@ -17,6 +17,7 @@ import { SUSPEND_HOURS } from "@/lib/suspend";
 import { isPlusDays, PLUS_LABEL } from "@/lib/plus";
 import { SITE_TEXT, type SiteKey } from "@/lib/site";
 import { SITE_URL, hasSite, formatFit, ALL_COUNTRIES, BOOK_SKIN_FIELDS, bookSkinOf, bookSpec, COUNTRIES, hallFlatFrom, hallSkinOf } from "@athar/shared";
+import { BLOG_CATEGORY_MAX, BLOG_EXCERPT_MAX, BLOG_TITLE_MAX, blockImages, blocksSchema, slugify, type Block } from "@/lib/blog-blocks";
 
 /*
   إجراءات اللوحة، منقولةٌ كما هي من `src/app/actions.ts` في الويب الحالي:
@@ -810,11 +811,13 @@ export async function setAdminScope(userId: string, formData: FormData): Promise
     البلاغات لا يحتاج مفاتيح المتجر.
   */
   const moderate = formData.get("moderate") === "on";
+  // و«المدونة» ثالثةٌ مستقلّة (القاعدة ٤٩٠): من يكتب الشروح لا يحتاج اللوحة.
+  const blog = formData.get("blog") === "on";
   // المالك لا يُنقص نفسه من حيث لا يدري.
   if (userId === owner.id) return;
   await prisma.user.update({
     where: { id: userId },
-    data: { adminScope: scope, canModerate: moderate },
+    data: { adminScope: scope, canModerate: moderate, canBlog: blog },
   });
   // من صار مشرفاً لا يُحظر (القاعدة ٣١٨): ما سبق من حظرٍ عليه يُرفع.
   if (scope === "ALL") await prisma.block.deleteMany({ where: { blockedId: userId } });
@@ -2484,6 +2487,16 @@ export async function sendBroadcast(formData: FormData): Promise<{ ok?: string; 
   const screen = ["plus", "coins", "store"].includes(target) ? target : null;
   const link = target === "moment" ? text("momentLink", 300) : "";
   if (target === "moment" && !link) return { error: "الصق رابط اللحظة أو اختر زرّاً آخر" };
+  // ومقالُ المدونة (القاعدة ٤٩٠) يُحفظ بمعرّفه لا برابطه: الرابطُ يتغيّر بتعديل المقال.
+  let article: string | null = null;
+  if (target === "article") {
+    const articleId = text("articleId", 40);
+    const post = articleId
+      ? await prisma.blogPost.findFirst({ where: { id: articleId, published: true }, select: { id: true } })
+      : null;
+    if (!post) return { error: "اختر مقالاً منشوراً أو زرّاً آخر" };
+    article = `blog:${post.id}`;
+  }
   if (link) {
     const found = link.match(/\/m\/([a-z0-9]{20,40})/i)?.[1] ?? (/^[a-z0-9]{20,40}$/i.test(link) ? link : null);
     if (!found) return { error: "رابط اللحظة غير صالح — انسخه من «مشاركة» اللحظة أو من صفحتها" };
@@ -2507,7 +2520,7 @@ export async function sendBroadcast(formData: FormData): Promise<{ ok?: string; 
     }
   }
 
-  await prisma.broadcast.create({ data: { title, body, cardTitle, cardBody, mediaId, momentId, link: screen, createdById: admin.id } });
+  await prisma.broadcast.create({ data: { title, body, cardTitle, cardBody, mediaId, momentId, link: article ?? screen, createdById: admin.id } });
   revalidatePath("/admin", "layout");
   return { ok: "سيُرسل خلال دقيقة" };
 }
@@ -2877,4 +2890,155 @@ export async function setVisitorsOpen(_prev: AdminResult, formData: FormData): P
   }
   revalidatePath("/admin", "layout");
   return { ok: on ? "فُعّلت — من زار المكان اليوم يظهر للجميع" : "أُطفئت — عاد الوضع كما كان" };
+}
+
+// ─────────────────────────────── المدونة ───────────────────────────────
+// القاعدة ٤٩٠: يكتب فيها المالكُ وممنوحُ اللوحة كلّها ومن مُنح «المدونة» (`canBlog`).
+// والدرجةُ من الصفّ في كلّ إجراء لا من الجلسة (القاعدة ١٣).
+
+async function requireBlogger() {
+  const user = await requireUser();
+  const row = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { role: true, adminScope: true, canBlog: true },
+  });
+  if (!row || !(row.role === "ADMIN" || row.adminScope === "ALL" || row.canBlog)) {
+    throw new Error("المدونة لمن مُنح صلاحيتها");
+  }
+  // المالكُ وممنوحُ اللوحة يحرّران كلَّ مقال، وممنوحُ المدونة ما كتبه هو.
+  return { id: user.id, all: row.role === "ADMIN" || row.adminScope === "ALL" };
+}
+
+async function blogPostOf(id: string, editor: { id: string; all: boolean }) {
+  const post = await prisma.blogPost.findUnique({
+    where: { id },
+    select: { id: true, authorId: true, slug: true, published: true, publishedAt: true, coverMediaId: true },
+  });
+  if (!post || (!editor.all && post.authorId !== editor.id)) return null;
+  return post;
+}
+
+function revalidateBlog(slug?: string) {
+  revalidatePath("/blog");
+  if (slug) revalidatePath(`/blog/${encodeURIComponent(slug)}`);
+  revalidatePath("/admin", "layout");
+}
+
+export async function createBlogPost(): Promise<void> {
+  const editor = await requireBlogger();
+  const post = await prisma.blogPost.create({
+    data: { title: "مقال جديد", slug: `draft-${Date.now().toString(36)}`, authorId: editor.id },
+    select: { id: true },
+  });
+  revalidatePath("/admin", "layout");
+  redirect(`/admin?s=blog&open=${post.id}`);
+}
+
+export async function saveBlogPost(id: string, formData: FormData): Promise<AdminResult> {
+  const editor = await requireBlogger();
+  const post = await blogPostOf(id, editor);
+  if (!post) return { error: "المقال غير موجود" };
+
+  const title = String(formData.get("title") ?? "").trim();
+  if (!title) return { error: "اكتب العنوان" };
+  if (title.length > BLOG_TITLE_MAX) return { error: `العنوان ${BLOG_TITLE_MAX} حرفاً على الأكثر` };
+  const excerpt = String(formData.get("excerpt") ?? "").trim().slice(0, BLOG_EXCERPT_MAX);
+  const category = String(formData.get("category") ?? "").trim().slice(0, BLOG_CATEGORY_MAX);
+  const slug = slugify(String(formData.get("slug") ?? "") || title);
+  if (!slug) return { error: "اكتب رابطاً للمقال" };
+
+  let blocks: Block[];
+  try {
+    const parsed = blocksSchema.safeParse(JSON.parse(String(formData.get("blocks") ?? "[]")));
+    if (!parsed.success) return { error: "في المتن كتلةٌ غير صالحة" };
+    blocks = parsed.data;
+  } catch {
+    return { error: "تعذّرت قراءة المتن" };
+  }
+
+  // الصورُ في المتن صورُ هذا المقال وحده: معرّفٌ من مقالٍ آخر لا يُقبل.
+  const used = blockImages(blocks);
+  const mine = await prisma.blogImage.findMany({ where: { postId: id }, select: { mediaId: true } });
+  const own = new Set(mine.map((one) => one.mediaId));
+  if (used.some((mediaId) => !own.has(mediaId))) return { error: "في المتن صورةٌ ليست من هذا المقال" };
+
+  const clash = await prisma.blogPost.findFirst({ where: { slug, id: { not: id } }, select: { id: true } });
+  if (clash) return { error: "هذا الرابط لمقالٍ آخر" };
+
+  const published = formData.get("published") === "on";
+  await prisma.blogPost.update({
+    where: { id },
+    data: {
+      title,
+      excerpt,
+      category,
+      slug,
+      blocks,
+      published,
+      // تاريخُ النشر الأوّل يبقى: إخفاءُ المقال وإعادتُه لا يرفعه إلى أعلى القائمة.
+      publishedAt: published ? (post.publishedAt ?? new Date()) : post.publishedAt,
+    },
+  });
+
+  // صورٌ رُفعت ثمّ حُذفت من المتن تذهب ببكسلاتها (القاعدة ١٠٤).
+  const stale = [...own].filter((mediaId) => !used.includes(mediaId));
+  if (stale.length) {
+    await prisma.blogImage.deleteMany({ where: { mediaId: { in: stale } } });
+    await dropMedia(stale);
+  }
+
+  revalidateBlog(post.slug);
+  revalidateBlog(slug);
+  return { ok: published ? "نُشر المقال" : "حُفظت المسودة" };
+}
+
+/** صورةٌ في المتن: تُرفع وتُربط بالمقال، والمحرّرُ يضع معرّفَها في كتلته. */
+export async function uploadBlogImage(id: string, formData: FormData): Promise<{ mediaId?: string; error?: string }> {
+  const editor = await requireBlogger();
+  const post = await blogPostOf(id, editor);
+  if (!post) return { error: "المقال غير موجود" };
+  try {
+    const { file, width, height } = picture(formData);
+    const media = await storeUpload(editor.id, file, width, height);
+    await prisma.blogImage.create({ data: { mediaId: media.id, postId: id } });
+    return { mediaId: media.id };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "تعذّر رفع الصورة" };
+  }
+}
+
+export async function setBlogCover(id: string, formData: FormData): Promise<AdminResult> {
+  const editor = await requireBlogger();
+  const post = await blogPostOf(id, editor);
+  if (!post) return { error: "المقال غير موجود" };
+  try {
+    const { file, width, height } = picture(formData);
+    const media = await storeUpload(editor.id, file, width, height);
+    await prisma.blogPost.update({ where: { id }, data: { coverMediaId: media.id } });
+    if (post.coverMediaId) await dropMedia([post.coverMediaId]);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "تعذّر رفع الصورة" };
+  }
+  revalidateBlog(post.slug);
+  return { ok: "تمّ تغيير الغلاف" };
+}
+
+export async function clearBlogCover(id: string): Promise<void> {
+  const editor = await requireBlogger();
+  const post = await blogPostOf(id, editor);
+  if (!post?.coverMediaId) return;
+  await prisma.blogPost.update({ where: { id }, data: { coverMediaId: null } });
+  await dropMedia([post.coverMediaId]);
+  revalidateBlog(post.slug);
+}
+
+export async function deleteBlogPost(id: string): Promise<AdminResult> {
+  const editor = await requireBlogger();
+  const post = await blogPostOf(id, editor);
+  if (!post) return { error: "المقال غير موجود" };
+  const images = await prisma.blogImage.findMany({ where: { postId: id }, select: { mediaId: true } });
+  await prisma.blogPost.delete({ where: { id } });
+  await dropMedia([...images.map((one) => one.mediaId), ...(post.coverMediaId ? [post.coverMediaId] : [])]);
+  revalidateBlog(post.slug);
+  redirect("/admin?s=blog");
 }

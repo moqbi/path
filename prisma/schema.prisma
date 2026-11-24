@@ -153,6 +153,9 @@ model User {
   /// يدير المتجر لا يحتاج أن يقرأ لحظات الناس.
   /// والمالك (`role = ADMIN`) يملكها دائماً بلا منح.
   canModerate         Boolean         @default(false)
+  /// صلاحيةُ الكتابة في المدونة (القاعدة ٤٩٠) — مستقلّةٌ عن مدى اللوحة، والمالك وممنوحُ اللوحة كلّها يكتبان بدورهما.
+  canBlog             Boolean         @default(false)
+  blogPosts           BlogPost[]      @relation("BlogAuthor")
   /// حسابٌ مفتوح: ملفُّه ولحظاتُه **الموجّهة إلى الدائرة كلها** تُقرأ
   /// بلا صداقة، ويقبل طلب إضافةٍ من أيّ أحد — لحسابِ أخبار التطبيق
   /// ونحوه. ويُمنح من اللوحة لحسابٍ بعينه لا يُشتقّ من رقم عضوية.
@@ -1349,6 +1352,8 @@ model Media {
   sticker        Sticker?      @relation("StickerMedia")
   broadcast      Broadcast?    @relation("BroadcastMedia")
   mood           Mood?         @relation("MoodMedia")
+  blogCover      BlogPost?     @relation("BlogCover")
+  blogImage      BlogImage?    @relation("BlogImageMedia")
 
   /// صورةُ موقعٍ عامّة إن كانت — الرأس مثلاً.
   siteImage SiteImage? @relation("SiteImage")
@@ -1877,4 +1882,43 @@ model HuaweiSubscription {
 
   @@index([expiresAt])
   @@index([userId])
+}
+
+/**
+ * مقالُ المدونة (القاعدة ٤٩٠) — على الموقع (`/blog`) لا في التطبيق.
+ * المتنُ كتلٌ لا HTML (`blocks`): فقرةٌ وعنوانٌ واقتباسٌ وقائمةٌ وصورة وفاصل —
+ * تُرسم عناصرَ React، فلا يُحقن في صفحةٍ عامّة ما لم يُكتب بأيدينا.
+ */
+model BlogPost {
+  id          String    @id @default(cuid())
+  /// عنوانُ المقال في الرابط: من عنوانه، ويُعدَّل.
+  slug        String    @unique
+  title       String
+  /// سطرٌ يُقرأ في البطاقة وفي معاينة الروابط.
+  excerpt     String    @default("")
+  /// التصنيف: يُجمع به «مقالات مشابهة».
+  category    String    @default("")
+  blocks      Json      @default("[]")
+  coverMediaId String?  @unique
+  cover       Media?    @relation("BlogCover", fields: [coverMediaId], references: [id], onDelete: SetNull)
+  /// كاتبُه — يبقى المقال إن ذهب حسابُه.
+  authorId    String?
+  author      User?     @relation("BlogAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  published   Boolean   @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  images      BlogImage[]
+
+  @@index([published, publishedAt])
+}
+
+/// صورةٌ في متن مقال: الصفُّ يقول لمن هي فيُقدَّمها بابُ الموقع ولا يكنسها اليتيم.
+model BlogImage {
+  mediaId String   @id
+  media   Media    @relation("BlogImageMedia", fields: [mediaId], references: [id], onDelete: Cascade)
+  postId  String
+  post    BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
 }

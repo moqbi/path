@@ -12,6 +12,7 @@ const COLUMNS = [
     links: [
       { href: "/#download", label: "حمّل التطبيق" },
       { href: "/about", label: "عن آثار" },
+      { href: "/blog", label: "المدونة" },
       { href: "/careers", label: "الوظائف" },
     ],
   },
@@ -97,7 +98,7 @@ export default async function PublicLayout({ children }: { children: React.React
           */}
           <a
             href={`${WEB_BASE}/login`}
-            className="flex h-9 shrink-0 items-center whitespace-nowrap rounded-full px-3 text-[12.5px] font-bold max-[379px]:px-2.5 sm:px-4"
+            className="site-login flex h-9 shrink-0 items-center whitespace-nowrap rounded-full px-3 text-[12.5px] font-bold max-[379px]:px-2.5 sm:px-4"
             style={{ border: "1.5px solid currentColor" }}
           >
             دخول

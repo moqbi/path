@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from "react";
 const LINKS: { href: string; label: string; latin?: string; wide?: boolean; spy?: string }[] = [
   { href: "/", label: "الرئيسية", wide: true },
   { href: "/#why", label: "المزايا", wide: true, spy: "why" },
+  { href: "/blog", label: "المدونة", wide: true },
   { href: "/about", label: "عن آثار", wide: true },
   { href: "/contact", label: "تواصل معنا", wide: true },
   { href: "/privacy", label: "الخصوصية", latin: "Privacy" },
