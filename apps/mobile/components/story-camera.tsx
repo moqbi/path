@@ -1,6 +1,6 @@
 import { Spinner } from "./spinner";
 import { useEffect, useRef, useState } from "react";
-import { View, Pressable, PanResponder, Platform, type GestureResponderEvent } from "react-native";
+import { View, Pressable, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
 import { BlurView } from "expo-blur";
@@ -10,6 +10,7 @@ import { CloseIcon } from "./icons";
 import type { Shot } from "../lib/capture";
 import { ar } from "../lib/format";
 import { colors } from "../theme/tokens";
+import { FocusMark, GridLines, GridMark, LensChips, useCameraTools } from "./camera-tools";
 
 /**
  * كاميرا القصّة (القاعدة ٢٧٠) — **بقرار المالك**: شاشةُ القصّة تفتح عليها مباشرةً،
@@ -39,40 +40,14 @@ export function StoryCamera({
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
 
-  // التقريبُ بإصبعين — كالكاميرا المدمجة (القاعدة ١٥٣).
-  const [zoom, setZoom] = useState(0);
-  const zoomNow = useRef(0);
-  zoomNow.current = zoom;
-  const pinch = useRef({ from: 0, base: 0 });
-  const spread = (event: GestureResponderEvent) => {
-    const [a, b] = event.nativeEvent.touches;
-    return a && b ? Math.hypot(a.pageX - b.pageX, a.pageY - b.pageY) : 0;
+  // أدواتُ الكاميرا نفسُها في اللحظة والقصّة (القاعدة ٤٨٨).
+  const recordingRef = useRef(false);
+  recordingRef.current = recording;
+  const flipCamera = () => {
+    if (recordingRef.current) return;
+    setFacing((one) => (one === "back" ? "front" : "back"));
   };
-  const pincher = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: (event) => event.nativeEvent.touches.length === 2,
-      onMoveShouldSetPanResponder: (event) => event.nativeEvent.touches.length === 2,
-      onPanResponderGrant: (event) => {
-        pinch.current = { from: spread(event), base: zoomNow.current };
-      },
-      onPanResponderMove: (event) => {
-        const now = spread(event);
-        if (!now) return;
-        if (!pinch.current.from) {
-          pinch.current = { from: now, base: zoomNow.current };
-          return;
-        }
-        const next = pinch.current.base + (now / pinch.current.from - 1) * 0.5;
-        setZoom(Math.min(1, Math.max(0, next)));
-      },
-      onPanResponderRelease: () => {
-        pinch.current.from = 0;
-      },
-      onPanResponderTerminate: () => {
-        pinch.current.from = 0;
-      },
-    }),
-  ).current;
+  const tools = useCameraTools(facing, flipCamera);
 
   useEffect(() => {
     if (!recording) return;
@@ -160,8 +135,20 @@ export function StoryCamera({
 
   return (
     <View style={{ flex: 1, backgroundColor: "#000" }}>
-      <CameraView ref={camera} style={{ flex: 1 }} facing={facing} flash={flash} mode={mode} zoom={zoom} videoQuality="720p" />
-      <View {...pincher.panHandlers} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
+      <CameraView
+        ref={camera}
+        style={{ flex: 1 }}
+        facing={facing}
+        flash={flash}
+        mode={mode}
+        {...tools.cameraProps}
+        enableTorch={mode === "video" && flash === "on"}
+        videoQuality="1080p"
+      />
+      <GridLines on={tools.grid} />
+      <View {...tools.gestures.panHandlers} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
+        <FocusMark focus={tools.focus} />
+      </View>
 
       <View
         style={{
@@ -183,25 +170,25 @@ export function StoryCamera({
             <Text style={{ color: "#fff", fontSize: 12.5, fontWeight: "700" }}>{ar(left)}</Text>
           </View>
         ) : null}
-        <Pressable
-          accessibilityLabel="الفلاش"
-          onPress={() => setFlash((one) => (one === "auto" ? "on" : one === "on" ? "off" : "auto"))}
-          hitSlop={12}
-          style={disc}
-        >
-          <FlashMark mode={flash} />
-        </Pressable>
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          <Pressable accessibilityLabel="الشبكة" onPress={tools.toggleGrid} hitSlop={8} style={disc}>
+            <GridMark on={tools.grid} />
+          </Pressable>
+          <Pressable
+            accessibilityLabel="الفلاش"
+            onPress={() => setFlash((one) => (one === "auto" ? "on" : one === "on" ? "off" : "auto"))}
+            hitSlop={8}
+            style={disc}
+          >
+            <FlashMark mode={flash} />
+          </Pressable>
+        </View>
       </View>
 
       <View style={{ position: "absolute", left: 0, right: 0, bottom: insets.bottom + 14, alignItems: "center" }}>
-        {zoom > 0.02 ? (
-          <Pressable
-            onPress={() => setZoom(0)}
-            style={{ height: 32, paddingHorizontal: 12, borderRadius: 16, marginBottom: 14, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,.42)" }}
-          >
-            <Text style={{ color: "#fff", fontSize: 12, fontWeight: "700" }}>{ar(Math.round((1 + zoom * 4) * 10) / 10)}×</Text>
-          </Pressable>
-        ) : null}
+        <View style={{ marginBottom: 14 }}>
+          <LensChips chips={tools.chips} />
+        </View>
 
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", alignSelf: "stretch", paddingHorizontal: 36, marginBottom: 18 }}>
           <Pressable accessibilityLabel="المعرض" disabled={recording} onPress={onLibrary} style={[disc, { borderRadius: 12, opacity: recording ? 0.4 : 1 }]}>
@@ -228,10 +215,7 @@ export function StoryCamera({
           <Pressable
             accessibilityLabel="بدّل الكاميرا"
             disabled={recording}
-            onPress={() => {
-              setZoom(0);
-              setFacing((one) => (one === "back" ? "front" : "back"));
-            }}
+            onPress={flipCamera}
             style={[disc, { opacity: recording ? 0.4 : 1 }]}
           >
             <FlipMark />
