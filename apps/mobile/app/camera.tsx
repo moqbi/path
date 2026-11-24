@@ -1,6 +1,6 @@
 import { Spinner } from "../components/spinner";
 import { useEffect, useRef, useState } from "react";
-import { View, Pressable, Image, PanResponder, type GestureResponderEvent } from "react-native";
+import { View, Pressable, Image } from "react-native";
 import { Text } from "../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -14,6 +14,7 @@ import { StoryVideo } from "../components/story-video";
 import { useStage } from "../lib/stage";
 import { RotateHint } from "../components/rotate-hint";
 import { colors } from "../theme/tokens";
+import { FocusMark, GridLines, GridMark, LensChips, useCameraTools } from "../components/camera-tools";
 
 /**
  * الكاميرا داخل التطبيق لا كاميرا النظام.
@@ -40,47 +41,15 @@ export default function Camera() {
   const camera = useRef<CameraView | null>(null);
   const [facing, setFacing] = useState<"back" | "front">("back");
   const [flash, setFlash] = useState<"auto" | "on" | "off">("auto");
-  /*
-    التقريب بإصبعين (٠ إلى ١ كما تقبله `CameraView`). والمرجعُ ما كان
-    عليه ساعةَ وضع الإصبعين: القرصُ يُقاس نسبةً من بدايته لا من الصفر،
-    فلا يقفز التقريبُ حين تبدأ قرصةٌ ثانية.
-  */
-  const [zoom, setZoom] = useState(0);
-  const zoomNow = useRef(0);
-  zoomNow.current = zoom;
-  const pinch = useRef({ from: 0, base: 0 });
-  const spread = (event: GestureResponderEvent) => {
-    const [a, b] = event.nativeEvent.touches;
-    return a && b ? Math.hypot(a.pageX - b.pageX, a.pageY - b.pageY) : 0;
+  const flipCamera = () => {
+    if (recordingRef.current) return;
+    setFacing((one) => (one === "back" ? "front" : "back"));
   };
-  const pincher = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: (event) => event.nativeEvent.touches.length === 2,
-      onMoveShouldSetPanResponder: (event) => event.nativeEvent.touches.length === 2,
-      onPanResponderGrant: (event) => {
-        pinch.current = { from: spread(event), base: zoomNow.current };
-      },
-      onPanResponderMove: (event) => {
-        const now = spread(event);
-        if (!now) return;
-        if (!pinch.current.from) {
-          pinch.current = { from: now, base: zoomNow.current };
-          return;
-        }
-        // ضِعفُ المسافة بين الإصبعين ≈ نصفُ مدى التقريب: سريعٌ بلا أن يقفز.
-        const next = pinch.current.base + (now / pinch.current.from - 1) * 0.5;
-        setZoom(Math.min(1, Math.max(0, next)));
-      },
-      onPanResponderRelease: () => {
-        pinch.current.from = 0;
-      },
-      onPanResponderTerminate: () => {
-        pinch.current.from = 0;
-      },
-    }),
-  ).current;
+  const tools = useCameraTools(facing, flipCamera);
   const [busy, setBusy] = useState(false);
   const [recording, setRecording] = useState(false);
+  const recordingRef = useRef(false);
+  recordingRef.current = recording;
   const [elapsed, setElapsed] = useState(0);
   const [shot, setShot] = useState<null | {
     uri: string;
@@ -246,19 +215,19 @@ export default function Camera() {
         facing={facing}
         flash={flash}
         mode={mode}
-        zoom={zoom}
-        // الفيديو يحتاج الصوت، والصورة لا — فلا يُطلب إذنٌ بلا سبب.
-        videoQuality="720p"
+        {...tools.cameraProps}
+        enableTorch={mode === "video" && flash === "on"}
+        videoQuality="1080p"
       />
+      <GridLines on={tools.grid} />
 
       {/*
-        طبقةُ القرص فوق الكاميرا وتحت الأزرار: إصبعان يقرّبان ويبعّدان،
-        في الصورة والفيديو معاً وأثناء التسجيل. وإصبعٌ واحد يمرّ.
+        طبقةُ الإيماءات فوق الكاميرا وتحت الأزرار: إصبعان يقرّبان، وضغطةٌ تُعيد التركيز،
+        وضغطتان تبدّلان الكاميرا (القاعدة ٤٨٨).
       */}
-      <View
-        {...pincher.panHandlers}
-        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
-      />
+      <View {...tools.gestures.panHandlers} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
+        <FocusMark focus={tools.focus} />
+      </View>
 
       {/* الإغلاق والفلاش في الأعلى، والتصوير والتبديل في الأسفل. */}
       <SafeAreaView edges={["top"]} style={{ position: "absolute", top: 0, left: 0, right: 0 }}>
@@ -274,57 +243,26 @@ export default function Camera() {
             </View>
           ) : null}
 
-          <Pressable
-            accessibilityLabel="الفلاش"
-            onPress={() => setFlash((one) => (one === "auto" ? "on" : one === "on" ? "off" : "auto"))}
-            hitSlop={12}
-            style={disc}
-          >
-            <FlashMark mode={flash} />
-          </Pressable>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <Pressable accessibilityLabel="الشبكة" onPress={tools.toggleGrid} hitSlop={8} style={disc}>
+              <GridMark on={tools.grid} />
+            </Pressable>
+            <Pressable
+              accessibilityLabel="الفلاش"
+              onPress={() => setFlash((one) => (one === "auto" ? "on" : one === "on" ? "off" : "auto"))}
+              hitSlop={8}
+              style={disc}
+            >
+              <FlashMark mode={flash} />
+            </Pressable>
+          </View>
         </View>
       </SafeAreaView>
 
       <SafeAreaView edges={["bottom"]} style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}>
-        {/*
-          مقدارُ التقريب يُقرأ فوق الغالق، وضغطُه يعيده إلى الأصل —
-          وزرّا «١×» و«٢×» لمن يدُه مشغولةٌ بالجهاز.
-        */}
-        <View style={{ flexDirection: "row", alignSelf: "center", gap: 8, marginBottom: 14 }}>
-          {[
-            { label: "١×", value: 0 },
-            { label: "٢×", value: 0.25 },
-          ].map((step) => {
-            const on = Math.abs(zoom - step.value) < 0.02;
-            return (
-              <Pressable
-                key={step.label}
-                onPress={() => setZoom(step.value)}
-                hitSlop={8}
-                style={{
-                  minWidth: 38,
-                  height: 38,
-                  paddingHorizontal: 8,
-                  borderRadius: 19,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: on ? "rgba(255,255,255,.92)" : "rgba(0,0,0,.42)",
-                }}
-              >
-                <Text style={{ color: on ? "#000" : "#fff", fontSize: 12.5, fontWeight: "700" }}>{step.label}</Text>
-              </Pressable>
-            );
-          })}
-          {zoom > 0.02 && Math.abs(zoom - 0.25) >= 0.02 ? (
-            <Pressable
-              onPress={() => setZoom(0)}
-              style={{ height: 38, paddingHorizontal: 12, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,.92)" }}
-            >
-              <Text style={{ color: "#000", fontSize: 12.5, fontWeight: "700" }}>
-                {ar(Math.round((1 + zoom * 4) * 10) / 10)}×
-              </Text>
-            </Pressable>
-          ) : null}
+        {/* العدساتُ فوق الغالق كما في كاميرا الجوّال، وضغطُ الرقم يعيد إلى «١×». */}
+        <View style={{ marginBottom: 14 }}>
+          <LensChips chips={tools.chips} />
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 36, paddingBottom: 26 }}>
           <View style={{ width: 46 }} />
@@ -358,10 +296,7 @@ export default function Camera() {
           <Pressable
             accessibilityLabel="بدّل الكاميرا"
             disabled={recording}
-            onPress={() => {
-              setZoom(0);
-              setFacing((one) => (one === "back" ? "front" : "back"));
-            }}
+            onPress={flipCamera}
             style={[disc, { opacity: recording ? 0.4 : 1 }]}
           >
             <FlipMark />
