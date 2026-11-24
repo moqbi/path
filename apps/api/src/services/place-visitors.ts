@@ -16,8 +16,11 @@ export const VISIT_DAYS = 10;
 export const OPEN_HOURS = 24;
 const OPEN_MAX = 60;
 const MIN_CROWD = 5;
-/** نقطتان أقربُ من هذا مكانٌ واحد — حدودُ المبنى لا حدودُ الحيّ. */
-const SAME_SPOT_M = 250;
+/**
+ * نقطتان باسمٍ واحدٍ أقربُ من هذا مكانٌ واحد (القاعدة ٤٨٦) — **بقرار المالك**: كانت ٢٥٠،
+ * وإحداثيّاتُ المكان الواحد من آبل وقوقل قد تتباعد مئات الأمتار في مولٍ أو مجمّع.
+ */
+const SAME_SPOT_M = 500;
 
 /**
  * مفتاحُ اللوحة («visitors.open» في `SiteText` — القاعدة ٤٨٥): تُقرأ نصف دقيقة في
@@ -40,17 +43,64 @@ function metres(a: { lat: number; lng: number }, b: { lat: number; lng: number }
   return 2 * 6_371_000 * Math.asin(Math.sqrt(h));
 }
 
-type Spot = { placeCity: string | null; lat: number | null; lng: number | null };
+type Spot = { placeName: string | null; placeCity: string | null; lat: number | null; lng: number | null };
+
+/**
+ * الاسمُ مطويّاً (القاعدة ٤٨٦): المكانُ الواحد يُكتب بأكثر من صيغة — آبل وقوقل وOSM،
+ * والهمزةُ والتاءُ المربوطة والتشكيلُ والفواصل — فيُطوى قبل أن يُقارَن.
+ */
+function fold(name: string | null): string {
+  return (name ?? "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, "")
+    .replace(/[أإآٱ]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي")
+    .replace(/[^\p{L}\p{N}]+/gu, "");
+}
+
+/** اسمان لمكانٍ واحد: متطابقان مطويَّين، أو أحدُهما داخل الآخر («ستاربكس» و«ستاربكس الملقا»). */
+function sameName(a: string | null, b: string | null) {
+  const x = fold(a);
+  const y = fold(b);
+  if (!x || !y) return false;
+  if (x === y) return true;
+  const [short, long] = x.length <= y.length ? [x, y] : [y, x];
+  return short.length >= 3 && long.includes(short);
+}
 
 /**
  * المكانُ واحدٌ بالاسم، ثمّ بالموضع حين يُعرف للطرفين — «ستاربكس» في حيّين
  * ليس مكاناً واحداً — وإلّا بالمدينة.
  */
 function sameSpot(a: Spot, b: Spot) {
+  if (!sameName(a.placeName, b.placeName)) return false;
   if (a.lat != null && a.lng != null && b.lat != null && b.lng != null) {
     return metres({ lat: a.lat, lng: a.lng }, { lat: b.lat, lng: b.lng }) <= SAME_SPOT_M;
   }
-  return !a.placeCity || !b.placeCity || a.placeCity === b.placeCity;
+  return !a.placeCity || !b.placeCity || fold(a.placeCity) === fold(b.placeCity);
+}
+
+/**
+ * المرشّحون من القاعدة: الاسمُ نفسُه **أو** ما حول الموضع بمربّعٍ يسعه (القاعدة ٤٨٦) —
+ * المطابقةُ في SQL وحدها كانت تُسقط ما اختلفت كتابتُه، والطيُّ والمسافةُ بعدها في `sameSpot`.
+ */
+function around(moment: Spot & { placeName: string }) {
+  const name = { placeName: { equals: moment.placeName, mode: "insensitive" as const } };
+  if (moment.lat == null || moment.lng == null) return name;
+  const dLat = SAME_SPOT_M / 111_000;
+  const dLng = SAME_SPOT_M / (111_000 * Math.max(0.2, Math.cos((moment.lat * Math.PI) / 180)));
+  return {
+    OR: [
+      name,
+      {
+        placeName: { not: null },
+        lat: { gte: moment.lat - dLat, lte: moment.lat + dLat },
+        lng: { gte: moment.lng - dLng, lte: moment.lng + dLng },
+      },
+    ],
+  };
 }
 
 export async function placeVisitors(viewerId: string, momentId: string) {
@@ -68,18 +118,19 @@ export async function placeVisitors(viewerId: string, momentId: string) {
   }
   if (await visitorsOpen()) return openVisitors(viewerId, { ...moment, placeName: moment.placeName });
 
+  const spot = { ...moment, placeName: moment.placeName };
   const since = new Date(Date.now() - VISIT_DAYS * 24 * 60 * 60 * 1000);
   const nearby = (
     await prisma.moment.findMany({
       where: {
-        placeName: { equals: moment.placeName, mode: "insensitive" },
+        ...around(spot),
         createdAt: { gte: since },
         authorId: { not: viewerId },
       },
-      select: { id: true, authorId: true, placeCity: true, lat: true, lng: true },
+      select: { id: true, authorId: true, placeName: true, placeCity: true, lat: true, lng: true },
       take: 2000,
     })
-  ).filter((row) => sameSpot(moment, row));
+  ).filter((row) => sameSpot(spot, row));
 
   if (nearby.length === 0) return { place: moment.placeName, days: VISIT_DAYS, friends: [], others: null };
 
@@ -153,21 +204,24 @@ const PERSON = {
  * والشكلُ شكلُ الوضع القديم (`friends`) فيقرؤه الجوّالُ القائم أسماءً.
  */
 async function openVisitors(viewerId: string, moment: Spot & { placeName: string }) {
+  const spot = moment;
   const since = new Date(Date.now() - OPEN_HOURS * 60 * 60 * 1000);
   const rows = (
     await prisma.moment.findMany({
       where: {
-        placeName: { equals: moment.placeName, mode: "insensitive" },
+        ...around(spot),
         createdAt: { gte: since },
         authorId: { not: viewerId },
         author: { showInVisitors: true },
       },
-      select: { authorId: true, createdAt: true, placeCity: true, lat: true, lng: true },
+      select: { authorId: true, createdAt: true, placeName: true, placeCity: true, lat: true, lng: true },
       orderBy: { createdAt: "desc" },
       take: 2000,
     })
-  ).filter((row) => sameSpot(moment, row));
+  ).filter((row) => sameSpot(spot, row));
 
+  // سطرٌ في السجلّ (القاعدة ٤٨٦): «لم يظهر فلان» يُجاب عنه من `journalctl` لا بالتخمين.
+  console.log(`[من كان هنا] «${moment.placeName}» ← ${viewerId}: ${rows.length} زيارة في ${OPEN_HOURS} ساعة`);
   const base = { place: moment.placeName, days: 1, hours: OPEN_HOURS, open: true, others: null };
   if (rows.length === 0) return { ...base, friends: [] };
 
