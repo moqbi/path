@@ -167,6 +167,52 @@ async function renderRing(stops: Stop[], thickness: number): Promise<Blob> {
   );
 }
 
+/** حلقةٌ رسمها هذا المحرّر: تدرّجُها محفوظ وفراغُها فراغُ سماكةٍ بين ٦ و٣٠ — لا صورةٌ مرفوعة. */
+function madeRing(item: { spec: string; mediaId: string | null; frameHole: number | null }): boolean {
+  if (!item.mediaId || !item.frameHole || !/^conic-gradient/.test(item.spec)) return false;
+  for (let t = 6; t <= 30; t++) {
+    if (Math.round(((SIDE / 2 - 2) * (1 - t / 100) * 2 * 100) / SIDE) === item.frameHole) return true;
+  }
+  return false;
+}
+
+/**
+ * يقصّ وسطَ صورة الإطار المرفوعة دائرةً قطرُها `cut`٪ من عرضها (القاعدة ٤٩٢): الرسمُ يبقى كما هو
+ * والحلقةُ تَرِقّ من الداخل، والوجهُ يكبر ليملأ الفراغ الجديد. يُقرأ الملفُّ بـ`img` لا
+ * `createImageBitmap` (القاعدة ٨٩)، ويُكتب PNG بشفافيّته.
+ */
+async function cutImage(mediaId: string, cut: number): Promise<{ blob: Blob; width: number; height: number }> {
+  const res = await fetch(`/api/media/${mediaId}`, { cache: "no-store" });
+  if (!res.ok) throw new Error("تعذّر قراءة صورة الإطار");
+  const url = URL.createObjectURL(await res.blob());
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("تعذّر قراءة صورة الإطار"));
+      el.src = url;
+    });
+    const width = img.naturalWidth;
+    const height = img.naturalHeight;
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("تعذّر الرسم");
+    ctx.drawImage(img, 0, 0);
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.beginPath();
+    ctx.arc(width / 2, height / 2, ((cut / 100) * width) / 2, 0, Math.PI * 2);
+    ctx.fill();
+    const blob = await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("تعذّر الرسم"))), "image/png"),
+    );
+    return { blob, width, height };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 /**
  * محرّرُ الإطار الواحد (القاعدة ٤٧٦) — **بقرار المالك**: كان ضبطُ الإطار على الصورة والإطارُ الملوّن
  * بطاقتين بمعاينتين، فتغييرُ السماكة لا يُرى على الضبط ولا الضبطُ على السماكة. الآن معاينةٌ واحدة
@@ -194,13 +240,22 @@ export function FrameEditor({
   });
   // بلا صورةٍ محفوظة فالمعاينةُ حلقةٌ من البداية، والحفظُ يرسمها.
   const [ringDirty, setRingDirty] = useState(!item.mediaId);
+  /*
+    صورةٌ مرفوعة لا حلقةٌ رُسمت هنا (القاعدة ٤٩٢): السماكةُ فيها قصٌّ من الداخل لا حلقةٌ ملوّنة
+    تحلّ محلّها — كان تحريكُ الشريط يُذهب الصورةَ ويرسم تدرّجاً مكانها. والقصُّ قطرُ الفراغ
+    الجديد، يبدأ من فراغها المقيس (أو ٣٠ بلا قياس) ولا ينزل عنه: ما قُصّ لا يعود بعد الحفظ.
+  */
+  const image = !!item.mediaId && !madeRing(item);
+  const baseHole = item.frameHole && item.frameHole >= 20 ? item.frameHole : 30;
+  const [cut, setCut] = useState(baseHole);
+  const cutDirty = image && !ringDirty && cut > baseHole;
   const [fit, setFit] = useState<Fit>(() => parseFit(item.fit));
   const [note, setNote] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const drag = useRef<{ x: number; y: number; fit: Fit } | null>(null);
 
   const ringHole = Math.round(((SIDE / 2 - 2) * (1 - thickness / 100) * 2 * 100) / SIDE);
-  const hole = ringDirty ? ringHole : item.frameHole;
+  const hole = ringDirty ? ringHole : cutDirty ? cut : item.frameHole;
   const zoom = hole && hole >= 20 && hole <= 99 ? (100 / hole) * 0.95 : 1;
   const art = PREVIEW * zoom * (fit.s / 100);
   const unit = art / 100;
@@ -211,6 +266,7 @@ export function FrameEditor({
   // الحلقةُ في اللوحة: حافّتُها الخارجيّة ٢٥٤ من ٢٥٦، والداخليّةُ بسماكتها.
   const edge = ((SIDE / 2 - 2) / (SIDE / 2)) * 100;
   const ring = `radial-gradient(farthest-side, transparent calc(${edge * (1 - thickness / 100)}% - 0.5px), #000 ${edge * (1 - thickness / 100)}%, #000 calc(${edge}% - 0.5px), transparent ${edge}%)`;
+  const hollow = `radial-gradient(farthest-side, transparent calc(${cut}% - 0.5px), #000 ${cut}%)`;
 
   const ringEdit = (next: () => void) => {
     next();
@@ -223,7 +279,15 @@ export function FrameEditor({
   const save = () =>
     start(async () => {
       try {
-        if (ringDirty) {
+        if (cutDirty && item.mediaId) {
+          const { blob, width, height } = await cutImage(item.mediaId, cut);
+          const data = new FormData();
+          data.set("image", new File([blob], "frame.png", { type: "image/png" }));
+          data.set("width", String(width));
+          data.set("height", String(height));
+          data.set("hole", String(Math.round(cut)));
+          await setItemImage(itemId, data);
+        } else if (ringDirty) {
           const blob = await renderRing(stops, thickness);
           const data = new FormData();
           data.set("image", new File([blob], "frame.png", { type: "image/png" }));
@@ -237,7 +301,7 @@ export function FrameEditor({
         const error = await setItemFit(itemId, fit);
         if (error) return setNote(error);
         setRingDirty(false);
-        setNote(ringDirty ? "تمّ الحفظ — الإطار صورةٌ بضبطه" : "تمّ الحفظ");
+        setNote(ringDirty ? "تمّ الحفظ — الإطار صورةٌ بضبطه" : cutDirty ? "تمّ الحفظ — قُصّ الإطار من الداخل" : "تمّ الحفظ");
       } catch (error) {
         setNote(error instanceof Error ? error.message : "تعذّر الحفظ");
       }
@@ -284,6 +348,26 @@ export function FrameEditor({
                 background: conic,
                 WebkitMask: ring,
                 mask: ring,
+              }}
+            />
+          </div>
+        ) : cutDirty ? (
+          <div className="relative" style={{ width: PREVIEW, height: PREVIEW }}>
+            <Avatar name={me.name} size={PREVIEW} mediaId={me.avatarMediaId} />
+            <div
+              className="pointer-events-none absolute"
+              style={{
+                width: art,
+                height: art,
+                left: (PREVIEW - art) / 2,
+                top: (PREVIEW - art) / 2,
+                transform: `translate(${fit.x}%, ${fit.y}%)`,
+                backgroundImage: `url(/api/media/${item.mediaId})`,
+                backgroundSize: "contain",
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat",
+                WebkitMask: hollow,
+                mask: hollow,
               }}
             />
           </div>
@@ -339,6 +423,23 @@ export function FrameEditor({
         ) : null}
       </div>
 
+      {image && !ringDirty ? (
+        <label className="mt-3 flex items-center gap-2 text-[11.5px] text-muted">
+          <span className="w-24 shrink-0">السماكة — {cut > baseHole ? `−${Math.round(cut - baseHole)}٪` : "كما رُفعت"}</span>
+          <input
+            type="range"
+            min={baseHole}
+            max={95}
+            value={cut}
+            onChange={(event) => {
+              setCut(Number(event.target.value));
+              setNote(null);
+            }}
+            className="min-w-0 grow"
+            aria-label="سماكة الإطار — قصٌّ من الداخل"
+          />
+        </label>
+      ) : (
       <label className="mt-3 flex items-center gap-2 text-[11.5px] text-muted">
         <span className="w-24 shrink-0">السماكة — {thickness}٪</span>
         <input
@@ -350,6 +451,7 @@ export function FrameEditor({
           className="min-w-0 grow"
         />
       </label>
+      )}
       <label className="mt-2 flex items-center gap-2 text-[11.5px] text-muted">
         <span className="w-24 shrink-0">المقاس — {Math.round(fit.s)}٪</span>
         <input
@@ -379,12 +481,13 @@ export function FrameEditor({
         >
           أعِد الموضع
         </button>
-        {ringDirty && item.mediaId ? (
+        {(ringDirty || cutDirty) && item.mediaId ? (
           <button
             type="button"
             onClick={() => {
               setRingDirty(false);
               setStops(stopsOf(item.spec));
+              setCut(baseHole);
               setNote(null);
             }}
             className="h-10 rounded-xl border border-line px-3 text-[12px] font-semibold text-muted"
@@ -396,6 +499,11 @@ export function FrameEditor({
       </div>
       {ringDirty && item.mediaId ? (
         <p className="mt-2 text-[11px] text-faint">الحفظُ يستبدل صورةَ الإطار المرفوعة بهذه الحلقة.</p>
+      ) : cutDirty ? (
+        <p className="mt-2 text-[11px] text-faint">
+          القصُّ من الداخل: الرسمُ يبقى، والحلقةُ ترِقّ، والوجهُ يكبر ليملأ فراغها. بعد الحفظ لا تعود السماكةُ أعرضَ
+          ممّا هي — لأعرضَ منها ارفع الصورةَ من جديد.
+        </p>
       ) : null}
     </div>
   );
