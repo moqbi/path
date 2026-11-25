@@ -7,7 +7,7 @@ import { BETA_DEVICES, CONTACT_REASONS, TOPIC_LABEL, type ContactReason } from "
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { createSession, destroySession, hashPassword, requireUser, verifyPassword } from "@/lib/auth";
+import { createSession, destroySession, hashPassword, requirePanel, verifyPassword } from "@/lib/auth";
 import { HEX_COLOR, PALETTE_KEYS, paletteSpec, parsePalette } from "@/lib/theme";
 import { dropMedia, migrateToCloud, storeModerated, storeSiteShot, storeSticker, storeUpload } from "@/lib/media";
 import { cloudReady, deleteObjects, probeBucket } from "@/lib/storage";
@@ -60,13 +60,14 @@ export async function signIn(
 
   const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
   // رسالة واحدة للحالتين حتى لا يكشف النموذج أي البُرد مسجَّلة.
-  // ومن دخل بمزوّدٍ ولا كلمةَ له لا يدخل من هنا — واللوحةُ للمالك أصلاً.
+  // ومن دخل بمزوّدٍ ولا كلمةَ له يفتحها من زرّ «لوحة التحكم» في إعدادات التطبيق (القاعدة ٤٩٣).
   const ok = await checkPassword(parsed.data.password, user?.passwordHash ?? null);
   if (!user || !ok) return { error: "البريد أو كلمة المرور غير صحيحة" };
 
   clear(byMail);
   await createSession(user.id, user.passwordHash);
-  redirect("/admin");
+  // الكلمةُ وحدها لا تفتح اللوحة (القاعدة ٤٩٣): من له صلاحيةٌ يمرّ بالتحقّق الثنائيّ.
+  redirect("/login/verify");
 }
 
 export async function signOut(): Promise<void> {
@@ -95,7 +96,7 @@ function picture(formData: FormData): { file: File; width: number; height: numbe
  * الصلاحيات نفسها، فتلك للمالك وحده وإلا منح المشرفُ نفسَه ما شاء.
  */
 async function requireAdmin(area: "store" | "reports" | "panel" = "panel") {
-  const user = await requireUser();
+  const user = await requirePanel();
   const row = await prisma.user.findUnique({
     where: { id: user.id },
     select: { role: true, adminScope: true },
@@ -113,7 +114,7 @@ async function requireAdmin(area: "store" | "reports" | "panel" = "panel") {
 
 /** منح الصلاحيات وسحبها: للمالك وحده. */
 async function requireOwner() {
-  const user = await requireUser();
+  const user = await requirePanel();
   const row = await prisma.user.findUnique({
     where: { id: user.id },
     select: { role: true },
@@ -824,6 +825,18 @@ export async function setAdminScope(userId: string, formData: FormData): Promise
   revalidatePath("/admin", "layout");
 }
 
+/**
+ * إعادةُ ضبط التحقّق الثنائيّ لمشرفٍ فقد جوّاله (القاعدة ٤٩٣): للمالك وحده، ولا على نفسه —
+ * المالكُ يُعاد ضبطُه من الخادم (`OPS.md`). والسرُّ يُمحى فتسقط جلساتُ لوحته في الحال
+ * (بصمتُه في الكوكي)، ويضبطه من جديد مع دخوله التالي.
+ */
+export async function resetTotp(userId: string): Promise<void> {
+  const owner = await requireOwner();
+  if (userId === owner.id) return;
+  await prisma.user.update({ where: { id: userId }, data: { totpSecret: null, totpStep: null } });
+  revalidatePath("/admin", "layout");
+}
+
 // ─────────────────────── الإشراف على المحتوى ───────────────────────
 
 /**
@@ -833,7 +846,7 @@ export async function setAdminScope(userId: string, formData: FormData): Promise
  * وتحذفها، فلا يكفي أن تكون الصفحة مخفيّة (القاعدة ١٣).
  */
 async function requireModerator() {
-  const user = await requireUser();
+  const user = await requirePanel();
   const row = await prisma.user.findUnique({
     where: { id: user.id },
     select: { role: true, canModerate: true },
@@ -1275,7 +1288,7 @@ async function writeEmail(userId: string, email: string): Promise<AdminResult> {
  * «مؤكَّد» — وحتى ذلك اليوم كلمةُ المرور هي الحارس.
  */
 export async function changeEmail(_prev: AdminResult, formData: FormData): Promise<AdminResult> {
-  const user = await requireUser();
+  const user = await requirePanel();
 
   const password = String(formData.get("password") ?? "");
   const row = await prisma.user.findUnique({
@@ -2636,7 +2649,7 @@ export async function fixAccount(userId: string, _prev: AdminResult, formData: F
  * سطرٌ في السجلّ بما كان قبله — فيُعرف ما أُزيل ومن أزاله.
  */
 export async function moderateProfile(userId: string, _prev: AdminResult, formData: FormData): Promise<AdminResult> {
-  const actor = await requireUser();
+  const actor = await requirePanel();
   const me = await prisma.user.findUnique({
     where: { id: actor.id },
     select: { role: true, adminScope: true, canModerate: true },
@@ -2710,7 +2723,7 @@ export async function adminFind(raw: string): Promise<{
   people: { id: string; memberNo: number; name: string; email: string | null; isPlus: boolean }[];
   items: { id: string; name: string; kind: string; hidden: boolean }[];
 }> {
-  const user = await requireUser();
+  const user = await requirePanel();
   const row = await prisma.user.findUnique({ where: { id: user.id }, select: { role: true, adminScope: true } });
   const all = row?.role === "ADMIN" || row?.adminScope === "ALL";
   const store = all || row?.adminScope === "STORE";
@@ -2897,7 +2910,7 @@ export async function setVisitorsOpen(_prev: AdminResult, formData: FormData): P
 // والدرجةُ من الصفّ في كلّ إجراء لا من الجلسة (القاعدة ١٣).
 
 async function requireBlogger() {
-  const user = await requireUser();
+  const user = await requirePanel();
   const row = await prisma.user.findUnique({
     where: { id: user.id },
     select: { role: true, adminScope: true, canBlog: true },

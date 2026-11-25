@@ -11,7 +11,7 @@ import { SignInForm } from "./form";
  */
 export default async function LoginPage() {
   const user = await currentUser();
-  if (user) redirect("/admin");
+  if (user) redirect(user.panelPending ? "/login/verify" : "/admin");
 
   return (
     <div className="screen">

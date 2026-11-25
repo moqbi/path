@@ -129,6 +129,9 @@ export const profileRoutes = new Hono()
   /** الدعم داخل التطبيق: الرسالة تُحفظ والردّ يُقرأ في مكانه. */
   .get("/support", async (c) => c.json(await profile.tickets(me(c))))
 
+  /** رابطُ اللوحة لمرّةٍ واحدة (القاعدة ٤٩٣) — لمن له صلاحيةٌ فيها. */
+  .post("/admin/link", async (c) => c.json(await profile.adminLink(me(c))))
+
   /** رابطُ نظام التذاكر في الويب لمرّةٍ واحدة (القاعدة ٤٨٠) — يُطلب ساعةَ الضغط. */
   .post(
     "/support/link",

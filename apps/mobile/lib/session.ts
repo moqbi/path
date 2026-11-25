@@ -48,6 +48,8 @@ export type Me = {
   canModerate: boolean;
   /** إنشاءُ المحادثات الجماعيّة وإدارتُها — المالك وممنوحُ اللوحة كلّها. */
   canGroups?: boolean;
+  /** له صلاحيةٌ في اللوحة — زرُّها في الإعدادات (القاعدة ٤٩٣). خادمٌ قديمٌ لا يرسله. */
+  canPanel?: boolean;
   /** إيقافٌ مؤقّت — `null` أو تاريخٌ مضى يعني «غير موقوف». */
   suspendedUntil: string | null;
   suspendedReason: string | null;

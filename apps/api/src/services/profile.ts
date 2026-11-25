@@ -34,6 +34,7 @@ export async function me(userId: string) {
       role: true,
       adminScope: true,
       canModerate: true,
+      canBlog: true,
       suspendedUntil: true,
       suspendedReason: true,
       isPlus: true,
@@ -90,6 +91,8 @@ export async function me(userId: string) {
     canModerate: user.role === "ADMIN" || user.canModerate,
     // إنشاءُ المجموعات وإدارتُها (القاعدة ٢١٥).
     canGroups: user.role === "ADMIN" || user.adminScope === "ALL",
+    // زرُّ «لوحة التحكم» في الإعدادات (القاعدة ٤٩٣) لكلّ من له صلاحيةٌ فيها.
+    canPanel: hasPanelPower(user),
     // «من كان هنا» مفتوحةٌ من اللوحة (القاعدة ٤٨٥) — بها يظهر مفتاحُ «أظهرني» في الخصوصية.
     visitorsOpen: await visitorsOpen(),
   };
@@ -556,6 +559,34 @@ function ticketState(closed: boolean, lockedAt: Date | null, lastFromStaff: bool
  * `/tickets/enter` على الويب فيفتح جلسةً هناك ويمضي إلى التذكرة. دقيقتان عمرُه:
  * يُطلب ساعةَ الضغط ويُفتح في المتصفّح المدمج في الحال. ومجزَّأً يُخزَّن (القاعدة ١١٩ب).
  */
+/** له صلاحيةٌ في اللوحة — نسخةُ `hasPanelPower` في `apps/web/src/lib/auth.ts`. */
+function hasPanelPower(row: { role: string; adminScope: string; canModerate: boolean; canBlog: boolean }) {
+  return row.role === "ADMIN" || row.adminScope !== "NONE" || row.canModerate || row.canBlog;
+}
+
+/**
+ * رابطُ اللوحة لمرّةٍ واحدة (القاعدة ٤٩٣): دقيقتان، لمن له صلاحيةٌ وحده، ويُستهلك في
+ * `/login/enter` ثمّ التحقّقُ الثنائيّ. يقوم مقام كلمة المرور لمن دخل بمزوّد.
+ */
+export async function adminLink(userId: string) {
+  if (!hasSite()) throw badRequest("اللوحة غير متاحة الآن");
+  const row = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, adminScope: true, canModerate: true, canBlog: true },
+  });
+  if (!row || !hasPanelPower(row)) throw notFound("غير موجود");
+  const token = randomBytes(32).toString("base64url");
+  await prisma.emailToken.create({
+    data: {
+      userId,
+      kind: "ADMIN",
+      tokenHash: createHash("sha256").update(token).digest("hex"),
+      expiresAt: new Date(Date.now() + 2 * 60_000),
+    },
+  });
+  return { url: `${SITE_URL.replace(/\/+$/, "")}/login/enter?token=${token}` };
+}
+
 export async function ticketsLink(userId: string, ticketId?: string | null) {
   if (!hasSite()) throw badRequest("نظام التذاكر غير متاح الآن");
   if (ticketId) {

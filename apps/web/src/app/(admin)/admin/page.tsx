@@ -802,6 +802,8 @@ export default async function AdminPage({
   const view = v === "cats" || v === "packs" || v === "collections" || v === "invites" ? v : "items";
   const user = await currentUser();
   if (!user) redirect("/login");
+  // له صلاحيةٌ ولم يتحقّق بعد: التحقّقُ الثنائيّ قبل اللوحة (القاعدة ٤٩٣).
+  if (user.panelPending) redirect("/login/verify");
 
   /*
     اللوحة ثلاث درجات: المالك (`ADMIN`)، وممنوحُ اللوحة كاملةً (`ALL`)،

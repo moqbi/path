@@ -5,6 +5,7 @@ import { promisify } from "node:util";
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import { prisma } from "@/lib/db";
+import { totpMark } from "@/lib/totp";
 
 const scrypt = promisify(scryptCallback) as (
   password: string,
@@ -14,6 +15,14 @@ const scrypt = promisify(scryptCallback) as (
 
 const SESSION_COOKIE = "athar_session";
 const SESSION_DAYS = 30;
+/*
+  جلسةُ اللوحة كوكي ثانٍ فوق الجلسة (القاعدة ٤٩٣): يُكتب بعد التحقّق الثنائيّ وحده، ويعيش
+  اثنتي عشرة ساعة لا ثلاثين يوماً. الجلسةُ وحدها — من دخول الويب أو رابط التذاكر — لا تُعطي
+  صلاحيةً في اللوحة: كان كوكي واحدٌ يفتح التطبيقَ واللوحةَ معاً، فمن سُرقت جلستُه في `/app`
+  سُرقت لوحتُه.
+*/
+const PANEL_COOKIE = "athar_panel";
+const PANEL_HOURS = 12;
 
 function secret(): Uint8Array {
   const value = process.env.AUTH_SECRET;
@@ -75,6 +84,60 @@ export async function createSession(userId: string, passwordHash: string | null)
 export async function destroySession(): Promise<void> {
   const store = await cookies();
   store.delete(SESSION_COOKIE);
+  store.delete(PANEL_COOKIE);
+}
+
+/** يفتح اللوحة بعد التحقّق الثنائيّ: مربوطةً بالحساب وبصمتَي الكلمة والسرّ. */
+export async function createPanelSession(
+  userId: string,
+  passwordHash: string | null,
+  totpSecret: string,
+): Promise<void> {
+  const token = await new SignJWT({ sub: userId, pv: passwordMark(passwordHash), tv: totpMark(totpSecret) })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(`${PANEL_HOURS}h`)
+    .sign(secret());
+  const store = await cookies();
+  store.set(PANEL_COOKIE, token, {
+    httpOnly: true,
+    // `strict`: رابطٌ من موقعٍ آخر لا يحمل صلاحيةَ اللوحة معه.
+    sameSite: "strict",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: PANEL_HOURS * 60 * 60,
+  });
+}
+
+/** يُغلق اللوحة ويُبقي الجلسة — «خروج من اللوحة». */
+export async function closePanel(): Promise<void> {
+  const store = await cookies();
+  store.delete(PANEL_COOKIE);
+}
+
+async function readPanel(): Promise<{ id: string; pv: string; tv: string } | null> {
+  const store = await cookies();
+  const token = store.get(PANEL_COOKIE)?.value;
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, secret(), { algorithms: ["HS256"] });
+    if (typeof payload.sub !== "string" || typeof payload.pv !== "string" || typeof payload.tv !== "string") {
+      return null;
+    }
+    return { id: payload.sub, pv: payload.pv, tv: payload.tv };
+  } catch {
+    return null;
+  }
+}
+
+/** له صلاحيةٌ في اللوحة — من الصفّ لا من الجلسة. */
+export function hasPanelPower(row: {
+  role: "USER" | "ADMIN";
+  adminScope: "NONE" | "STORE" | "REPORTS" | "ALL";
+  canModerate: boolean;
+  canBlog: boolean;
+}): boolean {
+  return row.role === "ADMIN" || row.adminScope !== "NONE" || row.canModerate || row.canBlog;
 }
 
 /** الجلسة من الكوكي: المعرّف وبصمة الكلمة، أو null إن لم توجد جلسة صالحة. */
@@ -143,6 +206,12 @@ export type SessionUser = {
   background: { spec: string; mediaId: string | null; palette: string | null } | null;
   charm: { spec: string; mediaId: string | null } | null;
   tag: { name: string; bg: string; fg: string } | null;
+  /// اللوحةُ مفتوحة: جلسةُ لوحةٍ صالحة بعد التحقّق الثنائيّ (القاعدة ٤٩٣).
+  panel: boolean;
+  /// له صلاحيةٌ ولم يتحقّق بعد — اللوحةُ تُحيله إلى `/login/verify`.
+  panelPending: boolean;
+  /// ضبط التحقّقَ الثنائيّ من قبل.
+  hasTotp: boolean;
 };
 
 /**
@@ -179,6 +248,7 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
       coverY: true,
       lastSeenAt: true,
       passwordHash: true,
+      totpSecret: true,
       frameId: true,
       backgroundId: true,
       charmId: true,
@@ -194,6 +264,19 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
 
   await touch(user.id, user.lastSeenAt);
 
+  /*
+    الصلاحياتُ لا تُقرأ إلا وجلسةُ اللوحة صالحة: لنفس الحساب، وبنفس الكلمة، وبنفس السرّ.
+    وبلاها يُقرأ صاحبُها مستخدماً عاديّاً في كلّ صفحةٍ وإجراء — فلا تُنسى في واحد.
+  */
+  const power = hasPanelPower(user);
+  const panelToken = power && user.totpSecret ? await readPanel() : null;
+  const panel = Boolean(
+    panelToken &&
+      panelToken.id === user.id &&
+      panelToken.pv === passwordMark(user.passwordHash) &&
+      panelToken.tv === totpMark(user.totpSecret),
+  );
+
   // الاشتراك المنتهي يُقرأ كغير مشترك دون انتظار مهمة تنظيف.
   const active = user.isPlus && (!user.plusUntil || user.plusUntil > new Date());
 
@@ -208,10 +291,13 @@ export const currentUser = cache(async function currentUser(): Promise<SessionUs
     isPlus: active,
     coins: user.coins,
     createdAt: user.createdAt,
-    role: user.role,
-    adminScope: user.adminScope,
-    canModerate: user.role === "ADMIN" || user.canModerate,
-    canBlog: user.role === "ADMIN" || user.adminScope === "ALL" || user.canBlog,
+    role: panel ? user.role : "USER",
+    adminScope: panel ? user.adminScope : "NONE",
+    canModerate: panel && (user.role === "ADMIN" || user.canModerate),
+    canBlog: panel && (user.role === "ADMIN" || user.adminScope === "ALL" || user.canBlog),
+    panel,
+    panelPending: power && !panel,
+    hasTotp: Boolean(user.totpSecret),
     // انقضى = غير موقوف: التاريخ يبقى في الصفّ ولا يُقرأ حظراً.
     suspendedUntil:
       user.suspendedUntil && user.suspendedUntil > new Date() ? user.suspendedUntil : null,
@@ -246,5 +332,15 @@ export async function requireUser(): Promise<SessionUser> {
       }).format(user.suspendedUntil)}${user.suspendedReason ? ` — ${user.suspendedReason}` : ""}`,
     );
   }
+  return user;
+}
+
+/**
+ * بوّابةُ كلّ إجراءٍ في اللوحة: مستخدمٌ غيرُ موقوف وجلسةُ لوحته صالحة. والدرجةُ بعدها تُقرأ
+ * من الصفّ في كلّ إجراء (القاعدة ١٣) — هذه تقول «تحقّق»، وتلك تقول «مسموح».
+ */
+export async function requirePanel(): Promise<SessionUser> {
+  const user = await requireUser();
+  if (!user.panel) throw new Error("افتح اللوحة بالتحقّق الثنائيّ أوّلاً");
   return user;
 }
