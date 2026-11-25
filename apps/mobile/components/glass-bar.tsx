@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Animated, View, Pressable, Platform, PanResponder, type ViewInstance } from "react-native";
 import * as Haptics from "expo-haptics";
+import { useVerticalBar } from "../lib/vertical-bar";
 import * as Notifications from "expo-notifications";
 import { BlurView } from "expo-blur";
 import { LiquidGlass, LiquidLens } from "../lib/liquid-glass";
@@ -40,6 +41,9 @@ export const NATIVE_TABS = Platform.OS === "ios" && !Platform.isPad;
 /** ما يتركه المحتوى في أسفله ليُقرأ آخرُه فوق الشريط لا تحته. */
 export function useBarSpace() {
   const insets = useSafeAreaInsets();
+  // شريطٌ في جانب الشاشة لا يأخذ من أسفلها شيئاً (القاعدة ٤٩٤).
+  const side = useVerticalBar();
+  if (NATIVE_TABS && side.vertical) return barBottom(insets.bottom) + 16;
   return barBottom(insets.bottom) + PILL + 16;
 }
 
