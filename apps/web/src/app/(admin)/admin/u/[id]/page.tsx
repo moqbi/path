@@ -6,7 +6,7 @@ import { currentUser } from "@/lib/auth";
 import { ScreenHeader } from "@/components/ui";
 import { ar, relative, timeOfDay } from "@/lib/format";
 import { linkedAccounts } from "@/lib/linked";
-import { setOpenAccount, setUserTag } from "@/app/actions";
+import { resetTotp, setOpenAccount, setUserTag } from "@/app/actions";
 import { TagPill } from "@/components/ui";
 import { coinText } from "@/lib/format";
 import { Suspend } from "../../suspend";
@@ -53,6 +53,8 @@ export default async function ModeratedProfile({
 
   const viewer = await currentUser();
   if (!viewer) redirect("/login");
+  // له صلاحيةٌ ولم يتحقّق بعد: التحقّقُ الثنائيّ قبل اللوحة (القاعدة ٤٩٣).
+  if (viewer.panelPending) redirect("/login/verify");
   /*
     صفحةُ الحساب لمن يدير الحسابات (المالك وممنوحُ اللوحة كلّها) ولمن يملك الإشراف.
     ولا لحظاتَ فيها (القاعدة ٤٥٤): الإشرافُ على المحتوى يجري حيث يُقرأ (القاعدة ١١٤).
@@ -71,6 +73,7 @@ export default async function ModeratedProfile({
       email: true,
       emailVerifiedAt: true,
       passwordHash: true,
+      totpSecret: true,
       city: true,
       lastCity: true,
       bio: true,
@@ -461,6 +464,14 @@ export default async function ModeratedProfile({
                     {person.isOpen ? "أغلقه" : "افتحه للجميع"}
                   </button>
                   <span className="text-[11px] text-faint">{person.isOpen ? "مفتوح — يُضيفه الجميع" : "حسابٌ عاديّ"}</span>
+                </form>
+              ) : null}
+              {owner && person.totpSecret && person.role !== "ADMIN" ? (
+                <form action={resetTotp.bind(null, person.id)} className="flex items-center gap-2 border-t border-line px-4 py-2.5">
+                  <button type="submit" className="text-[12px] font-semibold" style={{ color: "var(--color-live)" }}>
+                    أعد ضبط التحقّق الثنائيّ
+                  </button>
+                  <span className="text-[11px] text-faint">لمن فقد جوّاله — يُخرجه من اللوحة ويضبطه مع دخوله التالي</span>
                 </form>
               ) : null}
             </div>

@@ -21,6 +21,7 @@ import { ar } from "../../lib/format";
 import { brandGradient, colors } from "../../theme/tokens";
 import { FollowRow } from "../../components/social";
 import { versionLine } from "../../lib/version";
+import { showToast } from "../../components/accounts-sheet";
 
 type Group = { id: string; name: string; count: number };
 
@@ -38,6 +39,29 @@ export default function Settings() {
   const client = useQueryClient();
   const me = useSession((state) => state.me);
   const refresh = useSession((state) => state.refresh);
+
+  /*
+    بابُ اللوحة (القاعدة ٤٩٣): رابطٌ لمرّةٍ واحدة بدقيقتين يُطلب ساعةَ الضغط، ويُفتح في سفاري.
+    والفشلُ سطرٌ في أعلى الشاشة لا صمت.
+  */
+  const [openingPanel, setOpeningPanel] = useState(false);
+  async function openPanel() {
+    if (openingPanel) return;
+    setOpeningPanel(true);
+    try {
+      const { url } = await api<{ url: string }>("/v1/me/admin/link", { method: "POST", body: "{}" });
+      await Linking.openURL(url);
+    } catch (problem) {
+      showToast({
+        name: "",
+        avatarMediaId: me?.avatarMediaId ?? null,
+        lead: problem instanceof Error ? problem.message : "تعذّر فتح اللوحة",
+        place: "top",
+      });
+    } finally {
+      setOpeningPanel(false);
+    }
+  }
 
   const circle = useQuery({
     queryKey: keys.circle,
@@ -278,16 +302,19 @@ export default function Settings() {
         </Section>
 
         {/*
-          لوحة التحكم للمشرف وحده، وبابُها هنا: الإعدادات درجُ التطبيق،
+          لوحة التحكم لمن له صلاحيةٌ فيها، وبابُها هنا: الإعدادات درجُ التطبيق،
           ولا تستحق اللوحةُ تبويباً دائماً يراه الجميع ولا يفتحه أحد.
+          والضغطةُ تطلب رابطاً لمرّةٍ واحدة (القاعدة ٤٩٣) يقوم مقام كلمة المرور — فمن دخل
+          بقوقل أو آبل أو سناب يصل لوحتَه — ثمّ التحقّقُ الثنائيّ في المتصفّح. وفي سفاري
+          لا المتصفّح المدمج: جلسةُ اللوحة تبقى هناك اثنتي عشرة ساعة.
           والدرجة تُفحص في اللوحة نفسها لا هنا (القاعدة ١٣).
         */}
-        {me?.role === "ADMIN" && hasSite() ? (
+        {(me?.canPanel ?? me?.role === "ADMIN") && hasSite() ? (
           <Link
             title="لوحة التحكم"
-            note="تُفتح في المتصفّح — الأصناف والباقات والبلاغات والحسابات"
+            note="تُفتح في المتصفّح ثمّ رمز التحقّق الثنائيّ"
             right={<ShieldIcon size={18} color={colors.clayInk} />}
-            onPress={() => void Linking.openURL(`${SITE_URL}/admin`)}
+            onPress={() => void openPanel()}
           />
         ) : null}
 
