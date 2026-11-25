@@ -787,9 +787,9 @@ function NavIcon({ name }: { name: string }) {
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ s?: string; v?: string; q?: string; k?: string; open?: string; m?: string; f?: string }>;
+  searchParams: Promise<{ s?: string; v?: string; q?: string; k?: string; open?: string; m?: string; f?: string; t?: string }>;
 }) {
-  const { s: raw, v, q, k, open, m, f } = await searchParams;
+  const { s: raw, v, q, k, open, m, f, t } = await searchParams;
   // «الدعم» و«البلاغات» صارا «الصندوق» (القاعدة ٤٨٣) — والروابطُ القديمة لا تنكسر.
   if (raw === "support" || raw === "reports") {
     const keep = new URLSearchParams({ s: "inbox" });
@@ -2631,7 +2631,7 @@ export default async function AdminPage({
           </>
         ) : null}
 
-        {section === "analytics" ? <AnalyticsSection month={m} /> : null}
+        {section === "analytics" ? <AnalyticsSection month={m} test={t === "all"} /> : null}
         {section === "stickers" ? <StickersSection /> : null}
         {section === "broadcasts" ? <BroadcastsSection /> : null}
         {section === "occasions" ? <OccasionsSection /> : null}

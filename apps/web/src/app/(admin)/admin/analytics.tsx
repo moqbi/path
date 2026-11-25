@@ -212,7 +212,7 @@ function Change({ now, before }: { now: number; before: number | null }) {
   من اللوحة وحدها خارجُه — المنحُ لا يُحسب في الإحصاءات.
 */
 
-export async function AnalyticsSection({ month }: { month?: string }) {
+export async function AnalyticsSection({ month, test = false }: { month?: string; test?: boolean }) {
   const now = Date.now();
   const firstUser = await prisma.user.findFirst({ orderBy: { createdAt: "asc" }, select: { createdAt: true } });
   const first = firstUser?.createdAt ?? new Date(now);
@@ -224,7 +224,9 @@ export async function AnalyticsSection({ month }: { month?: string }) {
   const { span, prev } = period;
   const ago = (days: number) => new Date(now - days * DAY);
   // الحقيقيُّ وحده (القاعدة ٤٩١): الاختبارُ لا يُعدّ، وما قبل التمييز لا يُخمَّن.
-  const bought = (when: Span) => ({ source: "STORE", sandbox: false, createdAt: when });
+  // و«مع الاختبار» (`t=all`) يعدّ الكلَّ: الاختبارَ وما قبل التمييز — لمن يريد أن يرى ما جرى.
+  const realOnly = test ? undefined : false;
+  const bought = (when: Span) => ({ source: "STORE", sandbox: realOnly, createdAt: when });
 
   const distinctActive = (from: Date, to: Date) =>
     prisma.$queryRaw<{ n: number }[]>`
@@ -262,16 +264,16 @@ export async function AnalyticsSection({ month }: { month?: string }) {
     prisma.user.count({ where: { lastSeenAt: { gte: ago(30) } } }),
     prisma.$queryRaw<{ n: number }[]>`
       SELECT COUNT(*)::int AS n FROM "User" u
-      WHERE u."isPlus" AND u."plusUntil" > ${new Date(now)} AND (EXISTS (SELECT 1 FROM "BillingEvent" b WHERE b."appUserId" = u."id" AND b."type" <> 'NON_RENEWING_PURCHASE' AND b."sandbox" = false)
+      WHERE u."isPlus" AND u."plusUntil" > ${new Date(now)} AND (EXISTS (SELECT 1 FROM "BillingEvent" b WHERE b."appUserId" = u."id" AND b."type" <> 'NON_RENEWING_PURCHASE' AND (${test} OR b."sandbox" = false))
         OR EXISTS (SELECT 1 FROM "PlusGift" g WHERE g."recipientId" = u."id" AND g."status" = 'DONE'
-          AND EXISTS (SELECT 1 FROM "BillingEvent" e WHERE e."id" = g."eventId" AND e."sandbox" = false)))`.then((rows) => rows[0]?.n ?? 0),
+          AND EXISTS (SELECT 1 FROM "BillingEvent" e WHERE e."id" = g."eventId" AND (${test} OR e."sandbox" = false))))`.then((rows) => rows[0]?.n ?? 0),
     prisma.story.count({ where: { expiresAt: { gt: new Date(now) } } }),
     prisma.statusNote.count({ where: { expiresAt: { gt: new Date(now) } } }),
   ]);
 
   const subscribers = (type: string, at: Span) =>
     prisma.billingEvent
-      .findMany({ where: { type, at, sandbox: false }, distinct: ["appUserId"], select: { appUserId: true } })
+      .findMany({ where: { type, at, sandbox: realOnly }, distinct: ["appUserId"], select: { appUserId: true } })
       .then((rows) => rows.length);
   const gifted = (doneAt: Span) =>
     prisma.plusGift
@@ -279,16 +281,16 @@ export async function AnalyticsSection({ month }: { month?: string }) {
       .then(async (rows) => {
         const ids = rows.map((row) => row.eventId).filter((id): id is string => Boolean(id));
         const real = new Set(
-          (await prisma.billingEvent.findMany({ where: { id: { in: ids }, sandbox: false }, select: { id: true } })).map((row) => row.id),
+          (await prisma.billingEvent.findMany({ where: { id: { in: ids }, sandbox: realOnly }, select: { id: true } })).map((row) => row.id),
         );
         return rows.filter((row) => row.eventId && real.has(row.eventId)).length;
       });
   const ended = (at: Span) =>
     prisma.$queryRaw<{ n: number }[]>`
       SELECT COUNT(*)::int AS n FROM "User" u
-      WHERE u."plusEndedAt" >= ${at.gte} AND u."plusEndedAt" < ${at.lt} AND (EXISTS (SELECT 1 FROM "BillingEvent" b WHERE b."appUserId" = u."id" AND b."type" <> 'NON_RENEWING_PURCHASE' AND b."sandbox" = false)
+      WHERE u."plusEndedAt" >= ${at.gte} AND u."plusEndedAt" < ${at.lt} AND (EXISTS (SELECT 1 FROM "BillingEvent" b WHERE b."appUserId" = u."id" AND b."type" <> 'NON_RENEWING_PURCHASE' AND (${test} OR b."sandbox" = false))
         OR EXISTS (SELECT 1 FROM "PlusGift" g WHERE g."recipientId" = u."id" AND g."status" = 'DONE'
-          AND EXISTS (SELECT 1 FROM "BillingEvent" e WHERE e."id" = g."eventId" AND e."sandbox" = false)))`.then((rows) => rows[0]?.n ?? 0);
+          AND EXISTS (SELECT 1 FROM "BillingEvent" e WHERE e."id" = g."eventId" AND (${test} OR e."sandbox" = false))))`.then((rows) => rows[0]?.n ?? 0);
   const activityOf = (when: Span) =>
     Promise.all([
       prisma.moment.count({ where: { createdAt: when, kind: { in: [...OWN_KINDS] } } }),
@@ -349,7 +351,7 @@ export async function AnalyticsSection({ month }: { month?: string }) {
       FROM "User" WHERE "createdAt" >= ${span.gte} AND "createdAt" < ${span.lt} GROUP BY 1`,
     prisma.$queryRaw<{ k: string; n: number }[]>`
       SELECT to_char(("createdAt" + interval '3 hours'), ${fmt}) AS k, COALESCE(SUM("coins"), 0)::int AS n
-      FROM "CoinTopUp" WHERE "source" = 'STORE' AND "sandbox" = false AND "createdAt" >= ${span.gte} AND "createdAt" < ${span.lt} GROUP BY 1`,
+      FROM "CoinTopUp" WHERE "source" = 'STORE' AND (${test} OR "sandbox" = false) AND "createdAt" >= ${span.gte} AND "createdAt" < ${span.lt} GROUP BY 1`,
   ]);
   const slots: { k: string; label: string; tip: string }[] = period.monthly
     ? [...months].reverse().map((one) => ({ k: one.key, label: one.label.split(" ")[0]!.slice(0, 3), tip: one.label }))
@@ -408,7 +410,7 @@ export async function AnalyticsSection({ month }: { month?: string }) {
           return (
             <Link
               key={one.key}
-              href={`/admin?s=analytics&m=${one.key}`}
+              href={`/admin?s=analytics&m=${one.key}${test ? "&t=all" : ""}`}
               aria-current={on ? "page" : undefined}
               className="shrink-0 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold"
               style={{
@@ -421,6 +423,28 @@ export async function AnalyticsSection({ month }: { month?: string }) {
             </Link>
           );
         })}
+      </nav>
+
+      {/* المشتريات: الحقيقيّ وحده (القاعدة ٤٩١)، أو الكلّ لمن يريد أن يرى ما جرى. */}
+      <nav aria-label="المشتريات" className="flex flex-wrap gap-1.5">
+        {[
+          { on: !test, label: "المشتريات الحقيقية فقط", href: `/admin?s=analytics&m=${period.key}` },
+          { on: test, label: "مع الاختبار وما قبل التمييز", href: `/admin?s=analytics&m=${period.key}&t=all` },
+        ].map((one) => (
+          <Link
+            key={one.label}
+            href={one.href}
+            aria-current={one.on ? "page" : undefined}
+            className="rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold"
+            style={{
+              background: one.on ? "var(--color-clay)" : "var(--color-card)",
+              color: one.on ? "var(--color-on-brand, #fff)" : "var(--color-ink-2)",
+              border: `1px solid ${one.on ? "var(--color-clay)" : "var(--color-line)"}`,
+            }}
+          >
+            {one.label}
+          </Link>
+        ))}
       </nav>
 
       <section>
@@ -597,7 +621,7 @@ export async function AnalyticsSection({ month }: { month?: string }) {
         يُقارن بالمدّة نفسها من الشهر قبله. منحُ اللوحة لا يُحسب: لا النقاطُ الممنوحة ولا آثار+ الممنوح.
         وما قبل بدء سجلّ الأيّام تقريبٌ، فأعمدتُه قد تكون أقصر من الحقيقة. والمدفوعُ بعملة الشراء قبل حصّة
         المتجر. ومشترياتُ الاختبار (Sandbox) لا تُعدّ، وما سبق تمييزَها لا يُعرف أحقيقيٌّ هو أم
-        اختبار فلا يُعدّ أيضاً{unknownTopUps + unknownEvents > 0
+        اختبار فلا يُعدّ أيضاً — و«مع الاختبار وما قبل التمييز» يعدّهما{!test && unknownTopUps + unknownEvents > 0
           ? ` — ${ar(unknownTopUps)} شراءَ نقاطٍ و${ar(unknownEvents)} حدثَ اشتراكٍ ${inPeriod} خارجَ العدّ لهذا السبب`
           : ""}.
       </p>
