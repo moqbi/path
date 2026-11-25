@@ -5,7 +5,7 @@ import { env } from "../env";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { circleIds } from "./visibility";
 import { push } from "./push";
-import type { RevenueCatEvent } from "./billing";
+import { eventMeta, type RevenueCatEvent } from "./billing";
 
 /**
  * إهداءُ آثار+ لصديق — **بقرار المالك** (القاعدة ٢٣٤)، وبمالٍ حقيقيّ من المتجر
@@ -161,6 +161,7 @@ export async function completeGift(
           type: "NON_RENEWING_PURCHASE",
           appUserId: event.app_user_id ?? giverId,
           at: new Date(event.event_timestamp_ms ?? Date.now()),
+          ...eventMeta(event),
         },
       })
       .catch(() => undefined);
@@ -179,6 +180,7 @@ export async function completeGift(
           type: "NON_RENEWING_PURCHASE",
           appUserId: event.app_user_id ?? giverId,
           at: new Date(event.event_timestamp_ms ?? Date.now()),
+          ...eventMeta(event),
         },
       });
       await tx.plusGift.update({

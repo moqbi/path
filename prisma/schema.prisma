@@ -1007,6 +1007,9 @@ model CoinTopUp {
   eventId     String   @unique
   /// من أين: شراءٌ من متجر، أو منحةٌ من اللوحة، أو رصيد آثار+.
   source      String   @default("STORE")
+  /// شراءُ اختبار (Sandbox أو متجر RevenueCat التجريبيّ)؟ فارغٌ لما سبق تسجيلَه — لا يُخمَّن.
+  /// والتحليلاتُ تعدّ `false` وحده (القاعدة ٤٩١).
+  sandbox     Boolean?
   createdAt   DateTime @default(now())
 
   user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1645,6 +1648,10 @@ model BillingEvent {
   appUserId String
   /// تاريخ الحدث عند المصدر، لا وقت وصوله إلينا.
   at        DateTime
+  /// حدثُ اختبار؟ فارغٌ لما سبق تسجيلَه (القاعدة ٤٩١).
+  sandbox   Boolean?
+  /// معرّفُ المنتج في المتجر — شهريٌّ أو سنويّ أو باقةُ نقاط.
+  productId String?
   createdAt DateTime @default(now())
 
   @@index([appUserId, at])
