@@ -223,7 +223,8 @@ export async function AnalyticsSection({ month }: { month?: string }) {
   const months = monthsSince(first, now);
   const { span, prev } = period;
   const ago = (days: number) => new Date(now - days * DAY);
-  const bought = (when: Span) => ({ source: "STORE", createdAt: when });
+  // الحقيقيُّ وحده (القاعدة ٤٩١): الاختبارُ لا يُعدّ، وما قبل التمييز لا يُخمَّن.
+  const bought = (when: Span) => ({ source: "STORE", sandbox: false, createdAt: when });
 
   const distinctActive = (from: Date, to: Date) =>
     prisma.$queryRaw<{ n: number }[]>`
@@ -261,25 +262,33 @@ export async function AnalyticsSection({ month }: { month?: string }) {
     prisma.user.count({ where: { lastSeenAt: { gte: ago(30) } } }),
     prisma.$queryRaw<{ n: number }[]>`
       SELECT COUNT(*)::int AS n FROM "User" u
-      WHERE u."isPlus" AND u."plusUntil" > ${new Date(now)} AND (EXISTS (SELECT 1 FROM "BillingEvent" b WHERE b."appUserId" = u."id" AND b."type" <> 'NON_RENEWING_PURCHASE')
-        OR EXISTS (SELECT 1 FROM "PlusGift" g WHERE g."recipientId" = u."id" AND g."status" = 'DONE'))`.then((rows) => rows[0]?.n ?? 0),
+      WHERE u."isPlus" AND u."plusUntil" > ${new Date(now)} AND (EXISTS (SELECT 1 FROM "BillingEvent" b WHERE b."appUserId" = u."id" AND b."type" <> 'NON_RENEWING_PURCHASE' AND b."sandbox" = false)
+        OR EXISTS (SELECT 1 FROM "PlusGift" g WHERE g."recipientId" = u."id" AND g."status" = 'DONE'
+          AND EXISTS (SELECT 1 FROM "BillingEvent" e WHERE e."id" = g."eventId" AND e."sandbox" = false)))`.then((rows) => rows[0]?.n ?? 0),
     prisma.story.count({ where: { expiresAt: { gt: new Date(now) } } }),
     prisma.statusNote.count({ where: { expiresAt: { gt: new Date(now) } } }),
   ]);
 
   const subscribers = (type: string, at: Span) =>
     prisma.billingEvent
-      .findMany({ where: { type, at }, distinct: ["appUserId"], select: { appUserId: true } })
+      .findMany({ where: { type, at, sandbox: false }, distinct: ["appUserId"], select: { appUserId: true } })
       .then((rows) => rows.length);
   const gifted = (doneAt: Span) =>
     prisma.plusGift
-      .findMany({ where: { status: "DONE", doneAt }, distinct: ["recipientId"], select: { recipientId: true } })
-      .then((rows) => rows.length);
+      .findMany({ where: { status: "DONE", doneAt }, distinct: ["recipientId"], select: { recipientId: true, eventId: true } })
+      .then(async (rows) => {
+        const ids = rows.map((row) => row.eventId).filter((id): id is string => Boolean(id));
+        const real = new Set(
+          (await prisma.billingEvent.findMany({ where: { id: { in: ids }, sandbox: false }, select: { id: true } })).map((row) => row.id),
+        );
+        return rows.filter((row) => row.eventId && real.has(row.eventId)).length;
+      });
   const ended = (at: Span) =>
     prisma.$queryRaw<{ n: number }[]>`
       SELECT COUNT(*)::int AS n FROM "User" u
-      WHERE u."plusEndedAt" >= ${at.gte} AND u."plusEndedAt" < ${at.lt} AND (EXISTS (SELECT 1 FROM "BillingEvent" b WHERE b."appUserId" = u."id" AND b."type" <> 'NON_RENEWING_PURCHASE')
-        OR EXISTS (SELECT 1 FROM "PlusGift" g WHERE g."recipientId" = u."id" AND g."status" = 'DONE'))`.then((rows) => rows[0]?.n ?? 0);
+      WHERE u."plusEndedAt" >= ${at.gte} AND u."plusEndedAt" < ${at.lt} AND (EXISTS (SELECT 1 FROM "BillingEvent" b WHERE b."appUserId" = u."id" AND b."type" <> 'NON_RENEWING_PURCHASE' AND b."sandbox" = false)
+        OR EXISTS (SELECT 1 FROM "PlusGift" g WHERE g."recipientId" = u."id" AND g."status" = 'DONE'
+          AND EXISTS (SELECT 1 FROM "BillingEvent" e WHERE e."id" = g."eventId" AND e."sandbox" = false)))`.then((rows) => rows[0]?.n ?? 0);
   const activityOf = (when: Span) =>
     Promise.all([
       prisma.moment.count({ where: { createdAt: when, kind: { in: [...OWN_KINDS] } } }),
@@ -318,6 +327,13 @@ export async function AnalyticsSection({ month }: { month?: string }) {
       prisma.coinTopUp.findMany({ where: bought(span), distinct: ["userId"], select: { userId: true } }),
     ]);
 
+  // ما قبل التمييز (القاعدة ٤٩١): يُقال عددُه ولا يُعدّ.
+  const [unknownTopUps, unknownEvents, recent] = await Promise.all([
+    prisma.coinTopUp.count({ where: { source: "STORE", sandbox: null, createdAt: span } }),
+    prisma.billingEvent.count({ where: { sandbox: null, at: span, type: { not: "NON_RENEWING_PURCHASE" } } }),
+    recentSales(),
+  ]);
+
   // الرسوم: أيّامُ الشهر، أو شهورُ الكل.
   const fmt = period.monthly ? "YYYY-MM" : "YYYY-MM-DD";
   const [daily, signups, coinSeries] = await Promise.all([
@@ -333,7 +349,7 @@ export async function AnalyticsSection({ month }: { month?: string }) {
       FROM "User" WHERE "createdAt" >= ${span.gte} AND "createdAt" < ${span.lt} GROUP BY 1`,
     prisma.$queryRaw<{ k: string; n: number }[]>`
       SELECT to_char(("createdAt" + interval '3 hours'), ${fmt}) AS k, COALESCE(SUM("coins"), 0)::int AS n
-      FROM "CoinTopUp" WHERE "source" = 'STORE' AND "createdAt" >= ${span.gte} AND "createdAt" < ${span.lt} GROUP BY 1`,
+      FROM "CoinTopUp" WHERE "source" = 'STORE' AND "sandbox" = false AND "createdAt" >= ${span.gte} AND "createdAt" < ${span.lt} GROUP BY 1`,
   ]);
   const slots: { k: string; label: string; tip: string }[] = period.monthly
     ? [...months].reverse().map((one) => ({ k: one.key, label: one.label.split(" ")[0]!.slice(0, 3), tip: one.label }))
@@ -507,6 +523,8 @@ export async function AnalyticsSection({ month }: { month?: string }) {
         </figure>
       </section>
 
+      <RecentSales rows={recent} />
+
       <section className="grid gap-3 lg:grid-cols-2">
         <Bars
           title={period.monthly ? "النشطون شهرياً" : `النشطون يومياً — ${period.label}`}
@@ -578,8 +596,172 @@ export async function AnalyticsSection({ month }: { month?: string }) {
         «نشط» من فتح التطبيق أو الموقع وهو داخلٌ بحسابه. الأيّامُ والشهورُ بتوقيت الرياض، والشهرُ الجاري
         يُقارن بالمدّة نفسها من الشهر قبله. منحُ اللوحة لا يُحسب: لا النقاطُ الممنوحة ولا آثار+ الممنوح.
         وما قبل بدء سجلّ الأيّام تقريبٌ، فأعمدتُه قد تكون أقصر من الحقيقة. والمدفوعُ بعملة الشراء قبل حصّة
-        المتجر، ويشمل مشتريات الاختبار (Sandbox) ما دامت مفتوحةً على الخادم.
+        المتجر. ومشترياتُ الاختبار (Sandbox) لا تُعدّ، وما سبق تمييزَها لا يُعرف أحقيقيٌّ هو أم
+        اختبار فلا يُعدّ أيضاً{unknownTopUps + unknownEvents > 0
+          ? ` — ${ar(unknownTopUps)} شراءَ نقاطٍ و${ar(unknownEvents)} حدثَ اشتراكٍ ${inPeriod} خارجَ العدّ لهذا السبب`
+          : ""}.
       </p>
     </div>
+  );
+}
+
+
+// ─────────────── آخرُ عشر عمليات شراءٍ واشتراك (القاعدة ٤٩١) ───────────────
+
+type SaleRow = {
+  key: string;
+  at: Date;
+  user: { id: string; name: string; memberNo: number } | null;
+  what: string;
+  detail: string;
+  /** `null` = قبل التمييز: لا يُعرف أحقيقيٌّ هو أم اختبار. */
+  sandbox: boolean | null;
+};
+
+const SUB_TYPES: Record<string, string> = {
+  INITIAL_PURCHASE: "اشتراك آثار+",
+  RENEWAL: "تجديد آثار+",
+  PRODUCT_CHANGE: "تغيير باقة آثار+",
+  UNCANCELLATION: "أعاد تفعيل التجديد",
+};
+
+/** شراءُ النقاط، والاشتراكُ وتجديدُه، وهديّةُ آثار+ — الحقيقيُّ وما قبل التمييز، بلا الاختبار. */
+async function recentSales(): Promise<SaleRow[]> {
+  const notTest = { OR: [{ sandbox: false }, { sandbox: null }] };
+  const userSelect = { id: true, name: true, memberNo: true } as const;
+  const [coins, events, gifts] = await Promise.all([
+    prisma.coinTopUp.findMany({
+      where: { source: "STORE", ...notTest },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: {
+        id: true, coins: true, paidHalalas: true, createdAt: true, sandbox: true,
+        user: { select: userSelect }, pack: { select: { name: true } },
+      },
+    }),
+    prisma.billingEvent.findMany({
+      where: { type: { in: Object.keys(SUB_TYPES) }, ...notTest },
+      orderBy: { at: "desc" },
+      take: 10,
+      select: { id: true, type: true, at: true, appUserId: true, sandbox: true, productId: true },
+    }),
+    prisma.plusGift.findMany({
+      where: { status: "DONE" },
+      orderBy: { doneAt: "desc" },
+      take: 10,
+      select: {
+        id: true, plan: true, doneAt: true, eventId: true,
+        giver: { select: userSelect }, recipient: { select: { name: true } },
+      },
+    }),
+  ]);
+
+  const people = new Map(
+    (await prisma.user.findMany({ where: { id: { in: events.map((row) => row.appUserId) } }, select: userSelect })).map(
+      (one) => [one.id, one],
+    ),
+  );
+  const giftEvents = new Map(
+    (
+      await prisma.billingEvent.findMany({
+        where: { id: { in: gifts.map((row) => row.eventId).filter((id): id is string => Boolean(id)) } },
+        select: { id: true, sandbox: true },
+      })
+    ).map((row) => [row.id, row.sandbox]),
+  );
+
+  const rows: SaleRow[] = [
+    ...coins.map((row) => ({
+      key: `c-${row.id}`,
+      at: row.createdAt,
+      user: row.user,
+      what: "شراء نقاط",
+      detail: `${row.pack?.name ?? "باقة محذوفة"} · ${ar(row.coins)} نقطة · ${riyals(row.paidHalalas)}`,
+      sandbox: row.sandbox,
+    })),
+    ...events.map((row) => ({
+      key: `e-${row.id}`,
+      at: row.at,
+      user: people.get(row.appUserId) ?? null,
+      what: SUB_TYPES[row.type] ?? row.type,
+      detail: row.productId ? planName(row.productId) : "",
+      sandbox: row.sandbox,
+    })),
+    ...gifts
+      .map((row) => ({
+        key: `g-${row.id}`,
+        at: row.doneAt ?? new Date(0),
+        user: row.giver,
+        what: "إهداء آثار+",
+        detail: `${row.plan === "year" ? "سنة" : "شهر"} لـ${row.recipient.name}`,
+        sandbox: row.eventId ? (giftEvents.get(row.eventId) ?? null) : null,
+      }))
+      .filter((row) => row.sandbox !== true),
+  ];
+  return rows.sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, 10);
+}
+
+/** معرّفُ المنتج كما يُقرأ: شهريٌّ أو سنويّ، وإلّا المعرّفُ نفسُه. */
+function planName(sku: string): string {
+  if (/year|annual/i.test(sku)) return "سنوي";
+  if (/month/i.test(sku)) return "شهري";
+  return sku;
+}
+
+function RecentSales({ rows }: { rows: SaleRow[] }) {
+  const stamp = new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-arab", {
+    timeZone: "Asia/Riyadh",
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return (
+    <section>
+      <h2 className="mb-2.5 text-[15px] font-bold">آخر عمليات الشراء والاشتراك</h2>
+      <figure className="overflow-x-auto rounded-2xl border border-line bg-card px-4 py-3.5">
+        <table className="w-full min-w-[520px] text-[12.5px]">
+          <thead>
+            <tr className="text-[11px] text-muted">
+              <th className="py-1 text-start font-normal">الوقت</th>
+              <th className="py-1 text-start font-normal">الحساب</th>
+              <th className="py-1 text-start font-normal">العملية</th>
+              <th className="py-1 text-start font-normal">التفاصيل</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.key} className="border-t border-line">
+                <td className="whitespace-nowrap py-1.5 text-muted">{stamp.format(row.at)}</td>
+                <td className="py-1.5">
+                  {row.user ? (
+                    <Link href={`/admin/u/${row.user.id}`} className="font-semibold hover:underline" dir="auto">
+                      {row.user.name}
+                      <span className="font-normal text-muted"> · {ar(row.user.memberNo)}</span>
+                    </Link>
+                  ) : (
+                    <span className="text-muted">حساب غير معروف</span>
+                  )}
+                </td>
+                <td className="py-1.5 font-bold">
+                  {row.what}
+                  {row.sandbox === null ? (
+                    <span className="ms-1.5 rounded-full px-2 py-0.5 text-[10.5px] font-semibold" style={{ background: "var(--color-chip)", color: "var(--color-muted)" }}>
+                      قبل التمييز
+                    </span>
+                  ) : null}
+                </td>
+                <td className="py-1.5 text-ink-2">{row.detail}</td>
+              </tr>
+            ))}
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="py-2 text-muted">لا عمليات حقيقيّة بعد.</td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </figure>
+    </section>
   );
 }

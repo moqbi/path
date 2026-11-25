@@ -35,6 +35,16 @@ export type RevenueCatEvent = {
   transferred_to?: string[];
 };
 
+/** حدثُ اختبار: بيئةُ Sandbox أو متجرُ RevenueCat التجريبيّ (القاعدة ٤٩١). */
+export function isSandbox(event: RevenueCatEvent): boolean {
+  return event.environment === "SANDBOX" || event.store === "TEST_STORE";
+}
+
+/** ما يُكتب مع كلّ حدثٍ في `BillingEvent` فتفرّق التحليلاتُ الحقيقيَّ من التجريبيّ. */
+export function eventMeta(event: RevenueCatEvent) {
+  return { sandbox: isSandbox(event), productId: event.product_id ?? null };
+}
+
 /** أنواعٌ تُسقط الاشتراك فوراً مهما قال تاريخ الانتهاء. */
 const ENDS_NOW = new Set(["EXPIRATION", "SUBSCRIPTION_PAUSED"]);
 
@@ -90,7 +100,7 @@ export async function applyEvent(event: RevenueCatEvent): Promise<{ ok: string }
 
     وفي التطوير يُقبل — وإلا لم يُختبر المسار أصلاً قبل أن يوجد حساب آبل.
   */
-  const sandbox = event.environment === "SANDBOX" || event.store === "TEST_STORE";
+  const sandbox = isSandbox(event);
   if (sandbox && !env.ALLOW_SANDBOX_BILLING) {
     console.log(`↷ حدث فوترةٍ تجريبيّ مُهمَل (${type})`);
     return { ok: "حدثٌ تجريبيّ — مُهمَل في الإنتاج" };
@@ -161,6 +171,7 @@ export async function applyEvent(event: RevenueCatEvent): Promise<{ ok: string }
           type,
           appUserId: event.app_user_id ?? userId,
           at: new Date(event.event_timestamp_ms ?? Date.now()),
+          ...eventMeta(event),
         },
       });
     }
@@ -234,7 +245,7 @@ async function topUp(event: RevenueCatEvent, userId: string): Promise<{ ok: stri
   try {
     await prisma.$transaction(async (tx) => {
       await tx.coinTopUp.create({
-        data: { userId, packId: pack.id, coins: pack.coins, paidHalalas: paid, eventId },
+        data: { userId, packId: pack.id, coins: pack.coins, paidHalalas: paid, eventId, sandbox: isSandbox(event) },
       });
       await tx.billingEvent.create({
         data: {
@@ -242,6 +253,7 @@ async function topUp(event: RevenueCatEvent, userId: string): Promise<{ ok: stri
           type: "NON_RENEWING_PURCHASE",
           appUserId: event.app_user_id ?? userId,
           at: new Date(event.event_timestamp_ms ?? Date.now()),
+          ...eventMeta(event),
         },
       });
       await tx.user.update({ where: { id: userId }, data: { coins: { increment: pack.coins } } });

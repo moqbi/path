@@ -9,6 +9,7 @@ export const CARD = {
   category: true,
   coverMediaId: true,
   publishedAt: true,
+  author: { select: { name: true } },
 } as const;
 
 export type BlogCard = {
@@ -19,6 +20,7 @@ export type BlogCard = {
   category: string;
   coverMediaId: string | null;
   publishedAt: Date | null;
+  author: { name: string } | null;
 };
 
 const LIVE = { published: true } as const;
@@ -34,7 +36,7 @@ export async function blogPost(slug: string) {
   return prisma.blogPost
     .findFirst({
       where: { slug, ...LIVE },
-      select: { ...CARD, blocks: true, updatedAt: true, author: { select: { name: true } } },
+      select: { ...CARD, blocks: true, updatedAt: true },
     })
     .catch(() => null);
 }

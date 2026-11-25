@@ -115,13 +115,14 @@ export async function HomeSection() {
       prisma.$queryRaw<{ n: number }[]>`
         SELECT COUNT(*)::int AS n FROM "User" u
         WHERE u."isPlus" AND u."plusUntil" > ${new Date(now)}
-          AND (EXISTS (SELECT 1 FROM "BillingEvent" b WHERE b."appUserId" = u."id" AND b."type" <> 'NON_RENEWING_PURCHASE')
-            OR EXISTS (SELECT 1 FROM "PlusGift" g WHERE g."recipientId" = u."id" AND g."status" = 'DONE'))`.then(
+          AND (EXISTS (SELECT 1 FROM "BillingEvent" b WHERE b."appUserId" = u."id" AND b."type" <> 'NON_RENEWING_PURCHASE' AND b."sandbox" = false)
+            OR EXISTS (SELECT 1 FROM "PlusGift" g WHERE g."recipientId" = u."id" AND g."status" = 'DONE'
+              AND EXISTS (SELECT 1 FROM "BillingEvent" e WHERE e."id" = g."eventId" AND e."sandbox" = false)))`.then(
         (rows) => rows[0]?.n ?? 0,
       ),
-      prisma.coinTopUp.aggregate({ where: { source: "STORE", createdAt: { gte: week } }, _sum: { coins: true } }),
+      prisma.coinTopUp.aggregate({ where: { source: "STORE", sandbox: false, createdAt: { gte: week } }, _sum: { coins: true } }),
       prisma.coinTopUp.aggregate({
-        where: { source: "STORE", createdAt: { gte: lastWeek, lt: week } },
+        where: { source: "STORE", sandbox: false, createdAt: { gte: lastWeek, lt: week } },
         _sum: { coins: true },
       }),
       prisma.report.findMany({
