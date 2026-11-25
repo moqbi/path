@@ -1,6 +1,6 @@
 import { Spinner } from "../../components/spinner";
 import { useState } from "react";
-import { View, Pressable, Switch, ScrollView, Linking } from "react-native";
+import { View, Pressable, Switch, ScrollView } from "react-native";
 import { Text, TextInput } from "../../components/type";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -41,7 +41,7 @@ export default function Settings() {
   const refresh = useSession((state) => state.refresh);
 
   /*
-    بابُ اللوحة (القاعدة ٤٩٣): رابطٌ لمرّةٍ واحدة بدقيقتين يُطلب ساعةَ الضغط، ويُفتح في سفاري.
+    بابُ اللوحة (القاعدة ٤٩٣): رابطٌ لمرّةٍ واحدة بدقيقتين يُطلب ساعةَ الضغط، ويُفتح في المتصفّح المدمج.
     والفشلُ سطرٌ في أعلى الشاشة لا صمت.
   */
   const [openingPanel, setOpeningPanel] = useState(false);
@@ -50,7 +50,7 @@ export default function Settings() {
     setOpeningPanel(true);
     try {
       const { url } = await api<{ url: string }>("/v1/me/admin/link", { method: "POST", body: "{}" });
-      await Linking.openURL(url);
+      await openIn(url);
     } catch (problem) {
       showToast({
         name: "",
@@ -301,23 +301,6 @@ export default function Settings() {
           )}
         </Section>
 
-        {/*
-          لوحة التحكم لمن له صلاحيةٌ فيها، وبابُها هنا: الإعدادات درجُ التطبيق،
-          ولا تستحق اللوحةُ تبويباً دائماً يراه الجميع ولا يفتحه أحد.
-          والضغطةُ تطلب رابطاً لمرّةٍ واحدة (القاعدة ٤٩٣) يقوم مقام كلمة المرور — فمن دخل
-          بقوقل أو آبل أو سناب يصل لوحتَه — ثمّ التحقّقُ الثنائيّ في المتصفّح. وفي سفاري
-          لا المتصفّح المدمج: جلسةُ اللوحة تبقى هناك اثنتي عشرة ساعة.
-          والدرجة تُفحص في اللوحة نفسها لا هنا (القاعدة ١٣).
-        */}
-        {(me?.canPanel ?? me?.role === "ADMIN") && hasSite() ? (
-          <Link
-            title="لوحة التحكم"
-            note="تُفتح في المتصفّح ثمّ رمز التحقّق الثنائيّ"
-            right={<ShieldIcon size={18} color={colors.clayInk} />}
-            onPress={() => void openPanel()}
-          />
-        ) : null}
-
         {/* السياسة في متصفّحٍ داخل التطبيق: من قرأها يعود بزرٍّ إلى مكانه
             لا يخرج إلى سفاري ويبقى هناك (القاعدة ٦٢). */}
         {/*
@@ -351,6 +334,23 @@ export default function Settings() {
             setTimeout(startTour, 400);
           }}
         />
+
+        {/*
+          لوحة التحكم لمن له صلاحيةٌ فيها، وبابُها هنا: الإعدادات درجُ التطبيق،
+          ولا تستحق اللوحةُ تبويباً دائماً يراه الجميع ولا يفتحه أحد.
+          والضغطةُ تطلب رابطاً لمرّةٍ واحدة (القاعدة ٤٩٣) يقوم مقام كلمة المرور — فمن دخل
+          بقوقل أو آبل أو سناب يصل لوحتَه — ثمّ التحقّقُ الثنائيّ. **في المتصفّح المدمج**
+          (القاعدة ٦٢) — **بقرار المالك**: يُغلق بزرٍّ فيعود إلى الإعدادات. وهو آخرُ الصفوف بعد الجولة.
+          والدرجة تُفحص في اللوحة نفسها لا هنا (القاعدة ١٣).
+        */}
+        {(me?.canPanel ?? me?.role === "ADMIN") && hasSite() ? (
+          <Link
+            title="لوحة التحكم"
+            note="تُفتح داخل التطبيق ثمّ رمز التحقّق الثنائيّ"
+            right={<ShieldIcon size={18} color={colors.clayInk} />}
+            onPress={() => void openPanel()}
+          />
+        ) : null}
 
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16 }}>
           <ShieldIcon size={15} color={colors.groundInk} />
