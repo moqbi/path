@@ -101,8 +101,12 @@ export async function createPanelSession(
   const store = await cookies();
   store.set(PANEL_COOKIE, token, {
     httpOnly: true,
-    // `strict`: رابطٌ من موقعٍ آخر لا يحمل صلاحيةَ اللوحة معه.
-    sameSite: "strict",
+    /*
+      `lax` لا `strict`: الدخولُ يمرّ بتحويلة Cloudflare Access من نطاقها، والمتصفّحُ يعدّ
+      الصفحةَ — وإعادةَ تحميلها — قادمةً من موقعٍ آخر فلا يُرسل كوكي `strict`، فكان التحديثُ
+      يطلب الرمزَ من جديد. و`lax` لا يُرسَل مع طلبٍ `POST` من موقعٍ آخر، فالإجراءاتُ محميّة.
+    */
+    sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: PANEL_HOURS * 60 * 60,
