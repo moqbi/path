@@ -8,6 +8,7 @@ import { playClose, playOpen } from "../lib/sound";
 import { Spot } from "./spot";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { barBottom } from "./glass-bar";
+import { useVerticalBar } from "../lib/vertical-bar";
 import { colors } from "../theme/tokens";
 import { usePaneWidth } from "../lib/pane";
 
@@ -85,6 +86,8 @@ export const useFan = create<{ open: boolean }>(() => ({ open: false }));
 export function ComposerFan() {
   // فوق الشريط الزجاجيّ العائم لا فوق حافّة الشاشة (القاعدة ٢٢٨).
   const insets = useSafeAreaInsets();
+  // الشريطُ في جانب الشاشة على iPhone Duo: الزرُّ ينزل مكانَه ويبتعد عنه (القاعدة ٤٩٤).
+  const side = useVerticalBar();
   const router = useRouter();
   const open = useFan((state) => state.open);
   const setOpen = (next: boolean | ((was: boolean) => boolean)) =>
@@ -141,7 +144,13 @@ export function ComposerFan() {
       <View
         // الزرّ على اليمين كما في الويب، والأصناف تطير يساراً — وزواياه
         // محسوبةٌ على ذلك (القاعدة ٨).
-        style={{ position: "absolute", right: RIGHT, bottom: barBottom(insets.bottom) + 62 + 14, width: SIZE, height: SIZE }}
+        style={{
+          position: "absolute",
+          right: RIGHT + side.right,
+          bottom: barBottom(insets.bottom) + (side.vertical ? 0 : 62) + 14,
+          width: SIZE,
+          height: SIZE,
+        }}
         pointerEvents="box-none"
       >
         {items.map((item, index) => {

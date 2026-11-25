@@ -7,6 +7,8 @@ import { ar } from "../../lib/format";
 import { colors } from "../../theme/tokens";
 import { useSession } from "../../lib/session";
 import { useTabAvatar } from "../../lib/tab-avatar";
+import { EdgeContext, SideContext } from "../../lib/pane";
+import { useVerticalBar, useWatchVerticalBar } from "../../lib/vertical-bar";
 
 // الإصدارُ الجديد يجعلها أبناءَ `Trigger` لا تصديراتٍ مستقلّة (القاعدة ٣٩٨).
 const { Icon, Label, Badge } = NativeTabs.Trigger;
@@ -34,8 +36,18 @@ export default function TabsLayout() {
     وعلى الآيباد الشريطُ الزجاجيّ في الأسفل لا شريطُ آبل: آيباد ١٨ فما بعده يرفع شريطَ
     `UITabBarController` إلى أعلى الشاشة ولا خيارَ يُنزله — والتطبيقُ تُلمس تبويباتُه بالإبهام.
   */
+  /*
+    **وعلى iPhone Duo مطويّاً الشريطُ في جانب الشاشة** (القاعدة ٤٩٤): النظامُ ينقله بنفسه، وما
+    نرسمه نحن — القوائمُ والرؤوسُ وزرُّ النشر — يبتعد عنه بالحافّة نفسها (`EdgeContext`)،
+    والعرضُ يُحسب بدونه (`SideContext`).
+  */
+  useWatchVerticalBar();
+  const side = useVerticalBar();
+
   if (NATIVE_TABS) {
     return (
+      <SideContext.Provider value={side.left + side.right}>
+        <EdgeContext.Provider value={{ left: side.left, right: side.right }}>
       <NativeTabs
         backBehavior="history"
         tintColor={colors.clay}
@@ -69,6 +81,8 @@ export default function TabsLayout() {
           <Label>أنا</Label>
         </NativeTabs.Trigger>
       </NativeTabs>
+        </EdgeContext.Provider>
+      </SideContext.Provider>
     );
   }
 
