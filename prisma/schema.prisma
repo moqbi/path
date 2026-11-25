@@ -127,6 +127,9 @@ model User {
   totpSecret   String?
   /// آخرُ خطوةِ رمزٍ قُبلت — رمزٌ استُعمل لا يُقبل ثانيةً في نصف دقيقته.
   totpStep     Int?
+  /// جوّالٌ مرّ بالتحقّق الثنائيّ من زرّ اللوحة، ومتى ينتهي الوثوقُ به (القاعدة ٤٩٣).
+  panelDevice  String?
+  panelUntil   DateTime?
   name         String
   /// معرّف قصير يظهر تحت الاسم: @mohammed.
   handle       String? @unique
@@ -1710,6 +1713,8 @@ model EmailToken {
   tokenHash String         @unique
   expiresAt DateTime
   usedAt    DateTime?
+  /// بصمةُ الجهاز الذي طلب رابطَ اللوحة (`ADMIN`) — `x-device-id` مجزَّأً.
+  device    String?
   createdAt DateTime       @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

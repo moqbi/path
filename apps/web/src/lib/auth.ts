@@ -22,7 +22,9 @@ const SESSION_DAYS = 30;
   سُرقت لوحتُه.
 */
 const PANEL_COOKIE = "athar_panel";
-const PANEL_HOURS = 12;
+export const PANEL_HOURS = 12;
+/** جهازُ رابط اللوحة بين `/login/enter` والتحقّق — يُكتب موثوقاً إن نجح الرمز. */
+export const PANEL_DEVICE_COOKIE = "athar_panel_dev";
 
 function secret(): Uint8Array {
   const value = process.env.AUTH_SECRET;

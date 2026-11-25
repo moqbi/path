@@ -24,7 +24,7 @@ export function clientIp(c: Context): string {
   ).slice(0, 64);
 }
 
-function deviceOf(c: Context): string {
+export function deviceOf(c: Context): string {
   const raw = c.req.header("x-device-id")?.trim();
   if (!raw || raw.length > 200) return "";
   return createHash("sha256").update(raw).digest("hex").slice(0, 32);

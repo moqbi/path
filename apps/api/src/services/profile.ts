@@ -568,7 +568,7 @@ function hasPanelPower(row: { role: string; adminScope: string; canModerate: boo
  * رابطُ اللوحة لمرّةٍ واحدة (القاعدة ٤٩٣): دقيقتان، لمن له صلاحيةٌ وحده، ويُستهلك في
  * `/login/enter` ثمّ التحقّقُ الثنائيّ. يقوم مقام كلمة المرور لمن دخل بمزوّد.
  */
-export async function adminLink(userId: string) {
+export async function adminLink(userId: string, device = "") {
   if (!hasSite()) throw badRequest("اللوحة غير متاحة الآن");
   const row = await prisma.user.findUnique({
     where: { id: userId },
@@ -580,6 +580,7 @@ export async function adminLink(userId: string) {
     data: {
       userId,
       kind: "ADMIN",
+      device: device || null,
       tokenHash: createHash("sha256").update(token).digest("hex"),
       expiresAt: new Date(Date.now() + 2 * 60_000),
     },

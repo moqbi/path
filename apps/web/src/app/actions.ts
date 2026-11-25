@@ -7,7 +7,7 @@ import { BETA_DEVICES, CONTACT_REASONS, TOPIC_LABEL, type ContactReason } from "
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { createSession, destroySession, hashPassword, requirePanel, verifyPassword } from "@/lib/auth";
+import { createSession, currentUser, destroySession, hashPassword, requirePanel, verifyPassword } from "@/lib/auth";
 import { HEX_COLOR, PALETTE_KEYS, paletteSpec, parsePalette } from "@/lib/theme";
 import { dropMedia, migrateToCloud, storeModerated, storeSiteShot, storeSticker, storeUpload } from "@/lib/media";
 import { cloudReady, deleteObjects, probeBucket } from "@/lib/storage";
@@ -71,6 +71,9 @@ export async function signIn(
 }
 
 export async function signOut(): Promise<void> {
+  // الخروجُ يُنهي وثوقَ الجوّال أيضاً، وإلّا فتحه زرُّ التطبيق بلا رمز.
+  const me = await currentUser();
+  if (me) await prisma.user.update({ where: { id: me.id }, data: { panelDevice: null, panelUntil: null } });
   await destroySession();
   redirect("/login");
 }
@@ -833,7 +836,7 @@ export async function setAdminScope(userId: string, formData: FormData): Promise
 export async function resetTotp(userId: string): Promise<void> {
   const owner = await requireOwner();
   if (userId === owner.id) return;
-  await prisma.user.update({ where: { id: userId }, data: { totpSecret: null, totpStep: null } });
+  await prisma.user.update({ where: { id: userId }, data: { totpSecret: null, totpStep: null, panelDevice: null, panelUntil: null } });
   revalidatePath("/admin", "layout");
 }
 
