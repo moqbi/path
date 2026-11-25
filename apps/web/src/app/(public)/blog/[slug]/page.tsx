@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { AthrMark } from "@/components/brand";
 import { BlogBody } from "@/components/blog-body";
 import { BlogCardView } from "@/components/blog-card";
-import { blogDate, blogPost, similarPosts } from "@/lib/blog";
+import { authorPlus, blogDate, blogPost, similarPosts } from "@/lib/blog";
+import { NameTag } from "@/components/ui";
 import { readBlocks, readingMinutes } from "@/lib/blog-blocks";
 import { ar } from "@/lib/format";
 
@@ -49,9 +50,16 @@ export default async function BlogPostPage({ params }: Props) {
           {post.excerpt ? <p className="blog-hero-lead" dir="auto">{post.excerpt}</p> : null}
           <p className="blog-hero-meta">
             {/* فاصلةٌ لا «·» بين عددين: الصفرُ العربيّ نقطة (القاعدة ٢٣٥). */}
-            {[post.author?.name, blogDate(post.publishedAt), readingLabel(readingMinutes(blocks))]
-              .filter(Boolean)
-              .join("، ")}
+            {post.author ? (
+              <>
+                <span className="blog-author">
+                  <b dir="auto">{post.author.name}</b>
+                  <NameTag isPlus={authorPlus(post.author)} tag={post.author.tag} size={11} />
+                </span>
+                {"، "}
+              </>
+            ) : null}
+            {[blogDate(post.publishedAt), readingLabel(readingMinutes(blocks))].filter(Boolean).join("، ")}
           </p>
         </div>
       </header>

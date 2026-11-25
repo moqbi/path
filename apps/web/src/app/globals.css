@@ -2303,6 +2303,12 @@ body:has(.share-page) .site-login { display: none; }
   font-size: 12px;
   color: var(--color-faint);
 }
+.blog-author {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  vertical-align: middle;
+}
 .blog-card-meta b {
   font-weight: 700;
   color: var(--color-ink-2);

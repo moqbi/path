@@ -9,7 +9,9 @@ export const CARD = {
   category: true,
   coverMediaId: true,
   publishedAt: true,
-  author: { select: { name: true } },
+  author: {
+    select: { name: true, isPlus: true, plusUntil: true, tag: { select: { name: true, bg: true, fg: true } } },
+  },
 } as const;
 
 export type BlogCard = {
@@ -20,8 +22,20 @@ export type BlogCard = {
   category: string;
   coverMediaId: string | null;
   publishedAt: Date | null;
-  author: { name: string } | null;
+  author: BlogAuthor | null;
 };
+
+export type BlogAuthor = {
+  name: string;
+  isPlus: boolean;
+  plusUntil: Date | null;
+  tag: { name: string; bg: string; fg: string } | null;
+};
+
+/** مشتركٌ الآن: `isPlus` يبقى حتى الكنس، و`plusUntil` يقول الحقيقة (القاعدة ١٤٩). */
+export function authorPlus(author: BlogAuthor | null): boolean {
+  return Boolean(author?.isPlus && (!author.plusUntil || author.plusUntil > new Date()));
+}
 
 const LIVE = { published: true } as const;
 
