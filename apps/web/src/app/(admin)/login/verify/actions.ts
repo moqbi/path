@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { SignJWT, jwtVerify } from "jose";
 import { create } from "qrcode/lib/core/qrcode";
 import { prisma } from "@/lib/db";
-import { createPanelSession, currentUser } from "@/lib/auth";
+import { PANEL_DEVICE_COOKIE, PANEL_HOURS, createPanelSession, currentUser } from "@/lib/auth";
 import { checkCode, newSecret, openSecret, otpauthUrl, sealSecret } from "@/lib/totp";
 import { hit, TOO_MANY } from "@/lib/rate-limit";
 
@@ -113,5 +113,14 @@ export async function verifyCode(_prev: { error?: string } | null, formData: For
   }
 
   await createPanelSession(user.id, row.passwordHash, sealed);
+  // جاء من زرّ اللوحة في التطبيق: جوّالُه موثوقٌ اثنتي عشرة ساعة (`/login/enter`).
+  const device = store.get(PANEL_DEVICE_COOKIE)?.value;
+  if (device) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { panelDevice: device, panelUntil: new Date(Date.now() + PANEL_HOURS * 60 * 60 * 1000) },
+    });
+    store.delete({ name: PANEL_DEVICE_COOKIE, path: "/login" });
+  }
   redirect("/admin");
 }

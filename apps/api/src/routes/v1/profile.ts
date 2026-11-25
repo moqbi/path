@@ -16,6 +16,7 @@ import { unknownKinds } from "../../lib/client-kinds";
 import { zValidator } from "../../lib/validate";
 import { requireAuth, me } from "../../middleware/auth";
 import * as profile from "../../services/profile";
+import { deviceOf } from "../../services/access";
 import * as feed from "../../services/feed";
 import * as auth from "../../services/auth";
 import * as push from "../../services/push";
@@ -130,7 +131,7 @@ export const profileRoutes = new Hono()
   .get("/support", async (c) => c.json(await profile.tickets(me(c))))
 
   /** رابطُ اللوحة لمرّةٍ واحدة (القاعدة ٤٩٣) — لمن له صلاحيةٌ فيها. */
-  .post("/admin/link", async (c) => c.json(await profile.adminLink(me(c))))
+  .post("/admin/link", async (c) => c.json(await profile.adminLink(me(c), deviceOf(c))))
 
   /** رابطُ نظام التذاكر في الويب لمرّةٍ واحدة (القاعدة ٤٨٠) — يُطلب ساعةَ الضغط. */
   .post(
