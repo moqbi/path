@@ -75,6 +75,7 @@ export function AvatarMenu({
         <Sheet onClose={close} title={name}>
           <Row
             label="عرض صورة الملف الشخصي"
+            face={<Avatar name={name} size={44} mediaId={mediaId} />}
             onPress={() => setView("photo")}
           />
           {charmItem ? (
@@ -369,11 +370,14 @@ function Row({
   label,
   hint,
   art,
+  face,
   onPress,
 }: {
   label: string;
   hint?: string;
   art?: NonNullable<WornItem>;
+  /** صورةُ العرض نفسها بجانب سطرها، كرسمَي الإطار والتشارم — **بقرار المالك**. */
+  face?: React.ReactNode;
   onPress: () => void;
 }) {
   return (
@@ -391,7 +395,7 @@ function Row({
         padding: 14,
       }}
     >
-      {art ? <ItemArt item={art} size={36} radius={18} /> : null}
+      {face ?? (art ? <ItemArt item={art} size={36} radius={18} /> : null)}
 
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={{ color: colors.ink, fontSize: 13.5, fontWeight: "600", textAlign: "right" }}>
