@@ -56,7 +56,10 @@ export function StoryViewer({
   mine,
   canSave = false,
   floats = false,
+  start = 0,
 }: {
+  /** أوّلُ ما لم يُشاهَد — والصفرُ إن شُوهدت كلُّها. */
+  start?: number;
   /** التفاعلاتُ والتعليقاتُ تطفو (القاعدة ٣٤٤) — للمالك وممنوحي اللوحة كلّها. */
   floats?: boolean;
   author: { id: string; name: string; avatarMediaId: string | null };
@@ -66,7 +69,7 @@ export function StoryViewer({
   canSave?: boolean;
 }) {
   const router = useRouter();
-  const [index, setIndex] = useState(0);
+  const [index, setIndex] = useState(start);
   const [progress, setProgress] = useState(0);
   const [held, setHeld] = useState(false);
   // قائمةُ من شاهدها فوق القصة، والعدُّ يقف ما دامت مفتوحة.
