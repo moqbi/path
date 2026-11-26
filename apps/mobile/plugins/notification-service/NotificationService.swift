@@ -35,8 +35,10 @@ class NotificationService: UNNotificationServiceExtension {
         let http = response as? HTTPURLResponse,
         http.statusCode == 200
       else { return }
+      // الامتدادُ من نوع الردّ: آبل تعرف الصورةَ من امتداد ملفّها، والشفّافةُ PNG.
+      let ext = http.mimeType == "image/png" ? ".png" : ".jpg"
       let target = URL(fileURLWithPath: NSTemporaryDirectory())
-        .appendingPathComponent(UUID().uuidString + ".jpg")
+        .appendingPathComponent(UUID().uuidString + ext)
       do {
         try FileManager.default.moveItem(at: location, to: target)
         let attachment = try UNNotificationAttachment(identifier: "image", url: target, options: nil)

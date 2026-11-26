@@ -495,7 +495,7 @@ function Sheet({
                   const theme = item.kind === "THEME" || item.kind === "BACKGROUND";
                   const art = theme ? item.promoMediaId ?? item.mediaId : item.mediaId;
                   return (
-                <View style={{ width: theme ? 80 : 58, height: 58, borderRadius: theme ? 12 : item.kind === "CHARM" ? 0 : 29, padding: art ? 0 : 3, overflow: "hidden", backgroundColor: art ? "transparent" : firstColor(item.spec, colors.chip) }}>
+                <View style={{ width: theme ? 80 : 58, height: 58, borderRadius: theme ? 12 : item.kind === "CHARM" || art ? 0 : 29, padding: art ? 0 : 3, overflow: theme ? "hidden" : "visible", backgroundColor: art ? "transparent" : firstColor(item.spec, colors.chip) }}>
                   {art ? (
                     <MediaImage mediaId={art} resizeMode={theme ? "cover" : "contain"} style={{ width: theme ? 80 : 58, height: 58 }} />
                   ) : (

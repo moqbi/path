@@ -12,11 +12,11 @@ export const pushMediaRoutes = new Hono().get("/:id", async (c) => {
   if (!/^[a-z0-9]{20,40}$/.test(id) || !pushImageValid(id, exp, signature)) {
     return c.json({ error: "غير موجود" }, 404);
   }
-  const bytes = await pushImageBytes(id).catch(() => null);
-  if (!bytes) return c.json({ error: "غير موجود" }, 404);
-  return new Response(new Uint8Array(bytes), {
+  const image = await pushImageBytes(id).catch(() => null);
+  if (!image) return c.json({ error: "غير موجود" }, 404);
+  return new Response(new Uint8Array(image.bytes), {
     headers: {
-      "Content-Type": "image/jpeg",
+      "Content-Type": image.mime,
       "Cache-Control": "private, max-age=3600",
       "X-Content-Type-Options": "nosniff",
     },

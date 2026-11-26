@@ -1,21 +1,18 @@
 import { Spinner } from "./spinner";
-import { ORIENTATIONS } from "../lib/stage";
 import { useState } from "react";
-import { View, Pressable, Modal } from "react-native";
+import { View, Pressable, useWindowDimensions } from "react-native";
 import { Text } from "./type";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Avatar, firstColor, type Charm, type Frame } from "./avatar";
 import { MediaImage } from "./media-image";
-import { CloseIcon } from "./icons";
 import { api } from "../lib/api";
 import { keys, useStore } from "../lib/queries";
 import { ar, coinText, daysLabel } from "../lib/format";
 import { colors } from "../theme/tokens";
-import { Sheet } from "./sheet";
+import { Sheet, sheetInner } from "./sheet";
 import { Preview } from "./store-grid";
 import { TagPill } from "./name-tag";
 import { viewPhoto } from "./photo-viewer";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 /** صنفٌ يلبسه صاحب الملف — إطارٌ أو تشارم — كما يُعرض في المتجر. */
 export type WornItem = {
@@ -62,7 +59,6 @@ export function AvatarMenu({
   charmItem: WornItem;
 }) {
   const [view, setView] = useState<"none" | "menu" | "photo" | "frame" | "charm">("none");
-  const insets = useSafeAreaInsets();
   const close = () => setView("none");
 
   return (
@@ -79,21 +75,7 @@ export function AvatarMenu({
         <Sheet onClose={close} title={name}>
           <Row
             label="عرض صورة الملف الشخصي"
-            onPress={() => {
-              /*
-                الصورةُ في نافذة الصور العامّة (`viewPhoto`): زرُّ إغلاقها تحت
-                شريط الحالة لا فوقه، وتُغلق بالسحب إلى أسفل. وكانت هنا نافذةٌ
-                ثانية زرُّها على بُعد ١٦ من أعلى الشاشة — تحت الجزيرة الديناميكية
-                حيث لا تصله الضغطة. والتأخيرُ حتى تُغلق هذه النافذة: آبل لا تعرض
-                نافذةً وأختُها تُغلق (القاعدة ١٢٦).
-              */
-              if (mediaId) {
-                setView("none");
-                setTimeout(() => viewPhoto(mediaId), 380);
-              } else {
-                setView("photo");
-              }
-            }}
+            onPress={() => setView("photo")}
           />
           {charmItem ? (
             <Row
@@ -115,52 +97,61 @@ export function AvatarMenu({
       ) : null}
 
       {view === "photo" ? (
-        <Modal supportedOrientations={ORIENTATIONS} transparent animationType="fade" onRequestClose={close}>
-          <Pressable
-            onPress={close}
-            style={{
-              flex: 1,
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 24,
-              backgroundColor: "rgba(8,14,20,.94)",
-            }}
-          >
-            {mediaId ? (
-              <MediaImage
-                mediaId={mediaId}
-                resizeMode="contain"
-                style={{ width: "100%", height: "100%", borderRadius: 18 }}
-              />
-            ) : (
-              <Avatar name={name} size={220} />
-            )}
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="إغلاق"
-              onPress={close}
-              style={{
-                position: "absolute",
-                left: 16,
-                top: insets.top + 12,
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "rgba(255,255,255,.16)",
-              }}
-            >
-              <CloseIcon size={18} color="#fff" />
-            </Pressable>
-          </Pressable>
-        </Modal>
+        <PhotoSheet
+          name={name}
+          mediaId={mediaId}
+          onClose={close}
+          onFull={() => {
+            // آبل لا تعرض نافذةً وأختُها تُغلق (القاعدة ١٢٦).
+            setView("none");
+            if (mediaId) setTimeout(() => viewPhoto(mediaId), 380);
+          }}
+        />
       ) : null}
 
       {view === "charm" && charmItem ? <ItemSheet item={charmItem} onClose={close} /> : null}
       {view === "frame" && frameItem ? <ItemSheet item={frameItem} onClose={close} /> : null}
     </>
+  );
+}
+
+/**
+ * صورةُ الملف في النافذة نفسها التي يُرى فيها الإطارُ والتشارم — **بقرار المالك**: كانت
+ * تفتح عارضَ الصور بملء الشاشة، فيُقرأ الخياران الآخران بابين في مكانٍ والأوّلُ في غيره.
+ * والضغطُ عليها يفتح العارضَ لمن أراد أن يقرّبها (القاعدة ٣٤١).
+ */
+function PhotoSheet({
+  name,
+  mediaId,
+  onClose,
+  onFull,
+}: {
+  name: string;
+  mediaId: string | null;
+  onClose: () => void;
+  onFull: () => void;
+}) {
+  const screen = useWindowDimensions();
+  const side = Math.min(sheetInner(screen.width, screen.height), 300);
+  return (
+    <Sheet onClose={onClose} title="صورة الملف الشخصي">
+      <View style={{ alignItems: "center", paddingVertical: 8 }}>
+        {mediaId ? (
+          <Pressable accessibilityRole="imagebutton" accessibilityLabel={`صورة ${name} بملء الشاشة`} onPress={onFull}>
+            <MediaImage
+              mediaId={mediaId}
+              resizeMode="cover"
+              style={{ width: side, height: side, borderRadius: 20, backgroundColor: colors.chip }}
+            />
+          </Pressable>
+        ) : (
+          <Avatar name={name} size={Math.min(side, 180)} />
+        )}
+        <Text style={{ color: colors.ink, fontSize: 16, fontWeight: "700", marginTop: 12, textAlign: "center" }}>
+          {name}
+        </Text>
+      </View>
+    </Sheet>
   );
 }
 

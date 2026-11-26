@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { equip, unequip } from "@/app/actions";
 import { CheckIcon, CloseIcon, SparkIcon } from "@/components/icons";
-import { frameInset, itemPaint } from "@/components/ui";
+import { itemPaint } from "@/components/ui";
 import { BASE } from "@/lib/base";
 
 /**
@@ -182,16 +182,9 @@ function Group({
               >
                 {frame && item.mediaId ? (
                   /*
-                     الإطار المصوَّر **فوق** قرصٍ محايد لا خلفه، كما يُرى
-                     على الوجه (`Avatar`) وفي المتجر. وكان يُدهن خلفيةً
-                     والقرصُ فوقه، فيختفي الرسمُ كلّه تحت لون البطاقة —
-                     وهذا «الإطار ما يظهر» في إكسسواراتي.
+                     الإطار المصوَّر برسمه على شفافيّته بلا قرصٍ رماديّ في فراغه — **بقرار المالك**.
                   */
                   <span className="relative block" style={{ width: 58, height: 58 }}>
-                    <span
-                      className="absolute rounded-full"
-                      style={{ inset: frameInset(item), background: "var(--color-chip)" }}
-                    />
                     <span className="absolute inset-0 block" style={itemPaint(item, "contain")} />
                   </span>
                 ) : frame ? (

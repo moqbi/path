@@ -34,8 +34,13 @@ export function pushImageValid(id: string, exp: number, signature: string): bool
   return want.length === got.length && timingSafeEqual(want, got);
 }
 
-/** بايتاتُ الصورة مصغّرةً — والمقطعُ والصوتُ لا صورةَ لهما. */
-export async function pushImageBytes(id: string): Promise<Buffer | null> {
+/**
+ * بايتاتُ الصورة مصغّرةً ونوعُها — والمقطعُ والصوتُ لا صورةَ لهما.
+ *
+ * والشفّافةُ PNG بشفافيّتها — **بقرار المالك**: رسمُ إطارٍ أو تشارمٍ بلا صورة إعلان كان يُسطَّح
+ * JPEG على أبيض فيصل التنبيهُ بمربّعٍ أبيض حول الرسم. وما لا شفافيّةَ فيه JPEG كما كان.
+ */
+export async function pushImageBytes(id: string): Promise<{ bytes: Buffer; mime: string } | null> {
   const media = await prisma.media.findUnique({ where: { id }, select: { mime: true, key: true, bytes: true } });
   if (!media || !media.mime.startsWith("image/")) return null;
   let input: Uint8Array | null = null;
@@ -45,10 +50,13 @@ export async function pushImageBytes(id: string): Promise<Buffer | null> {
     input = new Uint8Array(await answer.arrayBuffer());
   } else if (media.bytes) input = media.bytes;
   if (!input) return null;
-  return sharp(Buffer.from(input), { animated: false, limitInputPixels: 60_000_000 })
+  const image = sharp(Buffer.from(input), { animated: false, limitInputPixels: 60_000_000 })
     .rotate()
-    .resize(PUSH_SIDE, PUSH_SIDE, { fit: "inside", withoutEnlargement: true })
-    .flatten({ background: "#ffffff" })
-    .jpeg({ quality: 88, mozjpeg: true, chromaSubsampling: "4:4:4" })
-    .toBuffer();
+    .resize(PUSH_SIDE, PUSH_SIDE, { fit: "inside", withoutEnlargement: true });
+  const opaque = (await image.clone().stats()).isOpaque;
+  if (!opaque) return { bytes: await image.png({ compressionLevel: 9 }).toBuffer(), mime: "image/png" };
+  return {
+    bytes: await image.flatten({ background: "#ffffff" }).jpeg({ quality: 88, mozjpeg: true, chromaSubsampling: "4:4:4" }).toBuffer(),
+    mime: "image/jpeg",
+  };
 }
