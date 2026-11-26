@@ -6,7 +6,7 @@ import { RtlStrip } from "./rtl-strip";
 import { Text } from "./type";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MediaImage } from "./media-image";
-import { firstColor, frameInset } from "./avatar";
+import { firstColor } from "./avatar";
 import { CheckIcon, LockIcon } from "./icons";
 import { api } from "../lib/api";
 import { useSession } from "../lib/session";
@@ -126,32 +126,12 @@ export function Preview({ item }: { item: StoreItem }) {
 
   if (item.kind === "FRAME") {
     /*
-      الإطار المصوَّر يُرسم **فوق** قرصٍ محايد لا خلفه — كما يُرى على
-      الوجه تماماً (`Avatar`): كان يُدهن خلفيةً والقرصُ فوقه، فتُخفى
-      حافّتُه الداخلية وزخرفتُها.
+      الإطار المصوَّر برسمه على شفافيّته — **بقرار المالك**: كان تحته قرصٌ
+      رماديّ في فراغه يُقرأ جزءاً من الإطار.
     */
     if (item.mediaId) {
       return (
         <View style={{ width: 62, height: 62 }}>
-          {/* الوجهُ في فراغ الإطار لا في مربّع رسمه: رسمٌ بجناحين فراغُه
-              نصفُ عرضه، فقرصٌ يملأ المربّع يخرج من تحته. */}
-          {(() => {
-            const off = frameInset(item, 62);
-            const face = 62 - off * 2;
-            return (
-              <View
-                style={{
-                  position: "absolute",
-                  left: off,
-                  top: off,
-                  width: face,
-                  height: face,
-                  borderRadius: face / 2,
-                  backgroundColor: colors.chip,
-                }}
-              />
-            );
-          })()}
           <MediaImage
             mediaId={item.mediaId}
             resizeMode="contain"

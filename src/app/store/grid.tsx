@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { buyNow, equip, unequip } from "@/app/actions";
 import { coinText, ar } from "@/lib/format";
 import { LockIcon, CheckIcon } from "@/components/icons";
-import { frameInset, itemPaint } from "@/components/ui";
+import { itemPaint } from "@/components/ui";
 import { Portal, Sheet } from "@/components/sheet";
 import { BASE } from "@/lib/base";
 
@@ -130,12 +130,6 @@ function Preview({ item }: { item: Item }) {
     if (item.mediaId) {
       return (
         <span className="relative block" style={{ width: 62, height: 62 }}>
-          {/* الوجهُ في فراغ الإطار لا في مربّع رسمه: رسمٌ بجناحين فراغُه
-              نصفُ عرضه، فقرصٌ يملأ المربّع يخرج من تحته. */}
-          <span
-            className="absolute rounded-full"
-            style={{ inset: frameInset(item), background: "var(--color-chip)" }}
-          />
           <span className="absolute inset-0 block" style={itemPaint(item, "contain")} />
         </span>
       );

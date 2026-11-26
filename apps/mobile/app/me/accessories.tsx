@@ -7,7 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ScreenHeader } from "../../components/screen-header";
 import { MediaImage } from "../../components/media-image";
 import { FilledImage } from "../../components/store-grid";
-import { firstColor, frameInset } from "../../components/avatar";
+import { firstColor } from "../../components/avatar";
 import { CheckIcon } from "../../components/icons";
 import { api } from "../../lib/api";
 import { keys, useStore } from "../../lib/queries";
@@ -223,26 +223,12 @@ function Art({ item }: { item: Owned }) {
 
   if (item.kind === "FRAME") {
     /*
-       الإطار المصوَّر **فوق** قرصٍ محايد لا خلفه، كما يُرى على الوجه
-       (`Avatar`) وفي المتجر. وكان القرصُ فوقه يُخفي الرسمَ كلَّه —
-       وهذا «الإطار ما يظهر» في إكسسواراتي.
+       الإطار المصوَّر برسمه على شفافيّته بلا قرصٍ رماديّ في فراغه — **بقرار
+       المالك**، كالمتجر.
     */
     if (item.mediaId) {
-      const off = frameInset(item, 58);
-      const face = 58 - off * 2;
       return (
         <View style={{ width: 58, height: 58 }}>
-          <View
-            style={{
-              position: "absolute",
-              left: off,
-              top: off,
-              width: face,
-              height: face,
-              borderRadius: face / 2,
-              backgroundColor: colors.chip,
-            }}
-          />
           <MediaImage mediaId={item.mediaId} resizeMode="contain" style={{ width: 58, height: 58 }} />
         </View>
       );
