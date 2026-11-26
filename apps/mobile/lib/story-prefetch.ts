@@ -11,7 +11,7 @@ import { warmSkia } from "../components/filtered";
  * حين يُرسم، والضغطةُ نفسها (`onPressIn`) تجلب ما لم يُجلب — فتُفتح القصّةُ
  * وبياناتُها في الذاكرة وصورتُها الأولى في الخبيئة.
  */
-type Slide = { mediaId: string; filter: string | null; media: { mime: string } };
+type Slide = { mediaId: string; filter: string | null; media: { mime: string }; viewed?: boolean };
 
 const STALE = 60_000;
 
@@ -26,8 +26,9 @@ export function storiesQuery(userId: string) {
 export async function prefetchStories(client: QueryClient, userId: string) {
   try {
     const data = await client.fetchQuery(storiesQuery(userId));
-    // الأولى والثانية تكفيان: ما بعدهما يُجلب وصاحبُها يشاهد ما قبله.
-    for (const slide of data.stories.slice(0, 2)) warmMedia(slide);
+    // من أوّل ما لم يُشاهَد — منه يبدأ العارض — واثنتان تكفيان.
+    const from = Math.max(0, data.stories.findIndex((slide) => slide.viewed === false));
+    for (const slide of data.stories.slice(from, from + 2)) warmMedia(slide);
   } catch {
     /* الفتحُ يجلب بنفسه */
   }

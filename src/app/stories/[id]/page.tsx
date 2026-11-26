@@ -21,6 +21,7 @@ export default async function StoriesPage({ params }: { params: Promise<{ id: st
   return (
     <StoryViewer
       mine={mine}
+      start={firstUnseen(stories)}
       canSave={mine && canTryStickers(user)}
       floats={canTryStickers(user)}
       author={{
@@ -49,6 +50,15 @@ export default async function StoriesPage({ params }: { params: Promise<{ id: st
       }))}
     />
   );
+}
+
+/**
+ * العارضُ يبدأ من أوّل قصّةٍ لم تُشاهَد — من شاهد الأولى ونُشرت بعدها ثانيةٌ يرى
+ * الثانية — وإن شُوهدت كلُّها أُعيدت من أوّلها.
+ */
+function firstUnseen(stories: { viewed: boolean }[]): number {
+  const at = stories.findIndex((story) => !story.viewed);
+  return at < 0 ? 0 : at;
 }
 
 /** تقريبُ صورة القصّة وإزاحتُها (القاعدة ٢٩٦) — ما لا يُقرأ منها يُترك. */

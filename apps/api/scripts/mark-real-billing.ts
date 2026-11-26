@@ -14,11 +14,19 @@
  *   cd apps/api && npx tsx scripts/mark-real-billing.ts --from=2026-11-10 --apply # التعليم
  *
  * `--from` يومٌ بتوقيت الرياض. ما قبله يبقى فارغاً (لا يُعدّ)، ولا يُمسّ ما عُلّم من قبل.
+ *
+ * ومشترياتُ تجربةٍ بأعيان أصحابها (مشرفٌ اشترى من TestFlight) تُعلَّم اختباراً:
+ *
+ *   npx tsx scripts/mark-real-billing.ts --test=2,22 --from=2026-11-04          # معاينة
+ *   npx tsx scripts/mark-real-billing.ts --test=2,22 --from=2026-11-04 --apply  # التعليم
+ *
+ * أرقامُ عضويّة، وكلُّ ما لهم من `--from` يصير `sandbox = true` ولو عُلّم حقيقيّاً قبلُ.
  */
 import { prisma } from "@athar/db";
 
 const apply = process.argv.includes("--apply");
 const fromArg = process.argv.find((arg) => arg.startsWith("--from="))?.slice(7);
+const testArg = process.argv.find((arg) => arg.startsWith("--test="))?.slice(7);
 const OFFSET = 3 * 60 * 60 * 1000;
 
 function fromDate(raw: string | undefined): Date | null {
@@ -29,8 +37,50 @@ function fromDate(raw: string | undefined): Date | null {
 
 const day = (when: Date) => new Date(when.getTime() + OFFSET).toISOString().slice(0, 10);
 
+async function markTest(members: number[], from: Date) {
+  const users = await prisma.user.findMany({
+    where: { memberNo: { in: members } },
+    select: { id: true, memberNo: true },
+  });
+  const ids = users.map((u) => u.id);
+  const [events, topUps] = await Promise.all([
+    prisma.billingEvent.findMany({
+      where: { appUserId: { in: ids }, at: { gte: from } },
+      orderBy: { at: "asc" },
+      select: { id: true, type: true, at: true, appUserId: true, sandbox: true },
+    }),
+    prisma.coinTopUp.findMany({
+      where: { userId: { in: ids }, createdAt: { gte: from } },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, coins: true, createdAt: true, userId: true, sandbox: true },
+    }),
+  ]);
+  const no = new Map(users.map((u) => [u.id, u.memberNo]));
+  const state = (v: boolean | null) => (v === null ? "بلا تمييز" : v ? "اختبار" : "حقيقي");
+  for (const e of events) console.log(`${day(e.at)}  ${e.type} · عضوية ${no.get(e.appUserId)} · ${state(e.sandbox)}`);
+  for (const t of topUps) console.log(`${day(t.createdAt)}  نقاط ${t.coins} · عضوية ${no.get(t.userId)} · ${state(t.sandbox)}`);
+  console.log(`\nتصير اختباراً: ${events.length} حدث و${topUps.length} شراء نقاط`);
+  if (!apply) {
+    console.log("معاينة — أضف --apply للتعليم.");
+    return;
+  }
+  await prisma.$transaction([
+    prisma.billingEvent.updateMany({ where: { id: { in: events.map((e) => e.id) } }, data: { sandbox: true } }),
+    prisma.coinTopUp.updateMany({ where: { id: { in: topUps.map((t) => t.id) } }, data: { sandbox: true } }),
+  ]);
+  console.log("تمّ.");
+}
+
 async function main() {
   const from = fromDate(fromArg);
+  if (testArg !== undefined) {
+    const members = testArg
+      .split(",")
+      .map((part) => Number(part.trim()))
+      .filter((n) => Number.isInteger(n) && n > 0);
+    if (!members.length || !from) throw new Error("--test=2,22 مع --from=YYYY-MM-DD");
+    return markTest(members, from);
+  }
 
   const [events, topUps] = await Promise.all([
     prisma.billingEvent.findMany({

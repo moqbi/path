@@ -136,6 +136,8 @@ export async function storiesOf(viewerId: string, authorId: string) {
   return rows.map(({ views, ...row }) => ({
     ...row,
     myReaction: views[0]?.reaction ?? null,
+    // شاهدها القارئ من قبل: العارضُ يبدأ من أوّل ما لم يُشاهَد.
+    viewed: views.length > 0,
     reactions: reactions.get(row.id) ?? 0,
   }));
 }

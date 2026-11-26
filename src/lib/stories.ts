@@ -137,7 +137,7 @@ export async function storiesOf(viewerId: string, authorId: string) {
       _count: { select: { views: { where: { userId: { not: authorId } } } } },
     },
   });
-  return rows.map(({ views, ...row }) => ({ ...row, myReaction: views[0]?.reaction ?? null }));
+  return rows.map(({ views, ...row }) => ({ ...row, myReaction: views[0]?.reaction ?? null, viewed: views.length > 0 }));
 }
 
 /** من شاهد قصص صاحبها — لكل قصّةٍ قائمتُها، الأحدثُ أوّلاً وبلاه هو. */

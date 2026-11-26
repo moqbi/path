@@ -46,6 +46,8 @@ type Story = {
   media: { mime: string };
   author: { id: string; name: string; avatarMediaId: string | null };
   _count: { views: number };
+  /** شاهدها القارئ من قبل — اختياريٌّ لخادمٍ أقدم (فيبدأ من الأولى كما كان). */
+  viewed?: boolean;
   /** خاصّةٌ بمن اختارهم صاحبُها (القاعدة ٢١٩) — اختياريٌّ لخادمٍ أقدم. */
   private?: boolean;
   /** الملصقاتُ وصوتُ القصّة وتفاعلي ومجموعُ التفاعلات (القاعدة ٢٣٨) — اختياريّةٌ لخادمٍ أقدم. */
@@ -101,7 +103,12 @@ export default function StoryViewer() {
     خلف البطّاريّة وإشارة الشبكة.
   */
   const insets = useSafeAreaInsets();
-  const [index, setIndex] = useState(0);
+  /*
+    العارضُ يبدأ من أوّل ما لم يُشاهَد: من شاهد الأولى ثمّ نُشرت ثانيةٌ يرى الثانية،
+    ومن شاهدها كلَّها يراها من أوّلها. والموضعُ يُختار مرّةً حين تصل القصص — إعادةُ
+    الجلب تقلب `viewed` فلا تنقل الشاشةَ من تحت صاحبها.
+  */
+  const [picked, setIndex] = useState<number | null>(null);
   const [progress, setProgress] = useState(0);
   const [held, setHeld] = useState(false);
   // من شاهدها: نافذةٌ فوق القصة، والعدُّ يقف ما دامت مفتوحة.
@@ -141,6 +148,10 @@ export default function StoryViewer() {
   });
 
   const stories = feed.data?.stories ?? [];
+  const index = picked ?? firstUnseen(stories);
+  useEffect(() => {
+    if (picked === null && stories.length) setIndex(firstUnseen(stories));
+  }, [picked, stories]);
   const story = stories[index];
   const mine = id === me?.id;
   const video = story?.media.mime.startsWith("video/") ?? false;
@@ -271,6 +282,10 @@ export default function StoryViewer() {
   useEffect(() => {
     if (!story) return;
     receipts.current.push(api(`/v1/stories/${story.id}/seen`, { method: "POST" }).catch(() => {}));
+    // في الذاكرة أيضاً: فتحُها ثانيةً قبل أن تُجلب يبدأ ممّا بعدها، أو من أوّلها إن شُوهدت كلُّها.
+    client.setQueryData<{ stories: Story[] }>(["stories", id], (old) =>
+      old ? { stories: old.stories.map((one) => (one.id === story.id ? { ...one, viewed: true } : one)) } : old,
+    );
     if (index === stories.length - 1) seenAll.current = true;
   }, [story, index, stories.length]);
 
@@ -876,3 +891,8 @@ export default function StoryViewer() {
   );
 }
 
+/** أوّلُ قصّةٍ لم تُشاهَد، والصفرُ إن شُوهدت كلُّها. */
+function firstUnseen(stories: { viewed?: boolean }[]): number {
+  const at = stories.findIndex((story) => story.viewed === false);
+  return at < 0 ? 0 : at;
+}
