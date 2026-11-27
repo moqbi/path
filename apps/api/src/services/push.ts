@@ -112,6 +112,11 @@ export type PushMessage = {
   kind: PushKind;
   title: string;
   body: string;
+  /**
+   * سطرٌ بين العنوان والمتن يقول عمّ الخبر — «على لحظة كذا» (القاعدة ٤٩٨). آبل ترسمه
+   * `subtitle`، وأندرويد وهواوي بلا سطرٍ له فيُكتب أوّلَ المتن.
+   */
+  subtitle?: string;
   /** ما تفتحه الضغطة: مسارٌ في التطبيق. */
   path?: string;
   /**
@@ -132,6 +137,11 @@ export type PushMessage = {
  */
 /** والنتيجةُ تُردّ لمن يكتبها في السجلّ — جرسٌ لم يصل يُعرف لماذا. */
 export type PushOutcome = "sent" | "off" | "quiet" | "no-device" | "error" | "gone";
+
+/** السطرُ الأوسط أوّلَ المتن حيث لا `subtitle`. */
+function folded(message: PushMessage) {
+  return message.subtitle ? `${message.subtitle}\n${message.body}` : message.body;
+}
 
 function richOf(mediaId: string | null | undefined) {
   const image = pushImageUrl(mediaId);
@@ -181,7 +191,7 @@ export async function push(message: PushMessage): Promise<PushOutcome> {
       const { pushHuawei } = await import("./huawei");
       await pushHuawei(hw, {
         title: message.title,
-        body: message.body,
+        body: folded(message),
         channelId: SOUNDS[SOUND_OF[message.kind]].channelId,
         data: message.path ? { path: message.path } : {},
         image: pushImageUrl(message.image),
@@ -195,7 +205,9 @@ export async function push(message: PushMessage): Promise<PushOutcome> {
       expo.map((device) => ({
         to: device.token,
         title: message.title,
-        body: message.body,
+        ...(device.platform === "ios" && message.subtitle
+          ? { subtitle: message.subtitle, body: message.body }
+          : { body: folded(message) }),
         /*
           «عالية» صراحةً (القاعدة ٤٦٠): الافتراضيُّ عند Expo «default»، وهو على أندرويد
           أولويّةُ FCM العاديّة — يُؤجَّل في وضع توفير الطاقة حتى يستيقظ الجهاز، فكان
