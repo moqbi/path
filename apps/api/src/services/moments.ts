@@ -440,6 +440,44 @@ export async function editMoment(userId: string, momentId: string, text: string)
 }
 
 /** التفاعل والتعليق يمرّان بحدّ صاحب اللحظة: «من يمكنه التفاعل معك». */
+/** وجهُ التفاعل في نصّ التنبيه (القاعدة ٤٩٨) — رسومُ التطبيق صورٌ لا تُكتب، فأقربُ إيموجي إليها. */
+const REACTION_EMOJI: Record<string, string> = {
+  SMILE: "😊", LAUGH: "😂", GASP: "😮", SAD: "😢", LOVE: "😍",
+  CAMERA: "📸", CHAT: "💬", PIN: "📍", SLEEPY: "😴",
+};
+
+/**
+ * عمّ التنبيه (القاعدة ٤٩٨): «على لحظة كذا» سطراً قصيراً — نصُّها إن كان لها نصّ، وإلّا نوعُها
+ * وما يعرّفها (الأغنية، المكان، المدينة، المود). يُقرأ في السطر الأوسط فيُعرف أيُّ لحظةٍ هي.
+ */
+async function momentGist(momentId: string): Promise<string | undefined> {
+  try {
+    const m = await prisma.moment.findUnique({
+      where: { id: momentId },
+      select: {
+        kind: true, text: true, placeName: true, placeCity: true, musicTitle: true,
+        videoId: true, mediaId: true, mood: { select: { name: true, emoji: true } },
+      },
+    });
+    if (!m) return undefined;
+    const quote = (value: string) => {
+      const flat = value.replace(/\s+/g, " ").trim();
+      return `«${flat.length > 48 ? `${flat.slice(0, 47)}…` : flat}»`;
+    };
+    if (m.kind === "MOOD" && m.mood) return `مودك: ${m.mood.emoji} ${m.mood.name}`;
+    if (m.kind === "QUESTION" && m.text) return `سؤالك ${quote(m.text)}`;
+    if (m.text?.trim()) return `لحظتك ${quote(m.text)}`;
+    if (m.kind === "MUSIC" && m.musicTitle) return `أغنيتك ${quote(m.musicTitle)}`;
+    if (m.kind === "PLACE" && m.placeName) return `لحظتك في ${m.placeName}`;
+    if (m.kind === "CITY" && m.placeCity) return `وصولك إلى ${m.placeCity}`;
+    if (m.videoId) return "الفيديو اللي نشرته";
+    if (m.mediaId) return "الصورة اللي نشرتها";
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 async function assertCanInteract(userId: string, momentId: string) {
   const seen = await canSeeMoment(userId, momentId);
   // بابُ المشرف (القاعدة ٣٦٩): يبلغ اللحظة ولا يقف عند حدّ «من يتفاعل معك».
@@ -502,11 +540,13 @@ export async function react(
   // ولا يُنبَّه أحدٌ على تفاعله بنفسه.
   if (moment.authorId !== userId) {
     const who = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+    const face = input.kind === "CUSTOM" ? (emoji ?? "") : (REACTION_EMOJI[input.kind] ?? "");
+    const gist = await momentGist(momentId);
     void push({
       userId: moment.authorId,
       kind: "REACTION",
-      title: "تفاعل جديد على لحظتك",
-      body: `${who?.name ?? "صديقك"} تفاعل مع لحظتك`,
+      title: `${who?.name ?? "صديقك"} تفاعل مع لحظتك ${face}`.trim(),
+      body: gist ? `على ${gist}` : "اضغط لتراها",
       path: `/m/${momentId}`,
       image: moment.mediaId,
     });
@@ -690,8 +730,9 @@ export async function addComment(userId: string, momentId: string, body: string,
     void push({
       userId: moment.authorId,
       kind: "COMMENT",
-      title: `تعليق جديد على لحظتك من ${comment.user.name}`,
-      body: comment.body.slice(0, 120),
+      title: `${comment.user.name} علّق على لحظتك`,
+      subtitle: await momentGist(momentId).then((gist) => (gist ? `على ${gist}` : undefined)),
+      body: comment.body.slice(0, 160),
       path: `/m/${momentId}`,
       // الملصقُ صورتُه، وإلّا صورةُ اللحظة (القاعدة ٣٨٨).
       image: comment.sticker?.mediaId ?? moment.mediaId,
