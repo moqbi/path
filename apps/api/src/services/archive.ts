@@ -489,6 +489,32 @@ export async function map(userId: string) {
     }
     return found;
   };
+  /*
+    ودولةُ لحظةٍ تحمل مدينتَها من وصولٍ إلى تلك المدينة نفسها — أقربُه زمناً — لا من آخر وصولٍ
+    قبلها: وصولٌ إلى موسكو ثمّ لحظةٌ في المدينة المنورة قبل أن يُكتب الرجوعُ كانت تُعدّ روسيا،
+    فتظهر المدينةُ المنورة بين مدن روسيا. ومدينةٌ لا وصولَ إليها داخل المملكة (القاعدة ٢٨٦).
+  */
+  const byCity = new Map<string, (typeof arrivals)[number][]>();
+  for (const arrival of arrivals) {
+    if (!arrival.city) continue;
+    byCity.set(arrival.city, [...(byCity.get(arrival.city) ?? []), arrival]);
+  }
+  // تقريبُ المملكة بمستطيل — لمدينةٍ لا وصولَ باسمها وحدها، فخطؤه على الحدود لا يتجاوزها.
+  const inSaudi = (lat: number, lng: number) => lat >= 16 && lat <= 32.2 && lng >= 34.5 && lng <= 55.7;
+  const countryOf = (
+    city: string | null,
+    at: Date,
+    arrived: (typeof arrivals)[number] | null,
+    lat: number,
+    lng: number,
+  ) => {
+    if (!city || city === arrived?.city) return arrived?.country ?? "السعودية";
+    const same = byCity.get(city);
+    if (!same) return inSaudi(lat, lng) ? "السعودية" : (arrived?.country ?? "السعودية");
+    return same.reduce((best, one) =>
+      Math.abs(one.at - at.getTime()) < Math.abs(best.at - at.getTime()) ? one : best,
+    ).country;
+  };
   const latOf = (row: (typeof rows)[number]) => row.ownLat ?? row.lat;
   const lngOf = (row: (typeof rows)[number]) => row.ownLng ?? row.lng;
 
@@ -503,7 +529,7 @@ export async function map(userId: string) {
         text: row.text,
         placeName: row.placeName,
         placeCity: row.placeCity ?? arrived?.city ?? null,
-        country: arrived?.country ?? "السعودية",
+        country: countryOf(row.placeCity ?? arrived?.city ?? null, row.createdAt, arrived, latOf(row) as number, lngOf(row) as number),
         lat: latOf(row) as number,
         lng: lngOf(row) as number,
         mediaId: row.mediaId,
